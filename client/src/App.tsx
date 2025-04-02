@@ -8,6 +8,7 @@ import LandRecords from "@/pages/land-records";
 import Improvements from "@/pages/improvements";
 import Fields from "@/pages/fields";
 import Imports from "@/pages/imports";
+import NaturalLanguage from "@/pages/natural-language";
 import AppLayout from "@/layout/app-layout";
 
 function Router() {
@@ -40,6 +41,12 @@ function Router() {
       <Route path="/imports">
         <AppLayout>
           <Imports />
+        </AppLayout>
+      </Route>
+
+      <Route path="/natural-language">
+        <AppLayout>
+          <NaturalLanguage />
         </AppLayout>
       </Route>
 

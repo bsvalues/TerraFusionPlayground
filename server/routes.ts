@@ -11,6 +11,7 @@ import {
   insertAuditLogSchema,
   insertSystemActivitySchema
 } from "@shared/schema";
+import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Define API routes
@@ -384,6 +385,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error initializing PACS modules:", error);
       res.status(500).json({ message: "Failed to initialize PACS modules" });
+    }
+  });
+  
+  // Natural Language Query routes
+  app.post("/api/natural-language/query", async (req, res) => {
+    try {
+      const { query } = req.body;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ message: "Query is required and must be a string" });
+      }
+      
+      const result = await processNaturalLanguageQuery(query);
+      
+      // Create audit log for the query
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "QUERY",
+        entityType: "naturalLanguage",
+        entityId: null,
+        details: { query, resultCount: result.count },
+        ipAddress: req.ip
+      });
+      
+      // Create system activity for the NLP query
+      await storage.createSystemActivity({
+        agentId: 3, // Assuming NLP Agent ID
+        activity: `Processed natural language query: "${query}"`,
+        entityType: "query",
+        entityId: null
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error processing natural language query:", error);
+      res.status(500).json({ message: "Failed to process natural language query" });
+    }
+  });
+  
+  app.post("/api/natural-language/summary", async (req, res) => {
+    try {
+      const { query } = req.body;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ message: "Query is required and must be a string" });
+      }
+      
+      const result = await getSummaryFromNaturalLanguage(query);
+      
+      // Create audit log for the summary
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "SUMMARY",
+        entityType: "naturalLanguage",
+        entityId: null,
+        details: { query, summary: result.summary },
+        ipAddress: req.ip
+      });
+      
+      // Create system activity for the summary
+      await storage.createSystemActivity({
+        agentId: 3, // Assuming NLP Agent ID
+        activity: `Generated summary for query: "${query}"`,
+        entityType: "summary",
+        entityId: null
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error generating natural language summary:", error);
+      res.status(500).json({ message: "Failed to generate natural language summary" });
     }
   });
 
