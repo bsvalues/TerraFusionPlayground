@@ -348,17 +348,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Initialize PACS modules from the provided CSV
+  // Initialize PACS modules from the Benton County Washington CSV
   app.post("/api/pacs-modules/initialize", async (_req, res) => {
     try {
-      // This would typically read from a file or external source
-      // For demonstration, we'll manually create some modules
+      // This would typically read from a CSV file but we're hardcoding for now
+      // Based on PACS_Agent_Module_Map.csv
       const pacsModules = [
-        { moduleName: "Land", source: "PACS WA", integration: "active", description: "Land record management" },
-        { moduleName: "Improvements", source: "PACS WA", integration: "active", description: "Property improvements tracking" },
-        { moduleName: "Fields", source: "PACS WA", integration: "active", description: "Custom field definitions" },
-        { moduleName: "Destroyed Property", source: "PACS WA", integration: "pending", description: "Tracking of destroyed properties" },
-        { moduleName: "Imports", source: "PACS WA", integration: "active", description: "Data import functionality" }
+        { moduleName: "Land", source: "PACS WA", integration: "active", description: "Land record management for Benton County" },
+        { moduleName: "Improvements", source: "PACS WA", integration: "active", description: "Benton County property improvements tracking" },
+        { moduleName: "Fields", source: "PACS WA", integration: "active", description: "Custom field definitions for Benton County properties" },
+        { moduleName: "Destroyed Property", source: "PACS WA", integration: "active", description: "Tracking of destroyed properties in Benton County" },
+        { moduleName: "Imports", source: "PACS WA", integration: "active", description: "Data import functionality for Benton County" },
+        { moduleName: "GIS", source: "PACS WA", integration: "active", description: "Geographic Information System integration" },
+        { moduleName: "Valuation Methods", source: "PACS WA", integration: "active", description: "Property valuation methodologies" },
+        { moduleName: "Comparable Sales", source: "PACS WA", integration: "active", description: "Comparable property sales data" },
+        { moduleName: "Land Schedules", source: "PACS WA", integration: "active", description: "Schedules for land valuation" },
+        { moduleName: "Improvement Schedules", source: "PACS WA", integration: "active", description: "Schedules for improvement valuation" },
+        { moduleName: "Income", source: "PACS WA", integration: "pending", description: "Income approach for commercial property assessment" },
+        { moduleName: "Building Permits", source: "PACS WA", integration: "active", description: "Building permit tracking and integration" },
+        { moduleName: "Protest Processing", source: "PACS WA", integration: "active", description: "Processing property assessment protests" },
+        { moduleName: "Inquiry Processing", source: "PACS WA", integration: "active", description: "Processing taxpayer inquiries" },
+        { moduleName: "Tax Statements", source: "PACS WA", integration: "active", description: "Generation of tax statements" },
+        { moduleName: "DOR Reports", source: "PACS WA", integration: "active", description: "Washington Department of Revenue reports" },
+        { moduleName: "Levy Certification", source: "PACS WA", integration: "active", description: "Certification of tax levies" },
+        { moduleName: "Current Use Properties", source: "PACS WA", integration: "active", description: "Management of current use properties" },
+        { moduleName: "Data Entry", source: "PACS WA", integration: "active", description: "Data entry interface and validation" },
+        { moduleName: "Panel Information", source: "PACS WA", integration: "active", description: "Property panel information management" }
       ];
       
       for (const module of pacsModules) {

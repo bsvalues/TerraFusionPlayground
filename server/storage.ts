@@ -457,41 +457,50 @@ export class MemStorage implements IStorage {
       this.aiAgents.set(id, agent);
     });
     
-    // Seed Properties
+    // Seed Properties - Benton County Washington
     const propertyData = [
       {
-        propertyId: 'P001',
-        address: '123 Lake View Drive',
-        parcelNumber: 'A12345-6789',
+        propertyId: 'BC001',
+        address: '1320 N Louisiana St, Kennewick',
+        parcelNumber: '1-1289-100-0008-000',
         propertyType: 'Residential',
-        acres: 0.45,
-        value: 450000,
+        acres: 0.23,
+        value: 325000,
         status: 'active'
       },
       {
-        propertyId: 'P002',
-        address: '555 Commerce Plaza',
-        parcelNumber: 'B98765-4321',
+        propertyId: 'BC002',
+        address: '8524 W Gage Blvd, Kennewick',
+        parcelNumber: '1-1789-202-0553-001',
+        propertyType: 'Commercial',
+        acres: 1.5,
+        value: 1750000,
+        status: 'active'
+      },
+      {
+        propertyId: 'BC003',
+        address: '6925 W Argent Rd, Pasco',
+        parcelNumber: '1-0589-404-0032-000',
+        propertyType: 'Residential',
+        acres: 0.95,
+        value: 485000,
+        status: 'active'
+      },
+      {
+        propertyId: 'BC004',
+        address: '710 George Washington Way, Richland',
+        parcelNumber: '1-3289-101-0982-000',
         propertyType: 'Commercial',
         acres: 1.2,
         value: 1250000,
         status: 'active'
       },
       {
-        propertyId: 'P003',
-        address: '789 Mountain View Road',
-        parcelNumber: 'C56789-0123',
-        propertyType: 'Residential',
-        acres: 0.75,
-        value: 625000,
-        status: 'active'
-      },
-      {
-        propertyId: 'P004',
-        address: '321 Government Way',
-        parcelNumber: 'G34567-8901',
+        propertyId: 'BC005',
+        address: '2600 N Columbia Center Blvd, Richland',
+        parcelNumber: '1-1389-103-0022-001',
         propertyType: 'Government',
-        acres: 2.5,
+        acres: 3.5,
         value: 0, // Exempt
         status: 'exempt'
       }
@@ -501,35 +510,41 @@ export class MemStorage implements IStorage {
       this.createProperty(propData);
     });
     
-    // Seed System Activities
+    // Seed System Activities for Benton County Washington
     const activityData = [
       {
         agentId: 3,
-        activity: 'Processed a new protest for 123 Lake View Drive',
+        activity: 'Processed a new protest for 1320 N Louisiana St, Kennewick',
         entityType: 'protest',
-        entityId: 'P001'
+        entityId: 'BC001'
       },
       {
         agentId: 1,
-        activity: 'Imported 156 new records from PACS:Land',
+        activity: 'Imported 156 new records from PACS:Land Benton County',
         entityType: 'import',
         entityId: 'PACS:Land'
       },
       {
         agentId: 2,
-        activity: 'Completed batch recalculation for Commercial District #3',
+        activity: 'Completed batch recalculation for Kennewick Commercial District',
         entityType: 'valuation',
-        entityId: 'CD3'
+        entityId: 'KCD1'
       },
       {
         agentId: 4,
-        activity: 'Flagged anomaly in valuation for 555 Commerce Plaza',
+        activity: 'Flagged anomaly in valuation for 8524 W Gage Blvd, Kennewick',
         entityType: 'property',
-        entityId: 'P002'
+        entityId: 'BC002'
+      },
+      {
+        agentId: 5,
+        activity: 'Verified compliance with Washington State assessment guidelines',
+        entityType: 'compliance',
+        entityId: 'WACG-2023'
       },
       {
         agentId: null,
-        activity: 'Scheduled automated backup of database',
+        activity: 'Scheduled automated backup of Benton County database',
         entityType: 'system',
         entityId: 'backup'
       }
