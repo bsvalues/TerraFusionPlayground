@@ -47,17 +47,46 @@ export class NotificationService {
    * Initialize the WebSocket server for real-time notifications
    */
   initialize(server: Server) {
-    // Create WebSocket server
-    this.wss = new WebSocketServer({ server });
+    // Create WebSocket server with proper configuration and a specific path
+    // to avoid conflicts with Vite's WebSocket server
+    this.wss = new WebSocketServer({
+      server,
+      path: '/api/notifications/ws',
+      // Add error handling for WebSocket
+      clientTracking: true,
+      // Set a reasonable ping interval and timeout
+      perMessageDeflate: false
+    });
+    
+    // Handle WebSocket server errors
+    this.wss.on('error', (error) => {
+      console.error('WebSocket server error:', error);
+    });
     
     // Handle connections
-    this.wss.on('connection', (ws: WebSocket) => {
+    this.wss.on('connection', (ws: WebSocket, req) => {
       console.log('New client connected to notification service');
       
-      // Handle messages from clients
+      // Send initial connection acknowledgment
+      try {
+        ws.send(JSON.stringify({
+          type: 'connection_established',
+          message: 'Connected to notification service'
+        }));
+      } catch (err) {
+        console.error('Error sending welcome message:', err);
+      }
+      
+      // Handle WebSocket errors
+      ws.on('error', (err) => {
+        console.error('WebSocket connection error:', err);
+      });
+      
+      // Handle messages from clients with better error handling
       ws.on('message', (message: string) => {
         try {
-          const data = JSON.parse(message);
+          // Try to parse the message
+          const data = JSON.parse(message.toString());
           
           // Handle client authentication
           if (data.type === 'auth') {
@@ -70,10 +99,14 @@ export class NotificationService {
               const userNotifications = this.notifications.get(userId) || [];
               const unreadNotifications = userNotifications.filter(n => !n.isRead);
               if (unreadNotifications.length > 0) {
-                ws.send(JSON.stringify({
-                  type: 'notifications',
-                  notifications: unreadNotifications
-                }));
+                try {
+                  ws.send(JSON.stringify({
+                    type: 'notifications',
+                    notifications: unreadNotifications
+                  }));
+                } catch (err) {
+                  console.error('Error sending notifications:', err);
+                }
               }
             }
           }

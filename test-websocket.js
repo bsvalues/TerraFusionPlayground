@@ -1,40 +1,67 @@
-// Test WebSocket client for notifications
+// WebSocket Client Tester
 import WebSocket from 'ws';
 
-// Connect to the WebSocket server
-const ws = new WebSocket('ws://localhost:5000');
+// WebSocket connection URL with the specific path
+const wsUrl = 'ws://localhost:5000/api/notifications/ws';
 
-console.log('Connecting to WebSocket server...');
+// Create WebSocket connection
+console.log(`Connecting to WebSocket server at ${wsUrl}...`);
+const ws = new WebSocket(wsUrl);
 
-// Handle connection open
-ws.on('open', function open() {
-  console.log('Connected to WebSocket server');
+// Connection opened
+ws.on('open', () => {
+  console.log('Connected to server');
   
-  // Send authentication message
+  // Send test authentication message
   const authMessage = {
     type: 'auth',
     userId: '1'
   };
   
+  console.log('Sending authentication message:', authMessage);
   ws.send(JSON.stringify(authMessage));
-  console.log('Sent authentication message for user ID 1');
 });
 
-// Handle incoming messages
-ws.on('message', function incoming(data) {
-  const message = JSON.parse(data);
-  console.log('Received message:', message);
+// Listen for messages
+ws.on('message', (data) => {
+  try {
+    const message = JSON.parse(data);
+    console.log('Message from server:', message);
+    
+    // If we receive a notification, mark it as read
+    if (message.type === 'notification' || message.type === 'system_notification') {
+      const notification = message.notification;
+      console.log(`Marking notification ${notification.id} as read...`);
+      
+      ws.send(JSON.stringify({
+        type: 'mark_read',
+        userId: '1',
+        notificationId: notification.id
+      }));
+    }
+  } catch (error) {
+    console.error('Error parsing message:', error);
+    console.log('Raw message data:', data.toString());
+  }
 });
 
 // Handle errors
-ws.on('error', function error(err) {
-  console.error('WebSocket error:', err);
+ws.on('error', (error) => {
+  console.error('WebSocket error:', error);
 });
 
-// Handle connection close
-ws.on('close', function close() {
-  console.log('Disconnected from WebSocket server');
+// Handle connection closure
+ws.on('close', (code, reason) => {
+  console.log(`Connection closed with code ${code}: ${reason || 'No reason provided'}`);
 });
 
-// Keep the process running
-console.log('WebSocket client is running. Press Ctrl+C to exit.');
+// Keep the connection alive for a while to observe behavior
+setTimeout(() => {
+  console.log('Test complete, closing connection...');
+  ws.close(1000, 'Test completed');
+  
+  // Exit after a short delay to allow for clean WebSocket closure
+  setTimeout(() => {
+    process.exit(0);
+  }, 500);
+}, 10000); // Run for 10 seconds
