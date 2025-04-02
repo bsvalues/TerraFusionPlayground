@@ -17,6 +17,7 @@ import { pacsIntegration } from "./services/pacs-integration";
 import { mappingIntegration } from "./services/mapping-integration";
 import { notificationService, NotificationType } from "./services/notification-service";
 import { perplexityService } from "./services/perplexity";
+import { mcpService, MCPRequest } from "./services/mcp";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Define API routes
@@ -354,6 +355,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.post("/api/pacs-modules", async (req, res) => {
+    try {
+      // Create a new PACS module
+      const module = await storage.upsertPacsModule(req.body);
+      res.status(200).json(module);
+    } catch (error) {
+      console.error("Error creating PACS module:", error);
+      res.status(500).json({ message: "Failed to create PACS module" });
+    }
+  });
+  
   // Initialize PACS modules from the Benton County Washington CSV
   app.post("/api/pacs-modules/initialize", async (_req, res) => {
     try {
@@ -390,6 +402,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error initializing PACS modules:", error);
       res.status(500).json({ message: "Failed to initialize PACS modules" });
+    }
+  });
+  
+  // MCP routes
+  app.get("/api/mcp/tools", async (_req, res) => {
+    try {
+      const tools = mcpService.getAvailableTools().map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters
+      }));
+      
+      res.json(tools);
+    } catch (error) {
+      console.error("Error fetching MCP tools:", error);
+      res.status(500).json({ message: "Failed to fetch MCP tools" });
+    }
+  });
+  
+  app.post("/api/mcp/execute", async (req, res) => {
+    try {
+      const mcpRequest: MCPRequest = req.body;
+      
+      if (!mcpRequest.toolName) {
+        return res.status(400).json({ message: "Tool name is required" });
+      }
+      
+      // Execute the MCP request
+      const result = await mcpService.executeRequest(mcpRequest);
+      
+      // Create audit log for the MCP request
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "EXECUTE",
+        entityType: "mcp_tool",
+        entityId: null,
+        details: { 
+          toolName: mcpRequest.toolName,
+          success: result.success
+        },
+        ipAddress: req.ip
+      });
+      
+      // Send notification if this is a significant event
+      if (mcpRequest.toolName.includes("Property") || mcpRequest.toolName.includes("Protest")) {
+        notificationService.sendUserNotification(
+          "1", // Assuming admin user ID as string
+          NotificationType.SYSTEM_ALERT,
+          "MCP Tool Executed",
+          `MCP tool ${mcpRequest.toolName} was executed by admin`,
+          "mcp_tool",
+          mcpRequest.toolName,
+          'medium'
+        );
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error executing MCP request:", error);
+      res.status(500).json({ message: "Failed to execute MCP request" });
     }
   });
   

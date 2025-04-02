@@ -20,7 +20,8 @@ const COLORS = {
 // Test files to run
 const testFiles = [
   'api-tests.js',
-  'ui-tests.js'
+  'ui-tests.js',
+  'test-mcp.js'
 ];
 
 // Function to run a test file and return a promise
