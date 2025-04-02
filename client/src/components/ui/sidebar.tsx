@@ -114,13 +114,13 @@ const SidebarMenuItem = ({ href, icon, children, isActive = false }: SidebarMenu
   
   return (
     <Link href={href}>
-      <a className={cn(
-        "flex items-center px-3 py-2 text-sm font-medium rounded-md group",
+      <div className={cn(
+        "flex items-center px-3 py-2 text-sm font-medium rounded-md group cursor-pointer",
         isActive ? activeClasses : inactiveClasses
       )}>
         {icon}
         {children}
-      </a>
+      </div>
     </Link>
   );
 };
@@ -297,7 +297,7 @@ export const Sidebar = () => {
         
         {/* User Profile Section */}
         <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-          <a href="#" className="flex-shrink-0 w-full group block">
+          <div className="flex-shrink-0 w-full group block cursor-pointer">
             <div className="flex items-center">
               <div>
                 <div className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-gray-500 text-white">
@@ -309,7 +309,7 @@ export const Sidebar = () => {
                 <p className="text-xs font-medium text-gray-500 group-hover:text-gray-700">{user?.role}</p>
               </div>
             </div>
-          </a>
+          </div>
         </div>
       </div>
     </div>
