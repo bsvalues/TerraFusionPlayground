@@ -7,7 +7,9 @@ import {
   insertLandRecordSchema,
   insertImprovementSchema,
   insertFieldSchema,
-  insertProtestSchema,
+  insertAppealSchema,
+  insertAppealCommentSchema,
+  insertAppealEvidenceSchema,
   insertAuditLogSchema,
   insertSystemActivitySchema
 } from "@shared/schema";
@@ -215,43 +217,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Protests routes
-  app.get("/api/properties/:propertyId/protests", async (req, res) => {
+  // Appeals Management routes
+  app.get("/api/properties/:propertyId/appeals", async (req, res) => {
     try {
-      const protests = await storage.getProtestsByPropertyId(req.params.propertyId);
-      res.json(protests);
+      const appeals = await storage.getAppealsByPropertyId(req.params.propertyId);
+      res.json(appeals);
     } catch (error) {
-      console.error("Error fetching protests:", error);
-      res.status(500).json({ message: "Failed to fetch protests" });
+      console.error("Error fetching appeals:", error);
+      res.status(500).json({ message: "Failed to fetch appeals" });
     }
   });
   
-  app.post("/api/protests", async (req, res) => {
+  app.post("/api/appeals", async (req, res) => {
     try {
-      const validatedData = insertProtestSchema.parse(req.body);
-      const protest = await storage.createProtest(validatedData);
+      const validatedData = insertAppealSchema.parse(req.body);
+      const appeal = await storage.createAppeal(validatedData);
       
       // Create audit log
       await storage.createAuditLog({
         userId: validatedData.userId,
         action: "CREATE",
-        entityType: "protest",
-        entityId: protest.propertyId,
-        details: { protest },
+        entityType: "appeal",
+        entityId: appeal.propertyId,
+        details: { appeal },
         ipAddress: req.ip
       });
       
-      res.status(201).json(protest);
+      res.status(201).json(appeal);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid protest data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid appeal data", errors: error.errors });
       }
-      console.error("Error creating protest:", error);
-      res.status(500).json({ message: "Failed to create protest" });
+      console.error("Error creating appeal:", error);
+      res.status(500).json({ message: "Failed to create appeal" });
     }
   });
   
-  app.patch("/api/protests/:id/status", async (req, res) => {
+  app.patch("/api/appeals/:id/status", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { status } = req.body;
@@ -260,26 +262,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Status is required and must be a string" });
       }
       
-      const protest = await storage.updateProtestStatus(id, status);
+      const appeal = await storage.updateAppealStatus(id, status);
       
-      if (!protest) {
-        return res.status(404).json({ message: "Protest not found" });
+      if (!appeal) {
+        return res.status(404).json({ message: "Appeal not found" });
       }
       
       // Create audit log
       await storage.createAuditLog({
         userId: 1, // Assuming admin user
         action: "UPDATE",
-        entityType: "protestStatus",
-        entityId: protest.propertyId,
-        details: { protestId: id, newStatus: status },
+        entityType: "appealStatus",
+        entityId: appeal.propertyId,
+        details: { appealId: id, newStatus: status },
         ipAddress: req.ip
       });
       
-      res.json(protest);
+      res.json(appeal);
     } catch (error) {
-      console.error("Error updating protest status:", error);
-      res.status(500).json({ message: "Failed to update protest status" });
+      console.error("Error updating appeal status:", error);
+      res.status(500).json({ message: "Failed to update appeal status" });
+    }
+  });
+  
+  // Appeal comments routes
+  app.get("/api/appeals/:appealId/comments", async (req, res) => {
+    try {
+      const appealId = parseInt(req.params.appealId);
+      const comments = await storage.getAppealCommentsByAppealId(appealId);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching appeal comments:", error);
+      res.status(500).json({ message: "Failed to fetch appeal comments" });
+    }
+  });
+  
+  app.post("/api/appeal-comments", async (req, res) => {
+    try {
+      const validatedData = insertAppealCommentSchema.parse(req.body);
+      const comment = await storage.createAppealComment(validatedData);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: validatedData.userId,
+        action: "CREATE",
+        entityType: "appealComment",
+        entityId: comment.appealId.toString(),
+        details: { comment },
+        ipAddress: req.ip
+      });
+      
+      res.status(201).json(comment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid appeal comment data", errors: error.errors });
+      }
+      console.error("Error creating appeal comment:", error);
+      res.status(500).json({ message: "Failed to create appeal comment" });
+    }
+  });
+  
+  // Appeal evidence routes
+  app.get("/api/appeals/:appealId/evidence", async (req, res) => {
+    try {
+      const appealId = parseInt(req.params.appealId);
+      const evidence = await storage.getAppealEvidenceByAppealId(appealId);
+      res.json(evidence);
+    } catch (error) {
+      console.error("Error fetching appeal evidence:", error);
+      res.status(500).json({ message: "Failed to fetch appeal evidence" });
+    }
+  });
+  
+  app.post("/api/appeal-evidence", async (req, res) => {
+    try {
+      const validatedData = insertAppealEvidenceSchema.parse(req.body);
+      const evidence = await storage.createAppealEvidence(validatedData);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: validatedData.uploadedBy,
+        action: "CREATE",
+        entityType: "appealEvidence",
+        entityId: evidence.appealId.toString(),
+        details: { evidence },
+        ipAddress: req.ip
+      });
+      
+      res.status(201).json(evidence);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid appeal evidence data", errors: error.errors });
+      }
+      console.error("Error creating appeal evidence:", error);
+      res.status(500).json({ message: "Failed to create appeal evidence" });
     }
   });
   
@@ -384,7 +460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { moduleName: "Improvement Schedules", source: "PACS WA", integration: "active", description: "Schedules for improvement valuation" },
         { moduleName: "Income", source: "PACS WA", integration: "pending", description: "Income approach for commercial property assessment" },
         { moduleName: "Building Permits", source: "PACS WA", integration: "active", description: "Building permit tracking and integration" },
-        { moduleName: "Protest Processing", source: "PACS WA", integration: "active", description: "Processing property assessment protests" },
+        { moduleName: "Appeal Processing", source: "PACS WA", integration: "active", description: "Processing property assessment appeals" },
         { moduleName: "Inquiry Processing", source: "PACS WA", integration: "active", description: "Processing taxpayer inquiries" },
         { moduleName: "Tax Statements", source: "PACS WA", integration: "active", description: "Generation of tax statements" },
         { moduleName: "DOR Reports", source: "PACS WA", integration: "active", description: "Washington Department of Revenue reports" },
@@ -446,7 +522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Send notification if this is a significant event
-      if (mcpRequest.toolName.includes("Property") || mcpRequest.toolName.includes("Protest")) {
+      if (mcpRequest.toolName.includes("Property") || mcpRequest.toolName.includes("Appeal")) {
         notificationService.sendUserNotification(
           "1", // Assuming admin user ID as string
           NotificationType.SYSTEM_ALERT,
@@ -861,13 +937,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/pacs/protests/active", async (_req, res) => {
+  app.get("/api/pacs/appeals/active", async (_req, res) => {
     try {
-      const protests = await pacsIntegration.getActiveProtests();
-      res.json(protests);
+      const appeals = await pacsIntegration.getActiveAppeals();
+      res.json(appeals);
     } catch (error) {
-      console.error("Error fetching active protests:", error);
-      res.status(500).json({ message: "Failed to fetch active protests" });
+      console.error("Error fetching active appeals:", error);
+      res.status(500).json({ message: "Failed to fetch active appeals" });
     }
   });
   

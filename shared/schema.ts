@@ -115,24 +115,82 @@ export const insertFieldSchema = createInsertSchema(fields).pick({
   fieldValue: true,
 });
 
-// Protests table
-export const protests = pgTable("protests", {
+// Appeals table (renamed from protests for clarity)
+export const appeals = pgTable("appeals", {
   id: serial("id").primaryKey(),
+  appealNumber: text("appeal_number").notNull().unique(), // Unique identifier for the appeal
   propertyId: text("property_id").notNull(),
   userId: integer("user_id").notNull(),
+  appealType: text("appeal_type").notNull().default("value"), // value, classification, exemption
   reason: text("reason").notNull(),
   evidenceUrls: text("evidence_urls").array(),
-  status: text("status").notNull().default("submitted"),
+  requestedValue: numeric("requested_value"), // Value requested by appellant
+  dateReceived: timestamp("date_received").defaultNow().notNull(),
+  hearingDate: timestamp("hearing_date"),
+  hearingLocation: text("hearing_location"),
+  assignedTo: integer("assigned_to"), // Staff ID assigned to handle this appeal
+  status: text("status").notNull().default("submitted"), // submitted, reviewing, scheduled, heard, decided, withdrawn
+  decision: text("decision"), // granted, denied, partial
+  decisionReason: text("decision_reason"),
+  decisionDate: timestamp("decision_date"),
+  notificationSent: boolean("notification_sent").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastUpdated: timestamp("last_updated").defaultNow().notNull(),
 });
 
-export const insertProtestSchema = createInsertSchema(protests).pick({
+export const insertAppealSchema = createInsertSchema(appeals).pick({
+  appealNumber: true,
   propertyId: true,
   userId: true,
+  appealType: true,
   reason: true,
   evidenceUrls: true,
+  requestedValue: true,
+  dateReceived: true,
+  hearingDate: true,
+  hearingLocation: true,
+  assignedTo: true,
   status: true,
+});
+
+// Appeal comments table for tracking communications
+export const appealComments = pgTable("appeal_comments", {
+  id: serial("id").primaryKey(),
+  appealId: integer("appeal_id").notNull(),
+  userId: integer("user_id").notNull(),
+  comment: text("comment").notNull(),
+  internalOnly: boolean("internal_only").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAppealCommentSchema = createInsertSchema(appealComments).pick({
+  appealId: true,
+  userId: true,
+  comment: true,
+  internalOnly: true,
+});
+
+// Appeal evidence items table
+export const appealEvidence = pgTable("appeal_evidence", {
+  id: serial("id").primaryKey(),
+  appealId: integer("appeal_id").notNull(),
+  documentType: text("document_type").notNull(), // photo, assessment, appraisal, etc.
+  fileName: text("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileSize: integer("file_size"),
+  uploadedBy: integer("uploaded_by").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAppealEvidenceSchema = createInsertSchema(appealEvidence).pick({
+  appealId: true,
+  documentType: true,
+  fileName: true,
+  fileUrl: true,
+  fileSize: true,
+  uploadedBy: true,
+  description: true,
 });
 
 // Audit Logs table
@@ -224,8 +282,14 @@ export type InsertImprovement = z.infer<typeof insertImprovementSchema>;
 export type Field = typeof fields.$inferSelect;
 export type InsertField = z.infer<typeof insertFieldSchema>;
 
-export type Protest = typeof protests.$inferSelect;
-export type InsertProtest = z.infer<typeof insertProtestSchema>;
+export type Appeal = typeof appeals.$inferSelect;
+export type InsertAppeal = z.infer<typeof insertAppealSchema>;
+
+export type AppealComment = typeof appealComments.$inferSelect;
+export type InsertAppealComment = z.infer<typeof insertAppealCommentSchema>;
+
+export type AppealEvidence = typeof appealEvidence.$inferSelect;
+export type InsertAppealEvidence = z.infer<typeof insertAppealEvidenceSchema>;
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;

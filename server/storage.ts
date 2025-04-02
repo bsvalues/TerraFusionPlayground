@@ -4,7 +4,9 @@ import {
   landRecords, LandRecord, InsertLandRecord,
   improvements, Improvement, InsertImprovement,
   fields, Field, InsertField,
-  protests, Protest, InsertProtest, 
+  appeals, Appeal, InsertAppeal,
+  appealComments, AppealComment, InsertAppealComment,
+  appealEvidence, AppealEvidence, InsertAppealEvidence,
   auditLogs, AuditLog, InsertAuditLog,
   aiAgents, AiAgent, InsertAiAgent,
   systemActivities, SystemActivity, InsertSystemActivity,
@@ -37,11 +39,15 @@ export interface IStorage {
   getFieldsByPropertyId(propertyId: string): Promise<Field[]>;
   createField(field: InsertField): Promise<Field>;
   
-  // Protest methods
-  getProtestsByPropertyId(propertyId: string): Promise<Protest[]>;
-  getProtestsByUserId(userId: number): Promise<Protest[]>;
-  createProtest(protest: InsertProtest): Promise<Protest>;
-  updateProtestStatus(id: number, status: string): Promise<Protest | undefined>;
+  // Appeals Management methods
+  getAppealsByPropertyId(propertyId: string): Promise<Appeal[]>;
+  getAppealsByUserId(userId: number): Promise<Appeal[]>;
+  createAppeal(appeal: InsertAppeal): Promise<Appeal>;
+  updateAppealStatus(id: number, status: string): Promise<Appeal | undefined>;
+  getAppealCommentsByAppealId(appealId: number): Promise<AppealComment[]>;
+  createAppealComment(comment: InsertAppealComment): Promise<AppealComment>;
+  getAppealEvidenceByAppealId(appealId: number): Promise<AppealEvidence[]>;
+  createAppealEvidence(evidence: InsertAppealEvidence): Promise<AppealEvidence>;
   
   // Audit Log methods
   createAuditLog(auditLog: InsertAuditLog): Promise<AuditLog>;
@@ -67,7 +73,9 @@ export class MemStorage implements IStorage {
   private landRecords: Map<number, LandRecord>;
   private improvements: Map<number, Improvement>;
   private fields: Map<number, Field>;
-  private protests: Map<number, Protest>;
+  private appeals: Map<number, Appeal>;
+  private appealComments: Map<number, AppealComment>;
+  private appealEvidence: Map<number, AppealEvidence>;
   private auditLogs: Map<number, AuditLog>;
   private aiAgents: Map<number, AiAgent>;
   private systemActivities: Map<number, SystemActivity>;
@@ -78,7 +86,9 @@ export class MemStorage implements IStorage {
   private currentLandRecordId: number;
   private currentImprovementId: number;
   private currentFieldId: number;
-  private currentProtestId: number;
+  private currentAppealId: number;
+  private currentAppealCommentId: number;
+  private currentAppealEvidenceId: number;
   private currentAuditLogId: number;
   private currentAiAgentId: number;
   private currentSystemActivityId: number;
@@ -90,7 +100,9 @@ export class MemStorage implements IStorage {
     this.landRecords = new Map();
     this.improvements = new Map();
     this.fields = new Map();
-    this.protests = new Map();
+    this.appeals = new Map();
+    this.appealComments = new Map();
+    this.appealEvidence = new Map();
     this.auditLogs = new Map();
     this.aiAgents = new Map();
     this.systemActivities = new Map();
@@ -101,7 +113,9 @@ export class MemStorage implements IStorage {
     this.currentLandRecordId = 1;
     this.currentImprovementId = 1;
     this.currentFieldId = 1;
-    this.currentProtestId = 1;
+    this.currentAppealId = 1;
+    this.currentAppealCommentId = 1;
+    this.currentAppealEvidenceId = 1;
     this.currentAuditLogId = 1;
     this.currentAiAgentId = 1;
     this.currentSystemActivityId = 1;
@@ -275,61 +289,113 @@ export class MemStorage implements IStorage {
     return field;
   }
   
-  // Protest methods
-  async getProtestsByPropertyId(propertyId: string): Promise<Protest[]> {
-    return Array.from(this.protests.values())
-      .filter(protest => protest.propertyId === propertyId);
+  // Appeals Management methods
+  async getAppealsByPropertyId(propertyId: string): Promise<Appeal[]> {
+    return Array.from(this.appeals.values())
+      .filter(appeal => appeal.propertyId === propertyId);
   }
   
-  async getProtestsByUserId(userId: number): Promise<Protest[]> {
-    return Array.from(this.protests.values())
-      .filter(protest => protest.userId === userId);
+  async getAppealsByUserId(userId: number): Promise<Appeal[]> {
+    return Array.from(this.appeals.values())
+      .filter(appeal => appeal.userId === userId);
   }
   
-  async createProtest(insertProtest: InsertProtest): Promise<Protest> {
-    const id = this.currentProtestId++;
+  async createAppeal(insertAppeal: InsertAppeal): Promise<Appeal> {
+    const id = this.currentAppealId++;
     const timestamp = new Date();
-    const protest: Protest = { 
-      ...insertProtest, 
+    const appeal: Appeal = { 
+      ...insertAppeal, 
       id, 
       createdAt: timestamp, 
       lastUpdated: timestamp 
     };
-    this.protests.set(id, protest);
+    this.appeals.set(id, appeal);
     
     // Create system activity
     await this.createSystemActivity({
       agentId: 3, // Citizen Interaction Agent
-      activity: `New protest submitted for property ID: ${protest.propertyId}`,
-      entityType: 'protest',
-      entityId: protest.propertyId
+      activity: `New appeal submitted for property ID: ${appeal.propertyId}`,
+      entityType: 'appeal',
+      entityId: appeal.propertyId
     });
     
-    return protest;
+    return appeal;
   }
   
-  async updateProtestStatus(id: number, status: string): Promise<Protest | undefined> {
-    const protest = this.protests.get(id);
-    if (!protest) return undefined;
+  async updateAppealStatus(id: number, status: string): Promise<Appeal | undefined> {
+    const appeal = this.appeals.get(id);
+    if (!appeal) return undefined;
     
     const timestamp = new Date();
-    const updatedProtest = { 
-      ...protest, 
+    const updatedAppeal = { 
+      ...appeal, 
       status, 
       lastUpdated: timestamp 
     };
     
-    this.protests.set(id, updatedProtest);
+    this.appeals.set(id, updatedAppeal);
     
     // Create system activity
     await this.createSystemActivity({
       agentId: 3, // Citizen Interaction Agent
-      activity: `Protest status updated to ${status} for property ID: ${protest.propertyId}`,
-      entityType: 'protest',
-      entityId: protest.propertyId
+      activity: `Appeal status updated to ${status} for property ID: ${appeal.propertyId}`,
+      entityType: 'appeal',
+      entityId: appeal.propertyId
     });
     
-    return updatedProtest;
+    return updatedAppeal;
+  }
+  
+  async getAppealCommentsByAppealId(appealId: number): Promise<AppealComment[]> {
+    return Array.from(this.appealComments.values())
+      .filter(comment => comment.appealId === appealId);
+  }
+  
+  async createAppealComment(insertComment: InsertAppealComment): Promise<AppealComment> {
+    const id = this.currentAppealCommentId++;
+    const timestamp = new Date();
+    const comment: AppealComment = { 
+      ...insertComment, 
+      id, 
+      createdAt: timestamp
+    };
+    this.appealComments.set(id, comment);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 3, // Citizen Interaction Agent
+      activity: `New comment added to appeal ID: ${comment.appealId}`,
+      entityType: 'appealComment',
+      entityId: comment.appealId.toString()
+    });
+    
+    return comment;
+  }
+  
+  async getAppealEvidenceByAppealId(appealId: number): Promise<AppealEvidence[]> {
+    return Array.from(this.appealEvidence.values())
+      .filter(evidence => evidence.appealId === appealId);
+  }
+  
+  async createAppealEvidence(insertEvidence: InsertAppealEvidence): Promise<AppealEvidence> {
+    const id = this.currentAppealEvidenceId++;
+    const timestamp = new Date();
+    const evidence: AppealEvidence = { 
+      ...insertEvidence, 
+      id, 
+      createdAt: timestamp 
+    };
+    this.appealEvidence.set(id, evidence);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 3, // Citizen Interaction Agent
+      activity: `New evidence uploaded for appeal ID: ${evidence.appealId}`,
+      entityType: 'appealEvidence',
+      entityId: evidence.appealId.toString()
+    });
+    
+    return evidence;
   }
   
   // Audit Log methods
@@ -519,12 +585,83 @@ export class MemStorage implements IStorage {
       this.createProperty(propData);
     });
     
+    // Seed sample appeals data
+    const appealData = [
+      {
+        propertyId: 'BC001',
+        userId: 1,
+        appealNumber: 'A2023-001',
+        reason: 'Incorrect square footage',
+        details: 'The property assessment lists 2,400 sq ft, but the actual size is 2,150 sq ft',
+        status: 'under_review',
+        appealType: 'valuation',
+        evidenceUrls: null,
+        requestedValue: '298000',
+        assessmentYear: '2023',
+        dateReceived: new Date('2023-08-15'),
+        hearingDate: new Date('2023-09-20'),
+        decision: null,
+        decisionReason: null,
+        decisionDate: null,
+        assignedTo: 2,
+        notificationSent: false
+      },
+      {
+        propertyId: 'BC002',
+        userId: 1,
+        appealNumber: 'A2023-002',
+        reason: 'Comparable properties are valued lower',
+        details: 'Similar commercial properties in the area are assessed at $150-175 per sq ft, but this property is assessed at $225 per sq ft',
+        status: 'scheduled',
+        appealType: 'valuation',
+        evidenceUrls: null,
+        requestedValue: '1250000',
+        assessmentYear: '2023',
+        dateReceived: new Date('2023-08-20'),
+        hearingDate: new Date('2023-09-25'),
+        decision: null,
+        decisionReason: null,
+        decisionDate: null,
+        assignedTo: 2,
+        notificationSent: true
+      }
+    ];
+    
+    // Create sample appeals
+    appealData.forEach(appeal => {
+      this.createAppeal(appeal);
+    });
+
+    // Create sample appeal comments
+    this.createAppealComment({
+      appealId: 1,
+      userId: 1,
+      comment: 'I have submitted the floor plan documentation as evidence.'
+    });
+    
+    this.createAppealComment({
+      appealId: 1,
+      userId: 2, // assessor
+      comment: 'Thank you for your submission. We will review the floor plan document.'
+    });
+    
+    // Create sample appeal evidence
+    this.createAppealEvidence({
+      appealId: 1,
+      uploadedBy: 1,
+      documentType: 'floor_plan',
+      fileName: 'floor_plan.pdf',
+      fileSize: 1024 * 500, // 500KB
+      fileUrl: 'https://example.com/evidence/floor_plan.pdf',
+      description: 'Property floor plan showing correct square footage'
+    });
+    
     // Seed System Activities for Benton County Washington
     const activityData = [
       {
         agentId: 3,
-        activity: 'Processed a new protest for 1320 N Louisiana St, Kennewick',
-        entityType: 'protest',
+        activity: 'Processed a new appeal for 1320 N Louisiana St, Kennewick',
+        entityType: 'appeal',
         entityId: 'BC001'
       },
       {

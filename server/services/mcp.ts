@@ -7,7 +7,7 @@
  */
 
 import { storage } from "../storage";
-import { Property, LandRecord, Improvement, Field, Protest, PacsModule } from "@shared/schema";
+import { Property, LandRecord, Improvement, Field, Appeal, PacsModule } from "@shared/schema";
 import { pacsIntegration } from "./pacs-integration";
 import { mappingIntegration } from "./mapping-integration";
 
@@ -108,12 +108,20 @@ export class MCPService {
       )
     });
     
-    // Protest tools
+    // Appeal tools
+    this.registerTool({
+      name: "getActiveAppeals",
+      description: "Get all active appeals with property information",
+      parameters: {},
+      handler: async () => pacsIntegration.getActiveAppeals()
+    });
+    
+    // For backward compatibility
     this.registerTool({
       name: "getActiveProtests",
-      description: "Get all active protests with property information",
+      description: "Get all active protests with property information (deprecated, use getActiveAppeals)",
       parameters: {},
-      handler: async () => pacsIntegration.getActiveProtests()
+      handler: async () => pacsIntegration.getActiveAppeals()
     });
     
     // Value analysis tools
@@ -291,15 +299,25 @@ export class MCPService {
             { name: "fieldValue", type: "text", description: "Value of the field" }
           ]
         },
-        protests: {
-          description: "Property assessment protests table",
+        appeals: {
+          description: "Property assessment appeals table",
           columns: [
             { name: "id", type: "serial", description: "Unique identifier" },
             { name: "propertyId", type: "text", description: "Property identification code" },
-            { name: "userId", type: "integer", description: "User who filed the protest" },
-            { name: "reason", type: "text", description: "Reason for the protest" },
+            { name: "appealNumber", type: "text", description: "Appeal identification number" },
+            { name: "userId", type: "integer", description: "User who filed the appeal" },
+            { name: "reason", type: "text", description: "Reason for the appeal" },
+            { name: "details", type: "text", description: "Detailed explanation" },
             { name: "evidenceUrls", type: "text[]", description: "URLs to supporting evidence" },
-            { name: "status", type: "text", description: "Current status of the protest" }
+            { name: "status", type: "text", description: "Current status of the appeal" },
+            { name: "appealType", type: "text", description: "Type of appeal" },
+            { name: "requestedValue", type: "text", description: "Value requested by appellant" },
+            { name: "assessmentYear", type: "text", description: "Assessment year being appealed" },
+            { name: "dateReceived", type: "timestamp", description: "Date appeal was received" },
+            { name: "hearingDate", type: "timestamp", description: "Scheduled hearing date" },
+            { name: "decision", type: "text", description: "Appeal decision" },
+            { name: "decisionDate", type: "timestamp", description: "Date decision was made" },
+            { name: "assignedTo", type: "integer", description: "User assigned to review appeal" }
           ]
         }
       },
@@ -326,9 +344,9 @@ export class MCPService {
           foreignKey: "propertyId"
         },
         { 
-          name: "property_protests", 
+          name: "property_appeals", 
           primaryTable: "properties",
-          foreignTable: "protests",
+          foreignTable: "appeals",
           primaryKey: "propertyId",
           foreignKey: "propertyId"
         }

@@ -345,42 +345,56 @@ export class PacsIntegration {
   /**
    * Get active protests with property information
    */
-  async getActiveProtests() {
+  async getActiveAppeals() {
     try {
       // For now, use the in-memory storage
       const allProperties = await storage.getAllProperties();
       const result = [];
       
       for (const property of allProperties) {
-        const protests = await storage.getProtestsByPropertyId(property.propertyId);
+        const appeals = await storage.getAppealsByPropertyId(property.propertyId);
         
         // Filter by active status
-        const activeProtests = protests.filter(protest => 
-          protest.status === 'pending' || protest.status === 'under_review'
+        const activeAppeals = appeals.filter(appeal => 
+          appeal.status === 'pending' || appeal.status === 'under_review' || appeal.status === 'scheduled'
         );
         
-        // Add property information to each active protest
-        for (const protest of activeProtests) {
-          const user = await storage.getUser(protest.userId);
+        // Add property information to each active appeal
+        for (const appeal of activeAppeals) {
+          const user = await storage.getUser(appeal.userId);
+          
+          // Get comments for this appeal
+          const comments = await storage.getAppealCommentsByAppealId(appeal.id);
+          
+          // Get evidence for this appeal
+          const evidence = await storage.getAppealEvidenceByAppealId(appeal.id);
           
           result.push({
-            ...protest,
+            ...appeal,
             property: {
               propertyId: property.propertyId,
               address: property.address,
               parcelNumber: property.parcelNumber,
-              propertyType: property.propertyType
+              propertyType: property.propertyType,
+              value: property.value
             },
-            protestor_name: user ? user.name : 'Unknown'
+            appellant_name: user ? user.name : 'Unknown',
+            comments_count: comments.length,
+            evidence_count: evidence.length
           });
         }
       }
       
       return result;
     } catch (error) {
-      console.error('Error fetching active protests:', error);
-      throw new Error('Failed to fetch active protests');
+      console.error('Error fetching active appeals:', error);
+      throw new Error('Failed to fetch active appeals');
     }
+  }
+  
+  async getActiveProtests() {
+    // For backward compatibility - now redirects to getActiveAppeals
+    return this.getActiveAppeals();
   }
   
   /**

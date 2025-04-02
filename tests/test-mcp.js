@@ -79,6 +79,35 @@ async function testMcpEndpoints() {
       console.log(`Sample property: ${sampleProperty.propertyId} - ${sampleProperty.address}`);
     }
     
+    // Test executing the getActiveAppeals tool
+    console.log('\nTesting POST /api/mcp/execute - getActiveAppeals tool');
+    const appealsRequest = {
+      toolName: 'getActiveAppeals',
+      parameters: {}
+    };
+    
+    const appealsResponse = await fetch(`${BASE_URL}/mcp/execute`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(appealsRequest)
+    });
+    
+    if (!appealsResponse.ok) {
+      throw new Error(`Failed to execute getActiveAppeals tool: ${appealsResponse.status} ${appealsResponse.statusText}`);
+    }
+    
+    const appealsResult = await appealsResponse.json();
+    console.log('Active appeals query successful');
+    console.log(`Active appeals found: ${appealsResult.result.length}`);
+    if (appealsResult.result.length > 0) {
+      const sampleAppeal = appealsResult.result[0];
+      console.log(`Sample appeal: ${sampleAppeal.appealNumber} - Property: ${sampleAppeal.property.address}`);
+      console.log(`Status: ${sampleAppeal.status}, Reason: ${sampleAppeal.reason}`);
+      console.log(`Comments: ${sampleAppeal.comments_count}, Evidence: ${sampleAppeal.evidence_count}`);
+    }
+    
     // Test executing a PACS modules query tool
     console.log('\nTesting POST /api/mcp/execute - getPacsModules tool');
     const modulesRequest = {
