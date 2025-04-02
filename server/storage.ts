@@ -479,7 +479,7 @@ export class MemStorage implements IStorage {
       },
       {
         propertyId: 'BC003',
-        address: '6925 W Argent Rd, Pasco',
+        address: '4050 Keene Rd, West Richland',
         parcelNumber: '1-0589-404-0032-000',
         propertyType: 'Residential',
         acres: 0.95,
@@ -497,12 +497,21 @@ export class MemStorage implements IStorage {
       },
       {
         propertyId: 'BC005',
-        address: '2600 N Columbia Center Blvd, Richland',
+        address: '620 Market St, Prosser',
         parcelNumber: '1-1389-103-0022-001',
         propertyType: 'Government',
-        acres: 3.5,
-        value: 0, // Exempt
+        acres: 2.7,
+        value: 0, // Exempt - County Courthouse
         status: 'exempt'
+      },
+      {
+        propertyId: 'BC006',
+        address: '1390 9th St, Benton City',
+        parcelNumber: '1-2465-300-0043-000',
+        propertyType: 'Residential',
+        acres: 0.35,
+        value: 285000,
+        status: 'active'
       }
     ];
     
@@ -535,6 +544,18 @@ export class MemStorage implements IStorage {
         activity: 'Flagged anomaly in valuation for 8524 W Gage Blvd, Kennewick',
         entityType: 'property',
         entityId: 'BC002'
+      },
+      {
+        agentId: 2,
+        activity: 'Updated property records for West Richland residential zone',
+        entityType: 'property',
+        entityId: 'BC003'
+      },
+      {
+        agentId: 1,
+        activity: 'New agricultural exemption processed for Benton City property',
+        entityType: 'exemption',
+        entityId: 'BC006'
       },
       {
         agentId: 5,
