@@ -12,6 +12,7 @@ import {
   insertSystemActivitySchema
 } from "@shared/schema";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
+import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Define API routes
@@ -397,7 +398,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Query is required and must be a string" });
       }
       
-      const result = await processNaturalLanguageQuery(query);
+      // Try Anthropic first (preferred), and fall back to OpenAI if it fails
+      let result;
+      try {
+        // Check if Anthropic API key is available
+        if (process.env.ANTHROPIC_API_KEY) {
+          result = await processNaturalLanguageWithAnthropic(query);
+        } else {
+          // Fall back to OpenAI
+          result = await processNaturalLanguageQuery(query);
+        }
+      } catch (error) {
+        console.error("Error with primary NLP service, trying fallback:", error);
+        
+        // If the first attempt fails, try the other service
+        if (process.env.ANTHROPIC_API_KEY) {
+          result = await processNaturalLanguageQuery(query);
+        } else {
+          result = await processNaturalLanguageWithAnthropic(query);
+        }
+      }
       
       // Create audit log for the query
       await storage.createAuditLog({
@@ -432,7 +452,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Query is required and must be a string" });
       }
       
-      const result = await getSummaryFromNaturalLanguage(query);
+      // Try Anthropic first (preferred), and fall back to OpenAI if it fails
+      let result;
+      try {
+        // Check if Anthropic API key is available
+        if (process.env.ANTHROPIC_API_KEY) {
+          result = await getSummaryWithAnthropic(query);
+        } else {
+          // Fall back to OpenAI
+          result = await getSummaryFromNaturalLanguage(query);
+        }
+      } catch (error) {
+        console.error("Error with primary NLP service for summary, trying fallback:", error);
+        
+        // If the first attempt fails, try the other service
+        if (process.env.ANTHROPIC_API_KEY) {
+          result = await getSummaryFromNaturalLanguage(query);
+        } else {
+          result = await getSummaryWithAnthropic(query);
+        }
+      }
       
       // Create audit log for the summary
       await storage.createAuditLog({
