@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
@@ -13,6 +13,10 @@ import {
 } from "@shared/schema";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
+import { pacsIntegration } from "./services/pacs-integration";
+import { mappingIntegration } from "./services/mapping-integration";
+import { notificationService, NotificationType } from "./services/notification-service";
+import { perplexityService } from "./services/perplexity";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Define API routes
@@ -498,6 +502,393 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Perplexity API routes
+  app.post("/api/perplexity/query", async (req, res) => {
+    try {
+      const { query } = req.body;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ message: "Query is required and must be a string" });
+      }
+      
+      const result = await perplexityService.textCompletion(query, {
+        systemPrompt: "You are a Property Assessment Assistant for Benton County, Washington. Provide helpful, accurate information about property assessments, tax calculations, and related processes.",
+        temperature: 0.2
+      });
+      
+      // Create audit log for the query
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "QUERY",
+        entityType: "perplexity",
+        entityId: null,
+        details: { query, result: result.substring(0, 100) + "..." },
+        ipAddress: req.ip
+      });
+      
+      res.json({ result });
+    } catch (error) {
+      console.error("Error processing Perplexity query:", error);
+      res.status(500).json({ message: "Failed to process query with Perplexity API" });
+    }
+  });
+  
+  app.post("/api/perplexity/property-analysis", async (req, res) => {
+    try {
+      const { propertyId, analysisType } = req.body;
+      
+      if (!propertyId || !analysisType) {
+        return res.status(400).json({ message: "Property ID and analysis type are required" });
+      }
+      
+      // Get property data
+      const property = await storage.getPropertyByPropertyId(propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      // Get related data
+      const landRecords = await storage.getLandRecordsByPropertyId(propertyId);
+      const improvements = await storage.getImprovementsByPropertyId(propertyId);
+      
+      // Prepare complete property data for analysis
+      const propertyData = {
+        ...property,
+        landRecords,
+        improvements
+      };
+      
+      const result = await perplexityService.analyzePropertyData(propertyData, analysisType);
+      
+      // Create audit log for the analysis
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "ANALYZE",
+        entityType: "property",
+        entityId: propertyId,
+        details: { analysisType, result: result.substring(0, 100) + "..." },
+        ipAddress: req.ip
+      });
+      
+      res.json({ result });
+    } catch (error) {
+      console.error("Error analyzing property with Perplexity:", error);
+      res.status(500).json({ message: "Failed to analyze property with Perplexity API" });
+    }
+  });
+  
+  app.post("/api/perplexity/valuation-insights", async (req, res) => {
+    try {
+      const { propertyId } = req.body;
+      
+      if (!propertyId) {
+        return res.status(400).json({ message: "Property ID is required" });
+      }
+      
+      // Get property data
+      const property = await storage.getPropertyByPropertyId(propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      // Get related data
+      const landRecords = await storage.getLandRecordsByPropertyId(propertyId);
+      const improvements = await storage.getImprovementsByPropertyId(propertyId);
+      const fields = await storage.getFieldsByPropertyId(propertyId);
+      
+      // Prepare complete property data for valuation insights
+      const propertyData = {
+        ...property,
+        landRecords,
+        improvements,
+        fields
+      };
+      
+      const result = await perplexityService.getPropertyValuationInsights(propertyId, propertyData);
+      
+      // Create audit log for the valuation insights
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "VALUATION_INSIGHTS",
+        entityType: "property",
+        entityId: propertyId,
+        details: { result: result.substring(0, 100) + "..." },
+        ipAddress: req.ip
+      });
+      
+      res.json({ result });
+    } catch (error) {
+      console.error("Error getting valuation insights with Perplexity:", error);
+      res.status(500).json({ message: "Failed to get valuation insights with Perplexity API" });
+    }
+  });
+
+  // Mapping integration routes
+  app.get("/api/mapping/esri-config", (_req, res) => {
+    try {
+      const config = mappingIntegration.getEsriMapConfig();
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching ESRI map config:", error);
+      res.status(500).json({ message: "Failed to fetch ESRI map config" });
+    }
+  });
+  
+  app.get("/api/mapping/google-config", (_req, res) => {
+    try {
+      const config = mappingIntegration.getGoogleMapConfig();
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching Google map config:", error);
+      res.status(500).json({ message: "Failed to fetch Google map config" });
+    }
+  });
+  
+  app.get("/api/mapping/pictometry-config", (_req, res) => {
+    try {
+      const config = mappingIntegration.getPictometryConfig();
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching Pictometry config:", error);
+      res.status(500).json({ message: "Failed to fetch Pictometry config" });
+    }
+  });
+  
+  app.get("/api/mapping/property/:propertyId", async (req, res) => {
+    try {
+      const property = await storage.getPropertyByPropertyId(req.params.propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      const parcelInfo = await mappingIntegration.findParcelByPropertyId(req.params.propertyId);
+      res.json(parcelInfo);
+    } catch (error) {
+      console.error("Error fetching property map data:", error);
+      res.status(500).json({ message: "Failed to fetch property map data" });
+    }
+  });
+  
+  app.get("/api/mapping/google-url", (req, res) => {
+    try {
+      const { address } = req.query;
+      if (!address || typeof address !== 'string') {
+        return res.status(400).json({ message: "Address is required" });
+      }
+      
+      const url = mappingIntegration.generateGoogleMapsUrl(address);
+      res.json({ url });
+    } catch (error) {
+      console.error("Error generating Google Maps URL:", error);
+      res.status(500).json({ message: "Failed to generate Google Maps URL" });
+    }
+  });
+  
+  app.get("/api/mapping/pictometry-url", (req, res) => {
+    try {
+      const lat = parseFloat(req.query.lat as string);
+      const lng = parseFloat(req.query.lng as string);
+      
+      if (isNaN(lat) || isNaN(lng)) {
+        return res.status(400).json({ message: "Valid lat and lng coordinates are required" });
+      }
+      
+      const url = mappingIntegration.generatePictometryUrl(lat, lng);
+      res.json({ url });
+    } catch (error) {
+      console.error("Error generating Pictometry URL:", error);
+      res.status(500).json({ message: "Failed to generate Pictometry URL" });
+    }
+  });
+  
+  // PACS Integration routes
+  app.get("/api/pacs/property/:propertyId/details", async (req, res) => {
+    try {
+      const details = await pacsIntegration.getPropertyFullDetails(req.params.propertyId);
+      if (!details) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      res.json(details);
+    } catch (error) {
+      console.error("Error fetching property full details:", error);
+      res.status(500).json({ message: "Failed to fetch property full details" });
+    }
+  });
+  
+  app.get("/api/pacs/properties/value-range", async (req, res) => {
+    try {
+      const minValue = parseFloat(req.query.min as string);
+      const maxValue = parseFloat(req.query.max as string);
+      
+      if (isNaN(minValue) || isNaN(maxValue)) {
+        return res.status(400).json({ message: "Valid min and max values are required" });
+      }
+      
+      const properties = await pacsIntegration.getPropertiesByValueRange(minValue, maxValue);
+      res.json(properties);
+    } catch (error) {
+      console.error("Error fetching properties by value range:", error);
+      res.status(500).json({ message: "Failed to fetch properties by value range" });
+    }
+  });
+  
+  app.get("/api/pacs/properties/type/:type", async (req, res) => {
+    try {
+      const properties = await pacsIntegration.getPropertiesByType(req.params.type);
+      res.json(properties);
+    } catch (error) {
+      console.error("Error fetching properties by type:", error);
+      res.status(500).json({ message: "Failed to fetch properties by type" });
+    }
+  });
+  
+  app.get("/api/pacs/properties/status/:status", async (req, res) => {
+    try {
+      const properties = await pacsIntegration.getPropertiesByStatus(req.params.status);
+      res.json(properties);
+    } catch (error) {
+      console.error("Error fetching properties by status:", error);
+      res.status(500).json({ message: "Failed to fetch properties by status" });
+    }
+  });
+  
+  app.get("/api/pacs/land-records/zoning/:zoning", async (req, res) => {
+    try {
+      const landRecords = await pacsIntegration.getLandRecordsByZone(req.params.zoning);
+      res.json(landRecords);
+    } catch (error) {
+      console.error("Error fetching land records by zoning:", error);
+      res.status(500).json({ message: "Failed to fetch land records by zoning" });
+    }
+  });
+  
+  app.get("/api/pacs/improvements/type/:type", async (req, res) => {
+    try {
+      const improvements = await pacsIntegration.getImprovementsByType(req.params.type);
+      res.json(improvements);
+    } catch (error) {
+      console.error("Error fetching improvements by type:", error);
+      res.status(500).json({ message: "Failed to fetch improvements by type" });
+    }
+  });
+  
+  app.get("/api/pacs/improvements/year-built-range", async (req, res) => {
+    try {
+      const minYear = parseInt(req.query.min as string);
+      const maxYear = parseInt(req.query.max as string);
+      
+      if (isNaN(minYear) || isNaN(maxYear)) {
+        return res.status(400).json({ message: "Valid min and max years are required" });
+      }
+      
+      const improvements = await pacsIntegration.getImprovementsByYearBuiltRange(minYear, maxYear);
+      res.json(improvements);
+    } catch (error) {
+      console.error("Error fetching improvements by year built range:", error);
+      res.status(500).json({ message: "Failed to fetch improvements by year built range" });
+    }
+  });
+  
+  app.get("/api/pacs/protests/active", async (_req, res) => {
+    try {
+      const protests = await pacsIntegration.getActiveProtests();
+      res.json(protests);
+    } catch (error) {
+      console.error("Error fetching active protests:", error);
+      res.status(500).json({ message: "Failed to fetch active protests" });
+    }
+  });
+  
+  app.get("/api/pacs/properties/recent-changes", async (_req, res) => {
+    try {
+      const properties = await pacsIntegration.getRecentPropertyChanges();
+      res.json(properties);
+    } catch (error) {
+      console.error("Error fetching recent property changes:", error);
+      res.status(500).json({ message: "Failed to fetch recent property changes" });
+    }
+  });
+  
+  // Notification routes
+  app.get("/api/notifications/user/:userId", (req, res) => {
+    try {
+      const notifications = notificationService.getUserNotifications(req.params.userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching user notifications:", error);
+      res.status(500).json({ message: "Failed to fetch user notifications" });
+    }
+  });
+  
+  app.get("/api/notifications/system", (_req, res) => {
+    try {
+      const notifications = notificationService.getSystemNotifications();
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching system notifications:", error);
+      res.status(500).json({ message: "Failed to fetch system notifications" });
+    }
+  });
+  
+  app.post("/api/notifications/mark-read", (req, res) => {
+    try {
+      const { userId, notificationId } = req.body;
+      
+      if (!userId || !notificationId) {
+        return res.status(400).json({ message: "User ID and notification ID are required" });
+      }
+      
+      const success = notificationService.markNotificationAsRead(userId, notificationId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+  
+  // Create a system notification (for testing)
+  app.post("/api/notifications/system", (req, res) => {
+    try {
+      const { title, message, type, entityType, entityId } = req.body;
+      
+      if (!title || !message || !type) {
+        return res.status(400).json({ message: "Title, message, and type are required" });
+      }
+      
+      // Validate notification type
+      if (!Object.values(NotificationType).includes(type)) {
+        return res.status(400).json({ 
+          message: "Invalid notification type. Valid types: " + 
+            Object.values(NotificationType).join(", ") 
+        });
+      }
+      
+      const notification = notificationService.broadcastSystemNotification(
+        type as NotificationType,
+        title,
+        message,
+        entityType,
+        entityId,
+        'medium'
+      );
+      
+      res.status(201).json(notification);
+    } catch (error) {
+      console.error("Error creating system notification:", error);
+      res.status(500).json({ message: "Failed to create system notification" });
+    }
+  });
+  
+  // Create HTTP server and initialize WebSocket for real-time notifications
   const httpServer = createServer(app);
+  
+  // Initialize notification service with the HTTP server
+  notificationService.initialize(httpServer);
+  
   return httpServer;
 }

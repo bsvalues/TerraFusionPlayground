@@ -9,6 +9,7 @@ import Improvements from "@/pages/improvements";
 import Fields from "@/pages/fields";
 import Imports from "@/pages/imports";
 import NaturalLanguage from "@/pages/natural-language";
+import AIAssistantPage from "@/pages/AIAssistantPage";
 import AppLayout from "@/layout/app-layout";
 
 function Router() {
@@ -47,6 +48,12 @@ function Router() {
       <Route path="/natural-language">
         <AppLayout>
           <NaturalLanguage />
+        </AppLayout>
+      </Route>
+
+      <Route path="/ai-assistant">
+        <AppLayout>
+          <AIAssistantPage />
         </AppLayout>
       </Route>
 
