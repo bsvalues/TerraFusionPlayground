@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { BrainIcon, CheckCircle, AlertCircle } from "lucide-react";
+import { Brain, CheckCircle, AlertCircle } from "lucide-react";
 
 type AIProviderStatus = "operational" | "degraded" | "unavailable" | "unknown";
 
@@ -67,7 +67,7 @@ export function AIProviderInfo() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <BrainIcon className="h-5 w-5" /> AI Provider Status
+          <Brain className="h-5 w-5" /> AI Provider Status
         </CardTitle>
         <CardDescription>
           Multi-provider AI strategy with automatic failover capabilities

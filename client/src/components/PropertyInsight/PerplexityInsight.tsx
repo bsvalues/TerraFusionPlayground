@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, LightbulbIcon, SearchIcon, BrainIcon } from 'lucide-react';
+import { Loader2, Lightbulb, Search, Brain } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
 interface PerplexityInsightProps {
@@ -89,7 +89,7 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
     <Card className="w-full h-full flex flex-col">
       <CardHeader className="pb-3">
         <CardTitle className="text-xl flex items-center gap-2">
-          <BrainIcon className="h-5 w-5 text-primary" />
+          <Brain className="h-5 w-5 text-primary" />
           Perplexity-Powered Insights
         </CardTitle>
       </CardHeader>
@@ -97,15 +97,15 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
       <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col">
         <TabsList className="grid grid-cols-3 mb-4">
           <TabsTrigger value="query" className="flex items-center gap-1">
-            <SearchIcon className="h-4 w-4" />
+            <Search className="h-4 w-4" />
             <span>Property Query</span>
           </TabsTrigger>
           <TabsTrigger value="analysis" className="flex items-center gap-1" disabled={!propertyId}>
-            <LightbulbIcon className="h-4 w-4" />
+            <Lightbulb className="h-4 w-4" />
             <span>Property Analysis</span>
           </TabsTrigger>
           <TabsTrigger value="valuation" className="flex items-center gap-1" disabled={!propertyId}>
-            <LightbulbIcon className="h-4 w-4" />
+            <Lightbulb className="h-4 w-4" />
             <span>Valuation Insights</span>
           </TabsTrigger>
         </TabsList>
@@ -180,7 +180,7 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
         <div className="border rounded-md p-4 h-[300px] overflow-y-auto whitespace-pre-wrap">
           {result || (
             <div className="text-muted-foreground text-center h-full flex flex-col items-center justify-center">
-              <LightbulbIcon className="h-10 w-10 mb-2 opacity-20" />
+              <Lightbulb className="h-10 w-10 mb-2 opacity-20" />
               <p>Property insights will appear here</p>
             </div>
           )}

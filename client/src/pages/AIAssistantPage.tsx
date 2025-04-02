@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PerplexityInsight } from "@/components/PropertyInsight";
+import PerplexityInsight from "@/components/PropertyInsight/PerplexityInsight";
 import AIProviderInfo from "@/components/AIProviderInfo";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";

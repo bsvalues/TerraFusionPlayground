@@ -28,19 +28,13 @@ export default function NaturalLanguagePage() {
   // Mutation for making natural language queries
   const queryMutation = useMutation({
     mutationFn: async (queryText: string) => {
-      const response = await fetch(`/api/natural-language/${queryMode}`, {
+      return apiRequest<any>(`/api/natural-language/${queryMode}`, {
         method: 'POST',
-        body: JSON.stringify({ query: queryText }),
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ query: queryText })
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to process query');
-      }
-      
-      return response.json();
     },
     onSuccess: () => {
       setIsSubmitted(true);
