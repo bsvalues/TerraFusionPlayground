@@ -10,11 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Share2, Eye, Trash2, Download, QrCode } from "lucide-react";
+import { Loader2, Share2, Eye, Trash2, Download, QrCode, Copy, Link } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function PropertyStoryDemo() {
   const { toast } = useToast();
@@ -44,6 +45,7 @@ export function PropertyStoryDemo() {
   const [activeShareId, setActiveShareId] = useState<string | null>(null);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [qrCodeLoading, setQrCodeLoading] = useState(false);
+  const [qrCodeCopying, setQrCodeCopying] = useState(false);
   
   // PDF export state
   const [pdfDataLoading, setPdfDataLoading] = useState(false);
@@ -328,6 +330,81 @@ export function PropertyStoryDemo() {
       });
     } finally {
       setPdfDataLoading(false);
+    }
+  };
+  
+  // Copy share link handler
+  const handleCopyShareLink = (shareId: string) => {
+    try {
+      // Create shareable URL - this should match the URL format in SharingUtilsService
+      const shareableUrl = `${window.location.origin}/share/${shareId}`;
+      
+      // Copy to clipboard
+      navigator.clipboard.writeText(shareableUrl);
+      
+      toast({
+        title: "Link Copied to Clipboard",
+        description: "Share link has been copied to clipboard"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to Copy Link",
+        description: error.message || "Could not copy link to clipboard",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Copy QR code image to clipboard
+  const handleCopyQRCode = async () => {
+    if (!qrCodeData) return;
+    
+    try {
+      setQrCodeCopying(true);
+      
+      // Create an image element from the data URL
+      const img = new Image();
+      img.src = qrCodeData;
+      
+      // Wait for the image to load
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
+      
+      // Create a canvas and draw the image on it
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0);
+      
+      // Get the image as a blob
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else throw new Error("Could not convert QR code to blob");
+        }, 'image/png');
+      });
+      
+      // Copy the image to clipboard
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          [blob.type]: blob
+        })
+      ]);
+      
+      toast({
+        title: "QR Code Copied to Clipboard",
+        description: "QR code image has been copied to clipboard"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to Copy QR Code",
+        description: error.message || "Could not copy QR code to clipboard",
+        variant: "destructive"
+      });
+    } finally {
+      setQrCodeCopying(false);
     }
   };
 
@@ -760,38 +837,93 @@ export function PropertyStoryDemo() {
                           </div>
                         </div>
                         <div className="flex space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setViewShareId(share.shareId);
-                              setViewSharePassword("");
-                              handleViewShare();
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleShowQRCode(share.shareId)}
-                          >
-                            <QrCode className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleExportPDF(share.shareId)}
-                            disabled={pdfDataLoading}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setViewShareId(share.shareId);
+                                    setViewSharePassword("");
+                                    handleViewShare();
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>View Property Insight</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleShowQRCode(share.shareId)}
+                                >
+                                  <QrCode className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Generate QR Code</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleExportPDF(share.shareId)}
+                                  disabled={pdfDataLoading}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Export as PDF</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleCopyShareLink(share.shareId)}
+                                >
+                                  <Link className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Copy Share Link</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="sm">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Delete Share</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete Share</AlertDialogTitle>
@@ -831,17 +963,36 @@ export function PropertyStoryDemo() {
               Scan this QR code with a mobile device to access the shared property insight
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-center p-4">
+          <div className="flex flex-col items-center p-4 gap-4">
             {qrCodeLoading ? (
               <div className="flex items-center justify-center h-60 w-60">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : qrCodeData ? (
-              <img 
-                src={qrCodeData} 
-                alt="Property insight QR code" 
-                className="h-60 w-60 object-contain" 
-              />
+              <>
+                <img 
+                  src={qrCodeData} 
+                  alt="Property insight QR code" 
+                  className="h-60 w-60 object-contain" 
+                />
+                <Button
+                  onClick={handleCopyQRCode}
+                  disabled={qrCodeCopying}
+                  className="mt-2"
+                >
+                  {qrCodeCopying ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Copying...
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy QR Code to Clipboard
+                    </>
+                  )}
+                </Button>
+              </>
             ) : (
               <div className="flex items-center justify-center h-60 w-60 border rounded-md text-muted-foreground">
                 Failed to generate QR code
