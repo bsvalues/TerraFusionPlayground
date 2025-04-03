@@ -46,6 +46,7 @@ export function PropertyStoryDemo() {
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [qrCodeLoading, setQrCodeLoading] = useState(false);
   const [qrCodeCopying, setQrCodeCopying] = useState(false);
+  const [qrCodeDownloading, setQrCodeDownloading] = useState(false);
   
   // PDF export state
   const [pdfDataLoading, setPdfDataLoading] = useState(false);
@@ -247,13 +248,33 @@ export function PropertyStoryDemo() {
   
   // Property Insight Sharing handlers
   const handleCreateShare = () => {
+    // Generate property name based on property ID
+    let propertyAddress = "Unknown Address";
+    let propertyValue = "$0";
+    
+    // Map some sample property IDs to addresses and values for demonstration
+    const propertyMap: Record<string, { address: string; value: string }> = {
+      "BC001": { address: "1320 N Louis Ave, Benton City", value: "$285,000" },
+      "BC002": { address: "4590 W Van Giesen St, Benton County", value: "$412,500" },
+      "BC003": { address: "1124 Winding River Dr, West Richland", value: "$378,000" },
+      "BC004": { address: "2550 Duportail St, Richland", value: "$450,000" },
+      "BC005": { address: "1915 Mahan Ave, Richland", value: "$325,000" },
+      "BC006": { address: "4711 W 34th Ave, Kennewick", value: "$295,000" }
+    };
+    
+    if (sharePropertyId in propertyMap) {
+      propertyAddress = propertyMap[sharePropertyId].address;
+      propertyValue = propertyMap[sharePropertyId].value;
+    }
+    
     const insightData = {
       content: `This is a sample property insight for Property ID: ${sharePropertyId}`,
       generatedAt: new Date().toISOString(),
       propertyDetails: {
         id: sharePropertyId,
-        address: `123 Main St, Sample City`,
-        value: '$300,000',
+        address: propertyAddress,
+        value: propertyValue,
+        propertyName: `Property ${sharePropertyId}`,
       }
     };
     
@@ -263,6 +284,8 @@ export function PropertyStoryDemo() {
       
     createShareMutation.mutate({
       propertyId: sharePropertyId,
+      propertyName: `Property ${sharePropertyId}`,
+      propertyAddress: propertyAddress,
       title: shareTitle,
       insightType: shareInsightType,
       insightData,
@@ -405,6 +428,38 @@ export function PropertyStoryDemo() {
       });
     } finally {
       setQrCodeCopying(false);
+    }
+  };
+  
+  // Download QR code image
+  const handleDownloadQRCode = async () => {
+    if (!qrCodeData || !activeShareId) return;
+    
+    try {
+      setQrCodeDownloading(true);
+      
+      // Create a temporary anchor element
+      const link = document.createElement('a');
+      link.href = qrCodeData;
+      link.download = `property-insight-qrcode-${activeShareId}.png`;
+      
+      // Append to the document, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "QR Code Downloaded",
+        description: "QR code image has been downloaded"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to Download QR Code",
+        description: error.message || "Could not download QR code",
+        variant: "destructive"
+      });
+    } finally {
+      setQrCodeDownloading(false);
     }
   };
 
@@ -832,9 +887,17 @@ export function PropertyStoryDemo() {
                       >
                         <div>
                           <div className="font-medium">{share.title}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {share.propertyId} - {share.insightType} - Access Count: {share.accessCount}
+                          <div className="text-sm">
+                            <span className="font-semibold">{share.propertyName || `Property ${share.propertyId}`}</span>
                           </div>
+                          <div className="text-xs text-muted-foreground">
+                            ID: {share.propertyId} | Type: {share.insightType} | Access Count: {share.accessCount}
+                          </div>
+                          {share.propertyAddress && (
+                            <div className="text-xs text-muted-foreground italic mt-1">
+                              {share.propertyAddress}
+                            </div>
+                          )}
                         </div>
                         <div className="flex space-x-2">
                           <TooltipProvider>
@@ -975,23 +1038,42 @@ export function PropertyStoryDemo() {
                   alt="Property insight QR code" 
                   className="h-60 w-60 object-contain" 
                 />
-                <Button
-                  onClick={handleCopyQRCode}
-                  disabled={qrCodeCopying}
-                  className="mt-2"
-                >
-                  {qrCodeCopying ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Copying...
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="mr-2 h-4 w-4" />
-                      Copy QR Code to Clipboard
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    onClick={handleCopyQRCode}
+                    disabled={qrCodeCopying}
+                  >
+                    {qrCodeCopying ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Copying...
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="mr-2 h-4 w-4" />
+                        Copy to Clipboard
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={handleDownloadQRCode}
+                    disabled={qrCodeDownloading}
+                    variant="outline"
+                  >
+                    {qrCodeDownloading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Downloading...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="mr-2 h-4 w-4" />
+                        Download
+                      </>
+                    )}
+                  </Button>
+                </div>
               </>
             ) : (
               <div className="flex items-center justify-center h-60 w-60 border rounded-md text-muted-foreground">
