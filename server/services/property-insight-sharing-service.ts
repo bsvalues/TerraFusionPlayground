@@ -264,6 +264,55 @@ export class PropertyInsightSharingService {
     
     return newAccessCount;
   }
+  
+  /**
+   * Track access to a shared property insight
+   * 
+   * @param shareId The unique share ID
+   * @returns The updated share
+   */
+  async trackShareAccess(shareId: string): Promise<PropertyInsightShare | null> {
+    try {
+      const newAccessCount = await this.incrementAccessCount(shareId);
+      
+      // Create system activity record
+      await this.storage.createSystemActivity({
+        agentId: 2, // Analysis Agent
+        activity: `Property insight share accessed (ID: ${shareId})`,
+        entityType: 'propertyInsightShare',
+        entityId: shareId
+      });
+      
+      return await this.storage.getPropertyInsightShareById(shareId);
+    } catch (error) {
+      console.error('Error tracking share access:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Create a property insight share directly with data
+   * 
+   * @param shareData The share data to insert
+   * @returns The created share
+   */
+  async createPropertyInsightShare(shareData: InsertPropertyInsightShare): Promise<PropertyInsightShare> {
+    // Generate a unique share ID if not provided
+    if (!shareData.shareId) {
+      shareData.shareId = randomUUID();
+    }
+    
+    return await this.storage.createPropertyInsightShare(shareData);
+  }
+  
+  /**
+   * Get all property insight shares
+   * 
+   * @returns Array of all property insight shares
+   */
+  async getAllPropertyInsightShares(): Promise<PropertyInsightShare[]> {
+    return await this.storage.getAllPropertyInsightShares();
+  }
 }
 
 // We'll create the instance in storage.ts to avoid circular dependencies

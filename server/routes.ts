@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import { randomUUID } from "crypto";
 import { storage } from "./storage";
 import { z } from "zod";
 import { 
@@ -34,9 +35,11 @@ const authService = new AuthService(storage, securityService);
 const mcpService = new MCPService(storage, mockPacsIntegrationService);
 
 import { PropertyStoryGenerator, PropertyStoryOptions } from "./services/property-story-generator";
+import { PropertyInsightSharingService } from "./services/property-insight-sharing-service";
 
 // Initialize services that require other services
 const propertyStoryGenerator = new PropertyStoryGenerator(storage);
+const propertyInsightSharingService = new PropertyInsightSharingService(storage);
 
 // Create dummy implementation for pacsIntegration
 const pacsIntegration = {
@@ -1427,6 +1430,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: 'Failed to generate property story',
         message: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  });
+  
+  /**
+   * Property Insight Sharing routes
+   * Routes for creating, retrieving, and managing shareable property insights
+   */
+  
+  // Get all property insight shares
+  app.get("/api/property-insight-shares", async (req, res) => {
+    try {
+      const shares = await storage.getAllPropertyInsightShares();
+      res.json(shares);
+    } catch (error) {
+      console.error("Error fetching property insight shares:", error);
+      res.status(500).json({ message: "Failed to fetch property insight shares" });
+    }
+  });
+  
+  // Get property insight shares by property ID
+  app.get("/api/property-insight-shares/property/:propertyId", async (req, res) => {
+    try {
+      const shares = await storage.getPropertyInsightSharesByPropertyId(req.params.propertyId);
+      res.json(shares);
+    } catch (error) {
+      console.error("Error fetching property insight shares:", error);
+      res.status(500).json({ message: "Failed to fetch property insight shares" });
+    }
+  });
+  
+  // Get a specific property insight share by ID
+  app.get("/api/property-insight-shares/:shareId", async (req, res) => {
+    try {
+      const shareId = req.params.shareId;
+      const password = req.query.password as string | undefined;
+      
+      const share = await propertyInsightSharingService.getPropertyInsightShare(shareId, password);
+      
+      if (!share) {
+        return res.status(404).json({ message: "Property insight share not found or expired" });
+      }
+      
+      // Increment access count and create audit log
+      await propertyInsightSharingService.trackShareAccess(shareId);
+      
+      res.json(share);
+    } catch (error) {
+      if (error instanceof Error && error.message === "Invalid password") {
+        return res.status(403).json({ message: "Invalid password for protected share" });
+      }
+      console.error("Error fetching property insight share:", error);
+      res.status(500).json({ message: "Failed to fetch property insight share" });
+    }
+  });
+  
+  // Create a new property insight share
+  app.post("/api/property-insight-shares", async (req, res) => {
+    try {
+      const shareData = req.body;
+      
+      // Generate a unique UUID for the share
+      if (!shareData.shareId) {
+        shareData.shareId = randomUUID();
+      }
+      
+      // Set default format if not provided
+      if (!shareData.format) {
+        shareData.format = "detailed";
+      }
+      
+      // Convert expiresInDays to an actual date if provided
+      if (shareData.expiresInDays) {
+        const days = parseInt(shareData.expiresInDays.toString());
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + days);
+        shareData.expiresAt = expiryDate;
+        delete shareData.expiresInDays;
+      }
+      
+      const share = await propertyInsightSharingService.createPropertyInsightShare(shareData);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: shareData.createdBy || 1, // Default to admin user if not specified
+        action: "CREATE",
+        entityType: "propertyInsightShare",
+        entityId: shareData.propertyId,
+        details: { shareId: share.shareId, title: share.title },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      res.status(201).json(share);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid share data", errors: error.errors });
+      }
+      console.error("Error creating property insight share:", error);
+      res.status(500).json({ message: "Failed to create property insight share" });
+    }
+  });
+  
+  // Update a property insight share
+  app.patch("/api/property-insight-shares/:shareId", async (req, res) => {
+    try {
+      const shareId = req.params.shareId;
+      const updates = req.body;
+      
+      // Convert expiresInDays to an actual date if provided
+      if (updates.expiresInDays) {
+        const days = parseInt(updates.expiresInDays.toString());
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + days);
+        updates.expiresAt = expiryDate;
+        delete updates.expiresInDays;
+      }
+      
+      const share = await propertyInsightSharingService.updatePropertyInsightShare(shareId, updates);
+      
+      if (!share) {
+        return res.status(404).json({ message: "Property insight share not found" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: updates.createdBy || 1, // Default to admin user if not specified
+        action: "UPDATE",
+        entityType: "propertyInsightShare",
+        entityId: share.propertyId,
+        details: { shareId: share.shareId, updatedFields: Object.keys(updates) },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      res.json(share);
+    } catch (error) {
+      console.error("Error updating property insight share:", error);
+      res.status(500).json({ message: "Failed to update property insight share" });
+    }
+  });
+  
+  // Delete a property insight share
+  app.delete("/api/property-insight-shares/:shareId", async (req, res) => {
+    try {
+      const shareId = req.params.shareId;
+      const share = await storage.getPropertyInsightShareById(shareId);
+      
+      if (!share) {
+        return res.status(404).json({ message: "Property insight share not found" });
+      }
+      
+      const success = await propertyInsightSharingService.deletePropertyInsightShare(shareId);
+      
+      if (!success) {
+        return res.status(500).json({ message: "Failed to delete property insight share" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: 1, // Default to admin user
+        action: "DELETE",
+        entityType: "propertyInsightShare",
+        entityId: share.propertyId,
+        details: { shareId },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting property insight share:", error);
+      res.status(500).json({ message: "Failed to delete property insight share" });
     }
   });
   

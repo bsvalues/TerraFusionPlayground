@@ -101,6 +101,7 @@ export interface IStorage {
   createPropertyInsightShare(share: InsertPropertyInsightShare): Promise<PropertyInsightShare>;
   getPropertyInsightShareById(shareId: string): Promise<PropertyInsightShare | null>;
   getPropertyInsightSharesByPropertyId(propertyId: string): Promise<PropertyInsightShare[]>;
+  getAllPropertyInsightShares(): Promise<PropertyInsightShare[]>;
   updatePropertyInsightShare(shareId: string, updates: Partial<InsertPropertyInsightShare>): Promise<PropertyInsightShare | null>;
   deletePropertyInsightShare(shareId: string): Promise<boolean>;
 }
@@ -686,6 +687,11 @@ export class MemStorage implements IStorage {
     return updatedShare;
   }
   
+  async getAllPropertyInsightShares(): Promise<PropertyInsightShare[]> {
+    return Array.from(this.propertyInsightShares.values())
+      .filter((share: PropertyInsightShare) => !share.expiresAt || new Date(share.expiresAt) >= new Date());
+  }
+  
   async deletePropertyInsightShare(shareId: string): Promise<boolean> {
     const share = this.propertyInsightShares.get(shareId);
     if (!share) return false;
@@ -1190,6 +1196,17 @@ export class PgStorage implements IStorage {
     return results[0];
   }
   
+  async getAllPropertyInsightShares(): Promise<PropertyInsightShare[]> {
+    const results = await this.db.select().from(propertyInsightShares);
+    
+    // Filter out expired shares
+    return results.filter((share: any) => {
+      // Explicitly cast the share to PropertyInsightShare
+      const typedShare = share as PropertyInsightShare;
+      return !typedShare.expiresAt || new Date(typedShare.expiresAt) >= new Date();
+    });
+  }
+  
   async getPropertyInsightShareById(shareId: string): Promise<PropertyInsightShare | null> {
     const results = await this.db.select().from(propertyInsightShares).where(eq(propertyInsightShares.shareId, shareId));
     if (results.length === 0) return null;
@@ -1207,7 +1224,7 @@ export class PgStorage implements IStorage {
       .where(eq(propertyInsightShares.propertyId, propertyId));
     
     // Filter out expired shares
-    return results.filter((share) => {
+    return results.filter((share: any) => {
       // Explicitly cast the share to PropertyInsightShare
       const typedShare = share as PropertyInsightShare;
       return !typedShare.expiresAt || new Date(typedShare.expiresAt) >= new Date();
