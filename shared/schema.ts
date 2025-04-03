@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, numeric, json, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, numeric, json, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -256,6 +256,11 @@ export const pacsModules = pgTable("pacs_modules", {
   source: text("source").notNull(),
   integration: text("integration").notNull(),
   description: text("description"),
+  category: text("category"),
+  apiEndpoints: jsonb("api_endpoints"),
+  dataSchema: jsonb("data_schema"),
+  syncStatus: text("sync_status").default("pending"),
+  lastSyncTimestamp: timestamp("last_sync_timestamp"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -264,6 +269,11 @@ export const insertPacsModuleSchema = createInsertSchema(pacsModules).pick({
   source: true,
   integration: true,
   description: true,
+  category: true,
+  apiEndpoints: true,
+  dataSchema: true,
+  syncStatus: true,
+  lastSyncTimestamp: true,
 });
 
 // Define type exports

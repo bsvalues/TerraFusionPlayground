@@ -47,12 +47,60 @@ function readPacsModulesCsv() {
 // Function to enhance module data
 function enhanceModuleData(modules) {
   // Add default status and category if missing
-  return modules.map(module => ({
-    moduleName: module.module_name,
-    source: module.source || 'PACS WA',
-    integration: module.integration || 'pending',
-    description: generateDescription(module.module_name),
-  }));
+  return modules.map(module => {
+    const moduleName = module.module_name;
+    const category = determineCategory(moduleName);
+    
+    // Create API endpoints template
+    const apiEndpoints = {
+      get: {
+        path: `/api/pacs/${moduleName.toLowerCase().replace(/\s+/g, '-')}`,
+        params: {
+          id: "string",
+          filter: "object"
+        },
+        description: `Retrieve ${moduleName} data`
+      },
+      post: {
+        path: `/api/pacs/${moduleName.toLowerCase().replace(/\s+/g, '-')}`,
+        body: {
+          type: "object"
+        },
+        description: `Create new ${moduleName} record`
+      },
+      put: null,
+      delete: null
+    };
+    
+    // Create data schema template
+    const dataSchema = {
+      fields: [
+        {
+          name: "id",
+          type: "string",
+          description: "Unique identifier"
+        },
+        {
+          name: "createdAt",
+          type: "datetime",
+          description: "Creation timestamp"
+        }
+      ],
+      relationships: []
+    };
+    
+    return {
+      moduleName: moduleName,
+      source: module.source || 'PACS WA',
+      integration: module.integration || 'pending',
+      description: generateDescription(moduleName),
+      category: category,
+      apiEndpoints: apiEndpoints,
+      dataSchema: dataSchema,
+      syncStatus: 'pending',
+      lastSyncTimestamp: null
+    };
+  });
 }
 
 // Helper function to determine module category based on name
@@ -121,13 +169,21 @@ async function importPacsModules() {
       try {
         // Use an UPSERT query to either insert or update the module
         const query = `
-          INSERT INTO pacs_modules (module_name, source, integration, description)
-          VALUES ($1, $2, $3, $4)
+          INSERT INTO pacs_modules (
+            module_name, source, integration, description, 
+            category, api_endpoints, data_schema, sync_status, last_sync_timestamp
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           ON CONFLICT (module_name) 
           DO UPDATE SET
             source = $2,
             integration = $3,
-            description = $4
+            description = $4,
+            category = $5,
+            api_endpoints = $6,
+            data_schema = $7,
+            sync_status = $8,
+            last_sync_timestamp = $9
           RETURNING id, module_name
         `;
         
@@ -135,7 +191,12 @@ async function importPacsModules() {
           module.moduleName,
           module.source,
           module.integration,
-          module.description
+          module.description,
+          module.category,
+          module.apiEndpoints,
+          module.dataSchema,
+          module.syncStatus,
+          module.lastSyncTimestamp
         ];
         
         const result = await client.query(query, values);

@@ -1,369 +1,298 @@
 /**
  * Security Service
  * 
- * This service provides security-related functionality including input validation,
- * sanitization, and protection against common attack vectors like SQL injection and XSS.
- * It's designed to address the security concerns demonstrated in the ICSF simulation labs.
+ * This service provides security-related functionality for the application,
+ * including input validation, rate limiting, and security logging.
  */
 
-// Import necessary dependencies
-import { z } from 'zod';
-import { AuditLog } from '@shared/schema';
-import { storage } from '../storage';
+import { IStorage } from '../storage';
+import { AuditLog, InsertAuditLog } from '../../shared/schema';
 
-/**
- * Interface for rate limiter entry
- */
-interface RateLimitEntry {
-  count: number;
-  timestamp: number;
-  blocked: boolean;
-  blockExpires?: number;
+// Security Event Types
+export type SecurityEventType = 
+  | 'authentication'
+  | 'authorization'
+  | 'input_validation'
+  | 'rate_limit'
+  | 'xss_detection'
+  | 'sql_injection_detection'
+  | 'system_access';
+
+// Security Event Severities
+export type SecurityEventSeverity = 'info' | 'warning' | 'error' | 'critical';
+
+// Security Event Interface
+export interface SecurityEvent {
+  eventType: SecurityEventType;
+  component: string;
+  userId?: number;
+  ipAddress?: string;
+  details: any;
+  severity: SecurityEventSeverity;
 }
 
-export class SecurityService {
-  // Rate limiter storage (IP address -> request data)
-  private rateLimits: Map<string, RateLimitEntry> = new Map();
+// Rate Limit Configuration
+export interface RateLimitConfig {
+  windowMs: number;
+  maxRequests: number;
+  message: string;
+}
+
+// Security Service Interface
+export interface ISecurityService {
+  // Input validation
+  validateInput(input: any, schema: any): boolean;
+  sanitizeInput(input: any): any;
   
-  // Rate limit configuration
-  private readonly RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute window
-  private readonly RATE_LIMIT_MAX_REQUESTS = 100; // Maximum requests per window
-  private readonly RATE_LIMIT_BLOCK_DURATION = 10 * 60 * 1000; // 10 minute block
-  /**
-   * Sanitize a string to protect against XSS attacks
-   * @param input The input string to sanitize
-   * @returns Sanitized string
-   */
-  sanitizeString(input: string | undefined | null): string | null {
-    if (input === undefined || input === null) {
-      return null;
-    }
-    
-    // Replace HTML tags and other potentially dangerous characters
-    return input
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;')
-      .replace(/`/g, '&#96;')
-      .replace(/\$/g, '&#36;');
+  // Rate limiting
+  checkRateLimit(key: string, config: RateLimitConfig): boolean;
+  
+  // Security logging
+  logSecurityEvent(event: SecurityEvent): Promise<AuditLog>;
+  
+  // XSS detection
+  detectXssPayload(input: string): boolean;
+  
+  // SQL injection detection
+  detectSqlInjectionPattern(input: string): boolean;
+  
+  // Numeric value limits
+  validateNumericRange(value: number, min: number, max: number): boolean;
+}
+
+// Security Service Implementation
+export class SecurityService implements ISecurityService {
+  private storage: IStorage;
+  private rateLimitStore: Map<string, {count: number, resetTime: number}>;
+  
+  constructor(storage: IStorage) {
+    this.storage = storage;
+    this.rateLimitStore = new Map();
   }
   
   /**
-   * Validate and sanitize an object's string properties
-   * @param obj The object to sanitize
-   * @returns A new object with sanitized string properties
+   * Validate input against a schema
+   * 
+   * @param input - The input to validate
+   * @param schema - The schema to validate against
    */
-  sanitizeObject<T extends Record<string, any>>(obj: T): T {
-    const sanitized: Record<string, any> = {};
-    
-    // Process each property in the object
-    for (const [key, value] of Object.entries(obj)) {
-      if (typeof value === 'string') {
-        // Sanitize string values
-        sanitized[key] = this.sanitizeString(value);
-      } else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-        // Recursively sanitize nested objects
-        sanitized[key] = this.sanitizeObject(value);
-      } else if (Array.isArray(value)) {
-        // Sanitize arrays by mapping over each element
-        sanitized[key] = value.map(item => 
-          typeof item === 'string' 
-            ? this.sanitizeString(item)
-            : (typeof item === 'object' && item !== null)
-              ? this.sanitizeObject(item)
-              : item
-        );
-      } else {
-        // Pass through non-string, non-object values unchanged
-        sanitized[key] = value;
+  validateInput(input: any, schema: any): boolean {
+    try {
+      // In a real implementation, this would use a schema validation library like Zod or Joi
+      // For demo purposes, we'll do a simple check
+      
+      if (!input || !schema) {
+        return false;
       }
+      
+      // Check if all required fields exist
+      for (const field of Object.keys(schema)) {
+        if (schema[field].required && 
+            (input[field] === undefined || input[field] === null)) {
+          return false;
+        }
+      }
+      
+      // Type checking for fields
+      for (const field of Object.keys(input)) {
+        if (schema[field] && schema[field].type) {
+          const expectedType = schema[field].type;
+          const actualType = typeof input[field];
+          
+          if (expectedType === 'array' && !Array.isArray(input[field])) {
+            return false;
+          } else if (expectedType !== 'array' && expectedType !== actualType) {
+            return false;
+          }
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error validating input:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Sanitize input
+   * 
+   * @param input - The input to sanitize
+   */
+  sanitizeInput(input: any): any {
+    try {
+      // In a real implementation, this would use a sanitization library
+      // For demo purposes, we'll do a simple sanitization
+      
+      if (typeof input === 'string') {
+        // Sanitize string input
+        return this.sanitizeString(input);
+      } else if (typeof input === 'object' && input !== null) {
+        // Sanitize object or array
+        if (Array.isArray(input)) {
+          return input.map(item => this.sanitizeInput(item));
+        } else {
+          const sanitized: any = {};
+          for (const [key, value] of Object.entries(input)) {
+            sanitized[key] = this.sanitizeInput(value);
+          }
+          return sanitized;
+        }
+      } else {
+        // Return primitives as is
+        return input;
+      }
+    } catch (error) {
+      console.error('Error sanitizing input:', error);
+      return input;
+    }
+  }
+  
+  /**
+   * Sanitize a string
+   * 
+   * @param input - The string to sanitize
+   */
+  private sanitizeString(input: string): string {
+    // Replace HTML tags
+    let sanitized = input.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    
+    // Replace single quotes
+    sanitized = sanitized.replace(/'/g, '&#39;');
+    
+    // Replace double quotes
+    sanitized = sanitized.replace(/"/g, '&quot;');
+    
+    return sanitized;
+  }
+  
+  /**
+   * Check if a request exceeds rate limits
+   * 
+   * @param key - The rate limit key (e.g., IP address, user ID)
+   * @param config - The rate limit configuration
+   */
+  checkRateLimit(key: string, config: RateLimitConfig): boolean {
+    const now = Date.now();
+    const record = this.rateLimitStore.get(key);
+    
+    if (!record) {
+      // First request from this key
+      this.rateLimitStore.set(key, {
+        count: 1,
+        resetTime: now + config.windowMs
+      });
+      return true;
     }
     
-    return sanitized as T;
+    if (now > record.resetTime) {
+      // Window has reset
+      this.rateLimitStore.set(key, {
+        count: 1,
+        resetTime: now + config.windowMs
+      });
+      return true;
+    }
+    
+    if (record.count >= config.maxRequests) {
+      // Rate limit exceeded
+      return false;
+    }
+    
+    // Increment counter
+    record.count += 1;
+    this.rateLimitStore.set(key, record);
+    return true;
   }
   
   /**
-   * Protect against SQL injection by checking for common SQL injection patterns
-   * @param input The input string to check
-   * @returns Boolean indicating if the input contains SQL injection patterns
+   * Log a security event
+   * 
+   * @param event - The security event to log
    */
-  containsSqlInjection(input: string): boolean {
-    if (!input) return false;
+  async logSecurityEvent(event: SecurityEvent): Promise<AuditLog> {
+    // Create an audit log for the security event
+    const auditLog: InsertAuditLog = {
+      action_type: `security_${event.eventType}`,
+      user_id: event.userId,
+      target_type: 'security',
+      target_id: null,
+      details: {
+        ...event.details,
+        severity: event.severity,
+        component: event.component,
+        ipAddress: event.ipAddress
+      },
+      created_at: new Date()
+    };
     
-    // Check for common SQL injection patterns
-    const sqlPatterns = [
-      /'\s*OR\s*.*/i,                  // 'OR 1=1--
-      /'\s*;\s*DROP\s+TABLE.*/i,       // '; DROP TABLE users--
-      /'\s*;\s*DELETE\s+FROM.*/i,      // '; DELETE FROM users--
-      /'\s*UNION\s+SELECT.*/i,         // ' UNION SELECT username, password FROM users--
-      /--/,                           // Comment indicator
-      /\/\*/,                         // Start of block comment
-      /EXEC\s+xp_.*/i,                // EXEC xp_cmdshell
-      /INSERT\s+INTO.*/i,             // INSERT INTO users
-      /SELECT\s+.*\s+FROM.*/i,        // Basic SELECT query
-      /UPDATE\s+.*\s+SET.*/i,         // UPDATE users SET
-      /DELETE\s+FROM.*/i              // DELETE FROM users
-    ];
+    // Log critical events to console as well
+    if (event.severity === 'critical') {
+      console.error(`CRITICAL SECURITY EVENT: ${event.eventType} in ${event.component}`, event.details);
+    }
     
-    return sqlPatterns.some(pattern => pattern.test(input));
+    // Create audit log in storage
+    return this.storage.createAuditLog(auditLog);
   }
   
   /**
-   * Checks if a string contains potential XSS payloads
-   * @param input The input string to check
-   * @returns Boolean indicating if the input contains XSS patterns
+   * Detect XSS payloads in input
+   * 
+   * @param input - The input to check
    */
-  containsXss(input: string): boolean {
-    if (!input) return false;
+  detectXssPayload(input: string): boolean {
+    if (!input || typeof input !== 'string') {
+      return false;
+    }
     
     // Check for common XSS patterns
     const xssPatterns = [
-      /<script.*>.*<\/script>/i,    // <script>alert('XSS')</script>
-      /<.*javascript:.*>/i,         // <img src="javascript:alert('XSS')">
-      /<.*onload=.*>/i,             // <img onload="alert('XSS')">
-      /<.*onclick=.*>/i,            // <div onclick="alert('XSS')">
-      /<.*onerror=.*>/i,            // <img src="x" onerror="alert('XSS')">
-      /<.*onmouseover=.*>/i,        // <div onmouseover="alert('XSS')">
-      /<.*onfocus=.*>/i,            // <input onfocus="alert('XSS')">
-      /<.*onblur=.*>/i,             // <input onblur="alert('XSS')">
-      /<.*style=.*expression\(.*\).*>/i, // <div style="expression(alert('XSS'))">
-      /<.*src=.*data:.*>/i         // <img src="data:text/html;base64,PHNjcmlwdD5hbGVydCgnWFNTJyk8L3NjcmlwdD4=">
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      /javascript\s*:/gi,
+      /onerror\s*=/gi,
+      /onclick\s*=/gi,
+      /onload\s*=/gi,
+      /onmouseover\s*=/gi
     ];
     
     return xssPatterns.some(pattern => pattern.test(input));
   }
   
   /**
-   * Validate property IDs to ensure they match the expected format
-   * @param propertyId The property ID to validate
-   * @returns Boolean indicating if the property ID is valid
+   * Detect SQL injection patterns in input
+   * 
+   * @param input - The input to check
    */
-  isValidPropertyId(propertyId: string): boolean {
-    // Benton County property IDs follow a specific format (BC followed by 3 digits)
-    return /^BC\d{3}$/.test(propertyId);
-  }
-  
-  /**
-   * Validate numeric values to protect against numeric overflow attacks
-   * @param value The value to validate
-   * @param min Optional minimum allowed value
-   * @param max Optional maximum allowed value
-   * @returns Boolean indicating if the value is valid
-   */
-  isValidNumericValue(value: string | number, min?: number, max?: number): boolean {
-    // Convert to number if string
-    const numValue = typeof value === 'string' ? Number(value) : value;
-    
-    // Check if it's a valid number
-    if (isNaN(numValue) || !isFinite(numValue)) {
+  detectSqlInjectionPattern(input: string): boolean {
+    if (!input || typeof input !== 'string') {
       return false;
     }
     
-    // Check min/max if provided
-    if (min !== undefined && numValue < min) {
-      return false;
-    }
+    // Check for common SQL injection patterns
+    const sqlInjectionPatterns = [
+      /(\%27)|(\')|(\-\-)|(\%23)|(#)/i,
+      /((\%3D)|(=))[^\n]*((\%27)|(\')|(\-\-)|(\%3B)|(;))/i,
+      /\w*((\%27)|(\'))((\%6F)|o|(\%4F))((\%72)|r|(\%52))/i,
+      /((\%27)|(\'))union/i,
+      /exec(\s|\+)+(s|x)p\w+/i,
+      /insert|update|delete|drop|alter|truncate/i
+    ];
     
-    if (max !== undefined && numValue > max) {
-      return false;
-    }
-    
-    return true;
+    return sqlInjectionPatterns.some(pattern => pattern.test(input));
   }
   
   /**
-   * Log a security event to the audit log
-   * @param userId The ID of the user involved in the event
-   * @param action The action being performed
-   * @param entityType The type of entity involved
-   * @param entityId The ID of the entity involved
-   * @param details Additional details about the event
-   * @param ipAddress The IP address from which the event originated
-   * @returns The created audit log
+   * Validate that a numeric value is within a specified range
+   * 
+   * @param value - The value to check
+   * @param min - The minimum allowed value
+   * @param max - The maximum allowed value
    */
-  async logSecurityEvent(
-    userId: number,
-    action: string,
-    entityType: string,
-    entityId: string | null,
-    details: Record<string, any>,
-    ipAddress: string
-  ): Promise<AuditLog> {
-    return await storage.createAuditLog({
-      userId,
-      action: `SECURITY_${action}`,
-      entityType,
-      entityId,
-      details,
-      ipAddress
-    });
-  }
-  
-  /**
-   * Create a Zod schema for validating MCP requests with appropriate constraints
-   * @param toolName The name of the tool being executed
-   * @returns A Zod schema for validating the request parameters
-   */
-  createMcpRequestSchema(toolName: string): z.ZodType<any> {
-    // Base schemas for common parameter types
-    const stringSchema = z.string().transform(value => this.sanitizeString(value));
-    const numberSchema = z.number().or(z.string().regex(/^\d+$/).transform(Number));
-    const propertyIdSchema = z.string().regex(/^BC\d{3}$/);
-    
-    // Define tool-specific schemas
-    switch (toolName) {
-      case 'getProperties':
-        return z.object({
-          address: z.string().optional().transform(value => value ? this.sanitizeString(value) : value),
-          propertyType: z.string().optional().transform(value => value ? this.sanitizeString(value) : value),
-          status: z.string().optional().transform(value => value ? this.sanitizeString(value) : value),
-          minValue: numberSchema.optional(),
-          maxValue: numberSchema.optional(),
-          limit: z.number().optional().or(z.literal(undefined))
-        });
-        
-      case 'getPropertyById':
-        return z.object({
-          propertyId: propertyIdSchema
-        });
-        
-      case 'getLandRecordsByZone':
-        return z.object({
-          zoning: stringSchema
-        });
-        
-      case 'getImprovementsByType':
-        return z.object({
-          improvementType: stringSchema
-        });
-        
-      case 'getImprovementsByYearBuiltRange':
-        return z.object({
-          minYear: z.number().or(z.string().regex(/^\d+$/).transform(Number))
-            .refine(val => val >= 1800 && val <= new Date().getFullYear(), {
-              message: `Year must be between 1800 and ${new Date().getFullYear()}`
-            }),
-          maxYear: z.number().or(z.string().regex(/^\d+$/).transform(Number))
-            .refine(val => val >= 1800 && val <= new Date().getFullYear() + 10, {
-              message: `Year must be between 1800 and ${new Date().getFullYear() + 10}`
-            })
-        });
-        
-      case 'getPropertiesByValueRange':
-        return z.object({
-          minValue: z.number().or(z.string().regex(/^\d+$/).transform(Number))
-            .refine(val => val >= 0 && val <= 1000000000, {
-              message: "Value must be between 0 and 1,000,000,000"
-            }),
-          maxValue: z.number().or(z.string().regex(/^\d+$/).transform(Number))
-            .refine(val => val >= 0 && val <= 1000000000, {
-              message: "Value must be between 0 and 1,000,000,000"
-            })
-        });
-        
-      case 'generateMapUrl':
-        return z.object({
-          propertyId: propertyIdSchema.optional(),
-          address: stringSchema.optional(),
-          mapType: z.enum(['esri', 'google', 'pictometry'])
-        }).refine(data => data.propertyId !== undefined || data.address !== undefined, {
-          message: "Either propertyId or address must be provided"
-        });
-        
-      case 'getPropertyFullDetails':
-        return z.object({
-          propertyId: propertyIdSchema
-        });
-        
-      // Default case for tools without specific validation
-      default:
-        return z.any();
-    }
-  }
-  /**
-   * Check if a request from the given IP address is allowed based on rate limits
-   * @param ipAddress The IP address to check
-   * @param endpoint Optional endpoint for endpoint-specific rate limiting
-   * @returns Object with allowed status and message if blocked
-   */
-  checkRateLimit(ipAddress: string, endpoint?: string): { allowed: boolean; message?: string } {
-    const now = Date.now();
-    const key = endpoint ? `${ipAddress}:${endpoint}` : ipAddress;
-    const entry = this.rateLimits.get(key);
-    
-    // If no existing entry, create one and allow the request
-    if (!entry) {
-      this.rateLimits.set(key, {
-        count: 1,
-        timestamp: now,
-        blocked: false
-      });
-      return { allowed: true };
+  validateNumericRange(value: number, min: number, max: number): boolean {
+    if (typeof value !== 'number' || isNaN(value)) {
+      return false;
     }
     
-    // Check if IP is blocked
-    if (entry.blocked) {
-      // Check if block has expired
-      if (entry.blockExpires && now > entry.blockExpires) {
-        // Reset the entry
-        this.rateLimits.set(key, {
-          count: 1,
-          timestamp: now,
-          blocked: false
-        });
-        return { allowed: true };
-      }
-      
-      return { 
-        allowed: false, 
-        message: `Rate limit exceeded. IP address blocked temporarily. Try again later.` 
-      };
-    }
-    
-    // Check if we're in a new window
-    if (now - entry.timestamp > this.RATE_LIMIT_WINDOW) {
-      // Reset for new window
-      this.rateLimits.set(key, {
-        count: 1,
-        timestamp: now,
-        blocked: false
-      });
-      return { allowed: true };
-    }
-    
-    // Increment count for current window
-    entry.count++;
-    
-    // Check if rate limit is exceeded
-    if (entry.count > this.RATE_LIMIT_MAX_REQUESTS) {
-      // Block the IP
-      entry.blocked = true;
-      entry.blockExpires = now + this.RATE_LIMIT_BLOCK_DURATION;
-      
-      // Log the rate limit violation
-      this.logSecurityEvent(
-        1, // Admin user ID
-        "RATE_LIMIT_EXCEEDED",
-        "api_request",
-        null,
-        { ipAddress, endpoint, requestCount: entry.count },
-        ipAddress
-      ).catch(err => console.error("Failed to log rate limit violation:", err));
-      
-      return { 
-        allowed: false, 
-        message: `Rate limit exceeded. Too many requests. Try again later.` 
-      };
-    }
-    
-    // Update the entry
-    this.rateLimits.set(key, entry);
-    
-    // Request is allowed
-    return { allowed: true };
+    return value >= min && value <= max;
   }
 }
-
-// Export singleton instance
-export const securityService = new SecurityService();

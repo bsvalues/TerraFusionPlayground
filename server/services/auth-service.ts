@@ -1,374 +1,385 @@
 /**
  * Authentication Service
  * 
- * This service provides JWT-based authentication for securing the MCP API endpoints.
- * It handles token generation, validation, and role-based access control.
+ * This service handles authentication and authorization for the MCP API,
+ * including JWT token issuance, validation, and user permission management.
  */
 
 import jwt from 'jsonwebtoken';
-import { z } from 'zod';
-import { storage } from '../storage';
-import { securityService } from './security';
+import { IStorage } from '../storage';
+import { User } from '../../shared/schema';
+import { ISecurityService, SecurityEvent } from './security';
 
-// Define the JWT payload structure
-export interface JwtPayload {
-  userId: number;
-  username: string;
-  role: string;
-  scope: string[];
-  exp?: number;
-  iat?: number;
-}
-
-// Define token scopes for MCP access levels
-export enum TokenScope {
-  READ_ONLY = 'mcp:read',
-  READ_WRITE = 'mcp:read:write',
-  ADMIN = 'mcp:admin'
-}
-
-// Access level definition
-export enum AccessLevel {
-  READ_ONLY = 'read_only',
-  READ_WRITE = 'read_write',
-  ADMIN = 'admin'
-}
-
-// Define the API key schema
-export const apiKeySchema = z.object({
-  key: z.string().min(32).max(64),
-  clientId: z.string().min(8).max(32),
-  userId: z.number(),
-  accessLevel: z.enum([AccessLevel.READ_ONLY, AccessLevel.READ_WRITE, AccessLevel.ADMIN]),
-  description: z.string().optional(),
-  createdAt: z.date(),
-  expiresAt: z.date().optional(),
-  lastUsed: z.date().optional(),
-  rateLimit: z.number().optional(),
-  ipRestrictions: z.array(z.string()).optional()
-});
-
-export type ApiKey = z.infer<typeof apiKeySchema>;
-
-// Map API access levels to token scopes
-const accessLevelToScopes: Record<AccessLevel, TokenScope[]> = {
-  [AccessLevel.READ_ONLY]: [TokenScope.READ_ONLY],
-  [AccessLevel.READ_WRITE]: [TokenScope.READ_ONLY, TokenScope.READ_WRITE],
-  [AccessLevel.ADMIN]: [TokenScope.READ_ONLY, TokenScope.READ_WRITE, TokenScope.ADMIN]
+// JWT Options
+const JWT_OPTIONS = {
+  expiresIn: '4h',
+  issuer: 'benton-assessor-mcp'
 };
 
-export class AuthService {
-  // Secret for signing JWT tokens
+// Default role permissions
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  'admin': [
+    'admin',
+    'authenticated',
+    'pacs.read',
+    'pacs.write',
+    'pacs.admin',
+    'property.read',
+    'property.write',
+    'appeal.read',
+    'appeal.write',
+    'report.read',
+    'report.write'
+  ],
+  'assessor': [
+    'authenticated',
+    'pacs.read',
+    'pacs.write',
+    'property.read',
+    'property.write',
+    'appeal.read',
+    'appeal.write',
+    'report.read',
+    'report.write'
+  ],
+  'appraiser': [
+    'authenticated',
+    'pacs.read',
+    'property.read',
+    'property.write',
+    'appeal.read',
+    'report.read'
+  ],
+  'clerk': [
+    'authenticated',
+    'pacs.read',
+    'property.read',
+    'appeal.read',
+    'report.read'
+  ],
+  'taxpayer': [
+    'authenticated',
+    'property.read',
+    'appeal.read',
+    'appeal.write'
+  ],
+  'agent': [
+    'authenticated',
+    'pacs.read',
+    'property.read'
+  ]
+};
+
+// Auth Token
+export interface AuthToken {
+  userId: number;
+  username: string;
+  roles: string[];
+  permissions: string[];
+  iat: number;
+  exp: number;
+  iss: string;
+}
+
+// Auth Service Interface
+export interface IAuthService {
+  // Token generation and validation
+  generateToken(user: User): string;
+  validateToken(token: string): AuthToken | null;
+  
+  // User authentication
+  authenticateUser(username: string, password: string): Promise<{user: User, token: string} | null>;
+  
+  // Permission checking
+  hasPermission(token: AuthToken, permission: string): boolean;
+  hasAnyPermission(token: AuthToken, permissions: string[]): boolean;
+  hasAllPermissions(token: AuthToken, permissions: string[]): boolean;
+  
+  // Validate MCP agent requests
+  validateAgentRequest(agentId: number, apiKey: string): Promise<boolean>;
+}
+
+// Auth Service Implementation
+export class AuthService implements IAuthService {
+  private storage: IStorage;
+  private securityService: ISecurityService;
   private jwtSecret: string;
   
-  // Token expiration time (1 hour by default)
-  private tokenExpirationTime: number;
-  
-  // In-memory API key storage
-  private apiKeys: Map<string, ApiKey> = new Map();
-  
-  /**
-   * Initialize the authentication service
-   */
-  constructor() {
-    // In a production environment, this should be loaded from environment variables
-    this.jwtSecret = process.env.JWT_SECRET || 'benton-county-mcp-jwt-secret-2024';
-    this.tokenExpirationTime = 60 * 60; // 1 hour in seconds
-    
-    // Initialize default API keys for testing
-    this.initializeDefaultApiKeys();
-    
-    console.log('Authentication service initialized');
+  constructor(storage: IStorage, securityService: ISecurityService) {
+    this.storage = storage;
+    this.securityService = securityService;
+    this.jwtSecret = process.env.JWT_SECRET || 'benton-county-mcp-jwt-secret-key';
   }
   
   /**
-   * Initialize default API keys for testing
+   * Generate a JWT token for a user
+   * 
+   * @param user - The user to generate a token for
    */
-  private initializeDefaultApiKeys() {
-    // Create default API keys
-    const defaultKeys: ApiKey[] = [
-      {
-        key: 'api-key-read-only-3a9f8e7d6c5b4a3210',
-        clientId: 'assessor-portal',
-        userId: 1,
-        accessLevel: AccessLevel.READ_ONLY,
-        description: 'Read-only access for Assessor Portal',
-        createdAt: new Date(),
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year
-      },
-      {
-        key: 'api-key-read-write-7d8e9f6a5b4c3d2e10',
-        clientId: 'admin-dashboard',
-        userId: 1,
-        accessLevel: AccessLevel.READ_WRITE,
-        description: 'Read-write access for Admin Dashboard',
-        createdAt: new Date(),
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year
-      },
-      {
-        key: 'api-key-admin-1a2b3c4d5e6f7g8h9i0j',
-        clientId: 'mcp-admin',
-        userId: 1,
-        accessLevel: AccessLevel.ADMIN,
-        description: 'Full admin access for MCP administration',
-        createdAt: new Date(),
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year
-      }
-    ];
-    
-    // Store API keys
-    defaultKeys.forEach(key => {
-      this.apiKeys.set(key.key, key);
-    });
-  }
-  
-  /**
-   * Generate a JWT token for the given API key
-   * @param apiKey The API key to use for token generation
-   * @returns The generated JWT token
-   */
-  public generateToken(apiKey: string): string | null {
-    // Get API key details
-    const keyDetails = this.apiKeys.get(apiKey);
-    if (!keyDetails) {
-      return null;
-    }
-    
-    // Check if API key is expired
-    if (keyDetails.expiresAt && keyDetails.expiresAt < new Date()) {
-      return null;
-    }
-    
-    // Update last used timestamp
-    keyDetails.lastUsed = new Date();
-    this.apiKeys.set(apiKey, keyDetails);
-    
-    // Get token scopes based on access level
-    const scopes = accessLevelToScopes[keyDetails.accessLevel];
+  generateToken(user: User): string {
+    // Get permissions for the user's roles
+    const permissions = this.getPermissionsForRoles(user.roles || ['taxpayer']);
     
     // Create token payload
-    const payload: JwtPayload = {
-      userId: keyDetails.userId,
-      username: keyDetails.clientId,
-      role: keyDetails.accessLevel,
-      scope: scopes.map(scope => scope.toString())
+    const payload = {
+      userId: user.id,
+      username: user.username,
+      roles: user.roles || ['taxpayer'],
+      permissions
     };
     
-    // Generate and return the JWT token
-    return jwt.sign(payload, this.jwtSecret, {
-      expiresIn: this.tokenExpirationTime
-    });
+    // Generate and return token
+    return jwt.sign(payload, this.jwtSecret, JWT_OPTIONS);
   }
   
   /**
    * Validate a JWT token
-   * @param token The JWT token to validate
-   * @returns The decoded token payload if valid, null otherwise
+   * 
+   * @param token - The token to validate
    */
-  public validateToken(token: string): JwtPayload | null {
+  validateToken(token: string): AuthToken | null {
     try {
-      // Verify the token
-      const decoded = jwt.verify(token, this.jwtSecret) as JwtPayload;
+      // Verify token
+      const decoded = jwt.verify(token, this.jwtSecret, { issuer: JWT_OPTIONS.issuer }) as AuthToken;
+      
+      // Log successful token validation
+      this.securityService.logSecurityEvent({
+        eventType: 'authentication',
+        component: 'auth-service',
+        userId: decoded.userId,
+        details: {
+          action: 'token_validation',
+          username: decoded.username
+        },
+        severity: 'info'
+      });
+      
       return decoded;
     } catch (error) {
-      console.error('Error validating JWT token:', error);
+      // Log failed token validation
+      this.securityService.logSecurityEvent({
+        eventType: 'authentication',
+        component: 'auth-service',
+        details: {
+          action: 'token_validation',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          token: token.substring(0, 10) + '...'
+        },
+        severity: 'warning'
+      });
+      
       return null;
     }
   }
   
   /**
-   * Check if a token has the required scope
-   * @param token The JWT token to check
-   * @param requiredScope The scope required for access
-   * @returns True if the token has the required scope, false otherwise
+   * Authenticate a user with username and password
+   * 
+   * @param username - The username
+   * @param password - The password
    */
-  public hasScope(token: string, requiredScope: TokenScope): boolean {
-    const decoded = this.validateToken(token);
-    if (!decoded) {
-      return false;
-    }
-    
-    return decoded.scope.includes(requiredScope.toString());
-  }
-  
-  /**
-   * Create a new API key
-   * @param userId The ID of the user the API key is for
-   * @param clientId The client ID associated with the API key
-   * @param accessLevel The access level for the API key
-   * @param description Optional description of the API key
-   * @param expiresInDays Optional number of days until the API key expires
-   * @param ipRestrictions Optional array of IP addresses to restrict the API key to
-   * @returns The newly created API key
-   */
-  public createApiKey(
-    userId: number,
-    clientId: string,
-    accessLevel: AccessLevel,
-    description?: string,
-    expiresInDays?: number,
-    ipRestrictions?: string[]
-  ): ApiKey {
-    // Generate a secure API key
-    const key = this.generateSecureKey();
-    
-    // Calculate expiration date if provided
-    const expiresAt = expiresInDays
-      ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
-      : undefined;
-    
-    // Create the API key
-    const apiKey: ApiKey = {
-      key,
-      clientId,
-      userId,
-      accessLevel,
-      description,
-      createdAt: new Date(),
-      expiresAt,
-      ipRestrictions
-    };
-    
-    // Store the API key
-    this.apiKeys.set(key, apiKey);
-    
-    // Log the API key creation
-    this.logApiKeyCreation(apiKey);
-    
-    return apiKey;
-  }
-  
-  /**
-   * Revoke an API key
-   * @param key The API key to revoke
-   * @returns True if the API key was revoked, false otherwise
-   */
-  public revokeApiKey(key: string): boolean {
-    // Check if the API key exists
-    if (!this.apiKeys.has(key)) {
-      return false;
-    }
-    
-    // Remove the API key
-    this.apiKeys.delete(key);
-    
-    // Log the API key revocation
-    this.logApiKeyRevocation(key);
-    
-    return true;
-  }
-  
-  /**
-   * Validate an API key
-   * @param key The API key to validate
-   * @param ipAddress Optional IP address to check against IP restrictions
-   * @returns The API key details if valid, null otherwise
-   */
-  public validateApiKey(key: string, ipAddress?: string): ApiKey | null {
-    // Get API key details
-    const keyDetails = this.apiKeys.get(key);
-    if (!keyDetails) {
-      return null;
-    }
-    
-    // Check if API key is expired
-    if (keyDetails.expiresAt && keyDetails.expiresAt < new Date()) {
-      return null;
-    }
-    
-    // Check IP restrictions if provided
-    if (ipAddress && keyDetails.ipRestrictions && keyDetails.ipRestrictions.length > 0) {
-      if (!keyDetails.ipRestrictions.includes(ipAddress)) {
+  async authenticateUser(username: string, password: string): Promise<{user: User, token: string} | null> {
+    try {
+      // Get user by username
+      const user = await this.storage.getUserByUsername(username);
+      
+      // Check if user exists
+      if (!user) {
+        // Log failed authentication attempt
+        this.securityService.logSecurityEvent({
+          eventType: 'authentication',
+          component: 'auth-service',
+          details: {
+            action: 'login_attempt',
+            username,
+            reason: 'user_not_found'
+          },
+          severity: 'warning'
+        });
+        
         return null;
+      }
+      
+      // Check password (in a real implementation, this would use a password hashing library)
+      if (user.password !== password) {
+        // Log failed authentication attempt
+        this.securityService.logSecurityEvent({
+          eventType: 'authentication',
+          component: 'auth-service',
+          userId: user.id,
+          details: {
+            action: 'login_attempt',
+            username,
+            reason: 'invalid_password'
+          },
+          severity: 'warning'
+        });
+        
+        return null;
+      }
+      
+      // Generate token
+      const token = this.generateToken(user);
+      
+      // Log successful authentication
+      this.securityService.logSecurityEvent({
+        eventType: 'authentication',
+        component: 'auth-service',
+        userId: user.id,
+        details: {
+          action: 'login_success',
+          username
+        },
+        severity: 'info'
+      });
+      
+      return { user, token };
+    } catch (error) {
+      // Log authentication error
+      this.securityService.logSecurityEvent({
+        eventType: 'authentication',
+        component: 'auth-service',
+        details: {
+          action: 'login_attempt',
+          username,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        },
+        severity: 'error'
+      });
+      
+      return null;
+    }
+  }
+  
+  /**
+   * Check if a token has a specific permission
+   * 
+   * @param token - The auth token
+   * @param permission - The permission to check
+   */
+  hasPermission(token: AuthToken, permission: string): boolean {
+    // Admin role has all permissions
+    if (token.roles.includes('admin')) {
+      return true;
+    }
+    
+    return token.permissions.includes(permission);
+  }
+  
+  /**
+   * Check if a token has any of the specified permissions
+   * 
+   * @param token - The auth token
+   * @param permissions - The permissions to check
+   */
+  hasAnyPermission(token: AuthToken, permissions: string[]): boolean {
+    // Admin role has all permissions
+    if (token.roles.includes('admin')) {
+      return true;
+    }
+    
+    return permissions.some(permission => token.permissions.includes(permission));
+  }
+  
+  /**
+   * Check if a token has all of the specified permissions
+   * 
+   * @param token - The auth token
+   * @param permissions - The permissions to check
+   */
+  hasAllPermissions(token: AuthToken, permissions: string[]): boolean {
+    // Admin role has all permissions
+    if (token.roles.includes('admin')) {
+      return true;
+    }
+    
+    return permissions.every(permission => token.permissions.includes(permission));
+  }
+  
+  /**
+   * Validate an MCP agent request
+   * 
+   * @param agentId - The agent ID
+   * @param apiKey - The API key
+   */
+  async validateAgentRequest(agentId: number, apiKey: string): Promise<boolean> {
+    try {
+      // In a real implementation, this would check the agent's API key against a stored value
+      // For demo purposes, we'll just check if the agent exists
+      
+      // Get all agents
+      const agents = await this.storage.getAllAiAgents();
+      
+      // Find the agent by ID
+      const agent = agents.find(a => a.id === agentId);
+      
+      if (!agent) {
+        // Log failed agent validation
+        this.securityService.logSecurityEvent({
+          eventType: 'authentication',
+          component: 'auth-service',
+          details: {
+            action: 'agent_validation',
+            agentId,
+            reason: 'agent_not_found'
+          },
+          severity: 'warning'
+        });
+        
+        return false;
+      }
+      
+      // For demo, validate with a simple check
+      // In production, use proper API key validation
+      const isValid = apiKey === `agent-key-${agentId}`;
+      
+      // Log agent validation result
+      this.securityService.logSecurityEvent({
+        eventType: 'authentication',
+        component: 'auth-service',
+        details: {
+          action: 'agent_validation',
+          agentId,
+          agentName: agent.name,
+          result: isValid ? 'success' : 'invalid_key'
+        },
+        severity: isValid ? 'info' : 'warning'
+      });
+      
+      return isValid;
+    } catch (error) {
+      // Log agent validation error
+      this.securityService.logSecurityEvent({
+        eventType: 'authentication',
+        component: 'auth-service',
+        details: {
+          action: 'agent_validation',
+          agentId,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        },
+        severity: 'error'
+      });
+      
+      return false;
+    }
+  }
+  
+  /**
+   * Get permissions for a set of roles
+   * 
+   * @param roles - The roles to get permissions for
+   */
+  private getPermissionsForRoles(roles: string[]): string[] {
+    const permissionSet = new Set<string>();
+    
+    // Add permissions for each role
+    for (const role of roles) {
+      const rolePermissions = ROLE_PERMISSIONS[role] || [];
+      for (const permission of rolePermissions) {
+        permissionSet.add(permission);
       }
     }
     
-    // Update last used timestamp
-    keyDetails.lastUsed = new Date();
-    this.apiKeys.set(key, keyDetails);
-    
-    return keyDetails;
-  }
-  
-  /**
-   * Generate a secure random API key
-   * @returns A secure random API key
-   */
-  private generateSecureKey(): string {
-    // In a production environment, use a cryptographically secure random generator
-    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const prefix = 'ak-';
-    let key = prefix;
-    
-    // Generate a 32-character random string
-    for (let i = 0; i < 32; i++) {
-      const randomIndex = Math.floor(Math.random() * charset.length);
-      key += charset[randomIndex];
-    }
-    
-    return key;
-  }
-  
-  /**
-   * Log API key creation
-   * @param apiKey The API key that was created
-   */
-  private async logApiKeyCreation(apiKey: ApiKey) {
-    try {
-      await storage.createAuditLog({
-        userId: apiKey.userId,
-        action: 'CREATE_API_KEY',
-        entityType: 'api_key',
-        entityId: null,
-        details: {
-          clientId: apiKey.clientId,
-          accessLevel: apiKey.accessLevel,
-          description: apiKey.description,
-          expiresAt: apiKey.expiresAt,
-          ipRestrictions: apiKey.ipRestrictions
-        },
-        ipAddress: 'system'
-      });
-      
-      await storage.createSystemActivity({
-        agentId: 4, // MCP Agent ID
-        activity: `API key created for client: ${apiKey.clientId}`,
-        entityType: 'api_key',
-        entityId: null
-      });
-    } catch (error) {
-      console.error('Error logging API key creation:', error);
-    }
-  }
-  
-  /**
-   * Log API key revocation
-   * @param key The API key that was revoked
-   */
-  private async logApiKeyRevocation(key: string) {
-    try {
-      await storage.createAuditLog({
-        userId: 1, // Admin user ID
-        action: 'REVOKE_API_KEY',
-        entityType: 'api_key',
-        entityId: null,
-        details: {
-          key: securityService.sanitizeString(key.substring(0, 8) + '...')
-        },
-        ipAddress: 'system'
-      });
-      
-      await storage.createSystemActivity({
-        agentId: 4, // MCP Agent ID
-        activity: 'API key revoked',
-        entityType: 'api_key',
-        entityId: null
-      });
-    } catch (error) {
-      console.error('Error logging API key revocation:', error);
-    }
+    return Array.from(permissionSet);
   }
 }
-
-// Export singleton instance
-export const authService = new AuthService();

@@ -1,803 +1,470 @@
 /**
  * Model Context Protocol (MCP) Service
  * 
- * This service implements the Model Context Protocol for the Benton County Assessor's Office.
- * It provides a standardized interface for AI models to interact with data sources and tools,
- * enabling more powerful and context-aware AI assistance for property assessment processes.
- * 
- * Enhanced with security measures to protect against injection attacks and other vulnerabilities
- * demonstrated in the ICSF simulation labs.
+ * This service implements the Model Context Protocol which provides a standardized interface
+ * for AI models to interact with the application's data and functionality through a secure,
+ * controlled environment that enforces permissions, rate limits, and auditability.
  */
 
-import { storage } from "../storage";
-import { Property, LandRecord, Improvement, Field, Appeal, PacsModule } from "@shared/schema";
-import { pacsIntegration } from "./pacs-integration";
-import { mappingIntegration } from "./mapping-integration";
-import { securityService } from "./security";
-import { z } from "zod";
-import crypto from "crypto";
+import { IStorage } from '../storage';
+import { AiAgent, InsertSystemActivity, SystemActivity } from '../../shared/schema';
+import { IPacsIntegrationService } from './pacs-integration';
 
-/**
- * Defines the structure of a tool available to the MCP framework
- */
+// MCP Tool Definition
 export interface MCPTool {
   name: string;
   description: string;
-  parameters: Record<string, any>;
-  handler: (params: any) => Promise<any>;
+  parameters: any;
+  requiresAuth: boolean;
+  requiredPermissions: string[];
+  handler: (parameters: any, context: MCPExecutionContext) => Promise<any>;
 }
 
-/**
- * Defines the structure of an MCP request
- */
+// MCP Request Interface
 export interface MCPRequest {
-  toolName: string;
-  parameters: Record<string, any>;
+  tool: string;
+  parameters: any;
+  agentId?: number;
 }
 
-/**
- * Main class for MCP implementation
- */
-export class MCPService {
-  private tools: Map<string, MCPTool> = new Map();
+// MCP Execution Context
+export interface MCPExecutionContext {
+  agentId?: number;
+  userId?: number;
+  permissions: string[];
+  isAuthenticated: boolean;
+  requestId: string;
+  startTime: Date;
+}
+
+// MCP Service Interface
+export interface IMCPService {
+  // Get available tools based on permissions
+  getAvailableTools(permissions: string[]): MCPTool[];
   
-  constructor() {
-    this.registerTools();
+  // Execute a tool
+  executeTool(request: MCPRequest, context: MCPExecutionContext): Promise<any>;
+  
+  // Register a new tool
+  registerTool(tool: MCPTool): void;
+}
+
+// MCP Service Implementation
+export class MCPService implements IMCPService {
+  private storage: IStorage;
+  private pacsService: IPacsIntegrationService;
+  private tools: Map<string, MCPTool>;
+  
+  constructor(storage: IStorage, pacsService: IPacsIntegrationService) {
+    this.storage = storage;
+    this.pacsService = pacsService;
+    this.tools = new Map<string, MCPTool>();
+    
+    // Register default tools
+    this.registerDefaultTools();
   }
   
   /**
-   * Register all available tools for the MCP framework
+   * Get available tools based on permissions
    */
-  private registerTools() {
-    // Database schema tools
-    this.registerTool({
-      name: "getSchema",
-      description: "Get the database schema for property records",
-      parameters: {},
-      handler: async () => this.getSchemaInfo()
-    });
+  getAvailableTools(permissions: string[]): MCPTool[] {
+    const availableTools: MCPTool[] = [];
     
-    // Property query tools
-    this.registerTool({
-      name: "getProperties",
-      description: "Get all properties or filter by criteria",
-      parameters: {
-        address: "Optional string to filter properties by address",
-        propertyType: "Optional string to filter properties by type",
-        minValue: "Optional number to filter properties by minimum value",
-        maxValue: "Optional number to filter properties by maximum value",
-        status: "Optional string to filter properties by status",
-        limit: "Optional number to limit the number of results"
-      },
-      handler: async (params) => this.getProperties(params)
-    });
+    // Filter tools based on permissions
+    for (const tool of this.tools.values()) {
+      // Skip tools that require authentication if not authenticated
+      if (tool.requiresAuth && !permissions.includes('authenticated')) {
+        continue;
+      }
+      
+      // Check if user has required permissions
+      const hasPermissions = tool.requiredPermissions.every(permission => 
+        permissions.includes(permission) || permissions.includes('admin')
+      );
+      
+      if (hasPermissions) {
+        availableTools.push(tool);
+      }
+    }
     
-    this.registerTool({
-      name: "getPropertyById",
-      description: "Get a property by its ID",
-      parameters: {
-        propertyId: "String representing the property ID"
-      },
-      handler: async (params) => this.getPropertyById(params)
-    });
-    
-    // Land record tools
-    this.registerTool({
-      name: "getLandRecordsByZone",
-      description: "Get land records by zoning classification",
-      parameters: {
-        zoning: "String representing the zoning classification"
-      },
-      handler: async (params) => pacsIntegration.getLandRecordsByZone(params.zoning)
-    });
-    
-    // Improvement tools
-    this.registerTool({
-      name: "getImprovementsByType",
-      description: "Get improvements by type",
-      parameters: {
-        improvementType: "String representing the improvement type"
-      },
-      handler: async (params) => pacsIntegration.getImprovementsByType(params.improvementType)
-    });
-    
-    this.registerTool({
-      name: "getImprovementsByYearBuiltRange",
-      description: "Get improvements by year built range",
-      parameters: {
-        minYear: "Number representing the minimum year built",
-        maxYear: "Number representing the maximum year built"
-      },
-      handler: async (params) => pacsIntegration.getImprovementsByYearBuiltRange(
-        params.minYear, 
-        params.maxYear
-      )
-    });
-    
-    // Appeal tools
-    this.registerTool({
-      name: "getActiveAppeals",
-      description: "Get all active appeals with property information",
-      parameters: {},
-      handler: async () => pacsIntegration.getActiveAppeals()
-    });
-    
-    // For backward compatibility
-    this.registerTool({
-      name: "getActiveProtests",
-      description: "Get all active protests with property information (deprecated, use getActiveAppeals)",
-      parameters: {},
-      handler: async () => pacsIntegration.getActiveAppeals()
-    });
-    
-    // Value analysis tools
-    this.registerTool({
-      name: "getPropertiesByValueRange",
-      description: "Get properties within a specified value range",
-      parameters: {
-        minValue: "Number representing the minimum property value",
-        maxValue: "Number representing the maximum property value"
-      },
-      handler: async (params) => pacsIntegration.getPropertiesByValueRange(
-        params.minValue,
-        params.maxValue
-      )
-    });
-    
-    // Map integration tools
-    this.registerTool({
-      name: "generateMapUrl",
-      description: "Generate map URLs for a property based on ID or address",
-      parameters: {
-        propertyId: "Optional string representing the property ID",
-        address: "Optional string representing the property address",
-        mapType: "String representing the map type (esri, google, pictometry)"
-      },
-      handler: async (params) => this.generateMapUrl(params)
-    });
-    
-    // PACS module tools
-    this.registerTool({
-      name: "getPacsModules",
-      description: "Get information about PACS modules",
-      parameters: {
-        filter: {
-          moduleName: "Optional string to filter by module name",
-          integration: "Optional string to filter by integration status"
-        }
-      },
-      handler: async (params) => this.getPacsModules(params)
-    });
-    
-    this.registerTool({
-      name: "importPacsModule",
-      description: "Import or update a PACS module",
-      parameters: {
-        name: "String representing the module name",
-        source: "String representing the source system",
-        status: "String representing the integration status",
-        category: "String representing the module category",
-        description: "String describing the module",
-        version: "String representing the module version",
-        lastUpdated: "String representing when the module was last updated"
-      },
-      handler: async (params) => this.importPacsModule(params)
-    });
-    
-    // Property full details tool
-    this.registerTool({
-      name: "getPropertyFullDetails",
-      description: "Get comprehensive details about a property including land records, improvements, and fields",
-      parameters: {
-        propertyId: "String representing the property ID"
-      },
-      handler: async (params) => pacsIntegration.getPropertyFullDetails(params.propertyId)
-    });
+    return availableTools;
   }
   
   /**
-   * Register a new tool in the MCP framework
+   * Execute a tool
    */
-  private registerTool(tool: MCPTool) {
+  async executeTool(request: MCPRequest, context: MCPExecutionContext): Promise<any> {
+    // Check if tool exists
+    const tool = this.tools.get(request.tool);
+    if (!tool) {
+      throw new Error(`Tool '${request.tool}' not found`);
+    }
+    
+    // Check authentication if required
+    if (tool.requiresAuth && !context.isAuthenticated) {
+      throw new Error(`Tool '${request.tool}' requires authentication`);
+    }
+    
+    // Check permissions
+    const hasPermissions = tool.requiredPermissions.every(permission => 
+      context.permissions.includes(permission) || context.permissions.includes('admin')
+    );
+    
+    if (!hasPermissions) {
+      throw new Error(`Insufficient permissions to execute tool '${request.tool}'`);
+    }
+    
+    try {
+      // Log the tool execution start
+      await this.logToolExecution(request, context, 'start');
+      
+      // Execute the tool
+      const result = await tool.handler(request.parameters, context);
+      
+      // Log the tool execution success
+      await this.logToolExecution(request, context, 'success');
+      
+      // Update AI agent status if agentId is provided
+      if (context.agentId) {
+        await this.updateAgentStatus(context.agentId, 'active', 100);
+      }
+      
+      return {
+        success: true,
+        tool: request.tool,
+        result,
+        requestId: context.requestId,
+        executionTime: new Date().getTime() - context.startTime.getTime()
+      };
+    } catch (error) {
+      console.error(`Error executing tool '${request.tool}':`, error);
+      
+      // Log the tool execution failure
+      await this.logToolExecution(request, context, 'error', error);
+      
+      // Update AI agent status if agentId is provided
+      if (context.agentId) {
+        await this.updateAgentStatus(context.agentId, 'error', 0);
+      }
+      
+      return {
+        success: false,
+        tool: request.tool,
+        error: error.message,
+        requestId: context.requestId,
+        executionTime: new Date().getTime() - context.startTime.getTime()
+      };
+    }
+  }
+  
+  /**
+   * Register a new tool
+   */
+  registerTool(tool: MCPTool): void {
     this.tools.set(tool.name, tool);
   }
   
   /**
-   * Get all available tools
+   * Log tool execution
    */
-  public getAvailableTools(): MCPTool[] {
-    return Array.from(this.tools.values());
-  }
-  
-  /**
-   * Execute an MCP request with enhanced security validation
-   * Implements protections against injection attacks demonstrated in ICSF labs
-   */
-  public async executeRequest(request: MCPRequest): Promise<any> {
-    const { toolName, parameters } = request;
-    
-    // Validate tool name exists
-    const tool = this.tools.get(toolName);
-    if (!tool) {
-      throw new Error(`Tool not found: ${toolName}`);
-    }
-    
-    try {
-      // Log the tool execution request
-      console.log(`Received MCP tool execution request: ${toolName}`);
-      
-      // Security checks based on ICSF simulation labs
-      
-      // 1. Check for XSS payloads in string parameters - Appeal Trigger Abuse Lab
-      const stringParams = Object.entries(parameters)
-        .filter(([_, value]) => typeof value === 'string')
-        .map(([key, value]) => ({ key, value: value as string }));
-      
-      const xssAttempts = stringParams.filter(p => securityService.containsXss(p.value));
-      if (xssAttempts.length > 0) {
-        const violationDetails = {
-          toolName,
-          parameters: request.parameters,
-          violations: xssAttempts.map(p => ({ parameter: p.key, value: p.value }))
-        };
-        
-        await securityService.logSecurityEvent(
-          1, // Admin user ID
-          "XSS_ATTEMPT_BLOCKED",
-          "mcp_request",
-          null,
-          violationDetails,
-          "system" // IP not available in this context
-        );
-        
-        return {
-          success: false,
-          toolName,
-          error: "Request contains potentially malicious XSS payloads",
-          securityViolation: true
-        };
-      }
-      
-      // 2. Check for SQL injection patterns - LaunchWorkflow Poison Injection Lab
-      const sqlInjectionAttempts = stringParams.filter(p => securityService.containsSqlInjection(p.value));
-      if (sqlInjectionAttempts.length > 0) {
-        const violationDetails = {
-          toolName,
-          parameters: request.parameters,
-          violations: sqlInjectionAttempts.map(p => ({ parameter: p.key, value: p.value }))
-        };
-        
-        await securityService.logSecurityEvent(
-          1, // Admin user ID
-          "SQL_INJECTION_ATTEMPT_BLOCKED",
-          "mcp_request",
-          null,
-          violationDetails,
-          "system" // IP not available in this context
-        );
-        
-        return {
-          success: false,
-          toolName,
-          error: "Request contains potentially malicious SQL injection patterns",
-          securityViolation: true
-        };
-      }
-      
-      // 3. Check for numeric overflow/limits - Mass Refund Injection Lab
-      // Get numeric parameters and validate against reasonable limits
-      const numericParams = Object.entries(parameters)
-        .filter(([_, value]) => typeof value === 'number' || (typeof value === 'string' && !isNaN(Number(value))))
-        .map(([key, value]) => ({ 
-          key, 
-          value: typeof value === 'string' ? Number(value) : (value as number)
-        }));
-      
-      // Check each numeric parameter for reasonable limits based on context
-      const overflowAttempts = numericParams.filter(p => {
-        // Set default min/max values
-        let min = 0;
-        let max = 1000000000; // 1 billion as a reasonable upper limit
-        
-        // Determine context-specific limits
-        if (p.key.toLowerCase().includes('year')) {
-          min = 1800;
-          max = new Date().getFullYear() + 10;
-        } else if (p.key.toLowerCase().includes('count') || p.key.toLowerCase().includes('limit')) {
-          max = 10000;
-        }
-        
-        return !securityService.isValidNumericValue(p.value, min, max);
-      });
-      
-      if (overflowAttempts.length > 0) {
-        const violationDetails = {
-          toolName,
-          parameters: request.parameters,
-          violations: overflowAttempts.map(p => ({ parameter: p.key, value: p.value }))
-        };
-        
-        await securityService.logSecurityEvent(
-          1, // Admin user ID
-          "NUMERIC_OVERFLOW_ATTEMPT_BLOCKED",
-          "mcp_request",
-          null,
-          violationDetails,
-          "system" // IP not available in this context
-        );
-        
-        return {
-          success: false,
-          toolName,
-          error: "Request contains potentially dangerous numeric values",
-          securityViolation: true
-        };
-      }
-      
-      // 4. Validate parameter schema using Zod
-      try {
-        const schema = securityService.createMcpRequestSchema(toolName);
-        const validatedParams = schema.parse(parameters);
-        
-        // Execute the tool handler with sanitized parameters
-        console.log(`Executing MCP tool: ${toolName} with validated parameters`);
-        const result = await tool.handler(validatedParams);
-        
-        // Create system activity for the successful tool execution
-        await storage.createSystemActivity({
-          agentId: 4, // Assuming MCP Agent ID
-          activity: `Executed MCP tool: ${toolName}`,
-          entityType: "mcp_tool",
-          entityId: null
-        });
-        
-        return {
-          success: true,
-          toolName,
-          result
-        };
-      } catch (validationError) {
-        // Handle Zod validation errors
-        console.error(`Parameter validation failed for MCP tool ${toolName}:`, validationError);
-        
-        const validationDetails = {
-          toolName,
-          parameters: request.parameters,
-          validationError: validationError instanceof z.ZodError 
-            ? validationError.errors 
-            : String(validationError)
-        };
-        
-        await securityService.logSecurityEvent(
-          1, // Admin user ID
-          "VALIDATION_ERROR",
-          "mcp_request",
-          null,
-          validationDetails,
-          "system" // IP not available in this context
-        );
-        
-        return {
-          success: false,
-          toolName,
-          error: "Parameter validation failed",
-          validationError: validationError instanceof z.ZodError 
-            ? validationError.errors 
-            : String(validationError)
-        };
-      }
-    } catch (error) {
-      console.error(`Error executing MCP tool ${toolName}:`, error);
-      
-      // Create system activity for the failed tool execution
-      await storage.createSystemActivity({
-        agentId: 4, // Assuming MCP Agent ID
-        activity: `Failed to execute MCP tool: ${toolName}`,
-        entityType: "mcp_tool",
-        entityId: null
-      });
-      
-      return {
-        success: false,
-        toolName,
-        error: error instanceof Error ? error.message : String(error)
-      };
-    }
-  }
-  
-  /**
-   * Tool: Get database schema information
-   */
-  private async getSchemaInfo(): Promise<any> {
-    // In a real implementation, this would query INFORMATION_SCHEMA tables
-    // For now, we'll return a simplified manually defined schema
-    return {
-      tables: {
-        properties: {
-          description: "Main property records table",
-          columns: [
-            { name: "id", type: "serial", description: "Unique identifier" },
-            { name: "propertyId", type: "text", description: "Property identification code" },
-            { name: "address", type: "text", description: "Property address" },
-            { name: "parcelNumber", type: "text", description: "Parcel identification number" },
-            { name: "propertyType", type: "text", description: "Type of property" },
-            { name: "acres", type: "numeric", description: "Property size in acres" },
-            { name: "value", type: "numeric", description: "Assessed property value" },
-            { name: "status", type: "text", description: "Current property status" },
-            { name: "lastUpdated", type: "timestamp", description: "Last update timestamp" },
-            { name: "createdAt", type: "timestamp", description: "Creation timestamp" }
-          ]
-        },
-        land_records: {
-          description: "Land record details table",
-          columns: [
-            { name: "id", type: "serial", description: "Unique identifier" },
-            { name: "propertyId", type: "text", description: "Property identification code" },
-            { name: "landUseCode", type: "text", description: "Land use classification code" },
-            { name: "zoning", type: "text", description: "Zoning classification" },
-            { name: "topography", type: "text", description: "Land topography" },
-            { name: "frontage", type: "numeric", description: "Property frontage measurement" },
-            { name: "depth", type: "numeric", description: "Property depth measurement" },
-            { name: "shape", type: "text", description: "Shape of the land parcel" },
-            { name: "utilities", type: "text", description: "Available utilities" },
-            { name: "floodZone", type: "text", description: "Flood zone classification" }
-          ]
-        },
-        improvements: {
-          description: "Property improvements table",
-          columns: [
-            { name: "id", type: "serial", description: "Unique identifier" },
-            { name: "propertyId", type: "text", description: "Property identification code" },
-            { name: "improvementType", type: "text", description: "Type of improvement" },
-            { name: "yearBuilt", type: "integer", description: "Year of construction" },
-            { name: "squareFeet", type: "numeric", description: "Square footage" },
-            { name: "bedrooms", type: "integer", description: "Number of bedrooms" },
-            { name: "bathrooms", type: "numeric", description: "Number of bathrooms" },
-            { name: "quality", type: "text", description: "Construction quality" },
-            { name: "condition", type: "text", description: "Current condition" }
-          ]
-        },
-        fields: {
-          description: "Custom property fields table",
-          columns: [
-            { name: "id", type: "serial", description: "Unique identifier" },
-            { name: "propertyId", type: "text", description: "Property identification code" },
-            { name: "fieldType", type: "text", description: "Type of field" },
-            { name: "fieldValue", type: "text", description: "Value of the field" }
-          ]
-        },
-        appeals: {
-          description: "Property assessment appeals table",
-          columns: [
-            { name: "id", type: "serial", description: "Unique identifier" },
-            { name: "propertyId", type: "text", description: "Property identification code" },
-            { name: "appealNumber", type: "text", description: "Appeal identification number" },
-            { name: "userId", type: "integer", description: "User who filed the appeal" },
-            { name: "reason", type: "text", description: "Reason for the appeal" },
-            { name: "details", type: "text", description: "Detailed explanation" },
-            { name: "evidenceUrls", type: "text[]", description: "URLs to supporting evidence" },
-            { name: "status", type: "text", description: "Current status of the appeal" },
-            { name: "appealType", type: "text", description: "Type of appeal" },
-            { name: "requestedValue", type: "text", description: "Value requested by appellant" },
-            { name: "assessmentYear", type: "text", description: "Assessment year being appealed" },
-            { name: "dateReceived", type: "timestamp", description: "Date appeal was received" },
-            { name: "hearingDate", type: "timestamp", description: "Scheduled hearing date" },
-            { name: "decision", type: "text", description: "Appeal decision" },
-            { name: "decisionDate", type: "timestamp", description: "Date decision was made" },
-            { name: "assignedTo", type: "integer", description: "User assigned to review appeal" }
-          ]
-        }
+  private async logToolExecution(
+    request: MCPRequest, 
+    context: MCPExecutionContext, 
+    status: string,
+    error?: Error
+  ): Promise<SystemActivity> {
+    const activityData: InsertSystemActivity = {
+      activity_type: 'tool_execution',
+      component: request.tool,
+      status,
+      details: {
+        tool: request.tool,
+        parameters: request.parameters,
+        requestId: context.requestId,
+        agentId: context.agentId,
+        userId: context.userId,
+        error: error ? error.message : undefined
       },
-      relationships: [
-        { 
-          name: "property_land_records", 
-          primaryTable: "properties",
-          foreignTable: "land_records",
-          primaryKey: "propertyId",
-          foreignKey: "propertyId"
-        },
-        { 
-          name: "property_improvements", 
-          primaryTable: "properties",
-          foreignTable: "improvements",
-          primaryKey: "propertyId",
-          foreignKey: "propertyId"
-        },
-        { 
-          name: "property_fields", 
-          primaryTable: "properties",
-          foreignTable: "fields",
-          primaryKey: "propertyId",
-          foreignKey: "propertyId"
-        },
-        { 
-          name: "property_appeals", 
-          primaryTable: "properties",
-          foreignTable: "appeals",
-          primaryKey: "propertyId",
-          foreignKey: "propertyId"
-        }
-      ]
+      created_at: new Date()
     };
+    
+    return this.storage.createSystemActivity(activityData);
   }
   
   /**
-   * Tool: Get properties with optional filtering
+   * Update AI agent status
    */
-  private async getProperties(params: any): Promise<Property[]> {
-    // Define a Zod schema for property filtering parameters
-    const propertyFilterSchema = z.object({
-      address: z.string().optional(),
-      propertyType: z.string().optional(),
-      status: z.string().optional(),
-      minValue: z.number().optional().or(z.string().regex(/^\d+(\.\d+)?$/).transform(Number).optional()),
-      maxValue: z.number().optional().or(z.string().regex(/^\d+(\.\d+)?$/).transform(Number).optional()),
-      limit: z.number().optional().or(z.string().regex(/^\d+$/).transform(Number).optional())
-    }).strict(); // Only allow defined fields
-    
-    // Validate and parse input parameters
-    // This will throw if validation fails, which will be caught by the executeRequest method
-    const validatedParams = propertyFilterSchema.parse(params);
-    
-    // Get all properties from storage
-    let properties = await storage.getAllProperties();
-    
-    // Apply filters
-    if (validatedParams.address) {
-      const sanitizedAddress = securityService.sanitizeString(validatedParams.address) || "";
-      properties = properties.filter(p => 
-        p.address.toLowerCase().includes(sanitizedAddress.toLowerCase())
-      );
-    }
-    
-    if (validatedParams.propertyType) {
-      const sanitizedType = securityService.sanitizeString(validatedParams.propertyType) || "";
-      properties = properties.filter(p => 
-        p.propertyType.toLowerCase() === sanitizedType.toLowerCase()
-      );
-    }
-    
-    if (validatedParams.status) {
-      const sanitizedStatus = securityService.sanitizeString(validatedParams.status) || "";
-      properties = properties.filter(p => 
-        p.status.toLowerCase() === sanitizedStatus.toLowerCase()
-      );
-    }
-    
-    if (validatedParams.minValue !== undefined) {
-      const minValue = validatedParams.minValue;
-      properties = properties.filter(p => 
-        p.value !== null && Number(p.value) >= minValue
-      );
-    }
-    
-    if (validatedParams.maxValue !== undefined) {
-      const maxValue = validatedParams.maxValue;
-      properties = properties.filter(p => 
-        p.value !== null && Number(p.value) <= maxValue
-      );
-    }
-    
-    // Apply limit with reasonable max to prevent DoS
-    const MAX_RESULTS = 1000;
-    const limit = validatedParams.limit ? Math.min(validatedParams.limit, MAX_RESULTS) : MAX_RESULTS;
-    properties = properties.slice(0, limit);
-    
-    return properties;
+  private async updateAgentStatus(agentId: number, status: string, performance: number): Promise<void> {
+    await this.storage.updateAiAgentStatus(agentId, status, performance);
   }
   
   /**
-   * Tool: Get property by ID
+   * Register default tools
    */
-  private async getPropertyById(params: any): Promise<Property | null> {
-    // Define schema for property ID validation
-    const propertyIdSchema = z.object({
-      propertyId: z.string().min(1).max(50)
-        .refine(id => securityService.isValidPropertyId(id), {
-          message: "Invalid property ID format"
-        })
-    }).strict();
-    
-    // Validate and sanitize input
-    const { propertyId } = propertyIdSchema.parse(params);
-    const sanitizedPropertyId = securityService.sanitizeString(propertyId);
-    
-    if (!sanitizedPropertyId) {
-      throw new Error("Invalid property ID");
-    }
-    
-    // Retrieve property with validated ID
-    const property = await storage.getPropertyByPropertyId(sanitizedPropertyId);
-    return property || null;
-  }
-  
-  /**
-   * Tool: Generate map URL for property
-   */
-  private async generateMapUrl(params: any): Promise<any> {
-    // Define schema for map URL generation parameters
-    const mapUrlSchema = z.object({
-      mapType: z.enum(['esri', 'google', 'pictometry']),
-      propertyId: z.string().min(1).max(50).optional(),
-      address: z.string().min(1).max(200).optional()
-    }).refine(data => data.propertyId || data.address, {
-      message: "Either propertyId or address is required"
+  private registerDefaultTools(): void {
+    // PACS Module tools
+    this.registerTool({
+      name: 'pacs.listModules',
+      description: 'Lists all available PACS modules',
+      parameters: {},
+      requiresAuth: true,
+      requiredPermissions: ['pacs.read'],
+      handler: async () => {
+        return await this.pacsService.getPacsModules();
+      }
     });
     
-    // Validate and sanitize input
-    const validatedParams = mapUrlSchema.parse(params);
-    
-    // Ensure strings are sanitized to prevent XSS, etc.
-    const { mapType } = validatedParams;
-    const propertyId = validatedParams.propertyId ? securityService.sanitizeString(validatedParams.propertyId) : null;
-    const address = validatedParams.address ? securityService.sanitizeString(validatedParams.address) : null;
-    
-    // Ensure at least one identifier is provided after sanitization
-    if (!propertyId && !address) {
-      throw new Error("Either propertyId or address is required");
-    }
-    
-    let result: any = {};
-    
-    if (propertyId) {
-      // Ensure we're working with a valid property ID
-      if (!securityService.isValidPropertyId(propertyId)) {
-        throw new Error("Invalid property ID format");
+    this.registerTool({
+      name: 'pacs.getModuleById',
+      description: 'Get a specific PACS module by ID',
+      parameters: {
+        id: 'number'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['pacs.read'],
+      handler: async (parameters) => {
+        const { id } = parameters;
+        return await this.pacsService.getPacsModuleById(id);
       }
-      
-      const property = await storage.getPropertyByPropertyId(propertyId);
-      
-      if (!property) {
-        throw new Error(`Property not found with ID: ${propertyId}`);
-      }
-      
-      if (mapType === 'esri') {
-        result.url = mappingIntegration.generateEsriMapUrl(propertyId, property.parcelNumber);
-      } else if (mapType === 'google') {
-        result.url = mappingIntegration.generateGoogleMapsUrl(property.address);
-      } else if (mapType === 'pictometry') {
-        // Use a more secure approach to generate coordinates
-        // Instead of using parseInt which could be manipulated
-        // Use createHash from Node's crypto module
-        const propertyHash = require('crypto').createHash('md5').update(propertyId).digest('hex');
-        const hashNum = parseInt(propertyHash.substring(0, 8), 16);
-        
-        // Use the hash to generate stable but pseudorandom coordinates
-        const lat = 46.2 + (hashNum % 100) / 1000; // Small variation
-        const lng = -119.2 - (hashNum % 100) / 1000; // Small variation
-        
-        result.url = mappingIntegration.generatePictometryUrl(lat, lng);
-      }
-      
-      result.propertyId = propertyId;
-      result.address = property.address;
-    } else if (address) {
-      if (mapType === 'google') {
-        result.url = mappingIntegration.generateGoogleMapsUrl(address);
-      } else {
-        throw new Error(`Map type ${mapType} requires a property ID`);
-      }
-      
-      result.address = address;
-    }
-    
-    return result;
-  }
-  
-  /**
-   * Tool: Get PACS modules
-   */
-  private async getPacsModules(params: any): Promise<PacsModule[]> {
-    // Define a schema for PACS module filtering
-    const moduleFilterSchema = z.object({
-      filter: z.object({
-        moduleName: z.string().optional(),
-        integration: z.string().optional()
-      }).optional(),
-      // Also allow direct filtering
-      moduleName: z.string().optional(),
-      integration: z.string().optional()
     });
     
-    // Validate input
-    const validatedParams = moduleFilterSchema.parse(params);
-    
-    // Get all modules
-    let modules = await storage.getAllPacsModules();
-    
-    // Handle filters passed in the filter object or directly
-    const filter = validatedParams.filter || validatedParams;
-    
-    // Apply moduleName filter with sanitization
-    if (filter.moduleName) {
-      const sanitizedModuleName = securityService.sanitizeString(filter.moduleName) || "";
-      modules = modules.filter(m => 
-        m.moduleName.toLowerCase().includes(sanitizedModuleName.toLowerCase())
-      );
-    }
-    
-    // Apply integration filter with sanitization
-    if (filter.integration) {
-      const sanitizedIntegration = securityService.sanitizeString(filter.integration) || "";
-      modules = modules.filter(m => 
-        m.integration.toLowerCase() === sanitizedIntegration.toLowerCase()
-      );
-    }
-    
-    // Apply reasonable limit to prevent potential DoS
-    const MAX_RESULTS = 1000;
-    modules = modules.slice(0, MAX_RESULTS);
-    
-    console.log(`Found ${modules.length} PACS modules matching filter criteria`);
-    return modules;
-  }
-  
-  /**
-   * Tool: Import or update a PACS module
-   */
-  private async importPacsModule(params: any): Promise<{ success: boolean, module?: PacsModule }> {
-    // Define a schema for PACS module creation/update
-    const moduleCreateSchema = z.object({
-      name: z.string().min(1).max(255),
-      source: z.string().min(1).max(255),
-      status: z.string().min(1).max(50),
-      category: z.string().optional(),
-      description: z.string().optional(),
-      version: z.string().optional(),
-      lastUpdated: z.string().optional()
+    this.registerTool({
+      name: 'pacs.getModulesByCategory',
+      description: 'Get PACS modules grouped by category',
+      parameters: {},
+      requiresAuth: true,
+      requiredPermissions: ['pacs.read'],
+      handler: async () => {
+        return await this.pacsService.getPacsModulesByCategory();
+      }
     });
     
-    // Validate input
-    const validatedParams = moduleCreateSchema.parse(params);
+    this.registerTool({
+      name: 'pacs.executeOperation',
+      description: 'Execute an operation on a PACS module',
+      parameters: {
+        moduleId: 'number',
+        operation: 'string',
+        parameters: 'object'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['pacs.write'],
+      handler: async (parameters) => {
+        const { moduleId, operation, parameters: opParameters } = parameters;
+        return await this.pacsService.executeModuleOperation(moduleId, operation, opParameters);
+      }
+    });
     
-    try {
-      // Sanitize all input values to prevent attacks
-      const moduleName = securityService.sanitizeString(validatedParams.name) || "";
-      const source = securityService.sanitizeString(validatedParams.source) || "PACS WA";
-      const integration = securityService.sanitizeString(validatedParams.status) || "pending";
-      const description = securityService.sanitizeString(validatedParams.description) || "";
-      
-      // Create the module data structure
-      const moduleData = {
-        moduleName,
-        source,
-        integration,
-        description
-      };
-      
-      // Log the import operation
-      console.log(`Importing PACS module: ${moduleName} from ${source} with status ${integration}`);
-      
-      // Save to database via storage service
-      const savedModule = await storage.upsertPacsModule(moduleData);
-      
-      // Create audit log for the import
-      await storage.createAuditLog({
-        userId: 1, // Admin user ID
-        action: "IMPORT",
-        entityType: "pacs_module",
-        entityId: String(savedModule.id),
-        details: {
-          moduleName,
-          source,
-          integration,
-          timestamp: new Date().toISOString()
-        },
-        ipAddress: "system"
-      });
-      
-      // Return success response
-      return {
-        success: true,
-        module: savedModule
-      };
-    } catch (error) {
-      console.error(`Error importing PACS module:`, error);
-      return {
-        success: false
-      };
-    }
+    this.registerTool({
+      name: 'pacs.syncModule',
+      description: 'Sync a specific PACS module',
+      parameters: {
+        moduleId: 'number'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['pacs.write'],
+      handler: async (parameters) => {
+        const { moduleId } = parameters;
+        return await this.pacsService.syncPacsModule(moduleId);
+      }
+    });
+    
+    this.registerTool({
+      name: 'pacs.syncAllModules',
+      description: 'Sync all PACS modules',
+      parameters: {},
+      requiresAuth: true,
+      requiredPermissions: ['pacs.admin'],
+      handler: async () => {
+        return await this.pacsService.syncAllPacsModules();
+      }
+    });
+    
+    // Property tools
+    this.registerTool({
+      name: 'property.getAll',
+      description: 'Get all properties',
+      parameters: {},
+      requiresAuth: true,
+      requiredPermissions: ['property.read'],
+      handler: async () => {
+        return await this.storage.getAllProperties();
+      }
+    });
+    
+    this.registerTool({
+      name: 'property.getById',
+      description: 'Get a property by ID',
+      parameters: {
+        id: 'number'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['property.read'],
+      handler: async (parameters) => {
+        const { id } = parameters;
+        return await this.storage.getProperty(id);
+      }
+    });
+    
+    this.registerTool({
+      name: 'property.getByPropertyId',
+      description: 'Get a property by property ID',
+      parameters: {
+        propertyId: 'string'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['property.read'],
+      handler: async (parameters) => {
+        const { propertyId } = parameters;
+        return await this.storage.getPropertyByPropertyId(propertyId);
+      }
+    });
+    
+    // Land Record tools
+    this.registerTool({
+      name: 'landRecord.getByPropertyId',
+      description: 'Get land records by property ID',
+      parameters: {
+        propertyId: 'string'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['property.read'],
+      handler: async (parameters) => {
+        const { propertyId } = parameters;
+        return await this.storage.getLandRecordsByPropertyId(propertyId);
+      }
+    });
+    
+    // Improvement tools
+    this.registerTool({
+      name: 'improvement.getByPropertyId',
+      description: 'Get improvements by property ID',
+      parameters: {
+        propertyId: 'string'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['property.read'],
+      handler: async (parameters) => {
+        const { propertyId } = parameters;
+        return await this.storage.getImprovementsByPropertyId(propertyId);
+      }
+    });
+    
+    // Field tools
+    this.registerTool({
+      name: 'field.getByPropertyId',
+      description: 'Get fields by property ID',
+      parameters: {
+        propertyId: 'string'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['property.read'],
+      handler: async (parameters) => {
+        const { propertyId } = parameters;
+        return await this.storage.getFieldsByPropertyId(propertyId);
+      }
+    });
+    
+    // Appeal tools
+    this.registerTool({
+      name: 'appeal.getByPropertyId',
+      description: 'Get appeals by property ID',
+      parameters: {
+        propertyId: 'string'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['appeal.read'],
+      handler: async (parameters) => {
+        const { propertyId } = parameters;
+        return await this.storage.getAppealsByPropertyId(propertyId);
+      }
+    });
+    
+    this.registerTool({
+      name: 'appeal.getByUserId',
+      description: 'Get appeals by user ID',
+      parameters: {
+        userId: 'number'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['appeal.read'],
+      handler: async (parameters) => {
+        const { userId } = parameters;
+        return await this.storage.getAppealsByUserId(userId);
+      }
+    });
+    
+    this.registerTool({
+      name: 'appeal.updateStatus',
+      description: 'Update appeal status',
+      parameters: {
+        id: 'number',
+        status: 'string'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['appeal.write'],
+      handler: async (parameters) => {
+        const { id, status } = parameters;
+        return await this.storage.updateAppealStatus(id, status);
+      }
+    });
+    
+    // Agent tools
+    this.registerTool({
+      name: 'agent.getAll',
+      description: 'Get all AI agents',
+      parameters: {},
+      requiresAuth: true,
+      requiredPermissions: ['admin'],
+      handler: async () => {
+        return await this.storage.getAllAiAgents();
+      }
+    });
+    
+    this.registerTool({
+      name: 'agent.updateStatus',
+      description: 'Update AI agent status',
+      parameters: {
+        id: 'number',
+        status: 'string',
+        performance: 'number'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['admin'],
+      handler: async (parameters) => {
+        const { id, status, performance } = parameters;
+        return await this.storage.updateAiAgentStatus(id, status, performance);
+      }
+    });
+    
+    // Audit tools
+    this.registerTool({
+      name: 'audit.getLogs',
+      description: 'Get audit logs',
+      parameters: {
+        limit: 'number?'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['admin'],
+      handler: async (parameters) => {
+        const { limit } = parameters;
+        return await this.storage.getAuditLogs(limit);
+      }
+    });
+    
+    // System activity tools
+    this.registerTool({
+      name: 'system.getActivities',
+      description: 'Get system activities',
+      parameters: {
+        limit: 'number?'
+      },
+      requiresAuth: true,
+      requiredPermissions: ['admin'],
+      handler: async (parameters) => {
+        const { limit } = parameters;
+        return await this.storage.getSystemActivities(limit);
+      }
+    });
   }
 }
-
-export const mcpService = new MCPService();
