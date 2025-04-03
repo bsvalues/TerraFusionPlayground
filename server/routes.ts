@@ -500,6 +500,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/mcp/execute", async (req, res) => {
     try {
+      // Get client IP for rate limiting and security logging
+      const clientIp = req.ip || req.socket.remoteAddress || "unknown";
+      
+      // Apply rate limiting - protect against brute force and DoS attacks
+      const rateLimitCheck = securityService.checkRateLimit(clientIp, 'mcp_execute');
+      if (!rateLimitCheck.allowed) {
+        console.warn(`Rate limit exceeded for IP: ${clientIp} on MCP execute endpoint`);
+        
+        // Log the rate limit violation
+        await securityService.logSecurityEvent(
+          1, // Admin user
+          "RATE_LIMIT_EXCEEDED",
+          "mcp_request",
+          null,
+          { endpoint: "/api/mcp/execute", ipAddress: clientIp },
+          clientIp
+        );
+        
+        return res.status(429).json({
+          success: false,
+          message: rateLimitCheck.message || "Too many requests. Please try again later."
+        });
+      }
+      
       const mcpRequest: MCPRequest = req.body;
       
       if (!mcpRequest.toolName) {
@@ -515,7 +539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "mcp_request",
           null,
           { mcpRequest },
-          req.ip || "unknown"
+          clientIp
         );
         return res.status(400).json({ 
           message: "Invalid request format. 'parameters' must be an object"
@@ -531,9 +555,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           null,
           { 
             toolName: mcpRequest.toolName,
-            remoteAddress: req.ip || "unknown" 
+            remoteAddress: clientIp 
           },
-          req.ip || "unknown"
+          clientIp
         );
         
         // Don't reveal that we detected an injection attempt
@@ -576,7 +600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             toolName: mcpRequest.toolName,
             success: result.success
           },
-          ipAddress: req.ip || "unknown" || "unknown"
+          ipAddress: clientIp
         });
         
         // Send notification if this is a significant event

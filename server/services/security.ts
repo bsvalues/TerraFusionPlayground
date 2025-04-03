@@ -11,7 +11,24 @@ import { z } from 'zod';
 import { AuditLog } from '@shared/schema';
 import { storage } from '../storage';
 
+/**
+ * Interface for rate limiter entry
+ */
+interface RateLimitEntry {
+  count: number;
+  timestamp: number;
+  blocked: boolean;
+  blockExpires?: number;
+}
+
 export class SecurityService {
+  // Rate limiter storage (IP address -> request data)
+  private rateLimits: Map<string, RateLimitEntry> = new Map();
+  
+  // Rate limit configuration
+  private readonly RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute window
+  private readonly RATE_LIMIT_MAX_REQUESTS = 100; // Maximum requests per window
+  private readonly RATE_LIMIT_BLOCK_DURATION = 10 * 60 * 1000; // 10 minute block
   /**
    * Sanitize a string to protect against XSS attacks
    * @param input The input string to sanitize
@@ -263,6 +280,88 @@ export class SecurityService {
       default:
         return z.any();
     }
+  }
+  /**
+   * Check if a request from the given IP address is allowed based on rate limits
+   * @param ipAddress The IP address to check
+   * @param endpoint Optional endpoint for endpoint-specific rate limiting
+   * @returns Object with allowed status and message if blocked
+   */
+  checkRateLimit(ipAddress: string, endpoint?: string): { allowed: boolean; message?: string } {
+    const now = Date.now();
+    const key = endpoint ? `${ipAddress}:${endpoint}` : ipAddress;
+    const entry = this.rateLimits.get(key);
+    
+    // If no existing entry, create one and allow the request
+    if (!entry) {
+      this.rateLimits.set(key, {
+        count: 1,
+        timestamp: now,
+        blocked: false
+      });
+      return { allowed: true };
+    }
+    
+    // Check if IP is blocked
+    if (entry.blocked) {
+      // Check if block has expired
+      if (entry.blockExpires && now > entry.blockExpires) {
+        // Reset the entry
+        this.rateLimits.set(key, {
+          count: 1,
+          timestamp: now,
+          blocked: false
+        });
+        return { allowed: true };
+      }
+      
+      return { 
+        allowed: false, 
+        message: `Rate limit exceeded. IP address blocked temporarily. Try again later.` 
+      };
+    }
+    
+    // Check if we're in a new window
+    if (now - entry.timestamp > this.RATE_LIMIT_WINDOW) {
+      // Reset for new window
+      this.rateLimits.set(key, {
+        count: 1,
+        timestamp: now,
+        blocked: false
+      });
+      return { allowed: true };
+    }
+    
+    // Increment count for current window
+    entry.count++;
+    
+    // Check if rate limit is exceeded
+    if (entry.count > this.RATE_LIMIT_MAX_REQUESTS) {
+      // Block the IP
+      entry.blocked = true;
+      entry.blockExpires = now + this.RATE_LIMIT_BLOCK_DURATION;
+      
+      // Log the rate limit violation
+      this.logSecurityEvent(
+        1, // Admin user ID
+        "RATE_LIMIT_EXCEEDED",
+        "api_request",
+        null,
+        { ipAddress, endpoint, requestCount: entry.count },
+        ipAddress
+      ).catch(err => console.error("Failed to log rate limit violation:", err));
+      
+      return { 
+        allowed: false, 
+        message: `Rate limit exceeded. Too many requests. Try again later.` 
+      };
+    }
+    
+    // Update the entry
+    this.rateLimits.set(key, entry);
+    
+    // Request is allowed
+    return { allowed: true };
   }
 }
 
