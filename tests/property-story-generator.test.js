@@ -8,9 +8,9 @@
  * - Options handling
  * - Fallback behavior when API fails
  */
-const fetch = require('node-fetch');
-const { spawn } = require('child_process');
-const { setTimeout } = require('timers/promises');
+import fetch from 'node-fetch';
+import { spawn } from 'child_process';
+import { setTimeout } from 'timers/promises';
 
 let serverProcess;
 const PORT = 5000;

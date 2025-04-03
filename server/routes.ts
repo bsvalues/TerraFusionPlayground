@@ -1400,6 +1400,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Generate a story for a single property with property ID in URL (POST method)
+  app.post("/api/property-stories/:propertyId", async (req, res) => {
+    try {
+      const { propertyId } = req.params;
+      const options: PropertyStoryOptions = req.body || {};
+      
+      // Generate the property story
+      const result = await propertyStoryGenerator.generatePropertyStory(propertyId, options);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "GENERATE",
+        entityType: "propertyStory",
+        entityId: propertyId,
+        details: { options },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      // Return the result
+      res.json(result);
+    } catch (error) {
+      console.error('Error generating property story with custom options:', error);
+      res.status(500).json({ 
+        error: 'Failed to generate property story',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
   // Create HTTP server and initialize WebSocket for real-time notifications
   const httpServer = createServer(app);
   
