@@ -7,7 +7,7 @@
  */
 
 import { IStorage } from "../storage";
-import { openaiService } from "./openai-service";
+import { openaiService, OpenAIErrorType } from "./openai-service";
 
 // Property Story Generator Options
 export interface PropertyStoryOptions {
@@ -185,7 +185,7 @@ export class PropertyStoryGenerator {
       if (improvements && improvements.length > 0) {
         promptContent += "\nImprovements:\n";
         improvements.forEach((imp, index) => {
-          promptContent += `${index + 1}. ${imp.improvementType} (${imp.yearBuilt}): ${imp.description}, ${imp.area} sq ft\n`;
+          promptContent += `${index + 1}. ${imp.improvementType} (${imp.yearBuilt}): ${imp.description || ''}, ${imp.area} sq ft\n`;
         });
       }
       
@@ -207,16 +207,39 @@ export class PropertyStoryGenerator {
       
       // Call OpenAI service
       const systemPrompt = "You are an expert property assessor and real estate analyst. Write informative, factual, and objective descriptions of properties based on assessment data.";
-      const generatedText = await openaiService.generateText(
-        promptContent,
-        systemPrompt,
-        options.maxLength || 1000
-      );
       
-      return generatedText;
+      try {
+        const generatedText = await openaiService.generateText(
+          promptContent,
+          systemPrompt,
+          options.maxLength || 1000
+        );
+        
+        return generatedText;
+      } catch (openaiError: any) {
+        // Check if this is a rate limit or quota exceeded error
+        if (openaiService.isRateLimitError(openaiError)) {
+          console.warn(`OpenAI API rate limit reached for property ${property.propertyId}, using fallback template generation.`);
+          return this.generateWithTemplate(property, improvements, landRecords, appeals, options);
+        }
+        
+        // Get detailed error information
+        const errorDetails = openaiService.getErrorDetails(openaiError);
+        console.error(`OpenAI API error (${errorDetails.type}) for property ${property.propertyId}: ${errorDetails.message}`);
+        
+        // Only use template fallback for specific error types
+        if (errorDetails.type === OpenAIErrorType.RATE_LIMIT || 
+            errorDetails.type === OpenAIErrorType.QUOTA_EXCEEDED ||
+            errorDetails.type === OpenAIErrorType.SERVER_ERROR) {
+          return this.generateWithTemplate(property, improvements, landRecords, appeals, options);
+        }
+        
+        // For other error types, rethrow to be handled by the caller
+        throw new Error(`Failed to generate property story: ${errorDetails.message}`);
+      }
     } catch (error) {
-      console.error("Error in OpenAI generation:", error);
-      // Fall back to template generation on OpenAI failure
+      console.error("Error in property story generation:", error);
+      // Fall back to template generation on any other error
       return this.generateWithTemplate(property, improvements, landRecords, appeals, options);
     }
   }
@@ -253,16 +276,40 @@ export class PropertyStoryGenerator {
       
       // Call OpenAI service
       const systemPrompt = "You are an expert property assessor and real estate analyst. Write informative, factual, and objective comparisons of properties based on assessment data.";
-      const generatedText = await openaiService.generateText(
-        promptContent,
-        systemPrompt,
-        options.maxLength || 1500
-      );
       
-      return generatedText;
+      try {
+        const generatedText = await openaiService.generateText(
+          promptContent,
+          systemPrompt,
+          options.maxLength || 1500
+        );
+        
+        return generatedText;
+      } catch (openaiError: any) {
+        // Check if this is a rate limit or quota exceeded error
+        if (openaiService.isRateLimitError(openaiError)) {
+          const propertyIds = properties.map(p => p.propertyId).join(', ');
+          console.warn(`OpenAI API rate limit reached for property comparison [${propertyIds}], using fallback template generation.`);
+          return this.generateComparisonWithTemplate(properties, options);
+        }
+        
+        // Get detailed error information
+        const errorDetails = openaiService.getErrorDetails(openaiError);
+        console.error(`OpenAI API error (${errorDetails.type}) for property comparison: ${errorDetails.message}`);
+        
+        // Only use template fallback for specific error types
+        if (errorDetails.type === OpenAIErrorType.RATE_LIMIT || 
+            errorDetails.type === OpenAIErrorType.QUOTA_EXCEEDED ||
+            errorDetails.type === OpenAIErrorType.SERVER_ERROR) {
+          return this.generateComparisonWithTemplate(properties, options);
+        }
+        
+        // For other error types, rethrow to be handled by the caller
+        throw new Error(`Failed to generate property comparison: ${errorDetails.message}`);
+      }
     } catch (error) {
-      console.error("Error in OpenAI comparison generation:", error);
-      // Fall back to template generation on OpenAI failure
+      console.error("Error in property comparison generation:", error);
+      // Fall back to template generation on any other error
       return this.generateComparisonWithTemplate(properties, options);
     }
   }
@@ -401,8 +448,31 @@ export class PropertyStoryGenerator {
   
   /**
    * Generate a friendly error message
+   * 
+   * This provides a human-readable error message with appropriate guidance
    */
   private generateErrorMessage(error: any): string {
+    // Check if this is an OpenAI error by trying to use the error handling utility
+    try {
+      // If it's an OpenAI error, we can get more specific information
+      if (error.message && error.message.includes('OpenAI')) {
+        // Try to parse the specific type of OpenAI error if possible
+        if (openaiService.isRateLimitError(error)) {
+          return `We're currently experiencing high demand for our AI service. Please try again in a few minutes or use the template-based option by setting 'aiProvider' to 'template'.`;
+        }
+        
+        // For other OpenAI errors, provide a more general message
+        return `Unable to generate AI-powered property story at this time due to an issue with our AI provider. Our system will automatically use template-based responses until the service is restored.`;
+      }
+    } catch (parseError) {
+      // If error parsing fails, continue to generic handling
+    }
+
+    // For non-OpenAI errors, provide a generic message
+    if (error.message && error.message.includes('not found')) {
+      return `Property not found. Please check the property ID and try again.`;
+    }
+    
     return `Unable to generate property story at this time. Error: ${error.message || "Unknown error"}. Please try again later or contact support for assistance.`;
   }
 }
