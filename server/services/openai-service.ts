@@ -8,8 +8,56 @@
 
 import OpenAI from "openai";
 
-// Initialize OpenAI client with API key from environment variable
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+/**
+ * Validate the OpenAI API key
+ * @returns True if the API key is valid and present, false otherwise
+ */
+export function isOpenAIApiKeyValid(): boolean {
+  const apiKey = process.env.OPENAI_API_KEY;
+  
+  // Basic validation check
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
+    return false;
+  }
+  
+  // OpenAI API keys typically have a specific format and length
+  // They start with "sk-" and are followed by a long string
+  if (!apiKey.startsWith('sk-') || apiKey.length < 40) {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Get an instance of the OpenAI client with proper error handling
+ * @throws Error if the API key is not valid
+ * @returns OpenAI client instance
+ */
+export function getOpenAIClient(): OpenAI {
+  if (!isOpenAIApiKeyValid()) {
+    throw new Error('OpenAI API key is missing or invalid. Please add a valid OPENAI_API_KEY to your environment variables.');
+  }
+  
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
+
+// Initialize OpenAI client with error handling
+let openai: OpenAI;
+try {
+  openai = getOpenAIClient();
+} catch (err) {
+  const error = err as Error;
+  console.warn('Failed to initialize OpenAI client:', error.message);
+  // Create a placeholder client that will throw appropriate errors when used
+  openai = new Proxy({} as OpenAI, {
+    get: (_, prop) => {
+      return () => {
+        throw new Error('OpenAI API is not properly configured. Please check your OPENAI_API_KEY.');
+      };
+    }
+  });
+}
 
 /**
  * OpenAI API Error Types

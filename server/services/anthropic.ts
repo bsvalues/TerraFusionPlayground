@@ -2,10 +2,56 @@ import Anthropic from '@anthropic-ai/sdk';
 import { storage } from '../storage';
 import { z } from 'zod';
 
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY // Make sure to add this to your environment variables
-});
+/**
+ * Validate the Anthropic API key
+ * @returns True if the API key is valid and present, false otherwise
+ */
+export function isAnthropicApiKeyValid(): boolean {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  // Basic validation check - at minimum the key must be present and in the correct format
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
+    return false;
+  }
+  
+  // Anthropic API keys typically start with 'sk-ant-' and have a minimum length
+  if (!apiKey.startsWith('sk-ant-') || apiKey.length < 20) {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Get an instance of the Anthropic client with proper error handling
+ * @throws Error if the API key is not valid
+ * @returns Anthropic client instance
+ */
+export function getAnthropicClient(): Anthropic {
+  if (!isAnthropicApiKeyValid()) {
+    throw new Error('Anthropic API key is missing or invalid. Please add a valid ANTHROPIC_API_KEY to your environment variables.');
+  }
+  
+  return new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY
+  });
+}
+
+// Initialize Anthropic client with error handling
+let anthropic: Anthropic;
+try {
+  anthropic = getAnthropicClient();
+} catch (err) {
+  const error = err as Error;
+  console.warn('Failed to initialize Anthropic client:', error.message);
+  // Create a placeholder client that will throw appropriate errors when used
+  anthropic = new Proxy({} as Anthropic, {
+    get: (_, prop) => {
+      return () => {
+        throw new Error('Anthropic API is not properly configured. Please check your ANTHROPIC_API_KEY.');
+      };
+    }
+  });
+}
 
 // Schema for the structured query
 const structuredQuerySchema = z.object({
@@ -58,6 +104,10 @@ type StructuredQuery = z.infer<typeof structuredQuerySchema>;
 
 // Function to execute natural language queries using Anthropic
 export async function processNaturalLanguageWithAnthropic(query: string) {
+  if (!isAnthropicApiKeyValid()) {
+    throw new Error('Cannot process natural language query: Anthropic API key is missing or invalid');
+  }
+
   try {
     // Create the system prompt
     const systemPrompt = `You are an AI assistant for the Benton County, Washington property tax system.
@@ -111,8 +161,11 @@ INSTRUCTIONS:
   "sort": { field: string, direction: "asc" | "desc" } | null
 }`;
 
+    // Create a fresh Anthropic client instance to ensure we have the latest API key
+    const client = getAnthropicClient();
+    
     // Send the message to Anthropic's Claude
-    const message = await anthropic.messages.create({
+    const message = await client.messages.create({
       model: 'claude-3-sonnet-20240229',
       max_tokens: 1000,
       temperature: 0,
@@ -122,38 +175,77 @@ INSTRUCTIONS:
       ]
     });
 
+    // Validate the response has content
+    if (!message.content || message.content.length === 0) {
+      throw new Error('Received empty response from Anthropic API');
+    }
+
     // Parse the response to extract the JSON
     const responseContent = message.content[0].type === 'text' 
       ? message.content[0].text 
       : JSON.stringify(message.content[0]);
+    
+    if (!responseContent) {
+      throw new Error('Unable to extract text content from Anthropic response');
+    }
     
     // Find JSON object in the response (it might have Markdown code block formatting)
     const jsonMatch = responseContent.match(/```json\s*([\s\S]*?)\s*```/) || 
                      responseContent.match(/```\s*([\s\S]*?)\s*```/) || 
                      [null, responseContent];
     
-    const jsonStr = jsonMatch[1].trim();
-    const structuredQuery = JSON.parse(jsonStr);
-    
-    // Validate the structured query against our schema
-    const validatedQuery = structuredQuerySchema.parse(structuredQuery);
-    
-    // Make sure the original query is stored in the structuredQuery
-    if (!validatedQuery.query) {
-      validatedQuery.query = query;
+    if (!jsonMatch || !jsonMatch[1]) {
+      throw new Error('Unable to parse JSON structure from Anthropic response');
     }
     
-    // Execute the query based on the structured parameters
-    return await executeStructuredQuery(validatedQuery);
-  } catch (error) {
+    const jsonStr = jsonMatch[1].trim();
+    
+    try {
+      const structuredQuery = JSON.parse(jsonStr);
+      
+      // Validate the structured query against our schema
+      const validatedQuery = structuredQuerySchema.parse(structuredQuery);
+      
+      // Make sure the original query is stored in the structuredQuery
+      if (!validatedQuery.query) {
+        validatedQuery.query = query;
+      }
+      
+      // Execute the query based on the structured parameters
+      return await executeStructuredQuery(validatedQuery);
+    } catch (err) {
+      const parseError = err as Error;
+      console.error("JSON parsing error:", parseError);
+      throw new Error(`Failed to parse or validate structured query: ${parseError.message}`);
+    }
+  } catch (err) {
+    const error = err as any; // Using any to access potential status codes
     console.error("Error processing natural language query with Anthropic:", error);
-    throw new Error("Failed to process the natural language query");
+    
+    // Provide more specific error messages based on error type
+    if (error.status === 401) {
+      throw new Error("Authentication error: Invalid Anthropic API key");
+    } else if (error.status === 429) {
+      throw new Error("Rate limit exceeded with Anthropic API. Please try again later.");
+    } else if (error.status >= 500) {
+      throw new Error("Anthropic service is currently experiencing issues. Please try again later.");
+    }
+    
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to process the natural language query: ${errorMessage}`);
   }
 }
 
 // Function to get a summary of properties from a natural language query
 export async function getSummaryWithAnthropic(query: string) {
   const result = await processNaturalLanguageWithAnthropic(query);
+  
+  if (!isAnthropicApiKeyValid()) {
+    return {
+      ...result,
+      summary: "Unable to generate summary: Anthropic API key is missing or invalid."
+    };
+  }
   
   try {
     // Create a system prompt for summarization
@@ -169,8 +261,11 @@ Be objective and only report what is directly supported by the data.`;
     // Create the user message with query and data
     const userMessage = `QUERY: ${query}\n\nDATA:\n${dataString}`;
     
+    // Create a fresh client instance to ensure we have the latest API key
+    const client = getAnthropicClient();
+    
     // Send the message to Anthropic's Claude
-    const message = await anthropic.messages.create({
+    const message = await client.messages.create({
       model: 'claude-3-haiku-20240307',
       max_tokens: 500,
       temperature: 0,
@@ -180,20 +275,44 @@ Be objective and only report what is directly supported by the data.`;
       ]
     });
 
+    // Validate the response has content
+    if (!message.content || message.content.length === 0) {
+      throw new Error('Received empty response from Anthropic API during summary generation');
+    }
+
     // Extract the summary from the response
     const summary = message.content[0].type === 'text'
       ? message.content[0].text.trim()
       : JSON.stringify(message.content[0]);
     
+    if (!summary) {
+      throw new Error('Unable to extract summary from Anthropic response');
+    }
+    
     return {
       ...result,
       summary
     };
-  } catch (error) {
+  } catch (err) {
+    const error = err as any;
     console.error("Error generating summary with Anthropic:", error);
+    
+    // Provide more specific error messages based on error type
+    let errorMessage = "Failed to generate summary.";
+    
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        errorMessage = "API key validation error: Please check your Anthropic API key.";
+      } else if (error.message.includes('rate limit') || (error as any).status === 429) {
+        errorMessage = "Rate limit exceeded with Anthropic API. Please try again later.";
+      } else if ((error as any).status >= 500) {
+        errorMessage = "Anthropic service is currently experiencing issues. Please try again later.";
+      }
+    }
+    
     return {
       ...result,
-      summary: "Failed to generate summary."
+      summary: errorMessage
     };
   }
 }
