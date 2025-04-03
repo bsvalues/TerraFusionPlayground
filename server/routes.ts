@@ -17,7 +17,7 @@ import {
 } from "@shared/schema";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
-import { isEmailServiceConfigured, sendPropertyInsightShareEmail } from "./services/email-service";
+import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
 // import { PacsIntegration } from "./services/pacs-integration"; // Not implemented yet
 import { mappingIntegration } from "./services/mapping-integration";
 import { notificationService, NotificationType } from "./services/notification-service";
@@ -1698,6 +1698,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Email a property insight share
+  // Debug endpoint to create test email account (only available in non-production)
+  app.get("/api/debug/email/create-test-account", async (_req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({
+        message: "This endpoint is not available in production mode"
+      });
+    }
+
+    try {
+      const testAccount = await createTestEmailAccount();
+      res.json({
+        success: true,
+        message: "Test email account created successfully",
+        account: {
+          user: testAccount.user,
+          host: testAccount.smtp.host,
+          port: testAccount.smtp.port
+        },
+        testMailbox: {
+          previewUrl: testAccount.previewUrl
+        }
+      });
+    } catch (error) {
+      console.error("Error creating test email account:", error);
+      res.status(500).json({
+        message: "Failed to create test email account"
+      });
+    }
+  });
+  
+  // General purpose email sending endpoint for property insights
+  app.post("/api/email/send", async (req, res) => {
+    try {
+      // Validate request body
+      const { to, subject, message, propertyId, propertyName, propertyAddress } = req.body;
+      
+      if (!to || !subject || !message || !propertyId) {
+        return res.status(400).json({ 
+          message: "Missing required fields", 
+          requiredFields: ["to", "subject", "message", "propertyId"] 
+        });
+      }
+      
+      // Check if email service is configured
+      const emailServiceConfigured = await isEmailServiceConfigured();
+      if (!emailServiceConfigured) {
+        return res.status(503).json({ 
+          message: "Email service is not configured. The system is set up to use Nodemailer for email delivery."
+        });
+      }
+      
+      // Create a mock share URL since we don't have an actual share ID
+      const shareUrl = `${req.protocol}://${req.get('host')}/property/${propertyId}`;
+      
+      // Send email
+      const success = await sendPropertyInsightShareEmail(
+        to,
+        subject,
+        message,
+        shareUrl,
+        propertyId,
+        propertyName,
+        propertyAddress
+      );
+      
+      if (!success) {
+        return res.status(500).json({ message: "Failed to send email" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: 1, // Default to admin user
+        action: "SEND_EMAIL",
+        entityType: "property",
+        entityId: propertyId,
+        details: { 
+          recipient: to,
+          subject,
+          timestamp: new Date().toISOString()
+        },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "Email sent successfully",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error sending email:", error);
+      res.status(500).json({ message: "Failed to send email" });
+    }
+  });
+
   app.post("/api/property-insight-shares/:shareId/email", async (req, res) => {
     try {
       const shareId = req.params.shareId;
@@ -1713,9 +1807,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if email service is configured
-      if (!isEmailServiceConfigured()) {
+      const emailServiceConfigured = await isEmailServiceConfigured();
+      if (!emailServiceConfigured) {
         return res.status(503).json({ 
-          message: "Email service is not configured. Please set SENDGRID_API_KEY environment variable." 
+          message: "Email service is not configured. The system is set up to use Nodemailer for email delivery."
         });
       }
       

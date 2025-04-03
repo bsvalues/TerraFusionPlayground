@@ -396,13 +396,18 @@ export class OpenAIService implements IOpenAIService {
         throw new Error("OpenAI returned empty image generation response");
       }
       
+      const imageData = response.data[0];
+      if (!imageData) {
+        throw new Error("OpenAI returned invalid image data format");
+      }
+      
       const result: GeneratedImageResult = {
-        url: response.data[0].url || '',
+        url: imageData.url || '',
       };
       
       // Add base64 data if requested
-      if (responseFormat === 'b64_json' && response.data[0].b64_json) {
-        result.b64_json = response.data[0].b64_json;
+      if (responseFormat === 'b64_json' && imageData.b64_json) {
+        result.b64_json = imageData.b64_json;
       }
       
       // Reset attempt counter on success

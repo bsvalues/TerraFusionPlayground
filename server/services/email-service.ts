@@ -1,21 +1,142 @@
 /**
  * Email Service
  * 
- * This service handles sending emails using SendGrid.
+ * This service handles sending emails using Nodemailer.
  */
 
-import sgMail from '@sendgrid/mail';
+import nodemailer from 'nodemailer';
 
-// Initialize SendGrid with API key if available
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-} else {
-  console.warn('SENDGRID_API_KEY is not set. Email sending is disabled.');
+// Create reusable transporter
+let transporter: nodemailer.Transporter | null = null;
+
+/**
+ * Create a test SMTP account for development purposes
+ * This is exposed as a utility function that can be called directly
+ * for testing and debugging email functionality
+ */
+export async function createTestEmailAccount(): Promise<{
+  user: string;
+  pass: string;
+  smtp: { host: string; port: number; secure: boolean };
+  previewUrl: string | null;
+}> {
+  try {
+    // Create a test account
+    const testAccount = await nodemailer.createTestAccount();
+    
+    // Log information about the test account
+    console.log('Created test email account:');
+    console.log('User:', testAccount.user);
+    console.log('Password:', testAccount.pass);
+    console.log('SMTP Host:', 'smtp.ethereal.email');
+    
+    // Create a transport with the generated credentials and send a test email
+    const testTransport = nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+    
+    // Send a test email
+    const info = await testTransport.sendMail({
+      from: '"Property Intelligence Platform" <test@example.com>',
+      to: 'test-recipient@example.com',
+      subject: 'Test Email',
+      text: 'This is a test email from the Property Intelligence Platform',
+      html: '<b>This is a test email from the Property Intelligence Platform</b>',
+    });
+    
+    const msgUrl = nodemailer.getTestMessageUrl(info);
+    const previewUrl = typeof msgUrl === 'string' ? msgUrl : null;
+    console.log('Test email sent. Preview URL:', previewUrl || 'No preview URL available');
+    
+    return {
+      user: testAccount.user,
+      pass: testAccount.pass,
+      smtp: {
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+      },
+      previewUrl,
+    };
+  } catch (error) {
+    console.error('Failed to create test email account:', error);
+    throw error;
+  }
 }
 
-// Check if SendGrid is configured
-export function isEmailServiceConfigured(): boolean {
-  return Boolean(process.env.SENDGRID_API_KEY);
+// Initialize transporter
+async function initializeTransporter() {
+  // If we already have a transporter, return it
+  if (transporter) return transporter;
+
+  // Create a test account if in development/test mode
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('Creating test email account for development environment');
+    
+    try {
+      // Generate test SMTP service account from ethereal.email
+      const testAccount = await nodemailer.createTestAccount();
+      
+      // Create a transport with the generated credentials
+      transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false, // true for 465, false for other ports
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      
+      // Output that we're using a test account
+      console.log('Using Ethereal Email test account for email delivery');
+      console.log('Test account username:', testAccount.user);
+      console.log('Emails will not be delivered to real recipients, but can be viewed online.');
+    } catch (err) {
+      console.error('Failed to create test account. Falling back to dummy transport:', err);
+      
+      // If we fail to create a test account, create a dummy transport that logs emails
+      transporter = {
+        sendMail: (mailOptions: nodemailer.SendMailOptions) => {
+          console.log('EMAIL WOULD BE SENT', mailOptions);
+          return Promise.resolve({ 
+            messageId: 'dummy-message-id',
+            envelope: { from: mailOptions.from as string, to: mailOptions.to as string },
+            accepted: [mailOptions.to as string]
+          });
+        }
+      } as nodemailer.Transporter;
+    }
+  } else {
+    // For production, use a real SMTP service
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'localhost',
+      port: parseInt(process.env.SMTP_PORT || '25', 10),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: process.env.SMTP_USER ? {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      } : undefined,
+    });
+  }
+  
+  return transporter;
+}
+
+// Check if email service is configured
+export async function isEmailServiceConfigured(): Promise<boolean> {
+  try {
+    return !!(await initializeTransporter());
+  } catch (error) {
+    console.error('Error initializing email transporter:', error);
+    return false;
+  }
 }
 
 // Email interface
@@ -28,22 +149,38 @@ export interface EmailOptions {
 }
 
 /**
- * Send an email using SendGrid
+ * Send an email using Nodemailer
  */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
-  if (!isEmailServiceConfigured()) {
-    console.warn('Attempted to send email but SendGrid is not configured');
-    return false;
-  }
-
   try {
-    await sgMail.send({
+    const transport = await initializeTransporter();
+    if (!transport) {
+      console.warn('Email transporter not initialized');
+      return false;
+    }
+
+    const info = await transport.sendMail({
+      from: options.from || process.env.EMAIL_FROM || 'noreply@property-intelligence.com',
       to: options.to,
-      from: options.from || process.env.SENDGRID_FROM_EMAIL || 'noreply@property-intelligence.com',
       subject: options.subject,
       text: options.text,
       html: options.html || options.text.replace(/\n/g, '<br />')
     });
+    
+    // If we're using Ethereal email (test/dev environment), log the preview URL
+    if (process.env.NODE_ENV !== 'production' && info.messageId) {
+      const msgUrl = nodemailer.getTestMessageUrl(info);
+      const previewUrl = typeof msgUrl === 'string' ? msgUrl : null;
+      console.log('Email sent (preview):', previewUrl || 'No preview URL available');
+      console.log('--------------------');
+      console.log('Email Details:');
+      console.log('To:', options.to);
+      console.log('Subject:', options.subject);
+      console.log('Preview URL:', previewUrl || 'Not available');
+      console.log('--------------------');
+    } else {
+      console.log('Email sent:', info.messageId);
+    }
     
     return true;
   } catch (error) {
@@ -90,7 +227,7 @@ export async function sendPropertyInsightShareEmail(
 
   return sendEmail({
     to: recipient,
-    from: process.env.SENDGRID_FROM_EMAIL || 'noreply@property-intelligence.com',
+    from: process.env.EMAIL_FROM || 'noreply@property-intelligence.com',
     subject,
     text: message,
     html: htmlContent
