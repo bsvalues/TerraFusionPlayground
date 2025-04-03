@@ -21,6 +21,8 @@ import { notificationService, NotificationType } from "./services/notification-s
 import { perplexityService } from "./services/perplexity";
 import { mcpService, MCPRequest } from "./services/mcp";
 import { securityService } from "./services/security";
+import { authService, TokenScope } from "./services/auth-service";
+import { validateApiKey, verifyToken, requireScope } from "./middleware/auth-middleware";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Define API routes
@@ -482,14 +484,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // MCP routes
-  app.get("/api/mcp/tools", async (_req, res) => {
+  // MCP routes - Enhanced with JWT authentication
+  
+  /**
+   * Endpoint to get API token using an API key
+   * This endpoint allows clients to exchange API keys for short-lived JWT tokens
+   */
+  app.post("/api/auth/token", async (req, res) => {
+    try {
+      const { apiKey } = req.body;
+      
+      if (!apiKey) {
+        return res.status(400).json({ message: "API key is required" });
+      }
+      
+      // Generate token from API key
+      const token = authService.generateToken(apiKey);
+      
+      if (!token) {
+        return res.status(401).json({ message: "Invalid API key" });
+      }
+      
+      // Return the token
+      res.json({ token });
+      
+    } catch (error) {
+      console.error("Error generating token:", error);
+      res.status(500).json({ message: "Failed to generate token" });
+    }
+  });
+  
+  /**
+   * Get available MCP tools - Read-only access required
+   */
+  app.get("/api/mcp/tools", validateApiKey, requireScope(TokenScope.READ_ONLY), async (req, res) => {
     try {
       const tools = mcpService.getAvailableTools().map(tool => ({
         name: tool.name,
         description: tool.description,
         parameters: tool.parameters
       }));
+      
+      // Log the successful authenticated access
+      if (req.user) {
+        await securityService.logSecurityEvent(
+          req.user.userId,
+          "MCP_TOOLS_ACCESS",
+          "mcp_tools",
+          null,
+          { username: req.user.username, role: req.user.role },
+          req.ip || "unknown"
+        );
+      }
       
       res.json(tools);
     } catch (error) {
@@ -498,7 +544,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/mcp/execute", async (req, res) => {
+  /**
+   * Execute MCP tools - Read-write access required for most operations
+   */
+  app.post("/api/mcp/execute", validateApiKey, requireScope(TokenScope.READ_WRITE), async (req, res) => {
     try {
       // Get client IP for rate limiting and security logging
       const clientIp = req.ip || req.socket.remoteAddress || "unknown";
@@ -510,7 +559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Log the rate limit violation
         await securityService.logSecurityEvent(
-          1, // Admin user
+          req.user?.userId || 1, // Use authenticated user ID if available
           "RATE_LIMIT_EXCEEDED",
           "mcp_request",
           null,
@@ -534,11 +583,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 1. Check for basic structure - prevent malformed requests
       if (!mcpRequest.parameters || typeof mcpRequest.parameters !== 'object') {
         await securityService.logSecurityEvent(
-          1, // Admin user ID
+          req.user?.userId || 1, // Use authenticated user ID  
           "MALFORMED_REQUEST",
           "mcp_request",
           null,
-          { mcpRequest },
+          { 
+            mcpRequest,
+            username: req.user?.username || "unknown"
+          },
           clientIp
         );
         return res.status(400).json({ 
@@ -549,13 +601,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 2. Check for suspicious toolName values (SQL Injection via toolName)
       if (securityService.containsSqlInjection(mcpRequest.toolName)) {
         await securityService.logSecurityEvent(
-          1, // Admin user ID
+          req.user?.userId || 1, // Use authenticated user ID
           "SQL_INJECTION_ATTEMPT",
           "mcp_request",
           null,
           { 
             toolName: mcpRequest.toolName,
-            remoteAddress: clientIp 
+            remoteAddress: clientIp,
+            username: req.user?.username || "unknown"
           },
           clientIp
         );
@@ -592,13 +645,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create audit log for successful MCP request
       if (result.success) {
         await storage.createAuditLog({
-          userId: 1, // Assuming admin user
+          userId: req.user?.userId || 1, // Use authenticated user ID
           action: "EXECUTE",
           entityType: "mcp_tool",
           entityId: null,
           details: { 
             toolName: mcpRequest.toolName,
-            success: result.success
+            success: result.success,
+            username: req.user?.username || "unknown"
           },
           ipAddress: clientIp
         });
@@ -609,10 +663,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const toolContext = mcpRequest.toolName || "unknown";
           
           notificationService.sendUserNotification(
-            "1", // Assuming admin user ID as string
+            req.user?.userId.toString() || "1", // Use authenticated user ID
             NotificationType.SYSTEM_ALERT,
             "MCP Tool Executed",
-            `MCP tool ${mcpRequest.toolName} was executed by admin`,
+            `MCP tool ${mcpRequest.toolName} was executed by ${req.user?.username || "admin"}`,
             "mcp_tool",
             toolContext,
             'medium'

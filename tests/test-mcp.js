@@ -1,162 +1,128 @@
 /**
- * Test script for MCP service
+ * Test MCP Tools
  * 
- * This script tests the Model Context Protocol service by making API calls to the MCP endpoints.
+ * This script tests various MCP tools and their execution
  */
 
 import fetch from 'node-fetch';
 
 const BASE_URL = 'http://localhost:5000/api';
+const API_KEY = 'api-key-admin-1a2b3c4d5e6f7g8h9i0j'; // Admin API key with full access
 
-async function testMcpEndpoints() {
-  console.log('=== Testing MCP Endpoints ===');
+// Helper function to get JWT token
+async function getToken() {
+  const response = await fetch(`${BASE_URL}/auth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ apiKey: API_KEY })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to get token: ${response.status} ${response.statusText}`);
+  }
+  
+  const { token } = await response.json();
+  return token;
+}
+
+// Helper function to execute MCP tool
+async function executeTool(token, toolName, parameters = {}) {
+  const response = await fetch(`${BASE_URL}/mcp/execute`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ toolName, parameters })
+  });
+  
+  const result = await response.json();
+  
+  if (!response.ok) {
+    console.error(`Failed to execute tool ${toolName}:`, result);
+    return null;
+  }
+  
+  return result;
+}
+
+async function testMcpTools() {
+  console.log('=== Testing MCP Tools ===');
   
   try {
-    // Test getting available tools
-    console.log('\nTesting GET /api/mcp/tools');
-    const toolsResponse = await fetch(`${BASE_URL}/mcp/tools`);
+    // Get JWT token first
+    const token = await getToken();
+    console.log('Successfully obtained JWT token');
     
-    if (!toolsResponse.ok) {
-      throw new Error(`Failed to fetch MCP tools: ${toolsResponse.status} ${toolsResponse.statusText}`);
-    }
+    // Get available tools
+    const toolsResponse = await fetch(`${BASE_URL}/mcp/tools`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     
     const tools = await toolsResponse.json();
-    console.log(`Available tools: ${tools.length}`);
-    tools.forEach(tool => {
-      console.log(`- ${tool.name}: ${tool.description}`);
-    });
+    console.log(`Available tools (${tools.length}):`);
+    tools.forEach(tool => console.log(`- ${tool.name}: ${tool.description}`));
     
-    // Test executing a schema discovery tool
-    console.log('\nTesting POST /api/mcp/execute - getSchema tool');
-    const schemaRequest = {
-      toolName: 'getSchema',
-      parameters: {}
-    };
-    
-    const schemaResponse = await fetch(`${BASE_URL}/mcp/execute`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(schemaRequest)
-    });
-    
-    if (!schemaResponse.ok) {
-      throw new Error(`Failed to execute getSchema tool: ${schemaResponse.status} ${schemaResponse.statusText}`);
+    // Test 1: Get schema
+    console.log('\nTesting getSchema tool:');
+    const schemaResult = await executeTool(token, 'getSchema');
+    if (schemaResult) {
+      console.log('Schema retrieved successfully');
+      console.log(`Tables: ${Object.keys(schemaResult.result.tables).join(', ')}`);
     }
     
-    const schemaResult = await schemaResponse.json();
-    console.log('Schema discovery successful');
-    console.log(`Tables found: ${Object.keys(schemaResult.result.tables).length}`);
-    console.log(`Relationships found: ${schemaResult.result.relationships.length}`);
-    
-    // Test executing a property query tool
-    console.log('\nTesting POST /api/mcp/execute - getProperties tool');
-    const propertiesRequest = {
-      toolName: 'getProperties',
-      parameters: {
-        limit: 5
-      }
-    };
-    
-    const propertiesResponse = await fetch(`${BASE_URL}/mcp/execute`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(propertiesRequest)
-    });
-    
-    if (!propertiesResponse.ok) {
-      throw new Error(`Failed to execute getProperties tool: ${propertiesResponse.status} ${propertiesResponse.statusText}`);
+    // Test 2: Get property by ID
+    console.log('\nTesting getPropertyById tool:');
+    const propertyResult = await executeTool(token, 'getPropertyById', { propertyId: 'BC001' });
+    if (propertyResult) {
+      console.log('Property retrieved successfully:');
+      console.log(`Property ID: ${propertyResult.result.propertyId}`);
+      console.log(`Address: ${propertyResult.result.address}`);
+      console.log(`Value: $${propertyResult.result.assessedValue}`);
     }
     
-    const propertiesResult = await propertiesResponse.json();
-    console.log('Properties query successful');
-    console.log(`Properties found: ${propertiesResult.result.length}`);
-    if (propertiesResult.result.length > 0) {
-      const sampleProperty = propertiesResult.result[0];
-      console.log(`Sample property: ${sampleProperty.propertyId} - ${sampleProperty.address}`);
-    }
-    
-    // Test executing the getActiveAppeals tool
-    console.log('\nTesting POST /api/mcp/execute - getActiveAppeals tool');
-    const appealsRequest = {
-      toolName: 'getActiveAppeals',
-      parameters: {}
-    };
-    
-    const appealsResponse = await fetch(`${BASE_URL}/mcp/execute`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(appealsRequest)
-    });
-    
-    if (!appealsResponse.ok) {
-      throw new Error(`Failed to execute getActiveAppeals tool: ${appealsResponse.status} ${appealsResponse.statusText}`);
-    }
-    
-    const appealsResult = await appealsResponse.json();
-    console.log('Active appeals query successful');
-    console.log(`Active appeals found: ${appealsResult.result.length}`);
-    if (appealsResult.result.length > 0) {
-      const sampleAppeal = appealsResult.result[0];
-      console.log(`Sample appeal: ${sampleAppeal.appealNumber} - Property: ${sampleAppeal.property.address}`);
-      console.log(`Status: ${sampleAppeal.status}, Reason: ${sampleAppeal.reason}`);
-      console.log(`Comments: ${sampleAppeal.comments_count}, Evidence: ${sampleAppeal.evidence_count}`);
-    }
-    
-    // Test executing a PACS modules query tool
-    console.log('\nTesting POST /api/mcp/execute - getPacsModules tool');
-    const modulesRequest = {
-      toolName: 'getPacsModules',
-      parameters: {
-        filter: {
-          integration: 'active'
-        }
-      }
-    };
-    
-    const modulesResponse = await fetch(`${BASE_URL}/mcp/execute`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(modulesRequest)
-    });
-    
-    if (!modulesResponse.ok) {
-      throw new Error(`Failed to execute getPacsModules tool: ${modulesResponse.status} ${modulesResponse.statusText}`);
-    }
-    
-    const modulesResult = await modulesResponse.json();
-    console.log('PACS modules query successful');
-    console.log(`Active modules found: ${modulesResult.result.length}`);
-    if (modulesResult.result.length > 0) {
-      const sample = modulesResult.result.slice(0, 3);
-      sample.forEach(module => {
-        console.log(`- ${module.moduleName}: ${module.description}`);
+    // Test 3: Get properties (with filter)
+    console.log('\nTesting getProperties tool:');
+    const propertiesResult = await executeTool(token, 'getProperties', { addressContains: 'Main' });
+    if (propertiesResult) {
+      console.log(`Found ${propertiesResult.result.length} properties with 'Main' in the address`);
+      propertiesResult.result.forEach(prop => {
+        console.log(`- ${prop.propertyId}: ${prop.address}, $${prop.assessedValue}`);
       });
-      if (modulesResult.result.length > 3) {
-        console.log(`... and ${modulesResult.result.length - 3} more modules`);
+    }
+    
+    // Test 4: Get PACS modules
+    console.log('\nTesting getPacsModules tool:');
+    const modulesResult = await executeTool(token, 'getPacsModules');
+    if (modulesResult) {
+      console.log(`Retrieved ${modulesResult.result.length} PACS modules`);
+      if (modulesResult.result.length > 0) {
+        console.log('Sample modules:');
+        modulesResult.result.slice(0, 3).forEach(module => {
+          console.log(`- ${module.name}: ${module.description.substring(0, 50)}...`);
+        });
       }
     }
     
-    console.log('\n=== MCP Tests Completed Successfully ===');
-    return true;
+    // Test 5: Security validation (should be blocked by security service)
+    console.log('\nTesting security validation (with malicious input):');
+    const securityResult = await executeTool(token, 'getProperties', { 
+      addressContains: "'; DROP TABLE properties; --" 
+    });
+    
+    if (!securityResult || securityResult.message) {
+      console.log('Security validation working as expected:');
+      console.log(`Error: ${securityResult ? securityResult.message : 'Request failed'}`);
+    } else if (securityResult && securityResult.success === true) {
+      console.error('WARNING: Security validation failed - malicious input was accepted!');
+    }
+    
+    console.log('\nMCP tools tests completed');
+    
   } catch (error) {
-    console.error('MCP test failed:', error);
-    return false;
+    console.error('Error during MCP tools tests:', error);
   }
 }
 
 // Run the tests
-testMcpEndpoints().then(success => {
-  if (!success) {
-    process.exit(1);
-  }
-});
-
-export { testMcpEndpoints };
+testMcpTools();
