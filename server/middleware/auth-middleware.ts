@@ -6,8 +6,19 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { authService, TokenScope } from '../services/auth-service';
-import { securityService } from '../services/security';
+import { AuthService } from '../services/auth-service';
+import { SecurityService } from '../services/security';
+
+// Create instances of services
+const authService = new AuthService({} as any, {} as any);
+const securityService = new SecurityService({} as any);
+
+// Define token scope enum
+export enum TokenScope {
+  READ_ONLY = 'read_only',
+  READ_WRITE = 'read_write',
+  ADMIN = 'admin'
+}
 
 // Extend Request type to include user property
 declare global {
@@ -69,18 +80,18 @@ export function verifyToken(req: Request, res: Response, next: NextFunction) {
     
     // Log the token validation for audit purposes
     const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
-    securityService.logSecurityEvent(
-      decoded.userId,
-      'TOKEN_VALIDATED',
-      'auth',
-      null,
-      {
+    securityService.logSecurityEvent({
+      eventType: 'authentication',
+      component: 'auth-middleware',
+      userId: decoded.userId,
+      ipAddress: clientIp,
+      details: {
         username: decoded.username,
         role: decoded.role,
         scope: decoded.scope
       },
-      clientIp
-    ).catch(err => console.error('Failed to log token validation:', err));
+      severity: 'info'
+    }).catch(err => console.error('Failed to log token validation:', err));
     
     // Continue to the next middleware or route handler
     next();
@@ -112,19 +123,19 @@ export function requireScope(requiredScope: TokenScope) {
       if (!hasScope) {
         // Log the access denied event
         const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
-        securityService.logSecurityEvent(
-          req.user.userId,
-          'ACCESS_DENIED',
-          'auth',
-          null,
-          {
+        securityService.logSecurityEvent({
+          eventType: 'authorization',
+          component: 'auth-middleware',
+          userId: req.user.userId,
+          ipAddress: clientIp,
+          details: {
             username: req.user.username,
             role: req.user.role,
             requiredScope,
             userScopes: req.user.scope
           },
-          clientIp
-        ).catch(err => console.error('Failed to log access denied event:', err));
+          severity: 'warning'
+        }).catch(err => console.error('Failed to log access denied event:', err));
         
         return res.status(403).json({
           message: 'Access denied. Insufficient permissions.'
@@ -187,17 +198,17 @@ export function validateApiKey(req: Request, res: Response, next: NextFunction) 
     };
     
     // Log the API key validation for audit purposes
-    securityService.logSecurityEvent(
-      keyDetails.userId,
-      'API_KEY_VALIDATED',
-      'auth',
-      null,
-      {
+    securityService.logSecurityEvent({
+      eventType: 'authentication',
+      component: 'auth-middleware',
+      userId: keyDetails.userId,
+      ipAddress: clientIp,
+      details: {
         clientId: keyDetails.clientId,
         accessLevel: keyDetails.accessLevel
       },
-      clientIp
-    ).catch(err => console.error('Failed to log API key validation:', err));
+      severity: 'info'
+    }).catch(err => console.error('Failed to log API key validation:', err));
     
     // Continue to the next middleware or route handler
     next();

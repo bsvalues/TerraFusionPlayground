@@ -15,14 +15,15 @@ import {
 } from "@shared/schema";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
-import { pacsIntegration } from "./services/pacs-integration";
+import { PacsIntegration } from "./services/pacs-integration";
 import { mappingIntegration } from "./services/mapping-integration";
 import { notificationService, NotificationType } from "./services/notification-service";
 import { perplexityService } from "./services/perplexity";
-import { mcpService, MCPRequest } from "./services/mcp";
-import { securityService } from "./services/security";
-import { authService, TokenScope } from "./services/auth-service";
-import { validateApiKey, verifyToken, requireScope } from "./middleware/auth-middleware";
+import { MCPService, MCPRequest } from "./services/mcp";
+import { SecurityService } from "./services/security";
+import { AuthService } from "./services/auth-service";
+import { validateApiKey, verifyToken, requireScope, TokenScope } from "./middleware/auth-middleware";
+import { PropertyStoryGenerator, PropertyStoryOptions } from "./services/property-story-generator";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Define API routes
@@ -1170,6 +1171,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating system notification:", error);
       res.status(500).json({ message: "Failed to create system notification" });
+    }
+  });
+  
+  // Initialize property story generator
+  const propertyStoryGenerator = new PropertyStoryGenerator(storage);
+  
+  /**
+   * Property Story Generator routes
+   * AI-powered narrative descriptions of properties
+   */
+  
+  // Generate a story for a single property
+  app.get("/api/property-stories/:propertyId", async (req, res) => {
+    try {
+      const { propertyId } = req.params;
+      
+      // Parse options from query parameters
+      const options: PropertyStoryOptions = {
+        tone: req.query.tone as any,
+        focus: req.query.focus as any,
+        includeImprovements: req.query.includeImprovements === 'true',
+        includeLandRecords: req.query.includeLandRecords === 'true',
+        includeFields: req.query.includeFields === 'true',
+        maxLength: req.query.maxLength ? parseInt(req.query.maxLength as string) : undefined
+      };
+      
+      // Generate the property story
+      const result = await propertyStoryGenerator.generatePropertyStory(propertyId, options);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "GENERATE",
+        entityType: "propertyStory",
+        entityId: propertyId,
+        details: { options },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      // Return the result
+      res.json(result);
+    } catch (error) {
+      console.error('Error generating property story:', error);
+      res.status(500).json({ 
+        error: 'Failed to generate property story',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  // Generate stories for multiple properties
+  app.post("/api/property-stories/multiple", async (req, res) => {
+    try {
+      const { propertyIds, options } = req.body;
+      
+      // Validate input
+      if (!propertyIds || !Array.isArray(propertyIds) || propertyIds.length === 0) {
+        return res.status(400).json({ error: 'Property IDs array is required' });
+      }
+      
+      // Generate stories for multiple properties
+      const results = await propertyStoryGenerator.generateMultiplePropertyStories(
+        propertyIds,
+        options || {}
+      );
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "GENERATE_MULTIPLE",
+        entityType: "propertyStory",
+        entityId: propertyIds.join(','),
+        details: { propertyIds, options },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      // Return the results
+      res.json(results);
+    } catch (error) {
+      console.error('Error generating multiple property stories:', error);
+      res.status(500).json({ 
+        error: 'Failed to generate multiple property stories',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  // Generate a comparison between multiple properties
+  app.post("/api/property-stories/compare", async (req, res) => {
+    try {
+      const { propertyIds, options } = req.body;
+      
+      // Validate input
+      if (!propertyIds || !Array.isArray(propertyIds) || propertyIds.length < 2) {
+        return res.status(400).json({ error: 'At least two property IDs are required for comparison' });
+      }
+      
+      // Generate comparison
+      const result = await propertyStoryGenerator.generateComparisonStory(
+        propertyIds,
+        options || {}
+      );
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "GENERATE_COMPARISON",
+        entityType: "propertyStory",
+        entityId: propertyIds.join(','),
+        details: { propertyIds, options },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      // Return the result
+      res.json(result);
+    } catch (error) {
+      console.error('Error generating property comparison:', error);
+      res.status(500).json({ 
+        error: 'Failed to generate property comparison',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
   
