@@ -10,6 +10,7 @@ import Fields from "@/pages/fields";
 import Imports from "@/pages/imports";
 import NaturalLanguage from "@/pages/natural-language";
 import AIAssistantPage from "@/pages/AIAssistantPage";
+import { PropertyStoryDemo } from "@/pages/PropertyStoryDemo";
 import AppLayout from "@/layout/app-layout";
 
 function Router() {
@@ -54,6 +55,12 @@ function Router() {
       <Route path="/ai-assistant">
         <AppLayout>
           <AIAssistantPage />
+        </AppLayout>
+      </Route>
+
+      <Route path="/property-story-demo">
+        <AppLayout>
+          <PropertyStoryDemo />
         </AppLayout>
       </Route>
 
