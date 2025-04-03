@@ -295,16 +295,16 @@ export class PropertyStoryGenerator implements IPropertyStoryGenerator {
   private summarizeImprovements(improvements: Improvement[]): string {
     if (!improvements.length) return 'No improvements recorded.';
     
-    const totalValue = improvements.reduce((sum, i) => sum + (i.value || 0), 0);
-    const types = [...new Set(improvements.map(i => i.type))];
+    // Updated to match the camelCase schema fields
+    const types = Array.from(new Set(improvements.map(i => i.improvementType)));
     const oldestYear = Math.min(...improvements
-      .filter(i => i.year_built)
-      .map(i => i.year_built || 9999));
+      .filter(i => i.yearBuilt)
+      .map(i => i.yearBuilt || 9999));
     const newestYear = Math.max(...improvements
-      .filter(i => i.year_built)
-      .map(i => i.year_built || 0));
+      .filter(i => i.yearBuilt)
+      .map(i => i.yearBuilt || 0));
     
-    return `${improvements.length} improvements totaling $${totalValue.toLocaleString()} in value. ` +
+    return `${improvements.length} improvements recorded. ` +
       `Types include ${types.join(', ')}. ` +
       `Construction years range from ${oldestYear !== 9999 ? oldestYear : 'unknown'} ` +
       `to ${newestYear !== 0 ? newestYear : 'unknown'}.`;
@@ -316,11 +316,11 @@ export class PropertyStoryGenerator implements IPropertyStoryGenerator {
   private summarizeLandRecords(landRecords: LandRecord[]): string {
     if (!landRecords.length) return 'No land records available.';
     
-    const totalAcres = landRecords.reduce((sum, l) => sum + (l.acres || 0), 0);
-    const zonings = [...new Set(landRecords.map(l => l.zoning))];
-    const landTypes = [...new Set(landRecords.map(l => l.land_type))];
+    // Updated to match the camelCase schema fields
+    const zonings = Array.from(new Set(landRecords.map(l => l.zoning)));
+    const landTypes = Array.from(new Set(landRecords.map(l => l.landUseCode)));
     
-    return `${landRecords.length} land records totaling ${totalAcres.toFixed(2)} acres. ` +
+    return `${landRecords.length} land records available. ` +
       `Zoning: ${zonings.join(', ')}. ` +
       `Land types: ${landTypes.join(', ')}.`;
   }
@@ -331,11 +331,11 @@ export class PropertyStoryGenerator implements IPropertyStoryGenerator {
   private summarizeFields(fields: Field[]): string {
     if (!fields.length) return 'No field data available.';
     
-    const cropTypes = [...new Set(fields.map(f => f.crop_type))];
-    const totalAcres = fields.reduce((sum, f) => sum + (f.acres || 0), 0);
+    // Updated to match the camelCase schema fields
+    const fieldTypes = Array.from(new Set(fields.map(f => f.fieldType)));
     
-    return `${fields.length} agricultural fields totaling ${totalAcres.toFixed(2)} acres. ` +
-      `Crops include ${cropTypes.join(', ')}.`;
+    return `${fields.length} agricultural fields available. ` +
+      `Field types include ${fieldTypes.join(', ')}.`;
   }
   
   /**
@@ -350,18 +350,18 @@ export class PropertyStoryGenerator implements IPropertyStoryGenerator {
     let prompt = `Generate a${options.tone ? ' ' + options.tone : ''} property story for the following Benton County property:\n\n`;
     
     // Add property details
-    prompt += `Property ID: ${property.property_id}\n`;
+    prompt += `Property ID: ${property.propertyId}\n`;
     prompt += `Address: ${property.address}\n`;
-    prompt += `City: ${property.city}\n`;
+    prompt += `City: ${property.address?.split(', ')[1] || 'Unknown'}\n`;
     prompt += `County: Benton\n`;
-    prompt += `State: ${property.state}\n`;
-    prompt += `Zip: ${property.zip}\n`;
-    prompt += `Property Type: ${property.property_type}\n`;
-    prompt += `Market Value: $${property.market_value?.toLocaleString() || 'Not assessed'}\n`;
-    prompt += `Tax Value: $${property.tax_value?.toLocaleString() || 'Not assessed'}\n`;
-    prompt += `Year Built: ${property.year_built || 'Unknown'}\n`;
-    prompt += `Last Sale Date: ${property.last_sale_date || 'Unknown'}\n`;
-    prompt += `Last Sale Price: ${property.last_sale_price ? '$' + property.last_sale_price.toLocaleString() : 'Unknown'}\n\n`;
+    prompt += `State: ${property.address?.split(', ')[2]?.split(' ')[0] || 'WA'}\n`;
+    prompt += `Zip: ${property.address?.split(', ')[2]?.split(' ')[1] || 'Unknown'}\n`;
+    prompt += `Property Type: ${property.propertyType}\n`;
+    prompt += `Market Value: $${property.value || 'Not assessed'}\n`;
+    prompt += `Tax Value: $${property.value || 'Not assessed'}\n`;
+    prompt += `Year Built: Unknown\n`;
+    prompt += `Last Sale Date: Unknown\n`;
+    prompt += `Last Sale Price: Unknown\n\n`;
     
     // Add summary data from related entities
     if (options.includeImprovements) {
@@ -371,8 +371,9 @@ export class PropertyStoryGenerator implements IPropertyStoryGenerator {
       if (context.improvements.length) {
         prompt += "Improvement Details:\n";
         context.improvements.forEach((imp: Improvement, index: number) => {
-          prompt += `${index + 1}. ${imp.type} (${imp.year_built || 'Unknown year'}): $${imp.value?.toLocaleString() || 'Unknown value'}`;
-          if (imp.description) prompt += ` - ${imp.description}`;
+          prompt += `${index + 1}. ${imp.improvementType} (${imp.yearBuilt || 'Unknown year'}): ${imp.squareFeet || 'Unknown'} sqft`;
+          if (imp.quality) prompt += ` - ${imp.quality} quality`;
+          if (imp.condition) prompt += `, ${imp.condition} condition`;
           prompt += '\n';
         });
         prompt += '\n';
@@ -386,8 +387,9 @@ export class PropertyStoryGenerator implements IPropertyStoryGenerator {
       if (context.landRecords.length) {
         prompt += "Land Record Details:\n";
         context.landRecords.forEach((record: LandRecord, index: number) => {
-          prompt += `${index + 1}. ${record.land_type} (${record.acres?.toFixed(2) || 'Unknown'} acres): Zoning ${record.zoning || 'Unknown'}`;
-          if (record.description) prompt += ` - ${record.description}`;
+          prompt += `${index + 1}. Land Use: ${record.landUseCode}, Zoning: ${record.zoning || 'Unknown'}`;
+          if (record.topography) prompt += `, Topography: ${record.topography}`;
+          if (record.shape) prompt += `, Shape: ${record.shape}`;
           prompt += '\n';
         });
         prompt += '\n';
@@ -401,8 +403,7 @@ export class PropertyStoryGenerator implements IPropertyStoryGenerator {
       if (context.fields.length) {
         prompt += "Field Details:\n";
         context.fields.forEach((field: Field, index: number) => {
-          prompt += `${index + 1}. ${field.crop_type} (${field.acres?.toFixed(2) || 'Unknown'} acres)`;
-          if (field.description) prompt += ` - ${field.description}`;
+          prompt += `${index + 1}. Field Type: ${field.fieldType}, Value: ${field.fieldValue || 'N/A'}`;
           prompt += '\n';
         });
         prompt += '\n';
@@ -451,31 +452,31 @@ export class PropertyStoryGenerator implements IPropertyStoryGenerator {
     // Add each property's details
     properties.forEach((property, index) => {
       prompt += `PROPERTY ${index + 1}:\n`;
-      prompt += `Property ID: ${property.property_id}\n`;
+      prompt += `Property ID: ${property.propertyId}\n`;
       prompt += `Address: ${property.address}\n`;
-      prompt += `City: ${property.city}\n`;
-      prompt += `State: ${property.state}\n`;
-      prompt += `Zip: ${property.zip}\n`;
-      prompt += `Property Type: ${property.property_type}\n`;
-      prompt += `Market Value: $${property.market_value?.toLocaleString() || 'Not assessed'}\n`;
-      prompt += `Tax Value: $${property.tax_value?.toLocaleString() || 'Not assessed'}\n`;
-      prompt += `Year Built: ${property.year_built || 'Unknown'}\n`;
-      prompt += `Last Sale Date: ${property.last_sale_date || 'Unknown'}\n`;
-      prompt += `Last Sale Price: ${property.last_sale_price ? '$' + property.last_sale_price.toLocaleString() : 'Unknown'}\n`;
+      prompt += `City: ${property.address?.split(', ')[1] || 'Unknown'}\n`;
+      prompt += `State: ${property.address?.split(', ')[2]?.split(' ')[0] || 'WA'}\n`;
+      prompt += `Zip: ${property.address?.split(', ')[2]?.split(' ')[1] || 'Unknown'}\n`;
+      prompt += `Property Type: ${property.propertyType}\n`;
+      prompt += `Market Value: $${property.value || 'Not assessed'}\n`;
+      prompt += `Tax Value: $${property.value || 'Not assessed'}\n`;
+      prompt += `Year Built: Unknown\n`;
+      prompt += `Last Sale Date: Unknown\n`;
+      prompt += `Last Sale Price: Unknown\n`;
       
       // Add summary data from related entities
-      if (options.includeImprovements && allImprovements[property.property_id]) {
-        const improvements = allImprovements[property.property_id];
+      if (options.includeImprovements && allImprovements[property.propertyId]) {
+        const improvements = allImprovements[property.propertyId];
         prompt += `Improvements: ${this.summarizeImprovements(improvements)}\n`;
       }
       
-      if (options.includeLandRecords && allLandRecords[property.property_id]) {
-        const landRecords = allLandRecords[property.property_id];
+      if (options.includeLandRecords && allLandRecords[property.propertyId]) {
+        const landRecords = allLandRecords[property.propertyId];
         prompt += `Land Records: ${this.summarizeLandRecords(landRecords)}\n`;
       }
       
-      if (options.includeFields && allFields[property.property_id]) {
-        const fields = allFields[property.property_id];
+      if (options.includeFields && allFields[property.propertyId]) {
+        const fields = allFields[property.propertyId];
         prompt += `Agricultural Fields: ${this.summarizeFields(fields)}\n`;
       }
       
