@@ -221,6 +221,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.get("/api/fields/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const field = await storage.getField(id);
+      
+      if (!field) {
+        return res.status(404).json({ message: "Field not found" });
+      }
+      
+      res.json(field);
+    } catch (error) {
+      console.error("Error fetching field:", error);
+      res.status(500).json({ message: "Failed to fetch field" });
+    }
+  });
+  
+  app.patch("/api/fields/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertFieldSchema.partial().parse(req.body);
+      const field = await storage.updateField(id, validatedData);
+      
+      if (!field) {
+        return res.status(404).json({ message: "Field not found" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "UPDATE",
+        entityType: "field",
+        entityId: field.propertyId,
+        details: { updatedFields: Object.keys(validatedData) },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      res.json(field);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid field data", errors: error.errors });
+      }
+      console.error("Error updating field:", error);
+      res.status(500).json({ message: "Failed to update field" });
+    }
+  });
+  
   // Appeals Management routes
   app.get("/api/properties/:propertyId/appeals", async (req, res) => {
     try {

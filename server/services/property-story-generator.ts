@@ -106,36 +106,162 @@ export class PropertyStoryGenerator implements IPropertyStoryGenerator {
       // Generate the prompt
       const prompt = this.buildPrompt(property, options, propertyContext);
       
-      // Call OpenAI to generate the story
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional property assessor and storyteller for Benton County. You create engaging and informative property narratives based on assessment data."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: options.maxLength ? Math.min(options.maxLength, 4000) : 2000,
-      });
+      // Check for API key availability
+      if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.trim() === '') {
+        console.log('Using mock generator due to missing API key');
+        const story = this.generateMockPropertyStory(property, improvements, landRecords, fields, options);
+        const generationTime = Date.now() - startTime;
+        
+        return {
+          property,
+          story,
+          prompt,
+          generationTime,
+          options
+        };
+      }
       
-      const story = completion.choices[0].message.content || "Unable to generate story.";
-      const generationTime = Date.now() - startTime;
-      
-      return {
-        property,
-        story,
-        prompt,
-        generationTime,
-        options
-      };
+      try {
+        // Call OpenAI to generate the story
+        const completion = await this.openai.chat.completions.create({
+          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          messages: [
+            {
+              role: "system",
+              content: "You are a professional property assessor and storyteller for Benton County. You create engaging and informative property narratives based on assessment data."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: options.maxLength ? Math.min(options.maxLength, 4000) : 2000,
+        });
+        
+        const story = completion.choices[0].message.content || "Unable to generate story.";
+        const generationTime = Date.now() - startTime;
+        
+        return {
+          property,
+          story,
+          prompt,
+          generationTime,
+          options
+        };
+      } catch (apiError) {
+        console.warn('OpenAI API error, falling back to mock generator:', apiError);
+        const story = this.generateMockPropertyStory(property, improvements, landRecords, fields, options);
+        const generationTime = Date.now() - startTime;
+        
+        return {
+          property,
+          story,
+          prompt,
+          generationTime,
+          options
+        };
+      }
     } catch (error) {
       console.error('Error generating property story:', error);
       throw new Error(`Failed to generate property story: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+  
+  /**
+   * Generate a mock property story without using OpenAI
+   * This is a fallback function when the API key is not available or quota is exceeded
+   */
+  private generateMockPropertyStory(
+    property: Property,
+    improvements: Improvement[],
+    landRecords: LandRecord[],
+    fields: Field[],
+    options: PropertyStoryOptions
+  ): string {
+    const tonePrefix = options.tone === 'friendly' ? 'Welcome to' : 
+                        options.tone === 'detailed' ? 'Detailed Assessment of' : 
+                        options.tone === 'concise' ? 'Summary of' : 
+                        'Property Assessment for';
+                        
+    // Create a basic story based on property type
+    if (property.propertyType === 'Residential') {
+      // Build residential story
+      let story = `${tonePrefix} ${property.address}, a beautiful residential property in Benton County (Property ID: ${property.propertyId}).\n\n`;
+      
+      story += `This ${improvements.length > 0 ? improvements[0].yearBuilt || 'modern' : ''} home is situated on ${property.acres} acres of land `;
+      
+      if (landRecords.length > 0) {
+        story += `in a ${landRecords[0].zoning} zone with ${landRecords[0].topography || 'pleasant'} topography. `;
+      } else {
+        story += `in a residential zone. `;
+      }
+      
+      if (improvements.length > 0) {
+        const primaryResidence = improvements.find(i => i.improvementType.includes('Residence') || i.improvementType.includes('Residential'));
+        if (primaryResidence) {
+          story += `\n\nThe ${primaryResidence.quality || ''} quality ${primaryResidence.squareFeet} square foot home features `;
+          if (primaryResidence.bedrooms) {
+            story += `${primaryResidence.bedrooms} bedrooms and ${primaryResidence.bathrooms} bathrooms. `;
+          } else {
+            story += `multiple bedrooms and bathrooms. `;
+          }
+          story += `The structure is in ${primaryResidence.condition || 'good'} condition. `;
+        }
+      }
+      
+      story += `\n\nThe property's current market value is assessed at $${property.value}, reflecting its location and features. `;
+      
+      return story;
+    } else if (property.propertyType === 'Agricultural') {
+      // Build agricultural story
+      let story = `${tonePrefix} ${property.address}, a productive agricultural property in Benton County (Property ID: ${property.propertyId}).\n\n`;
+      
+      story += `This ${property.acres}-acre property offers excellent agricultural potential `;
+      
+      if (landRecords.length > 0) {
+        story += `with ${landRecords[0].topography || 'varied'} topography and ${landRecords[0].zoning || 'agricultural'} zoning. `;
+      } else {
+        story += `with ideal growing conditions. `;
+      }
+      
+      if (fields.length > 0) {
+        story += `\n\nThe property features diverse agricultural usage including: `;
+        fields.forEach((field, index) => {
+          story += `\n- ${field.fieldType}: ${field.fieldValue}`;
+          if (index < fields.length - 1) story += ', ';
+        });
+        story += '\n';
+      }
+      
+      if (improvements.length > 0) {
+        story += `\n\nImprovements on the property include: `;
+        improvements.forEach((imp, index) => {
+          story += `\n- ${imp.improvementType} (${imp.yearBuilt || 'Unknown year'}): ${imp.squareFeet} sq ft in ${imp.condition || 'functional'} condition`;
+          if (index < improvements.length - 1) story += ', ';
+        });
+        story += '\n';
+      }
+      
+      story += `\n\nThe property's current market value is assessed at $${property.value}, reflecting its agricultural productivity and improvements. `;
+      
+      return story;
+    } else {
+      // Generic story for other property types
+      let story = `${tonePrefix} ${property.address}, a ${property.propertyType.toLowerCase()} property in Benton County (Property ID: ${property.propertyId}).\n\n`;
+      
+      story += `This ${property.acres}-acre property is currently valued at $${property.value}. `;
+      
+      if (improvements.length > 0) {
+        story += `\n\nThe property features ${improvements.length} improvements, `;
+        story += `including ${improvements.map(i => i.improvementType).join(', ')}. `;
+      }
+      
+      if (landRecords.length > 0) {
+        story += `\n\nThe land is zoned as ${landRecords[0].zoning} with ${landRecords[0].topography || 'standard'} topography. `;
+      }
+      
+      return story;
     }
   }
   
@@ -236,37 +362,206 @@ export class PropertyStoryGenerator implements IPropertyStoryGenerator {
         allFields
       );
       
-      // Call OpenAI to generate the comparison story
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional property assessor and real estate analyst for Benton County. You create comparative property analyses based on assessment data."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: options.maxLength ? Math.min(options.maxLength, 4000) : 3000,
-      });
+      // Check for API key availability
+      if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.trim() === '') {
+        console.log('Using mock generator for property comparison due to missing API key');
+        const story = this.generateMockComparisonStory(
+          properties as Property[],
+          allImprovements,
+          allLandRecords,
+          allFields,
+          options
+        );
+        const generationTime = Date.now() - startTime;
+        
+        return {
+          property: properties[0] as Property, // Use first property as reference
+          story,
+          prompt,
+          generationTime,
+          options
+        };
+      }
       
-      const story = completion.choices[0].message.content || "Unable to generate comparison.";
-      const generationTime = Date.now() - startTime;
-      
-      return {
-        property: properties[0] as Property, // Use first property as reference
-        story,
-        prompt,
-        generationTime,
-        options
-      };
+      try {
+        // Call OpenAI to generate the comparison story
+        const completion = await this.openai.chat.completions.create({
+          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          messages: [
+            {
+              role: "system",
+              content: "You are a professional property assessor and real estate analyst for Benton County. You create comparative property analyses based on assessment data."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: options.maxLength ? Math.min(options.maxLength, 4000) : 3000,
+        });
+        
+        const story = completion.choices[0].message.content || "Unable to generate comparison.";
+        const generationTime = Date.now() - startTime;
+        
+        return {
+          property: properties[0] as Property, // Use first property as reference
+          story,
+          prompt,
+          generationTime,
+          options
+        };
+      } catch (apiError) {
+        console.warn('OpenAI API error, falling back to mock generator for property comparison:', apiError);
+        const story = this.generateMockComparisonStory(
+          properties as Property[],
+          allImprovements,
+          allLandRecords,
+          allFields,
+          options
+        );
+        const generationTime = Date.now() - startTime;
+        
+        return {
+          property: properties[0] as Property, // Use first property as reference
+          story,
+          prompt,
+          generationTime,
+          options
+        };
+      }
     } catch (error) {
       console.error('Error generating property comparison:', error);
       throw new Error(`Failed to generate property comparison: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+  
+  /**
+   * Generate a mock comparison between multiple properties without using OpenAI
+   * This is a fallback function when the API key is not available or quota is exceeded
+   */
+  private generateMockComparisonStory(
+    properties: Property[],
+    allImprovements: Record<string, Improvement[]>,
+    allLandRecords: Record<string, LandRecord[]>,
+    allFields: Record<string, Field[]>,
+    options: PropertyStoryOptions
+  ): string {
+    const tonePrefix = options.tone === 'friendly' ? 'Welcome to the comparison of' : 
+                      options.tone === 'detailed' ? 'Detailed Comparison of' : 
+                      options.tone === 'concise' ? 'Summary Comparison of' : 
+                      'Property Comparison for';
+    
+    let story = `${tonePrefix} ${properties.length} Benton County properties.\n\n`;
+    
+    // Section 1: Overview
+    story += `## OVERVIEW\n\n`;
+    story += `This analysis compares ${properties.length} different properties in Benton County:\n\n`;
+    
+    properties.forEach((property, index) => {
+      story += `Property ${index + 1}: ${property.propertyId} - ${property.address} (${property.propertyType})\n`;
+    });
+    
+    // Section 2: Property Details Comparison
+    story += `\n\n## PROPERTY DETAILS COMPARISON\n\n`;
+    story += `| Property ID | Address | Type | Acres | Value | Status |\n`;
+    story += `|-------------|---------|------|-------|-------|---------|\n`;
+    
+    properties.forEach(property => {
+      story += `| ${property.propertyId} | ${property.address} | ${property.propertyType} | ${property.acres} | $${property.value} | ${property.status} |\n`;
+    });
+    
+    // Section 3: Improvements Comparison (if requested)
+    if (options.includeImprovements) {
+      story += `\n\n## IMPROVEMENTS COMPARISON\n\n`;
+      
+      properties.forEach((property, index) => {
+        const improvements = allImprovements[property.propertyId] || [];
+        story += `Property ${index + 1} (${property.propertyId}): ${improvements.length} improvements\n`;
+        
+        if (improvements.length > 0) {
+          improvements.forEach(imp => {
+            story += `- ${imp.improvementType}: ${imp.squareFeet} sq ft, built ${imp.yearBuilt || 'unknown'}, ${imp.quality || 'standard'} quality, ${imp.condition || 'fair'} condition`;
+            if (imp.bedrooms) {
+              story += `, ${imp.bedrooms} bed / ${imp.bathrooms} bath`;
+            }
+            story += `\n`;
+          });
+        } else {
+          story += `- No improvements recorded\n`;
+        }
+        story += `\n`;
+      });
+    }
+    
+    // Section 4: Land Records Comparison (if requested)
+    if (options.includeLandRecords) {
+      story += `\n\n## LAND RECORDS COMPARISON\n\n`;
+      
+      properties.forEach((property, index) => {
+        const records = allLandRecords[property.propertyId] || [];
+        story += `Property ${index + 1} (${property.propertyId}):\n`;
+        
+        if (records.length > 0) {
+          records.forEach(record => {
+            story += `- Land Use: ${record.landUseCode}, Zoning: ${record.zoning || 'Unknown'}, Topography: ${record.topography || 'Standard'}\n`;
+          });
+        } else {
+          story += `- No land records available\n`;
+        }
+        story += `\n`;
+      });
+    }
+    
+    // Section 5: Fields Comparison (for agricultural properties)
+    if (options.includeFields) {
+      const hasAgriculturalProperties = properties.some(p => p.propertyType === 'Agricultural');
+      
+      if (hasAgriculturalProperties) {
+        story += `\n\n## AGRICULTURAL FIELDS COMPARISON\n\n`;
+        
+        properties.forEach((property, index) => {
+          const fields = allFields[property.propertyId] || [];
+          
+          if (property.propertyType === 'Agricultural') {
+            story += `Property ${index + 1} (${property.propertyId}):\n`;
+            
+            if (fields.length > 0) {
+              fields.forEach(field => {
+                story += `- ${field.fieldType}: ${field.fieldValue || 'No details available'}\n`;
+              });
+            } else {
+              story += `- No agricultural fields recorded\n`;
+            }
+          } else {
+            story += `Property ${index + 1} (${property.propertyId}): Not an agricultural property\n`;
+          }
+          story += `\n`;
+        });
+      }
+    }
+    
+    // Section 6: Value Analysis
+    story += `\n\n## VALUE ANALYSIS\n\n`;
+    
+    const totalValue = properties.reduce((sum, property) => {
+      const value = typeof property.value === 'string' ? parseFloat(property.value) : (property.value || 0);
+      return sum + value;
+    }, 0);
+    
+    const avgValue = totalValue / properties.length;
+    
+    const highestValueProperty = [...properties].sort((a, b) => {
+      const valueA = typeof a.value === 'string' ? parseFloat(a.value) : (a.value || 0);
+      const valueB = typeof b.value === 'string' ? parseFloat(b.value) : (b.value || 0);
+      return valueB - valueA;
+    })[0];
+    
+    story += `Total assessed value: $${totalValue.toLocaleString()}\n`;
+    story += `Average property value: $${avgValue.toLocaleString()}\n`;
+    story += `Highest valued property: ${highestValueProperty.propertyId} at $${highestValueProperty.value}\n\n`;
+    
+    return story;
   }
   
   /**

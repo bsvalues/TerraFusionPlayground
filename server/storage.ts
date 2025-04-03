@@ -62,6 +62,8 @@ export interface IStorage {
   // Field methods
   getFieldsByPropertyId(propertyId: string): Promise<Field[]>;
   createField(field: InsertField): Promise<Field>;
+  getField(id: number): Promise<Field | undefined>;
+  updateField(id: number, field: Partial<InsertField>): Promise<Field | undefined>;
   
   // Appeals Management methods
   getAppealsByPropertyId(propertyId: string): Promise<Appeal[]>;
@@ -342,6 +344,34 @@ export class MemStorage implements IStorage {
     });
     
     return field;
+  }
+  
+  async getField(id: number): Promise<Field | undefined> {
+    return this.fields.get(id);
+  }
+  
+  async updateField(id: number, updateData: Partial<InsertField>): Promise<Field | undefined> {
+    const field = this.fields.get(id);
+    if (!field) return undefined;
+    
+    const timestamp = new Date();
+    const updatedField = { 
+      ...field, 
+      ...updateData, 
+      lastUpdated: timestamp 
+    };
+    
+    this.fields.set(id, updatedField);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Updated field (${field.fieldType}) for property ID: ${field.propertyId}`,
+      entityType: 'field',
+      entityId: field.propertyId
+    });
+    
+    return updatedField;
   }
   
   // Appeals Management methods
