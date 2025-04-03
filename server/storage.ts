@@ -536,8 +536,8 @@ export class MemStorage implements IStorage {
     try {
       // Connect to database using DATABASE_URL
       console.log("Connecting to database with URL:", process.env.DATABASE_URL ? "URL exists" : "URL is missing");
-      // Use dynamic import for pg
-      const { Pool } = await import('pg');
+      // Use direct import since we're now importing pg at the top level
+      const { Pool } = pg;
       const pool = new Pool({
         connectionString: process.env.DATABASE_URL,
       });
@@ -585,8 +585,8 @@ export class MemStorage implements IStorage {
     try {
       // Connect to database using DATABASE_URL
       console.log("Upserting module, connecting to database with URL:", process.env.DATABASE_URL ? "URL exists" : "URL is missing");
-      // Use dynamic import for pg
-      const { Pool } = await import('pg');
+      // Use direct import since we're now importing pg at the top level
+      const { Pool } = pg;
       const pool = new Pool({
         connectionString: process.env.DATABASE_URL,
       });
