@@ -139,7 +139,13 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
     const timestamp = new Date();
-    const user: User = { ...insertUser, id, createdAt: timestamp };
+    const user: User = { 
+      ...insertUser, 
+      id, 
+      createdAt: timestamp,
+      role: insertUser.role || 'user',       // Ensure role is always defined
+      email: insertUser.email || null        // Ensure email is always defined or null
+    };
     this.users.set(id, user);
     return user;
   }
@@ -166,7 +172,13 @@ export class MemStorage implements IStorage {
       ...insertProperty, 
       id, 
       createdAt: timestamp, 
-      lastUpdated: timestamp 
+      lastUpdated: timestamp,
+      // Ensure required fields are properly typed
+      status: insertProperty.status || 'active',
+      // Ensure acres is always a string
+      acres: insertProperty.acres,
+      // Ensure value is either a string or null
+      value: insertProperty.value === undefined ? null : insertProperty.value
     };
     this.properties.set(id, property);
     
@@ -218,7 +230,14 @@ export class MemStorage implements IStorage {
       ...insertLandRecord, 
       id, 
       createdAt: timestamp, 
-      lastUpdated: timestamp 
+      lastUpdated: timestamp,
+      // Ensure nullable fields are properly set
+      topography: insertLandRecord.topography !== undefined ? insertLandRecord.topography : null,
+      frontage: insertLandRecord.frontage !== undefined ? insertLandRecord.frontage : null,
+      depth: insertLandRecord.depth !== undefined ? insertLandRecord.depth : null,
+      shape: insertLandRecord.shape !== undefined ? insertLandRecord.shape : null,
+      utilities: insertLandRecord.utilities !== undefined ? insertLandRecord.utilities : null,
+      floodZone: insertLandRecord.floodZone !== undefined ? insertLandRecord.floodZone : null
     };
     this.landRecords.set(id, landRecord);
     
@@ -246,7 +265,14 @@ export class MemStorage implements IStorage {
       ...insertImprovement, 
       id, 
       createdAt: timestamp, 
-      lastUpdated: timestamp 
+      lastUpdated: timestamp,
+      // Ensure nullable fields are properly set
+      yearBuilt: insertImprovement.yearBuilt !== undefined ? insertImprovement.yearBuilt : null,
+      squareFeet: insertImprovement.squareFeet !== undefined ? insertImprovement.squareFeet : null,
+      bedrooms: insertImprovement.bedrooms !== undefined ? insertImprovement.bedrooms : null,
+      bathrooms: insertImprovement.bathrooms !== undefined ? insertImprovement.bathrooms : null,
+      quality: insertImprovement.quality !== undefined ? insertImprovement.quality : null,
+      condition: insertImprovement.condition !== undefined ? insertImprovement.condition : null
     };
     this.improvements.set(id, improvement);
     
@@ -274,7 +300,9 @@ export class MemStorage implements IStorage {
       ...insertField, 
       id, 
       createdAt: timestamp, 
-      lastUpdated: timestamp 
+      lastUpdated: timestamp,
+      // Ensure fieldValue is properly set
+      fieldValue: insertField.fieldValue !== undefined ? insertField.fieldValue : null
     };
     this.fields.set(id, field);
     
@@ -307,7 +335,21 @@ export class MemStorage implements IStorage {
       ...insertAppeal, 
       id, 
       createdAt: timestamp, 
-      lastUpdated: timestamp 
+      lastUpdated: timestamp,
+      // Ensure all required fields are set with proper defaults
+      status: insertAppeal.status || 'submitted',
+      appealType: insertAppeal.appealType || 'value',
+      evidenceUrls: insertAppeal.evidenceUrls || null,
+      requestedValue: insertAppeal.requestedValue || null,
+      hearingDate: insertAppeal.hearingDate || null,
+      hearingLocation: insertAppeal.hearingLocation || null,
+      assignedTo: insertAppeal.assignedTo || null,
+      dateReceived: insertAppeal.dateReceived || timestamp,
+      // Required fields that might not be in the insert schema
+      decision: null, 
+      decisionReason: null, 
+      decisionDate: null,
+      notificationSent: false
     };
     this.appeals.set(id, appeal);
     
@@ -357,7 +399,9 @@ export class MemStorage implements IStorage {
     const comment: AppealComment = { 
       ...insertComment, 
       id, 
-      createdAt: timestamp
+      createdAt: timestamp,
+      // Ensure internalOnly is properly set
+      internalOnly: insertComment.internalOnly !== undefined ? insertComment.internalOnly : null
     };
     this.appealComments.set(id, comment);
     
@@ -366,7 +410,7 @@ export class MemStorage implements IStorage {
       agentId: 3, // Citizen Interaction Agent
       activity: `New comment added to appeal ID: ${comment.appealId}`,
       entityType: 'appealComment',
-      entityId: comment.appealId.toString()
+      entityId: String(comment.appealId)
     });
     
     return comment;
@@ -383,7 +427,10 @@ export class MemStorage implements IStorage {
     const evidence: AppealEvidence = { 
       ...insertEvidence, 
       id, 
-      createdAt: timestamp 
+      createdAt: timestamp,
+      // Ensure optional fields are properly set
+      fileSize: insertEvidence.fileSize !== undefined ? insertEvidence.fileSize : null,
+      description: insertEvidence.description !== undefined ? insertEvidence.description : null
     };
     this.appealEvidence.set(id, evidence);
     
@@ -392,7 +439,7 @@ export class MemStorage implements IStorage {
       agentId: 3, // Citizen Interaction Agent
       activity: `New evidence uploaded for appeal ID: ${evidence.appealId}`,
       entityType: 'appealEvidence',
-      entityId: evidence.appealId.toString()
+      entityId: String(evidence.appealId)
     });
     
     return evidence;
@@ -405,7 +452,12 @@ export class MemStorage implements IStorage {
     const auditLog: AuditLog = { 
       ...insertAuditLog, 
       id, 
-      timestamp 
+      timestamp,
+      // Ensure nullable fields are properly set
+      userId: insertAuditLog.userId !== undefined ? insertAuditLog.userId : null,
+      entityId: insertAuditLog.entityId !== undefined ? insertAuditLog.entityId : null,
+      details: insertAuditLog.details || null,
+      ipAddress: insertAuditLog.ipAddress !== undefined ? insertAuditLog.ipAddress : null
     };
     this.auditLogs.set(id, auditLog);
     return auditLog;
@@ -451,7 +503,11 @@ export class MemStorage implements IStorage {
     const activity: SystemActivity = { 
       ...insertActivity, 
       id, 
-      timestamp 
+      timestamp,
+      // Ensure nullable fields are properly set
+      agentId: insertActivity.agentId !== undefined ? insertActivity.agentId : null,
+      entityType: insertActivity.entityType !== undefined ? insertActivity.entityType : null,
+      entityId: insertActivity.entityId !== undefined ? insertActivity.entityId : null,
     };
     this.systemActivities.set(id, activity);
     return activity;
@@ -470,7 +526,9 @@ export class MemStorage implements IStorage {
     if (existingModule) {
       const updatedModule = {
         ...existingModule,
-        ...insertModule
+        ...insertModule,
+        // Ensure description is properly set
+        description: insertModule.description !== undefined ? insertModule.description : existingModule.description
       };
       this.pacsModules.set(existingModule.id, updatedModule);
       return updatedModule;
@@ -480,7 +538,9 @@ export class MemStorage implements IStorage {
       const module: PacsModule = {
         ...insertModule,
         id,
-        createdAt: timestamp
+        createdAt: timestamp,
+        // Ensure description is properly set
+        description: insertModule.description !== undefined ? insertModule.description : null
       };
       this.pacsModules.set(id, module);
       return module;
@@ -530,8 +590,8 @@ export class MemStorage implements IStorage {
         address: '1320 N Louisiana St, Kennewick',
         parcelNumber: '1-1289-100-0008-000',
         propertyType: 'Residential',
-        acres: 0.23,
-        value: 325000,
+        acres: '0.23',
+        value: '325000',
         status: 'active'
       },
       {
@@ -539,8 +599,8 @@ export class MemStorage implements IStorage {
         address: '8524 W Gage Blvd, Kennewick',
         parcelNumber: '1-1789-202-0553-001',
         propertyType: 'Commercial',
-        acres: 1.5,
-        value: 1750000,
+        acres: '1.5',
+        value: '1750000',
         status: 'active'
       },
       {
@@ -548,8 +608,8 @@ export class MemStorage implements IStorage {
         address: '4050 Keene Rd, West Richland',
         parcelNumber: '1-0589-404-0032-000',
         propertyType: 'Residential',
-        acres: 0.95,
-        value: 485000,
+        acres: '0.95',
+        value: '485000',
         status: 'active'
       },
       {
@@ -557,8 +617,8 @@ export class MemStorage implements IStorage {
         address: '710 George Washington Way, Richland',
         parcelNumber: '1-3289-101-0982-000',
         propertyType: 'Commercial',
-        acres: 1.2,
-        value: 1250000,
+        acres: '1.2',
+        value: '1250000',
         status: 'active'
       },
       {
@@ -566,8 +626,8 @@ export class MemStorage implements IStorage {
         address: '620 Market St, Prosser',
         parcelNumber: '1-1389-103-0022-001',
         propertyType: 'Government',
-        acres: 2.7,
-        value: 0, // Exempt - County Courthouse
+        acres: '2.7',
+        value: '0', // Exempt - County Courthouse
         status: 'exempt'
       },
       {
@@ -575,8 +635,8 @@ export class MemStorage implements IStorage {
         address: '1390 9th St, Benton City',
         parcelNumber: '1-2465-300-0043-000',
         propertyType: 'Residential',
-        acres: 0.35,
-        value: 285000,
+        acres: '0.35',
+        value: '285000',
         status: 'active'
       }
     ];
