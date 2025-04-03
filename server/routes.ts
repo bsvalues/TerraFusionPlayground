@@ -36,6 +36,7 @@ const mcpService = new MCPService(storage, mockPacsIntegrationService);
 
 import { PropertyStoryGenerator, PropertyStoryOptions } from "./services/property-story-generator";
 import { PropertyInsightSharingService } from "./services/property-insight-sharing-service";
+import { sharingUtils, SharingUtilsService } from "./services/sharing-utils";
 
 // Initialize services that require other services
 const propertyStoryGenerator = new PropertyStoryGenerator(storage);
@@ -1599,6 +1600,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting property insight share:", error);
       res.status(500).json({ message: "Failed to delete property insight share" });
+    }
+  });
+  
+  // Generate QR code for a property insight share
+  app.get("/api/property-insight-shares/:shareId/qrcode", async (req, res) => {
+    try {
+      const shareId = req.params.shareId;
+      const width = req.query.width ? parseInt(req.query.width as string) : undefined;
+      const margin = req.query.margin ? parseInt(req.query.margin as string) : undefined;
+      
+      // Validate if share exists
+      const share = await storage.getPropertyInsightShareById(shareId);
+      
+      if (!share) {
+        return res.status(404).json({ message: "Property insight share not found or expired" });
+      }
+      
+      // Generate QR code
+      const qrOptions = {
+        width,
+        margin,
+        color: {
+          dark: req.query.darkColor as string || '#000000',
+          light: req.query.lightColor as string || '#FFFFFF'
+        }
+      };
+      
+      const qrCodeDataUrl = await sharingUtils.generateQRCode(shareId, qrOptions);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: 1, // Default to admin user
+        action: "READ",
+        entityType: "propertyInsightShareQRCode",
+        entityId: share.propertyId.toString(),
+        details: { shareId },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      // Set proper content type headers to ensure JSON response
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ qrCode: qrCodeDataUrl });
+    } catch (error) {
+      console.error("Error generating QR code:", error);
+      res.status(500).json({ message: "Failed to generate QR code" });
+    }
+  });
+  
+  // Prepare PDF export data for a property insight share
+  app.get("/api/property-insight-shares/:shareId/pdf-data", async (req, res) => {
+    try {
+      const shareId = req.params.shareId;
+      
+      // Validate if share exists
+      const share = await storage.getPropertyInsightShareById(shareId);
+      
+      if (!share) {
+        return res.status(404).json({ message: "Property insight share not found or expired" });
+      }
+      
+      // Prepare PDF export data
+      const pdfOptions = {
+        title: req.query.title as string || undefined,
+        author: req.query.author as string || undefined,
+        includeImages: req.query.includeImages !== 'false',
+        includeMetadata: req.query.includeMetadata !== 'false'
+      };
+      
+      // Get the PDF data - this will include the QR code promise
+      const pdfData = sharingUtils.preparePDFExportData(share, pdfOptions);
+      
+      // Resolve the QR code promise if included
+      if (pdfData.qrCodePromise) {
+        pdfData.qrCode = await pdfData.qrCodePromise;
+        delete pdfData.qrCodePromise;
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: 1, // Default to admin user
+        action: "READ",
+        entityType: "propertyInsightSharePDF",
+        entityId: share.propertyId.toString(),
+        details: { shareId },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      // Set proper content type headers to ensure JSON response
+      res.setHeader('Content-Type', 'application/json');
+      res.json(pdfData);
+    } catch (error) {
+      console.error("Error preparing PDF export data:", error);
+      res.status(500).json({ message: "Failed to prepare PDF export data" });
     }
   });
   

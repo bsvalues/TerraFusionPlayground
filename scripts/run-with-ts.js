@@ -1,27 +1,21 @@
 #!/usr/bin/env node
 
-/**
- * Helper script to run JavaScript scripts with TypeScript support
- * 
- * Usage:
- *   node scripts/run-with-ts.js scripts/generate-sample-data.js
- */
-
-// Converts TypeScript imports to be usable in CommonJS scripts
+// This script is used to run TypeScript files directly using esbuild-register
 require('esbuild-register');
 
-// Get the script path from command line arguments
+// Get the script to run from command line arguments
 const scriptPath = process.argv[2];
 
 if (!scriptPath) {
-  console.error('Please provide a script path to run');
+  console.error('Error: Script path is required');
+  console.log('Usage: node run-with-ts.js <script-path>');
   process.exit(1);
 }
 
 // Run the script
 try {
-  require(`../${scriptPath}`);
+  require(scriptPath);
 } catch (error) {
-  console.error(`Error running script ${scriptPath}:`, error);
+  console.error('Error running script:', error);
   process.exit(1);
 }

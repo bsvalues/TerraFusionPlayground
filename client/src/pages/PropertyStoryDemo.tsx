@@ -10,10 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Share2, Eye, Trash2 } from "lucide-react";
+import { Loader2, Share2, Eye, Trash2, Download, QrCode } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function PropertyStoryDemo() {
   const { toast } = useToast();
@@ -37,6 +38,15 @@ export function PropertyStoryDemo() {
   const [shareIsPublic, setShareIsPublic] = useState(true);
   const [viewShareId, setViewShareId] = useState("");
   const [viewSharePassword, setViewSharePassword] = useState("");
+  
+  // QR Code dialog state
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [activeShareId, setActiveShareId] = useState<string | null>(null);
+  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [qrCodeLoading, setQrCodeLoading] = useState(false);
+  
+  // PDF export state
+  const [pdfDataLoading, setPdfDataLoading] = useState(false);
 
   // Single property story mutation
   const singleStoryMutation = useMutation({
@@ -270,6 +280,55 @@ export function PropertyStoryDemo() {
   
   const handleDeleteShare = (shareId: string) => {
     deleteShareMutation.mutate(shareId);
+  };
+  
+  // QR Code handler
+  const handleShowQRCode = async (shareId: string) => {
+    try {
+      setQrCodeLoading(true);
+      setActiveShareId(shareId);
+      setQrDialogOpen(true);
+      
+      const response = await apiRequest(`/api/property-insight-shares/${shareId}/qrcode`);
+      setQrCodeData(response.qrCode);
+    } catch (error: any) {
+      toast({
+        title: "Error generating QR code",
+        description: error.message || "Failed to generate QR code",
+        variant: "destructive"
+      });
+    } finally {
+      setQrCodeLoading(false);
+    }
+  };
+  
+  // PDF export handler
+  const handleExportPDF = async (shareId: string) => {
+    try {
+      setPdfDataLoading(true);
+      
+      // Fetch PDF data
+      const pdfData = await apiRequest(`/api/property-insight-shares/${shareId}/pdf-data`);
+      
+      // This would normally use jsPDF to generate a PDF on the client-side
+      // For demo purposes, we'll just show a success notification
+      toast({
+        title: "PDF Data Retrieved Successfully",
+        description: "A PDF would normally be generated and downloaded here",
+      });
+      
+      // Log PDF data to console for demonstration
+      console.log("PDF Export Data:", pdfData);
+      
+    } catch (error: any) {
+      toast({
+        title: "Error exporting PDF",
+        description: error.message || "Failed to export PDF",
+        variant: "destructive"
+      });
+    } finally {
+      setPdfDataLoading(false);
+    }
   };
 
   // Render story output
@@ -712,6 +771,21 @@ export function PropertyStoryDemo() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleShowQRCode(share.shareId)}
+                          >
+                            <QrCode className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleExportPDF(share.shareId)}
+                            disabled={pdfDataLoading}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="destructive" size="sm">
@@ -747,6 +821,35 @@ export function PropertyStoryDemo() {
           </div>
         </TabsContent>
       </Tabs>
+      
+      {/* QR Code Dialog */}
+      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>QR Code for Share #{activeShareId}</DialogTitle>
+            <DialogDescription>
+              Scan this QR code with a mobile device to access the shared property insight
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center p-4">
+            {qrCodeLoading ? (
+              <div className="flex items-center justify-center h-60 w-60">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : qrCodeData ? (
+              <img 
+                src={qrCodeData} 
+                alt="Property insight QR code" 
+                className="h-60 w-60 object-contain" 
+              />
+            ) : (
+              <div className="flex items-center justify-center h-60 w-60 border rounded-md text-muted-foreground">
+                Failed to generate QR code
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
