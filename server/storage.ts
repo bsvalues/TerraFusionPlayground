@@ -629,7 +629,10 @@ export class MemStorage implements IStorage {
       createdBy: insertShare.createdBy || null,
       allowedDomains: insertShare.allowedDomains || null,
       expiresAt: insertShare.expiresAt || null,
-      isPublic: insertShare.isPublic ?? true
+      isPublic: insertShare.isPublic ?? true,
+      // Handle propertyName and propertyAddress values (null if undefined)
+      propertyName: insertShare.propertyName || null,
+      propertyAddress: insertShare.propertyAddress || null
     };
     
     this.propertyInsightShares.set(share.shareId, share);
