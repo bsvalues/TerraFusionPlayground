@@ -1,63 +1,33 @@
 /**
- * PACS Module Importer
+ * Direct PACS Module Importer
  * 
- * This script imports PACS modules from a CSV file into the database.
- * It reads the PACS_Agent_Module_Map.csv file and inserts the modules into the database.
+ * This script provides a direct way to import PACS modules from the CSV file
+ * directly into the database, bypassing the MCP API. This can be useful if there
+ * are issues with the authentication or API endpoints.
  * 
- * Usage: node scripts/import-pacs-modules.js
+ * Usage: node scripts/direct-import-pacs-modules.js
  */
 
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
-import fetch from 'node-fetch';
+import pg from 'pg';
 import { fileURLToPath } from 'url';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Get the Pool class from pg
+const { Pool } = pg;
+
 // Configuration
 const CSV_FILE_PATH = path.join(process.cwd(), 'attached_assets', 'PACS_Agent_Module_Map.csv');
-const API_URL = 'http://localhost:3000/api'; // Default port for the Express server
-const API_KEY = 'api-key-admin-1a2b3c4d5e6f7g8h9i0j'; // Admin API key with full access
 
-// Helper function to get JWT token
-async function getToken() {
-  const response = await fetch(`${API_URL}/auth/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiKey: API_KEY })
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Failed to get token: ${response.status} ${response.statusText}`);
-  }
-  
-  const { token } = await response.json();
-  return token;
-}
-
-// Helper function to execute MCP tool
-async function executeTool(token, toolName, parameters = {}) {
-  const response = await fetch(`${API_URL}/mcp/execute`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({ toolName, parameters })
-  });
-  
-  const result = await response.json();
-  
-  if (!response.ok) {
-    console.error(`Failed to execute tool ${toolName}:`, result);
-    return null;
-  }
-  
-  return result;
-}
+// Database connection from environment variable
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
 // Function to read and parse the CSV file
 function readPacsModulesCsv() {
@@ -78,13 +48,10 @@ function readPacsModulesCsv() {
 function enhanceModuleData(modules) {
   // Add default status and category if missing
   return modules.map(module => ({
-    name: module.module_name,
+    moduleName: module.module_name,
     source: module.source || 'PACS WA',
-    status: module.integration || 'pending',
-    category: determineCategory(module.module_name),
-    description: module.description || generateDescription(module.module_name),
-    version: '1.0',
-    lastUpdated: new Date().toISOString()
+    integration: module.integration || 'pending',
+    description: generateDescription(module.module_name),
   }));
 }
 
@@ -129,10 +96,12 @@ function generateDescription(moduleName) {
   return descriptions[category];
 }
 
-// Main function to import PACS modules
+// Function to import modules directly to database
 async function importPacsModules() {
+  const client = await pool.connect();
+  
   try {
-    console.log('Starting PACS module import...');
+    console.log('Starting direct PACS module import...');
     
     // Read the CSV file
     const rawModules = readPacsModulesCsv();
@@ -141,45 +110,51 @@ async function importPacsModules() {
     // Enhance the module data
     const enhancedModules = enhanceModuleData(rawModules);
     
-    // Get JWT token for API access
-    const token = await getToken();
-    console.log('Successfully obtained JWT token');
+    // Begin transaction
+    await client.query('BEGIN');
     
-    // Import each module using the MCP API
     let successCount = 0;
     let errorCount = 0;
     
+    // For each module, insert or update in the database
     for (const module of enhancedModules) {
       try {
-        // Create tool parameters for module import
-        const params = {
-          name: module.name,
-          source: module.source,
-          status: module.status,
-          category: module.category,
-          description: module.description,
-          version: module.version,
-          lastUpdated: module.lastUpdated
-        };
+        // Use an UPSERT query to either insert or update the module
+        const query = `
+          INSERT INTO pacs_modules (module_name, source, integration, description)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (module_name) 
+          DO UPDATE SET
+            source = $2,
+            integration = $3,
+            description = $4
+          RETURNING id, module_name
+        `;
         
-        // Execute the importPacsModule tool
-        const result = await executeTool(token, 'importPacsModule', params);
+        const values = [
+          module.moduleName,
+          module.source,
+          module.integration,
+          module.description
+        ];
         
-        if (result && result.success) {
-          console.log(`✓ Imported module: ${module.name}`);
+        const result = await client.query(query, values);
+        
+        if (result.rows.length > 0) {
+          console.log(`✓ Imported module: ${result.rows[0].module_name} (ID: ${result.rows[0].id})`);
           successCount++;
         } else {
-          console.error(`✗ Failed to import module: ${module.name}`);
+          console.error(`✗ Failed to import module: ${module.moduleName}`);
           errorCount++;
         }
       } catch (error) {
-        console.error(`Error importing module ${module.name}:`, error);
+        console.error(`Error importing module ${module.moduleName}:`, error);
         errorCount++;
       }
-      
-      // Add a small delay to prevent overwhelming the API
-      await new Promise(resolve => setTimeout(resolve, 100));
     }
+    
+    // Commit transaction
+    await client.query('COMMIT');
     
     console.log('\nImport completed:');
     console.log(`- Total modules: ${enhancedModules.length}`);
@@ -187,7 +162,10 @@ async function importPacsModules() {
     console.log(`- Failed: ${errorCount}`);
     
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error during PACS module import:', error);
+  } finally {
+    client.release();
   }
 }
 

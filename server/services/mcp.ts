@@ -169,6 +169,21 @@ export class MCPService {
       handler: async (params) => this.getPacsModules(params)
     });
     
+    this.registerTool({
+      name: "importPacsModule",
+      description: "Import or update a PACS module",
+      parameters: {
+        name: "String representing the module name",
+        source: "String representing the source system",
+        status: "String representing the integration status",
+        category: "String representing the module category",
+        description: "String describing the module",
+        version: "String representing the module version",
+        lastUpdated: "String representing when the module was last updated"
+      },
+      handler: async (params) => this.importPacsModule(params)
+    });
+    
     // Property full details tool
     this.registerTool({
       name: "getPropertyFullDetails",
@@ -715,6 +730,73 @@ export class MCPService {
     
     console.log(`Found ${modules.length} PACS modules matching filter criteria`);
     return modules;
+  }
+  
+  /**
+   * Tool: Import or update a PACS module
+   */
+  private async importPacsModule(params: any): Promise<{ success: boolean, module?: PacsModule }> {
+    // Define a schema for PACS module creation/update
+    const moduleCreateSchema = z.object({
+      name: z.string().min(1).max(255),
+      source: z.string().min(1).max(255),
+      status: z.string().min(1).max(50),
+      category: z.string().optional(),
+      description: z.string().optional(),
+      version: z.string().optional(),
+      lastUpdated: z.string().optional()
+    });
+    
+    // Validate input
+    const validatedParams = moduleCreateSchema.parse(params);
+    
+    try {
+      // Sanitize all input values to prevent attacks
+      const moduleName = securityService.sanitizeString(validatedParams.name) || "";
+      const source = securityService.sanitizeString(validatedParams.source) || "PACS WA";
+      const integration = securityService.sanitizeString(validatedParams.status) || "pending";
+      const description = securityService.sanitizeString(validatedParams.description) || "";
+      
+      // Create the module data structure
+      const moduleData = {
+        moduleName,
+        source,
+        integration,
+        description
+      };
+      
+      // Log the import operation
+      console.log(`Importing PACS module: ${moduleName} from ${source} with status ${integration}`);
+      
+      // Save to database via storage service
+      const savedModule = await storage.upsertPacsModule(moduleData);
+      
+      // Create audit log for the import
+      await storage.createAuditLog({
+        userId: 1, // Admin user ID
+        action: "IMPORT",
+        entityType: "pacs_module",
+        entityId: String(savedModule.id),
+        details: {
+          moduleName,
+          source,
+          integration,
+          timestamp: new Date().toISOString()
+        },
+        ipAddress: "system"
+      });
+      
+      // Return success response
+      return {
+        success: true,
+        module: savedModule
+      };
+    } catch (error) {
+      console.error(`Error importing PACS module:`, error);
+      return {
+        success: false
+      };
+    }
   }
 }
 

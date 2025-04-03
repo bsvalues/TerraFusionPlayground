@@ -12,6 +12,17 @@ import {
   systemActivities, SystemActivity, InsertSystemActivity,
   pacsModules, PacsModule, InsertPacsModule
 } from "@shared/schema";
+import pg from 'pg';
+
+// Database row type for PACS modules
+interface PacsModuleRow {
+  id: number;
+  module_name: string;
+  source: string;
+  integration: string;
+  description: string | null;
+  created_at: Date;
+}
 
 // Define the storage interface
 export interface IStorage {
@@ -515,35 +526,163 @@ export class MemStorage implements IStorage {
   
   // PACS Module methods
   async getAllPacsModules(): Promise<PacsModule[]> {
-    return Array.from(this.pacsModules.values());
+    // First check if we have any modules in memory
+    const memoryModules = Array.from(this.pacsModules.values());
+    if (memoryModules.length > 0) {
+      return memoryModules;
+    }
+    
+    // If no modules in memory, try to fetch from database
+    try {
+      // Connect to database using DATABASE_URL
+      console.log("Connecting to database with URL:", process.env.DATABASE_URL ? "URL exists" : "URL is missing");
+      // Use dynamic import for pg
+      const { Pool } = await import('pg');
+      const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+      });
+      console.log("Database pool created");
+      
+      // Query the database
+      console.log("Attempting to connect to database...");
+      const client = await pool.connect();
+      console.log("Database connection established successfully");
+      try {
+        const result = await client.query('SELECT * FROM pacs_modules ORDER BY module_name');
+        
+        // Store results in memory for future requests
+        for (const row of result.rows) {
+          const module: PacsModule = {
+            id: row.id,
+            moduleName: row.module_name,
+            source: row.source,
+            integration: row.integration,
+            description: row.description,
+            createdAt: row.created_at
+          };
+          this.pacsModules.set(module.id, module);
+        }
+        
+        return result.rows.map((row: PacsModuleRow) => ({
+          id: row.id,
+          moduleName: row.module_name,
+          source: row.source,
+          integration: row.integration,
+          description: row.description,
+          createdAt: row.created_at
+        }));
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error('Error fetching PACS modules from database:', error);
+      console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      return [];
+    }
   }
   
   async upsertPacsModule(insertModule: InsertPacsModule): Promise<PacsModule> {
-    // Check if module already exists
-    const existingModule = Array.from(this.pacsModules.values())
-      .find(module => module.moduleName === insertModule.moduleName);
-    
-    if (existingModule) {
-      const updatedModule = {
-        ...existingModule,
-        ...insertModule,
-        // Ensure description is properly set
-        description: insertModule.description !== undefined ? insertModule.description : existingModule.description
-      };
-      this.pacsModules.set(existingModule.id, updatedModule);
-      return updatedModule;
-    } else {
-      const id = this.currentPacsModuleId++;
-      const timestamp = new Date();
-      const module: PacsModule = {
-        ...insertModule,
-        id,
-        createdAt: timestamp,
-        // Ensure description is properly set
-        description: insertModule.description !== undefined ? insertModule.description : null
-      };
-      this.pacsModules.set(id, module);
-      return module;
+    try {
+      // Connect to database using DATABASE_URL
+      console.log("Upserting module, connecting to database with URL:", process.env.DATABASE_URL ? "URL exists" : "URL is missing");
+      // Use dynamic import for pg
+      const { Pool } = await import('pg');
+      const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+      });
+      console.log("Database pool created for upsert");
+      
+      console.log("Attempting to connect to database for upsert...");
+      const client = await pool.connect();
+      console.log("Database connection established successfully for upsert");
+      try {
+        // Check if the module exists in the database
+        const existingResult = await client.query(
+          'SELECT * FROM pacs_modules WHERE module_name = $1',
+          [insertModule.moduleName]
+        );
+        
+        let result;
+        
+        if (existingResult.rows.length > 0) {
+          // Update existing module
+          const existing = existingResult.rows[0] as PacsModuleRow;
+          result = await client.query(
+            `UPDATE pacs_modules 
+             SET source = $1, integration = $2, description = $3
+             WHERE id = $4
+             RETURNING *`,
+            [
+              insertModule.source || existing.source,
+              insertModule.integration || existing.integration,
+              insertModule.description !== undefined ? insertModule.description : existing.description,
+              existing.id
+            ]
+          );
+        } else {
+          // Insert new module
+          result = await client.query(
+            `INSERT INTO pacs_modules (module_name, source, integration, description)
+             VALUES ($1, $2, $3, $4)
+             RETURNING *`,
+            [
+              insertModule.moduleName,
+              insertModule.source || 'PACS WA',
+              insertModule.integration || 'pending',
+              insertModule.description || null
+            ]
+          );
+        }
+        
+        if (result.rows.length > 0) {
+          const row = result.rows[0] as PacsModuleRow;
+          const module: PacsModule = {
+            id: row.id,
+            moduleName: row.module_name,
+            source: row.source,
+            integration: row.integration,
+            description: row.description,
+            createdAt: row.created_at
+          };
+          
+          // Update in-memory cache
+          this.pacsModules.set(module.id, module);
+          
+          return module;
+        } else {
+          throw new Error('Failed to upsert PACS module');
+        }
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error('Error upserting PACS module:', error);
+      console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      
+      // Fall back to in-memory storage if database operation fails
+      const existingModule = Array.from(this.pacsModules.values())
+        .find(module => module.moduleName === insertModule.moduleName);
+      
+      if (existingModule) {
+        const updatedModule = {
+          ...existingModule,
+          ...insertModule,
+          description: insertModule.description !== undefined ? insertModule.description : existingModule.description
+        };
+        this.pacsModules.set(existingModule.id, updatedModule);
+        return updatedModule;
+      } else {
+        const id = this.currentPacsModuleId++;
+        const timestamp = new Date();
+        const module: PacsModule = {
+          ...insertModule,
+          id,
+          createdAt: timestamp,
+          description: insertModule.description !== undefined ? insertModule.description : null
+        };
+        this.pacsModules.set(id, module);
+        return module;
+      }
     }
   }
   

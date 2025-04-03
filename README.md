@@ -36,7 +36,19 @@ This platform modernizes the Benton County Assessor's Office operations by imple
    npm run db:push
    ```
 
-3. Start the development server:
+3. Import PACS modules:
+   ```
+   # Using API-based import (requires running server)
+   node scripts/import-pacs-modules.js
+   
+   # Or using direct database import (no server required)
+   node scripts/direct-import-pacs-modules.js
+   
+   # Or using the combined script
+   bash scripts/run-import.sh [direct]
+   ```
+
+4. Start the development server:
    ```
    npm run dev
    ```
@@ -55,6 +67,7 @@ The Model Context Protocol (MCP) architecture provides a secure, unified interfa
 
 - [MCP Authentication](docs/mcp-authentication.md): Authentication system overview
 - [MCP Security](docs/mcp-security.md): Security architecture details
+- [PACS Module Integration](scripts/README.md): PACS module import tools and usage
 - Additional documentation is available in the [docs](docs) directory
 
 ## Development Guidelines
