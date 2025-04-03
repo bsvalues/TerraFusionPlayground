@@ -24,15 +24,37 @@ export function PropertyStoryDemo() {
   const [includeLandRecords, setIncludeLandRecords] = useState(true);
   const [includeFields, setIncludeFields] = useState(true);
 
-  // Single property story query
-  const {
-    data: singleStory,
-    isLoading: isSingleLoading,
-    refetch: refetchSingleStory
-  } = useQuery({
-    queryKey: ['/api/property-stories', propertyId],
-    queryFn: () => fetch(`/api/property-stories/${propertyId}?includeTax=${includeTax}&includeAppeals=${includeAppeals}&includeImprovements=${includeImprovements}&includeLandRecords=${includeLandRecords}&includeFields=${includeFields}`).then(res => res.json()),
-    enabled: false
+  // Single property story mutation
+  const singleStoryMutation = useMutation({
+    mutationFn: (id: string) => {
+      return apiRequest(`/api/property-stories`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          propertyId: id,
+          options: {
+            tone: 'professional',
+            includeTax,
+            includeAppeals,
+            includeImprovements,
+            includeLandRecords,
+            includeFields
+          }
+        })
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/property-stories'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error generating property story",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   });
 
   // Multiple property stories mutation
@@ -40,16 +62,20 @@ export function PropertyStoryDemo() {
     mutationFn: (ids: string[]) => {
       return apiRequest(`/api/property-stories/multiple`, {
         method: 'POST',
-        body: { 
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
           propertyIds: ids,
           options: {
+            tone: 'professional',
             includeTax,
             includeAppeals,
             includeImprovements,
             includeLandRecords,
             includeFields
           }
-        }
+        })
       });
     },
     onSuccess: () => {
@@ -69,16 +95,20 @@ export function PropertyStoryDemo() {
     mutationFn: (ids: string[]) => {
       return apiRequest(`/api/property-stories/compare`, {
         method: 'POST',
-        body: { 
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
           propertyIds: ids,
           options: {
+            tone: 'professional',
             includeTax,
             includeAppeals,
             includeImprovements,
             includeLandRecords,
             includeFields
           }
-        }
+        })
       });
     },
     onSuccess: () => {
@@ -95,7 +125,7 @@ export function PropertyStoryDemo() {
 
   // Handlers
   const handleSingleGenerate = () => {
-    refetchSingleStory();
+    singleStoryMutation.mutate(propertyId);
   };
 
   const handleMultipleGenerate = () => {
@@ -220,17 +250,17 @@ export function PropertyStoryDemo() {
             <CardFooter>
               <Button 
                 onClick={handleSingleGenerate} 
-                disabled={isSingleLoading || !propertyId}
+                disabled={singleStoryMutation.isPending || !propertyId}
               >
-                {isSingleLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {singleStoryMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Generate Story
               </Button>
             </CardFooter>
           </Card>
           
           {renderStoryOutput(
-            singleStory, 
-            isSingleLoading, 
+            singleStoryMutation.data, 
+            singleStoryMutation.isPending, 
             `Property Story for ${propertyId}`
           )}
         </TabsContent>

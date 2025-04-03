@@ -1228,7 +1228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * AI-powered narrative descriptions of properties
    */
   
-  // Generate a story for a single property
+  // Generate a story for a single property (GET method)
   app.get("/api/property-stories/:propertyId", async (req, res) => {
     try {
       const { propertyId } = req.params;
@@ -1245,6 +1245,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Generate the property story
       const result = await propertyStoryGenerator.generatePropertyStory(propertyId, options);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "GENERATE",
+        entityType: "propertyStory",
+        entityId: propertyId,
+        details: { options },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      // Return the result
+      res.json(result);
+    } catch (error) {
+      console.error('Error generating property story:', error);
+      res.status(500).json({ 
+        error: 'Failed to generate property story',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  // Generate a story for a single property (POST method)
+  app.post("/api/property-stories", async (req, res) => {
+    try {
+      const { propertyId, options } = req.body;
+      
+      // Validate input
+      if (!propertyId) {
+        return res.status(400).json({ error: 'Property ID is required' });
+      }
+      
+      // Generate the property story
+      const result = await propertyStoryGenerator.generatePropertyStory(propertyId, options || {});
       
       // Create audit log
       await storage.createAuditLog({
