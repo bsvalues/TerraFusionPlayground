@@ -10,7 +10,8 @@ import {
   auditLogs, AuditLog, InsertAuditLog,
   aiAgents, AiAgent, InsertAiAgent,
   systemActivities, SystemActivity, InsertSystemActivity,
-  pacsModules, PacsModule, InsertPacsModule
+  pacsModules, PacsModule, InsertPacsModule,
+  propertyInsightShares, PropertyInsightShare, InsertPropertyInsightShare
 } from "@shared/schema";
 import pg from 'pg';
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -95,6 +96,13 @@ export interface IStorage {
   getPacsModuleById(id: number): Promise<PacsModule | undefined>;
   getPacsModulesByCategory(): Promise<PacsModule[]>;
   updatePacsModuleSyncStatus(id: number, syncStatus: string, lastSyncTimestamp: Date): Promise<PacsModule | undefined>;
+  
+  // Property Insight Sharing methods
+  createPropertyInsightShare(share: InsertPropertyInsightShare): Promise<PropertyInsightShare>;
+  getPropertyInsightShareById(shareId: string): Promise<PropertyInsightShare | null>;
+  getPropertyInsightSharesByPropertyId(propertyId: string): Promise<PropertyInsightShare[]>;
+  updatePropertyInsightShare(shareId: string, updates: Partial<InsertPropertyInsightShare>): Promise<PropertyInsightShare | null>;
+  deletePropertyInsightShare(shareId: string): Promise<boolean>;
 }
 
 // Implement the in-memory storage
@@ -111,6 +119,7 @@ export class MemStorage implements IStorage {
   private aiAgents: Map<number, AiAgent>;
   private systemActivities: Map<number, SystemActivity>;
   private pacsModules: Map<number, PacsModule>;
+  private propertyInsightShares: Map<string, PropertyInsightShare>;
   
   private currentUserId: number;
   private currentPropertyId: number;
@@ -124,6 +133,7 @@ export class MemStorage implements IStorage {
   private currentAiAgentId: number;
   private currentSystemActivityId: number;
   private currentPacsModuleId: number;
+  private currentPropertyInsightShareId: number;
 
   constructor() {
     this.users = new Map();
@@ -138,6 +148,7 @@ export class MemStorage implements IStorage {
     this.aiAgents = new Map();
     this.systemActivities = new Map();
     this.pacsModules = new Map();
+    this.propertyInsightShares = new Map();
     
     this.currentUserId = 1;
     this.currentPropertyId = 1;
@@ -151,6 +162,7 @@ export class MemStorage implements IStorage {
     this.currentAiAgentId = 1;
     this.currentSystemActivityId = 1;
     this.currentPacsModuleId = 1;
+    this.currentPropertyInsightShareId = 1;
     
     // Initialize with sample data
     this.seedData();
@@ -598,6 +610,99 @@ export class MemStorage implements IStorage {
     return updatePacsSyncStatus(this.pacsModules, id, syncStatus, lastSyncTimestamp);
   }
   
+  // Property Insight Sharing methods
+  async createPropertyInsightShare(insertShare: InsertPropertyInsightShare): Promise<PropertyInsightShare> {
+    const id = this.currentPropertyInsightShareId++;
+    const timestamp = new Date();
+    
+    // Create a complete PropertyInsightShare object with defaults for required fields
+    const share: PropertyInsightShare = {
+      ...insertShare,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      accessCount: 0,
+      // Set defaults for fields that might be undefined but are required by the PropertyInsightShare type
+      password: insertShare.password || null,
+      format: insertShare.format || "detailed",
+      createdBy: insertShare.createdBy || null,
+      allowedDomains: insertShare.allowedDomains || null,
+      expiresAt: insertShare.expiresAt || null,
+      isPublic: insertShare.isPublic ?? true
+    };
+    
+    this.propertyInsightShares.set(share.shareId, share);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Analysis Agent
+      activity: `Created property insight share for property ID: ${share.propertyId}`,
+      entityType: 'propertyInsight',
+      entityId: share.propertyId
+    });
+    
+    return share;
+  }
+  
+  async getPropertyInsightShareById(shareId: string): Promise<PropertyInsightShare | null> {
+    const share = this.propertyInsightShares.get(shareId);
+    if (!share) return null;
+    
+    // Check if share has expired
+    if (share.expiresAt && new Date(share.expiresAt) < new Date()) {
+      return null;
+    }
+    
+    return share;
+  }
+  
+  async getPropertyInsightSharesByPropertyId(propertyId: string): Promise<PropertyInsightShare[]> {
+    return Array.from(this.propertyInsightShares.values())
+      .filter((share: PropertyInsightShare) => share.propertyId.includes(propertyId))
+      .filter((share: PropertyInsightShare) => !share.expiresAt || new Date(share.expiresAt) >= new Date());
+  }
+  
+  async updatePropertyInsightShare(shareId: string, updates: Partial<InsertPropertyInsightShare>): Promise<PropertyInsightShare | null> {
+    const share = this.propertyInsightShares.get(shareId);
+    if (!share) return null;
+    
+    const timestamp = new Date();
+    const updatedShare: PropertyInsightShare = {
+      ...share,
+      ...updates as any, // Type assertion to handle accessCount update
+      updatedAt: timestamp
+    };
+    
+    this.propertyInsightShares.set(shareId, updatedShare);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Analysis Agent
+      activity: `Updated property insight share for property ID: ${share.propertyId}`,
+      entityType: 'propertyInsight',
+      entityId: share.propertyId
+    });
+    
+    return updatedShare;
+  }
+  
+  async deletePropertyInsightShare(shareId: string): Promise<boolean> {
+    const share = this.propertyInsightShares.get(shareId);
+    if (!share) return false;
+    
+    this.propertyInsightShares.delete(shareId);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Analysis Agent
+      activity: `Deleted property insight share for property ID: ${share.propertyId}`,
+      entityType: 'propertyInsight',
+      entityId: share.propertyId
+    });
+    
+    return true;
+  }
+  
   // Seed initial data
   private seedData() {
     // Seed an admin user
@@ -853,7 +958,7 @@ export class PgStorage implements IStorage {
     this.db = drizzle(this.pool, { schema: { 
       users, properties, landRecords, improvements, fields, 
       appeals, appealComments, appealEvidence, auditLogs,
-      aiAgents, systemActivities, pacsModules
+      aiAgents, systemActivities, pacsModules, propertyInsightShares
     }});
     
     // Initialize in-memory maps for PACS methods
@@ -1077,6 +1182,61 @@ export class PgStorage implements IStorage {
       .where(eq(pacsModules.id, id))
       .returning();
     return results[0];
+  }
+  
+  // Property Insight Sharing methods
+  async createPropertyInsightShare(insertShare: InsertPropertyInsightShare): Promise<PropertyInsightShare> {
+    const results = await this.db.insert(propertyInsightShares).values(insertShare).returning();
+    return results[0];
+  }
+  
+  async getPropertyInsightShareById(shareId: string): Promise<PropertyInsightShare | null> {
+    const results = await this.db.select().from(propertyInsightShares).where(eq(propertyInsightShares.shareId, shareId));
+    if (results.length === 0) return null;
+    
+    // Check if share has expired
+    if (results[0].expiresAt && new Date(results[0].expiresAt) < new Date()) {
+      return null;
+    }
+    
+    return results[0];
+  }
+  
+  async getPropertyInsightSharesByPropertyId(propertyId: string): Promise<PropertyInsightShare[]> {
+    const results = await this.db.select().from(propertyInsightShares)
+      .where(eq(propertyInsightShares.propertyId, propertyId));
+    
+    // Filter out expired shares
+    return results.filter((share) => {
+      // Explicitly cast the share to PropertyInsightShare
+      const typedShare = share as PropertyInsightShare;
+      return !typedShare.expiresAt || new Date(typedShare.expiresAt) >= new Date();
+    });
+  }
+  
+  async updatePropertyInsightShare(shareId: string, updates: Partial<InsertPropertyInsightShare> | any): Promise<PropertyInsightShare | null> {
+    // The 'any' type is used here to handle the accessCount field which is not part of InsertPropertyInsightShare
+    
+    const updatesWithTimestamp = {
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    const results = await this.db.update(propertyInsightShares)
+      .set(updatesWithTimestamp as any) // Type assertion to allow accessCount update
+      .where(eq(propertyInsightShares.shareId, shareId))
+      .returning();
+      
+    if (results.length === 0) return null;
+    return results[0];
+  }
+  
+  async deletePropertyInsightShare(shareId: string): Promise<boolean> {
+    const results = await this.db.delete(propertyInsightShares)
+      .where(eq(propertyInsightShares.shareId, shareId))
+      .returning();
+      
+    return results.length > 0;
   }
 }
 

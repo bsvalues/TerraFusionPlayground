@@ -312,3 +312,39 @@ export type InsertSystemActivity = z.infer<typeof insertSystemActivitySchema>;
 
 export type PacsModule = typeof pacsModules.$inferSelect;
 export type InsertPacsModule = z.infer<typeof insertPacsModuleSchema>;
+
+// Property Insights Sharing table
+export const propertyInsightShares = pgTable("property_insight_shares", {
+  id: serial("id").primaryKey(),
+  shareId: text("share_id").notNull().unique(), // UUID for sharing
+  propertyId: text("property_id").notNull(),
+  title: text("title").notNull(),
+  insightType: text("insight_type").notNull(), // 'story', 'comparison', 'data'
+  insightData: jsonb("insight_data").notNull(), // Stored insight content
+  format: text("format").notNull().default("detailed"), // 'simple', 'detailed', 'summary'
+  createdBy: integer("created_by"), // Optional user ID if authenticated
+  accessCount: integer("access_count").notNull().default(0), // Number of times accessed
+  expiresAt: timestamp("expires_at"), // Optional expiration
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  isPublic: boolean("is_public").notNull().default(true),
+  password: text("password"), // Optional password protection
+  allowedDomains: text("allowed_domains").array(), // Domain restriction for email sharing
+});
+
+export const insertPropertyInsightShareSchema = createInsertSchema(propertyInsightShares).pick({
+  shareId: true,
+  propertyId: true,
+  title: true,
+  insightType: true,
+  insightData: true,
+  format: true,
+  createdBy: true,
+  expiresAt: true,
+  isPublic: true,
+  password: true,
+  allowedDomains: true,
+});
+
+export type PropertyInsightShare = typeof propertyInsightShares.$inferSelect;
+export type InsertPropertyInsightShare = z.infer<typeof insertPropertyInsightShareSchema>;
