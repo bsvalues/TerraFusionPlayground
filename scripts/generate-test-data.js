@@ -4,16 +4,16 @@
  * This script creates sample property data to demonstrate the Property Story Generator.
  */
 
-import { createClient } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
+import pg from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq } from 'drizzle-orm';
 import * as schema from '../shared/schema.ts';
 
-const client = createClient({
+const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-const db = drizzle(client, { schema });
+const db = drizzle(pool, { schema });
 
 async function generateTestData() {
   try {
@@ -50,8 +50,8 @@ async function generateTestData() {
       zoning: "R1",
       landUseCode: "single_family",
       topography: "level",
-      frontage: "75ft",
-      depth: "150ft",
+      frontage: 75,
+      depth: 150,
       shape: "rectangular",
       utilities: "all_public",
       floodZone: "none"
@@ -99,8 +99,8 @@ async function generateTestData() {
       zoning: "Agricultural",
       landUseCode: "vineyards",
       topography: "sloping",
-      frontage: "600ft",
-      depth: "3300ft",
+      frontage: 600,
+      depth: 3300,
       shape: "irregular",
       utilities: "well_septic",
       floodZone: "partial"
@@ -156,8 +156,8 @@ async function generateTestData() {
       zoning: "C-3",
       landUseCode: "retail",
       topography: "level",
-      frontage: "250ft",
-      depth: "260ft",
+      frontage: 250,
+      depth: 260,
       shape: "rectangular",
       utilities: "all_public",
       floodZone: "none"
@@ -206,12 +206,12 @@ async function generateTestData() {
     console.log('- BC103 (Commercial)');
     
     // Close the connection
-    await client.end();
+    await pool.end();
     
   } catch (error) {
     console.error('Error generating sample data:', error);
     // Close the connection even if there's an error
-    await client.end();
+    await pool.end();
   }
 }
 

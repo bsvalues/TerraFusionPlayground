@@ -13,6 +13,8 @@ import {
   pacsModules, PacsModule, InsertPacsModule
 } from "@shared/schema";
 import pg from 'pg';
+import { drizzle } from "drizzle-orm/node-postgres";
+import { eq, desc } from "drizzle-orm";
 
 import {
   getAllPacsModules as fetchAllPacsModules,
@@ -836,4 +838,247 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Create a PostgreSQL implementation of the storage interface
+export class PgStorage implements IStorage {
+  private pool: pg.Pool;
+  private db: any;
+  // We need a reference to these in-memory maps for the PACS methods
+  private pacsModules: Map<number, PacsModule>;
+  private currentPacsModuleId: number;
+
+  constructor() {
+    this.pool = new pg.Pool({
+      connectionString: process.env.DATABASE_URL,
+    });
+    this.db = drizzle(this.pool, { schema: { 
+      users, properties, landRecords, improvements, fields, 
+      appeals, appealComments, appealEvidence, auditLogs,
+      aiAgents, systemActivities, pacsModules
+    }});
+    
+    // Initialize in-memory maps for PACS methods
+    this.pacsModules = new Map();
+    this.currentPacsModuleId = 1;
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const results = await this.db.select().from(users).where(eq(users.id, id));
+    return results[0];
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const results = await this.db.select().from(users).where(eq(users.username, username));
+    return results[0];
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const results = await this.db.insert(users).values(insertUser).returning();
+    return results[0];
+  }
+
+  // Property methods
+  async getAllProperties(): Promise<Property[]> {
+    return await this.db.select().from(properties);
+  }
+
+  async getProperty(id: number): Promise<Property | undefined> {
+    const results = await this.db.select().from(properties).where(eq(properties.id, id));
+    return results[0];
+  }
+
+  async getPropertyByPropertyId(propertyId: string): Promise<Property | undefined> {
+    const results = await this.db.select().from(properties).where(eq(properties.propertyId, propertyId));
+    return results[0];
+  }
+
+  async createProperty(insertProperty: InsertProperty): Promise<Property> {
+    const results = await this.db.insert(properties).values(insertProperty).returning();
+    return results[0];
+  }
+
+  async updateProperty(id: number, updateData: Partial<InsertProperty>): Promise<Property | undefined> {
+    const results = await this.db.update(properties).set(updateData).where(eq(properties.id, id)).returning();
+    return results[0];
+  }
+
+  // Land Record methods
+  async getLandRecordsByPropertyId(propertyId: string): Promise<LandRecord[]> {
+    return await this.db.select().from(landRecords).where(eq(landRecords.propertyId, propertyId));
+  }
+
+  async createLandRecord(insertLandRecord: InsertLandRecord): Promise<LandRecord> {
+    const results = await this.db.insert(landRecords).values(insertLandRecord).returning();
+    return results[0];
+  }
+
+  // Improvement methods
+  async getImprovementsByPropertyId(propertyId: string): Promise<Improvement[]> {
+    return await this.db.select().from(improvements).where(eq(improvements.propertyId, propertyId));
+  }
+
+  async createImprovement(insertImprovement: InsertImprovement): Promise<Improvement> {
+    const results = await this.db.insert(improvements).values(insertImprovement).returning();
+    return results[0];
+  }
+
+  // Field methods
+  async getFieldsByPropertyId(propertyId: string): Promise<Field[]> {
+    return await this.db.select().from(fields).where(eq(fields.propertyId, propertyId));
+  }
+
+  async createField(insertField: InsertField): Promise<Field> {
+    const results = await this.db.insert(fields).values(insertField).returning();
+    return results[0];
+  }
+
+  async getField(id: number): Promise<Field | undefined> {
+    const results = await this.db.select().from(fields).where(eq(fields.id, id));
+    return results[0];
+  }
+
+  async updateField(id: number, updateData: Partial<InsertField>): Promise<Field | undefined> {
+    const results = await this.db.update(fields).set(updateData).where(eq(fields.id, id)).returning();
+    return results[0];
+  }
+
+  // Appeals Management methods
+  async getAppealsByPropertyId(propertyId: string): Promise<Appeal[]> {
+    return await this.db.select().from(appeals).where(eq(appeals.propertyId, propertyId));
+  }
+
+  async getAppealsByUserId(userId: number): Promise<Appeal[]> {
+    return await this.db.select().from(appeals).where(eq(appeals.userId, userId));
+  }
+
+  async createAppeal(insertAppeal: InsertAppeal): Promise<Appeal> {
+    const results = await this.db.insert(appeals).values(insertAppeal).returning();
+    return results[0];
+  }
+
+  async updateAppealStatus(id: number, status: string): Promise<Appeal | undefined> {
+    const results = await this.db.update(appeals).set({ status }).where(eq(appeals.id, id)).returning();
+    return results[0];
+  }
+
+  async getAppealCommentsByAppealId(appealId: number): Promise<AppealComment[]> {
+    return await this.db.select().from(appealComments).where(eq(appealComments.appealId, appealId));
+  }
+
+  async createAppealComment(insertComment: InsertAppealComment): Promise<AppealComment> {
+    const results = await this.db.insert(appealComments).values(insertComment).returning();
+    return results[0];
+  }
+
+  async getAppealEvidenceByAppealId(appealId: number): Promise<AppealEvidence[]> {
+    return await this.db.select().from(appealEvidence).where(eq(appealEvidence.appealId, appealId));
+  }
+
+  async createAppealEvidence(insertEvidence: InsertAppealEvidence): Promise<AppealEvidence> {
+    const results = await this.db.insert(appealEvidence).values(insertEvidence).returning();
+    return results[0];
+  }
+
+  // Audit Log methods
+  async createAuditLog(insertAuditLog: InsertAuditLog): Promise<AuditLog> {
+    const results = await this.db.insert(auditLogs).values(insertAuditLog).returning();
+    return results[0];
+  }
+
+  async getAuditLogs(limit?: number): Promise<AuditLog[]> {
+    const query = this.db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp));
+    if (limit) {
+      query.limit(limit);
+    }
+    return await query;
+  }
+
+  // AI Agent methods
+  async getAllAiAgents(): Promise<AiAgent[]> {
+    return await this.db.select().from(aiAgents);
+  }
+
+  async updateAiAgentStatus(id: number, status: string, performance: number): Promise<AiAgent | undefined> {
+    const results = await this.db.update(aiAgents)
+      .set({ status, performance, lastActivity: new Date() })
+      .where(eq(aiAgents.id, id))
+      .returning();
+    return results[0];
+  }
+
+  // System Activity methods
+  async getSystemActivities(limit?: number): Promise<SystemActivity[]> {
+    const query = this.db.select().from(systemActivities).orderBy(desc(systemActivities.timestamp));
+    if (limit) {
+      query.limit(limit);
+    }
+    return await query;
+  }
+
+  async createSystemActivity(insertActivity: InsertSystemActivity): Promise<SystemActivity> {
+    const results = await this.db.insert(systemActivities).values(insertActivity).returning();
+    return results[0];
+  }
+
+  // PACS Module methods
+  async getAllPacsModules(): Promise<PacsModule[]> {
+    const results = await this.db.select().from(pacsModules);
+    return results;
+  }
+
+  async upsertPacsModule(module: InsertPacsModule): Promise<PacsModule> {
+    // Check if module exists
+    const existing = await this.db.select()
+      .from(pacsModules)
+      .where(eq(pacsModules.moduleName, module.moduleName));
+    
+    if (existing.length > 0) {
+      // Update
+      const results = await this.db.update(pacsModules)
+        .set({
+          source: module.source,
+          integration: module.integration,
+          description: module.description,
+          category: module.category,
+          apiEndpoints: module.apiEndpoints,
+          dataSchema: module.dataSchema,
+          syncStatus: module.syncStatus
+        })
+        .where(eq(pacsModules.id, existing[0].id))
+        .returning();
+      return results[0];
+    } else {
+      // Insert
+      const results = await this.db.insert(pacsModules)
+        .values(module)
+        .returning();
+      return results[0];
+    }
+  }
+
+  async getPacsModuleById(id: number): Promise<PacsModule | undefined> {
+    const results = await this.db.select()
+      .from(pacsModules)
+      .where(eq(pacsModules.id, id));
+    return results[0];
+  }
+
+  async getPacsModulesByCategory(): Promise<PacsModule[]> {
+    return await this.db.select().from(pacsModules)
+      .orderBy(pacsModules.category);
+  }
+
+  async updatePacsModuleSyncStatus(id: number, syncStatus: string, lastSyncTimestamp: Date): Promise<PacsModule | undefined> {
+    const results = await this.db.update(pacsModules)
+      .set({ 
+        syncStatus: syncStatus, 
+        lastSyncTimestamp: lastSyncTimestamp 
+      })
+      .where(eq(pacsModules.id, id))
+      .returning();
+    return results[0];
+  }
+}
+
+// Use database storage instead of in-memory
+export const storage = new PgStorage();
