@@ -15,6 +15,7 @@ import { pacsIntegration } from "./pacs-integration";
 import { mappingIntegration } from "./mapping-integration";
 import { securityService } from "./security";
 import { z } from "zod";
+import crypto from "crypto";
 
 /**
  * Defines the structure of a tool available to the MCP framework
@@ -77,7 +78,7 @@ export class MCPService {
       parameters: {
         propertyId: "String representing the property ID"
       },
-      handler: async (params) => this.getPropertyById(params.propertyId)
+      handler: async (params) => this.getPropertyById(params)
     });
     
     // Land record tools
@@ -509,43 +510,63 @@ export class MCPService {
    * Tool: Get properties with optional filtering
    */
   private async getProperties(params: any): Promise<Property[]> {
+    // Define a Zod schema for property filtering parameters
+    const propertyFilterSchema = z.object({
+      address: z.string().optional(),
+      propertyType: z.string().optional(),
+      status: z.string().optional(),
+      minValue: z.number().optional().or(z.string().regex(/^\d+(\.\d+)?$/).transform(Number).optional()),
+      maxValue: z.number().optional().or(z.string().regex(/^\d+(\.\d+)?$/).transform(Number).optional()),
+      limit: z.number().optional().or(z.string().regex(/^\d+$/).transform(Number).optional())
+    }).strict(); // Only allow defined fields
+    
+    // Validate and parse input parameters
+    // This will throw if validation fails, which will be caught by the executeRequest method
+    const validatedParams = propertyFilterSchema.parse(params);
+    
+    // Get all properties from storage
     let properties = await storage.getAllProperties();
     
     // Apply filters
-    if (params.address) {
+    if (validatedParams.address) {
+      const sanitizedAddress = securityService.sanitizeString(validatedParams.address) || "";
       properties = properties.filter(p => 
-        p.address.toLowerCase().includes(params.address.toLowerCase())
+        p.address.toLowerCase().includes(sanitizedAddress.toLowerCase())
       );
     }
     
-    if (params.propertyType) {
+    if (validatedParams.propertyType) {
+      const sanitizedType = securityService.sanitizeString(validatedParams.propertyType) || "";
       properties = properties.filter(p => 
-        p.propertyType.toLowerCase() === params.propertyType.toLowerCase()
+        p.propertyType.toLowerCase() === sanitizedType.toLowerCase()
       );
     }
     
-    if (params.status) {
+    if (validatedParams.status) {
+      const sanitizedStatus = securityService.sanitizeString(validatedParams.status) || "";
       properties = properties.filter(p => 
-        p.status.toLowerCase() === params.status.toLowerCase()
+        p.status.toLowerCase() === sanitizedStatus.toLowerCase()
       );
     }
     
-    if (params.minValue !== undefined) {
+    if (validatedParams.minValue !== undefined) {
+      const minValue = validatedParams.minValue;
       properties = properties.filter(p => 
-        p.value !== null && Number(p.value) >= Number(params.minValue)
+        p.value !== null && Number(p.value) >= minValue
       );
     }
     
-    if (params.maxValue !== undefined) {
+    if (validatedParams.maxValue !== undefined) {
+      const maxValue = validatedParams.maxValue;
       properties = properties.filter(p => 
-        p.value !== null && Number(p.value) <= Number(params.maxValue)
+        p.value !== null && Number(p.value) <= maxValue
       );
     }
     
-    // Apply limit
-    if (params.limit && !isNaN(params.limit)) {
-      properties = properties.slice(0, Number(params.limit));
-    }
+    // Apply limit with reasonable max to prevent DoS
+    const MAX_RESULTS = 1000;
+    const limit = validatedParams.limit ? Math.min(validatedParams.limit, MAX_RESULTS) : MAX_RESULTS;
+    properties = properties.slice(0, limit);
     
     return properties;
   }
@@ -553,8 +574,25 @@ export class MCPService {
   /**
    * Tool: Get property by ID
    */
-  private async getPropertyById(propertyId: string): Promise<Property | null> {
-    const property = await storage.getPropertyByPropertyId(propertyId);
+  private async getPropertyById(params: any): Promise<Property | null> {
+    // Define schema for property ID validation
+    const propertyIdSchema = z.object({
+      propertyId: z.string().min(1).max(50)
+        .refine(id => securityService.isValidPropertyId(id), {
+          message: "Invalid property ID format"
+        })
+    }).strict();
+    
+    // Validate and sanitize input
+    const { propertyId } = propertyIdSchema.parse(params);
+    const sanitizedPropertyId = securityService.sanitizeString(propertyId);
+    
+    if (!sanitizedPropertyId) {
+      throw new Error("Invalid property ID");
+    }
+    
+    // Retrieve property with validated ID
+    const property = await storage.getPropertyByPropertyId(sanitizedPropertyId);
     return property || null;
   }
   
@@ -562,12 +600,24 @@ export class MCPService {
    * Tool: Generate map URL for property
    */
   private async generateMapUrl(params: any): Promise<any> {
-    const { propertyId, address, mapType } = params;
+    // Define schema for map URL generation parameters
+    const mapUrlSchema = z.object({
+      mapType: z.enum(['esri', 'google', 'pictometry']),
+      propertyId: z.string().min(1).max(50).optional(),
+      address: z.string().min(1).max(200).optional()
+    }).refine(data => data.propertyId || data.address, {
+      message: "Either propertyId or address is required"
+    });
     
-    if (!mapType) {
-      throw new Error("Map type is required");
-    }
+    // Validate and sanitize input
+    const validatedParams = mapUrlSchema.parse(params);
     
+    // Ensure strings are sanitized to prevent XSS, etc.
+    const { mapType } = validatedParams;
+    const propertyId = validatedParams.propertyId ? securityService.sanitizeString(validatedParams.propertyId) : null;
+    const address = validatedParams.address ? securityService.sanitizeString(validatedParams.address) : null;
+    
+    // Ensure at least one identifier is provided after sanitization
     if (!propertyId && !address) {
       throw new Error("Either propertyId or address is required");
     }
@@ -575,6 +625,11 @@ export class MCPService {
     let result: any = {};
     
     if (propertyId) {
+      // Ensure we're working with a valid property ID
+      if (!securityService.isValidPropertyId(propertyId)) {
+        throw new Error("Invalid property ID format");
+      }
+      
       const property = await storage.getPropertyByPropertyId(propertyId);
       
       if (!property) {
@@ -586,13 +641,17 @@ export class MCPService {
       } else if (mapType === 'google') {
         result.url = mappingIntegration.generateGoogleMapsUrl(property.address);
       } else if (mapType === 'pictometry') {
-        // This would need geocoding in a real implementation
-        // For now, we'll use dummy coordinates based on the property ID
-        const lat = 46.2 + (parseInt(propertyId.replace(/\D/g, '')) % 10) / 100;
-        const lng = -119.2 - (parseInt(propertyId.replace(/\D/g, '')) % 10) / 100;
+        // Use a more secure approach to generate coordinates
+        // Instead of using parseInt which could be manipulated
+        // Use createHash from Node's crypto module
+        const propertyHash = require('crypto').createHash('md5').update(propertyId).digest('hex');
+        const hashNum = parseInt(propertyHash.substring(0, 8), 16);
+        
+        // Use the hash to generate stable but pseudorandom coordinates
+        const lat = 46.2 + (hashNum % 100) / 1000; // Small variation
+        const lng = -119.2 - (hashNum % 100) / 1000; // Small variation
+        
         result.url = mappingIntegration.generatePictometryUrl(lat, lng);
-      } else {
-        throw new Error(`Unsupported map type: ${mapType}`);
       }
       
       result.propertyId = propertyId;
@@ -614,26 +673,47 @@ export class MCPService {
    * Tool: Get PACS modules
    */
   private async getPacsModules(params: any): Promise<PacsModule[]> {
+    // Define a schema for PACS module filtering
+    const moduleFilterSchema = z.object({
+      filter: z.object({
+        moduleName: z.string().optional(),
+        integration: z.string().optional()
+      }).optional(),
+      // Also allow direct filtering
+      moduleName: z.string().optional(),
+      integration: z.string().optional()
+    });
+    
+    // Validate input
+    const validatedParams = moduleFilterSchema.parse(params);
+    
+    // Get all modules
     let modules = await storage.getAllPacsModules();
     
     // Handle filters passed in the filter object or directly
-    const filter = params.filter || params;
+    const filter = validatedParams.filter || validatedParams;
     
-    // Apply moduleName filter
+    // Apply moduleName filter with sanitization
     if (filter.moduleName) {
+      const sanitizedModuleName = securityService.sanitizeString(filter.moduleName) || "";
       modules = modules.filter(m => 
-        m.moduleName.toLowerCase().includes(filter.moduleName.toLowerCase())
+        m.moduleName.toLowerCase().includes(sanitizedModuleName.toLowerCase())
       );
     }
     
-    // Apply integration filter
+    // Apply integration filter with sanitization
     if (filter.integration) {
+      const sanitizedIntegration = securityService.sanitizeString(filter.integration) || "";
       modules = modules.filter(m => 
-        m.integration.toLowerCase() === filter.integration.toLowerCase()
+        m.integration.toLowerCase() === sanitizedIntegration.toLowerCase()
       );
     }
     
-    console.log(`Found ${modules.length} modules with filter:`, filter);
+    // Apply reasonable limit to prevent potential DoS
+    const MAX_RESULTS = 1000;
+    modules = modules.slice(0, MAX_RESULTS);
+    
+    console.log(`Found ${modules.length} PACS modules matching filter criteria`);
     return modules;
   }
 }
