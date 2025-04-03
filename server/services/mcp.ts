@@ -4,12 +4,17 @@
  * This service implements the Model Context Protocol for the Benton County Assessor's Office.
  * It provides a standardized interface for AI models to interact with data sources and tools,
  * enabling more powerful and context-aware AI assistance for property assessment processes.
+ * 
+ * Enhanced with security measures to protect against injection attacks and other vulnerabilities
+ * demonstrated in the ICSF simulation labs.
  */
 
 import { storage } from "../storage";
 import { Property, LandRecord, Improvement, Field, Appeal, PacsModule } from "@shared/schema";
 import { pacsIntegration } from "./pacs-integration";
 import { mappingIntegration } from "./mapping-integration";
+import { securityService } from "./security";
+import { z } from "zod";
 
 /**
  * Defines the structure of a tool available to the MCP framework
@@ -189,36 +194,182 @@ export class MCPService {
   }
   
   /**
-   * Execute an MCP request
+   * Execute an MCP request with enhanced security validation
+   * Implements protections against injection attacks demonstrated in ICSF labs
    */
   public async executeRequest(request: MCPRequest): Promise<any> {
     const { toolName, parameters } = request;
     
+    // Validate tool name exists
     const tool = this.tools.get(toolName);
     if (!tool) {
       throw new Error(`Tool not found: ${toolName}`);
     }
     
     try {
-      // Log the tool execution
-      console.log(`Executing MCP tool: ${toolName}`);
+      // Log the tool execution request
+      console.log(`Received MCP tool execution request: ${toolName}`);
       
-      // Execute the tool handler
-      const result = await tool.handler(parameters);
+      // Security checks based on ICSF simulation labs
       
-      // Create system activity for the tool execution
-      await storage.createSystemActivity({
-        agentId: 4, // Assuming MCP Agent ID
-        activity: `Executed MCP tool: ${toolName}`,
-        entityType: "mcp_tool",
-        entityId: null
+      // 1. Check for XSS payloads in string parameters - Appeal Trigger Abuse Lab
+      const stringParams = Object.entries(parameters)
+        .filter(([_, value]) => typeof value === 'string')
+        .map(([key, value]) => ({ key, value: value as string }));
+      
+      const xssAttempts = stringParams.filter(p => securityService.containsXss(p.value));
+      if (xssAttempts.length > 0) {
+        const violationDetails = {
+          toolName,
+          parameters: request.parameters,
+          violations: xssAttempts.map(p => ({ parameter: p.key, value: p.value }))
+        };
+        
+        await securityService.logSecurityEvent(
+          1, // Admin user ID
+          "XSS_ATTEMPT_BLOCKED",
+          "mcp_request",
+          null,
+          violationDetails,
+          "system" // IP not available in this context
+        );
+        
+        return {
+          success: false,
+          toolName,
+          error: "Request contains potentially malicious XSS payloads",
+          securityViolation: true
+        };
+      }
+      
+      // 2. Check for SQL injection patterns - LaunchWorkflow Poison Injection Lab
+      const sqlInjectionAttempts = stringParams.filter(p => securityService.containsSqlInjection(p.value));
+      if (sqlInjectionAttempts.length > 0) {
+        const violationDetails = {
+          toolName,
+          parameters: request.parameters,
+          violations: sqlInjectionAttempts.map(p => ({ parameter: p.key, value: p.value }))
+        };
+        
+        await securityService.logSecurityEvent(
+          1, // Admin user ID
+          "SQL_INJECTION_ATTEMPT_BLOCKED",
+          "mcp_request",
+          null,
+          violationDetails,
+          "system" // IP not available in this context
+        );
+        
+        return {
+          success: false,
+          toolName,
+          error: "Request contains potentially malicious SQL injection patterns",
+          securityViolation: true
+        };
+      }
+      
+      // 3. Check for numeric overflow/limits - Mass Refund Injection Lab
+      // Get numeric parameters and validate against reasonable limits
+      const numericParams = Object.entries(parameters)
+        .filter(([_, value]) => typeof value === 'number' || (typeof value === 'string' && !isNaN(Number(value))))
+        .map(([key, value]) => ({ 
+          key, 
+          value: typeof value === 'string' ? Number(value) : (value as number)
+        }));
+      
+      // Check each numeric parameter for reasonable limits based on context
+      const overflowAttempts = numericParams.filter(p => {
+        // Set default min/max values
+        let min = 0;
+        let max = 1000000000; // 1 billion as a reasonable upper limit
+        
+        // Determine context-specific limits
+        if (p.key.toLowerCase().includes('year')) {
+          min = 1800;
+          max = new Date().getFullYear() + 10;
+        } else if (p.key.toLowerCase().includes('count') || p.key.toLowerCase().includes('limit')) {
+          max = 10000;
+        }
+        
+        return !securityService.isValidNumericValue(p.value, min, max);
       });
       
-      return {
-        success: true,
-        toolName,
-        result
-      };
+      if (overflowAttempts.length > 0) {
+        const violationDetails = {
+          toolName,
+          parameters: request.parameters,
+          violations: overflowAttempts.map(p => ({ parameter: p.key, value: p.value }))
+        };
+        
+        await securityService.logSecurityEvent(
+          1, // Admin user ID
+          "NUMERIC_OVERFLOW_ATTEMPT_BLOCKED",
+          "mcp_request",
+          null,
+          violationDetails,
+          "system" // IP not available in this context
+        );
+        
+        return {
+          success: false,
+          toolName,
+          error: "Request contains potentially dangerous numeric values",
+          securityViolation: true
+        };
+      }
+      
+      // 4. Validate parameter schema using Zod
+      try {
+        const schema = securityService.createMcpRequestSchema(toolName);
+        const validatedParams = schema.parse(parameters);
+        
+        // Execute the tool handler with sanitized parameters
+        console.log(`Executing MCP tool: ${toolName} with validated parameters`);
+        const result = await tool.handler(validatedParams);
+        
+        // Create system activity for the successful tool execution
+        await storage.createSystemActivity({
+          agentId: 4, // Assuming MCP Agent ID
+          activity: `Executed MCP tool: ${toolName}`,
+          entityType: "mcp_tool",
+          entityId: null
+        });
+        
+        return {
+          success: true,
+          toolName,
+          result
+        };
+      } catch (validationError) {
+        // Handle Zod validation errors
+        console.error(`Parameter validation failed for MCP tool ${toolName}:`, validationError);
+        
+        const validationDetails = {
+          toolName,
+          parameters: request.parameters,
+          validationError: validationError instanceof z.ZodError 
+            ? validationError.errors 
+            : String(validationError)
+        };
+        
+        await securityService.logSecurityEvent(
+          1, // Admin user ID
+          "VALIDATION_ERROR",
+          "mcp_request",
+          null,
+          validationDetails,
+          "system" // IP not available in this context
+        );
+        
+        return {
+          success: false,
+          toolName,
+          error: "Parameter validation failed",
+          validationError: validationError instanceof z.ZodError 
+            ? validationError.errors 
+            : String(validationError)
+        };
+      }
     } catch (error) {
       console.error(`Error executing MCP tool ${toolName}:`, error);
       

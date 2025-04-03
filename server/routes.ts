@@ -20,6 +20,7 @@ import { mappingIntegration } from "./services/mapping-integration";
 import { notificationService, NotificationType } from "./services/notification-service";
 import { perplexityService } from "./services/perplexity";
 import { mcpService, MCPRequest } from "./services/mcp";
+import { securityService } from "./services/security";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Define API routes
@@ -66,7 +67,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "property",
         entityId: property.propertyId,
         details: { property },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       res.status(201).json(property);
@@ -96,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "property",
         entityId: property.propertyId,
         details: { updatedFields: Object.keys(validatedData) },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       res.json(property);
@@ -132,7 +133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "landRecord",
         entityId: landRecord.propertyId,
         details: { landRecord },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       res.status(201).json(landRecord);
@@ -168,7 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "improvement",
         entityId: improvement.propertyId,
         details: { improvement },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       res.status(201).json(improvement);
@@ -204,7 +205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "field",
         entityId: field.propertyId,
         details: { field },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       res.status(201).json(field);
@@ -240,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "appeal",
         entityId: appeal.propertyId,
         details: { appeal },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       res.status(201).json(appeal);
@@ -275,7 +276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "appealStatus",
         entityId: appeal.propertyId,
         details: { appealId: id, newStatus: status },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       res.json(appeal);
@@ -309,7 +310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "appealComment",
         entityId: comment.appealId.toString(),
         details: { comment },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       res.status(201).json(comment);
@@ -346,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "appealEvidence",
         entityId: evidence.appealId.toString(),
         details: { evidence },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       res.status(201).json(evidence);
@@ -505,35 +506,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Tool name is required" });
       }
       
-      // Execute the MCP request
-      const result = await mcpService.executeRequest(mcpRequest);
-      
-      // Create audit log for the MCP request
-      await storage.createAuditLog({
-        userId: 1, // Assuming admin user
-        action: "EXECUTE",
-        entityType: "mcp_tool",
-        entityId: null,
-        details: { 
-          toolName: mcpRequest.toolName,
-          success: result.success
-        },
-        ipAddress: req.ip
-      });
-      
-      // Send notification if this is a significant event
-      if (mcpRequest.toolName.includes("Property") || mcpRequest.toolName.includes("Appeal")) {
-        notificationService.sendUserNotification(
-          "1", // Assuming admin user ID as string
-          NotificationType.SYSTEM_ALERT,
-          "MCP Tool Executed",
-          `MCP tool ${mcpRequest.toolName} was executed by admin`,
-          "mcp_tool",
-          mcpRequest.toolName,
-          'medium'
+      // Pre-execution security checks
+      // 1. Check for basic structure - prevent malformed requests
+      if (!mcpRequest.parameters || typeof mcpRequest.parameters !== 'object') {
+        await securityService.logSecurityEvent(
+          1, // Admin user ID
+          "MALFORMED_REQUEST",
+          "mcp_request",
+          null,
+          { mcpRequest },
+          req.ip || "unknown"
         );
+        return res.status(400).json({ 
+          message: "Invalid request format. 'parameters' must be an object"
+        });
       }
       
+      // 2. Check for suspicious toolName values (SQL Injection via toolName)
+      if (securityService.containsSqlInjection(mcpRequest.toolName)) {
+        await securityService.logSecurityEvent(
+          1, // Admin user ID
+          "SQL_INJECTION_ATTEMPT",
+          "mcp_request",
+          null,
+          { 
+            toolName: mcpRequest.toolName,
+            remoteAddress: req.ip || "unknown" 
+          },
+          req.ip || "unknown"
+        );
+        
+        // Don't reveal that we detected an injection attempt
+        return res.status(404).json({ 
+          message: "Tool not found" 
+        });
+      }
+      
+      // Execute the MCP request with enhanced security
+      const result = await mcpService.executeRequest(mcpRequest);
+      
+      // If there was a security violation, log it and return an appropriate status code
+      if (!result.success && result.securityViolation) {
+        // Return a 403 Forbidden for security violations
+        return res.status(403).json({
+          message: result.error,
+          toolName: mcpRequest.toolName,
+          success: false
+        });
+      }
+      
+      // If validation error, return 400 Bad Request
+      if (!result.success && result.validationError) {
+        return res.status(400).json({
+          message: result.error,
+          toolName: mcpRequest.toolName,
+          success: false,
+          validation: result.validationError
+        });
+      }
+      
+      // Create audit log for successful MCP request
+      if (result.success) {
+        await storage.createAuditLog({
+          userId: 1, // Assuming admin user
+          action: "EXECUTE",
+          entityType: "mcp_tool",
+          entityId: null,
+          details: { 
+            toolName: mcpRequest.toolName,
+            success: result.success
+          },
+          ipAddress: req.ip || "unknown" || "unknown"
+        });
+        
+        // Send notification if this is a significant event
+        if (mcpRequest.toolName.includes("Property") || mcpRequest.toolName.includes("Appeal")) {
+          // Ensure toolName is never undefined for notification context
+          const toolContext = mcpRequest.toolName || "unknown";
+          
+          notificationService.sendUserNotification(
+            "1", // Assuming admin user ID as string
+            NotificationType.SYSTEM_ALERT,
+            "MCP Tool Executed",
+            `MCP tool ${mcpRequest.toolName} was executed by admin`,
+            "mcp_tool",
+            toolContext,
+            'medium'
+          );
+        }
+      }
+      
+      // Return the result
       res.json(result);
     } catch (error) {
       console.error("Error executing MCP request:", error);
@@ -578,7 +641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "naturalLanguage",
         entityId: null,
         details: { query, resultCount: result.count },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       // Create system activity for the NLP query
@@ -632,7 +695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "naturalLanguage",
         entityId: null,
         details: { query, summary: result.summary },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       // Create system activity for the summary
@@ -671,7 +734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "perplexity",
         entityId: null,
         details: { query, result: result.substring(0, 100) + "..." },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       res.json({ result });
@@ -715,7 +778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "property",
         entityId: propertyId,
         details: { analysisType, result: result.substring(0, 100) + "..." },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       res.json({ result });
@@ -761,7 +824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "property",
         entityId: propertyId,
         details: { result: result.substring(0, 100) + "..." },
-        ipAddress: req.ip
+        ipAddress: req.ip || "unknown"
       });
       
       res.json({ result });
