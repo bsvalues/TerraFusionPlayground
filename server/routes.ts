@@ -11,19 +11,45 @@ import {
   insertAppealCommentSchema,
   insertAppealEvidenceSchema,
   insertAuditLogSchema,
-  insertSystemActivitySchema
+  insertSystemActivitySchema,
+  PacsModule
 } from "@shared/schema";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
-import { PacsIntegration } from "./services/pacs-integration";
+// import { PacsIntegration } from "./services/pacs-integration"; // Not implemented yet
 import { mappingIntegration } from "./services/mapping-integration";
 import { notificationService, NotificationType } from "./services/notification-service";
 import { perplexityService } from "./services/perplexity";
 import { MCPService, MCPRequest } from "./services/mcp";
 import { SecurityService } from "./services/security";
 import { AuthService } from "./services/auth-service";
+import { IPacsIntegrationService } from "./services/pacs-integration";
+import { mockPacsIntegrationService } from "./services/mock-pacs-integration";
+
 import { validateApiKey, verifyToken, requireScope, TokenScope } from "./middleware/auth-middleware";
+
+// Create service instances
+const securityService = new SecurityService(storage);
+const authService = new AuthService(storage, securityService);
+const mcpService = new MCPService(storage, mockPacsIntegrationService);
+
 import { PropertyStoryGenerator, PropertyStoryOptions } from "./services/property-story-generator";
+
+// Initialize services that require other services
+const propertyStoryGenerator = new PropertyStoryGenerator(storage);
+
+// Create dummy implementation for pacsIntegration
+const pacsIntegration = {
+  getPropertyFullDetails: async (propertyId: string) => ({}),
+  getPropertiesByValueRange: async (min: number, max: number) => ([]),
+  getPropertiesByType: async (type: string) => ([]),
+  getPropertiesByStatus: async (status: string) => ([]),
+  getLandRecordsByZone: async (zone: string) => ([]),
+  getImprovementsByType: async (type: string) => ([]),
+  getImprovementsByYearBuiltRange: async (min: number, max: number) => ([]),
+  getActiveAppeals: async () => ([]),
+  getRecentPropertyChanges: async () => ([])
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Define API routes
@@ -1235,11 +1261,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Parse options from query parameters
       const options: PropertyStoryOptions = {
-        tone: req.query.tone as any,
         focus: req.query.focus as any,
         includeImprovements: req.query.includeImprovements === 'true',
         includeLandRecords: req.query.includeLandRecords === 'true',
-        includeFields: req.query.includeFields === 'true',
+        includeAppeals: req.query.includeAppeals === 'true',
         maxLength: req.query.maxLength ? parseInt(req.query.maxLength as string) : undefined
       };
       
@@ -1349,7 +1374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Generate comparison
-      const result = await propertyStoryGenerator.generateComparisonStory(
+      const result = await propertyStoryGenerator.generatePropertyComparison(
         propertyIds,
         options || {}
       );
