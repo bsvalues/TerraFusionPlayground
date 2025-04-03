@@ -51,7 +51,9 @@ export class PropertyInsightSharingService {
     propertyId: string,
     storyContent: string,
     format: string = 'detailed',
-    options: ShareCreationOptions = {}
+    options: ShareCreationOptions = {},
+    propertyName?: string,
+    propertyAddress?: string
   ): Promise<PropertyInsightShare> {
     // Generate unique share ID
     const shareId = randomUUID();
@@ -64,11 +66,23 @@ export class PropertyInsightSharingService {
       expiresAt = expirationDate;
     }
     
+    // Create a title that includes the property name if available
+    let title = options.title;
+    if (!title) {
+      if (propertyName) {
+        title = `Property Insight: ${propertyName}`;
+      } else {
+        title = `Property Insight: ${propertyId}`;
+      }
+    }
+    
     // Create the share entry
     const insightShare: InsertPropertyInsightShare = {
       shareId,
       propertyId,
-      title: options.title || `Property Insight: ${propertyId}`,
+      propertyName,
+      propertyAddress,
+      title,
       insightType: InsightType.STORY,
       insightData: { content: storyContent },
       format,
@@ -96,7 +110,9 @@ export class PropertyInsightSharingService {
     propertyIds: string[],
     comparisonContent: string,
     format: string = 'detailed',
-    options: ShareCreationOptions = {}
+    options: ShareCreationOptions = {},
+    propertyNames?: string[],
+    propertyAddresses?: string[]
   ): Promise<PropertyInsightShare> {
     // Generate unique share ID
     const shareId = randomUUID();
@@ -109,11 +125,23 @@ export class PropertyInsightSharingService {
       expiresAt = expirationDate;
     }
     
+    // Format property names for display if available
+    let title = options.title;
+    if (!title) {
+      if (propertyNames && propertyNames.length > 0) {
+        title = `Property Comparison: ${propertyNames.join(', ')}`;
+      } else {
+        title = `Property Comparison: ${propertyIds.join(', ')}`;
+      }
+    }
+    
     // Create the share entry
     const insightShare: InsertPropertyInsightShare = {
       shareId,
       propertyId: propertyIds.join(','), // Store multiple property IDs
-      title: options.title || `Property Comparison: ${propertyIds.join(', ')}`,
+      propertyName: propertyNames ? propertyNames.join(', ') : undefined,
+      propertyAddress: propertyAddresses ? propertyAddresses.join(', ') : undefined,
+      title,
       insightType: InsightType.COMPARISON,
       insightData: { 
         content: comparisonContent,
@@ -142,7 +170,9 @@ export class PropertyInsightSharingService {
   async createPropertyDataShare(
     propertyId: string,
     propertyData: any,
-    options: ShareCreationOptions = {}
+    options: ShareCreationOptions = {},
+    propertyName?: string,
+    propertyAddress?: string
   ): Promise<PropertyInsightShare> {
     // Generate unique share ID
     const shareId = randomUUID();
@@ -155,11 +185,23 @@ export class PropertyInsightSharingService {
       expiresAt = expirationDate;
     }
     
+    // Create a title that includes the property name if available
+    let title = options.title;
+    if (!title) {
+      if (propertyName) {
+        title = `Property Data: ${propertyName}`;
+      } else {
+        title = `Property Data: ${propertyId}`;
+      }
+    }
+    
     // Create the share entry
     const insightShare: InsertPropertyInsightShare = {
       shareId,
       propertyId,
-      title: options.title || `Property Data: ${propertyId}`,
+      propertyName,
+      propertyAddress,
+      title,
       insightType: InsightType.DATA,
       insightData: propertyData,
       format: 'detailed', // Default for data shares

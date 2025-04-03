@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Share2, Eye, Trash2, Download, QrCode, Copy, Link } from "lucide-react";
+import { Loader2, Share2, Eye, Trash2, Download, QrCode, Copy, Link, Mail } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -50,6 +50,13 @@ export function PropertyStoryDemo() {
   
   // PDF export state
   const [pdfDataLoading, setPdfDataLoading] = useState(false);
+  
+  // Email sharing states
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailRecipient, setEmailRecipient] = useState("");
+  const [emailSubject, setEmailSubject] = useState("Property Insight Share");
+  const [emailMessage, setEmailMessage] = useState("");
+  const [emailSending, setEmailSending] = useState(false);
 
   // Single property story mutation
   const singleStoryMutation = useMutation({
@@ -460,6 +467,71 @@ export function PropertyStoryDemo() {
       });
     } finally {
       setQrCodeDownloading(false);
+    }
+  };
+  
+  // Email sharing handler
+  const handleShowEmailDialog = (shareId: string) => {
+    setActiveShareId(shareId);
+    
+    // Get property information for the selected share
+    const share = allSharesQuery.data?.find((s: any) => s.shareId === shareId);
+    
+    if (share) {
+      // Set default email subject and message
+      setEmailSubject(`Property Insight: ${share.title}`);
+      setEmailMessage(
+        `I'd like to share this property insight with you:\n\n` +
+        `Property: ${share.propertyName || `Property ${share.propertyId}`}\n` +
+        `Address: ${share.propertyAddress || 'N/A'}\n\n` +
+        `You can view it at: ${window.location.origin}/share/${shareId}\n\n` +
+        `This is an automated message from the Benton County Assessor's Office Property Intelligence Platform.`
+      );
+      
+      // Open the email dialog
+      setEmailDialogOpen(true);
+    }
+  };
+  
+  // Send email handler
+  const handleSendEmail = async () => {
+    if (!activeShareId || !emailRecipient || !emailSubject || !emailMessage) return;
+    
+    try {
+      setEmailSending(true);
+      
+      // API call to send the email
+      await apiRequest(`/api/property-insight-shares/${activeShareId}/email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipient: emailRecipient,
+          subject: emailSubject,
+          message: emailMessage
+        })
+      });
+      
+      // Close dialog and show success message
+      setEmailDialogOpen(false);
+      
+      toast({
+        title: "Email Sent Successfully",
+        description: `Property insight has been emailed to ${emailRecipient}`,
+      });
+      
+      // Reset form
+      setEmailRecipient("");
+      
+    } catch (error: any) {
+      toast({
+        title: "Error Sending Email",
+        description: error.message || "Failed to send email",
+        variant: "destructive"
+      });
+    } finally {
+      setEmailSending(false);
     }
   };
 
@@ -972,6 +1044,23 @@ export function PropertyStoryDemo() {
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
+                          
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleShowEmailDialog(share.shareId)}
+                                >
+                                  <Mail className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Share via Email</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <AlertDialog>
                             <TooltipProvider>
                               <Tooltip>
@@ -1080,6 +1169,73 @@ export function PropertyStoryDemo() {
                 Failed to generate QR code
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Email Sharing Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Share Property Insight via Email</DialogTitle>
+            <DialogDescription>
+              Send a link to this property insight to your colleagues or stakeholders
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="emailRecipient">Recipient Email</Label>
+              <Input
+                id="emailRecipient"
+                type="email"
+                placeholder="recipient@example.com"
+                value={emailRecipient}
+                onChange={(e) => setEmailRecipient(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="emailSubject">Subject</Label>
+              <Input
+                id="emailSubject"
+                placeholder="Email subject"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="emailMessage">Message</Label>
+              <Textarea
+                id="emailMessage"
+                placeholder="Email message..."
+                rows={5}
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setEmailDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendEmail}
+              disabled={emailSending || !emailRecipient}
+            >
+              {emailSending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Send Email
+                </>
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

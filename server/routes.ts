@@ -17,6 +17,7 @@ import {
 } from "@shared/schema";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
+import { isEmailServiceConfigured, sendPropertyInsightShareEmail } from "./services/email-service";
 // import { PacsIntegration } from "./services/pacs-integration"; // Not implemented yet
 import { mappingIntegration } from "./services/mapping-integration";
 import { notificationService, NotificationType } from "./services/notification-service";
@@ -1693,6 +1694,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error preparing PDF export data:", error);
       res.status(500).json({ message: "Failed to prepare PDF export data" });
+    }
+  });
+  
+  // Email a property insight share
+  app.post("/api/property-insight-shares/:shareId/email", async (req, res) => {
+    try {
+      const shareId = req.params.shareId;
+      
+      // Validate request body
+      const { recipient, subject, message } = req.body;
+      
+      if (!recipient || !subject || !message) {
+        return res.status(400).json({ 
+          message: "Missing required fields", 
+          requiredFields: ["recipient", "subject", "message"] 
+        });
+      }
+      
+      // Check if email service is configured
+      if (!isEmailServiceConfigured()) {
+        return res.status(503).json({ 
+          message: "Email service is not configured. Please set SENDGRID_API_KEY environment variable." 
+        });
+      }
+      
+      // Validate if share exists
+      const share = await storage.getPropertyInsightShareById(shareId);
+      
+      if (!share) {
+        return res.status(404).json({ message: "Property insight share not found or expired" });
+      }
+      
+      // Generate shareable URL
+      const shareableUrl = sharingUtils.generateShareableUrl(shareId);
+      
+      // Send email
+      const success = await sendPropertyInsightShareEmail(
+        recipient,
+        subject,
+        message,
+        shareableUrl,
+        share.propertyId,
+        share.propertyName || undefined,
+        share.propertyAddress || undefined
+      );
+      
+      if (!success) {
+        return res.status(500).json({ message: "Failed to send email" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: 1, // Default to admin user
+        action: "SHARE_EMAIL",
+        entityType: "propertyInsightShare",
+        entityId: shareId,
+        details: { 
+          shareId,
+          recipient,
+          subject,
+          timestamp: new Date().toISOString()
+        },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "Email sent successfully",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error sending email:", error);
+      res.status(500).json({ message: "Failed to send email" });
     }
   });
   

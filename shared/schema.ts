@@ -318,6 +318,8 @@ export const propertyInsightShares = pgTable("property_insight_shares", {
   id: serial("id").primaryKey(),
   shareId: text("share_id").notNull().unique(), // UUID for sharing
   propertyId: text("property_id").notNull(),
+  propertyName: text("property_name"), // Optional property name for better context
+  propertyAddress: text("property_address"), // Optional property address for better context
   title: text("title").notNull(),
   insightType: text("insight_type").notNull(), // 'story', 'comparison', 'data'
   insightData: jsonb("insight_data").notNull(), // Stored insight content
@@ -335,6 +337,8 @@ export const propertyInsightShares = pgTable("property_insight_shares", {
 export const insertPropertyInsightShareSchema = createInsertSchema(propertyInsightShares).pick({
   shareId: true,
   propertyId: true,
+  propertyName: true,
+  propertyAddress: true,
   title: true,
   insightType: true,
   insightData: true,
