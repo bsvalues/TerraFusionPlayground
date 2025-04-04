@@ -13,6 +13,9 @@ import {
   insertAppealEvidenceSchema,
   insertAuditLogSchema,
   insertSystemActivitySchema,
+  insertComparableSaleSchema,
+  insertComparableSalesAnalysisSchema,
+  insertComparableAnalysisEntrySchema,
   PacsModule
 } from "@shared/schema";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
@@ -1862,6 +1865,304 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error sending email:", error);
       res.status(500).json({ message: "Failed to send email" });
+    }
+  });
+  
+  /**
+   * Comparable Sales Analysis routes
+   * Routes for creating, retrieving, and managing comparable sales analysis data
+   */
+  
+  // Get all comparable sales
+  app.get("/api/comparable-sales", async (_req, res) => {
+    try {
+      const comparableSales = await storage.getAllComparableSales();
+      res.json(comparableSales);
+    } catch (error) {
+      console.error("Error fetching comparable sales:", error);
+      res.status(500).json({ message: "Failed to fetch comparable sales" });
+    }
+  });
+  
+  // Get comparable sales by property ID
+  app.get("/api/properties/:propertyId/comparable-sales", async (req, res) => {
+    try {
+      const { propertyId } = req.params;
+      const comparableSales = await storage.getComparableSalesByPropertyId(propertyId);
+      res.json(comparableSales);
+    } catch (error) {
+      console.error("Error fetching comparable sales for property:", error);
+      res.status(500).json({ message: "Failed to fetch comparable sales for property" });
+    }
+  });
+  
+  // Get a single comparable sale by ID
+  app.get("/api/comparable-sales/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const comparableSale = await storage.getComparableSaleById(id);
+      
+      if (!comparableSale) {
+        return res.status(404).json({ message: "Comparable sale not found" });
+      }
+      
+      res.json(comparableSale);
+    } catch (error) {
+      console.error("Error fetching comparable sale:", error);
+      res.status(500).json({ message: "Failed to fetch comparable sale" });
+    }
+  });
+  
+  // Create a new comparable sale
+  app.post("/api/comparable-sales", async (req, res) => {
+    try {
+      const validatedData = insertComparableSaleSchema.parse(req.body);
+      const comparableSale = await storage.createComparableSale(validatedData);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: validatedData.createdBy,
+        action: "CREATE",
+        entityType: "comparableSale",
+        entityId: comparableSale.id.toString(),
+        details: { comparableSale },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      res.status(201).json(comparableSale);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid comparable sale data", errors: error.errors });
+      }
+      console.error("Error creating comparable sale:", error);
+      res.status(500).json({ message: "Failed to create comparable sale" });
+    }
+  });
+  
+  // Update a comparable sale
+  app.patch("/api/comparable-sales/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertComparableSaleSchema.partial().parse(req.body);
+      const comparableSale = await storage.updateComparableSale(id, validatedData);
+      
+      if (!comparableSale) {
+        return res.status(404).json({ message: "Comparable sale not found" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: validatedData.createdBy || 1,
+        action: "UPDATE",
+        entityType: "comparableSale",
+        entityId: comparableSale.id.toString(),
+        details: { 
+          comparableSaleId: id,
+          updatedFields: Object.keys(validatedData) 
+        },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      res.json(comparableSale);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid comparable sale data", errors: error.errors });
+      }
+      console.error("Error updating comparable sale:", error);
+      res.status(500).json({ message: "Failed to update comparable sale" });
+    }
+  });
+  
+  // Comparable Sales Analysis routes
+  
+  // Get all comparable sales analyses
+  app.get("/api/comparable-sales-analyses", async (_req, res) => {
+    try {
+      const analyses = await storage.getAllComparableSalesAnalyses();
+      res.json(analyses);
+    } catch (error) {
+      console.error("Error fetching comparable sales analyses:", error);
+      res.status(500).json({ message: "Failed to fetch comparable sales analyses" });
+    }
+  });
+  
+  // Get comparable sales analyses for a specific property
+  app.get("/api/properties/:propertyId/comparable-sales-analyses", async (req, res) => {
+    try {
+      const { propertyId } = req.params;
+      const analyses = await storage.getComparableSalesAnalysesByPropertyId(propertyId);
+      res.json(analyses);
+    } catch (error) {
+      console.error("Error fetching comparable sales analyses for property:", error);
+      res.status(500).json({ message: "Failed to fetch comparable sales analyses for property" });
+    }
+  });
+  
+  // Get a single comparable sales analysis by ID
+  app.get("/api/comparable-sales-analyses/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const analysis = await storage.getComparableSalesAnalysisById(id);
+      
+      if (!analysis) {
+        return res.status(404).json({ message: "Comparable sales analysis not found" });
+      }
+      
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error fetching comparable sales analysis:", error);
+      res.status(500).json({ message: "Failed to fetch comparable sales analysis" });
+    }
+  });
+  
+  // Create a new comparable sales analysis
+  app.post("/api/comparable-sales-analyses", async (req, res) => {
+    try {
+      const validatedData = insertComparableSalesAnalysisSchema.parse(req.body);
+      const analysis = await storage.createComparableSalesAnalysis(validatedData);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: validatedData.createdBy,
+        action: "CREATE",
+        entityType: "comparableSalesAnalysis",
+        entityId: analysis.id.toString(),
+        details: { analysis },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      res.status(201).json(analysis);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid comparable sales analysis data", errors: error.errors });
+      }
+      console.error("Error creating comparable sales analysis:", error);
+      res.status(500).json({ message: "Failed to create comparable sales analysis" });
+    }
+  });
+  
+  // Update a comparable sales analysis
+  app.patch("/api/comparable-sales-analyses/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const validatedData = insertComparableSalesAnalysisSchema.partial().parse(req.body);
+      const analysis = await storage.updateComparableSalesAnalysis(id, validatedData);
+      
+      if (!analysis) {
+        return res.status(404).json({ message: "Comparable sales analysis not found" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: validatedData.createdBy || 1,
+        action: "UPDATE",
+        entityType: "comparableSalesAnalysis",
+        entityId: analysis.id.toString(),
+        details: { 
+          analysisId: id,
+          updatedFields: Object.keys(validatedData) 
+        },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      res.json(analysis);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid comparable sales analysis data", errors: error.errors });
+      }
+      console.error("Error updating comparable sales analysis:", error);
+      res.status(500).json({ message: "Failed to update comparable sales analysis" });
+    }
+  });
+  
+  // Comparable Analysis Entry routes
+  
+  // Get all comparable analysis entries for a specific analysis
+  app.get("/api/comparable-sales-analyses/:analysisId/entries", async (req, res) => {
+    try {
+      const { analysisId } = req.params;
+      const entries = await storage.getComparableAnalysisEntriesByAnalysisId(analysisId);
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching comparable analysis entries:", error);
+      res.status(500).json({ message: "Failed to fetch comparable analysis entries" });
+    }
+  });
+  
+  // Get a single comparable analysis entry by ID
+  app.get("/api/comparable-analysis-entries/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const entry = await storage.getComparableAnalysisEntryById(id);
+      
+      if (!entry) {
+        return res.status(404).json({ message: "Comparable analysis entry not found" });
+      }
+      
+      res.json(entry);
+    } catch (error) {
+      console.error("Error fetching comparable analysis entry:", error);
+      res.status(500).json({ message: "Failed to fetch comparable analysis entry" });
+    }
+  });
+  
+  // Create a new comparable analysis entry
+  app.post("/api/comparable-analysis-entries", async (req, res) => {
+    try {
+      const validatedData = insertComparableAnalysisEntrySchema.parse(req.body);
+      const entry = await storage.createComparableAnalysisEntry(validatedData);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "CREATE",
+        entityType: "comparableAnalysisEntry",
+        entityId: entry.id.toString(),
+        details: { entry },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      res.status(201).json(entry);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid comparable analysis entry data", errors: error.errors });
+      }
+      console.error("Error creating comparable analysis entry:", error);
+      res.status(500).json({ message: "Failed to create comparable analysis entry" });
+    }
+  });
+  
+  // Update a comparable analysis entry
+  app.patch("/api/comparable-analysis-entries/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertComparableAnalysisEntrySchema.partial().parse(req.body);
+      const entry = await storage.updateComparableAnalysisEntry(id, validatedData);
+      
+      if (!entry) {
+        return res.status(404).json({ message: "Comparable analysis entry not found" });
+      }
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: 1, // Assuming admin user
+        action: "UPDATE",
+        entityType: "comparableAnalysisEntry",
+        entityId: entry.id.toString(),
+        details: { 
+          entryId: id,
+          updatedFields: Object.keys(validatedData) 
+        },
+        ipAddress: req.ip || "unknown"
+      });
+      
+      res.json(entry);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid comparable analysis entry data", errors: error.errors });
+      }
+      console.error("Error updating comparable analysis entry:", error);
+      res.status(500).json({ message: "Failed to update comparable analysis entry" });
     }
   });
   

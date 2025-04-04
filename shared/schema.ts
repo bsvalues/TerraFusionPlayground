@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, numeric, json, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, numeric, json, boolean, jsonb, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -352,3 +352,105 @@ export const insertPropertyInsightShareSchema = createInsertSchema(propertyInsig
 
 export type PropertyInsightShare = typeof propertyInsightShares.$inferSelect;
 export type InsertPropertyInsightShare = z.infer<typeof insertPropertyInsightShareSchema>;
+
+// Comparable Sales Records table
+export const comparableSales = pgTable("comparable_sales", {
+  id: serial("id").primaryKey(),
+  propertyId: text("property_id").notNull(), // Subject property ID
+  comparablePropertyId: text("comparable_property_id").notNull(), // Comparable property ID
+  saleDate: date("sale_date"), // Date of sale for comparable property (null if not a sale)
+  salePrice: numeric("sale_price"), // Sale price of comparable property (null if not a sale)
+  adjustedPrice: numeric("adjusted_price"), // Price after applying adjustments
+  distanceInMiles: numeric("distance_in_miles"), // Distance to subject property
+  similarityScore: numeric("similarity_score"), // AI-calculated similarity (0-100)
+  adjustmentFactors: jsonb("adjustment_factors"), // Detailed adjustments (size, quality, etc.)
+  notes: text("notes"), // Additional notes about the comparable
+  status: text("status").notNull().default("active"), // active, inactive, rejected
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  createdBy: integer("created_by").notNull(), // User who created the comparable
+});
+
+export const insertComparableSaleSchema = createInsertSchema(comparableSales).pick({
+  propertyId: true,
+  comparablePropertyId: true,
+  saleDate: true,
+  salePrice: true,
+  adjustedPrice: true,
+  distanceInMiles: true,
+  similarityScore: true,
+  adjustmentFactors: true,
+  notes: true,
+  status: true,
+  createdBy: true,
+});
+
+export type ComparableSale = typeof comparableSales.$inferSelect;
+export type InsertComparableSale = z.infer<typeof insertComparableSaleSchema>;
+
+// Comparable Sales Analysis table
+export const comparableSalesAnalyses = pgTable("comparable_sales_analyses", {
+  id: serial("id").primaryKey(),
+  analysisId: text("analysis_id").notNull().unique(), // Unique identifier for the analysis
+  propertyId: text("property_id").notNull(), // Subject property ID
+  title: text("title").notNull(), // Name of the analysis
+  description: text("description"), // Description of the analysis
+  methodology: text("methodology").notNull().default("sales_comparison"), // sales_comparison, income, cost
+  effectiveDate: date("effective_date").notNull(), // Date for which the analysis is valid
+  valueConclusion: numeric("value_conclusion"), // Final concluded value
+  adjustmentNotes: text("adjustment_notes"), // Notes on adjustments
+  marketConditions: text("market_conditions"), // Market conditions analysis
+  confidenceLevel: text("confidence_level").default("medium"), // low, medium, high
+  status: text("status").notNull().default("draft"), // draft, final, archived
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  createdBy: integer("created_by").notNull(), // User who created the analysis
+  reviewedBy: integer("reviewed_by"), // User who reviewed the analysis (null if not reviewed)
+  reviewNotes: text("review_notes"), // Notes from reviewer
+  reviewDate: timestamp("review_date"), // Date of review
+});
+
+export const insertComparableSalesAnalysisSchema = createInsertSchema(comparableSalesAnalyses).pick({
+  analysisId: true,
+  propertyId: true,
+  title: true,
+  description: true,
+  methodology: true,
+  effectiveDate: true,
+  valueConclusion: true,
+  adjustmentNotes: true,
+  marketConditions: true,
+  confidenceLevel: true,
+  status: true,
+  createdBy: true,
+  reviewedBy: true,
+  reviewNotes: true,
+  reviewDate: true,
+});
+
+export type ComparableSalesAnalysis = typeof comparableSalesAnalyses.$inferSelect;
+export type InsertComparableSalesAnalysis = z.infer<typeof insertComparableSalesAnalysisSchema>;
+
+// Comparable Sales Analysis Comparables join table
+export const comparableAnalysisEntries = pgTable("comparable_analysis_entries", {
+  id: serial("id").primaryKey(),
+  analysisId: text("analysis_id").notNull(), // References analysisId in comparableSalesAnalyses
+  comparableSaleId: integer("comparable_sale_id").notNull(), // References id in comparableSales
+  includeInFinalValue: boolean("include_in_final_value").notNull().default(true), // Whether to include in final value calculation
+  weight: numeric("weight").notNull().default("1"), // Weight given to this comparable (0-1)
+  adjustedValue: numeric("adjusted_value"), // Final adjusted value of this comparable
+  notes: text("notes"), // Notes specific to this comparable in this analysis
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertComparableAnalysisEntrySchema = createInsertSchema(comparableAnalysisEntries).pick({
+  analysisId: true,
+  comparableSaleId: true,
+  includeInFinalValue: true,
+  weight: true,
+  adjustedValue: true,
+  notes: true,
+});
+
+export type ComparableAnalysisEntry = typeof comparableAnalysisEntries.$inferSelect;
+export type InsertComparableAnalysisEntry = z.infer<typeof insertComparableAnalysisEntrySchema>;

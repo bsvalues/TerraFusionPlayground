@@ -11,7 +11,10 @@ import {
   aiAgents, AiAgent, InsertAiAgent,
   systemActivities, SystemActivity, InsertSystemActivity,
   pacsModules, PacsModule, InsertPacsModule,
-  propertyInsightShares, PropertyInsightShare, InsertPropertyInsightShare
+  propertyInsightShares, PropertyInsightShare, InsertPropertyInsightShare,
+  comparableSales, ComparableSale, InsertComparableSale,
+  comparableSalesAnalyses, ComparableSalesAnalysis, InsertComparableSalesAnalysis,
+  comparableAnalysisEntries, ComparableAnalysisEntry, InsertComparableAnalysisEntry
 } from "@shared/schema";
 import pg from 'pg';
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -104,6 +107,27 @@ export interface IStorage {
   getAllPropertyInsightShares(): Promise<PropertyInsightShare[]>;
   updatePropertyInsightShare(shareId: string, updates: Partial<InsertPropertyInsightShare>): Promise<PropertyInsightShare | null>;
   deletePropertyInsightShare(shareId: string): Promise<boolean>;
+  
+  // Comparable Sales methods
+  createComparableSale(comparableSale: InsertComparableSale): Promise<ComparableSale>;
+  getComparableSaleById(id: number): Promise<ComparableSale | undefined>;
+  getComparableSalesByPropertyId(propertyId: string): Promise<ComparableSale[]>;
+  getComparableSalesByStatus(status: string): Promise<ComparableSale[]>;
+  updateComparableSale(id: number, updates: Partial<InsertComparableSale>): Promise<ComparableSale | undefined>;
+  deleteComparableSale(id: number): Promise<boolean>;
+  
+  // Comparable Sales Analysis methods
+  createComparableSalesAnalysis(analysis: InsertComparableSalesAnalysis): Promise<ComparableSalesAnalysis>;
+  getComparableSalesAnalysisById(analysisId: string): Promise<ComparableSalesAnalysis | undefined>;
+  getComparableSalesAnalysesByPropertyId(propertyId: string): Promise<ComparableSalesAnalysis[]>;
+  updateComparableSalesAnalysis(analysisId: string, updates: Partial<InsertComparableSalesAnalysis>): Promise<ComparableSalesAnalysis | undefined>;
+  deleteComparableSalesAnalysis(analysisId: string): Promise<boolean>;
+  
+  // Comparable Analysis Entry methods
+  createComparableAnalysisEntry(entry: InsertComparableAnalysisEntry): Promise<ComparableAnalysisEntry>;
+  getComparableAnalysisEntriesByAnalysisId(analysisId: string): Promise<ComparableAnalysisEntry[]>;
+  updateComparableAnalysisEntry(id: number, updates: Partial<InsertComparableAnalysisEntry>): Promise<ComparableAnalysisEntry | undefined>;
+  deleteComparableAnalysisEntry(id: number): Promise<boolean>;
 }
 
 // Implement the in-memory storage
@@ -121,6 +145,9 @@ export class MemStorage implements IStorage {
   private systemActivities: Map<number, SystemActivity>;
   private pacsModules: Map<number, PacsModule>;
   private propertyInsightShares: Map<string, PropertyInsightShare>;
+  private comparableSales: Map<number, ComparableSale>;
+  private comparableSalesAnalyses: Map<string, ComparableSalesAnalysis>;
+  private comparableAnalysisEntries: Map<number, ComparableAnalysisEntry>;
   
   private currentUserId: number;
   private currentPropertyId: number;
@@ -135,6 +162,8 @@ export class MemStorage implements IStorage {
   private currentSystemActivityId: number;
   private currentPacsModuleId: number;
   private currentPropertyInsightShareId: number;
+  private currentComparableSaleId: number;
+  private currentComparableAnalysisEntryId: number;
 
   constructor() {
     this.users = new Map();
@@ -150,6 +179,9 @@ export class MemStorage implements IStorage {
     this.systemActivities = new Map();
     this.pacsModules = new Map();
     this.propertyInsightShares = new Map();
+    this.comparableSales = new Map();
+    this.comparableSalesAnalyses = new Map();
+    this.comparableAnalysisEntries = new Map();
     
     this.currentUserId = 1;
     this.currentPropertyId = 1;
@@ -164,6 +196,8 @@ export class MemStorage implements IStorage {
     this.currentSystemActivityId = 1;
     this.currentPacsModuleId = 1;
     this.currentPropertyInsightShareId = 1;
+    this.currentComparableSaleId = 1;
+    this.currentComparableAnalysisEntryId = 1;
     
     // Initialize with sample data
     this.seedData();
@@ -709,6 +743,256 @@ export class MemStorage implements IStorage {
       entityId: share.propertyId
     });
     
+    return true;
+  }
+  
+  // Comparable Sales methods
+  async createComparableSale(insertComparableSale: InsertComparableSale): Promise<ComparableSale> {
+    const id = this.currentComparableSaleId++;
+    const timestamp = new Date();
+    
+    const comparableSale: ComparableSale = {
+      ...insertComparableSale,
+      id,
+      createdAt: timestamp,
+      lastUpdated: timestamp,
+      // Ensure required fields are properly set
+      status: insertComparableSale.status || "active",
+      // Ensure optional fields are properly set
+      saleDate: insertComparableSale.saleDate || null,
+      salePrice: insertComparableSale.salePrice || null,
+      adjustedPrice: insertComparableSale.adjustedPrice || null,
+      distanceInMiles: insertComparableSale.distanceInMiles || null,
+      similarityScore: insertComparableSale.similarityScore || null,
+      adjustmentFactors: insertComparableSale.adjustmentFactors || null,
+      notes: insertComparableSale.notes || null
+    };
+    
+    this.comparableSales.set(id, comparableSale);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Property Analysis Agent
+      activity: `Added comparable sale for property ID: ${comparableSale.propertyId}`,
+      entityType: 'comparableSale',
+      entityId: comparableSale.propertyId
+    });
+    
+    return comparableSale;
+  }
+  
+  async getComparableSaleById(id: number): Promise<ComparableSale | undefined> {
+    return this.comparableSales.get(id);
+  }
+  
+  async getComparableSalesByPropertyId(propertyId: string): Promise<ComparableSale[]> {
+    return Array.from(this.comparableSales.values())
+      .filter(sale => sale.propertyId === propertyId);
+  }
+  
+  async getComparableSalesByStatus(status: string): Promise<ComparableSale[]> {
+    return Array.from(this.comparableSales.values())
+      .filter(sale => sale.status === status);
+  }
+  
+  async getAllComparableSales(): Promise<ComparableSale[]> {
+    return Array.from(this.comparableSales.values());
+  }
+  
+  async updateComparableSale(id: number, updates: Partial<InsertComparableSale>): Promise<ComparableSale | undefined> {
+    const comparableSale = this.comparableSales.get(id);
+    if (!comparableSale) return undefined;
+    
+    const timestamp = new Date();
+    const updatedSale = {
+      ...comparableSale,
+      ...updates,
+      lastUpdated: timestamp
+    };
+    
+    this.comparableSales.set(id, updatedSale);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Property Analysis Agent
+      activity: `Updated comparable sale for property ID: ${comparableSale.propertyId}`,
+      entityType: 'comparableSale',
+      entityId: comparableSale.propertyId
+    });
+    
+    return updatedSale;
+  }
+  
+  async deleteComparableSale(id: number): Promise<boolean> {
+    if (!this.comparableSales.has(id)) {
+      return false;
+    }
+    
+    const comparableSale = this.comparableSales.get(id);
+    this.comparableSales.delete(id);
+    
+    // Create system activity
+    if (comparableSale) {
+      await this.createSystemActivity({
+        agentId: 2, // Property Analysis Agent
+        activity: `Deleted comparable sale for property ID: ${comparableSale.propertyId}`,
+        entityType: 'comparableSale',
+        entityId: comparableSale.propertyId
+      });
+    }
+    
+    return true;
+  }
+  
+  // Comparable Sales Analysis methods
+  async createComparableSalesAnalysis(insertAnalysis: InsertComparableSalesAnalysis): Promise<ComparableSalesAnalysis> {
+    const analysisId = insertAnalysis.analysisId;
+    const timestamp = new Date();
+    
+    const analysis: ComparableSalesAnalysis = {
+      ...insertAnalysis,
+      id: this.currentPropertyInsightShareId++, // Reuse counter for simplicity
+      createdAt: timestamp,
+      lastUpdated: timestamp,
+      // Ensure required fields are properly set
+      status: insertAnalysis.status || "draft",
+      methodology: insertAnalysis.methodology || "direct_comparison",
+      // Ensure optional fields are properly set
+      description: insertAnalysis.description || null,
+      valueConclusion: insertAnalysis.valueConclusion || null,
+      adjustmentNotes: insertAnalysis.adjustmentNotes || null,
+      marketConditions: insertAnalysis.marketConditions || null,
+      reviewedBy: insertAnalysis.reviewedBy || null,
+      reviewNotes: insertAnalysis.reviewNotes || null,
+      reviewDate: insertAnalysis.reviewDate || null
+    };
+    
+    this.comparableSalesAnalyses.set(analysisId, analysis);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Property Analysis Agent
+      activity: `Created comparable sales analysis: ${analysis.title}`,
+      entityType: 'comparableSalesAnalysis',
+      entityId: analysis.propertyId
+    });
+    
+    return analysis;
+  }
+  
+  async getComparableSalesAnalysisById(analysisId: string): Promise<ComparableSalesAnalysis | undefined> {
+    return this.comparableSalesAnalyses.get(analysisId);
+  }
+  
+  async getComparableSalesAnalysesByPropertyId(propertyId: string): Promise<ComparableSalesAnalysis[]> {
+    return Array.from(this.comparableSalesAnalyses.values())
+      .filter(analysis => analysis.propertyId === propertyId);
+  }
+  
+  async getAllComparableSalesAnalyses(): Promise<ComparableSalesAnalysis[]> {
+    return Array.from(this.comparableSalesAnalyses.values());
+  }
+  
+  async updateComparableSalesAnalysis(analysisId: string, updates: Partial<InsertComparableSalesAnalysis>): Promise<ComparableSalesAnalysis | undefined> {
+    const analysis = this.comparableSalesAnalyses.get(analysisId);
+    if (!analysis) return undefined;
+    
+    const timestamp = new Date();
+    const updatedAnalysis = {
+      ...analysis,
+      ...updates,
+      lastUpdated: timestamp
+    };
+    
+    this.comparableSalesAnalyses.set(analysisId, updatedAnalysis);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Property Analysis Agent
+      activity: `Updated comparable sales analysis: ${analysis.title}`,
+      entityType: 'comparableSalesAnalysis',
+      entityId: analysis.propertyId
+    });
+    
+    return updatedAnalysis;
+  }
+  
+  async deleteComparableSalesAnalysis(analysisId: string): Promise<boolean> {
+    if (!this.comparableSalesAnalyses.has(analysisId)) {
+      return false;
+    }
+    
+    const analysis = this.comparableSalesAnalyses.get(analysisId);
+    this.comparableSalesAnalyses.delete(analysisId);
+    
+    // Create system activity
+    if (analysis) {
+      await this.createSystemActivity({
+        agentId: 2, // Property Analysis Agent
+        activity: `Deleted comparable sales analysis: ${analysis.title}`,
+        entityType: 'comparableSalesAnalysis',
+        entityId: analysis.propertyId
+      });
+    }
+    
+    return true;
+  }
+  
+  // Comparable Analysis Entry methods
+  async createComparableAnalysisEntry(insertEntry: InsertComparableAnalysisEntry): Promise<ComparableAnalysisEntry> {
+    const id = this.currentComparableAnalysisEntryId++;
+    const timestamp = new Date();
+    
+    const entry: ComparableAnalysisEntry = {
+      ...insertEntry,
+      id,
+      createdAt: timestamp,
+      // Ensure required fields are properly set
+      includeInFinalValue: insertEntry.includeInFinalValue !== undefined ? insertEntry.includeInFinalValue : true,
+      weight: insertEntry.weight || "1",
+      // Ensure optional fields are properly set
+      adjustedValue: insertEntry.adjustedValue || null,
+      notes: insertEntry.notes || null
+    };
+    
+    this.comparableAnalysisEntries.set(id, entry);
+    
+    // No system activity for entries as they're detailed components
+    
+    return entry;
+  }
+  
+  async getComparableAnalysisEntriesByAnalysisId(analysisId: string): Promise<ComparableAnalysisEntry[]> {
+    return Array.from(this.comparableAnalysisEntries.values())
+      .filter(entry => entry.analysisId === analysisId);
+  }
+  
+  async getComparableAnalysisEntryById(id: number): Promise<ComparableAnalysisEntry | undefined> {
+    return this.comparableAnalysisEntries.get(id);
+  }
+  
+  async updateComparableAnalysisEntry(id: number, updates: Partial<InsertComparableAnalysisEntry>): Promise<ComparableAnalysisEntry | undefined> {
+    const entry = this.comparableAnalysisEntries.get(id);
+    if (!entry) return undefined;
+    
+    const updatedEntry = {
+      ...entry,
+      ...updates
+    };
+    
+    this.comparableAnalysisEntries.set(id, updatedEntry);
+    
+    // No system activity for entries as they're detailed components
+    
+    return updatedEntry;
+  }
+  
+  async deleteComparableAnalysisEntry(id: number): Promise<boolean> {
+    if (!this.comparableAnalysisEntries.has(id)) {
+      return false;
+    }
+    
+    this.comparableAnalysisEntries.delete(id);
     return true;
   }
   
