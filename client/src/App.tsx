@@ -11,6 +11,7 @@ import Imports from "@/pages/imports";
 import NaturalLanguage from "@/pages/natural-language";
 import AIAssistantPage from "@/pages/AIAssistantPage";
 import { PropertyStoryDemo } from "@/pages/PropertyStoryDemo";
+import PropertyStoryPage from "@/pages/PropertyStoryPage";
 import DataImportPage from "@/pages/DataImportPage";
 import AppLayout from "@/layout/app-layout";
 
@@ -68,6 +69,12 @@ function Router() {
       <Route path="/data-import">
         <AppLayout>
           <DataImportPage />
+        </AppLayout>
+      </Route>
+
+      <Route path="/property-stories">
+        <AppLayout>
+          <PropertyStoryPage />
         </AppLayout>
       </Route>
 

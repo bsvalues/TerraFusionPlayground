@@ -20,6 +20,8 @@ import {
 } from "@shared/schema";
 import { createDataImportRoutes } from "./routes/data-import-routes";
 import ftpRoutes from "./routes/ftp-routes";
+import { createPropertyStoryRoutes } from "./routes/property-story-routes";
+import { createPropertyRoutes } from "./routes/property-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -71,6 +73,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register FTP routes
   app.use('/api/ftp', ftpRoutes);
   
+  // Register Property Story routes
+  app.use('/api/property-stories', createPropertyStoryRoutes(storage));
+  
+  // Register Property routes
+  createPropertyRoutes(app);
+  
   // Health check
   app.get("/api/health", (_req, res) => {
     res.json({ status: "healthy" });
@@ -80,7 +88,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/properties", async (_req, res) => {
     try {
       const properties = await storage.getAllProperties();
-      res.json(properties);
+      
+      // Format properties for the PropertyStoryPage component
+      const formattedProperties = properties.map(property => {
+        // Extract values from extraFields or use defaults
+        const extraFields = property.extraFields || {};
+        const yearBuilt = extraFields.yearBuilt || null;
+        
+        return {
+          propertyId: property.propertyId,
+          address: property.address,
+          propertyType: property.propertyType,
+          assessedValue: parseFloat(property.value || '0'),
+          acreage: parseFloat(property.acres || '0'),
+          yearBuilt: yearBuilt
+        };
+      });
+      
+      res.json(formattedProperties);
     } catch (error) {
       console.error("Error fetching properties:", error);
       res.status(500).json({ message: "Failed to fetch properties" });
