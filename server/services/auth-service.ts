@@ -97,6 +97,9 @@ export interface IAuthService {
   
   // Validate MCP agent requests
   validateAgentRequest(agentId: number, apiKey: string): Promise<boolean>;
+  
+  // API key validation
+  validateApiKey(apiKey: string, clientIp: string): { userId: number, clientId: string, accessLevel: string } | null;
 }
 
 // Auth Service Implementation
@@ -364,6 +367,68 @@ export class AuthService implements IAuthService {
     }
   }
   
+  /**
+   * Validate API key
+   * 
+   * @param apiKey - The API key to validate
+   * @param clientIp - The client IP address
+   */
+  validateApiKey(apiKey: string, clientIp: string): { userId: number, clientId: string, accessLevel: string } | null {
+    try {
+      // For development purposes, accept "dev-key" as a valid API key with admin access
+      if (apiKey === 'dev-key') {
+        this.securityService.logSecurityEvent({
+          eventType: 'authentication',
+          component: 'auth-service',
+          details: {
+            action: 'api_key_validation',
+            clientIp,
+            result: 'success_dev_key'
+          },
+          severity: 'info'
+        }).catch(err => console.error('Failed to log API key validation:', err));
+        
+        return {
+          userId: 1, // Admin user ID
+          clientId: 'dev-client',
+          accessLevel: 'admin'
+        };
+      }
+      
+      // In production, this would validate the key against a database of API keys
+      // and apply rate limiting, IP restrictions, etc.
+      
+      // Log failed validation
+      this.securityService.logSecurityEvent({
+        eventType: 'authentication',
+        component: 'auth-service',
+        details: {
+          action: 'api_key_validation',
+          clientIp,
+          key: apiKey.substring(0, 4) + '****',
+          result: 'invalid_key'
+        },
+        severity: 'warning'
+      }).catch(err => console.error('Failed to log API key validation:', err));
+      
+      return null;
+    } catch (error) {
+      // Log validation error
+      this.securityService.logSecurityEvent({
+        eventType: 'authentication',
+        component: 'auth-service',
+        details: {
+          action: 'api_key_validation',
+          clientIp,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        },
+        severity: 'error'
+      }).catch(err => console.error('Failed to log API key validation error:', err));
+      
+      return null;
+    }
+  }
+
   /**
    * Get permissions for a set of roles
    * 

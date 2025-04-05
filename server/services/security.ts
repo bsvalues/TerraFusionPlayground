@@ -65,8 +65,21 @@ export class SecurityService implements ISecurityService {
   private storage: IStorage;
   private rateLimitStore: Map<string, {count: number, resetTime: number}>;
   
-  constructor(storage: IStorage) {
-    this.storage = storage;
+  constructor(storage?: IStorage) {
+    this.storage = storage || {
+      createAuditLog: async (log: InsertAuditLog): Promise<AuditLog> => {
+        console.log('Mock audit log created:', log);
+        return {
+          id: 0,
+          action_type: log.action_type,
+          user_id: log.user_id,
+          target_type: log.target_type,
+          target_id: log.target_id,
+          details: log.details,
+          created_at: log.created_at
+        };
+      }
+    } as IStorage;
     this.rateLimitStore = new Map();
   }
   

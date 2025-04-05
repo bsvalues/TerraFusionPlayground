@@ -8,10 +8,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/auth-service';
 import { SecurityService } from '../services/security';
+import { storage } from '../storage';
 
 // Create instances of services
-const authService = new AuthService({} as any, {} as any);
-const securityService = new SecurityService({} as any);
+const securityService = new SecurityService();
+const authService = new AuthService(storage, securityService);
 
 // Define token scope enum
 export enum TokenScope {

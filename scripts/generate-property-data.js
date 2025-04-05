@@ -4,7 +4,7 @@
  * This script adds sample property data to demonstrate the Property Story Generator.
  */
 
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 async function generatePropertyData() {
   try {
@@ -12,7 +12,7 @@ async function generatePropertyData() {
 
     const apiKey = 'dev-key'; // This should match the key expected by validateApiKey middleware
     
-    const response = await fetch('http://localhost:3000/api/properties/generate-samples', {
+    const response = await fetch('http://localhost:5000/api/properties/generate-samples', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
