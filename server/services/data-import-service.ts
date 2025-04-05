@@ -3,6 +3,18 @@
  * 
  * This service handles importing property data from CSV files, 
  * including validation, parsing, and storing in the database.
+ * 
+ * The service supports handling flexible property data through the extraFields column,
+ * which allows storage of additional property attributes that are not part of the
+ * main property schema. This enables the system to import and store varied property
+ * data without requiring schema changes for each new property attribute.
+ * 
+ * Key features:
+ * - CSV validation with detailed error reporting
+ * - Direct property import to database
+ * - Staging properties for review before committing
+ * - Handling of additional fields via extraFields JSON column
+ * - Type conversion for numeric values
  */
 
 import fs from 'fs';
@@ -206,8 +218,19 @@ export class DataImportService {
   
   /**
    * Validate a property record from a CSV file
+   * 
+   * Performs validation on the following aspects:
+   * 1. Checks for required fields (propertyId, address, parcelNumber, propertyType)
+   * 2. Validates propertyId format (alphanumeric, hyphens, underscores only)
+   * 3. Ensures numeric fields (acres, value, etc.) contain valid numeric values
+   * 4. Validates the status field against a set of allowed values
+   * 
+   * Note: Additional fields not in the main schema will be stored in the extraFields
+   * JSON column and are not strictly validated here, but numeric fields are 
+   * checked to ensure they contain valid numbers.
+   * 
    * @param record Property record from CSV
-   * @returns Validation result
+   * @returns Validation result with isValid flag and any error messages
    */
   private validatePropertyRecord(record: any): { isValid: boolean; errors?: string[] } {
     const errors: string[] = [];
@@ -246,8 +269,13 @@ export class DataImportService {
   
   /**
    * Map a CSV record to a property object
+   * 
+   * This method maps all fields from the CSV record to a property object.
+   * Fields that are part of the main Property schema are mapped directly.
+   * Additional fields are stored in the extraFields JSON object.
+   * 
    * @param record Property record from CSV
-   * @returns Property object
+   * @returns Property object conforming to InsertProperty schema
    */
   private mapRecordToProperty(record: any): InsertProperty {
     // Initialize extraFields to store non-schema properties
