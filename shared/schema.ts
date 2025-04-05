@@ -31,6 +31,7 @@ export const properties = pgTable("properties", {
   acres: numeric("acres").notNull(),
   value: numeric("value"),
   status: text("status").notNull().default("active"),
+  extraFields: jsonb("extra_fields").default({}),
   lastUpdated: timestamp("last_updated").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -43,6 +44,7 @@ export const insertPropertySchema = createInsertSchema(properties).pick({
   acres: true,
   value: true,
   status: true,
+  extraFields: true,
 });
 
 // Land Records table

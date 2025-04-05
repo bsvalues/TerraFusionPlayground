@@ -250,35 +250,44 @@ export class DataImportService {
    * @returns Property object
    */
   private mapRecordToProperty(record: any): InsertProperty {
-    // Process extraFields if it exists and is a JSON string
-    let extraFields = {};
+    // Initialize extraFields to store non-schema properties
+    const extraFields: Record<string, any> = {};
+    
+    // Process extraFields if it exists in the record
     if (record.extraFields) {
       try {
         if (typeof record.extraFields === 'string') {
-          extraFields = JSON.parse(record.extraFields);
-        } else {
-          extraFields = record.extraFields;
+          Object.assign(extraFields, JSON.parse(record.extraFields));
+        } else if (typeof record.extraFields === 'object') {
+          Object.assign(extraFields, record.extraFields);
         }
       } catch (error) {
         console.error('Error parsing extraFields:', error);
-        // If parsing fails, treat it as an empty object
       }
     }
     
-    // Handle numeric fields properly
-    // For acres, it's required and needs to be a number
-    const acres = record.acres ? Number(record.acres) : 0; // Default to 0 as it's required
-    // For value, it can be null
-    const value = record.value ? Number(record.value) : null;
-    
-    // These are additional fields that might be in the CSV but aren't in the base schema
-    const extraFields: any = {}; 
+    // Add additional fields to extraFields
     if (record.squareFeet) extraFields.squareFeet = Number(record.squareFeet);
     if (record.bedrooms) extraFields.bedrooms = Number(record.bedrooms);
     if (record.bathrooms) extraFields.bathrooms = Number(record.bathrooms);
     if (record.yearBuilt) extraFields.yearBuilt = Number(record.yearBuilt);
+    if (record.improvementType) extraFields.improvementType = record.improvementType;
+    if (record.quality) extraFields.quality = record.quality;
+    if (record.condition) extraFields.condition = record.condition;
     
-    // Map to property object
+    // Convert numeric fields to strings as required by the InsertProperty type
+    // For acres (required numeric field in the schema)
+    const acres = record.acres ? String(Number(record.acres)) : "0"; // Required field, default to "0"
+    // For value (optional numeric field in the schema)
+    const value = record.value ? String(Number(record.value)) : null; // Optional field
+    
+    // Store any additional fields in extraFields
+    if (record.zoning) extraFields.zoning = record.zoning;
+    if (record.landUseCode) extraFields.landUseCode = record.landUseCode;
+    if (record.topography) extraFields.topography = record.topography;
+    if (record.floodZone) extraFields.floodZone = record.floodZone;
+    
+    // Map to property object (matching the exact InsertProperty schema)
     return {
       propertyId: record.propertyId,
       address: record.address,
@@ -287,13 +296,6 @@ export class DataImportService {
       status: record.status || 'active',
       acres,
       value,
-      zoning: record.zoning || null,
-      landUseCode: record.landUseCode || null,
-      topography: record.topography || null,
-      floodZone: record.floodZone || null,
-      improvementType: record.improvementType || null,
-      quality: record.quality || null,
-      condition: record.condition || null,
       extraFields
     };
   }

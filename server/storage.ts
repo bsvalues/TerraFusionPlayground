@@ -266,7 +266,9 @@ export class MemStorage implements IStorage {
       // Ensure acres is always a string
       acres: insertProperty.acres,
       // Ensure value is either a string or null
-      value: insertProperty.value === undefined ? null : insertProperty.value
+      value: insertProperty.value === undefined ? null : insertProperty.value,
+      // Ensure extraFields is always an object
+      extraFields: insertProperty.extraFields || {}
     };
     this.properties.set(id, property);
     
