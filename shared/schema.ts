@@ -237,18 +237,48 @@ export const insertAiAgentSchema = createInsertSchema(aiAgents).pick({
 // System Activities table
 export const systemActivities = pgTable("system_activities", {
   id: serial("id").primaryKey(),
-  agentId: integer("agent_id"),
-  activity: text("activity").notNull(),
-  entityType: text("entity_type"),
-  entityId: text("entity_id"),
-  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  activity_type: text("activity_type").notNull(),
+  component: text("component").notNull(),
+  status: text("status").notNull().default("info"), // info, warning, error, success
+  details: jsonb("details").default({}),
+  created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertSystemActivitySchema = createInsertSchema(systemActivities).pick({
+  activity_type: true,
+  component: true,
+  status: true,
+  details: true,
+  created_at: true,
+});
+
+// MCP Tool Execution Logs table
+export const mcpToolExecutionLogs = pgTable("mcp_tool_execution_logs", {
+  id: serial("id").primaryKey(),
+  toolName: text("tool_name").notNull(),
+  requestId: text("request_id").notNull(),
+  agentId: integer("agent_id"),
+  userId: integer("user_id"),
+  parameters: jsonb("parameters").default({}),
+  status: text("status").notNull(), // starting, success, error
+  result: jsonb("result"),
+  error: text("error"),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertMCPToolExecutionLogSchema = createInsertSchema(mcpToolExecutionLogs).pick({
+  toolName: true,
+  requestId: true,
   agentId: true,
-  activity: true,
-  entityType: true,
-  entityId: true,
+  userId: true,
+  parameters: true,
+  status: true,
+  result: true,
+  error: true,
+  startTime: true,
+  endTime: true,
 });
 
 // PACS Modules table
@@ -311,6 +341,9 @@ export type InsertAiAgent = z.infer<typeof insertAiAgentSchema>;
 
 export type SystemActivity = typeof systemActivities.$inferSelect;
 export type InsertSystemActivity = z.infer<typeof insertSystemActivitySchema>;
+
+export type MCPToolExecutionLog = typeof mcpToolExecutionLogs.$inferSelect;
+export type InsertMCPToolExecutionLog = z.infer<typeof insertMCPToolExecutionLogSchema>;
 
 export type PacsModule = typeof pacsModules.$inferSelect;
 export type InsertPacsModule = z.infer<typeof insertPacsModuleSchema>;

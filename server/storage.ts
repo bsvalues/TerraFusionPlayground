@@ -10,6 +10,7 @@ import {
   auditLogs, AuditLog, InsertAuditLog,
   aiAgents, AiAgent, InsertAiAgent,
   systemActivities, SystemActivity, InsertSystemActivity,
+  mcpToolExecutionLogs, MCPToolExecutionLog, InsertMCPToolExecutionLog,
   pacsModules, PacsModule, InsertPacsModule,
   propertyInsightShares, PropertyInsightShare, InsertPropertyInsightShare,
   comparableSales, ComparableSale, InsertComparableSale,

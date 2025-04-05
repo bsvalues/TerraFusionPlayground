@@ -22,6 +22,7 @@ import { createDataImportRoutes } from "./routes/data-import-routes";
 import ftpRoutes from "./routes/ftp-routes";
 import { createPropertyStoryRoutes } from "./routes/property-story-routes";
 import { createPropertyRoutes } from "./routes/property-routes";
+import { createAgentRoutes } from "./routes/agent-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -45,10 +46,12 @@ const mcpService = new MCPService(storage, mockPacsIntegrationService);
 import { PropertyStoryGenerator, PropertyStoryOptions } from "./services/property-story-generator";
 import { PropertyInsightSharingService } from "./services/property-insight-sharing-service";
 import { sharingUtils, SharingUtilsService } from "./services/sharing-utils";
+import { AgentSystem } from "./services/agent-system";
 
 // Initialize services that require other services
 const propertyStoryGenerator = new PropertyStoryGenerator(storage);
 const propertyInsightSharingService = new PropertyInsightSharingService(storage);
+const agentSystem = new AgentSystem(storage);
 
 // Create dummy implementation for pacsIntegration
 const pacsIntegration = {
@@ -78,6 +81,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Property routes
   createPropertyRoutes(app);
+  
+  // Register Agent routes
+  app.use('/api/agents', createAgentRoutes(agentSystem));
+  
+  // Initialize agent system
+  (async () => {
+    try {
+      console.log("Initializing Agent System...");
+      await agentSystem.initialize();
+      console.log("Agent System initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize Agent System:", error);
+    }
+  })();
   
   // Health check
   app.get("/api/health", (_req, res) => {

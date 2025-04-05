@@ -1,91 +1,60 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@/lib/types';
+import React, { createContext, useState, useContext, ReactNode } from 'react';
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => void;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
 }
+
+const defaultUser: User = {
+  id: 1,
+  name: 'Admin User',
+  email: 'admin@example.com',
+  role: 'Administrator'
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // For demo purposes, we'll simulate an authenticated user
-  useEffect(() => {
-    // In a real app, this would check for an existing session
-    setUser({
-      id: 1,
-      username: 'admin',
-      name: 'John Davis',
-      role: 'administrator',
-      email: 'admin@example.com'
-    });
-    setIsLoading(false);
-  }, []);
-
-  const login = async (username: string, password: string) => {
-    // In a real app, this would make an API call
-    setIsLoading(true);
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // For demo, we'll just set the user directly
-      setUser({
-        id: 1,
-        username,
-        name: 'John Davis',
-        role: 'administrator',
-        email: 'admin@example.com'
-      });
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(defaultUser);
+  
+  // Mock login function
+  const login = async (email: string, password: string) => {
+    // In a real app, you would validate credentials against an API
+    if (email && password) {
+      setUser(defaultUser);
+      return true;
     }
+    return false;
   };
-
-  const logout = async () => {
-    // In a real app, this would call a logout API
-    setIsLoading(true);
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setUser(null);
-    } catch (error) {
-      console.error('Logout failed:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
+  
+  // Mock logout function
+  const logout = () => {
+    setUser(null);
   };
+  
+  const value = {
+    user,
+    login,
+    logout,
+    isAuthenticated: !!user
+  };
+  
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        login,
-        logout
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = (): AuthContextType => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}
