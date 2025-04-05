@@ -1,101 +1,99 @@
-import { Router } from 'express';
-import { v4 as uuidv4 } from 'uuid';
+/**
+ * Data Import Routes
+ * 
+ * This module defines routes for importing, validating, staging, and committing property data.
+ */
+
+import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { IStorage } from '../storage';
 import { DataImportService } from '../services/data-import-service';
 import { DataStagingService } from '../services/data-staging-service';
-import { IStorage } from '../storage';
 
 // Configure multer for file uploads
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads');
-    
-    // Create uploads directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    
-    cb(null, uploadDir);
+  destination: (_req, _file, cb) => {
+    cb(null, uploadsDir);
   },
-  filename: (req, file, cb) => {
-    const uniquePrefix = `${Date.now()}-${uuidv4()}`;
-    cb(null, `${uniquePrefix}-${file.originalname}`);
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB max file size
+    fileSize: 10 * 1024 * 1024, // 10MB limit
   },
-  fileFilter: (req, file, cb) => {
-    // Only accept CSV files
-    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only CSV files are allowed'));
+  fileFilter: (_req, file, cb) => {
+    // Accept only CSV files
+    if (path.extname(file.originalname).toLowerCase() !== '.csv') {
+      return cb(new Error('Only CSV files are allowed'));
     }
+    cb(null, true);
   }
 });
 
 export function createDataImportRoutes(storage: IStorage) {
   const router = Router();
-  const dataImportService = new DataImportService(storage);
-  const dataStagingService = new DataStagingService(storage);
+  const importService = new DataImportService(storage);
+  const stagingService = new DataStagingService(storage);
   
-  // Upload and validate a CSV file for property import
-  router.post('/upload-validate', upload.single('file'), async (req, res) => {
+  /**
+   * Upload and validate a CSV file
+   * POST /api/data-import/upload-validate
+   */
+  router.post('/upload-validate', upload.single('file'), async (req: Request, res: Response) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
       }
       
-      // Validate the CSV file
-      const validationResult = await dataImportService.validateCSVFile(req.file.path);
+      const filePath = req.file.path;
+      const result = await importService.validateCSV(filePath);
       
       res.json({
-        fileName: req.file.originalname,
-        filePath: req.file.path,
-        validation: validationResult
+        filename: req.file.originalname,
+        filePath,
+        validation: result
       });
-    } catch (error) {
-      console.error('Error validating CSV file:', error);
+    } catch (error: unknown) {
+      console.error('Error validating CSV:', error);
       res.status(500).json({ 
-        message: 'Failed to validate CSV file',
+        message: 'Failed to validate CSV file', 
         error: error instanceof Error ? error.message : String(error)
       });
     }
   });
   
-  // Import properties from a validated CSV file
-  router.post('/import-properties', async (req, res) => {
+  /**
+   * Import properties directly from a CSV file
+   * POST /api/data-import/import-properties
+   */
+  router.post('/import-properties', async (req: Request, res: Response) => {
     try {
       const { filePath } = req.body;
       
       if (!filePath) {
-        return res.status(400).json({ message: 'File path is required' });
+        return res.status(400).json({ message: 'No file path provided' });
       }
       
-      // Check if file exists
       if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ message: `File not found: ${filePath}` });
+        return res.status(404).json({ message: 'File not found' });
       }
       
-      // Import properties from CSV
-      const importResult = await dataImportService.importPropertiesFromCSV(filePath);
+      const result = await importService.importPropertiesFromCSV(filePath);
       
-      // Create system activity for the import
-      await storage.createSystemActivity({
-        agentId: 1, // Data Management Agent
-        activity: `Imported ${importResult.successfulImports} properties with ${importResult.failedImports} failures`,
-        entityType: 'import',
-        entityId: 'property_csv'
-      });
-      
-      res.json(importResult);
-    } catch (error) {
+      res.json(result);
+    } catch (error: unknown) {
       console.error('Error importing properties:', error);
       res.status(500).json({
         message: 'Failed to import properties',
@@ -104,64 +102,26 @@ export function createDataImportRoutes(storage: IStorage) {
     }
   });
   
-  // Stage properties from a validated CSV file
-  router.post('/stage-properties', async (req, res) => {
+  /**
+   * Stage properties from a CSV file
+   * POST /api/data-import/stage-properties
+   */
+  router.post('/stage-properties', async (req: Request, res: Response) => {
     try {
       const { filePath } = req.body;
       
       if (!filePath) {
-        return res.status(400).json({ message: 'File path is required' });
+        return res.status(400).json({ message: 'No file path provided' });
       }
       
-      // Check if file exists
       if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ message: `File not found: ${filePath}` });
+        return res.status(404).json({ message: 'File not found' });
       }
       
-      // Validate the CSV file first
-      const validationResult = await dataImportService.validateCSVFile(filePath);
+      const result = await importService.stagePropertiesFromCSV(filePath);
       
-      if (!validationResult.isValid) {
-        return res.status(400).json({
-          message: 'Invalid CSV data',
-          validation: validationResult
-        });
-      }
-      
-      // Parse the CSV file
-      const fileContent = fs.readFileSync(filePath, 'utf8');
-      const csvParser = require('csv-parse/sync');
-      const records = csvParser.parse(fileContent, {
-        columns: true,
-        skip_empty_lines: true,
-        trim: true
-      });
-      
-      // Map records to property objects
-      const properties = records.map((record: Record<string, string>) => ({
-        propertyId: record.propertyId,
-        parcelNumber: record.parcelNumber,
-        address: record.address,
-        propertyType: record.propertyType || 'Residential',
-        acres: record.acres || '0.0',
-        value: record.value || '0',
-        status: record.status || 'active'
-      }));
-      
-      // Stage properties
-      const stagedProperties = await dataStagingService.stageProperties(properties, `CSV:${path.basename(filePath)}`);
-      
-      // Validate staged properties
-      const stagingValidationResult = await dataStagingService.validateStagedProperties(
-        Array.from(stagedProperties.keys())
-      );
-      
-      res.json({
-        staged: properties.length,
-        stagingIds: Array.from(stagedProperties.keys()),
-        validation: stagingValidationResult
-      });
-    } catch (error) {
+      res.json(result);
+    } catch (error: unknown) {
       console.error('Error staging properties:', error);
       res.status(500).json({
         message: 'Failed to stage properties',
@@ -170,85 +130,39 @@ export function createDataImportRoutes(storage: IStorage) {
     }
   });
   
-  // Get all staged properties
-  router.get('/staged-properties', (req, res) => {
+  /**
+   * Get all staged properties
+   * GET /api/data-import/staged-properties
+   */
+  router.get('/staged-properties', async (req: Request, res: Response) => {
     try {
-      const stagedProperties = dataStagingService.getStagedProperties();
-      res.json({
-        count: stagedProperties.size,
-        properties: Array.from(stagedProperties.values())
-      });
-    } catch (error) {
-      console.error('Error getting staged properties:', error);
+      const stagedProperties = await stagingService.getAllStagedProperties();
+      res.json(stagedProperties);
+    } catch (error: unknown) {
+      console.error('Error fetching staged properties:', error);
       res.status(500).json({
-        message: 'Failed to get staged properties',
+        message: 'Failed to fetch staged properties',
         error: error instanceof Error ? error.message : String(error)
       });
     }
   });
   
-  // Get a specific staged property
-  router.get('/staged-properties/:stagingId', (req, res) => {
+  /**
+   * Delete a staged property
+   * DELETE /api/data-import/staged-properties/:stagingId
+   */
+  router.delete('/staged-properties/:stagingId', async (req: Request, res: Response) => {
     try {
       const { stagingId } = req.params;
-      const stagedProperty = dataStagingService.getStagedProperty(stagingId);
       
-      if (!stagedProperty) {
-        return res.status(404).json({ message: `Staged property with ID ${stagingId} not found` });
+      const success = await stagingService.deleteStagedProperty(stagingId);
+      
+      if (!success) {
+        return res.status(404).json({ message: 'Staged property not found' });
       }
       
-      res.json(stagedProperty);
-    } catch (error) {
-      console.error('Error getting staged property:', error);
-      res.status(500).json({
-        message: 'Failed to get staged property',
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-  
-  // Validate staged properties
-  router.post('/validate-staged-properties', async (req, res) => {
-    try {
-      const { stagingIds } = req.body;
-      const validationResult = await dataStagingService.validateStagedProperties(stagingIds);
-      res.json(validationResult);
-    } catch (error) {
-      console.error('Error validating staged properties:', error);
-      res.status(500).json({
-        message: 'Failed to validate staged properties',
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-  
-  // Commit staged properties
-  router.post('/commit-staged-properties', async (req, res) => {
-    try {
-      const { stagingIds } = req.body;
-      const commitResult = await dataStagingService.commitStagedProperties(stagingIds);
-      res.json(commitResult);
-    } catch (error) {
-      console.error('Error committing staged properties:', error);
-      res.status(500).json({
-        message: 'Failed to commit staged properties',
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-  
-  // Delete a staged property
-  router.delete('/staged-properties/:stagingId', async (req, res) => {
-    try {
-      const { stagingId } = req.params;
-      const deleted = await dataStagingService.deleteStagedProperty(stagingId);
-      
-      if (!deleted) {
-        return res.status(404).json({ message: `Staged property with ID ${stagingId} not found` });
-      }
-      
-      res.json({ message: `Staged property with ID ${stagingId} deleted` });
-    } catch (error) {
+      res.json({ message: 'Staged property deleted successfully' });
+    } catch (error: unknown) {
       console.error('Error deleting staged property:', error);
       res.status(500).json({
         message: 'Failed to delete staged property',
@@ -257,16 +171,25 @@ export function createDataImportRoutes(storage: IStorage) {
     }
   });
   
-  // Create a snapshot of property data for export/backup
-  router.post('/create-property-snapshot', async (req, res) => {
+  /**
+   * Commit staged properties
+   * POST /api/data-import/commit-staged-properties
+   */
+  router.post('/commit-staged-properties', async (req: Request, res: Response) => {
     try {
-      const { propertyIds } = req.body;
-      const snapshotResult = await dataStagingService.createPropertySnapshot(propertyIds);
-      res.json(snapshotResult);
-    } catch (error) {
-      console.error('Error creating property snapshot:', error);
+      const { stagingIds } = req.body;
+      
+      if (!stagingIds || !Array.isArray(stagingIds) || stagingIds.length === 0) {
+        return res.status(400).json({ message: 'No staging IDs provided' });
+      }
+      
+      const result = await stagingService.commitStagedProperties(stagingIds);
+      
+      res.json(result);
+    } catch (error: unknown) {
+      console.error('Error committing staged properties:', error);
       res.status(500).json({
-        message: 'Failed to create property snapshot',
+        message: 'Failed to commit staged properties',
         error: error instanceof Error ? error.message : String(error)
       });
     }

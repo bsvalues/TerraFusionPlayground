@@ -14,7 +14,8 @@ import {
   propertyInsightShares, PropertyInsightShare, InsertPropertyInsightShare,
   comparableSales, ComparableSale, InsertComparableSale,
   comparableSalesAnalyses, ComparableSalesAnalysis, InsertComparableSalesAnalysis,
-  comparableAnalysisEntries, ComparableAnalysisEntry, InsertComparableAnalysisEntry
+  comparableAnalysisEntries, ComparableAnalysisEntry, InsertComparableAnalysisEntry,
+  importStaging, StagedProperty, InsertStagedProperty
 } from "@shared/schema";
 import pg from 'pg';
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -128,6 +129,13 @@ export interface IStorage {
   getComparableAnalysisEntriesByAnalysisId(analysisId: string): Promise<ComparableAnalysisEntry[]>;
   updateComparableAnalysisEntry(id: number, updates: Partial<InsertComparableAnalysisEntry>): Promise<ComparableAnalysisEntry | undefined>;
   deleteComparableAnalysisEntry(id: number): Promise<boolean>;
+  
+  // Property Data Staging methods
+  createStagedProperty(property: InsertStagedProperty): Promise<StagedProperty>;
+  getAllStagedProperties(): Promise<StagedProperty[]>;
+  getStagedPropertyById(stagingId: string): Promise<StagedProperty | null>;
+  updateStagedProperty(stagingId: string, updates: Partial<StagedProperty>): Promise<StagedProperty | null>;
+  deleteStagedProperty(stagingId: string): Promise<boolean>;
 }
 
 // Implement the in-memory storage
@@ -148,6 +156,7 @@ export class MemStorage implements IStorage {
   private comparableSales: Map<number, ComparableSale>;
   private comparableSalesAnalyses: Map<string, ComparableSalesAnalysis>;
   private comparableAnalysisEntries: Map<number, ComparableAnalysisEntry>;
+  private stagedProperties: Map<string, StagedProperty>;
   
   private currentUserId: number;
   private currentPropertyId: number;
@@ -182,6 +191,7 @@ export class MemStorage implements IStorage {
     this.comparableSales = new Map();
     this.comparableSalesAnalyses = new Map();
     this.comparableAnalysisEntries = new Map();
+    this.stagedProperties = new Map<string, StagedProperty>();
     
     this.currentUserId = 1;
     this.currentPropertyId = 1;
@@ -997,6 +1007,84 @@ export class MemStorage implements IStorage {
   }
   
   // Seed initial data
+  // Property Data Staging methods
+  async createStagedProperty(property: InsertStagedProperty): Promise<StagedProperty> {
+    const timestamp = new Date();
+    const stagedProperty: StagedProperty = {
+      ...property,
+      id: 1, // This will be auto-incrementing in the database
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      status: property.status || 'pending',
+      source: property.source,
+      stagingId: property.stagingId,
+      propertyData: property.propertyData,
+      validationErrors: property.validationErrors || null
+    };
+    
+    this.stagedProperties.set(property.stagingId, stagedProperty);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Staged new property with ID: ${property.stagingId}`,
+      entityType: 'stagedProperty',
+      entityId: property.stagingId
+    });
+    
+    return stagedProperty;
+  }
+  
+  async getAllStagedProperties(): Promise<StagedProperty[]> {
+    return Array.from(this.stagedProperties.values());
+  }
+  
+  async getStagedPropertyById(stagingId: string): Promise<StagedProperty | null> {
+    const stagedProperty = this.stagedProperties.get(stagingId);
+    return stagedProperty || null;
+  }
+  
+  async updateStagedProperty(stagingId: string, updates: Partial<StagedProperty>): Promise<StagedProperty | null> {
+    const stagedProperty = this.stagedProperties.get(stagingId);
+    if (!stagedProperty) return null;
+    
+    const timestamp = new Date();
+    const updatedStagedProperty = {
+      ...stagedProperty,
+      ...updates,
+      updatedAt: timestamp
+    };
+    
+    this.stagedProperties.set(stagingId, updatedStagedProperty);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Updated staged property with ID: ${stagingId}`,
+      entityType: 'stagedProperty',
+      entityId: stagingId
+    });
+    
+    return updatedStagedProperty;
+  }
+  
+  async deleteStagedProperty(stagingId: string): Promise<boolean> {
+    const exists = this.stagedProperties.has(stagingId);
+    if (!exists) return false;
+    
+    this.stagedProperties.delete(stagingId);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Deleted staged property with ID: ${stagingId}`,
+      entityType: 'stagedProperty',
+      entityId: stagingId
+    });
+    
+    return true;
+  }
+  
   private seedData() {
     // Seed an admin user
     this.createUser({
@@ -1251,7 +1339,8 @@ export class PgStorage implements IStorage {
     this.db = drizzle(this.pool, { schema: { 
       users, properties, landRecords, improvements, fields, 
       appeals, appealComments, appealEvidence, auditLogs,
-      aiAgents, systemActivities, pacsModules, propertyInsightShares
+      aiAgents, systemActivities, pacsModules, propertyInsightShares,
+      importStaging
     }});
     
     // Initialize in-memory maps for PACS methods
@@ -1538,6 +1627,44 @@ export class PgStorage implements IStorage {
   async deletePropertyInsightShare(shareId: string): Promise<boolean> {
     const results = await this.db.delete(propertyInsightShares)
       .where(eq(propertyInsightShares.shareId, shareId))
+      .returning();
+      
+    return results.length > 0;
+  }
+  
+  // Property Data Staging methods
+  async createStagedProperty(property: InsertStagedProperty): Promise<StagedProperty> {
+    const results = await this.db.insert(importStaging).values(property).returning();
+    return results[0];
+  }
+  
+  async getAllStagedProperties(): Promise<StagedProperty[]> {
+    return await this.db.select().from(importStaging);
+  }
+  
+  async getStagedPropertyById(stagingId: string): Promise<StagedProperty | null> {
+    const results = await this.db.select().from(importStaging)
+      .where(eq(importStaging.stagingId, stagingId));
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async updateStagedProperty(stagingId: string, updates: Partial<StagedProperty>): Promise<StagedProperty | null> {
+    const updatesWithTimestamp = {
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    const results = await this.db.update(importStaging)
+      .set(updatesWithTimestamp)
+      .where(eq(importStaging.stagingId, stagingId))
+      .returning();
+      
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async deleteStagedProperty(stagingId: string): Promise<boolean> {
+    const results = await this.db.delete(importStaging)
+      .where(eq(importStaging.stagingId, stagingId))
       .returning();
       
     return results.length > 0;

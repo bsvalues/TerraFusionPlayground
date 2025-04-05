@@ -1,376 +1,256 @@
-import { IStorage } from '../storage';
-import { AuditLog, InsertAuditLog, InsertProperty, Property } from '../../shared/schema';
-
 /**
- * Service for staging data before committing to main tables
- * Follows the import_staging and export_snapshots pattern
+ * Data Staging Service
+ * 
+ * This service handles the staging and committing of property data
+ * before it's imported into the production database.
  */
+
+import { randomUUID } from 'crypto';
+import { IStorage } from '../storage';
+import { InsertProperty, StagedProperty } from '../../shared/schema';
+
 export class DataStagingService {
-  // In-memory stage for property data (in a real implementation, this would be in a staging table)
-  private stagedProperties: Map<string, StagedProperty> = new Map();
-  
   constructor(private storage: IStorage) {}
   
   /**
-   * Stage a property for import
-   * @param property The property data to stage
-   * @param source The source of the data
-   * @returns The staged property data with a staging ID
+   * Stage a property for review before committing to the database
+   * @param property Property to stage
+   * @param source Source of the data (e.g., 'csv-import', 'api', 'manual')
+   * @returns The staged property with its staging ID
    */
   async stageProperty(property: InsertProperty, source: string): Promise<StagedProperty> {
-    const stagingId = `stg_${Date.now()}_${property.propertyId}`;
-    
-    const stagedProperty: StagedProperty = {
-      stagingId,
-      property,
-      validationStatus: 'pending',
-      validationErrors: [],
-      stagedAt: new Date(),
-      source,
-      committedAt: null
-    };
-    
-    this.stagedProperties.set(stagingId, stagedProperty);
-    
-    // Log the staging activity
-    await this.storage.createAuditLog({
-      userId: 1, // System user
-      action: 'STAGE',
-      entityType: 'property',
-      entityId: property.propertyId,
-      details: { stagingId, source },
-      ipAddress: 'system'
-    });
-    
-    return stagedProperty;
-  }
-  
-  /**
-   * Stage multiple properties for import
-   * @param properties The properties to stage
-   * @param source The source of the data
-   * @returns Map of staged properties
-   */
-  async stageProperties(properties: InsertProperty[], source: string): Promise<Map<string, StagedProperty>> {
-    const stagedPropertiesMap = new Map<string, StagedProperty>();
-    
-    for (const property of properties) {
-      const stagedProperty = await this.stageProperty(property, source);
-      stagedPropertiesMap.set(stagedProperty.stagingId, stagedProperty);
+    try {
+      const stagingId = randomUUID();
+      const timestamp = new Date();
+      
+      // Create the insert object with proper typing
+      const stagedPropertyInsert = {
+        stagingId,
+        propertyData: property as any, // Cast to any to satisfy Json type
+        source,
+        status: 'pending',
+        validationErrors: [] as any // Cast empty array to Json
+      };
+      
+      // Validate the property data
+      const validationResult = this.validateProperty(property);
+      if (!validationResult.isValid) {
+        stagedPropertyInsert.status = 'invalid';
+        stagedPropertyInsert.validationErrors = validationResult.errors as any || [] as any;
+      }
+      
+      // Store in staging table
+      const createdStagedProperty = await this.storage.createStagedProperty(stagedPropertyInsert);
+      
+      return createdStagedProperty;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to stage property: ${errorMessage}`);
     }
-    
-    return stagedPropertiesMap;
-  }
-  
-  /**
-   * Validate staged properties against business rules
-   * @param stagingIds Optional array of staging IDs to validate (validates all if not provided)
-   * @returns The validation results
-   */
-  async validateStagedProperties(stagingIds?: string[]): Promise<StagingValidationResult> {
-    const idsToValidate = stagingIds || Array.from(this.stagedProperties.keys());
-    const validationResult: StagingValidationResult = {
-      totalValidated: idsToValidate.length,
-      valid: 0,
-      invalid: 0,
-      detailedResults: []
-    };
-    
-    for (const id of idsToValidate) {
-      const stagedProperty = this.stagedProperties.get(id);
-      
-      if (!stagedProperty) {
-        validationResult.invalid++;
-        validationResult.detailedResults.push({
-          stagingId: id,
-          isValid: false,
-          errors: [`Staged property with ID ${id} not found`]
-        });
-        continue;
-      }
-      
-      // Reset validation state
-      stagedProperty.validationErrors = [];
-      
-      // Perform validations
-      if (!stagedProperty.property.propertyId) {
-        stagedProperty.validationErrors.push('Property ID is required');
-      }
-      
-      if (!stagedProperty.property.parcelNumber) {
-        stagedProperty.validationErrors.push('Parcel number is required');
-      }
-      
-      if (!stagedProperty.property.address) {
-        stagedProperty.validationErrors.push('Address is required');
-      }
-      
-      // Check for duplicates in existing data
-      try {
-        const existingProperty = await this.storage.getPropertyByPropertyId(stagedProperty.property.propertyId);
-        if (existingProperty) {
-          stagedProperty.validationErrors.push(`Property with ID ${stagedProperty.property.propertyId} already exists`);
-        }
-      } catch (error) {
-        console.error(`Error checking for duplicate property: ${error}`);
-        stagedProperty.validationErrors.push('Error checking for duplicate property');
-      }
-      
-      // Update validation status
-      stagedProperty.validationStatus = stagedProperty.validationErrors.length === 0 ? 'valid' : 'invalid';
-      
-      // Update result counts
-      if (stagedProperty.validationStatus === 'valid') {
-        validationResult.valid++;
-      } else {
-        validationResult.invalid++;
-      }
-      
-      // Add to detailed results
-      validationResult.detailedResults.push({
-        stagingId: id,
-        isValid: stagedProperty.validationStatus === 'valid',
-        errors: stagedProperty.validationErrors
-      });
-    }
-    
-    return validationResult;
-  }
-  
-  /**
-   * Commit validated properties to the main tables
-   * @param stagingIds Optional array of staging IDs to commit (commits all valid properties if not provided)
-   * @returns The commit results
-   */
-  async commitStagedProperties(stagingIds?: string[]): Promise<StagingCommitResult> {
-    // Determine which staging IDs to commit
-    let idsToCommit: string[];
-    
-    if (stagingIds) {
-      idsToCommit = stagingIds;
-    } else {
-      // Get all valid staged properties
-      idsToCommit = Array.from(this.stagedProperties.entries())
-        .filter(([_, stagedProperty]) => stagedProperty.validationStatus === 'valid')
-        .map(([id, _]) => id);
-    }
-    
-    const commitResult: StagingCommitResult = {
-      totalAttempted: idsToCommit.length,
-      successful: 0,
-      failed: 0,
-      detailedResults: []
-    };
-    
-    // Commit each property
-    for (const id of idsToCommit) {
-      const stagedProperty = this.stagedProperties.get(id);
-      
-      if (!stagedProperty) {
-        commitResult.failed++;
-        commitResult.detailedResults.push({
-          stagingId: id,
-          success: false,
-          propertyId: null,
-          error: `Staged property with ID ${id} not found`
-        });
-        continue;
-      }
-      
-      // Skip invalid properties
-      if (stagedProperty.validationStatus !== 'valid') {
-        commitResult.failed++;
-        commitResult.detailedResults.push({
-          stagingId: id,
-          success: false,
-          propertyId: stagedProperty.property.propertyId,
-          error: `Cannot commit invalid property: ${stagedProperty.validationErrors.join(', ')}`
-        });
-        continue;
-      }
-      
-      try {
-        // Commit to main table
-        const committedProperty = await this.storage.createProperty(stagedProperty.property);
-        
-        // Update staged property
-        stagedProperty.committedAt = new Date();
-        
-        // Update result
-        commitResult.successful++;
-        commitResult.detailedResults.push({
-          stagingId: id,
-          success: true,
-          propertyId: committedProperty.propertyId,
-          error: null
-        });
-        
-        // Log the commit
-        await this.storage.createAuditLog({
-          userId: 1, // System user
-          action: 'COMMIT',
-          entityType: 'property',
-          entityId: committedProperty.propertyId,
-          details: { stagingId: id, source: stagedProperty.source },
-          ipAddress: 'system'
-        });
-        
-      } catch (error) {
-        commitResult.failed++;
-        commitResult.detailedResults.push({
-          stagingId: id,
-          success: false,
-          propertyId: stagedProperty.property.propertyId,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
-    }
-    
-    // Create system activity for the overall commit
-    await this.storage.createSystemActivity({
-      agentId: 1, // Data Management Agent
-      activity: `Committed ${commitResult.successful} properties with ${commitResult.failed} failures`,
-      entityType: 'import',
-      entityId: 'property_stage_commit'
-    });
-    
-    return commitResult;
   }
   
   /**
    * Get all staged properties
-   * @returns Map of all staged properties
+   * @returns Array of staged properties
    */
-  getStagedProperties(): Map<string, StagedProperty> {
-    return this.stagedProperties;
+  async getAllStagedProperties(): Promise<StagedProperty[]> {
+    try {
+      return await this.storage.getAllStagedProperties();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to get staged properties: ${errorMessage}`);
+    }
   }
   
   /**
    * Get a staged property by its staging ID
    * @param stagingId The staging ID
-   * @returns The staged property or undefined if not found
+   * @returns The staged property
    */
-  getStagedProperty(stagingId: string): StagedProperty | undefined {
-    return this.stagedProperties.get(stagingId);
+  async getStagedPropertyById(stagingId: string): Promise<StagedProperty | null> {
+    try {
+      return await this.storage.getStagedPropertyById(stagingId);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to get staged property: ${errorMessage}`);
+    }
+  }
+  
+  /**
+   * Update a staged property
+   * @param stagingId The staging ID
+   * @param updates The updates to apply
+   * @returns The updated staged property
+   */
+  async updateStagedProperty(stagingId: string, updates: Partial<StagedProperty>): Promise<StagedProperty | null> {
+    try {
+      // Don't allow updating the stagingId
+      if (updates.stagingId) {
+        delete updates.stagingId;
+      }
+      
+      // Update the updatedAt timestamp
+      updates.updatedAt = new Date();
+      
+      return await this.storage.updateStagedProperty(stagingId, updates);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to update staged property: ${errorMessage}`);
+    }
   }
   
   /**
    * Delete a staged property
    * @param stagingId The staging ID
-   * @returns True if deleted, false if not found
+   * @returns True if deleted, false otherwise
    */
   async deleteStagedProperty(stagingId: string): Promise<boolean> {
-    const stagedProperty = this.stagedProperties.get(stagingId);
-    
-    if (!stagedProperty) {
-      return false;
+    try {
+      return await this.storage.deleteStagedProperty(stagingId);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to delete staged property: ${errorMessage}`);
     }
-    
-    const result = this.stagedProperties.delete(stagingId);
-    
-    if (result) {
-      // Log the deletion
-      await this.storage.createAuditLog({
-        userId: 1, // System user
-        action: 'DELETE_STAGED',
-        entityType: 'property',
-        entityId: stagedProperty.property.propertyId,
-        details: { stagingId, source: stagedProperty.source },
-        ipAddress: 'system'
+  }
+  
+  /**
+   * Commit a staged property to the database
+   * @param stagingId The staging ID
+   * @returns The committed property
+   */
+  async commitStagedProperty(stagingId: string): Promise<any> {
+    try {
+      // Get the staged property
+      const stagedProperty = await this.storage.getStagedPropertyById(stagingId);
+      
+      if (!stagedProperty) {
+        throw new Error(`Staged property with ID ${stagingId} not found`);
+      }
+      
+      // Check if the property is valid
+      if (stagedProperty.status === 'invalid') {
+        // Handle the case where validationErrors might be null or not an array
+        const errors = Array.isArray(stagedProperty.validationErrors) 
+          ? stagedProperty.validationErrors.join(', ')
+          : 'Unknown validation errors';
+        throw new Error(`Cannot commit invalid property: ${errors}`);
+      }
+      
+      // Insert the property into the database
+      const property = await this.storage.createProperty(stagedProperty.propertyData as InsertProperty);
+      
+      // Update the staged property status
+      await this.storage.updateStagedProperty(stagingId, {
+        status: 'committed',
+        updatedAt: new Date()
       });
+      
+      return property;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to commit staged property: ${errorMessage}`);
+    }
+  }
+  
+  /**
+   * Commit multiple staged properties to the database
+   * @param stagingIds Array of staging IDs
+   * @returns Result of the bulk commit operation
+   */
+  async commitStagedProperties(stagingIds: string[]): Promise<{
+    total: number;
+    committed: number;
+    failed: number;
+    errors: Array<{ stagingId: string; error: string }>;
+  }> {
+    const result = {
+      total: stagingIds.length,
+      committed: 0,
+      failed: 0,
+      errors: [] as Array<{ stagingId: string; error: string }>
+    };
+    
+    for (const stagingId of stagingIds) {
+      try {
+        await this.commitStagedProperty(stagingId);
+        result.committed++;
+      } catch (error) {
+        result.failed++;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        result.errors.push({
+          stagingId,
+          error: errorMessage
+        });
+      }
     }
     
     return result;
   }
   
   /**
-   * Create a snapshot of existing property data (for export/backup)
-   * @param propertyIds Optional array of property IDs to snapshot (snapshots all if not provided)
-   * @returns The snapshot result
+   * Validate a property
+   * @param property Property to validate
+   * @returns Validation result
    */
-  async createPropertySnapshot(propertyIds?: string[]): Promise<SnapshotResult> {
-    let properties: Property[];
+  private validateProperty(property: InsertProperty): { isValid: boolean; errors?: string[] } {
+    const errors: string[] = [];
     
-    if (propertyIds) {
-      properties = [];
-      for (const id of propertyIds) {
-        const property = await this.storage.getPropertyByPropertyId(id);
-        if (property) {
-          properties.push(property);
-        }
-      }
-    } else {
-      properties = await this.storage.getAllProperties();
+    // Check required fields
+    if (!property.propertyId) {
+      errors.push('Missing required field: propertyId');
+    }
+    if (!property.address) {
+      errors.push('Missing required field: address');
+    }
+    if (!property.parcelNumber) {
+      errors.push('Missing required field: parcelNumber');
+    }
+    if (!property.propertyType) {
+      errors.push('Missing required field: propertyType');
     }
     
-    const snapshotId = `snap_${Date.now()}`;
-    const snapshotResult: SnapshotResult = {
-      snapshotId,
-      timestamp: new Date(),
-      recordCount: properties.length,
-      data: properties
+    // Validate propertyId format
+    if (property.propertyId && !/^[A-Za-z0-9-_]+$/.test(property.propertyId)) {
+      errors.push('Property ID must contain only alphanumeric characters, hyphens, and underscores');
+    }
+    
+    // Validate numeric fields
+    if (property.acres !== null && property.acres !== undefined && typeof property.acres !== 'number') {
+      errors.push('Acres must be a number');
+    }
+    
+    if (property.value !== null && property.value !== undefined && typeof property.value !== 'number') {
+      errors.push('Value must be a number');
+    }
+    
+    // The following fields are optional and may be in the propertyData but not in the InsertProperty type
+    // We'll access them safely via the "as any" type assertion
+    const propertyAny = property as any;
+    
+    if (propertyAny.squareFeet !== null && propertyAny.squareFeet !== undefined && typeof propertyAny.squareFeet !== 'number') {
+      errors.push('Square feet must be a number');
+    }
+    
+    if (propertyAny.bedrooms !== null && propertyAny.bedrooms !== undefined && typeof propertyAny.bedrooms !== 'number') {
+      errors.push('Bedrooms must be a number');
+    }
+    
+    if (propertyAny.bathrooms !== null && propertyAny.bathrooms !== undefined && typeof propertyAny.bathrooms !== 'number') {
+      errors.push('Bathrooms must be a number');
+    }
+    
+    if (propertyAny.yearBuilt !== null && propertyAny.yearBuilt !== undefined && typeof propertyAny.yearBuilt !== 'number') {
+      errors.push('Year built must be a number');
+    }
+    
+    // Validate status
+    if (property.status && !['active', 'pending', 'sold', 'inactive'].includes(property.status.toLowerCase())) {
+      errors.push('Status must be one of: active, pending, sold, inactive');
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors: errors.length > 0 ? errors : undefined
     };
-    
-    // Log the snapshot
-    await this.storage.createSystemActivity({
-      agentId: 1, // Data Management Agent
-      activity: `Created property snapshot with ${properties.length} records`,
-      entityType: 'snapshot',
-      entityId: snapshotId
-    });
-    
-    return snapshotResult;
   }
-}
-
-/**
- * Interface for staged property data
- */
-export interface StagedProperty {
-  stagingId: string;
-  property: InsertProperty;
-  validationStatus: 'pending' | 'valid' | 'invalid';
-  validationErrors: string[];
-  stagedAt: Date;
-  source: string;
-  committedAt: Date | null;
-}
-
-/**
- * Interface for staging validation results
- */
-export interface StagingValidationResult {
-  totalValidated: number;
-  valid: number;
-  invalid: number;
-  detailedResults: {
-    stagingId: string;
-    isValid: boolean;
-    errors: string[];
-  }[];
-}
-
-/**
- * Interface for staging commit results
- */
-export interface StagingCommitResult {
-  totalAttempted: number;
-  successful: number;
-  failed: number;
-  detailedResults: {
-    stagingId: string;
-    success: boolean;
-    propertyId: string | null;
-    error: string | null;
-  }[];
-}
-
-/**
- * Interface for property snapshot results
- */
-export interface SnapshotResult {
-  snapshotId: string;
-  timestamp: Date;
-  recordCount: number;
-  data: Property[];
 }

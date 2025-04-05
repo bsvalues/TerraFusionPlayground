@@ -431,6 +431,29 @@ export const insertComparableSalesAnalysisSchema = createInsertSchema(comparable
 export type ComparableSalesAnalysis = typeof comparableSalesAnalyses.$inferSelect;
 export type InsertComparableSalesAnalysis = z.infer<typeof insertComparableSalesAnalysisSchema>;
 
+// Import Staging table
+export const importStaging = pgTable("import_staging", {
+  id: serial("id").primaryKey(),
+  stagingId: text("staging_id").notNull().unique(),
+  propertyData: jsonb("property_data").notNull(),
+  source: text("source").notNull(),
+  status: text("status").notNull().default("pending"),
+  validationErrors: jsonb("validation_errors").default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertImportStagingSchema = createInsertSchema(importStaging).pick({
+  stagingId: true,
+  propertyData: true,
+  source: true,
+  status: true,
+  validationErrors: true,
+});
+
+export type StagedProperty = typeof importStaging.$inferSelect;
+export type InsertStagedProperty = z.infer<typeof insertImportStagingSchema>;
+
 // Comparable Sales Analysis Comparables join table
 export const comparableAnalysisEntries = pgTable("comparable_analysis_entries", {
   id: serial("id").primaryKey(),

@@ -64,6 +64,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Define API routes
   const apiRouter = app.route("/api");
   
+  // Register data import routes
+  app.use('/api/data-import', createDataImportRoutes(storage));
+  
   // Health check
   app.get("/api/health", (_req, res) => {
     res.json({ status: "healthy" });

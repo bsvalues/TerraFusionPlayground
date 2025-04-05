@@ -1,282 +1,300 @@
+/**
+ * Data Import Service
+ * 
+ * This service handles importing property data from CSV files, 
+ * including validation, parsing, and storing in the database.
+ */
+
 import fs from 'fs';
-import path from 'path';
 import { parse } from 'csv-parse';
 import { IStorage } from '../storage';
-import { InsertProperty, InsertLandRecord, InsertImprovement, InsertField } from '../../shared/schema';
+import { DataStagingService } from './data-staging-service';
+import { InsertProperty } from '../../shared/schema';
 
-/**
- * Service for importing data from various sources into the system
- */
-export class DataImportService {
-  constructor(private storage: IStorage) {}
-
-  /**
-   * Import properties and related data from a CSV file
-   * @param filePath Path to the CSV file
-   * @returns Summary of the import operation
-   */
-  async importPropertiesFromCSV(filePath: string): Promise<ImportResult> {
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    
-    return new Promise((resolve, reject) => {
-      const results: any[] = [];
-      
-      // Parse CSV file
-      parse(fileContent, {
-        columns: true,
-        skip_empty_lines: true,
-        trim: true
-      })
-      .on('data', (data) => {
-        results.push(data);
-      })
-      .on('error', (error) => {
-        reject(error);
-      })
-      .on('end', async () => {
-        try {
-          const importResult = await this.processPropertyData(results);
-          resolve(importResult);
-        } catch (error) {
-          reject(error);
-        }
-      });
-    });
-  }
-  
-  /**
-   * Process parsed property data and import into the system
-   * @param parsedData The parsed data from CSV
-   * @returns Summary of the import operation
-   */
-  private async processPropertyData(parsedData: any[]): Promise<ImportResult> {
-    const result: ImportResult = {
-      totalRecords: parsedData.length,
-      successfulImports: 0,
-      failedImports: 0,
-      propertyImportResults: [],
-      errors: []
-    };
-    
-    // Process each property record
-    for (const data of parsedData) {
-      try {
-        // Validate required fields
-        if (!data.propertyId || !data.address || !data.parcelNumber) {
-          throw new Error(`Missing required fields for property: ${JSON.stringify(data)}`);
-        }
-        
-        // Create property object
-        const propertyData: InsertProperty = {
-          propertyId: data.propertyId,
-          parcelNumber: data.parcelNumber,
-          address: data.address,
-          propertyType: data.propertyType || 'Residential',
-          acres: data.acres || '0.0',
-          value: data.value || '0',
-          status: data.status || 'active'
-        };
-        
-        // Import property
-        const property = await this.storage.createProperty(propertyData);
-        
-        // Create land records if applicable
-        if (data.zoning || data.landUseCode) {
-          const landRecord: InsertLandRecord = {
-            propertyId: property.propertyId,
-            zoning: data.zoning || 'Unknown',
-            landUseCode: data.landUseCode || 'Unknown',
-            floodZone: data.floodZone || null,
-            topography: data.topography || null,
-            frontage: data.frontage || null,
-            depth: data.depth || null,
-            shape: data.shape || null,
-            utilities: data.utilities || null
-          };
-          
-          await this.storage.createLandRecord(landRecord);
-        }
-        
-        // Create improvements if applicable
-        if (data.improvementType || data.squareFeet) {
-          const improvement: InsertImprovement = {
-            propertyId: property.propertyId,
-            improvementType: data.improvementType || 'Building',
-            yearBuilt: data.yearBuilt ? parseInt(data.yearBuilt) : null,
-            squareFeet: data.squareFeet || null,
-            bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
-            bathrooms: data.bathrooms || null,
-            quality: data.quality || null,
-            condition: data.condition || null
-          };
-          
-          await this.storage.createImprovement(improvement);
-        }
-        
-        // Create additional fields if needed
-        if (data.extraFields) {
-          try {
-            const extraFields = JSON.parse(data.extraFields);
-            for (const [key, value] of Object.entries(extraFields)) {
-              const field: InsertField = {
-                propertyId: property.propertyId,
-                fieldType: key,
-                fieldValue: String(value)
-              };
-              
-              await this.storage.createField(field);
-            }
-          } catch (error) {
-            console.warn(`Failed to parse extra fields for property ${property.propertyId}: ${error}`);
-          }
-        }
-        
-        result.successfulImports++;
-        result.propertyImportResults.push({
-          propertyId: property.propertyId,
-          success: true,
-          message: 'Property imported successfully'
-        });
-        
-        // Create audit log
-        await this.storage.createAuditLog({
-          userId: 1, // System user
-          action: 'IMPORT',
-          entityType: 'property',
-          entityId: property.propertyId,
-          details: { source: 'CSV Import', propertyId: property.propertyId },
-          ipAddress: 'system'
-        });
-        
-      } catch (error) {
-        result.failedImports++;
-        result.errors.push({
-          record: data,
-          error: error instanceof Error ? error.message : String(error)
-        });
-        result.propertyImportResults.push({
-          propertyId: data.propertyId || 'unknown',
-          success: false,
-          message: error instanceof Error ? error.message : String(error)
-        });
-      }
-    }
-    
-    // Create system activity for the overall import
-    await this.storage.createSystemActivity({
-      agentId: 1, // Data Management Agent
-      activity: `Imported ${result.successfulImports} properties with ${result.failedImports} failures`,
-      entityType: 'import',
-      entityId: 'property_batch'
-    });
-    
-    return result;
-  }
-  
-  /**
-   * Import property data from a direct database connection
-   * This is a placeholder for future implementation - would connect to PACS database
-   */
-  async importPropertiesFromDatabase(connectionString: string, query: string): Promise<ImportResult> {
-    // This would be implemented to connect directly to the PACS database
-    // For now, return a not implemented result
-    return {
-      totalRecords: 0,
-      successfulImports: 0,
-      failedImports: 0,
-      propertyImportResults: [],
-      errors: [{
-        record: {},
-        error: 'Direct database import not yet implemented'
-      }]
-    };
-  }
-  
-  /**
-   * Validate a CSV file before importing
-   * @param filePath Path to the CSV file
-   * @returns Validation results
-   */
-  async validateCSVFile(filePath: string): Promise<ValidationResult> {
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    
-    return new Promise((resolve, reject) => {
-      const results: any[] = [];
-      const validationResult: ValidationResult = {
-        isValid: true,
-        totalRecords: 0,
-        validRecords: 0,
-        invalidRecords: 0,
-        errors: []
-      };
-      
-      // Parse CSV file
-      parse(fileContent, {
-        columns: true,
-        skip_empty_lines: true,
-        trim: true
-      })
-      .on('data', (data) => {
-        results.push(data);
-        validationResult.totalRecords++;
-        
-        // Validate required fields
-        if (!data.propertyId || !data.address || !data.parcelNumber) {
-          validationResult.isValid = false;
-          validationResult.invalidRecords++;
-          validationResult.errors.push({
-            record: data,
-            error: `Missing required fields for property: ${JSON.stringify(data)}`
-          });
-        } else {
-          validationResult.validRecords++;
-        }
-      })
-      .on('error', (error) => {
-        reject(error);
-      })
-      .on('end', () => {
-        resolve(validationResult);
-      });
-    });
-  }
-}
-
-/**
- * Interface for import operation results
- */
-export interface ImportResult {
-  totalRecords: number;
-  successfulImports: number;
-  failedImports: number;
-  propertyImportResults: PropertyImportResult[];
-  errors: ImportError[];
-}
-
-/**
- * Interface for individual property import results
- */
-export interface PropertyImportResult {
-  propertyId: string;
-  success: boolean;
-  message: string;
-}
-
-/**
- * Interface for import errors
- */
-export interface ImportError {
-  record: any;
-  error: string;
-}
-
-/**
- * Interface for CSV validation results
- */
 export interface ValidationResult {
-  isValid: boolean;
   totalRecords: number;
   validRecords: number;
   invalidRecords: number;
-  errors: ImportError[];
+  isValid: boolean;
+  errors?: string[];
+}
+
+export interface ImportResult {
+  total: number;
+  successfulImports: number;
+  failedImports: number;
+  errors?: string[];
+}
+
+export interface StagingResult {
+  total: number;
+  staged: number;
+  failed: number;
+  stagingIds: string[];
+  errors?: string[];
+}
+
+export class DataImportService {
+  private stagingService: DataStagingService;
+  
+  constructor(private storage: IStorage) {
+    this.stagingService = new DataStagingService(storage);
+  }
+  
+  /**
+   * Validate a CSV file containing property data
+   * @param filePath Path to the CSV file
+   * @returns Validation result
+   */
+  async validateCSV(filePath: string): Promise<ValidationResult> {
+    return new Promise((resolve, reject) => {
+      const records: any[] = [];
+      const errors: string[] = [];
+      let totalRecords = 0;
+      
+      fs.createReadStream(filePath)
+        .pipe(parse({
+          columns: true,
+          skip_empty_lines: true,
+          trim: true
+        }))
+        .on('data', (record) => {
+          totalRecords++;
+          records.push(record);
+        })
+        .on('error', (error) => {
+          reject(error);
+        })
+        .on('end', () => {
+          // Validate each record
+          const validationResults = records.map(record => this.validatePropertyRecord(record));
+          const validRecords = validationResults.filter(result => result.isValid).length;
+          const invalidRecords = totalRecords - validRecords;
+          
+          // Collect all errors
+          validationResults.forEach(result => {
+            if (!result.isValid && result.errors) {
+              errors.push(...result.errors);
+            }
+          });
+          
+          resolve({
+            totalRecords,
+            validRecords,
+            invalidRecords,
+            isValid: invalidRecords === 0 && totalRecords > 0,
+            errors: errors.length > 0 ? errors : undefined
+          });
+        });
+    });
+  }
+  
+  /**
+   * Import properties directly from a CSV file to the database
+   * @param filePath Path to the CSV file
+   * @returns Import result
+   */
+  async importPropertiesFromCSV(filePath: string): Promise<ImportResult> {
+    return new Promise((resolve, reject) => {
+      const records: any[] = [];
+      const errors: string[] = [];
+      let totalRecords = 0;
+      
+      fs.createReadStream(filePath)
+        .pipe(parse({
+          columns: true,
+          skip_empty_lines: true,
+          trim: true
+        }))
+        .on('data', (record) => {
+          totalRecords++;
+          records.push(record);
+        })
+        .on('error', (error) => {
+          reject(error);
+        })
+        .on('end', async () => {
+          let successfulImports = 0;
+          let failedImports = 0;
+          
+          // Process each record
+          for (const record of records) {
+            try {
+              const validationResult = this.validatePropertyRecord(record);
+              
+              if (!validationResult.isValid) {
+                failedImports++;
+                if (validationResult.errors) {
+                  errors.push(...validationResult.errors);
+                }
+                continue;
+              }
+              
+              const property = this.mapRecordToProperty(record);
+              await this.storage.createProperty(property);
+              successfulImports++;
+            } catch (error) {
+              failedImports++;
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              errors.push(`Error importing record: ${errorMessage}`);
+            }
+          }
+          
+          resolve({
+            total: totalRecords,
+            successfulImports,
+            failedImports,
+            errors: errors.length > 0 ? errors : undefined
+          });
+        });
+    });
+  }
+  
+  /**
+   * Stage properties from a CSV file for review before committing
+   * @param filePath Path to the CSV file
+   * @returns Staging result
+   */
+  async stagePropertiesFromCSV(filePath: string): Promise<StagingResult> {
+    return new Promise((resolve, reject) => {
+      const records: any[] = [];
+      const errors: string[] = [];
+      let totalRecords = 0;
+      
+      fs.createReadStream(filePath)
+        .pipe(parse({
+          columns: true,
+          skip_empty_lines: true,
+          trim: true
+        }))
+        .on('data', (record) => {
+          totalRecords++;
+          records.push(record);
+        })
+        .on('error', (error) => {
+          reject(error);
+        })
+        .on('end', async () => {
+          let staged = 0;
+          let failed = 0;
+          const stagingIds: string[] = [];
+          
+          // Process each record
+          for (const record of records) {
+            try {
+              const property = this.mapRecordToProperty(record);
+              const stagedProperty = await this.stagingService.stageProperty(property, 'csv-import');
+              staged++;
+              stagingIds.push(stagedProperty.stagingId);
+            } catch (error) {
+              failed++;
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              errors.push(`Error staging record: ${errorMessage}`);
+            }
+          }
+          
+          resolve({
+            total: totalRecords,
+            staged,
+            failed,
+            stagingIds,
+            errors: errors.length > 0 ? errors : undefined
+          });
+        });
+    });
+  }
+  
+  /**
+   * Validate a property record from a CSV file
+   * @param record Property record from CSV
+   * @returns Validation result
+   */
+  private validatePropertyRecord(record: any): { isValid: boolean; errors?: string[] } {
+    const errors: string[] = [];
+    
+    // Check required fields
+    const requiredFields = ['propertyId', 'address', 'parcelNumber', 'propertyType'];
+    for (const field of requiredFields) {
+      if (!record[field]) {
+        errors.push(`Missing required field: ${field}`);
+      }
+    }
+    
+    // Validate propertyId format
+    if (record.propertyId && !/^[A-Za-z0-9-_]+$/.test(record.propertyId)) {
+      errors.push('Property ID must contain only alphanumeric characters, hyphens, and underscores');
+    }
+    
+    // Validate numeric fields
+    const numericFields = ['acres', 'value', 'squareFeet', 'bedrooms', 'bathrooms', 'yearBuilt'];
+    for (const field of numericFields) {
+      if (record[field] && isNaN(Number(record[field]))) {
+        errors.push(`Field ${field} must be a number`);
+      }
+    }
+    
+    // Validate status
+    if (record.status && !['active', 'pending', 'sold', 'inactive'].includes(record.status.toLowerCase())) {
+      errors.push('Status must be one of: active, pending, sold, inactive');
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors: errors.length > 0 ? errors : undefined
+    };
+  }
+  
+  /**
+   * Map a CSV record to a property object
+   * @param record Property record from CSV
+   * @returns Property object
+   */
+  private mapRecordToProperty(record: any): InsertProperty {
+    // Process extraFields if it exists and is a JSON string
+    let extraFields = {};
+    if (record.extraFields) {
+      try {
+        if (typeof record.extraFields === 'string') {
+          extraFields = JSON.parse(record.extraFields);
+        } else {
+          extraFields = record.extraFields;
+        }
+      } catch (error) {
+        console.error('Error parsing extraFields:', error);
+        // If parsing fails, treat it as an empty object
+      }
+    }
+    
+    // Handle numeric fields properly
+    // For acres, it's required and needs to be a number
+    const acres = record.acres ? Number(record.acres) : 0; // Default to 0 as it's required
+    // For value, it can be null
+    const value = record.value ? Number(record.value) : null;
+    
+    // These are additional fields that might be in the CSV but aren't in the base schema
+    const extraFields: any = {}; 
+    if (record.squareFeet) extraFields.squareFeet = Number(record.squareFeet);
+    if (record.bedrooms) extraFields.bedrooms = Number(record.bedrooms);
+    if (record.bathrooms) extraFields.bathrooms = Number(record.bathrooms);
+    if (record.yearBuilt) extraFields.yearBuilt = Number(record.yearBuilt);
+    
+    // Map to property object
+    return {
+      propertyId: record.propertyId,
+      address: record.address,
+      parcelNumber: record.parcelNumber,
+      propertyType: record.propertyType,
+      status: record.status || 'active',
+      acres,
+      value,
+      zoning: record.zoning || null,
+      landUseCode: record.landUseCode || null,
+      topography: record.topography || null,
+      floodZone: record.floodZone || null,
+      improvementType: record.improvementType || null,
+      quality: record.quality || null,
+      condition: record.condition || null,
+      extraFields
+    };
+  }
 }
