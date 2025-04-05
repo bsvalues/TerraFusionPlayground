@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 type Property = {
   propertyId: string;
@@ -377,10 +378,22 @@ export default function PropertyStoryPage() {
           {storyResult && (
             <Card>
               <CardHeader>
-                <CardTitle>Property Story</CardTitle>
-                <CardDescription>
-                  AI-generated narrative about the selected property
-                </CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Property Story</CardTitle>
+                    <CardDescription>
+                      AI-generated narrative about the selected property
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant={storyOptions.aiProvider === 'template' ? 'outline' : 'default'}>
+                      {storyOptions.aiProvider === 'openai' && 'OpenAI'}
+                      {storyOptions.aiProvider === 'anthropic' && 'Claude'}
+                      {storyOptions.aiProvider === 'perplexity' && 'Perplexity'}
+                      {storyOptions.aiProvider === 'template' && 'Template'}
+                    </Badge>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="bg-muted p-4 rounded-md whitespace-pre-line">
@@ -466,10 +479,22 @@ export default function PropertyStoryPage() {
           {comparisonResult && (
             <Card>
               <CardHeader>
-                <CardTitle>Property Comparison</CardTitle>
-                <CardDescription>
-                  AI-generated comparison between the selected properties
-                </CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Property Comparison</CardTitle>
+                    <CardDescription>
+                      AI-generated comparison between the selected properties
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant={storyOptions.aiProvider === 'template' ? 'outline' : 'default'}>
+                      {storyOptions.aiProvider === 'openai' && 'OpenAI'}
+                      {storyOptions.aiProvider === 'anthropic' && 'Claude'}
+                      {storyOptions.aiProvider === 'perplexity' && 'Perplexity'}
+                      {storyOptions.aiProvider === 'template' && 'Template'}
+                    </Badge>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="bg-muted p-4 rounded-md whitespace-pre-line">
@@ -572,10 +597,22 @@ export default function PropertyStoryPage() {
           {Object.keys(batchResults).length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Batch Results</CardTitle>
-                <CardDescription>
-                  Generated stories for {Object.keys(batchResults).length} properties
-                </CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Batch Results</CardTitle>
+                    <CardDescription>
+                      Generated stories for {Object.keys(batchResults).length} properties
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant={storyOptions.aiProvider === 'template' ? 'outline' : 'default'}>
+                      {storyOptions.aiProvider === 'openai' && 'OpenAI'}
+                      {storyOptions.aiProvider === 'anthropic' && 'Claude'}
+                      {storyOptions.aiProvider === 'perplexity' && 'Perplexity'}
+                      {storyOptions.aiProvider === 'template' && 'Template'}
+                    </Badge>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue={Object.keys(batchResults)[0]} className="w-full">
