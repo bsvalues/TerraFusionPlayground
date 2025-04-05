@@ -71,8 +71,11 @@ export default function PropertyStoryPage() {
     aiProvider: "template",
   });
   const [storyResult, setStoryResult] = useState<string>("");
+  const [storyGeneratedAt, setStoryGeneratedAt] = useState<string>("");
   const [comparisonResult, setComparisonResult] = useState<string>("");
+  const [comparisonGeneratedAt, setComparisonGeneratedAt] = useState<string>("");
   const [batchResults, setBatchResults] = useState<Record<string, string>>({});
+  const [batchGeneratedAt, setBatchGeneratedAt] = useState<string>("");
   
   // Debug log
   useEffect(() => {
@@ -115,6 +118,7 @@ export default function PropertyStoryPage() {
     },
     onSuccess: (data) => {
       setStoryResult(data.story);
+      setStoryGeneratedAt(data.generated || new Date().toISOString());
       toast({
         title: "Story Generated",
         description: `Generated story for property ${selectedPropertyId}`,
@@ -145,6 +149,7 @@ export default function PropertyStoryPage() {
     },
     onSuccess: (data) => {
       setComparisonResult(data.comparison);
+      setComparisonGeneratedAt(data.generated || new Date().toISOString());
       toast({
         title: "Comparison Generated",
         description: `Generated comparison for ${data.propertyIds.length} properties`,
@@ -175,6 +180,7 @@ export default function PropertyStoryPage() {
     },
     onSuccess: (data) => {
       setBatchResults(data.stories);
+      setBatchGeneratedAt(data.generated || new Date().toISOString());
       toast({
         title: "Batch Generated",
         description: `Generated ${data.count} property stories`,
@@ -400,23 +406,30 @@ export default function PropertyStoryPage() {
                   {storyResult}
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-between">
-                <Button variant="outline" onClick={() => setStoryResult("")}>
-                  Clear
-                </Button>
-                <Button 
-                  variant="default"
-                  onClick={() => {
-                    // Copy to clipboard
-                    navigator.clipboard.writeText(storyResult);
-                    toast({
-                      title: "Copied",
-                      description: "Story copied to clipboard",
-                    });
-                  }}
-                >
-                  Copy to Clipboard
-                </Button>
+              <CardFooter className="flex flex-col space-y-2">
+                <div className="flex justify-between items-center w-full">
+                  <Button variant="outline" onClick={() => setStoryResult("")}>
+                    Clear
+                  </Button>
+                  <Button 
+                    variant="default"
+                    onClick={() => {
+                      // Copy to clipboard
+                      navigator.clipboard.writeText(storyResult);
+                      toast({
+                        title: "Copied",
+                        description: "Story copied to clipboard",
+                      });
+                    }}
+                  >
+                    Copy to Clipboard
+                  </Button>
+                </div>
+                {storyGeneratedAt && (
+                  <div className="text-xs text-muted-foreground text-right w-full">
+                    Generated: {new Date(storyGeneratedAt).toLocaleString()}
+                  </div>
+                )}
               </CardFooter>
             </Card>
           )}
@@ -501,22 +514,29 @@ export default function PropertyStoryPage() {
                   {comparisonResult}
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-between">
-                <Button variant="outline" onClick={() => setComparisonResult("")}>
-                  Clear
-                </Button>
-                <Button 
-                  variant="default"
-                  onClick={() => {
-                    navigator.clipboard.writeText(comparisonResult);
-                    toast({
-                      title: "Copied",
-                      description: "Comparison copied to clipboard",
-                    });
-                  }}
-                >
-                  Copy to Clipboard
-                </Button>
+              <CardFooter className="flex flex-col space-y-2">
+                <div className="flex justify-between items-center w-full">
+                  <Button variant="outline" onClick={() => setComparisonResult("")}>
+                    Clear
+                  </Button>
+                  <Button 
+                    variant="default"
+                    onClick={() => {
+                      navigator.clipboard.writeText(comparisonResult);
+                      toast({
+                        title: "Copied",
+                        description: "Comparison copied to clipboard",
+                      });
+                    }}
+                  >
+                    Copy to Clipboard
+                  </Button>
+                </div>
+                {comparisonGeneratedAt && (
+                  <div className="text-xs text-muted-foreground text-right w-full">
+                    Generated: {new Date(comparisonGeneratedAt).toLocaleString()}
+                  </div>
+                )}
               </CardFooter>
             </Card>
           )}
@@ -633,27 +653,34 @@ export default function PropertyStoryPage() {
                   ))}
                 </Tabs>
               </CardContent>
-              <CardFooter className="flex justify-between">
-                <Button variant="outline" onClick={() => setBatchResults({})}>
-                  Clear All
-                </Button>
-                <Button 
-                  variant="default"
-                  onClick={() => {
-                    // Create a formatted string with all stories
-                    const formattedResults = Object.entries(batchResults)
-                      .map(([propertyId, story]) => `# ${propertyId}\n\n${story}`)
-                      .join('\n\n---\n\n');
-                    
-                    navigator.clipboard.writeText(formattedResults);
-                    toast({
-                      title: "Copied",
-                      description: "All stories copied to clipboard",
-                    });
-                  }}
-                >
-                  Copy All to Clipboard
-                </Button>
+              <CardFooter className="flex flex-col space-y-2">
+                <div className="flex justify-between items-center w-full">
+                  <Button variant="outline" onClick={() => setBatchResults({})}>
+                    Clear All
+                  </Button>
+                  <Button 
+                    variant="default"
+                    onClick={() => {
+                      // Create a formatted string with all stories
+                      const formattedResults = Object.entries(batchResults)
+                        .map(([propertyId, story]) => `# ${propertyId}\n\n${story}`)
+                        .join('\n\n---\n\n');
+                      
+                      navigator.clipboard.writeText(formattedResults);
+                      toast({
+                        title: "Copied",
+                        description: "All stories copied to clipboard",
+                      });
+                    }}
+                  >
+                    Copy All to Clipboard
+                  </Button>
+                </div>
+                {batchGeneratedAt && (
+                  <div className="text-xs text-muted-foreground text-right w-full">
+                    Generated: {new Date(batchGeneratedAt).toLocaleString()}
+                  </div>
+                )}
               </CardFooter>
             </Card>
           )}
