@@ -37,6 +37,9 @@ const Dashboard = () => {
       <Button>
         New Property
       </Button>
+      <Button variant="link" asChild>
+        <a href="/property-stories">Test Property Stories Link</a>
+      </Button>
     </>
   );
 

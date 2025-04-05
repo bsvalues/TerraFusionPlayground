@@ -72,6 +72,11 @@ export default function PropertyStoryPage() {
   const [storyResult, setStoryResult] = useState<string>("");
   const [comparisonResult, setComparisonResult] = useState<string>("");
   const [batchResults, setBatchResults] = useState<Record<string, string>>({});
+  
+  // Debug log
+  useEffect(() => {
+    console.log("PropertyStoryPage component rendered");
+  }, []);
 
   // Fetch properties
   const { data: properties, isLoading: propertiesLoading } = useQuery({
