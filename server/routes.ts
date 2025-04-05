@@ -18,6 +18,7 @@ import {
   insertComparableAnalysisEntrySchema,
   PacsModule
 } from "@shared/schema";
+import { createDataImportRoutes } from "./routes/data-import-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -2165,6 +2166,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update comparable analysis entry" });
     }
   });
+  
+  // Register data import routes
+  app.use("/api/data-import", createDataImportRoutes(storage));
   
   // Create HTTP server and initialize WebSocket for real-time notifications
   const httpServer = createServer(app);
