@@ -19,6 +19,7 @@ import {
   PacsModule
 } from "@shared/schema";
 import { createDataImportRoutes } from "./routes/data-import-routes";
+import ftpRoutes from "./routes/ftp-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -66,6 +67,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register data import routes
   app.use('/api/data-import', createDataImportRoutes(storage));
+  
+  // Register FTP routes
+  app.use('/api/ftp', ftpRoutes);
   
   // Health check
   app.get("/api/health", (_req, res) => {
