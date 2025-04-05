@@ -408,7 +408,10 @@ export default function PropertyStoryPage() {
               </CardContent>
               <CardFooter className="flex flex-col space-y-2">
                 <div className="flex justify-between items-center w-full">
-                  <Button variant="outline" onClick={() => setStoryResult("")}>
+                  <Button variant="outline" onClick={() => {
+                    setStoryResult("");
+                    setStoryGeneratedAt("");
+                  }}>
                     Clear
                   </Button>
                   <Button 
@@ -516,7 +519,10 @@ export default function PropertyStoryPage() {
               </CardContent>
               <CardFooter className="flex flex-col space-y-2">
                 <div className="flex justify-between items-center w-full">
-                  <Button variant="outline" onClick={() => setComparisonResult("")}>
+                  <Button variant="outline" onClick={() => {
+                    setComparisonResult("");
+                    setComparisonGeneratedAt("");
+                  }}>
                     Clear
                   </Button>
                   <Button 
@@ -655,7 +661,10 @@ export default function PropertyStoryPage() {
               </CardContent>
               <CardFooter className="flex flex-col space-y-2">
                 <div className="flex justify-between items-center w-full">
-                  <Button variant="outline" onClick={() => setBatchResults({})}>
+                  <Button variant="outline" onClick={() => {
+                    setBatchResults({});
+                    setBatchGeneratedAt("");
+                  }}>
                     Clear All
                   </Button>
                   <Button 

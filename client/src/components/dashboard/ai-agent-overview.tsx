@@ -101,7 +101,7 @@ const AIAgentOverview = () => {
                     </tr>
                   ) : (
                     agents.map((agent) => (
-                      <tr key={agent.id}>
+                      <tr key={agent.agentId || agent.id}>
                         <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
                           <div className="flex items-center">
                             {getAgentIcon(agent.type)}

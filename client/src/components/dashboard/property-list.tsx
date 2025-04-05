@@ -93,7 +93,7 @@ const PropertyList = () => {
               <div className="py-4 text-center text-gray-500">No properties found</div>
             ) : (
               sortedProperties.map((property) => (
-                <div key={property.id} className="py-4">
+                <div key={property.propertyId} className="py-4">
                   <div className="flex items-center space-x-4">
                     <div className="flex-shrink-0">
                       {getPropertyIcon(property.propertyType)}

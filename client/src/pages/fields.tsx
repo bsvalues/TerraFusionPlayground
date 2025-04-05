@@ -57,7 +57,7 @@ const Fields = () => {
                 <div className="space-y-2">
                   {properties.map(property => (
                     <div 
-                      key={property.id}
+                      key={property.propertyId}
                       className={`p-3 rounded-md cursor-pointer flex items-center ${
                         selectedPropertyId === property.propertyId 
                           ? 'bg-primary-50 border border-primary-200' 

@@ -80,6 +80,7 @@ export interface AuditLog {
 // AI Agent Types
 export interface AIAgent {
   id: number;
+  agentId?: string; // Added for consistent ID naming
   name: string;
   type: string;
   status: 'active' | 'syncing' | 'error' | 'inactive';
@@ -91,6 +92,7 @@ export interface AIAgent {
 // System Activity Types
 export interface SystemActivity {
   id: number;
+  activityId?: string; // Added for consistent ID naming
   agentId: number | null;
   activity: string;
   entityType: string | null;

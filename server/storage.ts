@@ -1342,6 +1342,7 @@ export class PgStorage implements IStorage {
       users, properties, landRecords, improvements, fields, 
       appeals, appealComments, appealEvidence, auditLogs,
       aiAgents, systemActivities, pacsModules, propertyInsightShares,
+      comparableSales, comparableSalesAnalyses, comparableAnalysisEntries,
       importStaging
     }});
     

@@ -88,7 +88,7 @@ const SystemActivityFeed = () => {
               <li className="py-4 text-center text-gray-500">No activities found</li>
             ) : (
               activities.slice(0, 5).map((activity, idx) => (
-                <li key={activity.id}>
+                <li key={activity.activityId || activity.id}>
                   <div className="relative pb-8">
                     {idx < activities.slice(0, 5).length - 1 && (
                       <span className="absolute top-5 left-5 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
