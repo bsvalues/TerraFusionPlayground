@@ -8,6 +8,8 @@
 
 import { IStorage } from "../storage";
 import { openaiService, OpenAIErrorType } from "./openai-service";
+import { anthropicService, AnthropicErrorType } from "./anthropic-service";
+import { perplexityService, PerplexityErrorType } from "./perplexity-service";
 
 // Property Story Generator Options
 export interface PropertyStoryOptions {
@@ -68,11 +70,15 @@ export class PropertyStoryGenerator {
       // Default to OpenAI unless otherwise specified
       const aiProvider = options.aiProvider || 'openai';
       
-      // Generate the story
+      // Generate the story based on selected AI provider
       if (aiProvider === 'openai') {
         return this.generateWithOpenAI(property, improvements, landRecords, appeals, options);
+      } else if (aiProvider === 'anthropic') {
+        return this.generateWithAnthropic(property, improvements, landRecords, appeals, options);
+      } else if (aiProvider === 'perplexity') {
+        return this.generateWithPerplexity(property, improvements, landRecords, appeals, options);
       } else {
-        // Fallback to template-based generation
+        // Use template-based generation for 'template' option or fallback
         return this.generateWithTemplate(property, improvements, landRecords, appeals, options);
       }
     } catch (error) {
@@ -135,11 +141,15 @@ export class PropertyStoryGenerator {
       // Default to OpenAI unless otherwise specified
       const aiProvider = options.aiProvider || 'openai';
       
-      // Generate the comparison
+      // Generate the comparison based on selected AI provider
       if (aiProvider === 'openai') {
         return this.generateComparisonWithOpenAI(properties, options);
+      } else if (aiProvider === 'anthropic') {
+        return this.generateComparisonWithAnthropic(properties, options);
+      } else if (aiProvider === 'perplexity') {
+        return this.generateComparisonWithPerplexity(properties, options);
       } else {
-        // Fallback to template-based generation
+        // Use template-based generation for 'template' option or fallback
         return this.generateComparisonWithTemplate(properties, options);
       }
     } catch (error) {
@@ -447,28 +457,373 @@ export class PropertyStoryGenerator {
   }
   
   /**
+   * Generate a property story using Anthropic's Claude
+   */
+  private async generateWithAnthropic(property: any, improvements: any[], landRecords: any[], appeals: any[], options: PropertyStoryOptions): Promise<string> {
+    try {
+      // Create context object with all the data
+      const context = {
+        property,
+        improvements: improvements || [],
+        landRecords: landRecords || [],
+        appeals: appeals || [],
+        options
+      };
+      
+      // Build the prompt based on the data and options
+      const format = options.format || 'detailed';
+      const focus = options.focus || 'market';
+      
+      let promptContent = `Generate a ${format} description of the following property:\n\n`;
+      promptContent += `Property ID: ${property.propertyId}\n`;
+      promptContent += `Address: ${property.address}\n`;
+      promptContent += `Type: ${property.propertyType}\n`;
+      
+      if (property.assessedValue || property.value) {
+        const value = property.assessedValue || property.value;
+        promptContent += `Assessment: $${value ? value.toLocaleString() : 'Not available'}\n`;
+      }
+      
+      if (property.landArea || property.acres) {
+        const area = property.landArea || property.acres;
+        const unit = property.landAreaUnit || 'acres';
+        promptContent += `Land Area: ${area} ${unit}\n`;
+      }
+      
+      if (improvements && improvements.length > 0) {
+        promptContent += "\nImprovements:\n";
+        improvements.forEach((imp, index) => {
+          promptContent += `${index + 1}. ${imp.improvementType} (${imp.yearBuilt}): ${imp.description || ''}, ${imp.area} sq ft\n`;
+        });
+      }
+      
+      if (landRecords && landRecords.length > 0) {
+        promptContent += "\nLand Records:\n";
+        landRecords.forEach((record, index) => {
+          promptContent += `${index + 1}. Zone: ${record.zoneType}, Land Use: ${record.landUse}\n`;
+        });
+      }
+      
+      if (appeals && appeals.length > 0) {
+        promptContent += "\nAppeals History:\n";
+        appeals.forEach((appeal, index) => {
+          promptContent += `${index + 1}. Filed: ${appeal.filingDate}, Status: ${appeal.status}, Reason: ${appeal.reason}\n`;
+        });
+      }
+      
+      promptContent += `\nFocus the description on ${focus} aspects. Be objective and factual while maintaining readability.`;
+      
+      // Call Anthropic service
+      const systemPrompt = "You are Claude, an expert property assessor and real estate analyst. Write informative, factual, and objective descriptions of properties based on assessment data.";
+      
+      try {
+        const generatedText = await anthropicService.generateText(
+          promptContent,
+          systemPrompt,
+          options.maxLength || 1000
+        );
+        
+        return generatedText;
+      } catch (anthropicError: any) {
+        // Check if this is a rate limit or quota exceeded error
+        if (anthropicService.isRateLimitError(anthropicError)) {
+          console.warn(`Anthropic API rate limit reached for property ${property.propertyId}, using fallback template generation.`);
+          return this.generateWithTemplate(property, improvements, landRecords, appeals, options);
+        }
+        
+        // Get detailed error information
+        const errorDetails = anthropicService.getErrorDetails(anthropicError);
+        console.error(`Anthropic API error (${errorDetails.type}) for property ${property.propertyId}: ${errorDetails.message}`);
+        
+        // Only use template fallback for specific error types
+        if (errorDetails.type === AnthropicErrorType.RATE_LIMIT || 
+            errorDetails.type === AnthropicErrorType.QUOTA_EXCEEDED ||
+            errorDetails.type === AnthropicErrorType.SERVER_ERROR) {
+          return this.generateWithTemplate(property, improvements, landRecords, appeals, options);
+        }
+        
+        // For other error types, rethrow to be handled by the caller
+        throw new Error(`Failed to generate property story: ${errorDetails.message}`);
+      }
+    } catch (error) {
+      console.error("Error in property story generation with Anthropic:", error);
+      // Fall back to template generation on any other error
+      return this.generateWithTemplate(property, improvements, landRecords, appeals, options);
+    }
+  }
+  
+  /**
+   * Generate a property comparison using Anthropic's Claude
+   */
+  private async generateComparisonWithAnthropic(properties: any[], options: PropertyStoryOptions): Promise<string> {
+    try {
+      // Build the comparison prompt
+      let promptContent = `Compare and contrast the following ${properties.length} properties:\n\n`;
+      
+      properties.forEach((property, index) => {
+        promptContent += `Property ${index + 1}:\n`;
+        promptContent += `Property ID: ${property.propertyId}\n`;
+        promptContent += `Address: ${property.address}\n`;
+        promptContent += `Type: ${property.propertyType}\n`;
+        
+        if (property.assessedValue || property.value) {
+          const value = property.assessedValue || property.value;
+          promptContent += `Assessment: $${value ? value.toLocaleString() : 'Not available'}\n`;
+        }
+        
+        if (property.landArea || property.acres) {
+          const area = property.landArea || property.acres;
+          const unit = property.landAreaUnit || 'acres';
+          promptContent += `Land Area: ${area} ${unit}\n`;
+        }
+        
+        promptContent += `\n`;
+      });
+      
+      promptContent += `\nFocus on highlighting the key similarities and differences between these properties in terms of value, location, and characteristics. Provide insights on their relative market positions.`;
+      
+      // Call Anthropic service
+      const systemPrompt = "You are Claude, an expert property assessor and real estate analyst. Write informative, factual, and objective comparisons of properties based on assessment data.";
+      
+      try {
+        const generatedText = await anthropicService.generateText(
+          promptContent,
+          systemPrompt,
+          options.maxLength || 1500
+        );
+        
+        return generatedText;
+      } catch (anthropicError: any) {
+        // Check if this is a rate limit or quota exceeded error
+        if (anthropicService.isRateLimitError(anthropicError)) {
+          const propertyIds = properties.map(p => p.propertyId).join(', ');
+          console.warn(`Anthropic API rate limit reached for property comparison [${propertyIds}], using fallback template generation.`);
+          return this.generateComparisonWithTemplate(properties, options);
+        }
+        
+        // Get detailed error information
+        const errorDetails = anthropicService.getErrorDetails(anthropicError);
+        console.error(`Anthropic API error (${errorDetails.type}) for property comparison: ${errorDetails.message}`);
+        
+        // Only use template fallback for specific error types
+        if (errorDetails.type === AnthropicErrorType.RATE_LIMIT || 
+            errorDetails.type === AnthropicErrorType.QUOTA_EXCEEDED ||
+            errorDetails.type === AnthropicErrorType.SERVER_ERROR) {
+          return this.generateComparisonWithTemplate(properties, options);
+        }
+        
+        // For other error types, rethrow to be handled by the caller
+        throw new Error(`Failed to generate property comparison: ${errorDetails.message}`);
+      }
+    } catch (error) {
+      console.error("Error in property comparison generation with Anthropic:", error);
+      // Fall back to template generation on any other error
+      return this.generateComparisonWithTemplate(properties, options);
+    }
+  }
+  
+  /**
+   * Generate a property story using Perplexity
+   */
+  private async generateWithPerplexity(property: any, improvements: any[], landRecords: any[], appeals: any[], options: PropertyStoryOptions): Promise<string> {
+    try {
+      // Create context object with all the data
+      const context = {
+        property,
+        improvements: improvements || [],
+        landRecords: landRecords || [],
+        appeals: appeals || [],
+        options
+      };
+      
+      // Build the prompt based on the data and options
+      const format = options.format || 'detailed';
+      const focus = options.focus || 'market';
+      
+      let promptContent = `Generate a ${format} description of the following property:\n\n`;
+      promptContent += `Property ID: ${property.propertyId}\n`;
+      promptContent += `Address: ${property.address}\n`;
+      promptContent += `Type: ${property.propertyType}\n`;
+      
+      if (property.assessedValue || property.value) {
+        const value = property.assessedValue || property.value;
+        promptContent += `Assessment: $${value ? value.toLocaleString() : 'Not available'}\n`;
+      }
+      
+      if (property.landArea || property.acres) {
+        const area = property.landArea || property.acres;
+        const unit = property.landAreaUnit || 'acres';
+        promptContent += `Land Area: ${area} ${unit}\n`;
+      }
+      
+      if (improvements && improvements.length > 0) {
+        promptContent += "\nImprovements:\n";
+        improvements.forEach((imp, index) => {
+          promptContent += `${index + 1}. ${imp.improvementType} (${imp.yearBuilt}): ${imp.description || ''}, ${imp.area} sq ft\n`;
+        });
+      }
+      
+      if (landRecords && landRecords.length > 0) {
+        promptContent += "\nLand Records:\n";
+        landRecords.forEach((record, index) => {
+          promptContent += `${index + 1}. Zone: ${record.zoneType}, Land Use: ${record.landUse}\n`;
+        });
+      }
+      
+      if (appeals && appeals.length > 0) {
+        promptContent += "\nAppeals History:\n";
+        appeals.forEach((appeal, index) => {
+          promptContent += `${index + 1}. Filed: ${appeal.filingDate}, Status: ${appeal.status}, Reason: ${appeal.reason}\n`;
+        });
+      }
+      
+      promptContent += `\nFocus the description on ${focus} aspects. Be objective and factual while maintaining readability.`;
+      
+      // Call Perplexity service
+      const systemPrompt = "You are an expert property assessor and real estate analyst. Write informative, factual, and objective descriptions of properties based on assessment data.";
+      
+      try {
+        const generatedText = await perplexityService.generateText(
+          promptContent,
+          systemPrompt,
+          options.maxLength || 1000
+        );
+        
+        return generatedText;
+      } catch (perplexityError: any) {
+        // Check if this is a rate limit or quota exceeded error
+        if (perplexityService.isRateLimitError(perplexityError)) {
+          console.warn(`Perplexity API rate limit reached for property ${property.propertyId}, using fallback template generation.`);
+          return this.generateWithTemplate(property, improvements, landRecords, appeals, options);
+        }
+        
+        // Get detailed error information
+        const errorDetails = perplexityService.getErrorDetails(perplexityError);
+        console.error(`Perplexity API error (${errorDetails.type}) for property ${property.propertyId}: ${errorDetails.message}`);
+        
+        // Only use template fallback for specific error types
+        if (errorDetails.type === PerplexityErrorType.RATE_LIMIT || 
+            errorDetails.type === PerplexityErrorType.QUOTA_EXCEEDED ||
+            errorDetails.type === PerplexityErrorType.SERVER_ERROR) {
+          return this.generateWithTemplate(property, improvements, landRecords, appeals, options);
+        }
+        
+        // For other error types, rethrow to be handled by the caller
+        throw new Error(`Failed to generate property story: ${errorDetails.message}`);
+      }
+    } catch (error) {
+      console.error("Error in property story generation with Perplexity:", error);
+      // Fall back to template generation on any other error
+      return this.generateWithTemplate(property, improvements, landRecords, appeals, options);
+    }
+  }
+  
+  /**
+   * Generate a property comparison using Perplexity
+   */
+  private async generateComparisonWithPerplexity(properties: any[], options: PropertyStoryOptions): Promise<string> {
+    try {
+      // Build the comparison prompt
+      let promptContent = `Compare and contrast the following ${properties.length} properties:\n\n`;
+      
+      properties.forEach((property, index) => {
+        promptContent += `Property ${index + 1}:\n`;
+        promptContent += `Property ID: ${property.propertyId}\n`;
+        promptContent += `Address: ${property.address}\n`;
+        promptContent += `Type: ${property.propertyType}\n`;
+        
+        if (property.assessedValue || property.value) {
+          const value = property.assessedValue || property.value;
+          promptContent += `Assessment: $${value ? value.toLocaleString() : 'Not available'}\n`;
+        }
+        
+        if (property.landArea || property.acres) {
+          const area = property.landArea || property.acres;
+          const unit = property.landAreaUnit || 'acres';
+          promptContent += `Land Area: ${area} ${unit}\n`;
+        }
+        
+        promptContent += `\n`;
+      });
+      
+      promptContent += `\nFocus on highlighting the key similarities and differences between these properties in terms of value, location, and characteristics. Provide insights on their relative market positions.`;
+      
+      // Call Perplexity service
+      const systemPrompt = "You are an expert property assessor and real estate analyst. Write informative, factual, and objective comparisons of properties based on assessment data.";
+      
+      try {
+        const generatedText = await perplexityService.generateText(
+          promptContent,
+          systemPrompt,
+          options.maxLength || 1500
+        );
+        
+        return generatedText;
+      } catch (perplexityError: any) {
+        // Check if this is a rate limit or quota exceeded error
+        if (perplexityService.isRateLimitError(perplexityError)) {
+          const propertyIds = properties.map(p => p.propertyId).join(', ');
+          console.warn(`Perplexity API rate limit reached for property comparison [${propertyIds}], using fallback template generation.`);
+          return this.generateComparisonWithTemplate(properties, options);
+        }
+        
+        // Get detailed error information
+        const errorDetails = perplexityService.getErrorDetails(perplexityError);
+        console.error(`Perplexity API error (${errorDetails.type}) for property comparison: ${errorDetails.message}`);
+        
+        // Only use template fallback for specific error types
+        if (errorDetails.type === PerplexityErrorType.RATE_LIMIT || 
+            errorDetails.type === PerplexityErrorType.QUOTA_EXCEEDED ||
+            errorDetails.type === PerplexityErrorType.SERVER_ERROR) {
+          return this.generateComparisonWithTemplate(properties, options);
+        }
+        
+        // For other error types, rethrow to be handled by the caller
+        throw new Error(`Failed to generate property comparison: ${errorDetails.message}`);
+      }
+    } catch (error) {
+      console.error("Error in property comparison generation with Perplexity:", error);
+      // Fall back to template generation on any other error
+      return this.generateComparisonWithTemplate(properties, options);
+    }
+  }
+
+  /**
    * Generate a friendly error message
    * 
    * This provides a human-readable error message with appropriate guidance
    */
   private generateErrorMessage(error: any): string {
-    // Check if this is an OpenAI error by trying to use the error handling utility
+    // Handle different types of AI provider errors
     try {
-      // If it's an OpenAI error, we can get more specific information
+      // Check for OpenAI errors
       if (error.message && error.message.includes('OpenAI')) {
-        // Try to parse the specific type of OpenAI error if possible
         if (openaiService.isRateLimitError(error)) {
-          return `We're currently experiencing high demand for our AI service. Please try again in a few minutes or use the template-based option by setting 'aiProvider' to 'template'.`;
+          return `We're currently experiencing high demand for our OpenAI service. Please try again in a few minutes or use a different AI provider by setting 'aiProvider' to 'anthropic', 'perplexity', or 'template'.`;
         }
-        
-        // For other OpenAI errors, provide a more general message
-        return `Unable to generate AI-powered property story at this time due to an issue with our AI provider. Our system will automatically use template-based responses until the service is restored.`;
+        return `Unable to generate OpenAI-powered property story at this time. Please try using a different AI provider by setting 'aiProvider' to 'anthropic', 'perplexity', or 'template'.`;
+      }
+      
+      // Check for Anthropic errors
+      if (error.message && error.message.includes('Anthropic')) {
+        if (anthropicService.isRateLimitError(error)) {
+          return `We're currently experiencing high demand for our Anthropic service. Please try again in a few minutes or use a different AI provider by setting 'aiProvider' to 'openai', 'perplexity', or 'template'.`;
+        }
+        return `Unable to generate Anthropic-powered property story at this time. Please try using a different AI provider by setting 'aiProvider' to 'openai', 'perplexity', or 'template'.`;
+      }
+      
+      // Check for Perplexity errors
+      if (error.message && error.message.includes('Perplexity')) {
+        if (perplexityService.isRateLimitError(error)) {
+          return `We're currently experiencing high demand for our Perplexity service. Please try again in a few minutes or use a different AI provider by setting 'aiProvider' to 'openai', 'anthropic', or 'template'.`;
+        }
+        return `Unable to generate Perplexity-powered property story at this time. Please try using a different AI provider by setting 'aiProvider' to 'openai', 'anthropic', or 'template'.`;
       }
     } catch (parseError) {
       // If error parsing fails, continue to generic handling
     }
 
-    // For non-OpenAI errors, provide a generic message
+    // For non-AI provider errors, provide a generic message
     if (error.message && error.message.includes('not found')) {
       return `Property not found. Please check the property ID and try again.`;
     }
