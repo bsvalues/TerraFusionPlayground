@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Play, Square, FileText, Activity, Database, BarChart } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 /**
  * Agent System Panel Component
@@ -27,22 +28,16 @@ export function AgentSystemPanel() {
   const { data: systemStatus, isLoading: statusLoading, error: statusError } = useQuery({
     queryKey: ['/api/agents/status'],
     refetchInterval: 10000, // Refresh every 10 seconds
+    queryFn: () => apiRequest('/api/agents/status')
   });
 
   // Initialize agent system 
   const initMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/agents/initialize', {
+      return await apiRequest('/api/agents/initialize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to initialize agent system');
-      }
-      
-      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -63,17 +58,10 @@ export function AgentSystemPanel() {
   // Start all agents
   const startAgentsMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/agents/start', {
+      return await apiRequest('/api/agents/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to start agents');
-      }
-      
-      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -94,17 +82,10 @@ export function AgentSystemPanel() {
   // Stop all agents
   const stopAgentsMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/agents/stop', {
+      return await apiRequest('/api/agents/stop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to stop agents');
-      }
-      
-      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -130,7 +111,7 @@ export function AgentSystemPanel() {
     setCapabilityResult(null);
     
     try {
-      const response = await fetch('/api/agents/execute', {
+      const result = await apiRequest('/api/agents/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -140,12 +121,6 @@ export function AgentSystemPanel() {
         })
       });
       
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to execute capability');
-      }
-      
-      const result = await response.json();
       setCapabilityResult(result);
       
       toast({

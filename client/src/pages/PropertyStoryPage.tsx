@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,11 +82,7 @@ export default function PropertyStoryPage() {
     console.log("PropertyStoryPage component rendered");
     
     // Immediately fetch properties without letting the component be unmounted
-    fetch('/api/properties')
-      .then(response => {
-        if (!response.ok) throw new Error('Failed to fetch properties');
-        return response.json();
-      })
+    apiRequest('/api/properties')
       .then(data => {
         console.log("Properties fetched successfully:", data.length);
       })
@@ -99,22 +95,17 @@ export default function PropertyStoryPage() {
   const { data: properties, isLoading: propertiesLoading } = useQuery({
     queryKey: ['/api/properties'],
     queryFn: async () => {
-      const response = await fetch('/api/properties');
-      if (!response.ok) throw new Error('Failed to fetch properties');
-      return response.json() as Promise<Property[]>;
+      return apiRequest('/api/properties') as Promise<Property[]>;
     }
   });
 
   // Generate single property story
   const generateStoryMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`/api/property-stories/${selectedPropertyId}`, {
+      return apiRequest(`/api/property-stories/${selectedPropertyId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(storyOptions),
-      });
-      if (!response.ok) throw new Error('Failed to generate property story');
-      return response.json() as Promise<StoryResult>;
+      }) as Promise<StoryResult>;
     },
     onSuccess: (data) => {
       setStoryResult(data.story);
@@ -136,16 +127,13 @@ export default function PropertyStoryPage() {
   // Generate property comparison
   const generateComparisonMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/property-stories/compare', {
+      return apiRequest('/api/property-stories/compare', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           propertyIds: comparisonPropertyIds,
           ...storyOptions
         }),
-      });
-      if (!response.ok) throw new Error('Failed to generate property comparison');
-      return response.json() as Promise<ComparisonResult>;
+      }) as Promise<ComparisonResult>;
     },
     onSuccess: (data) => {
       setComparisonResult(data.comparison);
@@ -167,16 +155,13 @@ export default function PropertyStoryPage() {
   // Generate batch property stories
   const generateBatchMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/property-stories/batch', {
+      return apiRequest('/api/property-stories/batch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           propertyIds: batchPropertyIds,
           options: storyOptions
         }),
-      });
-      if (!response.ok) throw new Error('Failed to generate batch property stories');
-      return response.json() as Promise<BatchResult>;
+      }) as Promise<BatchResult>;
     },
     onSuccess: (data) => {
       setBatchResults(data.stories);

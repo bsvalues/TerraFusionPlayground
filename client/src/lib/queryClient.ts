@@ -7,14 +7,36 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Add authentication headers to requests
+function addAuthHeaders(url: string, options?: RequestInit): RequestInit {
+  const headers = options?.headers || {};
+  
+  // Default options
+  const requestOptions: RequestInit = {
+    ...options,
+    credentials: "include",
+    headers: {
+      ...headers,
+    }
+  };
+  
+  // Add API key for agent routes
+  if (url.startsWith('/api/agents')) {
+    requestOptions.headers = {
+      ...requestOptions.headers,
+      'X-API-Key': 'dev-api-key-mcp',
+    };
+  }
+  
+  return requestOptions;
+}
+
 export async function apiRequest<T = any>(
   url: string,
   options?: RequestInit
 ): Promise<T> {
-  const res = await fetch(url, {
-    ...options,
-    credentials: "include",
-  });
+  const requestOptions = addAuthHeaders(url, options);
+  const res = await fetch(url, requestOptions);
 
   await throwIfResNotOk(res);
   return await res.json() as T;
@@ -26,9 +48,9 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
-      credentials: "include",
-    });
+    const url = queryKey[0] as string;
+    const requestOptions = addAuthHeaders(url);
+    const res = await fetch(url, requestOptions);
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
