@@ -416,7 +416,8 @@ export class LLMService {
     propertyData: any,
     historicalData: any[],
     yearsAhead: number,
-    marketFactors?: string[]
+    marketFactors?: string[],
+    marketFactorExplanation?: string
   ): Promise<LLMResponse> {
     const provider = this.getProviderForTask('futurePrediction');
     
@@ -468,7 +469,9 @@ export class LLMService {
        Historical Data:
        ${JSON.stringify(historicalData, null, 2)}
        
-       ${marketFactors ? `Market Factors to Consider:\n${marketFactors.join(', ')}` : ''}`;
+       ${marketFactors ? `Market Factors to Consider:\n${marketFactors.join('\n- ')}` : ''}
+       
+       ${marketFactorExplanation ? `\nDetailed Market Factor Analysis:\n${marketFactorExplanation}` : ''}`;
     
     const messages = [
       { role: 'system', content: systemPrompt },

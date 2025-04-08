@@ -7,7 +7,8 @@
  * improvements, and market trends.
  * 
  * Enhanced with LLM capabilities for advanced analysis, trend detection,
- * and predictive modeling.
+ * and predictive modeling. Also uses detailed market factor analysis
+ * for more accurate predictions.
  */
 
 import { BaseAgent, AgentConfig, AgentCapability } from './base-agent';
@@ -21,6 +22,7 @@ import {
   PropertyValuationRequest,
   NeighborhoodAnalysisRequest 
 } from '../llm-service';
+import { marketFactorService } from '../market-factor-service';
 
 export class PropertyAssessmentAgent extends BaseAgent {
   private propertyStoryGenerator: PropertyStoryGenerator;
@@ -903,16 +905,21 @@ export class PropertyAssessmentAgent extends BaseAgent {
       
       const improvements = improvementsResult.success ? improvementsResult.result : [];
       
-      // Get market factors that might impact the prediction
-      const marketFactors = [
-        'Interest rates',
-        'Local economic conditions',
-        'Property tax trends',
-        'Infrastructure development',
-        'School district performance',
-        'Comparable property sales',
-        'Neighborhood development plans'
-      ];
+      // Get market factors that might impact the prediction using our detailed market factor service
+      // Extract zip code from property for market analysis
+      const zipCode = property.address ? property.address.toString().split(' ').pop() : '98000';
+      const propertyType = property.propertyType || 'Residential';
+      
+      // Get detailed market factors with trends and impact weights
+      const marketFactorExplanation = marketFactorService.getMarketFactorExplanation(zipCode, propertyType);
+      const detailedMarketFactors = marketFactorService.getMarketFactorsForLLM(zipCode, propertyType);
+      
+      // Log the use of enhanced market factors
+      await this.logActivity('market_factor_analysis', `Using enhanced market factor analysis for property ${propertyId}`, {
+        zipCode,
+        propertyType,
+        factorCount: detailedMarketFactors.length
+      });
       
       // Get historical data for the prediction
       // In a real system, this would be actual historical data
@@ -956,13 +963,14 @@ export class PropertyAssessmentAgent extends BaseAgent {
         }))
       });
       
-      // Use the LLM service to get an AI-powered prediction
+      // Use the LLM service to get an AI-powered prediction with enhanced market factors
       const llmPredictionResponse = await this.llmService.predictFutureValue(
         propertyId,
         property,
         historicalData,
         yearsAhead,
-        marketFactors
+        detailedMarketFactors, // Use our detailed market factors with trends and weights
+        marketFactorExplanation // Include the detailed explanation
       );
       
       let prediction;
@@ -1007,17 +1015,16 @@ export class PropertyAssessmentAgent extends BaseAgent {
         // Calculate average growth rate
         const avgGrowthRate = rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
         
-        // Property type adjustment
-        const propertyTypeFactors = {
-          'Residential': 0.005,
-          'Commercial': 0.003,
-          'Agricultural': 0.001,
-          'Industrial': 0.002,
-          'Vacant': 0.008
-        };
+        // Use market factor service to get an adjustment for growth rate
+        // This provides a much more sophisticated adjustment based on all relevant market factors
+        const marketFactorAdjustment = marketFactorService.calculateMarketFactorAdjustment(
+          zipCode, 
+          propertyType, 
+          avgGrowthRate
+        );
         
-        // Adjust growth rate based on property type
-        let adjustedGrowthRate = avgGrowthRate + (propertyTypeFactors[property.propertyType] || 0);
+        // Adjust growth rate based on comprehensive market factors
+        let adjustedGrowthRate = marketFactorAdjustment.adjustedRate;
         
         // Calculate predicted values
         const predictedValues = [];
@@ -1053,7 +1060,7 @@ export class PropertyAssessmentAgent extends BaseAgent {
           };
         });
         
-        // Compile fallback prediction
+        // Compile fallback prediction with enhanced market factor information
         const fallbackPrediction = {
           propertyId,
           currentValue,
@@ -1062,11 +1069,16 @@ export class PropertyAssessmentAgent extends BaseAgent {
           growthFactors: {
             historicalGrowthRate: Math.round(avgGrowthRate * 10000) / 100,
             adjustedGrowthRate: Math.round(adjustedGrowthRate * 10000) / 100,
-            propertyTypeAdjustment: Math.round((propertyTypeFactors[property.propertyType] || 0) * 10000) / 100
+            marketFactorImpact: Math.round((marketFactorAdjustment.adjustedRate - avgGrowthRate) * 10000) / 100,
+            marketOutlook: marketFactorAdjustment.marketOutlook,
+            confidenceLevel: marketFactorAdjustment.confidenceLevel,
+            dominantFactors: marketFactorAdjustment.dominantFactors || [],
+            propertyTypeImpact: marketFactorAdjustment.propertyTypeImpact,
+            regionalFactors: marketFactorAdjustment.regionalFactors || []
           },
           predictionDate: new Date(),
           methodology: 'algorithmic_fallback',
-          note: 'LLM prediction failed, using algorithmic fallback method'
+          note: 'LLM prediction failed, using algorithmic fallback method with enhanced market factor analysis'
         };
         
         return fallbackPrediction;

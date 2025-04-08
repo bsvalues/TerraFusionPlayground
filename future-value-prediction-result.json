@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "error": "Property TEST001 not found",
+  "agent": "Property Assessment Agent",
+  "capability": "predictFutureValue"
+}

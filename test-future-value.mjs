@@ -101,10 +101,9 @@ async function runTest() {
     // Execute the future value prediction capability
     console.log(`\nTesting Future Value Prediction for property ${testPropertyId}...`);
     try {
-      // Reduced to 3 years to make the test faster
       const result = await agentSystem.executeCapability('property_assessment', 'predictFutureValue', {
         propertyId: testPropertyId,
-        yearsAhead: 3
+        yearsAhead: 5
       });
       
       console.log('\nFuture Value Prediction Results:');
