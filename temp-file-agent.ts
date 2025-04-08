@@ -193,6 +193,146 @@ export class PropertyAssessmentAgent extends BaseAgent {
         }
       });
     }
+    // Define agent configuration
+    const config: AgentConfig = {
+      id: 1, // Assuming ID 1 for this primary agent
+      name: 'Property Assessment Agent',
+      description: 'Specializes in property assessment, valuation, and CAMA operations',
+      permissions: [
+        'authenticated',
+        'property.read',
+        'property.write',
+        'pacs.read',
+        'appeal.read',
+        'appeal.write'
+      ],
+      capabilities: [
+        // Core analysis capabilities
+        {
+          name: 'analyzeProperty',
+          description: 'Perform a comprehensive analysis of a property',
+          parameters: {
+            propertyId: 'string'
+          },
+          handler: async (parameters, agent) => await this.analyzeProperty(parameters.propertyId)
+        },
+        {
+          name: 'generatePropertyStory',
+          description: 'Generate a narrative story about a property',
+          parameters: {
+            propertyId: 'string',
+            options: 'object?'
+          },
+          handler: async (parameters, agent) => await this.generatePropertyStory(parameters.propertyId, parameters.options)
+        },
+        {
+          name: 'findComparableProperties',
+          description: 'Find properties comparable to the given property',
+          parameters: {
+            propertyId: 'string',
+            count: 'number?',
+            radius: 'number?'
+          },
+          handler: async (parameters, agent) => await this.findComparableProperties(parameters.propertyId, parameters.count, parameters.radius)
+        },
+        {
+          name: 'calculatePropertyValue',
+          description: 'Calculate the estimated value of a property',
+          parameters: {
+            propertyId: 'string',
+            useComparables: 'boolean?'
+          },
+          handler: async (parameters, agent) => await this.calculatePropertyValue(parameters.propertyId, parameters.useComparables)
+        },
+        {
+          name: 'analyzePropertyTrends',
+          description: 'Analyze property value trends over time',
+          parameters: {
+            propertyId: 'string',
+            timeframe: 'string?'
+          },
+          handler: async (parameters, agent) => await this.analyzePropertyTrends(parameters.propertyId, parameters.timeframe)
+        },
+        {
+          name: 'generateComparableAnalysis',
+          description: 'Generate an analysis based on comparable properties',
+          parameters: {
+            propertyId: 'string',
+            comparableIds: 'string[]?'
+          },
+          handler: async (parameters, agent) => await this.generateComparableAnalysis(parameters.propertyId, parameters.comparableIds)
+        },
+        
+        // Enhanced specialized capabilities
+        {
+          name: 'generateAreaAnalysis',
+          description: 'Generate analysis of property values in a specific area',
+          parameters: {
+            zipCode: 'string',
+            propertyType: 'string?',
+            timeframe: 'string?'
+          },
+          handler: async (parameters, agent) => await this.generateAreaAnalysis(
+            parameters.zipCode, 
+            parameters.propertyType, 
+            parameters.timeframe
+          )
+        },
+        {
+          name: 'detectValuationAnomalies',
+          description: 'Detect anomalies in property valuations compared to similar properties',
+          parameters: {
+            propertyId: 'string',
+            threshold: 'number?'
+          },
+          handler: async (parameters, agent) => await this.detectValuationAnomalies(
+            parameters.propertyId, 
+            parameters.threshold
+          )
+        },
+        {
+          name: 'generateNeighborhoodReport',
+          description: 'Generate comprehensive neighborhood analysis report',
+          parameters: {
+            zipCode: 'string',
+            includeValuationTrends: 'boolean?',
+            includeDemographics: 'boolean?'
+          },
+          handler: async (parameters, agent) => await this.generateNeighborhoodReport(
+            parameters.zipCode,
+            parameters.includeValuationTrends,
+            parameters.includeDemographics
+          )
+        },
+        {
+          name: 'analyzeLandUseImpact',
+          description: 'Analyze how different land uses impact property values',
+          parameters: {
+            propertyId: 'string',
+            alternativeLandUse: 'string?'
+          },
+          handler: async (parameters, agent) => await this.analyzeLandUseImpact(
+            parameters.propertyId,
+            parameters.alternativeLandUse
+          )
+        },
+        {
+          name: 'predictFutureValue',
+          description: 'Predict future property value based on historical trends and market factors',
+          parameters: {
+            propertyId: 'string',
+            yearsAhead: 'number?'
+          },
+          handler: async (parameters, agent) => await this.predictFutureValue(
+            parameters.propertyId,
+            parameters.yearsAhead || 5
+          )
+        }
+      ]
+    };
+    
+    super(config, storage, mcpService);
+    this.propertyStoryGenerator = propertyStoryGenerator;
   }
   
   /**
@@ -355,10 +495,10 @@ export class PropertyAssessmentAgent extends BaseAgent {
           // Calculate a simple similarity score
           // In a real system, this would use geospatial data, sale date proximity, etc.
           const valueRatio = p.value && sourceProperty.value 
-            ? Math.min(p.value as number, sourceProperty.value as number) / Math.max(p.value as number, sourceProperty.value as number)
+            ? Math.min(p.value, sourceProperty.value) / Math.max(p.value, sourceProperty.value)
             : 0.5;
             
-          const acreageRatio = Math.min(p.acres as number, sourceProperty.acres as number) / Math.max(p.acres as number, sourceProperty.acres as number);
+          const acreageRatio = Math.min(p.acres, sourceProperty.acres) / Math.max(p.acres, sourceProperty.acres);
           
           const score = (valueRatio * 0.7) + (acreageRatio * 0.3);
           
@@ -417,7 +557,7 @@ export class PropertyAssessmentAgent extends BaseAgent {
         if (comparables && comparables.length > 0) {
           // Calculate average value of comparables
           const avgComparableValue = comparables.reduce(
-            (sum: number, c: any) => sum + (c.property.value || 0), 
+            (sum, c) => sum + (c.property.value || 0), 
             0
           ) / comparables.length;
           
@@ -430,7 +570,7 @@ export class PropertyAssessmentAgent extends BaseAgent {
       let adjustedValue = baseValue;
       
       // Apply improvements value
-      const improvementsValue = improvements.reduce((sum: number, imp: any) => {
+      const improvementsValue = improvements.reduce((sum, imp) => {
         // In a real system, this would be a sophisticated calculation based on
         // improvement type, age, quality, etc.
         const baseImprovementValue = 10000; // Placeholder value
@@ -489,7 +629,7 @@ export class PropertyAssessmentAgent extends BaseAgent {
       }
       
       // Filter properties by zip code and optionally by property type
-      let areaProperties = propertiesResult.result.filter((p: any) => 
+      let areaProperties = propertiesResult.result.filter(p => 
         p.zipCode === zipCode && (!propertyType || p.propertyType === propertyType)
       );
       
@@ -498,72 +638,40 @@ export class PropertyAssessmentAgent extends BaseAgent {
       }
       
       // Calculate area statistics
-      const totalValue = areaProperties.reduce((sum: number, p: any) => sum + (p.value || 0), 0);
+      const totalValue = areaProperties.reduce((sum, p) => sum + (p.value || 0), 0);
       const avgValue = totalValue / areaProperties.length;
-      const medianValue = this.calculateMedian(areaProperties.map((p: any) => p.value || 0));
-      const valueRange = this.calculateRange(areaProperties.map((p: any) => p.value || 0));
+      const medianValue = this.calculateMedian(areaProperties.map(p => p.value || 0));
+      const valueRange = this.calculateRange(areaProperties.map(p => p.value || 0));
+      const propertyTypeDistribution = this.calculatePropertyTypeDistribution(areaProperties);
       
-      // Calculate property type distribution
-      const propertyTypes: Record<string, number> = {};
-      areaProperties.forEach((p: any) => {
-        propertyTypes[p.propertyType] = (propertyTypes[p.propertyType] || 0) + 1;
-      });
-      
-      // Calculate value distribution
-      const valueRanges = {
-        'Under $100k': 0,
-        '$100k-$250k': 0,
-        '$250k-$500k': 0,
-        '$500k-$750k': 0,
-        '$750k-$1M': 0,
-        'Over $1M': 0
-      };
-      
-      areaProperties.forEach((p: any) => {
-        const value = p.value || 0;
-        if (value < 100000) valueRanges['Under $100k']++;
-        else if (value < 250000) valueRanges['$100k-$250k']++;
-        else if (value < 500000) valueRanges['$250k-$500k']++;
-        else if (value < 750000) valueRanges['$500k-$750k']++;
-        else if (value < 1000000) valueRanges['$750k-$1M']++;
-        else valueRanges['Over $1M']++;
-      });
-      
-      // Generate trend data
+      // Generate trend data similar to the property trends function
       const trendData = this.generateAreaTrendData(areaProperties, timeframe);
       
-      // Compile analysis
+      // Compile the analysis
       const analysis = {
         zipCode,
         propertyType,
         propertyCount: areaProperties.length,
-        areaStatistics: {
+        statistics: {
           totalValue,
           averageValue: avgValue,
           medianValue,
-          minimumValue: valueRange.min,
-          maximumValue: valueRange.max,
-          valueRange: valueRange.max - valueRange.min,
-          standardDeviation: this.calculateStandardDeviation(areaProperties.map((p: any) => p.value || 0))
+          valueRange,
+          propertyTypeDistribution
         },
-        propertyDistribution: {
-          byType: propertyTypes,
-          byValue: valueRanges
-        },
-        trendData,
-        timeframe,
+        trends: trendData,
         analysisDate: new Date()
       };
       
       // Log successful analysis
-      await this.logActivity('area_analysis', `Completed area analysis for zip code ${zipCode}`, {
+      await this.logActivity('area_analysis_complete', `Successfully generated area analysis for zip code ${zipCode}`, {
         propertyCount: areaProperties.length,
         avgValue
       });
       
       return analysis;
     } catch (error) {
-      await this.logActivity('area_analysis_error', `Error analyzing area for zip code ${zipCode}: ${error.message}`);
+      await this.logActivity('area_analysis_error', `Error generating area analysis for zip code ${zipCode}: ${error.message}`);
       throw error;
     }
   }
@@ -573,22 +681,22 @@ export class PropertyAssessmentAgent extends BaseAgent {
    */
   private async detectValuationAnomalies(
     propertyId: string,
-    threshold: number = 0.25
+    threshold: number = 0.25 // 25% deviation threshold
   ): Promise<any> {
     try {
       // Log the anomaly detection request
       await this.logActivity('anomaly_detection', `Detecting valuation anomalies for property ${propertyId}`);
       
-      // Get property details
+      // Get source property
       const propertyResult = await this.executeMCPTool('property.getByPropertyId', { propertyId });
       
       if (!propertyResult.success || !propertyResult.result) {
         throw new Error(`Property ${propertyId} not found`);
       }
       
-      const sourceProperty = propertyResult.result as Property;
+      const sourceProperty = propertyResult.result;
       
-      // Get comparable properties to establish baseline
+      // Get comparable properties to establish expected value range
       const comparablesResult = await this.findComparableProperties(propertyId, 10);
       const comparables = comparablesResult.comparables;
       
@@ -596,58 +704,58 @@ export class PropertyAssessmentAgent extends BaseAgent {
         throw new Error('Insufficient comparable properties for anomaly detection');
       }
       
-      // Calculate value per acre/sqft metrics for more accurate comparison
-      const sourceValuePerAcre = sourceProperty.value && sourceProperty.acres 
-        ? sourceProperty.value / sourceProperty.acres as number 
-        : 0;
-        
-      const comparableValuesPerAcre = comparables.map((c: any) => 
-        c.property.value && c.property.acres ? c.property.value / c.property.acres : 0
-      ).filter(v => v > 0);
+      // Calculate comparable statistics
+      const comparableValues = comparables.map(c => c.property.value || 0);
+      const avgComparableValue = comparableValues.reduce((sum, val) => sum + val, 0) / comparableValues.length;
+      const medianComparableValue = this.calculateMedian(comparableValues);
+      const comparableStdDev = this.calculateStandardDeviation(comparableValues);
       
-      // Calculate statistics
-      const avgValuePerAcre = comparableValuesPerAcre.reduce((sum: number, val: number) => sum + val, 0) / comparableValuesPerAcre.length;
-      const medianValuePerAcre = this.calculateMedian(comparableValuesPerAcre);
-      const stdDevValuePerAcre = this.calculateStandardDeviation(comparableValuesPerAcre);
+      // Determine if source property value is anomalous
+      const sourceValue = sourceProperty.value || 0;
+      const deviationFromAvg = Math.abs(sourceValue - avgComparableValue) / avgComparableValue;
+      const deviationFromMedian = Math.abs(sourceValue - medianComparableValue) / medianComparableValue;
+      const zScore = comparableStdDev > 0 ? Math.abs(sourceValue - avgComparableValue) / comparableStdDev : 0;
       
-      // Calculate z-score
-      const zScore = (sourceValuePerAcre - avgValuePerAcre) / (stdDevValuePerAcre || 1);
+      // Determine if property is an anomaly
+      const isValueAnomaly = deviationFromAvg > threshold || deviationFromMedian > threshold || zScore > 2;
       
-      // Detect anomalies
-      const isAnomaly = Math.abs(zScore) > threshold;
-      const direction = zScore > 0 ? 'overvalued' : 'undervalued';
-      const percentDifference = ((sourceValuePerAcre / avgValuePerAcre) - 1) * 100;
+      // Check for other anomalies
+      const otherAnomalies = [];
       
-      // Calculate how many standard deviations away
-      const stdDeviationsAway = Math.abs(zScore);
+      // Land size anomaly
+      const avgAcreage = comparables.reduce((sum, c) => sum + (c.property.acres || 0), 0) / comparables.length;
+      if (Math.abs(sourceProperty.acres - avgAcreage) / avgAcreage > 0.5) {
+        otherAnomalies.push('land_size');
+      }
       
-      // Compile anomaly analysis
+      // Compile results
       const analysis = {
         propertyId,
-        propertyValue: sourceProperty.value,
-        valuePerAcre: sourceValuePerAcre,
+        sourceValue,
         comparableStatistics: {
           count: comparables.length,
-          averageValuePerAcre: avgValuePerAcre,
-          medianValuePerAcre,
-          standardDeviation: stdDevValuePerAcre
+          averageValue: avgComparableValue,
+          medianValue: medianComparableValue,
+          standardDeviation: comparableStdDev
+        },
+        anomalyMetrics: {
+          deviationFromAverage: deviationFromAvg,
+          deviationFromMedian: deviationFromMedian,
+          zScore: zScore
         },
         anomalyDetection: {
-          isAnomaly,
-          zScore,
-          standardDeviationsAway,
-          percentDifference: Math.abs(Math.round(percentDifference * 100) / 100),
-          direction: isAnomaly ? direction : 'normal',
-          thresholdUsed: threshold
+          isValueAnomaly,
+          valuationConfidence: isValueAnomaly ? 'low' : 'high',
+          otherAnomalies,
+          anomalyThreshold: threshold
         },
-        detectionDate: new Date()
+        analysisDate: new Date()
       };
       
-      // Log the detection result
-      await this.logActivity('anomaly_detection', `Completed anomaly detection for property ${propertyId}`, {
-        isAnomaly,
-        zScore,
-        percentDifference
+      // Log successful analysis
+      await this.logActivity('anomaly_detection_complete', `Completed anomaly detection for property ${propertyId}`, {
+        isAnomaly: isValueAnomaly,
+        deviationFromAvg
       });
       
       return analysis;
@@ -666,43 +774,25 @@ export class PropertyAssessmentAgent extends BaseAgent {
     includeDemographics: boolean = false
   ): Promise<any> {
     try {
-      // Log the report generation request
+      // Log the neighborhood report request
       await this.logActivity('neighborhood_report', `Generating neighborhood report for zip code ${zipCode}`);
       
       // Get area analysis
       const areaAnalysis = await this.generateAreaAnalysis(zipCode);
       
-      // Create initial report
-      const report = {
-        zipCode,
-        propertyCount: areaAnalysis.propertyCount,
-        areaStatistics: areaAnalysis.areaStatistics,
-        propertyDistribution: {
-          byType: {},
-          byValue: {
-            'Under $100k': 0,
-            '$100k-$250k': 0,
-            '$250k-$500k': 0,
-            '$500k-$750k': 0,
-            '$750k-$1M': 0,
-            'Over $1M': 0
-          }
-        },
-        reportDate: new Date()
-      };
-      
-      // Get all properties in the zip code to build distribution
+      // Get all properties in the area
       const propertiesResult = await this.executeMCPTool('property.getAll', {});
-      const areaProperties = propertiesResult.success ? 
-        propertiesResult.result.filter((p: any) => p.zipCode === zipCode) : [];
+      const areaProperties = propertiesResult.success 
+        ? propertiesResult.result.filter(p => p.zipCode === zipCode)
+        : [];
       
-      // Calculate property type distribution
-      const propertyTypes: Record<string, number> = {};
-      areaProperties.forEach((p: any) => {
+      // Generate property type breakdown
+      const propertyTypes = {};
+      areaProperties.forEach(p => {
         propertyTypes[p.propertyType] = (propertyTypes[p.propertyType] || 0) + 1;
       });
       
-      // Calculate value distribution
+      // Generate value distribution
       const valueRanges = {
         'Under $100k': 0,
         '$100k-$250k': 0,
@@ -712,7 +802,7 @@ export class PropertyAssessmentAgent extends BaseAgent {
         'Over $1M': 0
       };
       
-      areaProperties.forEach((p: any) => {
+      areaProperties.forEach(p => {
         const value = p.value || 0;
         if (value < 100000) valueRanges['Under $100k']++;
         else if (value < 250000) valueRanges['$100k-$250k']++;
@@ -722,27 +812,37 @@ export class PropertyAssessmentAgent extends BaseAgent {
         else valueRanges['Over $1M']++;
       });
       
-      report.propertyDistribution.byType = propertyTypes;
-      report.propertyDistribution.byValue = valueRanges;
+      // Compile the report
+      const report = {
+        zipCode,
+        propertyCount: areaProperties.length,
+        areaStatistics: areaAnalysis.statistics,
+        propertyDistribution: {
+          byType: propertyTypes,
+          byValue: valueRanges
+        },
+        reportDate: new Date()
+      };
       
-      // Add valuation trends if requested
+      // Include valuation trends if requested
       if (includeValuationTrends) {
-        report['valuationTrends'] = this.generateAreaTrendData(areaProperties, '5years');
+        report['valuationTrends'] = areaAnalysis.trends;
       }
       
-      // Add demographic data if requested
+      // Include demographics if requested (placeholder in this implementation)
       if (includeDemographics) {
         report['demographics'] = {
-          population: Math.round(35000 + Math.random() * 15000),
-          medianAge: Math.round(35 + Math.random() * 15),
-          medianIncome: Math.round(50000 + Math.random() * 50000),
-          householdSize: 2.5 + Math.random(),
-          ownerOccupied: 0.6 + Math.random() * 0.2
+          populationEstimate: 0,
+          householdCount: 0,
+          medianIncome: 0,
+          message: 'Demographics data not available in this implementation'
         };
       }
       
       // Log successful report generation
-      await this.logActivity('neighborhood_report', `Completed neighborhood report for zip code ${zipCode}`);
+      await this.logActivity('neighborhood_report_complete', `Generated neighborhood report for zip code ${zipCode}`, {
+        propertyCount: areaProperties.length
+      });
       
       return report;
     } catch (error) {
@@ -759,8 +859,8 @@ export class PropertyAssessmentAgent extends BaseAgent {
     alternativeLandUse?: string
   ): Promise<any> {
     try {
-      // Log the land use impact analysis request
-      await this.logActivity('land_use_impact', `Analyzing land use impact for property ${propertyId}`);
+      // Log the land use analysis request
+      await this.logActivity('land_use_analysis', `Analyzing land use impact for property ${propertyId}`);
       
       // Get property details
       const propertyResult = await this.executeMCPTool('property.getByPropertyId', { propertyId });
@@ -769,100 +869,90 @@ export class PropertyAssessmentAgent extends BaseAgent {
         throw new Error(`Property ${propertyId} not found`);
       }
       
-      const property = propertyResult.result as Property;
+      const property = propertyResult.result;
       
       // Get land records
       const landRecordsResult = await this.executeMCPTool('landRecord.getByPropertyId', { propertyId });
       const landRecords = landRecordsResult.success ? landRecordsResult.result : [];
       
-      // Determine current land use
-      const currentLandUse = landRecords.length > 0 ? landRecords[0].landUseCode : property.propertyType;
+      // Current land use
+      const currentLandUse = landRecords.length > 0 ? landRecords[0].landUseCode : 'Unknown';
       
-      // Use provided alternative land use or evaluate most profitable alternatives
-      const landUseToAnalyze = alternativeLandUse || this.determineMostProfitableLandUse(property);
+      // If alternate land use not provided, evaluate standard alternatives
+      const alternativesToAnalyze = alternativeLandUse 
+        ? [alternativeLandUse] 
+        : ['Residential', 'Commercial', 'Agricultural', 'Industrial'];
       
-      // Get data about similar properties with both current and alternative land uses
-      const propertiesResult = await this.executeMCPTool('property.getAll', {});
+      // Filter out current land use from alternatives
+      const landUseAlternatives = alternativesToAnalyze.filter(use => use !== currentLandUse);
       
-      if (!propertiesResult.success) {
-        throw new Error('Failed to retrieve property data for land use analysis');
+      // Analyze impact of each alternative land use
+      const alternativeImpacts = [];
+      
+      for (const landUse of landUseAlternatives) {
+        // In a real implementation, this would use sophisticated models 
+        // based on zoning, market data, etc.
+        
+        // For this implementation, we'll use a simple lookup table approach
+        const landUseMultipliers = {
+          'Residential': 1.0,
+          'Commercial': 1.4,
+          'Agricultural': 0.7,
+          'Industrial': 1.3,
+          'Recreational': 0.8,
+          'Mixed Use': 1.2
+        };
+        
+        const baseMultiplier = landUseMultipliers[landUse] || 1.0;
+        
+        // Apply context-sensitive adjustments
+        let adjustedMultiplier = baseMultiplier;
+        
+        // Adjust for property size
+        if (property.acres > 10) {
+          // Large properties benefit more from commercial/industrial
+          if (landUse === 'Commercial' || landUse === 'Industrial') {
+            adjustedMultiplier *= 1.2;
+          }
+        }
+        
+        // Calculate estimated value with alternative land use
+        const estimatedValue = Math.round((property.value || 0) * adjustedMultiplier);
+        const valueDifference = estimatedValue - (property.value || 0);
+        const percentChange = (valueDifference / (property.value || 1)) * 100;
+        
+        alternativeImpacts.push({
+          landUse,
+          estimatedValue,
+          valueDifference,
+          percentChange: Math.round(percentChange * 100) / 100,
+          baseMultiplier,
+          adjustedMultiplier
+        });
       }
       
-      const allProperties = propertiesResult.result;
-      
-      // Get properties with current land use for baseline
-      const currentUseProperties = allProperties.filter((p: any) => {
-        const pLandRecords = p.landRecords || [];
-        const pLandUse = pLandRecords.length > 0 ? pLandRecords[0].landUseCode : p.propertyType;
-        return pLandUse === currentLandUse;
-      });
-      
-      // Get properties with alternative land use
-      const alternativeUseProperties = allProperties.filter((p: any) => {
-        const pLandRecords = p.landRecords || [];
-        const pLandUse = pLandRecords.length > 0 ? pLandRecords[0].landUseCode : p.propertyType;
-        return pLandUse === landUseToAnalyze;
-      });
-      
-      // Calculate average values per acre
-      const currentUseValuesPerAcre = currentUseProperties.map((p: any) => 
-        p.value && p.acres ? p.value / p.acres : 0
-      ).filter(v => v > 0);
-      
-      const alternativeUseValuesPerAcre = alternativeUseProperties.map((p: any) => 
-        p.value && p.acres ? p.value / p.acres : 0
-      ).filter(v => v > 0);
-      
-      // Calculate statistics
-      const avgCurrentUseValue = currentUseValuesPerAcre.length > 0 ? 
-        currentUseValuesPerAcre.reduce((sum: number, val: number) => sum + val, 0) / currentUseValuesPerAcre.length : 0;
-        
-      const avgAlternativeUseValue = alternativeUseValuesPerAcre.length > 0 ? 
-        alternativeUseValuesPerAcre.reduce((sum: number, val: number) => sum + val, 0) / alternativeUseValuesPerAcre.length : 0;
-      
-      // Calculate potential impact on subject property
-      const currentValuePerAcre = property.value && property.acres ? property.value / property.acres as number : 0;
-      const potentialValuePerAcre = avgAlternativeUseValue > 0 ? avgAlternativeUseValue : currentValuePerAcre;
-      
-      const potentialValue = potentialValuePerAcre * (property.acres as number);
-      const valueDifference = potentialValue - (property.value as number);
-      const percentChange = ((potentialValue / (property.value as number)) - 1) * 100;
-      
-      // Analyze impact factors
-      const impactFactors = this.analyzeLandUseImpactFactors(currentLandUse, landUseToAnalyze);
+      // Sort alternatives by estimated value (descending)
+      alternativeImpacts.sort((a, b) => b.estimatedValue - a.estimatedValue);
       
       // Compile analysis
       const analysis = {
         propertyId,
+        currentValue: property.value || 0,
         currentLandUse,
-        alternativeLandUse: landUseToAnalyze,
-        currentValue: property.value,
-        currentValuePerAcre,
-        potentialValuePerAcre,
-        potentialValue: Math.round(potentialValue),
-        valueDifference: Math.round(valueDifference),
-        percentChange: Math.round(percentChange * 100) / 100,
-        impactFactors,
-        statistics: {
-          currentUsePropertiesCount: currentUseProperties.length,
-          alternativeUsePropertiesCount: alternativeUseProperties.length,
-          avgCurrentUseValuePerAcre: avgCurrentUseValue,
-          avgAlternativeUseValuePerAcre: avgAlternativeUseValue
-        },
-        analysisDate: new Date(),
-        confidence: Math.min(0.95, 0.5 + (Math.min(currentUseProperties.length, alternativeUseProperties.length) / 20))
+        alternatives: alternativeImpacts,
+        bestAlternative: alternativeImpacts.length > 0 ? alternativeImpacts[0] : null,
+        analysisDate: new Date()
       };
       
       // Log successful analysis
-      await this.logActivity('land_use_impact', `Completed land use impact analysis for property ${propertyId}`, {
+      await this.logActivity('land_use_analysis_complete', `Completed land use impact analysis for property ${propertyId}`, {
         currentLandUse,
-        alternativeLandUse: landUseToAnalyze,
-        percentChange
+        alternativeCount: alternativeImpacts.length
       });
       
       return analysis;
     } catch (error) {
-      await this.logActivity('land_use_impact_error', `Error analyzing land use impact for property ${propertyId}: ${error.message}`);
+      await this.logActivity('land_use_analysis_error', `Error analyzing land use impact for property ${propertyId}: ${error.message}`);
       throw error;
     }
   }
@@ -876,7 +966,7 @@ export class PropertyAssessmentAgent extends BaseAgent {
   ): Promise<any> {
     try {
       // Log the future value prediction request
-      await this.logActivity('value_prediction', `Predicting future value for property ${propertyId} using LLM-enhanced analysis`);
+      await this.logActivity('value_prediction', `Predicting future value for property ${propertyId}`);
       
       // Get property details
       const propertyResult = await this.executeMCPTool('property.getByPropertyId', { propertyId });
@@ -888,190 +978,83 @@ export class PropertyAssessmentAgent extends BaseAgent {
       const property = propertyResult.result;
       const currentValue = property.value || 100000;
       
-      // Get historical trends
+      // Get historical trends (simulated in this implementation)
       const trendResult = await this.analyzePropertyTrends(propertyId, '5years');
+      const historicalGrowthRate = trendResult.summary.annualizedGrowthRate / 100;
       
-      // Check if LLM service is available
-      if (!this.llmService) {
-        throw new Error('LLM service is not available for future value prediction');
-      }
+      // Adjust growth rate based on property attributes
+      // This is a simplified model; a real implementation would be much more sophisticated
       
-      // Get improvements
-      const improvementsResult = await this.executeMCPTool('improvement.getByPropertyId', { 
-        propertyId 
-      });
+      // Base adjustment factors
+      let adjustedGrowthRate = historicalGrowthRate;
       
-      const improvements = improvementsResult.success ? improvementsResult.result : [];
+      // Property type adjustment
+      const propertyTypeFactors = {
+        'Residential': 0.005,
+        'Commercial': 0.003,
+        'Agricultural': 0.001,
+        'Industrial': 0.002,
+        'Vacant': 0.008
+      };
       
-      // Get market factors that might impact the prediction
-      const marketFactors = [
-        'Interest rates',
-        'Local economic conditions',
-        'Property tax trends',
-        'Infrastructure development',
-        'School district performance',
-        'Comparable property sales',
-        'Neighborhood development plans'
-      ];
+      adjustedGrowthRate += propertyTypeFactors[property.propertyType] || 0;
       
-      // Get historical data for the prediction
-      // In a real system, this would be actual historical data
-      const historicalData = [];
-      const currentYear = new Date().getFullYear();
-      let previousValue = currentValue;
+      // Calculate compound growth
+      const predictedValues = [];
+      let cumulativeGrowthRate = 1;
       
-      // Simulate 10 years of historical data
-      for (let i = 10; i > 0; i--) {
-        const yearData = {
-          year: currentYear - i,
-          value: Math.round(previousValue / (1 + (Math.random() * 0.05 + 0.01))),
-          taxAssessment: Math.round(previousValue / (1 + (Math.random() * 0.05 + 0.01)) * 0.8),
-          improvements: []
-        };
+      for (let year = 1; year <= yearsAhead; year++) {
+        // Apply variable growth rate with slight randomness to simulate market fluctuations
+        const yearAdjustment = 1 + (adjustedGrowthRate + (Math.random() * 0.02 - 0.01));
+        cumulativeGrowthRate *= yearAdjustment;
         
-        // Occasionally add historical improvements
-        if (i === 3 || i === 7) {
-          yearData.improvements.push({
-            type: i === 3 ? 'Renovation' : 'Addition',
-            value: Math.round(yearData.value * 0.15)
-          });
-        }
+        const yearValue = Math.round(currentValue * cumulativeGrowthRate);
+        const currentDate = new Date();
+        const yearDate = new Date(currentDate.getFullYear() + year, currentDate.getMonth(), currentDate.getDate());
         
-        historicalData.push(yearData);
-        previousValue = yearData.value;
-      }
-      
-      // Reverse to put in chronological order
-      historicalData.reverse();
-      
-      // Add current year data
-      historicalData.push({
-        year: currentYear,
-        value: currentValue,
-        taxAssessment: Math.round(currentValue * 0.8),
-        improvements: improvements.map(imp => ({
-          type: imp.improvementType || 'Structure',
-          value: imp.value || 0,
-          year: imp.yearBuilt || currentYear
-        }))
-      });
-      
-      // Use the LLM service to get an AI-powered prediction
-      const llmPredictionResponse = await this.llmService.predictFutureValue(
-        propertyId,
-        property,
-        historicalData,
-        yearsAhead,
-        marketFactors
-      );
-      
-      let prediction;
-      
-      try {
-        // If it's already an object (JSON returned from LLM), use it directly
-        if (typeof llmPredictionResponse.text === 'object') {
-          prediction = llmPredictionResponse.text;
-        } else {
-          // Otherwise parse the text response
-          prediction = JSON.parse(llmPredictionResponse.text);
-        }
-        
-        // Log successful prediction
-        await this.logActivity('value_prediction_complete', `Completed AI-enhanced future value prediction for property ${propertyId}`, {
-          yearsAhead,
-          finalYearValue: prediction.predictedValues[prediction.predictedValues.length - 1].predictedValue,
-          llmModel: llmPredictionResponse.model
+        predictedValues.push({
+          year: currentDate.getFullYear() + year,
+          date: yearDate.toISOString().split('T')[0],
+          predictedValue: yearValue,
+          growthFromPresent: Math.round((yearValue / currentValue - 1) * 10000) / 100
         });
+      }
+      
+      // Calculate confidence interval
+      // As prediction extends further, confidence decreases
+      const confidenceIntervals = predictedValues.map((prediction, index) => {
+        const yearAhead = index + 1;
+        const margin = 0.05 * yearAhead; // 5% per year
         
         return {
-          ...prediction,
-          llmModel: llmPredictionResponse.model,
-          analysisTimestamp: new Date()
+          year: prediction.year,
+          low: Math.round(prediction.predictedValue * (1 - margin)),
+          high: Math.round(prediction.predictedValue * (1 + margin)),
+          marginOfError: Math.round(margin * 100)
         };
-        
-      } catch (parsingError) {
-        // If parsing failed, fall back to the traditional prediction method
-        console.error('Failed to parse LLM prediction, using fallback method', parsingError);
-        
-        await this.logActivity('value_prediction_fallback', `Using fallback prediction method due to LLM parsing error: ${parsingError.message}`);
-        
-        // If we can't parse the LLM response, fall back to the algorithmic approach
-        
-        // Analyze historical growth rate
-        const rates = [];
-        for (let i = 1; i < historicalData.length; i++) {
-          const rate = (historicalData[i].value / historicalData[i-1].value) - 1;
-          rates.push(rate);
-        }
-        
-        // Calculate average growth rate
-        const avgGrowthRate = rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
-        
-        // Property type adjustment
-        const propertyTypeFactors = {
-          'Residential': 0.005,
-          'Commercial': 0.003,
-          'Agricultural': 0.001,
-          'Industrial': 0.002,
-          'Vacant': 0.008
-        };
-        
-        // Adjust growth rate based on property type
-        let adjustedGrowthRate = avgGrowthRate + (propertyTypeFactors[property.propertyType] || 0);
-        
-        // Calculate predicted values
-        const predictedValues = [];
-        let cumulativeGrowthRate = 1;
-        
-        for (let year = 1; year <= yearsAhead; year++) {
-          // Apply variable growth rate with slight randomness
-          const yearAdjustment = 1 + (adjustedGrowthRate + (Math.random() * 0.02 - 0.01));
-          cumulativeGrowthRate *= yearAdjustment;
-          
-          const yearValue = Math.round(currentValue * cumulativeGrowthRate);
-          const currentDate = new Date();
-          const yearDate = new Date(currentDate.getFullYear() + year, currentDate.getMonth(), currentDate.getDate());
-          
-          predictedValues.push({
-            year: currentDate.getFullYear() + year,
-            date: yearDate.toISOString().split('T')[0],
-            predictedValue: yearValue,
-            growthFromPresent: Math.round((yearValue / currentValue - 1) * 10000) / 100
-          });
-        }
-        
-        // Calculate confidence intervals
-        const confidenceIntervals = predictedValues.map((prediction, index) => {
-          const yearAhead = index + 1;
-          const margin = 0.05 * yearAhead; // 5% per year
-          
-          return {
-            year: prediction.year,
-            low: Math.round(prediction.predictedValue * (1 - margin)),
-            high: Math.round(prediction.predictedValue * (1 + margin)),
-            marginOfError: Math.round(margin * 100)
-          };
-        });
-        
-        // Compile fallback prediction
-        const fallbackPrediction = {
-          propertyId,
-          currentValue,
-          predictedValues,
-          confidenceIntervals,
-          growthFactors: {
-            historicalGrowthRate: Math.round(avgGrowthRate * 10000) / 100,
-            adjustedGrowthRate: Math.round(adjustedGrowthRate * 10000) / 100,
-            propertyTypeAdjustment: Math.round((propertyTypeFactors[property.propertyType] || 0) * 10000) / 100
-          },
-          predictionDate: new Date(),
-          methodology: 'algorithmic_fallback',
-          note: 'LLM prediction failed, using algorithmic fallback method'
-        };
-        
-        return fallbackPrediction;
-      }
+      });
       
+      // Compile prediction
+      const prediction = {
+        propertyId,
+        currentValue,
+        predictedValues,
+        confidenceIntervals,
+        growthFactors: {
+          historicalGrowthRate: Math.round(historicalGrowthRate * 10000) / 100,
+          adjustedGrowthRate: Math.round(adjustedGrowthRate * 10000) / 100,
+          propertyTypeAdjustment: Math.round((propertyTypeFactors[property.propertyType] || 0) * 10000) / 100
+        },
+        predictionDate: new Date()
+      };
+      
+      // Log successful prediction
+      await this.logActivity('value_prediction_complete', `Completed future value prediction for property ${propertyId}`, {
+        yearsAhead,
+        finalYearValue: predictedValues[predictedValues.length - 1].predictedValue
+      });
+      
+      return prediction;
     } catch (error) {
       await this.logActivity('value_prediction_error', `Error predicting future value for property ${propertyId}: ${error.message}`);
       throw error;
@@ -1123,7 +1106,7 @@ export class PropertyAssessmentAgent extends BaseAgent {
    * Helper: Calculate property type distribution
    */
   private calculatePropertyTypeDistribution(properties: any[]): Record<string, number> {
-    const distribution: Record<string, number> = {};
+    const distribution = {};
     
     properties.forEach(property => {
       const type = property.propertyType || 'Unknown';
@@ -1285,270 +1268,125 @@ export class PropertyAssessmentAgent extends BaseAgent {
         id: 0, // Will be set by storage
         analysisId,
         propertyId,
-        createdAt: new Date(),
-        lastUpdated: new Date(),
-        status: 'completed',
-        title: `Comparable Analysis for ${propertyId}`,
-        description: `Analysis based on ${comparableProperties.length} comparable properties`,
-        methodology: 'sales_comparison',
-        effectiveDate: new Date().toISOString().split('T')[0],
-        reviewDate: null,
-        appraiser: 'AI System',
+        analysisDate: new Date(),
+        comparableCount: comparableProperties.length,
         adjustedValue: 0, // Will be calculated
-        confidenceLevel: null,
-        reviewerNotes: null
+        confidence: 0, // Will be calculated
+        methodology: 'sales_comparison',
+        adjustmentFactors: {
+          location: 0.2,
+          size: 0.3,
+          age: 0.15,
+          quality: 0.2,
+          amenities: 0.15
+        },
+        status: 'completed',
+        createdAt: new Date()
       };
       
-      // Calculate adjustments
+      // Create analysis entries for each comparable
+      const entries = [];
       let totalAdjustedValue = 0;
       
-      // Calculate total property area
-      const propertyArea = sourceProperty.acres || 0;
-      
-      // Calculate property's current value per area
-      const valuePerArea = sourceProperty.value ? sourceProperty.value / propertyArea : 0;
-      
-      // Perform analysis on each comparable
-      const comparableEntries = comparableProperties.map(comparable => {
-        // Calculate base differences
-        const areaRatio = propertyArea / (comparable.acres || 1);
-        const areaAdjustment = areaRatio !== 1 ? (1 / areaRatio) : 1;
+      for (const comparable of comparableProperties) {
+        // Calculate adjustment factors
+        // In a real system, these would be much more sophisticated
         
-        // Determine if improvements differ significantly
-        const improvementAdjustment = Math.random() * 0.2 + 0.9; // Simplified adjustment
+        // Size adjustment
+        const sizeAdjustment = sourceProperty.acres && comparable.acres
+          ? ((sourceProperty.acres - comparable.acres) / comparable.acres) * analysis.adjustmentFactors.size
+          : 0;
         
-        // Calculate location adjustment
-        const locationAdjustment = Math.random() * 0.2 + 0.9; // Simplified adjustment
+        // Location adjustment (placeholder - would use actual location data)
+        const locationAdjustment = 0;
         
-        // Apply adjustments to comparable's value
-        const rawValue = comparable.value || 0;
-        let adjustedValue = rawValue;
+        // Get improvements for age and quality adjustments
+        const sourceImpsResult = await this.executeMCPTool('improvement.getByPropertyId', { 
+          propertyId: sourceProperty.propertyId 
+        });
         
-        // Apply area adjustment
-        adjustedValue = adjustedValue * areaAdjustment;
+        const compImpsResult = await this.executeMCPTool('improvement.getByPropertyId', { 
+          propertyId: comparable.propertyId 
+        });
         
-        // Apply improvement adjustment
-        adjustedValue = adjustedValue * improvementAdjustment;
+        const sourceImps = sourceImpsResult.success ? sourceImpsResult.result : [];
+        const compImps = compImpsResult.success ? compImpsResult.result : [];
         
-        // Apply location adjustment
-        adjustedValue = adjustedValue * locationAdjustment;
+        // Age adjustment
+        const sourceAvgYear = sourceImps.length > 0 
+          ? sourceImps.reduce((sum, imp) => sum + (imp.yearBuilt || 2000), 0) / sourceImps.length
+          : 2000;
+          
+        const compAvgYear = compImps.length > 0 
+          ? compImps.reduce((sum, imp) => sum + (imp.yearBuilt || 2000), 0) / compImps.length
+          : 2000;
+          
+        const ageAdjustment = ((sourceAvgYear - compAvgYear) / 100) * analysis.adjustmentFactors.age;
         
-        // Track total for averaging
+        // Calculate total adjustment
+        const totalAdjustment = sizeAdjustment + locationAdjustment + ageAdjustment;
+        
+        // Calculate adjusted value
+        const adjustedValue = comparable.value 
+          ? comparable.value * (1 + totalAdjustment)
+          : 0;
+          
         totalAdjustedValue += adjustedValue;
         
         // Create the entry
-        return {
-          comparableId: comparable.propertyId,
-          rawValue,
-          adjustedValue: Math.round(adjustedValue),
-          adjustmentFactors: {
-            area: Math.round((areaAdjustment - 1) * 100) / 100,
-            improvements: Math.round((improvementAdjustment - 1) * 100) / 100,
-            location: Math.round((locationAdjustment - 1) * 100) / 100
-          }
+        const entry = {
+          id: 0, // Will be set by storage
+          analysisId,
+          comparablePropertyId: comparable.propertyId,
+          baseValue: comparable.value || 0,
+          adjustments: {
+            size: sizeAdjustment,
+            location: locationAdjustment,
+            age: ageAdjustment
+          },
+          totalAdjustment,
+          adjustedValue,
+          weight: 1, // Equal weighting for now
+          createdAt: new Date()
         };
-      });
+        
+        entries.push(entry);
+      }
       
       // Calculate final adjusted value
-      analysis.adjustedValue = Math.round(totalAdjustedValue / comparableProperties.length);
+      analysis.adjustedValue = totalAdjustedValue / comparableProperties.length;
       
-      // Calculate confidence based on standard deviation of adjusted values
-      const adjustedValues = comparableEntries.map(entry => entry.adjustedValue);
-      const stdDev = this.calculateStandardDeviation(adjustedValues);
-      const mean = adjustedValues.reduce((sum, val) => sum + val, 0) / adjustedValues.length;
-      const coefficientOfVariation = (stdDev / mean);
+      // Calculate confidence based on variance
+      const variance = entries.reduce(
+        (sum, entry) => sum + Math.pow(entry.adjustedValue - analysis.adjustedValue, 2), 
+        0
+      ) / entries.length;
       
-      // High coefficient of variation = low confidence
-      const confidenceScore = Math.max(0, Math.min(100, 100 - (coefficientOfVariation * 100)));
+      const stdDev = Math.sqrt(variance);
+      const coefficientOfVariation = stdDev / analysis.adjustedValue;
       
-      // Convert to confidence level
-      let confidenceLevel = 'Medium';
-      if (confidenceScore >= 90) confidenceLevel = 'Very High';
-      else if (confidenceScore >= 75) confidenceLevel = 'High';
-      else if (confidenceScore >= 50) confidenceLevel = 'Medium';
-      else if (confidenceScore >= 25) confidenceLevel = 'Low';
-      else confidenceLevel = 'Very Low';
+      // Higher coefficient of variation = lower confidence
+      analysis.confidence = Math.max(0, Math.min(1, 1 - coefficientOfVariation));
       
-      analysis.confidenceLevel = confidenceLevel;
-      
-      // Log the analysis completion
-      await this.logActivity('comparable_analysis', `Completed comparable analysis for property ${propertyId}`, {
+      // Log the analysis
+      await this.logActivity('comparable_analysis', `Generated comparable analysis for property ${propertyId}`, {
+        analysisId,
         comparableCount: comparableProperties.length,
         adjustedValue: analysis.adjustedValue,
-        confidence: confidenceLevel
+        confidence: analysis.confidence
       });
       
+      // Store the analysis and entries in the database
+      // In a real implementation, this would call the appropriate storage methods
+      
       return {
-        ...analysis,
-        comparables: comparableEntries,
-        statistics: {
-          meanValue: mean,
-          standardDeviation: stdDev,
-          coefficientOfVariation,
-          confidenceScore
-        }
+        analysis,
+        entries,
+        comparableProperties
       };
     } catch (error) {
       await this.logActivity('comparable_analysis_error', `Error generating comparable analysis for ${propertyId}: ${error.message}`);
       throw error;
     }
-  }
-  
-  /**
-   * Helper: Determine most profitable land use
-   * This is a simplified implementation - a real system would have a more sophisticated approach
-   */
-  private determineMostProfitableLandUse(property: Property): string {
-    // We'd typically use ML models and market data in a real system
-    // For this demo, choose based on property characteristics
-    
-    const usageOptions = {
-      'Residential': 0,
-      'Commercial': 0,
-      'Agricultural': 0,
-      'Industrial': 0,
-      'Mixed Use': 0,
-      'Recreational': 0
-    };
-    
-    // Assign scores based on property characteristics
-    const acres = property.acres as number || 0;
-    
-    // Larger properties favor industrial/agricultural
-    if (acres > 50) {
-      usageOptions['Agricultural'] += 30;
-      usageOptions['Industrial'] += 20;
-    } else if (acres > 10) {
-      usageOptions['Agricultural'] += 20;
-      usageOptions['Recreational'] += 15;
-      usageOptions['Industrial'] += 10;
-    } else if (acres > 5) {
-      usageOptions['Residential'] += 15;
-      usageOptions['Commercial'] += 10;
-      usageOptions['Mixed Use'] += 20;
-    } else if (acres > 1) {
-      usageOptions['Residential'] += 25;
-      usageOptions['Commercial'] += 15;
-      usageOptions['Mixed Use'] += 10;
-    } else {
-      usageOptions['Residential'] += 30;
-      usageOptions['Commercial'] += 20;
-    }
-    
-    // Find highest score
-    let bestUse = 'Residential';
-    let highestScore = 0;
-    
-    for (const [use, score] of Object.entries(usageOptions)) {
-      if (score > highestScore) {
-        highestScore = score;
-        bestUse = use;
-      }
-    }
-    
-    return bestUse;
-  }
-  
-  /**
-   * Helper: Analyze impact factors of land use change
-   */
-  private analyzeLandUseImpactFactors(currentUse: string, alternativeUse: string): any {
-    // In a real system, this would use research and market data
-    // For this demo, return simplified impact factors
-    
-    const factors = {
-      economicImpact: {
-        score: 0,
-        description: ''
-      },
-      environmentalImpact: {
-        score: 0,
-        description: ''
-      },
-      communityImpact: {
-        score: 0,
-        description: ''
-      },
-      regulatoryEase: {
-        score: 0,
-        description: ''
-      }
-    };
-    
-    // Economic impact
-    if (currentUse === 'Residential' && alternativeUse === 'Commercial') {
-      factors.economicImpact.score = 4;
-      factors.economicImpact.description = 'Significant increase in economic value with commercial zoning';
-    } else if (currentUse === 'Agricultural' && (alternativeUse === 'Residential' || alternativeUse === 'Commercial')) {
-      factors.economicImpact.score = 5;
-      factors.economicImpact.description = 'Major economic upside from development potential';
-    } else if (currentUse === 'Industrial' && alternativeUse === 'Mixed Use') {
-      factors.economicImpact.score = 3;
-      factors.economicImpact.description = 'Moderate economic benefits from diversified usage';
-    } else {
-      factors.economicImpact.score = 2;
-      factors.economicImpact.description = 'Minor economic change expected';
-    }
-    
-    // Environmental impact
-    if (alternativeUse === 'Industrial' && (currentUse === 'Agricultural' || currentUse === 'Residential')) {
-      factors.environmentalImpact.score = -4;
-      factors.environmentalImpact.description = 'Significant negative environmental implications';
-    } else if (alternativeUse === 'Agricultural' && currentUse === 'Industrial') {
-      factors.environmentalImpact.score = 4;
-      factors.environmentalImpact.description = 'Substantial environmental improvement';
-    } else if (alternativeUse === 'Recreational') {
-      factors.environmentalImpact.score = 3;
-      factors.environmentalImpact.description = 'Moderate environmental benefits';
-    } else {
-      factors.environmentalImpact.score = -1;
-      factors.environmentalImpact.description = 'Minor environmental concerns';
-    }
-    
-    // Community impact
-    if (currentUse === 'Industrial' && alternativeUse === 'Residential') {
-      factors.communityImpact.score = 4;
-      factors.communityImpact.description = 'Significant community improvement from residential development';
-    } else if (alternativeUse === 'Mixed Use' || alternativeUse === 'Recreational') {
-      factors.communityImpact.score = 3;
-      factors.communityImpact.description = 'Moderate community benefits from diverse or recreational usage';
-    } else if (alternativeUse === 'Commercial' && currentUse === 'Residential') {
-      factors.communityImpact.score = -2;
-      factors.communityImpact.description = 'Some community concerns about commercialization';
-    } else {
-      factors.communityImpact.score = 0;
-      factors.communityImpact.description = 'Neutral community impact';
-    }
-    
-    // Regulatory ease
-    const regulatoryDifficulty = {
-      'Residential': 2,
-      'Commercial': 3,
-      'Agricultural': 1,
-      'Industrial': 5,
-      'Mixed Use': 4,
-      'Recreational': 2
-    };
-    
-    const difficultyDiff = regulatoryDifficulty[currentUse] - regulatoryDifficulty[alternativeUse];
-    
-    if (difficultyDiff > 2) {
-      factors.regulatoryEase.score = 4;
-      factors.regulatoryEase.description = 'Significantly easier regulatory process';
-    } else if (difficultyDiff > 0) {
-      factors.regulatoryEase.score = 2;
-      factors.regulatoryEase.description = 'Somewhat easier regulatory process';
-    } else if (difficultyDiff < -2) {
-      factors.regulatoryEase.score = -4;
-      factors.regulatoryEase.description = 'Much more difficult regulatory process';
-    } else if (difficultyDiff < 0) {
-      factors.regulatoryEase.score = -2;
-      factors.regulatoryEase.description = 'Somewhat more difficult regulatory process';
-    } else {
-      factors.regulatoryEase.score = 0;
-      factors.regulatoryEase.description = 'Similar regulatory requirements';
-    }
-    
-    return factors;
   }
 }
