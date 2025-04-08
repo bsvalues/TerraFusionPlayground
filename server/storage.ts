@@ -97,6 +97,7 @@ export interface IStorage {
   
   // MCP Tool Execution Logging methods
   createMCPToolExecutionLog(log: InsertMCPToolExecutionLog): Promise<MCPToolExecutionLog>;
+  getMCPToolExecutionLogs(limit?: number): Promise<MCPToolExecutionLog[]>;
   
   // PACS Module methods
   getAllPacsModules(): Promise<PacsModule[]>;
@@ -1368,7 +1369,7 @@ export class PgStorage implements IStorage {
     this.db = drizzle(this.pool, { schema: { 
       users, properties, landRecords, improvements, fields, 
       appeals, appealComments, appealEvidence, auditLogs,
-      aiAgents, systemActivities, pacsModules, propertyInsightShares,
+      aiAgents, systemActivities, mcpToolExecutionLogs, pacsModules, propertyInsightShares,
       comparableSales, comparableSalesAnalyses, comparableAnalysisEntries,
       importStaging
     }});
@@ -1698,6 +1699,35 @@ export class PgStorage implements IStorage {
       .returning();
       
     return results.length > 0;
+  }
+  
+  // MCP Tool Execution Logging methods
+  async createMCPToolExecutionLog(log: InsertMCPToolExecutionLog): Promise<MCPToolExecutionLog> {
+    const result = await this.db.insert(mcpToolExecutionLogs)
+      .values({
+        tool_name: log.toolName,
+        request_id: log.requestId,
+        agent_id: log.agentId,
+        user_id: log.userId,
+        parameters: log.parameters || {},
+        status: log.status,
+        result: log.result || null,
+        error: log.error || null,
+        start_time: log.startTime,
+        end_time: log.endTime
+      })
+      .returning();
+      
+    return result[0];
+  }
+  
+  async getMCPToolExecutionLogs(limit: number = 100): Promise<MCPToolExecutionLog[]> {
+    const results = await this.db.select()
+      .from(mcpToolExecutionLogs)
+      .orderBy(desc(mcpToolExecutionLogs.createdAt))
+      .limit(limit);
+      
+    return results;
   }
 }
 

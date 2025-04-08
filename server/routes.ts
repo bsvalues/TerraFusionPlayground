@@ -23,6 +23,7 @@ import ftpRoutes from "./routes/ftp-routes";
 import { createPropertyStoryRoutes } from "./routes/property-story-routes";
 import { createPropertyRoutes } from "./routes/property-routes";
 import { createAgentRoutes } from "./routes/agent-routes";
+import { createAuthRoutes } from "./routes/auth-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -84,6 +85,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Agent routes
   app.use('/api/agents', createAgentRoutes(agentSystem));
+  
+  // Register Authentication routes
+  app.use('/api/auth', createAuthRoutes());
   
   // Initialize agent system
   (async () => {

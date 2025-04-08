@@ -368,5 +368,52 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
     }
   });
   
+  /**
+   * Get MCP Tool Execution Logs
+   */
+  router.get('/tool-execution-logs', async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      
+      // Access logs via storage
+      const logs = await agentSystem.storage.getMCPToolExecutionLogs(limit);
+      res.json(logs);
+    } catch (error) {
+      console.error('Error retrieving MCP tool execution logs:', error);
+      res.status(500).json({ error: 'Failed to retrieve tool execution logs', details: error.message });
+    }
+  });
+  
+  /**
+   * Create a test MCP Tool Execution Log (for testing only)
+   */
+  router.post('/test/create-tool-log', async (req, res) => {
+    try {
+      // Create a test tool execution log
+      const now = new Date();
+      const testLog = {
+        toolName: 'test.tool',
+        requestId: `test-${Date.now()}`,
+        agentId: 1, // Data Management Agent
+        userId: req.user?.userId || null,
+        parameters: { 
+          test: true,
+          description: 'This is a test log entry'
+        },
+        status: 'success',
+        result: { message: 'Test operation completed successfully' },
+        error: null,
+        startTime: new Date(now.getTime() - 1000), // 1 second ago
+        endTime: now
+      };
+      
+      const log = await agentSystem.storage.createMCPToolExecutionLog(testLog);
+      res.json(log);
+    } catch (error) {
+      console.error('Error creating test tool execution log:', error);
+      res.status(500).json({ error: 'Failed to create test log', details: error.message });
+    }
+  });
+  
   return router;
 }

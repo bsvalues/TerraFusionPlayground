@@ -15,14 +15,22 @@ import { PropertyStoryGenerator } from './property-story-generator';
 import { FtpService } from './ftp-service';
 
 export class AgentSystem {
-  private storage: IStorage;
+  private _storage: IStorage;
   private mcpService: MCPService;
   private agents: Map<string, BaseAgent> = new Map();
   private isInitialized: boolean = false;
   
   constructor(storage: IStorage) {
-    this.storage = storage;
+    this._storage = storage;
     this.mcpService = new MCPService(storage);
+  }
+  
+  /**
+   * Get the storage instance used by the agent system
+   * This is primarily used for logging operations
+   */
+  get storage(): IStorage {
+    return this._storage;
   }
   
   /**

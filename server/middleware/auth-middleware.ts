@@ -163,6 +163,12 @@ export function requireScope(requiredScope: TokenScope) {
  */
 export function validateApiKey(req: Request, res: Response, next: NextFunction) {
   try {
+    // Special handling for test token generation endpoint
+    if (req.path === '/test-token' && process.env.NODE_ENV === 'development') {
+      // Proceed without authentication for test token generation
+      return next();
+    }
+    
     // Get API key from header
     const apiKey = req.headers['x-api-key'] as string;
     
@@ -219,4 +225,30 @@ export function validateApiKey(req: Request, res: Response, next: NextFunction) 
       message: 'Internal server error during API key validation.'
     });
   }
+}
+
+/**
+ * Generate a test JWT token for development and testing purposes
+ * WARNING: This should only be used in development environments
+ * @param userId The user ID to include in the token
+ * @param role The user role (default: 'admin')
+ * @returns A JWT token string
+ */
+export function generateTestToken(userId: number = 1, role: string = 'admin'): string {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Test tokens cannot be generated in production environments');
+  }
+  
+  const scopes = role === 'admin' 
+    ? [TokenScope.READ_ONLY, TokenScope.READ_WRITE, TokenScope.ADMIN]
+    : role === 'user' 
+      ? [TokenScope.READ_ONLY, TokenScope.READ_WRITE]
+      : [TokenScope.READ_ONLY];
+  
+  return authService.generateToken({
+    userId,
+    username: `test_${role}_${userId}`,
+    role,
+    scope: scopes.map(s => s.toString())
+  });
 }
