@@ -11,7 +11,7 @@
 import { BaseAgent, AgentConfig } from './base-agent';
 import { IStorage } from '../../storage';
 import { MCPService } from '../mcp';
-import { ArcGISService } from '../arcgis-service';
+import { ArcGISService, BentonMapLayerType } from '../arcgis-service';
 import { BentonMarketFactorService } from '../benton-market-factor-service';
 
 interface SpatialAnalysisOptions {
@@ -21,6 +21,10 @@ interface SpatialAnalysisOptions {
   includeOwnership?: boolean;
   includeDemographics?: boolean;
   includeZoning?: boolean;
+  includeFloodZones?: boolean;
+  includeWetlands?: boolean;
+  includeSchoolDistricts?: boolean;
+  includeTaxDistricts?: boolean;
 }
 
 export class SpatialGISAgent extends BaseAgent {
@@ -75,6 +79,31 @@ export class SpatialGISAgent extends BaseAgent {
         name: 'generateHeatmap',
         description: 'Generate a property value heatmap for an area',
         handler: this.generateHeatmap.bind(this)
+      },
+      {
+        name: 'getFloodZoneAnalysis',
+        description: 'Get flood zone information and analysis for a property',
+        handler: this.getFloodZoneAnalysis.bind(this)
+      },
+      {
+        name: 'getWetlandsAnalysis',
+        description: 'Get wetlands information and analysis for a property',
+        handler: this.getWetlandsAnalysis.bind(this)
+      },
+      {
+        name: 'getSchoolDistrictInfo',
+        description: 'Get school district information for a property',
+        handler: this.getSchoolDistrictInfo.bind(this)
+      },
+      {
+        name: 'getTaxDistrictInfo',
+        description: 'Get tax district information for a property',
+        handler: this.getTaxDistrictInfo.bind(this)
+      },
+      {
+        name: 'getMultiLayerAnalysis',
+        description: 'Perform a multi-layer spatial analysis for a property',
+        handler: this.getMultiLayerAnalysis.bind(this)
       }
     ];
   }
@@ -127,11 +156,774 @@ export class SpatialGISAgent extends BaseAgent {
           const neighbors = await this.arcgisService.getNeighboringParcels(parcelId);
           return { success: true, result: neighbors };
         }
+      },
+      {
+        name: 'gis.getAvailableLayers',
+        description: 'Get all available GIS layers from Benton County',
+        handler: async () => {
+          const layers = this.arcgisService.getAvailableLayers();
+          return { 
+            success: true, 
+            result: layers.map(layer => ({
+              id: layer.id,
+              name: layer.name,
+              description: layer.description
+            }))
+          };
+        }
+      },
+      {
+        name: 'gis.getFloodZone',
+        description: 'Get flood zone information for a parcel',
+        handler: async (params: any) => {
+          const { parcelId } = params;
+          
+          if (!parcelId) {
+            return { success: false, error: 'Parcel ID is required' };
+          }
+          
+          const floodInfo = await this.arcgisService.getFloodZoneForParcel(parcelId);
+          return { success: true, result: floodInfo };
+        }
+      },
+      {
+        name: 'gis.getWetlands',
+        description: 'Get wetlands information for a parcel',
+        handler: async (params: any) => {
+          const { parcelId } = params;
+          
+          if (!parcelId) {
+            return { success: false, error: 'Parcel ID is required' };
+          }
+          
+          const wetlandsInfo = await this.arcgisService.getWetlandsForParcel(parcelId);
+          return { success: true, result: wetlandsInfo };
+        }
+      },
+      {
+        name: 'gis.getZoningDetails',
+        description: 'Get detailed zoning information for a zone code',
+        handler: async (params: any) => {
+          const { zoneCode } = params;
+          
+          if (!zoneCode) {
+            return { success: false, error: 'Zone code is required' };
+          }
+          
+          const zoningDetails = await this.arcgisService.getZoningDetails(zoneCode);
+          
+          if (!zoningDetails) {
+            return { success: false, error: 'Zoning details not found' };
+          }
+          
+          return { success: true, result: zoningDetails };
+        }
+      },
+      {
+        name: 'gis.getSchoolDistrict',
+        description: 'Get school district information for a parcel',
+        handler: async (params: any) => {
+          const { parcelId } = params;
+          
+          if (!parcelId) {
+            return { success: false, error: 'Parcel ID is required' };
+          }
+          
+          const schoolDistricts = await this.arcgisService.getIntersectingFeatures(
+            parcelId,
+            BentonMapLayerType.SCHOOL_DISTRICTS
+          );
+          
+          if (schoolDistricts.length === 0) {
+            return { success: false, error: 'School district not found for parcel' };
+          }
+          
+          return { 
+            success: true, 
+            result: schoolDistricts.map(district => ({
+              districtId: district.attributes.DISTRICT_ID,
+              name: district.attributes.DISTRICT_NAME,
+              type: district.attributes.DISTRICT_TYPE,
+              enrollment: district.attributes.ENROLLMENT
+            }))
+          };
+        }
+      },
+      {
+        name: 'gis.getTaxDistrict',
+        description: 'Get tax district information for a parcel',
+        handler: async (params: any) => {
+          const { parcelId } = params;
+          
+          if (!parcelId) {
+            return { success: false, error: 'Parcel ID is required' };
+          }
+          
+          const taxDistricts = await this.arcgisService.getIntersectingFeatures(
+            parcelId,
+            BentonMapLayerType.TAX_DISTRICTS
+          );
+          
+          if (taxDistricts.length === 0) {
+            return { success: false, error: 'Tax district not found for parcel' };
+          }
+          
+          return { 
+            success: true, 
+            result: taxDistricts.map(district => ({
+              districtId: district.attributes.DISTRICT_ID,
+              name: district.attributes.DISTRICT_NAME,
+              type: district.attributes.DISTRICT_TYPE,
+              taxRate: district.attributes.TAX_RATE,
+              effectiveDate: district.attributes.EFFECTIVE_DATE
+            }))
+          };
+        }
+      },
+      {
+        name: 'gis.getPropertiesInSchoolDistrict',
+        description: 'Get properties in a specific school district',
+        handler: async (params: any) => {
+          const { districtId } = params;
+          
+          if (!districtId) {
+            return { success: false, error: 'District ID is required' };
+          }
+          
+          const properties = await this.arcgisService.getPropertiesInSchoolDistrict(districtId);
+          return { success: true, result: properties };
+        }
+      },
+      {
+        name: 'gis.getPropertiesInTaxDistrict',
+        description: 'Get properties in a specific tax district',
+        handler: async (params: any) => {
+          const { districtId } = params;
+          
+          if (!districtId) {
+            return { success: false, error: 'District ID is required' };
+          }
+          
+          const properties = await this.arcgisService.getPropertiesInTaxDistrict(districtId);
+          return { success: true, result: properties };
+        }
       }
     ]);
     
     // Log successful initialization
     await this.logActivity('initialization', 'Spatial GIS Agent initialized successfully');
+  }
+  
+  /**
+   * Get flood zone analysis for a property
+   */
+  private async getFloodZoneAnalysis(params: any): Promise<any> {
+    try {
+      const { propertyId } = params;
+      
+      if (!propertyId) {
+        return { success: false, error: 'Property ID is required' };
+      }
+      
+      // Get the property to extract the parcel number
+      const property = await this.executeMCPTool('property.getByPropertyId', { propertyId });
+      
+      if (!property?.success || !property.result) {
+        return { success: false, error: 'Property not found' };
+      }
+      
+      const parcelNumber = property.result.parcelNumber;
+      
+      // Get flood zone information
+      const floodZoneResult = await this.executeMCPTool('gis.getFloodZone', { parcelId: parcelNumber });
+      
+      if (!floodZoneResult?.success) {
+        return { success: false, error: 'Failed to get flood zone information' };
+      }
+      
+      // Get property value and other details for context
+      const propertyValue = property.result.value || 0;
+      const propertyAcres = property.result.acres || 0;
+      
+      // Get risk assessment based on flood zone types
+      const { inFloodZone, zones } = floodZoneResult.result;
+      let riskLevel = 'Low';
+      let insuranceRequired = false;
+      let developmentRestrictions = [];
+      
+      if (inFloodZone && zones.length > 0) {
+        // Check for high-risk zones (A, AE, etc.)
+        const hasHighRiskZones = zones.some((zone: any) => 
+          zone.zone.startsWith('A') || zone.zone.startsWith('V'));
+        
+        // Check for special flood hazard areas
+        const hasSpecialFloodHazardAreas = zones.some((zone: any) => 
+          zone.isSpecialFloodHazardArea);
+        
+        if (hasHighRiskZones || hasSpecialFloodHazardAreas) {
+          riskLevel = 'High';
+          insuranceRequired = true;
+          developmentRestrictions = [
+            'Elevated building requirements',
+            'Special permits needed for new construction',
+            'Restrictions on land division and development density',
+            'Additional engineering studies may be required'
+          ];
+        } else if (zones.some((zone: any) => zone.zone.startsWith('B') || zone.zone === 'X')) {
+          riskLevel = 'Moderate';
+          insuranceRequired = false;
+          developmentRestrictions = [
+            'Some development restrictions may apply',
+            'Flood insurance recommended but not required'
+          ];
+        }
+      }
+      
+      // Estimate potential impact
+      const valueImpact = inFloodZone ? 
+        (riskLevel === 'High' ? 
+          { percentage: -15, description: 'High flood risk typically reduces property values by 10-15%' } :
+          { percentage: -5, description: 'Moderate flood risk typically reduces property values by 5-10%' }) :
+        { percentage: 0, description: 'No flood risk impact on property value' };
+      
+      const impactAmount = Math.round((propertyValue * valueImpact.percentage) / 100);
+      
+      // Generate the analysis result
+      const result = {
+        propertyId,
+        address: property.result.address,
+        floodZone: {
+          inFloodZone,
+          zones: zones || [],
+          riskLevel,
+          insuranceRequired,
+          developmentRestrictions
+        },
+        impact: {
+          valueImpact: {
+            percentage: valueImpact.percentage,
+            amount: impactAmount,
+            description: valueImpact.description
+          },
+          recommendations: inFloodZone ? [
+            'Consider flood insurance even if not required',
+            'Implement flood mitigation measures',
+            'Document property condition for insurance claims',
+            'Consider elevation certificate for accurate insurance rates'
+          ] : [
+            'No specific flood mitigation actions needed'
+          ]
+        },
+        source: 'Benton County ArcGIS Flood Zone Data'
+      };
+      
+      await this.logActivity('flood_zone_analysis_generated', 'Flood zone analysis generated', { propertyId });
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'getFloodZoneAnalysis',
+        result
+      };
+    } catch (error: any) {
+      await this.logActivity('flood_zone_analysis_error', `Error generating flood zone analysis: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'getFloodZoneAnalysis',
+        error: `Failed to generate flood zone analysis: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * Get wetlands analysis for a property
+   */
+  private async getWetlandsAnalysis(params: any): Promise<any> {
+    try {
+      const { propertyId } = params;
+      
+      if (!propertyId) {
+        return { success: false, error: 'Property ID is required' };
+      }
+      
+      // Get the property to extract the parcel number
+      const property = await this.executeMCPTool('property.getByPropertyId', { propertyId });
+      
+      if (!property?.success || !property.result) {
+        return { success: false, error: 'Property not found' };
+      }
+      
+      const parcelNumber = property.result.parcelNumber;
+      
+      // Get wetlands information
+      const wetlandsResult = await this.executeMCPTool('gis.getWetlands', { parcelId: parcelNumber });
+      
+      if (!wetlandsResult?.success) {
+        return { success: false, error: 'Failed to get wetlands information' };
+      }
+      
+      // Get property value and other details for context
+      const propertyValue = property.result.value || 0;
+      const propertyAcres = property.result.acres || 0;
+      
+      // Get wetlands impact assessment
+      const { hasWetlands, wetlands } = wetlandsResult.result;
+      
+      // Calculate total wetland acres on the property
+      let totalWetlandAcres = 0;
+      if (hasWetlands && wetlands.length > 0) {
+        totalWetlandAcres = wetlands.reduce((sum: number, wetland: any) => sum + (wetland.acres || 0), 0);
+      }
+      
+      // Calculate percentage of property covered by wetlands
+      const wetlandCoveragePercent = propertyAcres > 0 ? 
+        Math.min(100, Math.round((totalWetlandAcres / propertyAcres) * 100)) : 0;
+      
+      // Determine development restrictions based on wetland types
+      let developmentRestrictions = [];
+      let conservationRequirements = [];
+      let permitRequirements = [];
+      
+      if (hasWetlands && wetlands.length > 0) {
+        const hasProtectedWetlands = wetlands.some((wetland: any) => 
+          wetland.classification && wetland.classification.includes('Protected'));
+        
+        const hasHighValueWetlands = wetlands.some((wetland: any) => 
+          wetland.type && (wetland.type.includes('Estuarine') || wetland.type.includes('Riverine')));
+        
+        if (hasProtectedWetlands || hasHighValueWetlands || wetlandCoveragePercent > 30) {
+          developmentRestrictions = [
+            'Significant development restrictions',
+            'Buffer zones required around wetland areas',
+            'Mitigation may be required for any wetland disturbance',
+            'Conservation easements may be required'
+          ];
+          
+          conservationRequirements = [
+            'Protected wetlands require permanent conservation',
+            'Habitat preservation measures required',
+            'Water quality monitoring may be required'
+          ];
+          
+          permitRequirements = [
+            'Federal permits required (Army Corps of Engineers)',
+            'State wetland permits required',
+            'Local environmental review required'
+          ];
+        } else {
+          developmentRestrictions = [
+            'Limited development allowed with proper permitting',
+            'Buffer zones required around wetland areas'
+          ];
+          
+          conservationRequirements = [
+            'Basic wetland protection measures required'
+          ];
+          
+          permitRequirements = [
+            'Local environmental review required',
+            'State permits may be required depending on impact'
+          ];
+        }
+      }
+      
+      // Estimate potential value impact
+      const valueImpact = hasWetlands ? 
+        (wetlandCoveragePercent > 50 ? 
+          { percentage: -25, description: 'Properties with significant wetland coverage typically see reduced development potential and value' } :
+          wetlandCoveragePercent > 20 ? 
+            { percentage: -15, description: 'Moderate wetland coverage reduces property development options' } :
+            { percentage: -5, description: 'Minor wetland presence has limited impact on property value' }) :
+        { percentage: 0, description: 'No wetland impact on property value' };
+      
+      const impactAmount = Math.round((propertyValue * valueImpact.percentage) / 100);
+      
+      // Generate the analysis result
+      const result = {
+        propertyId,
+        address: property.result.address,
+        wetlands: {
+          hasWetlands,
+          wetlandDetails: wetlands || [],
+          totalWetlandAcres,
+          wetlandCoveragePercent,
+          developmentRestrictions,
+          conservationRequirements,
+          permitRequirements
+        },
+        impact: {
+          valueImpact: {
+            percentage: valueImpact.percentage,
+            amount: impactAmount,
+            description: valueImpact.description
+          },
+          potentialBenefits: hasWetlands ? [
+            'Potential for conservation tax incentives',
+            'Wildlife habitat enhancement opportunities',
+            'Water quality improvement credits',
+            'Recreational opportunities'
+          ] : []
+        },
+        source: 'Benton County ArcGIS Wetlands Data'
+      };
+      
+      await this.logActivity('wetlands_analysis_generated', 'Wetlands analysis generated', { propertyId });
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'getWetlandsAnalysis',
+        result
+      };
+    } catch (error: any) {
+      await this.logActivity('wetlands_analysis_error', `Error generating wetlands analysis: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'getWetlandsAnalysis',
+        error: `Failed to generate wetlands analysis: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * Get school district information for a property
+   */
+  private async getSchoolDistrictInfo(params: any): Promise<any> {
+    try {
+      const { propertyId } = params;
+      
+      if (!propertyId) {
+        return { success: false, error: 'Property ID is required' };
+      }
+      
+      // Get the property to extract the parcel number
+      const property = await this.executeMCPTool('property.getByPropertyId', { propertyId });
+      
+      if (!property?.success || !property.result) {
+        return { success: false, error: 'Property not found' };
+      }
+      
+      const parcelNumber = property.result.parcelNumber;
+      
+      // Get school district information
+      const schoolDistrictResult = await this.executeMCPTool('gis.getSchoolDistrict', { parcelId: parcelNumber });
+      
+      if (!schoolDistrictResult?.success) {
+        return { success: false, error: 'Failed to get school district information' };
+      }
+      
+      // Get property value for context
+      const propertyValue = property.result.value || 0;
+      
+      // Get market impact from school district quality
+      const districts = schoolDistrictResult.result;
+      const districtNames = districts.map((d: any) => d.name).join(', ');
+      
+      // Generate the analysis result
+      const result = {
+        propertyId,
+        address: property.result.address,
+        schoolDistricts: districts,
+        impact: {
+          valueImpact: {
+            description: `Properties in ${districtNames} typically benefit from good school district ratings`
+          },
+          taxesAndFunding: {
+            description: `School district funding is primarily from property taxes within the district boundaries`
+          }
+        },
+        source: 'Benton County ArcGIS School District Data'
+      };
+      
+      await this.logActivity('school_district_info_generated', 'School district information generated', { propertyId });
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'getSchoolDistrictInfo',
+        result
+      };
+    } catch (error: any) {
+      await this.logActivity('school_district_info_error', `Error getting school district information: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'getSchoolDistrictInfo',
+        error: `Failed to get school district information: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * Get tax district information for a property
+   */
+  private async getTaxDistrictInfo(params: any): Promise<any> {
+    try {
+      const { propertyId } = params;
+      
+      if (!propertyId) {
+        return { success: false, error: 'Property ID is required' };
+      }
+      
+      // Get the property to extract the parcel number
+      const property = await this.executeMCPTool('property.getByPropertyId', { propertyId });
+      
+      if (!property?.success || !property.result) {
+        return { success: false, error: 'Property not found' };
+      }
+      
+      const parcelNumber = property.result.parcelNumber;
+      
+      // Get tax district information
+      const taxDistrictResult = await this.executeMCPTool('gis.getTaxDistrict', { parcelId: parcelNumber });
+      
+      if (!taxDistrictResult?.success) {
+        return { success: false, error: 'Failed to get tax district information' };
+      }
+      
+      // Get property value for context
+      const propertyValue = property.result.value || 0;
+      
+      // Calculate estimated taxes
+      const districts = taxDistrictResult.result;
+      let totalTaxRate = 0;
+      
+      for (const district of districts) {
+        totalTaxRate += district.taxRate || 0;
+      }
+      
+      const estimatedAnnualTax = Math.round(propertyValue * (totalTaxRate / 1000));
+      
+      // Generate the analysis result
+      const result = {
+        propertyId,
+        address: property.result.address,
+        taxDistricts: districts,
+        taxAnalysis: {
+          totalTaxRate: totalTaxRate,
+          estimatedAnnualTax: estimatedAnnualTax,
+          taxRateUnits: 'per $1,000 assessed value',
+          breakdown: districts.map((district: any) => ({
+            districtName: district.name,
+            taxRate: district.taxRate || 0,
+            estimatedTax: Math.round(propertyValue * ((district.taxRate || 0) / 1000)),
+            percentage: district.taxRate ? Math.round((district.taxRate / totalTaxRate) * 100) : 0
+          }))
+        },
+        source: 'Benton County ArcGIS Tax District Data'
+      };
+      
+      await this.logActivity('tax_district_info_generated', 'Tax district information generated', { propertyId });
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'getTaxDistrictInfo',
+        result
+      };
+    } catch (error: any) {
+      await this.logActivity('tax_district_info_error', `Error getting tax district information: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'getTaxDistrictInfo',
+        error: `Failed to get tax district information: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * Perform a multi-layer spatial analysis for a property
+   */
+  private async getMultiLayerAnalysis(params: any): Promise<any> {
+    try {
+      const { propertyId, options = {} } = params;
+      
+      if (!propertyId) {
+        return { success: false, error: 'Property ID is required' };
+      }
+      
+      // Default to including all layers if not specified
+      const analysisOptions: SpatialAnalysisOptions = {
+        includeNeighbors: options.includeNeighbors !== false,
+        includeFloodZones: options.includeFloodZones !== false,
+        includeWetlands: options.includeWetlands !== false,
+        includeSchoolDistricts: options.includeSchoolDistricts !== false,
+        includeTaxDistricts: options.includeTaxDistricts !== false,
+        includeZoning: options.includeZoning !== false,
+        ...options
+      };
+      
+      // Get the property to extract the parcel number
+      const property = await this.executeMCPTool('property.getByPropertyId', { propertyId });
+      
+      if (!property?.success || !property.result) {
+        return { success: false, error: 'Property not found' };
+      }
+      
+      const parcelNumber = property.result.parcelNumber;
+      
+      // Initialize result object
+      const analysisResult: any = {
+        propertyId,
+        address: property.result.address,
+        parcelNumber,
+        propertyType: property.result.propertyType,
+        acres: property.result.acres,
+        value: property.result.value,
+        layers: {}
+      };
+      
+      // Add base spatial info
+      const spatialInfo = await this.getSpatialInfo({ propertyId });
+      if (spatialInfo.success) {
+        analysisResult.spatialInfo = spatialInfo.result;
+      }
+      
+      // Add selected layers based on options
+      if (analysisOptions.includeNeighbors) {
+        const neighbors = await this.executeMCPTool('gis.getNeighboringParcels', { parcelId: parcelNumber });
+        if (neighbors?.success) {
+          analysisResult.layers.neighbors = {
+            count: neighbors.result.length,
+            properties: neighbors.result.map((parcel: any) => 
+              this.arcgisService.convertToProperty(parcel)
+            ).filter(Boolean)
+          };
+        }
+      }
+      
+      if (analysisOptions.includeFloodZones) {
+        const floodInfo = await this.executeMCPTool('gis.getFloodZone', { parcelId: parcelNumber });
+        if (floodInfo?.success) {
+          analysisResult.layers.floodZones = floodInfo.result;
+        }
+      }
+      
+      if (analysisOptions.includeWetlands) {
+        const wetlandsInfo = await this.executeMCPTool('gis.getWetlands', { parcelId: parcelNumber });
+        if (wetlandsInfo?.success) {
+          analysisResult.layers.wetlands = wetlandsInfo.result;
+        }
+      }
+      
+      if (analysisOptions.includeSchoolDistricts) {
+        const schoolDistrictInfo = await this.executeMCPTool('gis.getSchoolDistrict', { parcelId: parcelNumber });
+        if (schoolDistrictInfo?.success) {
+          analysisResult.layers.schoolDistricts = schoolDistrictInfo.result;
+        }
+      }
+      
+      if (analysisOptions.includeTaxDistricts) {
+        const taxDistrictInfo = await this.executeMCPTool('gis.getTaxDistrict', { parcelId: parcelNumber });
+        if (taxDistrictInfo?.success) {
+          analysisResult.layers.taxDistricts = taxDistrictInfo.result;
+        }
+      }
+      
+      if (analysisOptions.includeZoning && property.result?.extraFields?.zoning) {
+        const zoningInfo = await this.executeMCPTool('gis.getZoningDetails', { 
+          zoneCode: property.result.extraFields.zoning 
+        });
+        if (zoningInfo?.success) {
+          analysisResult.layers.zoning = zoningInfo.result;
+        }
+      }
+      
+      // Generate summary with key findings
+      analysisResult.summary = this.generateMultiLayerSummary(analysisResult);
+      
+      await this.logActivity('multi_layer_analysis_generated', 'Multi-layer spatial analysis generated', { propertyId });
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'getMultiLayerAnalysis',
+        result: analysisResult
+      };
+    } catch (error: any) {
+      await this.logActivity('multi_layer_analysis_error', `Error generating multi-layer analysis: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'getMultiLayerAnalysis',
+        error: `Failed to generate multi-layer analysis: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * Generate summary for multi-layer analysis
+   */
+  private generateMultiLayerSummary(analysisResult: any): any {
+    const keyFindings = [];
+    const recommendations = [];
+    
+    // Add flood zone findings
+    if (analysisResult.layers.floodZones) {
+      const { inFloodZone, zones } = analysisResult.layers.floodZones;
+      if (inFloodZone) {
+        keyFindings.push(`Property is located in a flood zone (${zones.map((z: any) => z.zone).join(', ')})`);
+        recommendations.push('Consider flood insurance and mitigation measures');
+      } else {
+        keyFindings.push('Property is not in a designated flood zone');
+      }
+    }
+    
+    // Add wetlands findings
+    if (analysisResult.layers.wetlands) {
+      const { hasWetlands, wetlands } = analysisResult.layers.wetlands;
+      if (hasWetlands) {
+        keyFindings.push(`Property contains ${wetlands.length} wetland area(s)`);
+        recommendations.push('Consider wetland conservation requirements for any development');
+      }
+    }
+    
+    // Add school district findings
+    if (analysisResult.layers.schoolDistricts) {
+      const districts = analysisResult.layers.schoolDistricts;
+      keyFindings.push(`Property is in ${districts.map((d: any) => d.name).join(', ')} school district(s)`);
+    }
+    
+    // Add tax district findings
+    if (analysisResult.layers.taxDistricts) {
+      const districts = analysisResult.layers.taxDistricts;
+      let totalRate = 0;
+      districts.forEach((d: any) => { totalRate += d.taxRate || 0; });
+      keyFindings.push(`Property is subject to a ${totalRate.toFixed(2)} tax rate across ${districts.length} tax district(s)`);
+    }
+    
+    // Add zoning findings
+    if (analysisResult.layers.zoning) {
+      const zoning = analysisResult.layers.zoning;
+      keyFindings.push(`Property is zoned ${zoning.code} (${zoning.name})`);
+      if (zoning.permittedUses && zoning.permittedUses.length > 0) {
+        recommendations.push(`Consider permitted uses for this zone: ${zoning.permittedUses.slice(0, 3).join(', ')}${zoning.permittedUses.length > 3 ? '...' : ''}`);
+      }
+    }
+    
+    // Add neighbor findings
+    if (analysisResult.layers.neighbors) {
+      const { count, properties } = analysisResult.layers.neighbors;
+      if (count > 0) {
+        keyFindings.push(`Property has ${count} neighboring properties`);
+        const avgValue = properties.reduce((sum: number, p: any) => sum + (p.value || 0), 0) / properties.length;
+        keyFindings.push(`Average neighboring property value: $${Math.round(avgValue).toLocaleString()}`);
+      }
+    }
+    
+    // Return the summary
+    return {
+      keyFindings,
+      recommendations
+    };
   }
   
   /**

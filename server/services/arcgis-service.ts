@@ -18,6 +18,28 @@ interface ArcGISServiceConfig {
   layerId: number;
 }
 
+// Define available layer types
+export enum BentonMapLayerType {
+  PARCELS = 'parcels',
+  ZONING = 'zoning',
+  FLOOD_ZONES = 'flood_zones',
+  WETLANDS = 'wetlands',
+  SCHOOL_DISTRICTS = 'school_districts',
+  COMMISSIONERS = 'commissioners',
+  CENSUS_BLOCKS = 'census_blocks',
+  TAX_DISTRICTS = 'tax_districts'
+}
+
+// Define the layer configuration
+export interface BentonMapLayer {
+  id: BentonMapLayerType;
+  name: string;
+  description: string;
+  featureServer: string;
+  layerId: number;
+  fields: string[];
+}
+
 interface BentonParcelProperties {
   OBJECTID: number;
   PARCELID: string;
@@ -44,6 +66,7 @@ interface BentonParcelFeature {
 export class ArcGISService {
   private storage: IStorage;
   private config: ArcGISServiceConfig;
+  private layers: Map<BentonMapLayerType, BentonMapLayer>;
   
   constructor(storage: IStorage) {
     this.storage = storage;
@@ -55,6 +78,74 @@ export class ArcGISService {
       featureServer: 'Parcels_and_Assess/FeatureServer',
       layerId: 0
     };
+    
+    // Initialize available layers for Benton County
+    this.layers = new Map<BentonMapLayerType, BentonMapLayer>([
+      [BentonMapLayerType.PARCELS, {
+        id: BentonMapLayerType.PARCELS,
+        name: 'Parcels',
+        description: 'Benton County property parcels with assessment data',
+        featureServer: 'Parcels_and_Assess/FeatureServer',
+        layerId: 0,
+        fields: ['PARCELID', 'SITUS', 'OWNER', 'ZONING', 'ACRES', 'TAXCODE', 'ASSESSEDVALUE', 'LANDVALUE', 'IMPROVEMENTVALUE', 'YEARBUILT']
+      }],
+      [BentonMapLayerType.ZONING, {
+        id: BentonMapLayerType.ZONING,
+        name: 'Zoning',
+        description: 'Benton County zoning districts and land use designations',
+        featureServer: 'Zoning_Districts/FeatureServer',
+        layerId: 0,
+        fields: ['ZONE_CODE', 'ZONE_NAME', 'ZONE_DESC', 'ZONE_TYPE', 'PERMITTED_USES']
+      }],
+      [BentonMapLayerType.FLOOD_ZONES, {
+        id: BentonMapLayerType.FLOOD_ZONES,
+        name: 'Flood Zones',
+        description: 'FEMA flood zones within Benton County',
+        featureServer: 'Flood_Zones/FeatureServer',
+        layerId: 0,
+        fields: ['FLD_ZONE', 'ZONE_SUBTY', 'SFHA', 'FIRM_PANEL', 'EFF_DATE']
+      }],
+      [BentonMapLayerType.WETLANDS, {
+        id: BentonMapLayerType.WETLANDS,
+        name: 'Wetlands',
+        description: 'National Wetlands Inventory for Benton County',
+        featureServer: 'Wetlands/FeatureServer',
+        layerId: 0,
+        fields: ['WETLAND_TYPE', 'ACRES', 'CLASSIFICATION', 'WATER_REGIME']
+      }],
+      [BentonMapLayerType.SCHOOL_DISTRICTS, {
+        id: BentonMapLayerType.SCHOOL_DISTRICTS,
+        name: 'School Districts',
+        description: 'Benton County school district boundaries',
+        featureServer: 'School_Districts/FeatureServer',
+        layerId: 0,
+        fields: ['DISTRICT_ID', 'DISTRICT_NAME', 'DISTRICT_TYPE', 'ENROLLMENT']
+      }],
+      [BentonMapLayerType.COMMISSIONERS, {
+        id: BentonMapLayerType.COMMISSIONERS,
+        name: 'Commissioner Districts',
+        description: 'Benton County commissioner district boundaries',
+        featureServer: 'Commissioner_Districts/FeatureServer',
+        layerId: 0,
+        fields: ['DISTRICT_ID', 'COMMISSIONER', 'POPULATION', 'AREA_SQ_MI']
+      }],
+      [BentonMapLayerType.CENSUS_BLOCKS, {
+        id: BentonMapLayerType.CENSUS_BLOCKS,
+        name: 'Census Blocks',
+        description: 'Census blocks for demographic analysis',
+        featureServer: 'Census_Blocks/FeatureServer',
+        layerId: 0,
+        fields: ['GEOID', 'POPULATION', 'HOUSING_UNITS', 'MEDIAN_INCOME', 'MEDIAN_AGE']
+      }],
+      [BentonMapLayerType.TAX_DISTRICTS, {
+        id: BentonMapLayerType.TAX_DISTRICTS,
+        name: 'Tax Districts',
+        description: 'Tax districts for property tax assessment',
+        featureServer: 'Tax_Districts/FeatureServer',
+        layerId: 0,
+        fields: ['DISTRICT_ID', 'DISTRICT_NAME', 'DISTRICT_TYPE', 'TAX_RATE', 'EFFECTIVE_DATE']
+      }]
+    ]);
   }
   
   /**
@@ -75,6 +166,20 @@ export class ArcGISService {
       console.error('Error testing ArcGIS connection:', error);
       return false;
     }
+  }
+  
+  /**
+   * Get all available Benton County map layers
+   */
+  public getAvailableLayers(): BentonMapLayer[] {
+    return Array.from(this.layers.values());
+  }
+  
+  /**
+   * Get layer by type
+   */
+  public getLayerByType(layerType: BentonMapLayerType): BentonMapLayer | undefined {
+    return this.layers.get(layerType);
   }
   
   /**
@@ -123,6 +228,41 @@ export class ArcGISService {
       return null;
     } catch (error) {
       console.error(`Error fetching parcel ${parcelId} from ArcGIS:`, error);
+      return null;
+    }
+  }
+  
+  /**
+   * Get data for a specific feature in a specific layer
+   */
+  public async getFeatureByLayerAndId(layerType: BentonMapLayerType, featureId: string, idField: string = 'OBJECTID'): Promise<any | null> {
+    try {
+      const layer = this.layers.get(layerType);
+      if (!layer) {
+        throw new Error(`Layer type ${layerType} not found`);
+      }
+      
+      const url = `${this.config.baseUrl}/${this.config.serviceUrl}/${layer.featureServer}/${layer.layerId}/query`;
+      
+      const params = new URLSearchParams({
+        where: `${idField}='${featureId}'`,
+        outFields: '*',
+        returnGeometry: 'true',
+        f: 'json'
+      });
+      
+      const response = await fetch(`${url}?${params.toString()}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.features && data.features.length > 0) {
+          return data.features[0];
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error(`Error fetching feature ${featureId} from layer ${layerType}:`, error);
       return null;
     }
   }
@@ -194,6 +334,54 @@ export class ArcGISService {
   }
   
   /**
+   * Get features from a specific layer by search criteria
+   */
+  public async searchLayer(layerType: BentonMapLayerType, query: { [key: string]: any }): Promise<any[]> {
+    try {
+      const layer = this.layers.get(layerType);
+      if (!layer) {
+        throw new Error(`Layer type ${layerType} not found`);
+      }
+      
+      const url = `${this.config.baseUrl}/${this.config.serviceUrl}/${layer.featureServer}/${layer.layerId}/query`;
+      
+      // Build WHERE clause based on query parameters
+      const whereConditions: string[] = [];
+      
+      Object.entries(query).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          whereConditions.push(`${key} LIKE '%${value}%'`);
+        } else if (typeof value === 'number') {
+          whereConditions.push(`${key} = ${value}`);
+        }
+      });
+      
+      const where = whereConditions.length > 0 
+        ? whereConditions.join(' AND ')
+        : '1=1'; // Return all features if no conditions
+      
+      const params = new URLSearchParams({
+        where,
+        outFields: '*',
+        returnGeometry: 'true',
+        f: 'json'
+      });
+      
+      const response = await fetch(`${url}?${params.toString()}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.features || [];
+      }
+      
+      return [];
+    } catch (error) {
+      console.error(`Error searching layer ${layerType}:`, error);
+      return [];
+    }
+  }
+  
+  /**
    * Get neighboring parcels for a given parcel
    */
   public async getNeighboringParcels(parcelId: string): Promise<BentonParcelFeature[]> {
@@ -258,6 +446,208 @@ export class ArcGISService {
   }
   
   /**
+   * Get intersecting features from another layer for a given parcel
+   */
+  public async getIntersectingFeatures(parcelId: string, layerType: BentonMapLayerType): Promise<any[]> {
+    try {
+      // First, get the target parcel to extract its geometry
+      const targetParcel = await this.getParcelByParcelId(parcelId);
+      
+      if (!targetParcel || !targetParcel.geometry || !targetParcel.geometry.rings) {
+        return [];
+      }
+      
+      const layer = this.layers.get(layerType);
+      if (!layer) {
+        throw new Error(`Layer type ${layerType} not found`);
+      }
+      
+      // Convert rings to a simplified polygon for the query
+      const ring = targetParcel.geometry.rings[0];
+      const points = ring.map(point => `${point[0]},${point[1]}`).join(';');
+      
+      const url = `${this.config.baseUrl}/${this.config.serviceUrl}/${layer.featureServer}/${layer.layerId}/query`;
+      
+      // Search for features that intersect with the parcel geometry
+      const params = new URLSearchParams({
+        geometryType: 'esriGeometryPolygon',
+        geometry: `{"rings":[[[${points}]]]}`,
+        spatialRel: 'esriSpatialRelIntersects',
+        inSR: '4326',
+        outSR: '4326',
+        outFields: '*',
+        returnGeometry: 'true',
+        f: 'json'
+      });
+      
+      const response = await fetch(`${url}?${params.toString()}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.features || [];
+      }
+      
+      return [];
+    } catch (error) {
+      console.error(`Error fetching intersecting features for ${parcelId} from layer ${layerType}:`, error);
+      return [];
+    }
+  }
+  
+  /**
+   * Get properties in a specific school district
+   */
+  public async getPropertiesInSchoolDistrict(districtId: string): Promise<any[]> {
+    try {
+      // First, get the school district boundary
+      const district = await this.getFeatureByLayerAndId(
+        BentonMapLayerType.SCHOOL_DISTRICTS, 
+        districtId, 
+        'DISTRICT_ID'
+      );
+      
+      if (!district || !district.geometry || !district.geometry.rings) {
+        return [];
+      }
+      
+      // Now search for parcels within this district boundary
+      const ring = district.geometry.rings[0];
+      const points = ring.map(point => `${point[0]},${point[1]}`).join(';');
+      
+      const url = `${this.config.baseUrl}/${this.config.serviceUrl}/${this.config.featureServer}/${this.config.layerId}/query`;
+      
+      const params = new URLSearchParams({
+        geometryType: 'esriGeometryPolygon',
+        geometry: `{"rings":[[[${points}]]]}`,
+        spatialRel: 'esriSpatialRelIntersects',
+        inSR: '4326',
+        outSR: '4326',
+        outFields: '*',
+        returnGeometry: 'true',
+        f: 'json'
+      });
+      
+      const response = await fetch(`${url}?${params.toString()}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const parcels = data.features || [];
+        
+        // Convert to properties
+        return parcels.map(parcel => this.convertToProperty(parcel)).filter(Boolean);
+      }
+      
+      return [];
+    } catch (error) {
+      console.error(`Error fetching properties in school district ${districtId}:`, error);
+      return [];
+    }
+  }
+  
+  /**
+   * Get properties in a specific tax district
+   */
+  public async getPropertiesInTaxDistrict(districtId: string): Promise<any[]> {
+    try {
+      // First, get the tax district boundary
+      const district = await this.getFeatureByLayerAndId(
+        BentonMapLayerType.TAX_DISTRICTS, 
+        districtId, 
+        'DISTRICT_ID'
+      );
+      
+      if (!district || !district.geometry || !district.geometry.rings) {
+        return [];
+      }
+      
+      // Now search for parcels within this district boundary
+      const ring = district.geometry.rings[0];
+      const points = ring.map(point => `${point[0]},${point[1]}`).join(';');
+      
+      const url = `${this.config.baseUrl}/${this.config.serviceUrl}/${this.config.featureServer}/${this.config.layerId}/query`;
+      
+      const params = new URLSearchParams({
+        geometryType: 'esriGeometryPolygon',
+        geometry: `{"rings":[[[${points}]]]}`,
+        spatialRel: 'esriSpatialRelIntersects',
+        inSR: '4326',
+        outSR: '4326',
+        outFields: '*',
+        returnGeometry: 'true',
+        f: 'json'
+      });
+      
+      const response = await fetch(`${url}?${params.toString()}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const parcels = data.features || [];
+        
+        // Convert to properties
+        return parcels.map(parcel => this.convertToProperty(parcel)).filter(Boolean);
+      }
+      
+      return [];
+    } catch (error) {
+      console.error(`Error fetching properties in tax district ${districtId}:`, error);
+      return [];
+    }
+  }
+  
+  /**
+   * Get flood zone information for a parcel
+   */
+  public async getFloodZoneForParcel(parcelId: string): Promise<any> {
+    try {
+      const floodZones = await this.getIntersectingFeatures(parcelId, BentonMapLayerType.FLOOD_ZONES);
+      
+      if (floodZones.length === 0) {
+        return { inFloodZone: false, zones: [] };
+      }
+      
+      return {
+        inFloodZone: true,
+        zones: floodZones.map(zone => ({
+          zone: zone.attributes.FLD_ZONE,
+          subtype: zone.attributes.ZONE_SUBTY,
+          isSpecialFloodHazardArea: zone.attributes.SFHA === 'Y',
+          firmPanel: zone.attributes.FIRM_PANEL,
+          effectiveDate: zone.attributes.EFF_DATE
+        }))
+      };
+    } catch (error) {
+      console.error(`Error fetching flood zone for parcel ${parcelId}:`, error);
+      return { inFloodZone: false, zones: [], error: 'Failed to retrieve flood zone data' };
+    }
+  }
+  
+  /**
+   * Get wetland information for a parcel
+   */
+  public async getWetlandsForParcel(parcelId: string): Promise<any> {
+    try {
+      const wetlands = await this.getIntersectingFeatures(parcelId, BentonMapLayerType.WETLANDS);
+      
+      if (wetlands.length === 0) {
+        return { hasWetlands: false, wetlands: [] };
+      }
+      
+      return {
+        hasWetlands: true,
+        wetlands: wetlands.map(wetland => ({
+          type: wetland.attributes.WETLAND_TYPE,
+          acres: wetland.attributes.ACRES,
+          classification: wetland.attributes.CLASSIFICATION,
+          waterRegime: wetland.attributes.WATER_REGIME
+        }))
+      };
+    } catch (error) {
+      console.error(`Error fetching wetlands for parcel ${parcelId}:`, error);
+      return { hasWetlands: false, wetlands: [], error: 'Failed to retrieve wetland data' };
+    }
+  }
+  
+  /**
    * Convert ArcGIS parcel to our internal property format
    */
   public convertToProperty(parcel: BentonParcelFeature): any {
@@ -290,19 +680,71 @@ export class ArcGISService {
   }
   
   /**
+   * Get detailed zoning information for a zone code
+   */
+  public async getZoningDetails(zoneCode: string): Promise<any> {
+    try {
+      const results = await this.searchLayer(BentonMapLayerType.ZONING, { ZONE_CODE: zoneCode });
+      
+      if (results.length === 0) {
+        return null;
+      }
+      
+      const zoning = results[0].attributes;
+      
+      return {
+        code: zoning.ZONE_CODE,
+        name: zoning.ZONE_NAME,
+        description: zoning.ZONE_DESC,
+        type: zoning.ZONE_TYPE,
+        permittedUses: zoning.PERMITTED_USES ? zoning.PERMITTED_USES.split(',').map((use: string) => use.trim()) : []
+      };
+    } catch (error) {
+      console.error(`Error fetching zoning details for code ${zoneCode}:`, error);
+      return null;
+    }
+  }
+  
+  /**
    * Determine property type based on zoning code
    */
   private determinePropertyType(zoning: string): string {
-    // Simplified mapping of zoning codes to property types
+    // Expanded mapping of Benton County zoning codes to property types
     const zoningMap: { [key: string]: string } = {
+      // Residential zones
       'R-1': 'Residential',
       'R-2': 'Residential',
       'R-3': 'Residential',
+      'RL-1': 'Residential',
+      'RL-5': 'Residential',
+      'RM-10': 'Residential',
+      'RM-20': 'Residential',
+      'RPUD': 'Residential',
+      
+      // Commercial zones
       'C-1': 'Commercial',
       'C-2': 'Commercial',
+      'CO': 'Commercial',
+      'CG': 'Commercial',
+      'CN': 'Commercial',
+      'CPUD': 'Commercial',
+      
+      // Industrial zones
       'I-1': 'Industrial',
       'I-2': 'Industrial',
-      'A-1': 'Agricultural'
+      'IL': 'Industrial',
+      'IH': 'Industrial',
+      
+      // Agricultural zones
+      'A-1': 'Agricultural',
+      'AG': 'Agricultural',
+      'AG-20': 'Agricultural',
+      'AG-40': 'Agricultural',
+      
+      // Other zones
+      'PF': 'Public Facility',
+      'OS': 'Open Space',
+      'MU': 'Mixed Use'
     };
     
     return zoningMap[zoning] || 'Unknown';
