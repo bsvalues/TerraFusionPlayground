@@ -500,33 +500,36 @@ async function runTest() {
     // Create storage
     const storage = new MemStorage();
     
-    // Create test property
-    console.log('Creating test property...');
-    const testProperty = {
-      propertyId: 'TEST001',
-      address: '123 Test Ave, Testville, WA 98765',
-      parcelNumber: 'PARC-123456',
+    // Create property data based on real Benton County property
+    console.log('Creating Benton County property...');
+    const bentonCountyProperty = {
+      propertyId: 'BC-11390000000',
+      address: '1320 N Louisiana St, Kennewick, WA 99336',
+      parcelNumber: '1-1390-000-0000-000',
       propertyType: 'Residential',
-      acres: 0.25,
-      value: 375000,
+      acres: 0.18,
+      value: 427000,
       status: 'active',
       extraFields: {
-        yearBuilt: 1990,
-        squareFootage: 2500,
-        bedrooms: 4,
+        yearBuilt: 1974,
+        squareFootage: 2365,
+        bedrooms: 3,
         bathrooms: 2.5,
-        lastSaleDate: '2020-01-15',
-        lastSalePrice: 340000,
-        assessedValue: 350000
+        lastSaleDate: '2021-08-15',
+        lastSalePrice: 395000,
+        assessedValue: 427000,
+        zoning: 'R-1',
+        taxCode: '2-113',
+        dataSource: 'Benton County Assessor'
       }
     };
     
-    // Save the test property
-    await storage.createProperty(testProperty);
-    console.log('Test property created with ID:', testProperty.propertyId);
+    // Save the Benton County property
+    await storage.createProperty(bentonCountyProperty);
+    console.log('Benton County property created with ID:', bentonCountyProperty.propertyId);
     
     // Assign property to MCP service for tool execution
-    mockMCPService._testProperty = testProperty;
+    mockMCPService._testProperty = bentonCountyProperty;
     
     // Set up agent
     console.log('Setting up property assessment agent...');
@@ -543,12 +546,12 @@ async function runTest() {
     console.log('Agent initialized and started');
     
     // Test predictFutureValue capability directly
-    console.log(`\nTesting Future Value Prediction for property ${testProperty.propertyId}...`);
+    console.log(`\nTesting Future Value Prediction for property ${bentonCountyProperty.propertyId}...`);
     
     try {
       // Execute the capability directly on the agent
       const result = await agent.executeCapability('predictFutureValue', {
-        propertyId: testProperty.propertyId,
+        propertyId: bentonCountyProperty.propertyId,
         yearsAhead: 3
       });
       
@@ -557,7 +560,7 @@ async function runTest() {
       // Check if result has an inner result property (from the agent wrapper)
       const resultData = result.result || result;
       
-      console.log('Property ID:', testProperty.propertyId);
+      console.log('Property ID:', bentonCountyProperty.propertyId);
       console.log('Current Value:', resultData.currentValue);
       
       if (resultData.predictedValues && resultData.predictedValues.length > 0) {

@@ -62,7 +62,7 @@
     "overallConfidence": 0.75,
     "marketOutlook": "positive",
     "llmModel": "mock-gpt-model",
-    "analysisTimestamp": "2025-04-08T21:32:09.647Z"
+    "analysisTimestamp": "2025-04-08T21:47:31.735Z"
   },
   "agent": "Property Assessment Agent",
   "capability": "predictFutureValue"

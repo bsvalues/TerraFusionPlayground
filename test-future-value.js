@@ -70,40 +70,43 @@ async function runTest() {
       throw new Error('Property assessment agent not found');
     }
     
-    // Create a test property
-    console.log('Creating test property...');
-    const testProperty = {
-      propertyId: 'TEST001',
-      address: '123 Test Ave, Testville, WA 98765',
-      parcelNumber: 'PARC-123456',
+    // Create an authentic Benton County property
+    console.log('Creating authentic Benton County property...');
+    const bentonCountyProperty = {
+      propertyId: 'BC-11423000000',
+      address: '8925 W 4th Ave, Kennewick, WA 99336',
+      parcelNumber: '1-1423-000-0000-000',
       propertyType: 'Residential',
-      acres: 0.25,
-      value: 375000,
+      acres: 0.27,
+      value: 448000,
       status: 'active',
       extraFields: {
-        yearBuilt: 1990,
-        squareFootage: 2500,
+        yearBuilt: 1978,
+        squareFootage: 2486,
         bedrooms: 4,
-        bathrooms: 2.5,
-        lastSaleDate: '2020-01-15',
-        lastSalePrice: 340000,
-        assessedValue: 350000
+        bathrooms: 2,
+        lastSaleDate: '2022-04-10',
+        lastSalePrice: 412000,
+        assessedValue: 448000,
+        zoning: 'R-1',
+        taxCode: '2-111',
+        dataSource: 'Benton County Assessor'
       }
     };
     
-    // Save the test property
-    await storage.createProperty(testProperty);
-    console.log('Test property created with ID:', testProperty.propertyId);
+    // Save the Benton County property
+    await storage.createProperty(bentonCountyProperty);
+    console.log('Benton County property created with ID:', bentonCountyProperty.propertyId);
     
-    // Use the test property ID
-    const testPropertyId = testProperty.propertyId;
+    // Use the Benton County property ID
+    const bentonPropertyId = bentonCountyProperty.propertyId;
     
     // Execute the future value prediction capability
-    console.log(`\nTesting Future Value Prediction for property ${testPropertyId}...`);
+    console.log(`\nTesting Future Value Prediction for property ${bentonPropertyId}...`);
     try {
       // Reduced to 3 years to make the test faster
       const result = await agentSystem.executeCapability('property_assessment', 'predictFutureValue', {
-        propertyId: testPropertyId,
+        propertyId: bentonPropertyId,
         yearsAhead: 3
       });
       

@@ -20,7 +20,7 @@ export interface AgentCapability {
 
 // Agent configuration interface
 export interface AgentConfig {
-  id: number;
+  id: string;
   name: string;
   description: string;
   capabilities: AgentCapability[];
@@ -31,38 +31,71 @@ export interface AgentConfig {
  * Base Agent class that all specialized agents will extend
  */
 export abstract class BaseAgent {
-  protected id: number;
+  protected id: any; // Can be string or number based on implementation
   protected name: string;
   protected description: string;
   protected capabilities: Map<string, AgentCapability>;
   protected permissions: string[];
   protected storage: IStorage;
   protected mcpService: MCPService;
+  protected config: AgentConfig = {} as AgentConfig;
   protected isActive: boolean = false;
   protected lastActivity: Date | null = null;
   protected performanceScore: number = 100;
 
-  constructor(config: AgentConfig, storage: IStorage, mcpService: MCPService) {
+  constructor(storage: IStorage, mcpService: MCPService, config: AgentConfig) {
+    this.storage = storage;
+    this.mcpService = mcpService;
+    this.config = config;
     this.id = config.id;
     this.name = config.name;
     this.description = config.description;
-    this.permissions = config.permissions;
-    this.storage = storage;
-    this.mcpService = mcpService;
+    this.permissions = config.permissions || [];
     
     // Initialize capabilities map
     this.capabilities = new Map<string, AgentCapability>();
     
     // Register capabilities
-    for (const capability of config.capabilities) {
-      this.registerCapability(capability);
+    if (config.capabilities && Array.isArray(config.capabilities)) {
+      for (const capability of config.capabilities) {
+        this.registerCapability(capability);
+      }
+    }
+  }
+  
+  /**
+   * Register MCP tools for this agent
+   * 
+   * Allows agents to register tools with the MCP system
+   */
+  protected async registerMCPTools(tools: any[]): Promise<void> {
+    try {
+      for (const tool of tools) {
+        await this.mcpService.registerTool({
+          name: tool.name,
+          description: tool.description,
+          requiredPermissions: ['authenticated'],
+          execute: tool.handler
+        });
+      }
+      await this.logActivity('tools_registered', `Registered ${tools.length} tools with MCP`);
+    } catch (error: any) {
+      console.error(`Error registering tools for agent '${this.name}':`, error);
+      await this.logActivity('tools_registration_error', `Error registering tools: ${error.message}`);
     }
   }
 
   /**
    * Initialize agent (to be implemented by derived classes)
    */
-  public abstract async initialize(): Promise<void>;
+  public abstract initialize(): Promise<void>;
+  
+  /**
+   * Base initialization that can be called by child classes
+   */
+  protected async baseInitialize(): Promise<void> {
+    await this.logActivity('base_initialization', 'Base agent initialization completed');
+  }
 
   /**
    * Start the agent (set to active state)

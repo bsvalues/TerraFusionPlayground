@@ -66,13 +66,26 @@ export class MCPService {
   
   constructor(storage: IStorage) {
     this.storage = storage;
-    this.registerCoreTools();
+    // Initialize core tools asynchronously
+    this.initializeCoreTools();
+  }
+  
+  /**
+   * Initialize core tools asynchronously
+   */
+  private async initializeCoreTools(): Promise<void> {
+    try {
+      await this.registerCoreTools();
+      console.log('Core MCP tools initialized successfully');
+    } catch (error: any) {
+      console.error('Error initializing core MCP tools:', error.message);
+    }
   }
   
   /**
    * Register an MCP tool
    */
-  public registerTool(tool: MCPTool): void {
+  public async registerTool(tool: MCPTool): Promise<void> {
     this.tools.set(tool.name, tool);
   }
   
@@ -183,7 +196,7 @@ export class MCPService {
   /**
    * Register core MCP tools
    */
-  private registerCoreTools(): void {
+  private async registerCoreTools(): Promise<void> {
     // Property tools
     this.registerTool({
       name: 'property.getAll',

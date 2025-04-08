@@ -11,8 +11,13 @@ import { BaseAgent } from './agents/base-agent';
 import { PropertyAssessmentAgent } from './agents/property-assessment-agent';
 import { IngestionAgent } from './agents/ingestion-agent';
 import { ReportingAgent } from './agents/reporting-agent';
+import { SpatialGISAgent } from './agents/spatial-gis-agent';
+import { MarketAnalysisAgent } from './agents/market-analysis-agent';
 import { PropertyStoryGenerator } from './property-story-generator';
 import { FtpService } from './ftp-service';
+import { ArcGISService } from './arcgis-service';
+import { BentonMarketFactorService } from './benton-market-factor-service';
+import { LLMService } from './llm-service';
 
 export class AgentSystem {
   private _storage: IStorage;
@@ -58,13 +63,20 @@ export class AgentSystem {
       // Create required services
       const propertyStoryGenerator = new PropertyStoryGenerator(this.storage);
       const ftpService = new FtpService();
+      const arcgisService = new ArcGISService(this.storage);
+      const bentonMarketFactorService = new BentonMarketFactorService(this.storage);
+      const llmService = new LLMService({
+        apiKey: process.env.OPENAI_API_KEY,
+        model: 'gpt-4o'
+      });
       
       // Create and register agents
       console.log("Creating Property Assessment Agent...");
       const propertyAssessmentAgent = new PropertyAssessmentAgent(
         this.storage, 
         this.mcpService,
-        propertyStoryGenerator
+        propertyStoryGenerator,
+        llmService
       );
       this.registerAgent('property_assessment', propertyAssessmentAgent);
       
@@ -82,6 +94,24 @@ export class AgentSystem {
         this.mcpService
       );
       this.registerAgent('reporting', reportingAgent);
+      
+      console.log("Creating Spatial GIS Agent...");
+      const spatialGisAgent = new SpatialGISAgent(
+        this.storage,
+        this.mcpService,
+        arcgisService,
+        bentonMarketFactorService
+      );
+      this.registerAgent('spatial_gis', spatialGisAgent);
+      
+      console.log("Creating Market Analysis Agent...");
+      const marketAnalysisAgent = new MarketAnalysisAgent(
+        this.storage,
+        this.mcpService,
+        bentonMarketFactorService,
+        llmService
+      );
+      this.registerAgent('market_analysis', marketAnalysisAgent);
       
       // Initialize agents
       for (const [name, agent] of this.agents.entries()) {
