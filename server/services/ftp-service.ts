@@ -77,12 +77,17 @@ export class FtpService {
     client.ftp.verbose = false;
     
     try {
+      // The basic-ftp library handles SSL/TLS connections
+      // Use secureOptions to accept self-signed certificates
       await client.access({
         host: this.config.host,
         user: this.config.user,
         password: this.config.password,
         secure: this.config.secure,
-        port: this.config.port
+        port: this.config.port,
+        secureOptions: {
+          rejectUnauthorized: false // Accept self-signed certificates
+        }
       });
       
       console.log('FTP Connection successful');
@@ -110,7 +115,10 @@ export class FtpService {
         user: this.config.user,
         password: this.config.password,
         secure: this.config.secure,
-        port: this.config.port
+        port: this.config.port,
+        secureOptions: {
+          rejectUnauthorized: false // Accept self-signed certificates
+        }
       });
       
       return await client.list(remoteDir);
@@ -138,7 +146,10 @@ export class FtpService {
         user: this.config.user,
         password: this.config.password,
         secure: this.config.secure,
-        port: this.config.port
+        port: this.config.port,
+        secureOptions: {
+          rejectUnauthorized: false // Accept self-signed certificates
+        }
       });
       
       // Ensure the local directory exists
@@ -174,7 +185,10 @@ export class FtpService {
         user: this.config.user,
         password: this.config.password,
         secure: this.config.secure,
-        port: this.config.port
+        port: this.config.port,
+        secureOptions: {
+          rejectUnauthorized: false // Accept self-signed certificates
+        }
       });
       
       // Ensure the remote directory exists

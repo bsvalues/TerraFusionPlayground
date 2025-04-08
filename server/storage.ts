@@ -95,6 +95,9 @@ export interface IStorage {
   getSystemActivities(limit?: number): Promise<SystemActivity[]>;
   createSystemActivity(activity: InsertSystemActivity): Promise<SystemActivity>;
   
+  // MCP Tool Execution Logging methods
+  createMCPToolExecutionLog(log: InsertMCPToolExecutionLog): Promise<MCPToolExecutionLog>;
+  
   // PACS Module methods
   getAllPacsModules(): Promise<PacsModule[]>;
   upsertPacsModule(module: InsertPacsModule): Promise<PacsModule>;
@@ -152,6 +155,7 @@ export class MemStorage implements IStorage {
   private auditLogs: Map<number, AuditLog>;
   private aiAgents: Map<number, AiAgent>;
   private systemActivities: Map<number, SystemActivity>;
+  private mcpToolExecutionLogs: Map<number, MCPToolExecutionLog>;
   private pacsModules: Map<number, PacsModule>;
   private propertyInsightShares: Map<string, PropertyInsightShare>;
   private comparableSales: Map<number, ComparableSale>;
@@ -174,6 +178,7 @@ export class MemStorage implements IStorage {
   private currentPropertyInsightShareId: number;
   private currentComparableSaleId: number;
   private currentComparableAnalysisEntryId: number;
+  private currentMCPToolExecutionLogId: number;
 
   constructor() {
     this.users = new Map();
@@ -187,6 +192,7 @@ export class MemStorage implements IStorage {
     this.auditLogs = new Map();
     this.aiAgents = new Map();
     this.systemActivities = new Map();
+    this.mcpToolExecutionLogs = new Map();
     this.pacsModules = new Map();
     this.propertyInsightShares = new Map();
     this.comparableSales = new Map();
@@ -209,6 +215,7 @@ export class MemStorage implements IStorage {
     this.currentPropertyInsightShareId = 1;
     this.currentComparableSaleId = 1;
     this.currentComparableAnalysisEntryId = 1;
+    this.currentMCPToolExecutionLogId = 1;
     
     // Initialize with sample data
     this.seedData();
@@ -632,6 +639,25 @@ export class MemStorage implements IStorage {
     return activity;
   }
   
+  // MCP Tool Execution Log methods
+  async createMCPToolExecutionLog(log: InsertMCPToolExecutionLog): Promise<MCPToolExecutionLog> {
+    const id = this.currentMCPToolExecutionLogId++;
+    const timestamp = new Date();
+    const mcpToolExecutionLog: MCPToolExecutionLog = {
+      ...log,
+      id,
+      createdAt: timestamp
+    };
+    this.mcpToolExecutionLogs.set(id, mcpToolExecutionLog);
+    return mcpToolExecutionLog;
+  }
+
+  async getMCPToolExecutionLogs(limit: number = 100): Promise<MCPToolExecutionLog[]> {
+    return Array.from(this.mcpToolExecutionLogs.values())
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit);
+  }
+
   // PACS Module methods
   async getAllPacsModules(): Promise<PacsModule[]> {
     // Use the specialized function from pacs-storage.ts
