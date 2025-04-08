@@ -375,8 +375,8 @@ export class AuthService implements IAuthService {
    */
   validateApiKey(apiKey: string, clientIp: string): { userId: number, clientId: string, accessLevel: string } | null {
     try {
-      // For development purposes, accept "dev-key" as a valid API key with admin access
-      if (apiKey === 'dev-key') {
+      // For development purposes, accept any key starting with "dev-" as a valid API key with admin access
+      if (apiKey && (apiKey === 'dev-key' || apiKey.startsWith('dev-'))) {
         this.securityService.logSecurityEvent({
           eventType: 'authentication',
           component: 'auth-service',
@@ -400,13 +400,15 @@ export class AuthService implements IAuthService {
       
       // Log failed validation
       this.securityService.logSecurityEvent({
-        eventType: 'authentication',
+        eventType: 'security_authentication',
         component: 'auth-service',
         details: {
           action: 'api_key_validation',
           clientIp,
-          key: apiKey.substring(0, 4) + '****',
-          result: 'invalid_key'
+          key: apiKey ? apiKey.substring(0, 4) + '****' : 'undefined',
+          result: 'invalid_key',
+          severity: 'warning',
+          ipAddress: clientIp
         },
         severity: 'warning'
       }).catch(err => console.error('Failed to log API key validation:', err));
@@ -415,12 +417,14 @@ export class AuthService implements IAuthService {
     } catch (error) {
       // Log validation error
       this.securityService.logSecurityEvent({
-        eventType: 'authentication',
+        eventType: 'security_authentication',
         component: 'auth-service',
         details: {
           action: 'api_key_validation',
           clientIp,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
+          severity: 'error',
+          ipAddress: clientIp
         },
         severity: 'error'
       }).catch(err => console.error('Failed to log API key validation error:', err));
