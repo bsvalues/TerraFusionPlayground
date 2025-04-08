@@ -369,6 +369,108 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
   });
   
   /**
+   * Property Assessment Agent - Generate Area Analysis
+   */
+  router.post('/property-assessment/area-analysis/:zipCode', async (req, res) => {
+    try {
+      const { zipCode } = req.params;
+      const { propertyType, timeframe } = req.body;
+      
+      const result = await agentSystem.executeCapability('property_assessment', 'generateAreaAnalysis', {
+        zipCode,
+        propertyType,
+        timeframe
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error generating area analysis:', error);
+      res.status(500).json({ error: 'Failed to generate area analysis', details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  /**
+   * Property Assessment Agent - Detect Valuation Anomalies
+   */
+  router.post('/property-assessment/detect-anomalies/:propertyId', async (req, res) => {
+    try {
+      const { propertyId } = req.params;
+      const { threshold } = req.body;
+      
+      const result = await agentSystem.executeCapability('property_assessment', 'detectValuationAnomalies', {
+        propertyId,
+        threshold
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error detecting valuation anomalies:', error);
+      res.status(500).json({ error: 'Failed to detect valuation anomalies', details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  /**
+   * Property Assessment Agent - Generate Neighborhood Report
+   */
+  router.post('/property-assessment/neighborhood-report/:zipCode', async (req, res) => {
+    try {
+      const { zipCode } = req.params;
+      const { includeValuationTrends, includeDemographics } = req.body;
+      
+      const result = await agentSystem.executeCapability('property_assessment', 'generateNeighborhoodReport', {
+        zipCode,
+        includeValuationTrends,
+        includeDemographics
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error generating neighborhood report:', error);
+      res.status(500).json({ error: 'Failed to generate neighborhood report', details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  /**
+   * Property Assessment Agent - Analyze Land Use Impact
+   */
+  router.post('/property-assessment/land-use-impact/:propertyId', async (req, res) => {
+    try {
+      const { propertyId } = req.params;
+      const { alternativeLandUse } = req.body;
+      
+      const result = await agentSystem.executeCapability('property_assessment', 'analyzeLandUseImpact', {
+        propertyId,
+        alternativeLandUse
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error analyzing land use impact:', error);
+      res.status(500).json({ error: 'Failed to analyze land use impact', details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  /**
+   * Property Assessment Agent - Predict Future Value
+   */
+  router.post('/property-assessment/predict-value/:propertyId', async (req, res) => {
+    try {
+      const { propertyId } = req.params;
+      const { yearsAhead } = req.body;
+      
+      const result = await agentSystem.executeCapability('property_assessment', 'predictFutureValue', {
+        propertyId,
+        yearsAhead
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error predicting future value:', error);
+      res.status(500).json({ error: 'Failed to predict future value', details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  /**
    * Get MCP Tool Execution Logs
    */
   router.get('/tool-execution-logs', async (req, res) => {
