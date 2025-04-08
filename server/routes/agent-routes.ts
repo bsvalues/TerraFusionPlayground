@@ -391,27 +391,57 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
     try {
       // Create a test tool execution log
       const now = new Date();
+      
+      // Parse the request body if it's a string
+      let requestBody = req.body || {};
+      if (typeof requestBody === 'string') {
+        try {
+          requestBody = JSON.parse(requestBody);
+        } catch (err) {
+          console.error('Failed to parse request body as JSON:', err);
+          requestBody = {};
+        }
+      }
+      
+      console.log('Request body for test tool log:', JSON.stringify(requestBody));
+      
+      // Just use the requestBody directly
+      // The issue appears to be related to how the result is being handled in the storage layer
+
+      // Let's just respect the exact values from the request body with minimal processing
+
+      // For debugging
+      console.log('requestBody.result:', JSON.stringify(requestBody.result));
+      
+      // Create the test log with either default values or values from the request
       const testLog = {
-        toolName: 'test.tool',
-        requestId: `test-${Date.now()}`,
-        agentId: 1, // Data Management Agent
+        toolName: requestBody.toolName || 'test.tool',
+        requestId: requestBody.requestId || `test-${Date.now()}`,
+        agentId: requestBody.agentId !== undefined ? requestBody.agentId : 1, // Default to Data Management Agent
         userId: req.user?.userId || null,
-        parameters: { 
+        parameters: requestBody.parameters || { 
           test: true,
           description: 'This is a test log entry'
         },
-        status: 'success',
-        result: { message: 'Test operation completed successfully' },
-        error: null,
+        status: requestBody.status || 'success',
+        result: requestBody.result !== undefined ? requestBody.result : { message: 'Test operation completed successfully' },
+        error: requestBody.error || null,
         startTime: new Date(now.getTime() - 1000), // 1 second ago
         endTime: now
       };
       
+      console.log('Creating test tool execution log:', JSON.stringify(testLog));
       const log = await agentSystem.storage.createMCPToolExecutionLog(testLog);
-      res.json(log);
+      console.log('Created log:', JSON.stringify(log));
+      
+      // Set appropriate headers to ensure proper JSON response
+      res.setHeader('Content-Type', 'application/json');
+      return res.json(log);
     } catch (error) {
       console.error('Error creating test tool execution log:', error);
-      res.status(500).json({ error: 'Failed to create test log', details: error.message });
+      // Set appropriate headers to ensure proper JSON response
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(500).json({ error: 'Failed to create test log', details: error instanceof Error ? error.message : String(error) });
     }
   });
   
