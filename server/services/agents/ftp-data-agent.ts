@@ -8,11 +8,13 @@
  * with a focus on providing these capabilities through the MCP architecture.
  */
 
-import { BaseAgent, AgentConfig } from './base-agent';
+import { BaseAgent, AgentCapability, AgentConfig } from './base-agent';
 import { IStorage } from '../../storage';
 import { MCPService } from '../mcp';
 import { FtpService, FtpImportResult, FtpExportResult } from '../ftp-service';
 import { DataImportService } from '../data-import-service';
+import { PropertyUseCodesMapper } from '../data-mappers/property-use-codes-mapper';
+import { InsertProperty } from '../../../shared/schema';
 import * as path from 'path';
 import * as fs from 'fs';
 
