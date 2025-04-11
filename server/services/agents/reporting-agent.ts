@@ -108,7 +108,7 @@ export class ReportingAgent extends BaseAgent {
       ]
     };
     
-    super(config, storage, mcpService);
+    super(storage, mcpService, config);
   }
   
   /**
