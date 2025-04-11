@@ -17,7 +17,8 @@ export enum NotificationType {
   PROTEST_STATUS = 'protest_status',
   SYSTEM_ALERT = 'system_alert',
   AI_AGENT_ACTIVITY = 'ai_agent_activity',
-  PACS_UPDATE = 'pacs_update'
+  PACS_UPDATE = 'pacs_update',
+  APPEALS = 'appeals'
 }
 
 // Define the notification structure
@@ -156,6 +157,52 @@ export class NotificationService {
     return `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
   
+  /**
+   * Send a notification to a staff member
+   * 
+   * This is specialized for sending administrative notifications to assessor staff members
+   * about appeals, workflow changes, and other staff-specific events.
+   * 
+   * @param staffId The staff member's user ID
+   * @param type The notification type
+   * @param title The notification title
+   * @param message The notification message
+   * @param entityType Optional entity type (e.g., 'appeal')
+   * @param entityId Optional entity ID
+   * @param priority The notification priority
+   * @param data Optional additional data
+   * @returns The created notification
+   */
+  sendStaffNotification(
+    staffId: string,
+    type: NotificationType,
+    title: string,
+    message: string,
+    entityType?: string,
+    entityId?: string,
+    priority: 'low' | 'medium' | 'high' = 'high',
+    data?: any
+  ): Notification {
+    // Add staff-specific metadata
+    const staffData = {
+      ...data,
+      isStaff: true,
+      recipientType: 'staff'
+    };
+    
+    // Staff notifications are a special case of user notifications
+    return this.sendUserNotification(
+      staffId, 
+      type, 
+      title, 
+      message, 
+      entityType, 
+      entityId, 
+      priority, 
+      staffData
+    );
+  }
+
   /**
    * Create and send a notification to a specific user
    */
@@ -352,6 +399,97 @@ export class NotificationService {
     }
   }
   
+  /**
+   * Create notification for appeal status changes
+   * 
+   * @param appealId The ID of the appeal
+   * @param status The new status of the appeal
+   * @param staffId The ID of the staff member who changed the status (if applicable)
+   * @param propertyId The property ID associated with the appeal
+   * @param appealType The type of appeal (valuation, classification, exemption)
+   * @returns The created notification
+   */
+  createAppealStatusNotification(
+    appealId: number, 
+    status: string, 
+    staffId?: string,
+    propertyId?: string,
+    appealType?: string
+  ): Notification {
+    // Create appeal status message based on the status
+    let title = 'Appeal Status Update';
+    let message = `Appeal #${appealId} status updated to: ${status}`;
+    let priority: 'low' | 'medium' | 'high' = 'medium';
+    
+    switch(status.toLowerCase()) {
+      case 'submitted':
+        title = 'New Appeal Submitted';
+        message = `A new appeal #${appealId} has been submitted${propertyId ? ` for property ${propertyId}` : ''}`;
+        priority = 'high';
+        break;
+      case 'under_review':
+        title = 'Appeal Under Review';
+        message = `Appeal #${appealId} is now under review${appealType ? ` (${appealType})` : ''}`;
+        priority = 'medium';
+        break;
+      case 'scheduled':
+        title = 'Appeal Hearing Scheduled';
+        message = `A hearing has been scheduled for appeal #${appealId}`;
+        priority = 'high';
+        break;
+      case 'heard':
+        title = 'Appeal Hearing Completed';
+        message = `The hearing for appeal #${appealId} has been completed`;
+        priority = 'medium';
+        break;
+      case 'decided':
+        title = 'Appeal Decision Made';
+        message = `A decision has been made for appeal #${appealId}`;
+        priority = 'high';
+        break;
+      case 'withdrawn':
+        title = 'Appeal Withdrawn';
+        message = `Appeal #${appealId} has been withdrawn`;
+        priority = 'low';
+        break;
+    }
+    
+    // Send to staff if staff ID is provided
+    if (staffId) {
+      return this.sendStaffNotification(
+        staffId,
+        NotificationType.APPEALS,
+        title,
+        message,
+        'appeal',
+        appealId.toString(),
+        priority,
+        { 
+          appealId, 
+          status, 
+          propertyId, 
+          appealType 
+        }
+      );
+    } else {
+      // Otherwise broadcast as system notification
+      return this.broadcastSystemNotification(
+        NotificationType.APPEALS,
+        title,
+        message,
+        'appeal',
+        appealId.toString(),
+        priority,
+        { 
+          appealId, 
+          status, 
+          propertyId, 
+          appealType 
+        }
+      );
+    }
+  }
+
   /**
    * Create a notification based on system activity
    */

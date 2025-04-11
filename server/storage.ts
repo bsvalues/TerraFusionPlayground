@@ -88,6 +88,7 @@ export interface IStorage {
   getAppealsByUserId(userId: number): Promise<Appeal[]>;
   createAppeal(appeal: InsertAppeal): Promise<Appeal>;
   updateAppealStatus(id: number, status: string): Promise<Appeal | undefined>;
+  updateAppeal(id: number, updates: Partial<Appeal>): Promise<Appeal | undefined>;
   getAppealCommentsByAppealId(appealId: number): Promise<AppealComment[]>;
   createAppealComment(comment: InsertAppealComment): Promise<AppealComment>;
   getAppealEvidenceByAppealId(appealId: number): Promise<AppealEvidence[]>;
@@ -657,6 +658,21 @@ export class MemStorage implements IStorage {
       entityId: appeal.propertyId
     });
     
+    return updatedAppeal;
+  }
+  
+  async updateAppeal(id: number, updates: Partial<Appeal>): Promise<Appeal | undefined> {
+    const appeal = this.appeals.get(id);
+    if (!appeal) return undefined;
+    
+    const timestamp = new Date();
+    const updatedAppeal = { 
+      ...appeal, 
+      ...updates, 
+      lastUpdated: timestamp 
+    };
+    
+    this.appeals.set(id, updatedAppeal);
     return updatedAppeal;
   }
   
@@ -2736,6 +2752,14 @@ export class PgStorage implements IStorage {
 
   async updateAppealStatus(id: number, status: string): Promise<Appeal | undefined> {
     const results = await this.db.update(appeals).set({ status }).where(eq(appeals.id, id)).returning();
+    return results[0];
+  }
+  
+  async updateAppeal(id: number, updates: Partial<Appeal>): Promise<Appeal | undefined> {
+    const results = await this.db.update(appeals).set({ 
+      ...updates,
+      lastUpdated: new Date()
+    }).where(eq(appeals.id, id)).returning();
     return results[0];
   }
 
