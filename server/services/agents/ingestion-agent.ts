@@ -88,7 +88,7 @@ export class IngestionAgent extends BaseAgent {
       ]
     };
     
-    super(config, storage, mcpService);
+    super(storage, mcpService, config);
     this.ftpService = ftpService;
   }
   

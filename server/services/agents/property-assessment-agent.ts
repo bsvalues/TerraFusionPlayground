@@ -172,7 +172,7 @@ export class PropertyAssessmentAgent extends BaseAgent {
       ]
     };
     
-    super(config, storage, mcpService);
+    super(storage, mcpService, config);
     this.propertyStoryGenerator = propertyStoryGenerator;
     
     // Initialize LLM service if provided
