@@ -20,10 +20,11 @@ class VoiceService {
    */
   public async initialize(): Promise<boolean> {
     try {
+      // Request microphone access
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       return true;
     } catch (error) {
-      console.error('Error accessing microphone:', error);
+      console.error('Error initializing microphone:', error);
       return false;
     }
   }
@@ -33,35 +34,28 @@ class VoiceService {
    */
   public startRecording(setStateCallback: (state: RecordingState) => void): void {
     if (!this.stream) {
-      console.error('Microphone stream not initialized. Call initialize() first.');
+      console.error('Cannot start recording: stream not initialized');
       return;
     }
 
     this.setStateCallback = setStateCallback;
     this.audioChunks = [];
 
-    const options = {
-      mimeType: 'audio/webm',
-    };
-
     try {
-      this.mediaRecorder = new MediaRecorder(this.stream, options);
-    } catch (err) {
-      console.error('MediaRecorder error:', err);
-      return;
+      this.mediaRecorder = new MediaRecorder(this.stream);
+
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.audioChunks.push(event.data);
+        }
+      };
+
+      this.mediaRecorder.start();
+      setStateCallback('recording');
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      setStateCallback('idle');
     }
-
-    this.mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        this.audioChunks.push(event.data);
-      }
-    };
-
-    this.mediaRecorder.onstart = () => {
-      this.setStateCallback?.('recording');
-    };
-
-    this.mediaRecorder.start();
   }
 
   /**
@@ -75,9 +69,12 @@ class VoiceService {
       }
 
       this.mediaRecorder.onstop = () => {
-        this.setStateCallback?.('processing');
         const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
         resolve(audioBlob);
+      };
+
+      this.mediaRecorder.onerror = (event) => {
+        reject(event.error);
       };
 
       this.mediaRecorder.stop();
@@ -90,17 +87,16 @@ class VoiceService {
   public async audioToBase64(audioBlob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onload = () => {
         if (typeof reader.result === 'string') {
-          // Remove the data URL prefix (e.g., "data:audio/webm;base64,")
-          const base64Data = reader.result.split(',')[1];
-          resolve(base64Data);
+          const base64data = reader.result.split(',')[1];
+          resolve(base64data);
         } else {
           reject(new Error('Failed to convert audio to base64'));
         }
       };
       reader.onerror = () => {
-        reject(new Error('Error reading audio file'));
+        reject(reader.error);
       };
       reader.readAsDataURL(audioBlob);
     });
@@ -121,5 +117,4 @@ class VoiceService {
   }
 }
 
-// Create a singleton instance
 export const voiceService = new VoiceService();

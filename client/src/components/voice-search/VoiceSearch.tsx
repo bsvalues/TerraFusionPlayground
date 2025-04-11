@@ -1,50 +1,57 @@
 import { useState } from 'react';
 import { VoiceSearchButton } from './VoiceSearchButton';
 import { VoiceSearchResults } from './VoiceSearchResults';
-import { VoiceTranscriptionResponse, SearchParams } from '../../services/voice-recognition-service';
+import { SearchParams } from '../../services/voice-recognition-service';
 
 interface VoiceSearchProps {
   onSearch?: (searchParams: SearchParams) => void;
+  className?: string;
 }
 
-export function VoiceSearch({ onSearch }: VoiceSearchProps) {
-  const [searchText, setSearchText] = useState<string>('');
-  const [searchParams, setSearchParams] = useState<SearchParams>({});
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+export function VoiceSearch({ onSearch, className = '' }: VoiceSearchProps) {
+  const [transcribedText, setTranscribedText] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useState<SearchParams | null>(null);
+  const [isActive, setIsActive] = useState(false);
 
   const handleSearchResult = (text: string, params: SearchParams) => {
-    setSearchText(text);
+    setTranscribedText(text);
     setSearchParams(params);
-    setIsLoading(false);
-    
-    // If a parent component wants to be notified about search
-    if (onSearch) {
-      onSearch(params);
+    setIsActive(true);
+  };
+
+  const handleApplySearch = (modifiedParams?: SearchParams) => {
+    if (onSearch && modifiedParams) {
+      onSearch(modifiedParams);
     }
+    setIsActive(false);
+  };
+
+  const handleClear = () => {
+    setTranscribedText(null);
+    setSearchParams(null);
+    setIsActive(false);
+  };
+
+  const handleCancel = () => {
+    setIsActive(false);
   };
 
   return (
-    <div className="voice-search">
-      <div className="flex flex-col items-center gap-2">
-        <div className="text-center mb-2">
-          <h2 className="text-lg font-medium">Voice-Enabled Property Search</h2>
-          <p className="text-sm text-muted-foreground">
-            Click the button and speak to search for properties
-          </p>
-        </div>
-        
-        <VoiceSearchButton 
-          onSearchResult={handleSearchResult} 
-        />
-        
-        <div className="w-full mt-2">
-          <VoiceSearchResults 
-            searchText={searchText} 
+    <div className={`voice-search ${className}`}>
+      {!isActive ? (
+        <VoiceSearchButton onSearchResult={handleSearchResult} />
+      ) : (
+        transcribedText && 
+        searchParams && (
+          <VoiceSearchResults
+            text={transcribedText}
             searchParams={searchParams}
-            isLoading={isLoading}
+            onApply={handleApplySearch}
+            onClear={handleClear}
+            onCancel={handleCancel}
           />
-        </div>
-      </div>
+        )
+      )}
     </div>
   );
 }

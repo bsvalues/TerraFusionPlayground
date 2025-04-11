@@ -14,6 +14,7 @@ import { PropertyStoryDemo } from "@/pages/PropertyStoryDemo";
 import PropertyStoryPage from "@/pages/PropertyStoryPage";
 import DataImportPage from "@/pages/DataImportPage";
 import AgentSystemPage from "@/pages/AgentSystemPage";
+import VoiceSearchDemoPage from "@/pages/VoiceSearchDemoPage";
 import AppLayout from "@/layout/app-layout";
 
 function Router() {
@@ -82,6 +83,12 @@ function Router() {
       <Route path="/agent-system">
         <AppLayout>
           <AgentSystemPage />
+        </AppLayout>
+      </Route>
+
+      <Route path="/voice-search">
+        <AppLayout>
+          <VoiceSearchDemoPage />
         </AppLayout>
       </Route>
 

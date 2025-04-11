@@ -2258,9 +2258,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     llmService
   ));
   
-  // Add error handling middleware
-  app.use(errorHandler);
-  app.use(notFoundHandler);
+  // Add error handling middleware for API routes only
+  // This will only catch errors for /api/* routes
+  app.use('/api', errorHandler);
   
   // Create HTTP server and initialize WebSocket for real-time notifications
   const httpServer = createServer(app);

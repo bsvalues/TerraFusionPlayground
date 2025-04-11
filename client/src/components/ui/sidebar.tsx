@@ -113,6 +113,12 @@ const AgentSystemIcon = () => (
   </svg>
 );
 
+const MicIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+  </svg>
+);
+
 interface SidebarMenuItemProps {
   href: string;
   icon: React.ReactNode;
@@ -237,6 +243,14 @@ export const Sidebar = () => {
                 isActive={location === "/agent-system"}
               >
                 MCP Agent System
+              </SidebarMenuItem>
+
+              <SidebarMenuItem 
+                href="/voice-search" 
+                icon={<MicIcon />}
+                isActive={location === "/voice-search"}
+              >
+                Voice Search
               </SidebarMenuItem>
             </SidebarSection>
 

@@ -1,58 +1,42 @@
 /**
  * Voice Recognition Service
  * 
- * This service handles the communication with the server-side voice recognition API,
- * including transcribing audio and parsing natural language queries into structured
- * search parameters.
+ * This service handles the transcription of voice recordings and extraction
+ * of structured search parameters using OpenAI.
  */
 
-// Price range parameters
-export interface PriceRange {
-  min?: number;
-  max?: number;
-}
+import { apiRequest } from '@/lib/queryClient';
 
-// Area range parameters (in square feet or acres)
-export interface AreaRange {
-  min?: number;
-  max?: number;
-}
-
-// Year built range parameters
-export interface YearBuiltRange {
-  min?: number;
-  max?: number;
-}
-
-// Search parameters extracted from voice query
 export interface SearchParams {
+  propertyId?: string;
   address?: string;
   parcelNumber?: string;
+  owner?: string;
+  area?: string;
   propertyType?: string;
-  priceRange?: PriceRange;
-  area?: AreaRange;
-  bedrooms?: number;
-  bathrooms?: number;
-  yearBuilt?: YearBuiltRange;
-  features?: string[];
-  sortBy?: string;
+  minValue?: number;
+  maxValue?: number;
+  minAcres?: number;
+  maxAcres?: number;
+  dateRange?: {
+    start?: string;
+    end?: string;
+  };
 }
 
-// Combined response from voice recognition
-export interface VoiceTranscriptionResponse {
+interface TranscriptionResponse {
   text: string;
   searchParams: SearchParams;
 }
 
 class VoiceRecognitionService {
   /**
-   * Transcribe an audio file using OpenAI's Whisper through our API
-   * @param audioBase64 Base64 encoded audio data
-   * @returns Transcription result with extracted search parameters
+   * Transcribe audio using the server's API
+   * @param audioBase64 - Base64 encoded audio data
    */
-  public async transcribeAudio(audioBase64: string): Promise<VoiceTranscriptionResponse | null> {
+  public async transcribeAudio(audioBase64: string): Promise<TranscriptionResponse | null> {
     try {
-      const response = await fetch('/api/voice/transcribe', {
+      const response = await apiRequest('/api/voice/transcribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -61,13 +45,15 @@ class VoiceRecognitionService {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Transcription error:', errorText);
-        throw new Error(`Transcription failed: ${response.status} ${response.statusText}`);
+        console.error('Failed to transcribe audio:', await response.text());
+        return null;
       }
 
       const data = await response.json();
-      return data;
+      return {
+        text: data.text,
+        searchParams: data.searchParams,
+      };
     } catch (error) {
       console.error('Error transcribing audio:', error);
       return null;
@@ -75,12 +61,12 @@ class VoiceRecognitionService {
   }
 
   /**
-   * Parse text directly without audio transcription
-   * Useful for testing or when text is already available
+   * Extract structured search parameters from transcribed text
+   * @param text - Transcribed text from audio
    */
-  public async parseQuery(text: string): Promise<VoiceTranscriptionResponse | null> {
+  public async extractSearchParams(text: string): Promise<SearchParams> {
     try {
-      const response = await fetch('/api/voice/parse-query', {
+      const response = await apiRequest('/api/voice/extract-params', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -89,19 +75,16 @@ class VoiceRecognitionService {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Parse query error:', errorText);
-        throw new Error(`Parse query failed: ${response.status} ${response.statusText}`);
+        console.error('Failed to extract search parameters:', await response.text());
+        return {};
       }
 
-      const data = await response.json();
-      return data;
+      return await response.json();
     } catch (error) {
-      console.error('Error parsing query:', error);
-      return null;
+      console.error('Error extracting search parameters:', error);
+      return {};
     }
   }
 }
 
-// Export singleton instance
 export const voiceRecognitionService = new VoiceRecognitionService();
