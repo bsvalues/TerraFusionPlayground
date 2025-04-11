@@ -30,6 +30,22 @@ export function AgentSystemPanel() {
     refetchInterval: 10000, // Refresh every 10 seconds
     queryFn: () => apiRequest('/api/agents/status')
   });
+  
+  // Convert agent object to array if needed
+  const agentsArray = React.useMemo(() => {
+    if (!systemStatus?.agents) return [];
+    
+    // Check if agents is already an array
+    if (Array.isArray(systemStatus.agents)) {
+      return systemStatus.agents;
+    }
+    
+    // Convert object to array
+    return Object.entries(systemStatus.agents).map(([name, agent]) => ({
+      name,
+      ...agent,
+    }));
+  }, [systemStatus]);
 
   // Initialize agent system 
   const initMutation = useMutation({
@@ -259,7 +275,7 @@ export function AgentSystemPanel() {
                   <div>
                     <h3 className="text-sm font-medium">Active Agents</h3>
                     <p className="text-lg font-semibold">
-                      {systemStatus?.agents.filter((a: any) => a.status === 'online').length || 0} / {systemStatus?.agents.length || 0}
+                      {agentsArray.filter((a: any) => a.status === 'online').length || 0} / {agentsArray.length || 0}
                     </p>
                   </div>
                 </div>
