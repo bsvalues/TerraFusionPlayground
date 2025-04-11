@@ -509,7 +509,7 @@ export class MemStorage implements IStorage {
     return property;
   }
   
-  async updateProperty(id: number, updateData: Partial<InsertProperty>): Promise<Property | undefined> {
+  async updateProperty(id: number, updateData: Partial<InsertProperty>, userId: number = 1, source: 'import' | 'manual' | 'api' | 'calculated' | 'validated' | 'correction' = 'manual'): Promise<Property | undefined> {
     const property = this.properties.get(id);
     if (!property) return undefined;
     
@@ -519,6 +519,32 @@ export class MemStorage implements IStorage {
       ...updateData, 
       lastUpdated: timestamp 
     };
+    
+    // Track changes for data lineage
+    for (const key in updateData) {
+      if (property[key] !== updatedProperty[key]) {
+        const oldValue = property[key] === undefined ? null : property[key];
+        const newValue = updatedProperty[key] === undefined ? null : updatedProperty[key];
+        
+        // Only track if values actually changed
+        if (oldValue !== newValue) {
+          // Convert values to strings for storage
+          const oldValueStr = typeof oldValue === 'string' ? oldValue : JSON.stringify(oldValue);
+          const newValueStr = typeof newValue === 'string' ? newValue : JSON.stringify(newValue);
+          
+          await this.createDataLineageRecord({
+            propertyId: property.propertyId,
+            fieldName: key,
+            oldValue: oldValueStr,
+            newValue: newValueStr,
+            changeTimestamp: timestamp,
+            source,
+            userId,
+            sourceDetails: { updateOperation: 'updateProperty', entityId: id }
+          });
+        }
+      }
+    }
     
     this.properties.set(id, updatedProperty);
     
@@ -637,7 +663,7 @@ export class MemStorage implements IStorage {
     return this.fields.get(id);
   }
   
-  async updateField(id: number, updateData: Partial<InsertField>): Promise<Field | undefined> {
+  async updateField(id: number, updateData: Partial<InsertField>, userId: number = 1, source: 'import' | 'manual' | 'api' | 'calculated' | 'validated' | 'correction' = 'manual'): Promise<Field | undefined> {
     const field = this.fields.get(id);
     if (!field) return undefined;
     
@@ -647,6 +673,33 @@ export class MemStorage implements IStorage {
       ...updateData, 
       lastUpdated: timestamp 
     };
+    
+    // Track changes for data lineage
+    for (const key in updateData) {
+      if (field[key] !== updatedField[key]) {
+        const oldValue = field[key] === undefined ? null : field[key];
+        const newValue = updatedField[key] === undefined ? null : updatedField[key];
+        
+        // Only track if values actually changed
+        if (oldValue !== newValue) {
+          // Convert values to strings for storage
+          const oldValueStr = typeof oldValue === 'string' ? oldValue : JSON.stringify(oldValue);
+          const newValueStr = typeof newValue === 'string' ? newValue : JSON.stringify(newValue);
+          
+          // Use the field's property ID for data lineage tracking
+          await this.createDataLineageRecord({
+            propertyId: field.propertyId,
+            fieldName: `field.${field.fieldName}.${key}`,
+            oldValue: oldValueStr,
+            newValue: newValueStr,
+            changeTimestamp: timestamp,
+            source,
+            userId,
+            sourceDetails: { updateOperation: 'updateField', entityId: id }
+          });
+        }
+      }
+    }
     
     this.fields.set(id, updatedField);
     
@@ -732,7 +785,7 @@ export class MemStorage implements IStorage {
     return updatedAppeal;
   }
   
-  async updateAppeal(id: number, updates: Partial<Appeal>): Promise<Appeal | undefined> {
+  async updateAppeal(id: number, updates: Partial<Appeal>, userId: number = 1, source: 'import' | 'manual' | 'api' | 'calculated' | 'validated' | 'correction' = 'manual'): Promise<Appeal | undefined> {
     const appeal = this.appeals.get(id);
     if (!appeal) return undefined;
     
@@ -743,7 +796,45 @@ export class MemStorage implements IStorage {
       lastUpdated: timestamp 
     };
     
+    // Track changes for data lineage
+    for (const key in updates) {
+      if (appeal[key] !== updatedAppeal[key]) {
+        const oldValue = appeal[key] === undefined ? null : appeal[key];
+        const newValue = updatedAppeal[key] === undefined ? null : updatedAppeal[key];
+        
+        // Only track if values actually changed
+        if (oldValue !== newValue) {
+          // Convert values to strings for storage
+          const oldValueStr = typeof oldValue === 'string' ? oldValue : JSON.stringify(oldValue);
+          const newValueStr = typeof newValue === 'string' ? newValue : JSON.stringify(newValue);
+          
+          // Use the appeal's property ID for data lineage tracking
+          await this.createDataLineageRecord({
+            propertyId: appeal.propertyId,
+            fieldName: `appeal.${key}`,
+            oldValue: oldValueStr,
+            newValue: newValueStr,
+            changeTimestamp: timestamp,
+            source,
+            userId,
+            sourceDetails: { updateOperation: 'updateAppeal', entityId: id }
+          });
+        }
+      }
+    }
+    
     this.appeals.set(id, updatedAppeal);
+    
+    // Create system activity if significant changes
+    if (updates.status || updates.decision) {
+      await this.createSystemActivity({
+        agentId: 3, // Citizen Interaction Agent
+        activity: `Appeal updated for property ID: ${appeal.propertyId}`,
+        entityType: 'appeal',
+        entityId: appeal.propertyId
+      });
+    }
+    
     return updatedAppeal;
   }
   
@@ -825,6 +916,55 @@ export class MemStorage implements IStorage {
   async getAuditLogs(limit: number = 100): Promise<AuditLog[]> {
     return Array.from(this.auditLogs.values())
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, limit);
+  }
+  
+  // Data Lineage methods
+  async createDataLineageRecord(record: InsertDataLineageRecord): Promise<DataLineageRecord> {
+    const id = this.dataLineageRecords.size + 1;
+    const timestamp = new Date();
+    const lineageRecord: DataLineageRecord = {
+      ...record,
+      id,
+      createdAt: timestamp
+    };
+    this.dataLineageRecords.set(id, lineageRecord);
+    return lineageRecord;
+  }
+  
+  async getDataLineageByField(propertyId: string, fieldName: string): Promise<DataLineageRecord[]> {
+    return Array.from(this.dataLineageRecords.values())
+      .filter(record => record.propertyId === propertyId && record.fieldName === fieldName)
+      .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime());
+  }
+  
+  async getDataLineageByProperty(propertyId: string): Promise<DataLineageRecord[]> {
+    return Array.from(this.dataLineageRecords.values())
+      .filter(record => record.propertyId === propertyId)
+      .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime());
+  }
+  
+  async getDataLineageByUser(userId: number, limit: number = 100): Promise<DataLineageRecord[]> {
+    return Array.from(this.dataLineageRecords.values())
+      .filter(record => record.userId === userId)
+      .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime())
+      .slice(0, limit);
+  }
+  
+  async getDataLineageByDateRange(startDate: Date, endDate: Date, limit: number = 100): Promise<DataLineageRecord[]> {
+    return Array.from(this.dataLineageRecords.values())
+      .filter(record => {
+        const timestamp = record.changeTimestamp.getTime();
+        return timestamp >= startDate.getTime() && timestamp <= endDate.getTime();
+      })
+      .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime())
+      .slice(0, limit);
+  }
+  
+  async getDataLineageBySource(source: string, limit: number = 100): Promise<DataLineageRecord[]> {
+    return Array.from(this.dataLineageRecords.values())
+      .filter(record => record.source === source)
+      .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime())
       .slice(0, limit);
   }
   
