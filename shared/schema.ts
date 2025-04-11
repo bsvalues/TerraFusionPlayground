@@ -56,6 +56,31 @@ export enum IssueStatus {
   WAIVED = 'waived'
 }
 
+// Data Lineage Record table
+export const dataLineageRecords = pgTable("data_lineage_records", {
+  id: serial("id").primaryKey(),
+  propertyId: text("property_id").notNull(),
+  fieldName: text("field_name").notNull(),
+  oldValue: text("old_value").notNull(),
+  newValue: text("new_value").notNull(),
+  changeTimestamp: timestamp("change_timestamp").notNull(),
+  source: text("source").notNull(), // import, manual, api, calculated, validated, correction
+  userId: integer("user_id").notNull(),
+  sourceDetails: jsonb("source_details").default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertDataLineageRecordSchema = createInsertSchema(dataLineageRecords).pick({
+  propertyId: true,
+  fieldName: true,
+  oldValue: true,
+  newValue: true,
+  changeTimestamp: true,
+  source: true,
+  userId: true,
+  sourceDetails: true,
+});
+
 export enum AppealStatus {
   SUBMITTED = 'submitted',
   UNDER_REVIEW = 'under_review',
@@ -450,6 +475,9 @@ export type InsertPacsModule = z.infer<typeof insertPacsModuleSchema>;
 
 export type AgentMessage = typeof agentMessages.$inferSelect;
 export type InsertAgentMessage = z.infer<typeof insertAgentMessageSchema>;
+
+export type DataLineageRecord = typeof dataLineageRecords.$inferSelect;
+export type InsertDataLineageRecord = z.infer<typeof insertDataLineageRecordSchema>;
 
 // Property Insights Sharing table
 export const propertyInsightShares = pgTable("property_insight_shares", {

@@ -26,6 +26,7 @@ import {
   complianceReports, ComplianceReport, InsertComplianceReport,
   agentExperiences, AgentExperience, InsertAgentExperience,
   learningUpdates, LearningUpdate, InsertLearningUpdate,
+  dataLineageRecords, DataLineageRecord, InsertDataLineageRecord,
   // Enum types needed for validation and workflow
   RuleCategory, RuleLevel, EntityType, IssueStatus, MessagePriority, MessageEventType
 } from "@shared/schema";
