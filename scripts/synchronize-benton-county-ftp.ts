@@ -10,6 +10,8 @@
 import { MemStorage } from '../server/storage';
 import { FtpService } from '../server/services/ftp-service';
 import { DataImportService } from '../server/services/data-import-service';
+import { AgentSystem } from '../server/services/agent-system';
+import { MCPService } from '../server/services/mcp';
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -31,8 +33,10 @@ if (!fs.existsSync(LOG_DIR)) {
 
 // Initialize storage and services
 const storage = new MemStorage();
+const mcpService = new MCPService(storage);
 const ftpService = new FtpService(storage);
 const dataImportService = new DataImportService(storage);
+const agentSystem = new AgentSystem(storage);
 
 // Logging utility
 const logFile = path.join(LOG_DIR, `ftp-sync-${new Date().toISOString().replace(/:/g, '-')}.log`);
@@ -172,7 +176,27 @@ async function downloadAndImportFile(file: FtpFile): Promise<boolean> {
         file.name.toLowerCase().includes('property_code')) {
       // Use the property use codes import capability
       logger.log('Detected property use codes file, using specialized import...');
-      importResult = await ftpService.client.callFunction('importPropertyUseCodes', { remotePath });
+      // Call the agent capability via the agent system
+      const result = await agentSystem.executeCapability(
+        'ftp_data', 
+        'importPropertyUseCodes', 
+        { remotePath }
+      );
+      
+      if (!result.success) {
+        throw new Error(`Failed to import property use codes: ${result.error}`);
+      }
+      
+      // Format to match regular import result structure
+      importResult = {
+        importResult: {
+          total: result.result.totalRecords || 0,
+          successfulImports: result.result.importedRecords || 0,
+          failedImports: (result.result.totalRecords || 0) - (result.result.importedRecords || 0),
+          errors: result.result.errors || []
+        },
+        filename: file.name
+      };
     } else {
       // Use the regular property import
       importResult = await ftpService.importPropertiesFromFtp(remotePath);
@@ -258,8 +282,29 @@ async function synchronizeFtpData(): Promise<boolean> {
   }
 }
 
+// Initialize and run the agents before starting synchronization
+async function initializeAgents() {
+  logger.log('Initializing agent system...');
+  try {
+    await agentSystem.initialize();
+    logger.log('Agent system initialized successfully');
+    return true;
+  } catch (error) {
+    logger.error('Failed to initialize agent system', error);
+    return false;
+  }
+}
+
 // Run the sync process
-synchronizeFtpData()
+initializeAgents()
+  .then(initialized => {
+    if (initialized) {
+      return synchronizeFtpData();
+    } else {
+      logger.log('Aborting synchronization due to agent initialization failure');
+      return false;
+    }
+  })
   .then(success => {
     logger.log(`FTP synchronization ${success ? 'succeeded' : 'failed'}.`);
     process.exit(success ? 0 : 1);
