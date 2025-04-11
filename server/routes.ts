@@ -28,6 +28,7 @@ import { createAuthRoutes } from "./routes/auth-routes";
 import { createMarketRoutes } from "./routes/market-routes";
 import { createRiskRoutes } from "./routes/risk-routes";
 import { createAnalyticsRoutes } from "./routes/analytics-routes";
+import { createValidationRoutes } from "./routes/validation-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -99,6 +100,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Voice routes
   app.use('/api/voice', voiceRoutes);
+  
+  // Register Validation routes
+  app.use('/api/validation', createValidationRoutes(storage));
+
+  // Register Market routes
+  app.use('/api/market', createMarketRoutes(storage));
+  
+  // Register Risk routes
+  app.use('/api/risk', createRiskRoutes(storage));
+  
+  // Register Analytics routes
+  app.use('/api/analytics', createAnalyticsRoutes(storage));
   
   // Initialize agent system
   (async () => {
