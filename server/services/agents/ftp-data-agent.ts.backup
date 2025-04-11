@@ -55,184 +55,181 @@ export class FtpDataAgent extends BaseAgent {
     storage: IStorage,
     mcpService: MCPService
   ) {
-    // Define capabilities before passing to super
-    const capabilities: AgentCapability[] = [
-      {
-        name: 'testFtpConnection',
-        description: 'Test FTP connection to SpatialEst server',
-        parameters: [],
-        handler: async (params: any, agent: BaseAgent) => {
-          return (agent as FtpDataAgent).testFtpConnection();
-        }
-      },
-      {
-        name: 'listFtpDirectories',
-        description: 'List directories available on the SpatialEst FTP server',
-        parameters: [
-          {
-            name: 'path',
-            type: 'string',
-            description: 'Remote directory path',
-            required: false
-          }
-        ],
-        handler: async (params: any, agent: BaseAgent) => {
-          return (agent as FtpDataAgent).listFtpDirectories(params);
-        }
-      },
-      {
-        name: 'searchFtpFiles',
-        description: 'Search for files on the SpatialEst FTP server',
-        parameters: [
-          {
-            name: 'options',
-            type: 'object',
-            description: 'Search options',
-            required: true
-          }
-        ],
-        handler: async (params: any, agent: BaseAgent) => {
-          return (agent as FtpDataAgent).searchFtpFiles(params);
-        }
-      },
-      {
-        name: 'downloadFtpFile',
-        description: 'Download a file from the SpatialEst FTP server',
-        parameters: [
-          {
-            name: 'remotePath',
-            type: 'string',
-            description: 'Path to the file on the FTP server',
-            required: true
-          },
-          {
-            name: 'localPath',
-            type: 'string',
-            description: 'Path where the file should be saved locally',
-            required: false
-          }
-        ],
-        handler: async (params: any, agent: BaseAgent) => {
-          return (agent as FtpDataAgent).downloadFtpFile(params);
-        }
-      },
-      {
-        name: 'uploadFtpFile',
-        description: 'Upload a file to the SpatialEst FTP server',
-        parameters: [
-          {
-            name: 'localPath',
-            type: 'string',
-            description: 'Path to the local file',
-            required: true
-          },
-          {
-            name: 'remotePath',
-            type: 'string',
-            description: 'Path where the file should be saved on the FTP server',
-            required: true
-          }
-        ],
-        handler: async (params: any, agent: BaseAgent) => {
-          return (agent as FtpDataAgent).uploadFtpFile(params);
-        }
-      },
-      {
-        name: 'importFtpProperties',
-        description: 'Import property data from the SpatialEst FTP server',
-        parameters: [
-          {
-            name: 'remotePath',
-            type: 'string',
-            description: 'Path to the CSV file on the FTP server',
-            required: true
-          }
-        ],
-        handler: async (params: any, agent: BaseAgent) => {
-          return (agent as FtpDataAgent).importFtpProperties(params);
-        }
-      },
-      {
-        name: 'stageFtpProperties',
-        description: 'Stage property data from the SpatialEst FTP server for review',
-        parameters: [
-          {
-            name: 'remotePath',
-            type: 'string',
-            description: 'Path to the CSV file on the FTP server',
-            required: true
-          }
-        ],
-        handler: async (params: any, agent: BaseAgent) => {
-          return (agent as FtpDataAgent).stageFtpProperties(params);
-        }
-      },
-      {
-        name: 'scheduleFtpSync',
-        description: 'Schedule automatic data synchronization with the SpatialEst FTP server',
-        parameters: [
-          {
-            name: 'enabled',
-            type: 'boolean',
-            description: 'Enable or disable scheduled sync',
-            required: true
-          },
-          {
-            name: 'intervalHours',
-            type: 'number',
-            description: 'Sync interval in hours',
-            required: false
-          }
-        ],
-        handler: async (params: any, agent: BaseAgent) => {
-          return (agent as FtpDataAgent).scheduleFtpSync(params);
-        }
-      },
-      {
-        name: 'getFtpStatus',
-        description: 'Get FTP connection and synchronization status',
-        parameters: [],
-        handler: async (params: any, agent: BaseAgent) => {
-          return (agent as FtpDataAgent).getFtpStatus();
-        }
-      },
-      {
-        name: 'importPropertyUseCodes',
-        description: 'Import property use codes from a CSV file on the FTP server',
-        parameters: [
-          {
-            name: 'remotePath',
-            type: 'string',
-            description: 'Path to the property use codes CSV file on the FTP server',
-            required: true
-          }
-        ],
-        handler: async (params: any, agent: BaseAgent) => {
-          return (agent as FtpDataAgent).importPropertyUseCodes(params);
-        }
-      }
-    ];
-
-    // Create the agent config
+    // Create base agent config
     const config: AgentConfig = {
       id: 'ftp_data',
       name: 'ftp_data',
       description: 'SpatialEst FTP Integration Agent',
       permissions: ['ftp.access', 'data.import'],
-      capabilities: capabilities
+      capabilities: [
+        {
+          name: 'testFtpConnection',
+          description: 'Test FTP connection to SpatialEst server',
+          parameters: [],
+          handler: function(params, agent) { 
+            return (agent as FtpDataAgent).testFtpConnection(params); 
+          }
+        },
+        {
+          name: 'listFtpDirectories',
+          description: 'List directories available on the SpatialEst FTP server',
+          parameters: [
+            {
+              name: 'path',
+              type: 'string',
+              description: 'Remote directory path',
+              required: false
+            }
+          ],
+          handler: function(params, agent) { 
+            return (agent as FtpDataAgent).listFtpDirectories(params); 
+          }
+        },
+        {
+          name: 'searchFtpFiles',
+          description: 'Search for files on the SpatialEst FTP server',
+          parameters: [
+            {
+              name: 'options',
+              type: 'object',
+              description: 'Search options',
+              required: true
+            }
+          ],
+          handler: function(params, agent) { 
+            return (agent as FtpDataAgent).searchFtpFiles(params); 
+          }
+        },
+        {
+          name: 'downloadFtpFile',
+          description: 'Download a file from the SpatialEst FTP server',
+          parameters: [
+            {
+              name: 'remotePath',
+              type: 'string',
+              description: 'Path to the file on the FTP server',
+              required: true
+            },
+            {
+              name: 'localPath',
+              type: 'string',
+              description: 'Path where the file should be saved locally',
+              required: false
+            }
+          ],
+          handler: function(params, agent) { 
+            return (agent as FtpDataAgent).downloadFtpFile(params); 
+          }
+        },
+        {
+          name: 'uploadFtpFile',
+          description: 'Upload a file to the SpatialEst FTP server',
+          parameters: [
+            {
+              name: 'localPath',
+              type: 'string',
+              description: 'Path to the local file',
+              required: true
+            },
+            {
+              name: 'remotePath',
+              type: 'string',
+              description: 'Path where the file should be saved on the FTP server',
+              required: true
+            }
+          ],
+          handler: function(params, agent) { 
+            return (agent as FtpDataAgent).uploadFtpFile(params); 
+          }
+        },
+        {
+          name: 'importFtpProperties',
+          description: 'Import property data from the SpatialEst FTP server',
+          parameters: [
+            {
+              name: 'remotePath',
+              type: 'string',
+              description: 'Path to the CSV file on the FTP server',
+              required: true
+            }
+          ],
+          handler: function(params, agent) { 
+            return (agent as FtpDataAgent).importFtpProperties(params); 
+          }
+        },
+        {
+          name: 'stageFtpProperties',
+          description: 'Stage property data from the SpatialEst FTP server for review',
+          parameters: [
+            {
+              name: 'remotePath',
+              type: 'string',
+              description: 'Path to the CSV file on the FTP server',
+              required: true
+            }
+          ],
+          handler: function(params, agent) { 
+            return (agent as FtpDataAgent).stageFtpProperties(params); 
+          }
+        },
+        {
+          name: 'scheduleFtpSync',
+          description: 'Schedule automatic data synchronization with the SpatialEst FTP server',
+          parameters: [
+            {
+              name: 'enabled',
+              type: 'boolean',
+              description: 'Enable or disable scheduled sync',
+              required: true
+            },
+            {
+              name: 'intervalHours',
+              type: 'number',
+              description: 'Sync interval in hours',
+              required: false
+            }
+          ],
+          handler: function(params, agent) { 
+            return (agent as FtpDataAgent).scheduleFtpSync(params); 
+          }
+        },
+        {
+          name: 'getFtpStatus',
+          description: 'Get FTP connection and synchronization status',
+          parameters: [],
+          handler: function(params, agent) { 
+            return (agent as FtpDataAgent).getFtpStatus(); 
+          }
+        },
+        {
+          name: 'importPropertyUseCodes',
+          description: 'Import property use codes from a CSV file on the FTP server',
+          parameters: [
+            {
+              name: 'remotePath',
+              type: 'string',
+              description: 'Path to the property use codes CSV file on the FTP server',
+              required: true
+            }
+          ],
+          handler: function(params, agent) { 
+            return (agent as FtpDataAgent).importPropertyUseCodes(params); 
+          }
+        }
+      ]
     };
     
-    // Call the parent constructor
+    // Call super with the config
     super(storage, mcpService, config);
     
-    // Initialize services
+    // Initialize services after super has been called
     this.ftpService = new FtpService(storage);
     this.dataImportService = new DataImportService(storage);
     
-    // Setup default schedule configuration
+    // Setup default schedule
     this.schedule = {
       enabled: false,
-      intervalHours: 24 // Default daily sync
+      intervalHours: 24 // Default daily
     };
   }
   
@@ -429,8 +426,8 @@ export class FtpDataAgent extends BaseAgent {
         filesList.push({
           name: file.name,
           size: file.size,
-          date: file.date ? (typeof file.date === 'string' ? file.date : new Date(file.date).toISOString()) : null,
-          path: `${path}${path.toString().endsWith('/') ? '' : '/'}${file.name}`,
+          date: file.date ? file.date.toISOString() : null,
+          path: `${path}${path.endsWith('/') ? '' : '/'}${file.name}`,
           isDirectory: file.type === 2
         });
       }
@@ -544,7 +541,7 @@ export class FtpDataAgent extends BaseAgent {
             name: file.name,
             path: fullPath,
             size: file.size,
-            date: file.date ? (typeof file.date === 'string' ? file.date : new Date(file.date).toISOString()) : null,
+            date: file.date ? file.date.toISOString() : null,
             isDirectory: false
           });
         }
@@ -750,7 +747,7 @@ export class FtpDataAgent extends BaseAgent {
         };
       }
       
-      // Stage properties from FTP for review
+      // Stage properties from FTP
       const stagingResult = await this.ftpService.stagePropertiesFromFtp(remotePath);
       
       await this.logActivity('ftp_properties_staging', `Staged properties from ${remotePath}`);
@@ -787,9 +784,7 @@ export class FtpDataAgent extends BaseAgent {
       
       // Update schedule configuration
       this.schedule.enabled = enabled;
-      if (intervalHours && typeof intervalHours === 'number' && intervalHours > 0) {
-        this.schedule.intervalHours = intervalHours;
-      }
+      this.schedule.intervalHours = intervalHours;
       
       // Clear existing scheduler if any
       if (this.scheduler) {
@@ -797,18 +792,19 @@ export class FtpDataAgent extends BaseAgent {
         this.scheduler = null;
       }
       
-      // Setup new scheduler if enabled
+      // Set up new scheduler if enabled
       if (enabled) {
-        const intervalMs = this.schedule.intervalHours * 60 * 60 * 1000;
+        const intervalMs = intervalHours * 60 * 60 * 1000;
         this.scheduler = setInterval(() => this.runScheduledSync(), intervalMs);
         
-        await this.logActivity(
-          'ftp_sync_scheduled', 
-          `Scheduled FTP sync every ${this.schedule.intervalHours} hours`
-        );
-      } else {
-        await this.logActivity('ftp_sync_disabled', 'Disabled scheduled FTP sync');
+        // Run initial sync
+        this.runScheduledSync();
       }
+      
+      await this.logActivity(
+        'ftp_sync_schedule_update',
+        `FTP sync schedule ${enabled ? 'enabled' : 'disabled'} with interval ${intervalHours} hours`
+      );
       
       return {
         success: true,
@@ -816,18 +812,19 @@ export class FtpDataAgent extends BaseAgent {
         capability: 'scheduleFtpSync',
         result: {
           enabled,
-          intervalHours: this.schedule.intervalHours,
-          nextSyncTime: this.getNextSyncTime()
+          intervalHours,
+          nextSyncTime: this.getNextSyncTime(),
+          message: enabled ? `Scheduled FTP sync every ${intervalHours} hours` : 'FTP sync schedule disabled'
         }
       };
     } catch (error: any) {
-      await this.logActivity('ftp_schedule_error', `Error scheduling FTP sync: ${error.message}`);
+      await this.logActivity('ftp_schedule_error', `FTP schedule error: ${error.message}`);
       
       return {
         success: false,
         agent: this.config.name,
         capability: 'scheduleFtpSync',
-        error: `Error scheduling FTP sync: ${error.message}`
+        error: `FTP schedule error: ${error.message}`
       };
     }
   }
@@ -837,31 +834,56 @@ export class FtpDataAgent extends BaseAgent {
    */
   private async runScheduledSync(): Promise<void> {
     try {
+      this.schedule.lastRun = new Date();
+      
+      await this.logActivity('ftp_scheduled_sync_start', 'Started scheduled FTP synchronization');
+      
       // Test connection first
       const connectionTest = await this.testFtpConnection();
-      if (!connectionTest.result.connected) {
-        await this.logActivity(
-          'ftp_scheduled_sync_error',
-          'Scheduled sync failed: Cannot connect to FTP server'
-        );
+      if (!connectionTest.success || !connectionTest.result.connected) {
+        throw new Error('FTP connection failed during scheduled sync');
+      }
+      
+      // Search for property data files
+      const searchResult = await this.searchFtpFiles({
+        options: {
+          searchString: 'property',
+          fileType: 'csv',
+          maxResults: 10,
+          recursive: true
+        }
+      });
+      
+      if (!searchResult.success || !searchResult.result.files.length) {
+        await this.logActivity('ftp_scheduled_sync_no_files', 'No property data files found during scheduled sync');
         return;
       }
       
-      // Update last run time
-      this.schedule.lastRun = new Date();
+      // Get the most recent file
+      const files = searchResult.result.files;
+      files.sort((a: any, b: any) => {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dateB - dateA; // Sort descending (newest first)
+      });
       
-      // TODO: Implement sync logic
-      // For now, just log that it ran
-      await this.logActivity(
-        'ftp_scheduled_sync_run',
-        'Scheduled sync executed'
-      );
+      const latestFile = files[0];
       
+      // Import the file
+      const importResult = await this.importFtpProperties({
+        remotePath: latestFile.path
+      });
+      
+      if (importResult.success) {
+        await this.logActivity(
+          'ftp_scheduled_sync_complete',
+          `Completed scheduled FTP sync. Imported ${importResult.result.successfulImports} properties.`
+        );
+      } else {
+        throw new Error(`Import failed: ${importResult.error}`);
+      }
     } catch (error: any) {
-      await this.logActivity(
-        'ftp_scheduled_sync_error',
-        `Scheduled sync error: ${error.message}`
-      );
+      await this.logActivity('ftp_scheduled_sync_error', `Scheduled FTP sync error: ${error.message}`);
     }
   }
   
@@ -869,12 +891,11 @@ export class FtpDataAgent extends BaseAgent {
    * Get next sync time based on schedule
    */
   private getNextSyncTime(): string | null {
-    if (!this.schedule.enabled || !this.scheduler) {
+    if (!this.schedule.enabled || !this.schedule.lastRun) {
       return null;
     }
     
-    const now = new Date();
-    const lastRun = this.schedule.lastRun || now;
+    const lastRun = this.schedule.lastRun;
     const intervalMs = this.schedule.intervalHours * 60 * 60 * 1000;
     const nextRun = new Date(lastRun.getTime() + intervalMs);
     
@@ -899,58 +920,70 @@ export class FtpDataAgent extends BaseAgent {
         };
       }
       
-      // Step 1: Download the file from FTP
+      await this.logActivity('ftp_property_use_codes_import_start', `Starting import of property use codes from ${remotePath}`);
+      
+      // Download the file first
       const downloadResult = await this.downloadFtpFile({ remotePath });
+      
       if (!downloadResult.success) {
-        return {
-          success: false,
-          agent: this.config.name,
-          capability: 'importPropertyUseCodes',
-          error: `Failed to download property use codes: ${downloadResult.error}`
-        };
+        throw new Error(`Failed to download property use codes file: ${downloadResult.error}`);
       }
       
-      // Step 2: Use the mapper to transform the data
       const localFilePath = downloadResult.result.localPath;
-      const mapper = new PropertyUseCodesMapper();
       
-      // Process and map the file
-      const mappingResult = await mapper.mapPropertyUseCodes(localFilePath);
+      // Map the property use codes to our system's format
+      const mappingResult = await PropertyUseCodesMapper.mapFromCsvFile(localFilePath);
       
-      // Step 3: Import the mapped data
-      const importResult = await this.dataImportService.importPropertyUseCodes(mappingResult.mappedData);
+      if (mappingResult.mappedProperties.length === 0) {
+        throw new Error('No property use codes could be mapped from the file');
+      }
       
       await this.logActivity(
-        'property_use_codes_import', 
-        `Imported ${importResult.total} property use codes from ${remotePath}`
+        'ftp_property_use_codes_mapping', 
+        `Mapped ${mappingResult.stats.mappedRecords} out of ${mappingResult.stats.totalRecords} property use codes`
+      );
+      
+      // Import the mapped properties
+      let importedCount = 0;
+      const importErrors: string[] = [];
+      
+      for (const property of mappingResult.mappedProperties) {
+        try {
+          await this.storage.createProperty(property);
+          importedCount++;
+        } catch (error: any) {
+          importErrors.push(`Error importing property ${property.propertyId}: ${error.message}`);
+        }
+      }
+      
+      await this.logActivity(
+        'ftp_property_use_codes_import_complete',
+        `Imported ${importedCount} out of ${mappingResult.mappedProperties.length} property use codes`
       );
       
       return {
-        success: true,
+        success: importedCount > 0,
         agent: this.config.name,
         capability: 'importPropertyUseCodes',
         result: {
           remotePath,
-          localFilePath,
           fileName: path.basename(remotePath),
-          totalCodes: importResult.total,
-          successfulImports: importResult.successfulImports,
-          failedImports: importResult.failedImports,
-          errors: importResult.errors,
+          totalRecords: mappingResult.stats.totalRecords,
+          mappedRecords: mappingResult.stats.mappedRecords,
+          importedRecords: importedCount,
+          errors: [...mappingResult.stats.errors, ...importErrors],
           importTime: new Date().toISOString()
         }
       };
+      
     } catch (error: any) {
-      await this.logActivity(
-        'property_use_codes_import_error',
-        `Error importing property use codes: ${error.message}`
-      );
+      await this.logActivity('ftp_property_use_codes_error', `Property use codes import error: ${error.message}`);
       
       return {
         success: false,
         agent: this.config.name,
         capability: 'importPropertyUseCodes',
-        error: `Error importing property use codes: ${error.message}`
+        error: `Property use codes import error: ${error.message}`
       };
     }
   }
@@ -962,8 +995,9 @@ export class FtpDataAgent extends BaseAgent {
     try {
       // Test connection
       const connectionTest = await this.testFtpConnection();
-      const connected = connectionTest.result.connected;
+      const connected = connectionTest.success && connectionTest.result.connected;
       
+      // Gather status
       const status = {
         connected,
         host: 'ftp.spatialest.com',
@@ -977,7 +1011,7 @@ export class FtpDataAgent extends BaseAgent {
         } : null
       };
       
-      await this.logActivity('ftp_status_checked', 'FTP status checked');
+      await this.logActivity('ftp_status_check', 'Checked FTP connection and sync status');
       
       return {
         success: true,
@@ -986,13 +1020,13 @@ export class FtpDataAgent extends BaseAgent {
         result: status
       };
     } catch (error: any) {
-      await this.logActivity('ftp_status_error', `Error getting FTP status: ${error.message}`);
+      await this.logActivity('ftp_status_error', `FTP status error: ${error.message}`);
       
       return {
         success: false,
         agent: this.config.name,
         capability: 'getFtpStatus',
-        error: `Error getting FTP status: ${error.message}`
+        error: `FTP status error: ${error.message}`
       };
     }
   }
