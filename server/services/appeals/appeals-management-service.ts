@@ -192,6 +192,11 @@ export class AppealsManagementService {
   
   /**
    * Update appeal status
+   * 
+   * @param appealId The ID of the appeal to update
+   * @param status The new status for the appeal
+   * @param userId The ID of the user making the update
+   * @returns The updated appeal, or null if not found
    */
   public async updateAppealStatus(
     appealId: number, 
@@ -224,6 +229,26 @@ export class AppealsManagementService {
         logger.warn(`Appeal ${appealId} status set to SCHEDULED but hearing date is not set`);
       }
       
+      // Send notification about status change
+      this.notificationService.createAppealStatusNotification(
+        appealId,
+        status,
+        userId.toString(), // Staff ID who changed the status
+        updatedAppeal.propertyId,
+        updatedAppeal.appealType
+      );
+      
+      // If appeal is assigned to a staff member, send them a notification as well
+      if (updatedAppeal.assignedTo && updatedAppeal.assignedTo !== userId) {
+        this.notificationService.createAppealStatusNotification(
+          appealId,
+          status,
+          updatedAppeal.assignedTo.toString(),
+          updatedAppeal.propertyId,
+          updatedAppeal.appealType
+        );
+      }
+      
       // Handle workflow transitions
       await this.handleAppealStatusChange(updatedAppeal, status);
       
@@ -254,6 +279,47 @@ export class AppealsManagementService {
         }
       });
       
+      // Get the appeal to access properties and send notifications
+      const appeal = await this.getAppealById(comment.appealId);
+      
+      if (appeal) {
+        // If the comment is from the appellant (property owner), notify staff assigned to the appeal
+        if (comment.userId === appeal.userId && appeal.assignedTo) {
+          await this.notificationService.sendStaffNotification(
+            appeal.assignedTo.toString(),
+            'New Appeal Comment',
+            `The appellant has added a new comment to appeal #${appeal.appealNumber}.`,
+            'appeal',
+            appeal.id.toString(),
+            'medium',
+            {
+              appealId: appeal.id,
+              appealNumber: appeal.appealNumber,
+              commentId: createdComment.id,
+              type: 'appeal_comment_added',
+              isInternal: comment.internalOnly
+            }
+          );
+        } 
+        // If the comment is from staff and not marked as internal, notify the appellant
+        else if (comment.userId !== appeal.userId && !comment.internalOnly) {
+          await this.notificationService.sendUserNotification(
+            appeal.userId.toString(),
+            'New Appeal Comment',
+            `A staff member has added a new comment to your appeal #${appeal.appealNumber}.`,
+            'appeal',
+            appeal.id.toString(),
+            'medium',
+            {
+              appealId: appeal.id,
+              appealNumber: appeal.appealNumber,
+              commentId: createdComment.id,
+              type: 'appeal_comment_added'
+            }
+          );
+        }
+      }
+      
       return createdComment;
     } catch (error) {
       logger.error(`Error adding comment to appeal ${comment.appealId}: ${error instanceof Error ? error.message : String(error)}`);
@@ -280,6 +346,48 @@ export class AppealsManagementService {
           uploadedBy: evidence.uploadedBy
         }
       });
+      
+      // Get the appeal to access properties and send notifications
+      const appeal = await this.getAppealById(evidence.appealId);
+      
+      if (appeal) {
+        // If the evidence is from the appellant (property owner), notify staff assigned to the appeal
+        if (evidence.uploadedBy === appeal.userId && appeal.assignedTo) {
+          await this.notificationService.sendStaffNotification(
+            appeal.assignedTo.toString(),
+            'New Appeal Evidence',
+            `The appellant has added new evidence (${evidence.documentType}) to appeal #${appeal.appealNumber}.`,
+            'appeal',
+            appeal.id.toString(),
+            'high',
+            {
+              appealId: appeal.id,
+              appealNumber: appeal.appealNumber,
+              evidenceId: createdEvidence.id,
+              documentType: evidence.documentType,
+              type: 'appeal_evidence_added'
+            }
+          );
+        } 
+        // If the evidence is from staff, notify the appellant
+        else if (evidence.uploadedBy !== appeal.userId) {
+          await this.notificationService.sendUserNotification(
+            appeal.userId.toString(),
+            'New Appeal Evidence',
+            `Staff has added new evidence (${evidence.documentType}) to your appeal #${appeal.appealNumber}.`,
+            'appeal',
+            appeal.id.toString(),
+            'high',
+            {
+              appealId: appeal.id,
+              appealNumber: appeal.appealNumber,
+              evidenceId: createdEvidence.id,
+              documentType: evidence.documentType,
+              type: 'appeal_evidence_added'
+            }
+          );
+        }
+      }
       
       return createdEvidence;
     } catch (error) {
@@ -657,6 +765,13 @@ export class AppealsManagementService {
     userId: number
   ): Promise<Appeal | null> {
     try {
+      // Get the appeal before updating
+      const appeal = await this.getAppealById(appealId);
+      
+      if (!appeal) {
+        return null;
+      }
+      
       // Update the appeal status
       const updatedAppeal = await this.storage.updateAppeal(appealId, {
         status: AppealStatus.WITHDRAWN,
@@ -679,6 +794,43 @@ export class AppealsManagementService {
           withdrawnBy: userId
         }
       });
+      
+      // Send notification to appropriate party based on who withdrew it
+      if (userId === appeal.userId) {
+        // Appellant withdrew their own appeal - notify staff (if assigned)
+        if (appeal.assignedTo) {
+          await this.notificationService.sendStaffNotification(
+            appeal.assignedTo.toString(),
+            'Appeal Withdrawn',
+            `Appeal #${appeal.appealNumber} has been withdrawn by the appellant. Reason: ${withdrawalReason}`,
+            'appeal',
+            appeal.id.toString(),
+            'medium',
+            {
+              appealId: appeal.id,
+              appealNumber: appeal.appealNumber,
+              type: 'appeal_withdrawn',
+              withdrawalReason
+            }
+          );
+        }
+      } else {
+        // Staff withdrew the appeal - notify appellant
+        await this.notificationService.sendUserNotification(
+          appeal.userId.toString(),
+          'Appeal Withdrawn',
+          `Your appeal #${appeal.appealNumber} has been withdrawn. Reason: ${withdrawalReason}`,
+          'appeal',
+          appeal.id.toString(),
+          'medium',
+          {
+            appealId: appeal.id,
+            appealNumber: appeal.appealNumber,
+            type: 'appeal_withdrawn',
+            withdrawalReason
+          }
+        );
+      }
       
       return updatedAppeal;
     } catch (error) {
