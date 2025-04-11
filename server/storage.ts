@@ -16,7 +16,15 @@ import {
   comparableSales, ComparableSale, InsertComparableSale,
   comparableSalesAnalyses, ComparableSalesAnalysis, InsertComparableSalesAnalysis,
   comparableAnalysisEntries, ComparableAnalysisEntry, InsertComparableAnalysisEntry,
-  importStaging, StagedProperty, InsertStagedProperty
+  importStaging, StagedProperty, InsertStagedProperty,
+  validationRules, ValidationRule, InsertValidationRule,
+  validationIssues, ValidationIssue, InsertValidationIssue,
+  workflowDefinitions, WorkflowDefinition, InsertWorkflowDefinition,
+  workflowInstances, WorkflowInstance, InsertWorkflowInstance,
+  workflowStepHistory, WorkflowStepHistory, InsertWorkflowStepHistory,
+  complianceReports, ComplianceReport, InsertComplianceReport,
+  // Enum types needed for validation and workflow
+  RuleCategory, RuleLevel, EntityType, IssueStatus
 } from "@shared/schema";
 import { MarketTrend, EconomicIndicator } from "./services/market-prediction-model";
 import { RegulatoryFramework } from "./services/risk-assessment-engine";
@@ -155,6 +163,115 @@ export interface IStorage {
   getRegulatoryFramework(region: string): Promise<any>;
   getHistoricalRegulatoryChanges(region: string): Promise<any[]>;
   getEnvironmentalRisks(propertyId: string): Promise<any>;
+  
+  // Validation Rules methods
+  createValidationRule(rule: InsertValidationRule): Promise<ValidationRule>;
+  getValidationRuleById(ruleId: string): Promise<ValidationRule | null>;
+  getAllValidationRules(): Promise<ValidationRule[]>;
+  getValidationRulesByEntityType(entityType: string): Promise<ValidationRule[]>;
+  updateValidationRule(ruleId: string, updates: Partial<ValidationRule>): Promise<ValidationRule | null>;
+  deleteValidationRule(ruleId: string): Promise<boolean>;
+  
+  // Validation Issues methods
+  createValidationIssue(issue: Omit<ValidationIssue, 'id' | 'createdAt'>): Promise<ValidationIssue>;
+  getValidationIssueById(issueId: string): Promise<ValidationIssue | null>;
+  getValidationIssues(options?: { 
+    propertyId?: string, 
+    entityType?: string, 
+    entityId?: string, 
+    ruleId?: string, 
+    level?: string, 
+    status?: string 
+  }): Promise<ValidationIssue[]>;
+  updateValidationIssue(issueId: string, updates: Partial<ValidationIssue>): Promise<ValidationIssue | null>;
+  deleteValidationIssue(issueId: string): Promise<boolean>;
+  
+  // Workflow Definition methods
+  createWorkflowDefinition(workflow: InsertWorkflowDefinition): Promise<WorkflowDefinition>;
+  getWorkflowDefinitionById(definitionId: string): Promise<WorkflowDefinition | null>;
+  getAllWorkflowDefinitions(): Promise<WorkflowDefinition[]>;
+  updateWorkflowDefinition(definitionId: string, updates: Partial<WorkflowDefinition>): Promise<WorkflowDefinition | null>;
+  deleteWorkflowDefinition(definitionId: string): Promise<boolean>;
+  
+  // Workflow Instance methods
+  createWorkflowInstance(instance: InsertWorkflowInstance): Promise<WorkflowInstance>;
+  getWorkflowInstanceById(instanceId: string): Promise<WorkflowInstance | null>;
+  getWorkflowInstances(options?: { 
+    status?: string, 
+    definitionId?: string, 
+    entityType?: string, 
+    entityId?: string, 
+    assignedTo?: number, 
+    priority?: string,
+    startedAfter?: Date,
+    startedBefore?: Date,
+    dueAfter?: Date,
+    dueBefore?: Date
+  }): Promise<WorkflowInstance[]>;
+  updateWorkflowInstance(instanceId: string, updates: Partial<WorkflowInstance>): Promise<WorkflowInstance | null>;
+  deleteWorkflowInstance(instanceId: string): Promise<boolean>;
+  
+  // Workflow Step History methods
+  createWorkflowStepHistory(stepHistory: InsertWorkflowStepHistory): Promise<WorkflowStepHistory>;
+  getWorkflowStepHistoryByInstance(instanceId: string): Promise<WorkflowStepHistory[]>;
+  getStepHistoryByInstanceAndStep(instanceId: string, stepId: string): Promise<WorkflowStepHistory[]>;
+  updateWorkflowStepHistory(id: number, updates: Partial<WorkflowStepHistory>): Promise<WorkflowStepHistory | null>;
+  
+  // Compliance Report methods
+  createComplianceReport(report: InsertComplianceReport): Promise<ComplianceReport>;
+  getComplianceReportById(reportId: string): Promise<ComplianceReport | null>;
+  getComplianceReportsByYear(year: number): Promise<ComplianceReport[]>;
+  updateComplianceReport(reportId: string, updates: Partial<ComplianceReport>): Promise<ComplianceReport | null>;
+  
+  // Validation methods
+  createValidationRule(rule: Omit<ValidationRule, 'id' | 'createdAt' | 'updatedAt'>): Promise<ValidationRule>;
+  getValidationRuleById(ruleId: string): Promise<ValidationRule | null>;
+  getAllValidationRules(options?: { 
+    category?: RuleCategory, 
+    level?: RuleLevel,
+    entityType?: EntityType,
+    active?: boolean 
+  }): Promise<ValidationRule[]>;
+  getValidationRulesByEntityType(entityType: EntityType): Promise<ValidationRule[]>;
+  updateValidationRule(ruleId: string, updates: Partial<ValidationRule>): Promise<ValidationRule | null>;
+  deleteValidationRule(ruleId: string): Promise<boolean>;
+  
+  // Validation issues methods
+  createValidationIssue(issue: Omit<ValidationIssue, 'id' | 'createdAt'>): Promise<ValidationIssue>;
+  getValidationIssueById(issueId: string): Promise<ValidationIssue | null>;
+  getValidationIssues(options?: {
+    entityId?: string, 
+    entityType?: EntityType,
+    ruleId?: string,
+    level?: RuleLevel,
+    status?: IssueStatus,
+    createdAfter?: Date,
+    createdBefore?: Date
+  }): Promise<ValidationIssue[]>;
+  updateValidationIssue(issueId: string, updates: Partial<ValidationIssue>): Promise<ValidationIssue | null>;
+  resolveValidationIssue(issueId: string, resolution: string, userId?: number): Promise<ValidationIssue | null>;
+  acknowledgeValidationIssue(issueId: string, notes?: string): Promise<ValidationIssue | null>;
+  waiveValidationIssue(issueId: string, reason: string, userId?: number): Promise<ValidationIssue | null>;
+  
+  // Workflow methods
+  createWorkflowDefinition(definition: Omit<WorkflowDefinition, 'definitionId' | 'createdAt'>): Promise<WorkflowDefinition>;
+  getWorkflowDefinitionById(definitionId: string): Promise<WorkflowDefinition | null>;
+  getAllWorkflowDefinitions(active?: boolean): Promise<WorkflowDefinition[]>;
+  updateWorkflowDefinition(definitionId: string, updates: Partial<WorkflowDefinition>): Promise<WorkflowDefinition | null>;
+  activateWorkflowDefinition(definitionId: string): Promise<boolean>;
+  deactivateWorkflowDefinition(definitionId: string): Promise<boolean>;
+  
+  // Workflow instance methods
+  createWorkflowInstance(instance: Omit<WorkflowInstance, 'instanceId' | 'createdAt' | 'lastUpdated'>): Promise<WorkflowInstance>;
+  getWorkflowInstanceById(instanceId: string): Promise<WorkflowInstance | null>;
+  getWorkflowInstancesByDefinitionId(definitionId: string): Promise<WorkflowInstance[]>;
+  getWorkflowInstancesByEntityId(entityId: string, entityType: string): Promise<WorkflowInstance[]>;
+  getWorkflowInstancesByAssignee(assigneeId: number): Promise<WorkflowInstance[]>;
+  updateWorkflowInstance(instanceId: string, updates: Partial<WorkflowInstance>): Promise<WorkflowInstance | null>;
+  
+  // Workflow step history methods
+  createWorkflowStepHistory(stepHistory: Omit<WorkflowStepHistory, 'id' | 'createdAt'>): Promise<WorkflowStepHistory>;
+  getWorkflowStepHistoryByInstanceId(instanceId: string): Promise<WorkflowStepHistory[]>;
 }
 
 // Implement the in-memory storage
@@ -177,6 +294,12 @@ export class MemStorage implements IStorage {
   private comparableSalesAnalyses: Map<string, ComparableSalesAnalysis>;
   private comparableAnalysisEntries: Map<number, ComparableAnalysisEntry>;
   private stagedProperties: Map<string, StagedProperty>;
+  private validationRules: Map<string, ValidationRule>;
+  private validationIssues: Map<string, ValidationIssue>;
+  private workflowDefinitions: Map<string, WorkflowDefinition>;
+  private workflowInstances: Map<string, WorkflowInstance>;
+  private workflowStepHistory: Map<number, WorkflowStepHistory>;
+  private complianceReports: Map<string, ComplianceReport>;
   
   private currentUserId: number;
   private currentPropertyId: number;
@@ -194,6 +317,7 @@ export class MemStorage implements IStorage {
   private currentComparableSaleId: number;
   private currentComparableAnalysisEntryId: number;
   private currentMCPToolExecutionLogId: number;
+  private currentWorkflowStepHistoryId: number;
 
   constructor() {
     this.users = new Map();
@@ -214,6 +338,12 @@ export class MemStorage implements IStorage {
     this.comparableSalesAnalyses = new Map();
     this.comparableAnalysisEntries = new Map();
     this.stagedProperties = new Map<string, StagedProperty>();
+    this.validationRules = new Map<string, ValidationRule>();
+    this.validationIssues = new Map<string, ValidationIssue>();
+    this.workflowDefinitions = new Map<string, WorkflowDefinition>();
+    this.workflowInstances = new Map<string, WorkflowInstance>();
+    this.workflowStepHistory = new Map<number, WorkflowStepHistory>();
+    this.complianceReports = new Map<string, ComplianceReport>();
     
     this.currentUserId = 1;
     this.currentPropertyId = 1;
@@ -231,6 +361,7 @@ export class MemStorage implements IStorage {
     this.currentComparableSaleId = 1;
     this.currentComparableAnalysisEntryId = 1;
     this.currentMCPToolExecutionLogId = 1;
+    this.currentWorkflowStepHistoryId = 1;
     
     // Initialize with sample data
     this.seedData();
@@ -665,6 +796,484 @@ export class MemStorage implements IStorage {
     };
     this.mcpToolExecutionLogs.set(id, mcpToolExecutionLog);
     return mcpToolExecutionLog;
+  }
+
+  // Validation methods
+  async createValidationRule(rule: Omit<ValidationRule, 'id' | 'createdAt' | 'updatedAt'>): Promise<ValidationRule> {
+    const id = `rule_${crypto.randomUUID()}`;
+    const timestamp = new Date();
+    const validationRule: ValidationRule = {
+      ...rule,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+    
+    this.validationRules.set(id, validationRule);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Created validation rule: ${rule.name}`,
+      entityType: 'validation_rule',
+      entityId: id
+    });
+    
+    return validationRule;
+  }
+  
+  async getValidationRuleById(ruleId: string): Promise<ValidationRule | null> {
+    const rule = this.validationRules.get(ruleId);
+    return rule || null;
+  }
+  
+  async getAllValidationRules(options?: { 
+    category?: RuleCategory, 
+    level?: RuleLevel,
+    entityType?: EntityType,
+    active?: boolean 
+  }): Promise<ValidationRule[]> {
+    let rules = Array.from(this.validationRules.values());
+    
+    if (options) {
+      if (options.category !== undefined) {
+        rules = rules.filter(rule => rule.category === options.category);
+      }
+      
+      if (options.level !== undefined) {
+        rules = rules.filter(rule => rule.level === options.level);
+      }
+      
+      if (options.entityType !== undefined) {
+        rules = rules.filter(rule => rule.entityType === options.entityType);
+      }
+      
+      if (options.active !== undefined) {
+        rules = rules.filter(rule => rule.active === options.active);
+      }
+    }
+    
+    return rules;
+  }
+  
+  async getValidationRulesByEntityType(entityType: EntityType): Promise<ValidationRule[]> {
+    return Array.from(this.validationRules.values())
+      .filter(rule => rule.entityType === entityType);
+  }
+  
+  async updateValidationRule(ruleId: string, updates: Partial<ValidationRule>): Promise<ValidationRule | null> {
+    const rule = this.validationRules.get(ruleId);
+    if (!rule) return null;
+    
+    const timestamp = new Date();
+    const updatedRule = { 
+      ...rule, 
+      ...updates, 
+      updatedAt: timestamp 
+    };
+    
+    this.validationRules.set(ruleId, updatedRule);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Updated validation rule: ${rule.name}`,
+      entityType: 'validation_rule',
+      entityId: ruleId
+    });
+    
+    return updatedRule;
+  }
+  
+  async deleteValidationRule(ruleId: string): Promise<boolean> {
+    const rule = this.validationRules.get(ruleId);
+    if (!rule) return false;
+    
+    const result = this.validationRules.delete(ruleId);
+    
+    if (result) {
+      // Create system activity
+      await this.createSystemActivity({
+        agentId: 1, // Data Management Agent
+        activity: `Deleted validation rule: ${rule.name}`,
+        entityType: 'validation_rule',
+        entityId: ruleId
+      });
+    }
+    
+    return result;
+  }
+  
+  // Validation issues methods
+  async createValidationIssue(issue: Omit<ValidationIssue, 'id' | 'createdAt'>): Promise<ValidationIssue> {
+    const id = `issue_${crypto.randomUUID()}`;
+    const timestamp = new Date();
+    const validationIssue: ValidationIssue = {
+      ...issue,
+      id,
+      createdAt: timestamp
+    };
+    
+    this.validationIssues.set(id, validationIssue);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Created validation issue for ${issue.entityType} ${issue.entityId}: ${issue.message}`,
+      entityType: issue.entityType,
+      entityId: issue.entityId
+    });
+    
+    return validationIssue;
+  }
+  
+  async getValidationIssueById(issueId: string): Promise<ValidationIssue | null> {
+    const issue = this.validationIssues.get(issueId);
+    return issue || null;
+  }
+  
+  async getValidationIssues(options?: {
+    entityId?: string, 
+    entityType?: EntityType,
+    ruleId?: string,
+    level?: RuleLevel,
+    status?: IssueStatus,
+    createdAfter?: Date,
+    createdBefore?: Date
+  }): Promise<ValidationIssue[]> {
+    let issues = Array.from(this.validationIssues.values());
+    
+    if (options) {
+      if (options.entityId !== undefined) {
+        issues = issues.filter(issue => issue.entityId === options.entityId);
+      }
+      
+      if (options.entityType !== undefined) {
+        issues = issues.filter(issue => issue.entityType === options.entityType);
+      }
+      
+      if (options.ruleId !== undefined) {
+        issues = issues.filter(issue => issue.ruleId === options.ruleId);
+      }
+      
+      if (options.level !== undefined) {
+        issues = issues.filter(issue => issue.level === options.level);
+      }
+      
+      if (options.status !== undefined) {
+        issues = issues.filter(issue => issue.status === options.status);
+      }
+      
+      if (options.createdAfter !== undefined) {
+        issues = issues.filter(issue => issue.createdAt >= options.createdAfter!);
+      }
+      
+      if (options.createdBefore !== undefined) {
+        issues = issues.filter(issue => issue.createdAt <= options.createdBefore!);
+      }
+    }
+    
+    return issues;
+  }
+  
+  async updateValidationIssue(issueId: string, updates: Partial<ValidationIssue>): Promise<ValidationIssue | null> {
+    const issue = this.validationIssues.get(issueId);
+    if (!issue) return null;
+    
+    const updatedIssue = { 
+      ...issue, 
+      ...updates
+    };
+    
+    this.validationIssues.set(issueId, updatedIssue);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Updated validation issue: ${issue.message}`,
+      entityType: issue.entityType,
+      entityId: issue.entityId
+    });
+    
+    return updatedIssue;
+  }
+  
+  async resolveValidationIssue(issueId: string, resolution: string, userId?: number): Promise<ValidationIssue | null> {
+    const issue = this.validationIssues.get(issueId);
+    if (!issue) return null;
+    
+    const resolvedIssue = { 
+      ...issue, 
+      status: 'resolved' as IssueStatus,
+      resolution,
+      resolvedBy: userId || null,
+      resolvedAt: new Date()
+    };
+    
+    this.validationIssues.set(issueId, resolvedIssue);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Resolved validation issue: ${resolution}`,
+      entityType: issue.entityType,
+      entityId: issue.entityId
+    });
+    
+    return resolvedIssue;
+  }
+  
+  async acknowledgeValidationIssue(issueId: string, notes?: string): Promise<ValidationIssue | null> {
+    const issue = this.validationIssues.get(issueId);
+    if (!issue) return null;
+    
+    const acknowledgedIssue = { 
+      ...issue, 
+      status: 'acknowledged' as IssueStatus,
+      notes: notes || issue.notes
+    };
+    
+    this.validationIssues.set(issueId, acknowledgedIssue);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Acknowledged validation issue: ${issue.message}`,
+      entityType: issue.entityType,
+      entityId: issue.entityId
+    });
+    
+    return acknowledgedIssue;
+  }
+  
+  async waiveValidationIssue(issueId: string, reason: string, userId?: number): Promise<ValidationIssue | null> {
+    const issue = this.validationIssues.get(issueId);
+    if (!issue) return null;
+    
+    const waivedIssue = { 
+      ...issue, 
+      status: 'waived' as IssueStatus,
+      waiver: reason,
+      waivedBy: userId || null,
+      waivedAt: new Date()
+    };
+    
+    this.validationIssues.set(issueId, waivedIssue);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Waived validation issue: ${reason}`,
+      entityType: issue.entityType,
+      entityId: issue.entityId
+    });
+    
+    return waivedIssue;
+  }
+  
+  // Workflow methods
+  async createWorkflowDefinition(definition: Omit<WorkflowDefinition, 'definitionId' | 'createdAt'>): Promise<WorkflowDefinition> {
+    const definitionId = `wfdef_${crypto.randomUUID()}`;
+    const timestamp = new Date();
+    const workflowDefinition: WorkflowDefinition = {
+      ...definition,
+      definitionId,
+      createdAt: timestamp
+    };
+    
+    this.workflowDefinitions.set(definitionId, workflowDefinition);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Created workflow definition: ${definition.name}`,
+      entityType: 'workflow_definition',
+      entityId: definitionId
+    });
+    
+    return workflowDefinition;
+  }
+  
+  async getWorkflowDefinitionById(definitionId: string): Promise<WorkflowDefinition | null> {
+    const definition = this.workflowDefinitions.get(definitionId);
+    return definition || null;
+  }
+  
+  async getAllWorkflowDefinitions(active?: boolean): Promise<WorkflowDefinition[]> {
+    let definitions = Array.from(this.workflowDefinitions.values());
+    
+    if (active !== undefined) {
+      definitions = definitions.filter(def => def.isActive === active);
+    }
+    
+    return definitions;
+  }
+  
+  async updateWorkflowDefinition(definitionId: string, updates: Partial<WorkflowDefinition>): Promise<WorkflowDefinition | null> {
+    const definition = this.workflowDefinitions.get(definitionId);
+    if (!definition) return null;
+    
+    const updatedDefinition = { 
+      ...definition, 
+      ...updates 
+    };
+    
+    this.workflowDefinitions.set(definitionId, updatedDefinition);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Updated workflow definition: ${definition.name}`,
+      entityType: 'workflow_definition',
+      entityId: definitionId
+    });
+    
+    return updatedDefinition;
+  }
+  
+  async activateWorkflowDefinition(definitionId: string): Promise<boolean> {
+    const definition = this.workflowDefinitions.get(definitionId);
+    if (!definition) return false;
+    
+    const activatedDefinition = { 
+      ...definition, 
+      isActive: true 
+    };
+    
+    this.workflowDefinitions.set(definitionId, activatedDefinition);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Activated workflow definition: ${definition.name}`,
+      entityType: 'workflow_definition',
+      entityId: definitionId
+    });
+    
+    return true;
+  }
+  
+  async deactivateWorkflowDefinition(definitionId: string): Promise<boolean> {
+    const definition = this.workflowDefinitions.get(definitionId);
+    if (!definition) return false;
+    
+    const deactivatedDefinition = { 
+      ...definition, 
+      isActive: false 
+    };
+    
+    this.workflowDefinitions.set(definitionId, deactivatedDefinition);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Deactivated workflow definition: ${definition.name}`,
+      entityType: 'workflow_definition',
+      entityId: definitionId
+    });
+    
+    return true;
+  }
+  
+  // Workflow instance methods
+  async createWorkflowInstance(instance: Omit<WorkflowInstance, 'instanceId' | 'createdAt' | 'lastUpdated'>): Promise<WorkflowInstance> {
+    const instanceId = `wf_${crypto.randomUUID()}`;
+    const timestamp = new Date();
+    const workflowInstance: WorkflowInstance = {
+      ...instance,
+      instanceId,
+      createdAt: timestamp,
+      lastUpdated: timestamp
+    };
+    
+    this.workflowInstances.set(instanceId, workflowInstance);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Created workflow instance for definition: ${instance.definitionId}`,
+      entityType: instance.entityType,
+      entityId: instance.entityId
+    });
+    
+    return workflowInstance;
+  }
+  
+  async getWorkflowInstanceById(instanceId: string): Promise<WorkflowInstance | null> {
+    const instance = this.workflowInstances.get(instanceId);
+    return instance || null;
+  }
+  
+  async getWorkflowInstancesByDefinitionId(definitionId: string): Promise<WorkflowInstance[]> {
+    return Array.from(this.workflowInstances.values())
+      .filter(instance => instance.definitionId === definitionId);
+  }
+  
+  async getWorkflowInstancesByEntityId(entityId: string, entityType: string): Promise<WorkflowInstance[]> {
+    return Array.from(this.workflowInstances.values())
+      .filter(instance => instance.entityId === entityId && instance.entityType === entityType);
+  }
+  
+  async getWorkflowInstancesByAssignee(assigneeId: number): Promise<WorkflowInstance[]> {
+    return Array.from(this.workflowInstances.values())
+      .filter(instance => instance.assigneeId === assigneeId);
+  }
+  
+  async updateWorkflowInstance(instanceId: string, updates: Partial<WorkflowInstance>): Promise<WorkflowInstance | null> {
+    const instance = this.workflowInstances.get(instanceId);
+    if (!instance) return null;
+    
+    const timestamp = new Date();
+    const updatedInstance = { 
+      ...instance, 
+      ...updates, 
+      lastUpdated: timestamp 
+    };
+    
+    this.workflowInstances.set(instanceId, updatedInstance);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Updated workflow instance: ${instance.instanceId}`,
+      entityType: instance.entityType,
+      entityId: instance.entityId
+    });
+    
+    return updatedInstance;
+  }
+  
+  // Workflow step history methods
+  async createWorkflowStepHistory(stepHistory: Omit<WorkflowStepHistory, 'id' | 'createdAt'>): Promise<WorkflowStepHistory> {
+    const id = this.currentWorkflowStepHistoryId++;
+    const timestamp = new Date();
+    const workflowStepHistory: WorkflowStepHistory = {
+      ...stepHistory,
+      id,
+      createdAt: timestamp
+    };
+    
+    this.workflowStepHistory.set(id, workflowStepHistory);
+    
+    // Get the workflow instance to reference in the activity log
+    const instance = await this.getWorkflowInstanceById(stepHistory.instanceId);
+    if (instance) {
+      // Create system activity
+      await this.createSystemActivity({
+        agentId: 1, // Data Management Agent
+        activity: `Workflow step transition: ${stepHistory.fromStep} → ${stepHistory.toStep}`,
+        entityType: instance.entityType,
+        entityId: instance.entityId
+      });
+    }
+    
+    return workflowStepHistory;
+  }
+  
+  async getWorkflowStepHistoryByInstanceId(instanceId: string): Promise<WorkflowStepHistory[]> {
+    return Array.from(this.workflowStepHistory.values())
+      .filter(history => history.instanceId === instanceId)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
 
   async getMCPToolExecutionLogs(limit: number = 100): Promise<MCPToolExecutionLog[]> {
@@ -2377,6 +2986,345 @@ export class PgStorage implements IStorage {
       .from(mcpToolExecutionLogs)
       .orderBy(desc(mcpToolExecutionLogs.createdAt))
       .limit(limit);
+      
+    return results;
+  }
+  
+  // Validation methods
+  async createValidationRule(rule: Omit<ValidationRule, 'id' | 'createdAt' | 'updatedAt'>): Promise<ValidationRule> {
+    const timestamp = new Date();
+    const result = await this.db.insert(validationRules).values({
+      ...rule,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    }).returning();
+    
+    return result[0];
+  }
+  
+  async getValidationRuleById(ruleId: string): Promise<ValidationRule | null> {
+    const results = await this.db.select()
+      .from(validationRules)
+      .where(eq(validationRules.id, ruleId));
+      
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async getAllValidationRules(options?: { 
+    category?: RuleCategory, 
+    level?: RuleLevel,
+    entityType?: EntityType,
+    active?: boolean 
+  }): Promise<ValidationRule[]> {
+    let query = this.db.select().from(validationRules);
+    
+    if (options) {
+      if (options.category !== undefined) {
+        query = query.where(eq(validationRules.category, options.category));
+      }
+      
+      if (options.level !== undefined) {
+        query = query.where(eq(validationRules.level, options.level));
+      }
+      
+      if (options.entityType !== undefined) {
+        query = query.where(eq(validationRules.entityType, options.entityType));
+      }
+      
+      if (options.active !== undefined) {
+        query = query.where(eq(validationRules.isActive, options.active));
+      }
+    }
+    
+    return await query;
+  }
+  
+  async getValidationRulesByEntityType(entityType: EntityType): Promise<ValidationRule[]> {
+    const results = await this.db.select()
+      .from(validationRules)
+      .where(eq(validationRules.entityType, entityType));
+      
+    return results;
+  }
+  
+  async updateValidationRule(ruleId: string, updates: Partial<ValidationRule>): Promise<ValidationRule | null> {
+    const timestamp = new Date();
+    const updatedData = {
+      ...updates,
+      updatedAt: timestamp
+    };
+    
+    const results = await this.db.update(validationRules)
+      .set(updatedData)
+      .where(eq(validationRules.id, ruleId))
+      .returning();
+      
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async deleteValidationRule(ruleId: string): Promise<boolean> {
+    const results = await this.db.delete(validationRules)
+      .where(eq(validationRules.id, ruleId))
+      .returning();
+      
+    return results.length > 0;
+  }
+  
+  // Validation issues methods
+  async createValidationIssue(issue: Omit<ValidationIssue, 'id' | 'createdAt'>): Promise<ValidationIssue> {
+    const timestamp = new Date();
+    const results = await this.db.insert(validationIssues).values({
+      ...issue,
+      createdAt: timestamp
+    }).returning();
+    
+    return results[0];
+  }
+  
+  async getValidationIssueById(issueId: string): Promise<ValidationIssue | null> {
+    const results = await this.db.select()
+      .from(validationIssues)
+      .where(eq(validationIssues.id, issueId));
+      
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async getValidationIssues(options?: {
+    entityId?: string, 
+    entityType?: EntityType,
+    ruleId?: string,
+    level?: RuleLevel,
+    status?: IssueStatus,
+    createdAfter?: Date,
+    createdBefore?: Date
+  }): Promise<ValidationIssue[]> {
+    let query = this.db.select().from(validationIssues);
+    
+    if (options) {
+      if (options.entityId !== undefined) {
+        query = query.where(eq(validationIssues.entityId, options.entityId));
+      }
+      
+      if (options.entityType !== undefined) {
+        query = query.where(eq(validationIssues.entityType, options.entityType));
+      }
+      
+      if (options.ruleId !== undefined) {
+        query = query.where(eq(validationIssues.ruleId, options.ruleId));
+      }
+      
+      if (options.level !== undefined) {
+        query = query.where(eq(validationIssues.level, options.level));
+      }
+      
+      if (options.status !== undefined) {
+        query = query.where(eq(validationIssues.status, options.status));
+      }
+      
+      if (options.createdAfter !== undefined) {
+        query = query.where(sql`${validationIssues.createdAt} >= ${options.createdAfter}`);
+      }
+      
+      if (options.createdBefore !== undefined) {
+        query = query.where(sql`${validationIssues.createdAt} <= ${options.createdBefore}`);
+      }
+    }
+    
+    return await query;
+  }
+  
+  async updateValidationIssue(issueId: string, updates: Partial<ValidationIssue>): Promise<ValidationIssue | null> {
+    const results = await this.db.update(validationIssues)
+      .set(updates)
+      .where(eq(validationIssues.id, issueId))
+      .returning();
+      
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async resolveValidationIssue(issueId: string, resolution: string, userId?: number): Promise<ValidationIssue | null> {
+    const timestamp = new Date();
+    const updates = {
+      status: 'resolved' as IssueStatus,
+      resolution,
+      resolvedBy: userId || null,
+      resolvedAt: timestamp
+    };
+    
+    const results = await this.db.update(validationIssues)
+      .set(updates)
+      .where(eq(validationIssues.id, issueId))
+      .returning();
+      
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async acknowledgeValidationIssue(issueId: string, notes?: string): Promise<ValidationIssue | null> {
+    const updates: any = {
+      status: 'acknowledged' as IssueStatus
+    };
+    
+    if (notes !== undefined) {
+      updates.notes = notes;
+    }
+    
+    const results = await this.db.update(validationIssues)
+      .set(updates)
+      .where(eq(validationIssues.id, issueId))
+      .returning();
+      
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async waiveValidationIssue(issueId: string, reason: string, userId?: number): Promise<ValidationIssue | null> {
+    const timestamp = new Date();
+    const updates = {
+      status: 'waived' as IssueStatus,
+      waiver: reason,
+      waivedBy: userId || null,
+      waivedAt: timestamp
+    };
+    
+    const results = await this.db.update(validationIssues)
+      .set(updates)
+      .where(eq(validationIssues.id, issueId))
+      .returning();
+      
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  // Workflow methods
+  async createWorkflowDefinition(definition: Omit<WorkflowDefinition, 'definitionId' | 'createdAt'>): Promise<WorkflowDefinition> {
+    const timestamp = new Date();
+    const results = await this.db.insert(workflowDefinitions).values({
+      ...definition,
+      createdAt: timestamp
+    }).returning();
+    
+    return results[0];
+  }
+  
+  async getWorkflowDefinitionById(definitionId: string): Promise<WorkflowDefinition | null> {
+    const results = await this.db.select()
+      .from(workflowDefinitions)
+      .where(eq(workflowDefinitions.definitionId, definitionId));
+      
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async getAllWorkflowDefinitions(active?: boolean): Promise<WorkflowDefinition[]> {
+    let query = this.db.select().from(workflowDefinitions);
+    
+    if (active !== undefined) {
+      query = query.where(eq(workflowDefinitions.isActive, active));
+    }
+    
+    return await query;
+  }
+  
+  async updateWorkflowDefinition(definitionId: string, updates: Partial<WorkflowDefinition>): Promise<WorkflowDefinition | null> {
+    const results = await this.db.update(workflowDefinitions)
+      .set(updates)
+      .where(eq(workflowDefinitions.definitionId, definitionId))
+      .returning();
+      
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async activateWorkflowDefinition(definitionId: string): Promise<boolean> {
+    const results = await this.db.update(workflowDefinitions)
+      .set({ isActive: true })
+      .where(eq(workflowDefinitions.definitionId, definitionId))
+      .returning();
+      
+    return results.length > 0;
+  }
+  
+  async deactivateWorkflowDefinition(definitionId: string): Promise<boolean> {
+    const results = await this.db.update(workflowDefinitions)
+      .set({ isActive: false })
+      .where(eq(workflowDefinitions.definitionId, definitionId))
+      .returning();
+      
+    return results.length > 0;
+  }
+  
+  // Workflow instance methods
+  async createWorkflowInstance(instance: Omit<WorkflowInstance, 'instanceId' | 'createdAt' | 'lastUpdated'>): Promise<WorkflowInstance> {
+    const timestamp = new Date();
+    const results = await this.db.insert(workflowInstances).values({
+      ...instance,
+      createdAt: timestamp,
+      lastUpdated: timestamp
+    }).returning();
+    
+    return results[0];
+  }
+  
+  async getWorkflowInstanceById(instanceId: string): Promise<WorkflowInstance | null> {
+    const results = await this.db.select()
+      .from(workflowInstances)
+      .where(eq(workflowInstances.instanceId, instanceId));
+      
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async getWorkflowInstancesByDefinitionId(definitionId: string): Promise<WorkflowInstance[]> {
+    const results = await this.db.select()
+      .from(workflowInstances)
+      .where(eq(workflowInstances.definitionId, definitionId));
+      
+    return results;
+  }
+  
+  async getWorkflowInstancesByEntityId(entityId: string, entityType: string): Promise<WorkflowInstance[]> {
+    const results = await this.db.select()
+      .from(workflowInstances)
+      .where(eq(workflowInstances.entityId, entityId))
+      .where(eq(workflowInstances.entityType, entityType));
+      
+    return results;
+  }
+  
+  async getWorkflowInstancesByAssignee(assigneeId: number): Promise<WorkflowInstance[]> {
+    const results = await this.db.select()
+      .from(workflowInstances)
+      .where(eq(workflowInstances.assignedTo, assigneeId));
+      
+    return results;
+  }
+  
+  async updateWorkflowInstance(instanceId: string, updates: Partial<WorkflowInstance>): Promise<WorkflowInstance | null> {
+    const timestamp = new Date();
+    const updatedData = {
+      ...updates,
+      lastUpdated: timestamp
+    };
+    
+    const results = await this.db.update(workflowInstances)
+      .set(updatedData)
+      .where(eq(workflowInstances.instanceId, instanceId))
+      .returning();
+      
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  // Workflow step history methods
+  async createWorkflowStepHistory(stepHistory: Omit<WorkflowStepHistory, 'id' | 'createdAt'>): Promise<WorkflowStepHistory> {
+    const timestamp = new Date();
+    const results = await this.db.insert(workflowStepHistory).values({
+      ...stepHistory,
+      createdAt: timestamp
+    }).returning();
+    
+    return results[0];
+  }
+  
+  async getWorkflowStepHistoryByInstanceId(instanceId: string): Promise<WorkflowStepHistory[]> {
+    const results = await this.db.select()
+      .from(workflowStepHistory)
+      .where(eq(workflowStepHistory.instanceId, instanceId))
+      .orderBy(workflowStepHistory.createdAt);
       
     return results;
   }

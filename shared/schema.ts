@@ -1,6 +1,41 @@
-import { pgTable, text, serial, integer, timestamp, numeric, json, boolean, jsonb, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, numeric, json, boolean, jsonb, date, varchar, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Enum definitions for validation and workflow
+export enum RuleCategory {
+  CLASSIFICATION = 'classification',
+  VALUATION = 'valuation',
+  PROPERTY_DATA = 'property_data',
+  COMPLIANCE = 'compliance',
+  DATA_QUALITY = 'data_quality',
+  GEO_SPATIAL = 'geo_spatial',
+  STATISTICAL = 'statistical'
+}
+
+export enum RuleLevel {
+  CRITICAL = 'critical',  // Blocking issue, must be resolved
+  ERROR = 'error',        // Significant issue that should be addressed
+  WARNING = 'warning',    // Potential issue that should be reviewed
+  INFO = 'info'           // Informational finding
+}
+
+export enum EntityType {
+  PROPERTY = 'property',
+  LAND_RECORD = 'land_record',
+  IMPROVEMENT = 'improvement',
+  APPEAL = 'appeal',
+  USER = 'user',
+  COMPARABLE_SALE = 'comparable_sale',
+  WORKFLOW = 'workflow'
+}
+
+export enum IssueStatus {
+  OPEN = 'open',
+  ACKNOWLEDGED = 'acknowledged',
+  RESOLVED = 'resolved',
+  WAIVED = 'waived'
+}
 
 // Users table
 export const users = pgTable("users", {
@@ -512,3 +547,217 @@ export const insertComparableAnalysisEntrySchema = createInsertSchema(comparable
 
 export type ComparableAnalysisEntry = typeof comparableAnalysisEntries.$inferSelect;
 export type InsertComparableAnalysisEntry = z.infer<typeof insertComparableAnalysisEntrySchema>;
+
+// Validation Rules table
+export const validationRules = pgTable("validation_rules", {
+  id: serial("id").primaryKey(),
+  ruleId: varchar("rule_id", { length: 100 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  category: varchar("category", { length: 50 }).notNull(), // classification, valuation, property_data, compliance, etc.
+  level: varchar("level", { length: 20 }).notNull(), // critical, error, warning, info
+  entityType: varchar("entity_type", { length: 50 }).notNull(), // property, land_record, improvement, appeal, etc.
+  implementation: text("implementation"), // Optional: For simple rules, store the implementation logic
+  parameters: jsonb("parameters").default({}), // Optional: Parameters for the rule
+  reference: text("reference"), // Optional: Legal or policy reference (e.g., RCW 84.40.030)
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdBy: integer("created_by"),
+});
+
+export const insertValidationRuleSchema = createInsertSchema(validationRules).pick({
+  ruleId: true,
+  name: true,
+  description: true,
+  category: true,
+  level: true,
+  entityType: true,
+  implementation: true,
+  parameters: true,
+  reference: true,
+  isActive: true,
+  createdBy: true,
+});
+
+export type ValidationRule = typeof validationRules.$inferSelect;
+export type InsertValidationRule = z.infer<typeof insertValidationRuleSchema>;
+
+// Validation Issues table
+export const validationIssues = pgTable("validation_issues", {
+  id: serial("id").primaryKey(),
+  issueId: varchar("issue_id", { length: 100 }).notNull().unique(),
+  ruleId: varchar("rule_id", { length: 100 }).notNull(),
+  entityType: varchar("entity_type", { length: 50 }).notNull(),
+  entityId: varchar("entity_id", { length: 100 }).notNull(),
+  propertyId: varchar("property_id", { length: 100 }),
+  level: varchar("level", { length: 20 }).notNull(),
+  message: text("message").notNull(),
+  details: jsonb("details").default({}),
+  status: varchar("status", { length: 20 }).notNull().default("open"), // open, acknowledged, resolved, waived
+  resolution: text("resolution"),
+  resolvedBy: integer("resolved_by"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    ruleIdIdx: index("validation_issues_rule_id_idx").on(table.ruleId),
+    entityTypeIdIdx: index("validation_issues_entity_type_id_idx").on(table.entityType, table.entityId),
+    propertyIdIdx: index("validation_issues_property_id_idx").on(table.propertyId),
+    statusIdx: index("validation_issues_status_idx").on(table.status),
+    levelIdx: index("validation_issues_level_idx").on(table.level),
+  };
+});
+
+export const insertValidationIssueSchema = createInsertSchema(validationIssues).pick({
+  issueId: true,
+  ruleId: true,
+  entityType: true,
+  entityId: true,
+  propertyId: true,
+  level: true,
+  message: true,
+  details: true,
+  status: true,
+  resolution: true,
+  resolvedBy: true,
+  resolvedAt: true,
+});
+
+export type ValidationIssue = typeof validationIssues.$inferSelect;
+export type InsertValidationIssue = z.infer<typeof insertValidationIssueSchema>;
+
+// Workflow Definition table
+export const workflowDefinitions = pgTable("workflow_definitions", {
+  id: serial("id").primaryKey(),
+  definitionId: varchar("definition_id", { length: 100 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  version: integer("version").notNull().default(1),
+  steps: jsonb("steps").notNull(), // Array of workflow steps with their actions, validations, etc.
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdBy: integer("created_by"),
+});
+
+export const insertWorkflowDefinitionSchema = createInsertSchema(workflowDefinitions).pick({
+  definitionId: true,
+  name: true,
+  description: true,
+  version: true,
+  steps: true,
+  isActive: true,
+  createdBy: true,
+});
+
+export type WorkflowDefinition = typeof workflowDefinitions.$inferSelect;
+export type InsertWorkflowDefinition = z.infer<typeof insertWorkflowDefinitionSchema>;
+
+// Workflow Instances table
+export const workflowInstances = pgTable("workflow_instances", {
+  id: serial("id").primaryKey(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull().unique(),
+  definitionId: varchar("definition_id", { length: 100 }).notNull(),
+  entityType: varchar("entity_type", { length: 50 }).notNull(),
+  entityId: varchar("entity_id", { length: 100 }).notNull(),
+  currentStepId: varchar("current_step_id", { length: 100 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("not_started"), // not_started, in_progress, waiting, completed, canceled
+  assignedTo: integer("assigned_to"),
+  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
+  data: jsonb("data").default({}), // Workflow instance data
+  startedAt: timestamp("started_at").notNull(),
+  completedAt: timestamp("completed_at"),
+  dueDate: timestamp("due_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    definitionIdIdx: index("workflow_instances_definition_id_idx").on(table.definitionId),
+    entityTypeIdIdx: index("workflow_instances_entity_type_id_idx").on(table.entityType, table.entityId),
+    statusIdx: index("workflow_instances_status_idx").on(table.status),
+    assignedToIdx: index("workflow_instances_assigned_to_idx").on(table.assignedTo),
+  };
+});
+
+export const insertWorkflowInstanceSchema = createInsertSchema(workflowInstances).pick({
+  instanceId: true,
+  definitionId: true,
+  entityType: true,
+  entityId: true,
+  currentStepId: true,
+  status: true,
+  assignedTo: true,
+  priority: true,
+  data: true,
+  startedAt: true,
+  completedAt: true,
+  dueDate: true,
+});
+
+export type WorkflowInstance = typeof workflowInstances.$inferSelect;
+export type InsertWorkflowInstance = z.infer<typeof insertWorkflowInstanceSchema>;
+
+// Workflow Step History table
+export const workflowStepHistory = pgTable("workflow_step_history", {
+  id: serial("id").primaryKey(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  stepId: varchar("step_id", { length: 100 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull(),
+  assignedTo: integer("assigned_to"),
+  startedAt: timestamp("started_at").notNull(),
+  completedAt: timestamp("completed_at"),
+  notes: text("notes"),
+  data: jsonb("data").default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    instanceIdIdx: index("workflow_step_history_instance_id_idx").on(table.instanceId),
+  };
+});
+
+export const insertWorkflowStepHistorySchema = createInsertSchema(workflowStepHistory).pick({
+  instanceId: true,
+  stepId: true,
+  status: true,
+  assignedTo: true,
+  startedAt: true,
+  completedAt: true,
+  notes: true,
+  data: true,
+});
+
+export type WorkflowStepHistory = typeof workflowStepHistory.$inferSelect;
+export type InsertWorkflowStepHistory = z.infer<typeof insertWorkflowStepHistorySchema>;
+
+// Compliance Reports table
+export const complianceReports = pgTable("compliance_reports", {
+  id: serial("id").primaryKey(),
+  reportId: varchar("report_id", { length: 100 }).notNull().unique(),
+  year: integer("year").notNull(),
+  countyCode: varchar("county_code", { length: 10 }).notNull(),
+  reportType: varchar("report_type", { length: 50 }).notNull().default("standard"), // standard, dor, audit
+  generatedAt: timestamp("generated_at").notNull(),
+  summary: jsonb("summary").notNull(), // Summary metrics
+  issues: jsonb("issues"), // Optional detailed issues list
+  status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, final, submitted
+  submittedBy: integer("submitted_by"),
+  submittedAt: timestamp("submitted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertComplianceReportSchema = createInsertSchema(complianceReports).pick({
+  reportId: true,
+  year: true,
+  countyCode: true,
+  reportType: true,
+  generatedAt: true,
+  summary: true,
+  issues: true,
+  status: true,
+  submittedBy: true,
+  submittedAt: true,
+});
+
+export type ComplianceReport = typeof complianceReports.$inferSelect;
+export type InsertComplianceReport = z.infer<typeof insertComplianceReportSchema>;
