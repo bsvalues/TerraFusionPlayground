@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Play, Square, FileText, Activity, Database, BarChart } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { Agent, AgentSystemStatus, AgentCapability, ExecuteCapabilityRequest, ExecuteCapabilityResponse } from '../../shared/agent-types';
 
 /**
  * Agent System Panel Component
@@ -20,19 +21,19 @@ export function AgentSystemPanel() {
   const queryClient = useQueryClient();
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [selectedCapability, setSelectedCapability] = useState<string | null>(null);
-  const [capabilityParams, setCapabilityParams] = useState<Record<string, any>>({});
-  const [capabilityResult, setCapabilityResult] = useState<any>(null);
+  const [capabilityParams, setCapabilityParams] = useState<Record<string, unknown>>({});
+  const [capabilityResult, setCapabilityResult] = useState<unknown>(null);
   const [executing, setExecuting] = useState(false);
 
   // Fetch system status
-  const { data: systemStatus, isLoading: statusLoading, error: statusError } = useQuery({
+  const { data: systemStatus, isLoading: statusLoading, error: statusError } = useQuery<AgentSystemStatus>({
     queryKey: ['/api/agents/status'],
     refetchInterval: 10000, // Refresh every 10 seconds
     queryFn: () => apiRequest('/api/agents/status')
   });
   
   // Convert agent object to array if needed
-  const agentsArray = React.useMemo(() => {
+  const agentsArray = React.useMemo<Agent[]>(() => {
     if (!systemStatus?.agents) return [];
     
     // Check if agents is already an array
