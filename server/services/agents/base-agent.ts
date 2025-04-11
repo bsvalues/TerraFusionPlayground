@@ -9,6 +9,7 @@
 import { IStorage } from '../../storage';
 import { MCPService, MCPRequest, MCPExecutionContext } from '../mcp';
 import { AiAgent, InsertSystemActivity } from '../../../shared/schema';
+import { AgentReplayBufferService, AgentExperience, LearningUpdate } from '../agent-replay-buffer';
 
 // Agent capability interface
 export interface AgentCapability {
@@ -38,12 +39,18 @@ export abstract class BaseAgent {
   protected permissions: string[];
   protected storage: IStorage;
   protected mcpService: MCPService;
+  protected replayBuffer: AgentReplayBufferService | null = null;
   protected config: AgentConfig = {} as AgentConfig;
   protected isActive: boolean = false;
   protected lastActivity: Date | null = null;
   protected performanceScore: number = 100;
 
-  constructor(storage: IStorage, mcpService: MCPService, config: AgentConfig) {
+  constructor(
+    storage: IStorage, 
+    mcpService: MCPService, 
+    config: AgentConfig,
+    replayBuffer?: AgentReplayBufferService
+  ) {
     this.storage = storage;
     this.mcpService = mcpService;
     this.config = config;
@@ -51,6 +58,7 @@ export abstract class BaseAgent {
     this.name = config.name;
     this.description = config.description;
     this.permissions = config.permissions || [];
+    this.replayBuffer = replayBuffer || null;
     
     // Initialize capabilities map
     this.capabilities = new Map<string, AgentCapability>();
@@ -290,5 +298,147 @@ export abstract class BaseAgent {
       lastActivity: this.lastActivity,
       performanceScore: this.performanceScore
     };
+  }
+
+  /**
+   * Store an experience in the replay buffer
+   * @param action The action performed
+   * @param state The current state
+   * @param nextState The resulting state
+   * @param reward The reward received
+   * @param metadata Additional metadata
+   * @returns The ID of the stored experience or null if buffer is not available
+   */
+  protected async storeExperience(
+    action: string,
+    state: any,
+    nextState: any,
+    reward: number,
+    metadata: {
+      entityType?: string;
+      entityId?: string;
+      context?: any;
+      priority?: number;
+    } = {}
+  ): Promise<string | null> {
+    if (!this.replayBuffer) {
+      await this.logActivity('replay_buffer_unavailable', 'Replay buffer is not available for storing experience');
+      return null;
+    }
+
+    try {
+      const experience: AgentExperience = {
+        experienceId: `exp-${this.id}-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
+        agentId: this.id,
+        agentName: this.name,
+        timestamp: new Date(),
+        action,
+        state,
+        nextState,
+        reward,
+        metadata
+      };
+
+      const experienceId = await this.replayBuffer.addExperience(experience);
+      
+      await this.logActivity('experience_stored', `Stored experience in replay buffer: ${action}`, {
+        experienceId,
+        action,
+        reward,
+        entityType: metadata.entityType,
+        entityId: metadata.entityId
+      });
+      
+      return experienceId;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      await this.logActivity('experience_storage_error', `Failed to store experience: ${errorMessage}`, {
+        action,
+        error: errorMessage
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Retrieve experiences from the replay buffer
+   * @param count Number of experiences to retrieve
+   * @param highPriorityOnly If true, only retrieves high priority experiences
+   * @returns Array of experiences or empty array if buffer is not available
+   */
+  protected async getExperiences(count: number = 10, highPriorityOnly: boolean = false): Promise<AgentExperience[]> {
+    if (!this.replayBuffer) {
+      await this.logActivity('replay_buffer_unavailable', 'Replay buffer is not available for retrieving experiences');
+      return [];
+    }
+
+    try {
+      const experiences = this.replayBuffer.sampleExperiences(count, highPriorityOnly);
+      
+      await this.logActivity('experiences_retrieved', `Retrieved ${experiences.length} experiences from replay buffer`, {
+        count: experiences.length,
+        highPriorityOnly
+      });
+      
+      return experiences;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      await this.logActivity('experience_retrieval_error', `Failed to retrieve experiences: ${errorMessage}`, {
+        error: errorMessage
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Get the replay buffer stats
+   * @returns Stats object or null if buffer is not available
+   */
+  protected getReplayBufferStats(): {
+    totalExperiences?: number;
+    highPriorityExperiences?: number;
+    lastTrainingTime?: Date | null;
+    size?: number;
+    maxSize?: number;
+    highPriorityCount?: number;
+    agentDistribution?: Record<string, number>;
+    actionDistribution?: Record<string, number>;
+    updateCount?: number;
+  } | null {
+    if (!this.replayBuffer) {
+      return null;
+    }
+
+    const stats = this.replayBuffer.getBufferStats();
+    
+    // Map any necessary fields between the two interfaces
+    return {
+      totalExperiences: stats.size,
+      highPriorityExperiences: stats.highPriorityCount,
+      lastTrainingTime: stats.lastTrainingTime,
+      ...stats
+    };
+  }
+
+  /**
+   * Get recent learning updates from the replay buffer
+   * @param count Number of updates to retrieve
+   * @returns Array of learning updates or empty array if buffer is not available
+   */
+  protected getRecentLearningUpdates(count: number = 5): LearningUpdate[] {
+    if (!this.replayBuffer) {
+      return [];
+    }
+
+    return this.replayBuffer.getRecentUpdates(count);
+  }
+
+  /**
+   * Set the replay buffer service
+   * @param replayBuffer The replay buffer service to use
+   */
+  public setReplayBuffer(replayBuffer: AgentReplayBufferService): void {
+    this.replayBuffer = replayBuffer;
+    this.logActivity('replay_buffer_set', 'Replay buffer service has been set for agent');
   }
 }

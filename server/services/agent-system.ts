@@ -16,6 +16,7 @@ import { MarketAnalysisAgent } from './agents/market-analysis-agent';
 import { FtpDataAgent } from './agents/ftp-data-agent';
 import { SuperintelligenceAgent } from './agents/superintelligence-agent';
 import { ComplianceAgentImpl } from './agents/compliance-agent';
+import { DataQualityAgent } from './agents/data-quality-agent';
 import { PropertyStoryGenerator } from './property-story-generator';
 import { FtpService } from './ftp-service';
 import { ArcGISService } from './arcgis-service';
@@ -24,16 +25,28 @@ import { LLMService } from './llm-service';
 import { MarketPredictionModel } from './market-prediction-model';
 import { RiskAssessmentEngine } from './risk-assessment-engine';
 import { NotificationService } from './notification-service';
+import { PropertyValidationEngine } from './data-quality/property-validation-engine';
+import { AgentReplayBufferService, ReplayBufferConfig } from './agent-replay-buffer';
 
 export class AgentSystem {
   private _storage: IStorage;
   private mcpService: MCPService;
   private agents: Map<string, BaseAgent> = new Map();
+  private replayBuffer: AgentReplayBufferService;
   private isInitialized: boolean = false;
   
   constructor(storage: IStorage) {
     this._storage = storage;
     this.mcpService = new MCPService(storage);
+    
+    // Initialize the agent replay buffer with default config
+    const replayBufferConfig: ReplayBufferConfig = {
+      maxSize: 10000,
+      priorityScoreThreshold: 0.7,
+      samplingBatchSize: 64,
+      trainingInterval: 60000 // 1 minute
+    };
+    this.replayBuffer = new AgentReplayBufferService(storage, replayBufferConfig);
   }
   
   /**
@@ -42,6 +55,13 @@ export class AgentSystem {
    */
   get storage(): IStorage {
     return this._storage;
+  }
+  
+  /**
+   * Get the agent replay buffer service
+   */
+  get replayBufferService(): AgentReplayBufferService {
+    return this.replayBuffer;
   }
   
   /**
@@ -140,6 +160,15 @@ export class AgentSystem {
         notificationService
       );
       this.registerAgent('compliance', complianceAgent);
+      
+      console.log("Creating Data Quality Agent...");
+      const propertyValidationEngine = new PropertyValidationEngine(this.storage);
+      const dataQualityAgent = new DataQualityAgent(
+        this.storage,
+        propertyValidationEngine,
+        notificationService
+      );
+      this.registerAgent('data_quality', dataQualityAgent);
       
       // Create advanced services for superintelligence agent
       console.log("Creating Market Prediction Model...");
@@ -265,7 +294,7 @@ export class AgentSystem {
   }
   
   /**
-   * Get the status of all agents
+   * Get the status of all agents and the replay buffer
    */
   public getSystemStatus(): any {
     const agentStatuses = {};
@@ -274,10 +303,14 @@ export class AgentSystem {
       agentStatuses[name] = agent.getStatus();
     }
     
+    // Include replay buffer statistics in the system status
+    const replayBufferStats = this.replayBuffer.getBufferStats();
+    
     return {
       isInitialized: this.isInitialized,
       agentCount: this.agents.size,
-      agents: agentStatuses
+      agents: agentStatuses,
+      replayBuffer: replayBufferStats
     };
   }
 }

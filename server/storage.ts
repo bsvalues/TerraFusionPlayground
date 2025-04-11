@@ -23,6 +23,8 @@ import {
   workflowInstances, WorkflowInstance, InsertWorkflowInstance,
   workflowStepHistory, WorkflowStepHistory, InsertWorkflowStepHistory,
   complianceReports, ComplianceReport, InsertComplianceReport,
+  agentExperiences, AgentExperience, InsertAgentExperience,
+  learningUpdates, LearningUpdate, InsertLearningUpdate,
   // Enum types needed for validation and workflow
   RuleCategory, RuleLevel, EntityType, IssueStatus
 } from "@shared/schema";
@@ -287,6 +289,21 @@ export interface IStorage {
   // Workflow step history methods
   createWorkflowStepHistory(stepHistory: Omit<WorkflowStepHistory, 'id' | 'createdAt'>): Promise<WorkflowStepHistory>;
   getWorkflowStepHistoryByInstanceId(instanceId: string): Promise<WorkflowStepHistory[]>;
+  
+  // Agent Experiences methods
+  createAgentExperience(experience: InsertAgentExperience): Promise<AgentExperience>;
+  getAgentExperienceById(experienceId: string): Promise<AgentExperience | null>;
+  getAgentExperiencesByAgentId(agentId: string): Promise<AgentExperience[]>;
+  getAgentExperiencesByEntityType(entityType: string): Promise<AgentExperience[]>;
+  getAgentExperiencesByPriority(minPriority: number, limit?: number): Promise<AgentExperience[]>;
+  updateAgentExperiencePriority(experienceId: string, priority: number): Promise<AgentExperience | null>;
+  markAgentExperienceAsUsed(experienceId: string): Promise<AgentExperience | null>;
+  
+  // Learning Updates methods
+  createLearningUpdate(update: InsertLearningUpdate): Promise<LearningUpdate>;
+  getLearningUpdateById(updateId: string): Promise<LearningUpdate | null>;
+  getRecentLearningUpdates(limit?: number): Promise<LearningUpdate[]>;
+  getLearningUpdatesByType(updateType: string): Promise<LearningUpdate[]>;
 }
 
 // Implement the in-memory storage
@@ -319,6 +336,8 @@ export class MemStorage implements IStorage {
   private revaluationCycleReports: Map<string, any>; // Washington-specific revaluation cycle reports
   private exemptionVerificationReports: Map<string, any>; // Washington-specific exemption verification reports
   private appealComplianceReports: Map<string, any>; // Washington-specific appeal compliance reports
+  private agentExperiences: Map<string, AgentExperience>; // Agent experiences for replay buffer
+  private learningUpdates: Map<string, LearningUpdate>; // Learning updates from agent experiences
   
   private currentUserId: number;
   private currentPropertyId: number;
@@ -367,6 +386,8 @@ export class MemStorage implements IStorage {
     this.revaluationCycleReports = new Map<string, any>();
     this.exemptionVerificationReports = new Map<string, any>();
     this.appealComplianceReports = new Map<string, any>();
+    this.agentExperiences = new Map<string, AgentExperience>();
+    this.learningUpdates = new Map<string, LearningUpdate>();
     
     this.currentUserId = 1;
     this.currentPropertyId = 1;
@@ -3639,6 +3660,119 @@ export class PgStorage implements IStorage {
           parcelNumber: property.parcelNumber
         };
       });
+  }
+
+  // Agent Experiences methods
+  async createAgentExperience(experience: InsertAgentExperience): Promise<AgentExperience> {
+    const timestamp = new Date();
+    const newExperience: AgentExperience = {
+      ...experience,
+      id: experience.experienceId, // Use the provided experienceId as the id
+      createdAt: timestamp,
+      usedInTraining: false,
+      priority: experience.metadata?.priority || 0,
+      lastUpdated: timestamp
+    };
+    
+    this.agentExperiences.set(experience.experienceId, newExperience);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 7, // MCP Coordinator Agent
+      activity: `Recorded agent experience from ${experience.agentName}`,
+      entityType: experience.metadata?.entityType || 'unknown',
+      entityId: experience.metadata?.entityId || experience.experienceId
+    });
+    
+    return newExperience;
+  }
+  
+  async getAgentExperienceById(experienceId: string): Promise<AgentExperience | null> {
+    const experience = this.agentExperiences.get(experienceId);
+    return experience || null;
+  }
+  
+  async getAgentExperiencesByAgentId(agentId: string): Promise<AgentExperience[]> {
+    return Array.from(this.agentExperiences.values())
+      .filter(experience => experience.agentId === agentId);
+  }
+  
+  async getAgentExperiencesByEntityType(entityType: string): Promise<AgentExperience[]> {
+    return Array.from(this.agentExperiences.values())
+      .filter(experience => experience.metadata?.entityType === entityType);
+  }
+  
+  async getAgentExperiencesByPriority(minPriority: number, limit: number = 10): Promise<AgentExperience[]> {
+    return Array.from(this.agentExperiences.values())
+      .filter(experience => experience.priority >= minPriority)
+      .sort((a, b) => b.priority - a.priority)
+      .slice(0, limit);
+  }
+  
+  async updateAgentExperiencePriority(experienceId: string, priority: number): Promise<AgentExperience | null> {
+    const experience = this.agentExperiences.get(experienceId);
+    if (!experience) return null;
+    
+    const updatedExperience: AgentExperience = {
+      ...experience,
+      priority,
+      lastUpdated: new Date()
+    };
+    
+    this.agentExperiences.set(experienceId, updatedExperience);
+    return updatedExperience;
+  }
+  
+  async markAgentExperienceAsUsed(experienceId: string): Promise<AgentExperience | null> {
+    const experience = this.agentExperiences.get(experienceId);
+    if (!experience) return null;
+    
+    const updatedExperience: AgentExperience = {
+      ...experience,
+      usedInTraining: true,
+      lastUpdated: new Date()
+    };
+    
+    this.agentExperiences.set(experienceId, updatedExperience);
+    return updatedExperience;
+  }
+  
+  // Learning Updates methods
+  async createLearningUpdate(update: InsertLearningUpdate): Promise<LearningUpdate> {
+    const timestamp = new Date();
+    const newUpdate: LearningUpdate = {
+      ...update,
+      id: update.updateId, // Use the provided updateId as the id
+      createdAt: timestamp
+    };
+    
+    this.learningUpdates.set(update.updateId, newUpdate);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 7, // MCP Coordinator Agent
+      activity: `Generated learning update of type ${update.updateType}`,
+      entityType: 'learning_update',
+      entityId: update.updateId
+    });
+    
+    return newUpdate;
+  }
+  
+  async getLearningUpdateById(updateId: string): Promise<LearningUpdate | null> {
+    const update = this.learningUpdates.get(updateId);
+    return update || null;
+  }
+  
+  async getRecentLearningUpdates(limit: number = 10): Promise<LearningUpdate[]> {
+    return Array.from(this.learningUpdates.values())
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, limit);
+  }
+  
+  async getLearningUpdatesByType(updateType: string): Promise<LearningUpdate[]> {
+    return Array.from(this.learningUpdates.values())
+      .filter(update => update.updateType === updateType);
   }
 }
 

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, numeric, json, boolean, jsonb, date, varchar, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, numeric, json, boolean, jsonb, date, varchar, index, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -770,3 +770,73 @@ export const insertComplianceReportSchema = createInsertSchema(complianceReports
 
 export type ComplianceReport = typeof complianceReports.$inferSelect;
 export type InsertComplianceReport = z.infer<typeof insertComplianceReportSchema>;
+
+// Agent Experiences table for replay buffer
+export const agentExperiences = pgTable("agent_experiences", {
+  id: serial("id").primaryKey(),
+  experienceId: varchar("experience_id", { length: 100 }).notNull().unique(),
+  agentId: varchar("agent_id", { length: 50 }).notNull(),
+  agentName: varchar("agent_name", { length: 100 }).notNull(),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  action: text("action").notNull(),
+  state: jsonb("state").notNull(),
+  nextState: jsonb("next_state"),
+  reward: real("reward").notNull(),
+  entityType: varchar("entity_type", { length: 50 }),
+  entityId: varchar("entity_id", { length: 100 }),
+  priority: real("priority").notNull().default(0),
+  context: jsonb("context"),
+  usedForTraining: boolean("used_for_training").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    agentIdIdx: index("agent_experiences_agent_id_idx").on(table.agentId),
+    priorityIdx: index("agent_experiences_priority_idx").on(table.priority),
+    entityTypeIdx: index("agent_experiences_entity_type_idx").on(table.entityType),
+  };
+});
+
+export const insertAgentExperienceSchema = createInsertSchema(agentExperiences).pick({
+  experienceId: true,
+  agentId: true,
+  agentName: true,
+  timestamp: true,
+  action: true,
+  state: true,
+  nextState: true,
+  reward: true,
+  entityType: true,
+  entityId: true,
+  priority: true,
+  context: true,
+  usedForTraining: true,
+});
+
+export type AgentExperience = typeof agentExperiences.$inferSelect;
+export type InsertAgentExperience = z.infer<typeof insertAgentExperienceSchema>;
+
+// Learning Updates table
+export const learningUpdates = pgTable("learning_updates", {
+  id: serial("id").primaryKey(),
+  updateId: varchar("update_id", { length: 100 }).notNull().unique(),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  updateType: varchar("update_type", { length: 20 }).notNull(),
+  sourceExperiences: jsonb("source_experiences").notNull(),
+  payload: jsonb("payload").notNull(),
+  appliedTo: jsonb("applied_to").default([]),
+  metrics: jsonb("metrics"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertLearningUpdateSchema = createInsertSchema(learningUpdates).pick({
+  updateId: true,
+  timestamp: true,
+  updateType: true,
+  sourceExperiences: true,
+  payload: true,
+  appliedTo: true,
+  metrics: true,
+});
+
+export type LearningUpdate = typeof learningUpdates.$inferSelect;
+export type InsertLearningUpdate = z.infer<typeof insertLearningUpdateSchema>;

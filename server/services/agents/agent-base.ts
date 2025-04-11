@@ -7,6 +7,7 @@
  */
 
 import { logger } from '../../utils/logger';
+import { IStorage } from '../../storage';
 
 /**
  * Base class for all AI agents in the system
@@ -15,6 +16,7 @@ export abstract class AgentBase {
   protected readonly agentId: string;
   protected readonly componentName: string;
   protected capabilities: string[] = [];
+  protected storage?: IStorage;
   
   /**
    * Create a new agent instance
@@ -110,5 +112,48 @@ export abstract class AgentBase {
       stack: error instanceof Error ? error.stack : undefined,
       ...data
     });
+  }
+  
+  /**
+   * Record an agent activity in the storage system
+   * 
+   * @param activityType Type of activity being performed
+   * @param entityType Type of entity this activity relates to
+   * @param entityId ID of the entity
+   * @param details Additional details about the activity
+   * @param status Optional status for the activity
+   */
+  protected async recordAgentActivity(
+    activityType: string,
+    entityType: string,
+    entityId: string,
+    details: any = {},
+    status: string = 'completed'
+  ): Promise<void> {
+    if (!this.storage) {
+      this.logAgentWarning('Cannot record agent activity: storage not available');
+      return;
+    }
+    
+    try {
+      await this.storage.createSystemActivity({
+        component: this.componentName,
+        activity_type: activityType,
+        details,
+        status
+      });
+      
+      this.logAgentActivity(`Recorded activity: ${activityType}`, {
+        entityType,
+        entityId,
+        status
+      });
+    } catch (error) {
+      this.logAgentError('Failed to record agent activity', error, {
+        activityType,
+        entityType,
+        entityId
+      });
+    }
   }
 }
