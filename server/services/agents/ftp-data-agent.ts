@@ -172,6 +172,18 @@ export class FtpDataAgent extends BaseAgent {
           name: 'getFtpStatus',
           description: 'Get FTP connection and synchronization status',
           parameters: []
+        },
+        {
+          name: 'importPropertyUseCodes',
+          description: 'Import property use codes from a CSV file on the FTP server',
+          parameters: [
+            {
+              name: 'remotePath',
+              type: 'string',
+              description: 'Path to the property use codes CSV file on the FTP server',
+              required: true
+            }
+          ]
         }
       ]
     };
@@ -292,6 +304,18 @@ export class FtpDataAgent extends BaseAgent {
         description: 'Get FTP connection and synchronization status',
         handler: async () => {
           const result = await this.executeCapability('getFtpStatus', {});
+          return result;
+        }
+      },
+      {
+        name: 'ftp.importPropertyUseCodes',
+        description: 'Import property use codes from a CSV file on the FTP server',
+        handler: async (params: any) => {
+          const { remotePath } = params;
+          if (!remotePath) {
+            return { success: false, error: 'Remote file path is required' };
+          }
+          const result = await this.executeCapability('importPropertyUseCodes', { remotePath });
           return result;
         }
       }
@@ -842,6 +866,92 @@ export class FtpDataAgent extends BaseAgent {
     const nextRun = new Date(lastRun.getTime() + intervalMs);
     
     return nextRun.toISOString();
+  }
+  
+  /**
+   * Import property use codes from the SpatialEst FTP server
+   * This method handles downloading property use codes and mapping them
+   * to our system's property schema format
+   */
+  private async importPropertyUseCodes(params: any): Promise<any> {
+    try {
+      const { remotePath } = params;
+      
+      if (!remotePath) {
+        return {
+          success: false,
+          agent: this.config.name,
+          capability: 'importPropertyUseCodes',
+          error: 'Remote file path is required'
+        };
+      }
+      
+      await this.logActivity('ftp_property_use_codes_import_start', `Starting import of property use codes from ${remotePath}`);
+      
+      // Download the file first
+      const downloadResult = await this.downloadFtpFile({ remotePath });
+      
+      if (!downloadResult.success) {
+        throw new Error(`Failed to download property use codes file: ${downloadResult.error}`);
+      }
+      
+      const localFilePath = downloadResult.result.localPath;
+      
+      // Map the property use codes to our system's format
+      const mappingResult = await PropertyUseCodesMapper.mapFromCsvFile(localFilePath);
+      
+      if (mappingResult.mappedProperties.length === 0) {
+        throw new Error('No property use codes could be mapped from the file');
+      }
+      
+      await this.logActivity(
+        'ftp_property_use_codes_mapping', 
+        `Mapped ${mappingResult.stats.mappedRecords} out of ${mappingResult.stats.totalRecords} property use codes`
+      );
+      
+      // Import the mapped properties
+      let importedCount = 0;
+      const importErrors: string[] = [];
+      
+      for (const property of mappingResult.mappedProperties) {
+        try {
+          await this.storage.createProperty(property);
+          importedCount++;
+        } catch (error: any) {
+          importErrors.push(`Error importing property ${property.propertyId}: ${error.message}`);
+        }
+      }
+      
+      await this.logActivity(
+        'ftp_property_use_codes_import_complete',
+        `Imported ${importedCount} out of ${mappingResult.mappedProperties.length} property use codes`
+      );
+      
+      return {
+        success: importedCount > 0,
+        agent: this.config.name,
+        capability: 'importPropertyUseCodes',
+        result: {
+          remotePath,
+          fileName: path.basename(remotePath),
+          totalRecords: mappingResult.stats.totalRecords,
+          mappedRecords: mappingResult.stats.mappedRecords,
+          importedRecords: importedCount,
+          errors: [...mappingResult.stats.errors, ...importErrors],
+          importTime: new Date().toISOString()
+        }
+      };
+      
+    } catch (error: any) {
+      await this.logActivity('ftp_property_use_codes_error', `Property use codes import error: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'importPropertyUseCodes',
+        error: `Property use codes import error: ${error.message}`
+      };
+    }
   }
   
   /**

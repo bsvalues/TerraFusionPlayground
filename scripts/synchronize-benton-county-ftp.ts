@@ -106,6 +106,30 @@ async function searchPropertyDataFiles(): Promise<FtpFile[]> {
     
     logger.log(`Found ${propertyDataFiles.length} potential property data files.`);
     
+    // Categorize files by type
+    const useCodeFiles = propertyDataFiles.filter(file => 
+      file.name.toLowerCase().includes('usecode') || 
+      file.name.toLowerCase().includes('use_code') ||
+      file.name.toLowerCase().includes('property_code')
+    );
+    
+    const propertyFiles = propertyDataFiles.filter(file => 
+      !useCodeFiles.includes(file) && 
+      (file.name.toLowerCase().includes('property') || 
+       file.name.toLowerCase().includes('parcel'))
+    );
+    
+    // Include any remaining CSV files that don't match the specific categories
+    const otherFiles = propertyDataFiles.filter(file => 
+      !useCodeFiles.includes(file) && 
+      !propertyFiles.includes(file)
+    );
+    
+    // Combine with priority: use code files first, then property files, then others
+    propertyDataFiles = [...useCodeFiles, ...propertyFiles, ...otherFiles];
+    
+    logger.log(`Categorized files: ${useCodeFiles.length} use code files, ${propertyFiles.length} property files, ${otherFiles.length} other files.`);
+    
     // Sort by date (newest first)
     propertyDataFiles.sort((a, b) => {
       if (a.date && b.date) {
@@ -140,7 +164,19 @@ async function downloadAndImportFile(file: FtpFile): Promise<boolean> {
     
     // Import the file
     logger.log(`Importing data from ${file.name}...`);
-    const importResult = await ftpService.importPropertiesFromFtp(remotePath);
+    let importResult;
+    
+    // Check if this is a property use codes file
+    if (file.name.toLowerCase().includes('usecode') || 
+        file.name.toLowerCase().includes('use_code') ||
+        file.name.toLowerCase().includes('property_code')) {
+      // Use the property use codes import capability
+      logger.log('Detected property use codes file, using specialized import...');
+      importResult = await ftpService.client.callFunction('importPropertyUseCodes', { remotePath });
+    } else {
+      // Use the regular property import
+      importResult = await ftpService.importPropertiesFromFtp(remotePath);
+    }
     
     logger.log(`Import completed. Processed ${importResult.importResult.total} properties.`);
     logger.log(`Successfully imported: ${importResult.importResult.successfulImports}, Failed: ${importResult.importResult.failedImports}`);
