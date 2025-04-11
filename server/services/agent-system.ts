@@ -13,6 +13,7 @@ import { IngestionAgent } from './agents/ingestion-agent';
 import { ReportingAgent } from './agents/reporting-agent';
 import { SpatialGISAgent } from './agents/spatial-gis-agent';
 import { MarketAnalysisAgent } from './agents/market-analysis-agent';
+import { FtpDataAgent } from './agents/ftp-data-agent';
 import { PropertyStoryGenerator } from './property-story-generator';
 import { FtpService } from './ftp-service';
 import { ArcGISService } from './arcgis-service';
@@ -112,6 +113,13 @@ export class AgentSystem {
         llmService
       );
       this.registerAgent('market_analysis', marketAnalysisAgent);
+      
+      console.log("Creating FTP Data Agent...");
+      const ftpDataAgent = new FtpDataAgent(
+        this.storage,
+        this.mcpService
+      );
+      this.registerAgent('ftp_data', ftpDataAgent);
       
       // Initialize agents
       for (const [name, agent] of this.agents.entries()) {

@@ -1,0 +1,887 @@
+/**
+ * FTP Data Agent
+ * 
+ * This agent provides direct integration with the SpatialEst FTP server
+ * for fetching and synchronizing Benton County property data.
+ * 
+ * The agent leverages the FtpService to access and manage data transfers,
+ * with a focus on providing these capabilities through the MCP architecture.
+ */
+
+import { BaseAgent, AgentConfig } from './base-agent';
+import { IStorage } from '../../storage';
+import { MCPService } from '../mcp';
+import { FtpService, FtpImportResult, FtpExportResult } from '../ftp-service';
+import { DataImportService } from '../data-import-service';
+import * as path from 'path';
+import * as fs from 'fs';
+
+interface FtpScheduleConfig {
+  enabled: boolean;
+  intervalHours: number;
+  lastRun?: Date;
+}
+
+interface FtpDirectoryInfo {
+  directories: string[];
+  files: {
+    name: string;
+    size: number;
+    date: string;
+    path: string;
+    isDirectory: boolean;
+  }[];
+}
+
+interface FtpSearchOptions {
+  searchString?: string;
+  fileType?: string;
+  maxResults?: number;
+  recursive?: boolean;
+}
+
+/**
+ * Agent responsible for SpatialEst FTP integration
+ */
+export class FtpDataAgent extends BaseAgent {
+  private ftpService: FtpService;
+  private dataImportService: DataImportService;
+  private schedule: FtpScheduleConfig;
+  private scheduler: NodeJS.Timeout | null = null;
+  
+  constructor(
+    storage: IStorage,
+    mcpService: MCPService
+  ) {
+    const config: AgentConfig = {
+      name: 'ftp_data',
+      description: 'SpatialEst FTP Integration Agent',
+      manufacturer: 'Benton County Assessor\'s Office',
+      version: '1.0.0',
+      capabilities: [
+        {
+          name: 'testFtpConnection',
+          description: 'Test FTP connection to SpatialEst server',
+          parameters: []
+        },
+        {
+          name: 'listFtpDirectories',
+          description: 'List directories available on the SpatialEst FTP server',
+          parameters: [
+            {
+              name: 'path',
+              type: 'string',
+              description: 'Remote directory path',
+              required: false
+            }
+          ]
+        },
+        {
+          name: 'searchFtpFiles',
+          description: 'Search for files on the SpatialEst FTP server',
+          parameters: [
+            {
+              name: 'options',
+              type: 'object',
+              description: 'Search options',
+              required: true
+            }
+          ]
+        },
+        {
+          name: 'downloadFtpFile',
+          description: 'Download a file from the SpatialEst FTP server',
+          parameters: [
+            {
+              name: 'remotePath',
+              type: 'string',
+              description: 'Path to the file on the FTP server',
+              required: true
+            },
+            {
+              name: 'localPath',
+              type: 'string',
+              description: 'Path where the file should be saved locally',
+              required: false
+            }
+          ]
+        },
+        {
+          name: 'uploadFtpFile',
+          description: 'Upload a file to the SpatialEst FTP server',
+          parameters: [
+            {
+              name: 'localPath',
+              type: 'string',
+              description: 'Path to the local file',
+              required: true
+            },
+            {
+              name: 'remotePath',
+              type: 'string',
+              description: 'Path where the file should be saved on the FTP server',
+              required: true
+            }
+          ]
+        },
+        {
+          name: 'importFtpProperties',
+          description: 'Import property data from the SpatialEst FTP server',
+          parameters: [
+            {
+              name: 'remotePath',
+              type: 'string',
+              description: 'Path to the CSV file on the FTP server',
+              required: true
+            }
+          ]
+        },
+        {
+          name: 'stageFtpProperties',
+          description: 'Stage property data from the SpatialEst FTP server for review',
+          parameters: [
+            {
+              name: 'remotePath',
+              type: 'string',
+              description: 'Path to the CSV file on the FTP server',
+              required: true
+            }
+          ]
+        },
+        {
+          name: 'scheduleFtpSync',
+          description: 'Schedule automatic data synchronization with the SpatialEst FTP server',
+          parameters: [
+            {
+              name: 'enabled',
+              type: 'boolean',
+              description: 'Enable or disable scheduled sync',
+              required: true
+            },
+            {
+              name: 'intervalHours',
+              type: 'number',
+              description: 'Sync interval in hours',
+              required: false
+            }
+          ]
+        },
+        {
+          name: 'getFtpStatus',
+          description: 'Get FTP connection and synchronization status',
+          parameters: []
+        }
+      ]
+    };
+    
+    super(storage, mcpService, config);
+    
+    this.ftpService = new FtpService(storage);
+    this.dataImportService = new DataImportService(storage);
+    
+    this.schedule = {
+      enabled: false,
+      intervalHours: 24 // Default daily
+    };
+  }
+  
+  /**
+   * Initialize the agent
+   */
+  public async initialize(): Promise<void> {
+    await this.baseInitialize();
+    
+    // Register MCP tools
+    await this.registerMCPTools([
+      {
+        name: 'ftp.testConnection',
+        description: 'Test FTP connection to SpatialEst server',
+        handler: async () => {
+          const result = await this.executeCapability('testFtpConnection', {});
+          return result;
+        }
+      },
+      {
+        name: 'ftp.listDirectories',
+        description: 'List directories available on the SpatialEst FTP server',
+        handler: async (params: any) => {
+          const { path = '/' } = params;
+          const result = await this.executeCapability('listFtpDirectories', { path });
+          return result;
+        }
+      },
+      {
+        name: 'ftp.searchFiles',
+        description: 'Search for files on the SpatialEst FTP server',
+        handler: async (params: any) => {
+          const { searchString, fileType, maxResults, recursive } = params;
+          const options: FtpSearchOptions = {
+            searchString,
+            fileType,
+            maxResults,
+            recursive
+          };
+          const result = await this.executeCapability('searchFtpFiles', { options });
+          return result;
+        }
+      },
+      {
+        name: 'ftp.downloadFile',
+        description: 'Download a file from the SpatialEst FTP server',
+        handler: async (params: any) => {
+          const { remotePath, localPath } = params;
+          if (!remotePath) {
+            return { success: false, error: 'Remote file path is required' };
+          }
+          const result = await this.executeCapability('downloadFtpFile', { remotePath, localPath });
+          return result;
+        }
+      },
+      {
+        name: 'ftp.uploadFile',
+        description: 'Upload a file to the SpatialEst FTP server',
+        handler: async (params: any) => {
+          const { localPath, remotePath } = params;
+          if (!localPath || !remotePath) {
+            return { success: false, error: 'Local and remote file paths are required' };
+          }
+          const result = await this.executeCapability('uploadFtpFile', { localPath, remotePath });
+          return result;
+        }
+      },
+      {
+        name: 'ftp.importProperties',
+        description: 'Import property data from the SpatialEst FTP server',
+        handler: async (params: any) => {
+          const { remotePath } = params;
+          if (!remotePath) {
+            return { success: false, error: 'Remote file path is required' };
+          }
+          const result = await this.executeCapability('importFtpProperties', { remotePath });
+          return result;
+        }
+      },
+      {
+        name: 'ftp.stageProperties',
+        description: 'Stage property data from the SpatialEst FTP server for review',
+        handler: async (params: any) => {
+          const { remotePath } = params;
+          if (!remotePath) {
+            return { success: false, error: 'Remote file path is required' };
+          }
+          const result = await this.executeCapability('stageFtpProperties', { remotePath });
+          return result;
+        }
+      },
+      {
+        name: 'ftp.scheduleSync',
+        description: 'Schedule automatic data synchronization with the SpatialEst FTP server',
+        handler: async (params: any) => {
+          const { enabled, intervalHours } = params;
+          if (typeof enabled !== 'boolean') {
+            return { success: false, error: 'Enabled parameter (boolean) is required' };
+          }
+          const result = await this.executeCapability('scheduleFtpSync', { enabled, intervalHours });
+          return result;
+        }
+      },
+      {
+        name: 'ftp.getStatus',
+        description: 'Get FTP connection and synchronization status',
+        handler: async () => {
+          const result = await this.executeCapability('getFtpStatus', {});
+          return result;
+        }
+      }
+    ]);
+    
+    // Log successful initialization
+    await this.logActivity('initialization', 'FTP Data Agent initialized successfully');
+  }
+  
+  /**
+   * Cleans up resources when the agent is being shut down
+   */
+  public async shutdown(): Promise<void> {
+    if (this.scheduler) {
+      clearInterval(this.scheduler);
+      this.scheduler = null;
+    }
+    
+    await this.logActivity('shutdown', 'FTP Data Agent shutdown');
+  }
+  
+  /**
+   * Test FTP connection to SpatialEst server
+   */
+  private async testFtpConnection(): Promise<any> {
+    try {
+      const connected = await this.ftpService.testConnection();
+      
+      await this.logActivity(
+        'ftp_connection_test',
+        connected ? 'FTP connection test successful' : 'FTP connection test failed'
+      );
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'testFtpConnection',
+        result: {
+          connected,
+          host: 'ftp.spatialest.com',
+          message: connected ? 'Successfully connected to SpatialEst FTP server' : 'Failed to connect to SpatialEst FTP server'
+        }
+      };
+    } catch (error: any) {
+      await this.logActivity('ftp_connection_error', `FTP connection error: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'testFtpConnection',
+        error: `FTP connection error: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * List directories available on the SpatialEst FTP server
+   */
+  private async listFtpDirectories(params: any): Promise<any> {
+    try {
+      const { path = '/' } = params;
+      
+      const files = await this.ftpService.listFiles(path);
+      
+      // Transform the results into a more useful format
+      const directories: string[] = [];
+      const filesList = [];
+      
+      for (const file of files) {
+        if (file.type === 2) { // Directory
+          directories.push(file.name);
+        }
+        
+        filesList.push({
+          name: file.name,
+          size: file.size,
+          date: file.date ? file.date.toISOString() : null,
+          path: `${path}${path.endsWith('/') ? '' : '/'}${file.name}`,
+          isDirectory: file.type === 2
+        });
+      }
+      
+      const result: FtpDirectoryInfo = {
+        directories,
+        files: filesList
+      };
+      
+      await this.logActivity('ftp_list_directories', `Listed FTP directories in ${path}`);
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'listFtpDirectories',
+        result
+      };
+    } catch (error: any) {
+      await this.logActivity('ftp_list_error', `FTP listing error: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'listFtpDirectories',
+        error: `FTP listing error: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * Search for files on the SpatialEst FTP server
+   */
+  private async searchFtpFiles(params: any): Promise<any> {
+    try {
+      const { options = {} } = params;
+      const { 
+        searchString = '',
+        fileType = '',
+        maxResults = 50,
+        recursive = false
+      } = options;
+      
+      // Start search at root directory
+      const rootPath = '/';
+      
+      // Get initial file list
+      const allFiles = await this.searchFilesRecursive(rootPath, searchString, fileType, recursive);
+      
+      // Limit results
+      const limitedResults = allFiles.slice(0, maxResults);
+      
+      await this.logActivity('ftp_search_files', `Searched FTP files with criteria: ${searchString}`);
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'searchFtpFiles',
+        result: {
+          files: limitedResults,
+          total: allFiles.length,
+          returned: limitedResults.length,
+          searchCriteria: {
+            searchString,
+            fileType,
+            recursive
+          }
+        }
+      };
+    } catch (error: any) {
+      await this.logActivity('ftp_search_error', `FTP search error: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'searchFtpFiles',
+        error: `FTP search error: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * Recursive file search helper
+   */
+  private async searchFilesRecursive(
+    currentPath: string,
+    searchString: string,
+    fileType: string,
+    recursive: boolean,
+    depth: number = 0,
+    maxDepth: number = 3
+  ): Promise<any[]> {
+    // Prevent excessive recursion
+    if (depth > maxDepth) {
+      return [];
+    }
+    
+    try {
+      const files = await this.ftpService.listFiles(currentPath);
+      let results: any[] = [];
+      
+      for (const file of files) {
+        const fullPath = `${currentPath}${currentPath.endsWith('/') ? '' : '/'}${file.name}`;
+        
+        // Check if file matches search criteria
+        const matchesSearch = !searchString || file.name.toLowerCase().includes(searchString.toLowerCase());
+        const matchesType = !fileType || (file.type === 1 && file.name.toLowerCase().endsWith(`.${fileType.toLowerCase()}`));
+        
+        if (file.type === 1 && matchesSearch && matchesType) {
+          // File matches criteria
+          results.push({
+            name: file.name,
+            path: fullPath,
+            size: file.size,
+            date: file.date ? file.date.toISOString() : null,
+            isDirectory: false
+          });
+        }
+        
+        // Recurse into subdirectories if needed
+        if (recursive && file.type === 2 && file.name !== '.' && file.name !== '..') {
+          const subResults = await this.searchFilesRecursive(
+            fullPath,
+            searchString,
+            fileType,
+            recursive,
+            depth + 1,
+            maxDepth
+          );
+          results = [...results, ...subResults];
+        }
+      }
+      
+      return results;
+    } catch (error) {
+      console.error(`Error searching directory ${currentPath}:`, error);
+      return [];
+    }
+  }
+  
+  /**
+   * Download a file from the SpatialEst FTP server
+   */
+  private async downloadFtpFile(params: any): Promise<any> {
+    try {
+      const { remotePath, localPath: customLocalPath } = params;
+      
+      if (!remotePath) {
+        return {
+          success: false,
+          agent: this.config.name,
+          capability: 'downloadFtpFile',
+          error: 'Remote file path is required'
+        };
+      }
+      
+      // Determine local path
+      const fileName = path.basename(remotePath);
+      const defaultLocalDir = path.join(process.cwd(), 'uploads', 'ftp');
+      
+      // Create default directory if it doesn't exist
+      if (!fs.existsSync(defaultLocalDir)) {
+        fs.mkdirSync(defaultLocalDir, { recursive: true });
+      }
+      
+      const localPath = customLocalPath || path.join(defaultLocalDir, fileName);
+      
+      // Download the file
+      const downloadSuccess = await this.ftpService.downloadFile(remotePath, localPath);
+      
+      if (!downloadSuccess) {
+        throw new Error(`Failed to download file from ${remotePath}`);
+      }
+      
+      await this.logActivity('ftp_file_download', `Downloaded file from ${remotePath}`);
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'downloadFtpFile',
+        result: {
+          remotePath,
+          localPath,
+          fileName,
+          downloadTime: new Date().toISOString()
+        }
+      };
+    } catch (error: any) {
+      await this.logActivity('ftp_download_error', `FTP download error: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'downloadFtpFile',
+        error: `FTP download error: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * Upload a file to the SpatialEst FTP server
+   */
+  private async uploadFtpFile(params: any): Promise<any> {
+    try {
+      const { localPath, remotePath } = params;
+      
+      if (!localPath || !remotePath) {
+        return {
+          success: false,
+          agent: this.config.name,
+          capability: 'uploadFtpFile',
+          error: 'Local and remote file paths are required'
+        };
+      }
+      
+      // Check if local file exists
+      if (!fs.existsSync(localPath)) {
+        return {
+          success: false,
+          agent: this.config.name,
+          capability: 'uploadFtpFile',
+          error: `Local file does not exist: ${localPath}`
+        };
+      }
+      
+      // Upload the file
+      const uploadSuccess = await this.ftpService.uploadFile(localPath, remotePath);
+      
+      if (!uploadSuccess) {
+        throw new Error(`Failed to upload file to ${remotePath}`);
+      }
+      
+      await this.logActivity('ftp_file_upload', `Uploaded file to ${remotePath}`);
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'uploadFtpFile',
+        result: {
+          localPath,
+          remotePath,
+          fileName: path.basename(remotePath),
+          uploadTime: new Date().toISOString()
+        }
+      };
+    } catch (error: any) {
+      await this.logActivity('ftp_upload_error', `FTP upload error: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'uploadFtpFile',
+        error: `FTP upload error: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * Import property data from the SpatialEst FTP server
+   */
+  private async importFtpProperties(params: any): Promise<any> {
+    try {
+      const { remotePath } = params;
+      
+      if (!remotePath) {
+        return {
+          success: false,
+          agent: this.config.name,
+          capability: 'importFtpProperties',
+          error: 'Remote file path is required'
+        };
+      }
+      
+      // Import properties directly from FTP
+      const importResult = await this.ftpService.importPropertiesFromFtp(remotePath);
+      
+      await this.logActivity('ftp_properties_import', `Imported properties from ${remotePath}`);
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'importFtpProperties',
+        result: {
+          remotePath,
+          fileName: importResult.filename,
+          totalRecords: importResult.importResult.total,
+          successfulImports: importResult.importResult.successfulImports,
+          failedImports: importResult.importResult.failedImports,
+          errors: importResult.importResult.errors,
+          importTime: new Date().toISOString()
+        }
+      };
+    } catch (error: any) {
+      await this.logActivity('ftp_import_error', `FTP import error: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'importFtpProperties',
+        error: `FTP import error: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * Stage property data from the SpatialEst FTP server for review
+   */
+  private async stageFtpProperties(params: any): Promise<any> {
+    try {
+      const { remotePath } = params;
+      
+      if (!remotePath) {
+        return {
+          success: false,
+          agent: this.config.name,
+          capability: 'stageFtpProperties',
+          error: 'Remote file path is required'
+        };
+      }
+      
+      // Stage properties from FTP
+      const stagingResult = await this.ftpService.stagePropertiesFromFtp(remotePath);
+      
+      await this.logActivity('ftp_properties_staging', `Staged properties from ${remotePath}`);
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'stageFtpProperties',
+        result: {
+          remotePath,
+          fileName: stagingResult.filename,
+          stagingResult: stagingResult.stagingResult,
+          stagingTime: new Date().toISOString()
+        }
+      };
+    } catch (error: any) {
+      await this.logActivity('ftp_staging_error', `FTP staging error: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'stageFtpProperties',
+        error: `FTP staging error: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * Schedule automatic data synchronization with the SpatialEst FTP server
+   */
+  private async scheduleFtpSync(params: any): Promise<any> {
+    try {
+      const { enabled, intervalHours = 24 } = params;
+      
+      // Update schedule configuration
+      this.schedule.enabled = enabled;
+      this.schedule.intervalHours = intervalHours;
+      
+      // Clear existing scheduler if any
+      if (this.scheduler) {
+        clearInterval(this.scheduler);
+        this.scheduler = null;
+      }
+      
+      // Set up new scheduler if enabled
+      if (enabled) {
+        const intervalMs = intervalHours * 60 * 60 * 1000;
+        this.scheduler = setInterval(() => this.runScheduledSync(), intervalMs);
+        
+        // Run initial sync
+        this.runScheduledSync();
+      }
+      
+      await this.logActivity(
+        'ftp_sync_schedule_update',
+        `FTP sync schedule ${enabled ? 'enabled' : 'disabled'} with interval ${intervalHours} hours`
+      );
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'scheduleFtpSync',
+        result: {
+          enabled,
+          intervalHours,
+          nextSyncTime: this.getNextSyncTime(),
+          message: enabled ? `Scheduled FTP sync every ${intervalHours} hours` : 'FTP sync schedule disabled'
+        }
+      };
+    } catch (error: any) {
+      await this.logActivity('ftp_schedule_error', `FTP schedule error: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'scheduleFtpSync',
+        error: `FTP schedule error: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * Run scheduled synchronization
+   */
+  private async runScheduledSync(): Promise<void> {
+    try {
+      this.schedule.lastRun = new Date();
+      
+      await this.logActivity('ftp_scheduled_sync_start', 'Started scheduled FTP synchronization');
+      
+      // Test connection first
+      const connectionTest = await this.testFtpConnection();
+      if (!connectionTest.success || !connectionTest.result.connected) {
+        throw new Error('FTP connection failed during scheduled sync');
+      }
+      
+      // Search for property data files
+      const searchResult = await this.searchFtpFiles({
+        options: {
+          searchString: 'property',
+          fileType: 'csv',
+          maxResults: 10,
+          recursive: true
+        }
+      });
+      
+      if (!searchResult.success || !searchResult.result.files.length) {
+        await this.logActivity('ftp_scheduled_sync_no_files', 'No property data files found during scheduled sync');
+        return;
+      }
+      
+      // Get the most recent file
+      const files = searchResult.result.files;
+      files.sort((a: any, b: any) => {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dateB - dateA; // Sort descending (newest first)
+      });
+      
+      const latestFile = files[0];
+      
+      // Import the file
+      const importResult = await this.importFtpProperties({
+        remotePath: latestFile.path
+      });
+      
+      if (importResult.success) {
+        await this.logActivity(
+          'ftp_scheduled_sync_complete',
+          `Completed scheduled FTP sync. Imported ${importResult.result.successfulImports} properties.`
+        );
+      } else {
+        throw new Error(`Import failed: ${importResult.error}`);
+      }
+    } catch (error: any) {
+      await this.logActivity('ftp_scheduled_sync_error', `Scheduled FTP sync error: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Get next sync time based on schedule
+   */
+  private getNextSyncTime(): string | null {
+    if (!this.schedule.enabled || !this.schedule.lastRun) {
+      return null;
+    }
+    
+    const lastRun = this.schedule.lastRun;
+    const intervalMs = this.schedule.intervalHours * 60 * 60 * 1000;
+    const nextRun = new Date(lastRun.getTime() + intervalMs);
+    
+    return nextRun.toISOString();
+  }
+  
+  /**
+   * Get FTP connection and synchronization status
+   */
+  private async getFtpStatus(): Promise<any> {
+    try {
+      // Test connection
+      const connectionTest = await this.testFtpConnection();
+      const connected = connectionTest.success && connectionTest.result.connected;
+      
+      // Gather status
+      const status = {
+        connected,
+        host: 'ftp.spatialest.com',
+        scheduleEnabled: this.schedule.enabled,
+        scheduleIntervalHours: this.schedule.intervalHours,
+        lastSync: this.schedule.lastRun ? this.schedule.lastRun.toISOString() : null,
+        nextSync: this.getNextSyncTime(),
+        connectionDetails: connected ? {
+          secure: true,
+          port: 21
+        } : null
+      };
+      
+      await this.logActivity('ftp_status_check', 'Checked FTP connection and sync status');
+      
+      return {
+        success: true,
+        agent: this.config.name,
+        capability: 'getFtpStatus',
+        result: status
+      };
+    } catch (error: any) {
+      await this.logActivity('ftp_status_error', `FTP status error: ${error.message}`);
+      
+      return {
+        success: false,
+        agent: this.config.name,
+        capability: 'getFtpStatus',
+        error: `FTP status error: ${error.message}`
+      };
+    }
+  }
+}
