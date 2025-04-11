@@ -37,6 +37,15 @@ export enum IssueStatus {
   WAIVED = 'waived'
 }
 
+export enum AppealStatus {
+  SUBMITTED = 'submitted',
+  UNDER_REVIEW = 'under_review',
+  SCHEDULED = 'scheduled',
+  HEARD = 'heard',
+  DECIDED = 'decided',
+  WITHDRAWN = 'withdrawn'
+}
+
 // Users table
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),

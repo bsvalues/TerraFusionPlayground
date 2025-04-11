@@ -18,7 +18,14 @@ export enum NotificationType {
   SYSTEM_ALERT = 'system_alert',
   AI_AGENT_ACTIVITY = 'ai_agent_activity',
   PACS_UPDATE = 'pacs_update',
-  APPEALS = 'appeals'
+  APPEALS = 'appeals',
+  // Compliance notification types
+  COMPLIANCE_ISSUE = 'compliance_issue',
+  EQUALIZATION_COMPLIANCE_ISSUE = 'equalization_compliance_issue',
+  REVALUATION_COMPLIANCE_ISSUE = 'revaluation_compliance_issue',
+  EXEMPTION_COMPLIANCE_ISSUE = 'exemption_compliance_issue',
+  APPEAL_COMPLIANCE_ISSUE = 'appeal_compliance_issue',
+  ANNUAL_COMPLIANCE_ISSUES = 'annual_compliance_issues'
 }
 
 // Define the notification structure

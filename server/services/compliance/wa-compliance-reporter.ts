@@ -13,10 +13,10 @@
 
 import { IStorage } from '../../storage';
 import { PropertyValidationEngine } from '../data-quality/property-validation-engine';
-import { NotificationService } from '../notification-service';
-import { MarketAnalysisAgent } from '../agents/market-analysis-agent';
-import { logger } from '../../logger';
-import { formatDate } from '../../utils/date-utils';
+import { NotificationService, NotificationType } from '../notification-service';
+import { MarketAnalysisAgent } from '../agents/interfaces/market-analysis-agent.interface';
+import { logger } from '../../utils/logger';
+import { formatDate, fiscalYear, addYears, isDateInRange } from '../../utils/date-utils';
 import { Property, Appeal, AppealStatus, ValidationRule } from '@shared/schema';
 
 /**
@@ -308,7 +308,7 @@ export class WAComplianceReporter {
       // If there are compliance issues, send notification
       if (!isCountyCompliant) {
         await this.notificationService.broadcastSystemNotification(
-          "Equalization Report Compliance Issue",
+          NotificationType.EQUALIZATION_COMPLIANCE_ISSUE,
           `The county-wide assessment ratio of ${countyRatio.toFixed(2)} is outside the required range (0.90-1.10)`,
           "report",
           report.id,
@@ -483,7 +483,7 @@ export class WAComplianceReporter {
           .join(", ");
           
         await this.notificationService.broadcastSystemNotification(
-          "Revaluation Cycle Compliance Issue",
+          NotificationType.REVALUATION_COMPLIANCE_ISSUE,
           `The following areas are outside the required ${cycleYears}-year revaluation cycle: ${nonCompliantAreas}`,
           "report",
           report.id,
@@ -645,7 +645,7 @@ export class WAComplianceReporter {
           .join(", ");
           
         await this.notificationService.broadcastSystemNotification(
-          "Exemption Verification Compliance Issue",
+          NotificationType.EXEMPTION_COMPLIANCE_ISSUE,
           `The following exemption types are below required verification thresholds: ${nonCompliantTypes}`,
           "report",
           report.id,
@@ -865,7 +865,7 @@ export class WAComplianceReporter {
         }
         
         await this.notificationService.broadcastSystemNotification(
-          "Appeal Process Compliance Issue",
+          NotificationType.APPEAL_COMPLIANCE_ISSUE,
           `The following appeal process metrics are below required thresholds: ${issues.join(", ")}`,
           "report",
           report.id,
@@ -976,7 +976,7 @@ export class WAComplianceReporter {
         
         // Send notification for compliance issues
         await this.notificationService.broadcastSystemNotification(
-          "Annual Compliance Issues Detected",
+          NotificationType.ANNUAL_COMPLIANCE_ISSUES,
           `The ${taxYear} annual compliance package contains the following issues: ${complianceIssues.join("; ")}`,
           "report",
           `ANNUAL-${taxYear}`,
