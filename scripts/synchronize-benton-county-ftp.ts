@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 /**
  * Benton County FTP Synchronization Script
  * 
@@ -7,9 +7,9 @@
  * 
  * It also checks for pending staged imports and can commit them if needed.
  */
-import { MemStorage } from '../server/storage.js';
-import { FtpService } from '../server/services/ftp-service.js';
-import { DataImportService } from '../server/services/data-import-service.js';
+import { MemStorage } from '../server/storage';
+import { FtpService } from '../server/services/ftp-service';
+import { DataImportService } from '../server/services/data-import-service';
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -53,7 +53,7 @@ const logger = {
 };
 
 // Function to test FTP connection
-async function testFtpConnection() {
+async function testFtpConnection(): Promise<boolean> {
   logger.log('Testing connection to Benton County FTP server...');
   try {
     const connected = await ftpService.testConnection();
@@ -70,8 +70,25 @@ async function testFtpConnection() {
   }
 }
 
+interface FtpFile {
+  name: string;
+  type: number;
+  size: number;
+  date?: string | Date;
+}
+
+interface ImportResult {
+  importResult: {
+    total: number;
+    successfulImports: number;
+    failedImports: number;
+    errors?: string[];
+  };
+  filename: string;
+}
+
 // Function to search for property data files
-async function searchPropertyDataFiles() {
+async function searchPropertyDataFiles(): Promise<FtpFile[]> {
   logger.log('Searching for property data files on the FTP server...');
   try {
     // Start with the root directory
@@ -105,7 +122,7 @@ async function searchPropertyDataFiles() {
 }
 
 // Function to download and import a file
-async function downloadAndImportFile(file) {
+async function downloadAndImportFile(file: FtpFile): Promise<boolean> {
   const remotePath = `/${file.name}`;
   const localPath = path.join(TEMP_DIR, file.name);
   
