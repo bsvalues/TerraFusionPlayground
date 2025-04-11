@@ -138,9 +138,9 @@ export class MarketAnalysisAgent extends BaseAgent {
       },
       {
         name: 'market.getForecast',
-        description: 'Get property value forecast',
+        description: 'Get property value forecast with optional scenario analysis',
         handler: async (params: any) => {
-          const { propertyId, years } = params;
+          const { propertyId, years, scenarioAnalysis = false } = params;
           
           if (!propertyId) {
             return { success: false, error: 'Property ID is required' };
@@ -161,7 +161,7 @@ export class MarketAnalysisAgent extends BaseAgent {
           const marketFactors = await this.marketFactorService.getPropertyMarketFactors(propertyId);
           const marketImpact = this.marketFactorService.calculateMarketFactorImpact(marketFactors);
           
-          // Add our confidence score based on market factors
+          // Create the enhanced result
           const enhancedResult = {
             ...baseResult.result,
             marketAnalysis: {
@@ -172,7 +172,152 @@ export class MarketAnalysisAgent extends BaseAgent {
             }
           };
           
+          // Add scenario analysis if requested
+          if (scenarioAnalysis) {
+            // Base forecast confidence level as the margin of error for scenarios
+            const confidenceLevel = marketImpact.confidenceLevel || 0.7;
+            const marginOfError = (1 - confidenceLevel) * 0.5; // Half of the uncertainty range
+            
+            // Get the forecast end value
+            const baseValue = enhancedResult.predictedValues[enhancedResult.predictedValues.length - 1].predictedValue;
+            
+            // Calculate optimistic and pessimistic scenarios
+            enhancedResult.scenarios = {
+              optimistic: {
+                predictedValue: Math.round(baseValue * (1 + marginOfError * 2)),
+                growthFactor: marginOfError * 2,
+                scenario: 'optimistic',
+                description: this.generateScenarioDescription(marketFactors, 'optimistic')
+              },
+              base: {
+                predictedValue: baseValue,
+                growthFactor: 0,
+                scenario: 'base',
+                description: "Base scenario using current market conditions and trends."
+              },
+              pessimistic: {
+                predictedValue: Math.round(baseValue * (1 - marginOfError * 2)),
+                growthFactor: -marginOfError * 2,
+                scenario: 'pessimistic',
+                description: this.generateScenarioDescription(marketFactors, 'pessimistic')
+              }
+            };
+          }
+          
           return { success: true, result: enhancedResult };
+        }
+      },
+      {
+        name: 'market.assessInvestment',
+        description: 'Assess investment potential for a property with detailed metrics',
+        handler: async (params: any) => {
+          const { 
+            propertyId, 
+            investmentHorizon = 5, 
+            rentalIncome = 0, 
+            initialInvestment = 0,
+            financingDetails = null,
+            improvementBudget = 0
+          } = params;
+          
+          if (!propertyId) {
+            return { success: false, error: 'Property ID is required' };
+          }
+          
+          // Use our assessment capability 
+          const result = await this.executeCapability('assessInvestmentPotential', {
+            propertyId,
+            investmentHorizon,
+            rentalIncome,
+            initialInvestment,
+            financingDetails,
+            improvementBudget
+          });
+          
+          if (!result?.success) {
+            return { success: false, error: 'Failed to assess investment potential' };
+          }
+          
+          return { success: true, result: result.result };
+        }
+      },
+      {
+        name: 'market.detectValuationAnomalies',
+        description: 'Detect valuation anomalies for a property compared to the local market',
+        handler: async (params: any) => {
+          const { propertyId, threshold = 0.25 } = params;
+          
+          if (!propertyId) {
+            return { success: false, error: 'Property ID is required' };
+          }
+          
+          // Get the property
+          const property = await this.storage.getPropertyByPropertyId(propertyId);
+          
+          if (!property) {
+            return { success: false, error: 'Property not found' };
+          }
+          
+          // Get comparable properties for analysis
+          const compsResult = await this.executeMCPTool('property.getComparables', { 
+            propertyId,
+            count: 10,  // Get more comparables for better statistical analysis
+            maxDistance: 3,
+            similarSize: true
+          });
+          
+          if (!compsResult?.success || !compsResult.result || compsResult.result.length < 3) {
+            return { success: false, error: 'Insufficient comparable properties for anomaly detection' };
+          }
+          
+          // Prepare data for anomaly detection
+          const comparables = compsResult.result;
+          
+          // If we have the LLM service, use it for enhanced anomaly detection
+          if (this.llmService) {
+            try {
+              const anomalyResult = await this.llmService.detectValuationAnomalies(
+                propertyId,
+                property,
+                comparables,
+                threshold
+              );
+              
+              return { success: true, result: JSON.parse(anomalyResult.text) };
+            } catch (llmError) {
+              console.error('LLM anomaly detection error:', llmError);
+              // Fall back to standard detection if LLM fails
+            }
+          }
+          
+          // Standard statistical anomaly detection (fallback)
+          const valuationStats = this.calculateValuationStatistics(property, comparables);
+          const isAnomaly = Math.abs(valuationStats.zScore) > threshold * 3;  // Convert threshold to standard deviations
+          
+          const result = {
+            propertyId,
+            sourceValue: property.value,
+            comparableStatistics: {
+              count: comparables.length,
+              averageValue: valuationStats.mean,
+              medianValue: valuationStats.median,
+              standardDeviation: valuationStats.stdDev
+            },
+            anomalyMetrics: {
+              deviationFromAverage: valuationStats.deviationPercent,
+              deviationFromMedian: valuationStats.medianDeviationPercent,
+              zScore: valuationStats.zScore
+            },
+            anomalyDetection: {
+              isValueAnomaly: isAnomaly,
+              valuationConfidence: isAnomaly ? 'Low' : 'High',
+              anomalyThreshold: threshold,
+              possibleExplanations: this.generateAnomalyExplanations(property, valuationStats, comparables)
+            },
+            analysisDate: new Date().toISOString()
+          };
+          
+          return { success: true, result };
         }
       }
     ]);
@@ -721,7 +866,15 @@ export class MarketAnalysisAgent extends BaseAgent {
    */
   private async assessInvestmentPotential(params: any): Promise<any> {
     try {
-      const { propertyId, investmentHorizon = 5, rentalIncome = 0 } = params;
+      const { 
+        propertyId, 
+        investmentHorizon = 5, 
+        rentalIncome = 0, 
+        initialInvestment = 0,
+        financingDetails = null,
+        improvementBudget = 0,
+        propertyTaxRate = 0.95  // Default based on Benton County average
+      } = params;
       
       if (!propertyId) {
         return { success: false, error: 'Property ID is required' };
@@ -734,10 +887,11 @@ export class MarketAnalysisAgent extends BaseAgent {
         return { success: false, error: 'Property not found' };
       }
       
-      // Get property value forecast
+      // Get property value forecast with scenario analysis
       const forecastResult = await this.executeMCPTool('market.getForecast', { 
         propertyId,
-        years: investmentHorizon
+        years: investmentHorizon,
+        scenarioAnalysis: true
       });
       
       if (!forecastResult?.success) {
@@ -747,39 +901,52 @@ export class MarketAnalysisAgent extends BaseAgent {
       const currentValue = property.result.value;
       const forecastedValue = forecastResult.result.predictedValues[forecastResult.result.predictedValues.length - 1].predictedValue;
       
-      // Calculate potential return on investment
-      const appreciationGain = forecastedValue - currentValue;
-      const appreciationPercent = (appreciationGain / currentValue) * 100;
-      const appreciationAnnualized = Math.pow((1 + appreciationPercent / 100), 1 / investmentHorizon) - 1;
+      // Get base investment metrics
+      const investmentMetrics = this.calculateInvestmentMetrics({
+        currentValue,
+        forecastedValue,
+        investmentHorizon,
+        rentalIncome,
+        initialInvestment: initialInvestment || currentValue,
+        improvementBudget,
+        propertyTaxRate,
+        financingDetails
+      });
       
-      // If rental income is provided, calculate rental yield
-      let rentalYield = 0;
-      let totalROI = 0;
-      let totalAnnualizedROI = 0;
-      
-      if (rentalIncome > 0) {
-        // Calculate yearly rental income
-        const yearlyRentalIncome = rentalIncome * 12;
+      // Get market comparison data
+      let marketComparison = null;
+      try {
+        const compsResult = await this.executeMCPTool('market.getComparables', { 
+          propertyId,
+          criteria: { count: 3, similarValue: true }
+        });
         
-        // Estimate expenses (property tax, insurance, maintenance - typically about 40% of rental income)
-        const expenseRate = 0.4;
-        const yearlyExpenses = yearlyRentalIncome * expenseRate;
-        
-        // Calculate net operating income
-        const netOperatingIncome = yearlyRentalIncome - yearlyExpenses;
-        
-        // Calculate rental yield
-        rentalYield = (netOperatingIncome / currentValue) * 100;
-        
-        // Calculate total ROI including both appreciation and rental income
-        const totalRentalIncome = netOperatingIncome * investmentHorizon;
-        totalROI = ((appreciationGain + totalRentalIncome) / currentValue) * 100;
-        
-        // Calculate annualized total ROI
-        totalAnnualizedROI = Math.pow((1 + totalROI / 100), 1 / investmentHorizon) - 1;
-      } else {
-        totalROI = appreciationPercent;
-        totalAnnualizedROI = appreciationAnnualized;
+        if (compsResult?.success && compsResult.result.length > 0) {
+          const comparables = compsResult.result;
+          
+          // Calculate average rental yield in the area (if rental data is available)
+          const areaRentalYield = comparables.some((comp: any) => comp.extraFields?.rentalEstimate > 0) ?
+            comparables.reduce((sum: number, comp: any) => {
+              const rental = comp.extraFields?.rentalEstimate || 0;
+              return sum + (rental > 0 ? (rental * 12 * 0.6 / comp.value) * 100 : 0);
+            }, 0) / comparables.filter((comp: any) => comp.extraFields?.rentalEstimate > 0).length : 0;
+          
+          marketComparison = {
+            comparableCount: comparables.length,
+            averageValue: comparables.reduce((sum: number, comp: any) => sum + comp.value, 0) / comparables.length,
+            valueRange: {
+              min: Math.min(...comparables.map((comp: any) => comp.value)),
+              max: Math.max(...comparables.map((comp: any) => comp.value))
+            },
+            averageRentalYield: areaRentalYield > 0 ? areaRentalYield : null,
+            averageDaysOnMarket: comparables.reduce((sum: number, comp: any) => {
+              return sum + (comp.extraFields?.daysOnMarket || 30);
+            }, 0) / comparables.length
+          };
+        }
+      } catch (compsError) {
+        console.error('Error fetching comparable properties:', compsError);
+        // Continue without comparables data
       }
       
       // Get local market factors
@@ -788,7 +955,7 @@ export class MarketAnalysisAgent extends BaseAgent {
       
       // Generate investment rating based on ROI and risk
       const investmentRating = this.calculateInvestmentRating(
-        totalAnnualizedROI * 100,
+        investmentMetrics.annualizedROI,
         marketImpact.confidenceLevel,
         forecastResult.result.marketAnalysis.marketOutlook
       );
@@ -796,31 +963,97 @@ export class MarketAnalysisAgent extends BaseAgent {
       // Identify risk factors
       const riskFactors = this.identifyInvestmentRiskFactors(property.result, marketFactors);
       
+      // Calculate investment scenarios
+      const scenarios = forecastResult.result.scenarios ? {
+        optimistic: this.calculateInvestmentMetrics({
+          currentValue,
+          forecastedValue: forecastResult.result.scenarios.optimistic.predictedValue,
+          investmentHorizon,
+          rentalIncome: rentalIncome * 1.1, // Optimistic rental income (10% higher)
+          initialInvestment: initialInvestment || currentValue,
+          improvementBudget,
+          propertyTaxRate,
+          financingDetails
+        }),
+        base: investmentMetrics,
+        pessimistic: this.calculateInvestmentMetrics({
+          currentValue,
+          forecastedValue: forecastResult.result.scenarios.pessimistic.predictedValue,
+          investmentHorizon,
+          rentalIncome: rentalIncome * 0.9, // Pessimistic rental income (10% lower)
+          initialInvestment: initialInvestment || currentValue,
+          improvementBudget,
+          propertyTaxRate,
+          financingDetails
+        })
+      } : null;
+      
+      // Generate investment narrative using LLM if available
+      let investmentNarrative = "";
+      if (this.llmService) {
+        try {
+          const llmResponse = await this.llmService.prompt([
+            {
+              role: "system",
+              content: "You are an investment property analysis expert for Benton County, Washington."
+            },
+            {
+              role: "user",
+              content: `Generate a brief investment analysis narrative for a property in Benton County, Washington.
+              Use the following data:
+              - Property: ${property.result.address} (${property.result.propertyType})
+              - Current value: $${currentValue.toLocaleString()}
+              - Forecasted value in ${investmentHorizon} years: $${forecastedValue.toLocaleString()}
+              - Total ROI: ${investmentMetrics.totalROI.toFixed(2)}%
+              - Annualized ROI: ${investmentMetrics.annualizedROI.toFixed(2)}%
+              - Rental yield: ${rentalIncome > 0 ? investmentMetrics.rentalYield.toFixed(2) + '%' : 'Not calculated'}
+              - Cash flow: ${rentalIncome > 0 ? '$' + investmentMetrics.monthlyCashFlow.toFixed(2) + '/month' : 'Not calculated'}
+              - Investment rating: ${investmentRating.rating} (score: ${investmentRating.score})
+              - Market outlook: ${marketImpact.marketOutlook}
+              
+              Write a professional assessment (approx. 150 words) focusing on investment potential, key metrics, and risk/reward balance.
+              Be factual and objective, highlighting both strengths and potential concerns.`
+            }
+          ]);
+          
+          investmentNarrative = llmResponse?.text || "";
+        } catch (llmError) {
+          console.error('Error generating investment narrative:', llmError);
+          // Continue without the narrative
+        }
+      }
+      
       // Generate the result
       const result = {
         propertyId,
         address: property.result.address,
+        propertyType: property.result.propertyType,
         currentValue,
         forecastedValue,
         investmentHorizon,
-        appreciation: {
-          gain: appreciationGain,
-          percent: appreciationPercent,
-          annualized: appreciationAnnualized * 100
-        },
-        rental: rentalIncome > 0 ? {
-          monthlyIncome: rentalIncome,
-          yearlyIncome: rentalIncome * 12,
-          estimatedExpenses: rentalIncome * 12 * 0.4,
-          netOperatingIncome: rentalIncome * 12 * 0.6,
-          rentalYield
-        } : null,
-        totalROI,
-        totalAnnualizedROI: totalAnnualizedROI * 100,
+        investmentMetrics,
+        breakEvenAnalysis: this.calculateBreakEvenPoint({
+          currentValue,
+          improvementBudget,
+          initialInvestment: initialInvestment || currentValue,
+          annualCashFlow: rentalIncome > 0 ? investmentMetrics.annualCashFlow : 0,
+          financingDetails
+        }),
+        scenarios,
+        marketComparison,
         investmentRating,
         riskFactors,
-        marketOutlook: forecastResult.result.marketAnalysis.marketOutlook,
-        confidenceLevel: forecastResult.result.marketAnalysis.confidenceScore,
+        opportunityAreas: this.identifyOpportunityAreas(property.result, marketFactors),
+        marketFactors: marketFactors.map(f => ({
+          name: f.name,
+          impact: f.impact,
+          trend: f.trend,
+          value: f.value,
+          description: f.description
+        })),
+        marketOutlook: marketImpact.marketOutlook,
+        confidenceLevel: marketImpact.confidenceLevel,
+        investmentNarrative,
         analysisTimestamp: new Date().toISOString()
       };
       
@@ -842,6 +1075,257 @@ export class MarketAnalysisAgent extends BaseAgent {
         error: `Failed to assess investment potential: ${error.message}`
       };
     }
+  }
+  
+  /**
+   * Calculate comprehensive investment metrics
+   */
+  private calculateInvestmentMetrics(params: {
+    currentValue: number;
+    forecastedValue: number;
+    investmentHorizon: number;
+    rentalIncome: number;
+    initialInvestment: number;
+    improvementBudget: number;
+    propertyTaxRate: number;
+    financingDetails: any | null;
+  }): any {
+    const {
+      currentValue,
+      forecastedValue,
+      investmentHorizon,
+      rentalIncome,
+      initialInvestment,
+      improvementBudget,
+      propertyTaxRate,
+      financingDetails
+    } = params;
+    
+    // Calculate appreciation metrics
+    const totalInvestment = initialInvestment + improvementBudget;
+    const appreciationGain = forecastedValue - currentValue;
+    const appreciationPercent = (appreciationGain / currentValue) * 100;
+    const appreciationAnnualized = Math.pow((1 + appreciationPercent / 100), 1 / investmentHorizon) - 1;
+    
+    // Initialize rental metrics
+    let rentalYield = 0;
+    let monthlyCashFlow = 0;
+    let annualCashFlow = 0;
+    let cashOnCashReturn = 0;
+    let totalROI = 0;
+    let annualizedROI = 0;
+    let capRate = 0;
+    let operatingExpenses = 0;
+    let netOperatingIncome = 0;
+    
+    // Calculate financing costs if financing details provided
+    let monthlyMortgagePayment = 0;
+    let totalInterestPaid = 0;
+    let loanDetails = null;
+    
+    if (financingDetails) {
+      const { downPaymentPercent = 20, interestRate = 6.75, loanTermYears = 30 } = financingDetails;
+      
+      const loanAmount = currentValue * (1 - (downPaymentPercent / 100));
+      const monthlyRate = interestRate / 100 / 12;
+      const totalPayments = loanTermYears * 12;
+      
+      // Calculate monthly payment using amortization formula
+      monthlyMortgagePayment = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, totalPayments)) / 
+                              (Math.pow(1 + monthlyRate, totalPayments) - 1);
+      
+      // Calculate total interest over the investment horizon (or loan term if shorter)
+      const paymentsOverInvestmentHorizon = Math.min(investmentHorizon * 12, totalPayments);
+      totalInterestPaid = (monthlyMortgagePayment * paymentsOverInvestmentHorizon) - 
+                         (loanAmount * (1 - Math.pow(1 + monthlyRate, -paymentsOverInvestmentHorizon)));
+      
+      loanDetails = {
+        loanAmount,
+        downPayment: currentValue * (downPaymentPercent / 100),
+        downPaymentPercent,
+        interestRate,
+        loanTermYears,
+        monthlyPayment: monthlyMortgagePayment,
+        totalInterestPaid
+      };
+    }
+    
+    // If rental income is provided, calculate rental metrics
+    if (rentalIncome > 0) {
+      // Calculate yearly rental income
+      const yearlyRentalIncome = rentalIncome * 12;
+      
+      // Estimate expenses (property tax, insurance, maintenance, vacancy)
+      const propertyTaxAnnual = currentValue * (propertyTaxRate / 100);
+      const insuranceAnnual = currentValue * 0.005; // Estimated at 0.5% of property value
+      const maintenanceAnnual = yearlyRentalIncome * 0.1; // 10% of rental income for maintenance
+      const vacancyAnnual = yearlyRentalIncome * 0.08; // 8% vacancy rate
+      const propertyManagementAnnual = yearlyRentalIncome * 0.1; // 10% for property management
+      
+      operatingExpenses = propertyTaxAnnual + insuranceAnnual + maintenanceAnnual + 
+                        vacancyAnnual + propertyManagementAnnual;
+      
+      // Calculate net operating income
+      netOperatingIncome = yearlyRentalIncome - operatingExpenses;
+      
+      // Calculate cap rate
+      capRate = (netOperatingIncome / currentValue) * 100;
+      
+      // Calculate rental yield (NOI / total investment)
+      rentalYield = (netOperatingIncome / totalInvestment) * 100;
+      
+      // Calculate monthly cash flow (accounting for mortgage if applicable)
+      annualCashFlow = netOperatingIncome - (monthlyMortgagePayment * 12);
+      monthlyCashFlow = annualCashFlow / 12;
+      
+      // Calculate cash-on-cash return
+      const actualInitialInvestment = financingDetails ? 
+        (currentValue * (financingDetails.downPaymentPercent / 100)) + improvementBudget : 
+        totalInvestment;
+      
+      cashOnCashReturn = (annualCashFlow / actualInitialInvestment) * 100;
+      
+      // Calculate total ROI including both appreciation and rental income
+      const totalRentalIncome = annualCashFlow * investmentHorizon;
+      totalROI = ((appreciationGain + totalRentalIncome) / actualInitialInvestment) * 100;
+      
+      // Calculate annualized total ROI
+      annualizedROI = Math.pow((1 + totalROI / 100), 1 / investmentHorizon) - 1;
+    } else {
+      // Without rental income, ROI is based solely on appreciation
+      totalROI = appreciationPercent;
+      annualizedROI = appreciationAnnualized;
+    }
+    
+    // Return comprehensive metrics
+    return {
+      totalInvestment,
+      appreciation: {
+        gain: appreciationGain,
+        percent: appreciationPercent,
+        annualized: appreciationAnnualized * 100
+      },
+      rental: rentalIncome > 0 ? {
+        monthlyIncome: rentalIncome,
+        yearlyIncome: rentalIncome * 12,
+        operatingExpenses: {
+          total: operatingExpenses,
+          propertyTax: currentValue * (propertyTaxRate / 100),
+          insurance: currentValue * 0.005,
+          maintenance: rentalIncome * 12 * 0.1,
+          vacancy: rentalIncome * 12 * 0.08,
+          propertyManagement: rentalIncome * 12 * 0.1
+        },
+        netOperatingIncome,
+        capRate,
+        rentalYield
+      } : null,
+      financing: loanDetails,
+      monthlyCashFlow,
+      annualCashFlow,
+      cashOnCashReturn,
+      totalROI,
+      annualizedROI: annualizedROI * 100,
+      // Calculate debt service coverage ratio if financing is used
+      debtServiceCoverageRatio: monthlyMortgagePayment > 0 ? 
+        netOperatingIncome / (monthlyMortgagePayment * 12) : null
+    };
+  }
+  
+  /**
+   * Calculate break-even point for investment
+   */
+  private calculateBreakEvenPoint(params: {
+    currentValue: number;
+    improvementBudget: number;
+    initialInvestment: number;
+    annualCashFlow: number;
+    financingDetails: any | null;
+  }): any {
+    const {
+      currentValue,
+      improvementBudget,
+      initialInvestment,
+      annualCashFlow,
+      financingDetails
+    } = params;
+    
+    // Calculate actual investment amount based on financing
+    const actualInvestment = financingDetails ? 
+      (currentValue * (financingDetails.downPaymentPercent / 100)) + improvementBudget : 
+      initialInvestment + improvementBudget;
+    
+    // If no rental income or negative cash flow, can't break even without appreciation
+    if (annualCashFlow <= 0) {
+      return {
+        requiresAppreciation: true,
+        years: null,
+        months: null,
+        description: "Cannot break even on cash flow alone; property requires appreciation for positive returns."
+      };
+    }
+    
+    // Calculate years to break even on initial investment (ignoring time value of money)
+    const yearsToBreakEven = actualInvestment / annualCashFlow;
+    const wholeYears = Math.floor(yearsToBreakEven);
+    const remainingMonths = Math.ceil((yearsToBreakEven - wholeYears) * 12);
+    
+    let description = "";
+    if (yearsToBreakEven <= 10) {
+      description = `Investment breaks even in approximately ${wholeYears} years and ${remainingMonths} months based on projected cash flow.`;
+    } else {
+      description = `Long-term investment with cash flow break-even point over 10 years. Consider appreciation potential as a significant factor.`;
+    }
+    
+    return {
+      requiresAppreciation: yearsToBreakEven > 20,
+      years: wholeYears,
+      months: remainingMonths,
+      totalMonths: wholeYears * 12 + remainingMonths,
+      description
+    };
+  }
+  
+  /**
+   * Identify opportunity areas for investment improvement
+   */
+  private identifyOpportunityAreas(property: any, marketFactors: any[]): string[] {
+    const opportunities = [];
+    
+    // Check for property type opportunities
+    if (property.propertyType === 'Single Family Residential') {
+      // Check age for potential renovation opportunities
+      const yearBuilt = property.extraFields?.yearBuilt || 0;
+      if (yearBuilt > 0 && yearBuilt < 1990) {
+        opportunities.push('Potential for value-add through modernization and energy efficiency upgrades');
+      }
+      
+      // Check for rental potential
+      if (property.extraFields?.bedrooms && property.extraFields?.bedrooms >= 3) {
+        opportunities.push('Good potential rental property with multiple bedrooms');
+      }
+    }
+    
+    // Check for location-based opportunities
+    if (property.address.includes('Richland')) {
+      opportunities.push('Proximity to Pacific Northwest National Laboratory may provide stable rental demand');
+    } else if (property.address.includes('Kennewick')) {
+      opportunities.push('Central Kennewick location offers good access to commercial areas');
+    }
+    
+    // Check for market factor opportunities
+    const populationGrowth = marketFactors.find(f => f.name === 'Population Growth');
+    if (populationGrowth && populationGrowth.impact === 'positive') {
+      opportunities.push('Positive population growth trend supports long-term appreciation potential');
+    }
+    
+    // Add general opportunities if none identified
+    if (opportunities.length === 0) {
+      opportunities.push('Consider consulting with local property management companies for detailed rental analyses');
+      opportunities.push('Evaluate potential for property improvements to increase value or rental income');
+    }
+    
+    return opportunities;
   }
   
   /**
