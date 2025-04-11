@@ -315,6 +315,10 @@ export class MemStorage implements IStorage {
   private workflowInstances: Map<string, WorkflowInstance>;
   private workflowStepHistory: Map<number, WorkflowStepHistory>;
   private complianceReports: Map<string, ComplianceReport>;
+  private equalizationReports: Map<string, any>; // Washington-specific equalization ratio reports
+  private revaluationCycleReports: Map<string, any>; // Washington-specific revaluation cycle reports
+  private exemptionVerificationReports: Map<string, any>; // Washington-specific exemption verification reports
+  private appealComplianceReports: Map<string, any>; // Washington-specific appeal compliance reports
   
   private currentUserId: number;
   private currentPropertyId: number;
@@ -359,6 +363,10 @@ export class MemStorage implements IStorage {
     this.workflowInstances = new Map<string, WorkflowInstance>();
     this.workflowStepHistory = new Map<number, WorkflowStepHistory>();
     this.complianceReports = new Map<string, ComplianceReport>();
+    this.equalizationReports = new Map<string, any>();
+    this.revaluationCycleReports = new Map<string, any>();
+    this.exemptionVerificationReports = new Map<string, any>();
+    this.appealComplianceReports = new Map<string, any>();
     
     this.currentUserId = 1;
     this.currentPropertyId = 1;
@@ -3365,6 +3373,272 @@ export class PgStorage implements IStorage {
       .orderBy(workflowStepHistory.createdAt);
       
     return results;
+  }
+
+  // Compliance Report methods
+  async createComplianceReport(report: InsertComplianceReport): Promise<ComplianceReport> {
+    const timestamp = new Date();
+    const reportId = report.reportId || `report-${Date.now()}`;
+    
+    const complianceReport: ComplianceReport = {
+      ...report,
+      reportId,
+      createdAt: timestamp,
+      lastUpdated: timestamp,
+      status: report.status || 'draft',
+      submittedBy: report.submittedBy || null,
+      submittedDate: report.submittedDate || null
+    };
+    
+    this.complianceReports.set(reportId, complianceReport);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Compliance Agent
+      activity: `Created ${report.reportType} compliance report for ${report.year}`,
+      entityType: 'complianceReport',
+      entityId: reportId
+    });
+    
+    return complianceReport;
+  }
+  
+  async getComplianceReportById(reportId: string): Promise<ComplianceReport | null> {
+    const report = this.complianceReports.get(reportId);
+    return report || null;
+  }
+  
+  async getComplianceReportsByYear(year: number): Promise<ComplianceReport[]> {
+    return Array.from(this.complianceReports.values())
+      .filter(report => report.year === year);
+  }
+  
+  async getComplianceReportsByType(reportType: string): Promise<ComplianceReport[]> {
+    return Array.from(this.complianceReports.values())
+      .filter(report => report.reportType === reportType);
+  }
+  
+  async updateComplianceReport(reportId: string, updates: Partial<ComplianceReport>): Promise<ComplianceReport | null> {
+    const report = this.complianceReports.get(reportId);
+    if (!report) return null;
+    
+    const timestamp = new Date();
+    const updatedReport = {
+      ...report,
+      ...updates,
+      lastUpdated: timestamp
+    };
+    
+    this.complianceReports.set(reportId, updatedReport);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Compliance Agent
+      activity: `Updated ${report.reportType} compliance report for ${report.year}`,
+      entityType: 'complianceReport',
+      entityId: reportId
+    });
+    
+    return updatedReport;
+  }
+  
+  async updateComplianceReportStatus(reportId: string, status: string, submittedBy?: number): Promise<ComplianceReport | null> {
+    const report = this.complianceReports.get(reportId);
+    if (!report) return null;
+    
+    const timestamp = new Date();
+    const updatedReport = {
+      ...report,
+      status,
+      lastUpdated: timestamp
+    };
+    
+    // If status is 'submitted', update submission details
+    if (status === 'submitted') {
+      updatedReport.submittedBy = submittedBy || null;
+      updatedReport.submittedDate = timestamp;
+    }
+    
+    this.complianceReports.set(reportId, updatedReport);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Compliance Agent
+      activity: `Updated status to ${status} for ${report.reportType} compliance report (${report.year})`,
+      entityType: 'complianceReport',
+      entityId: reportId
+    });
+    
+    return updatedReport;
+  }
+  
+  // Washington State Specific Compliance Reports
+  async createEqualizationReport(report: any): Promise<any> {
+    const timestamp = new Date();
+    const reportId = `equalization-${report.year}-${Date.now()}`;
+    
+    const equalizationReport = {
+      ...report,
+      reportId,
+      createdAt: timestamp,
+      lastUpdated: timestamp,
+      status: report.status || 'draft',
+      reportType: 'equalization',
+      submittedBy: report.submittedBy || null,
+      submittedDate: report.submittedDate || null
+    };
+    
+    this.equalizationReports.set(reportId, equalizationReport);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Compliance Agent
+      activity: `Created Equalization Report for ${report.year}`,
+      entityType: 'equalizationReport',
+      entityId: reportId
+    });
+    
+    return equalizationReport;
+  }
+  
+  async getEqualizationReportByYear(year: number): Promise<any | undefined> {
+    return Array.from(this.equalizationReports.values())
+      .find(report => report.year === year);
+  }
+  
+  async createRevaluationCycleReport(report: any): Promise<any> {
+    const timestamp = new Date();
+    const reportId = `revaluation-${report.year}-${Date.now()}`;
+    
+    const revaluationReport = {
+      ...report,
+      reportId,
+      createdAt: timestamp,
+      lastUpdated: timestamp,
+      status: report.status || 'draft',
+      reportType: 'revaluation',
+      submittedBy: report.submittedBy || null,
+      submittedDate: report.submittedDate || null
+    };
+    
+    this.revaluationCycleReports.set(reportId, revaluationReport);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Compliance Agent
+      activity: `Created Revaluation Cycle Report for ${report.year}`,
+      entityType: 'revaluationReport',
+      entityId: reportId
+    });
+    
+    return revaluationReport;
+  }
+  
+  async getRevaluationCycleReportByYear(year: number): Promise<any | undefined> {
+    return Array.from(this.revaluationCycleReports.values())
+      .find(report => report.year === year);
+  }
+  
+  async createExemptionVerificationReport(report: any): Promise<any> {
+    const timestamp = new Date();
+    const reportId = `exemption-${report.year}-${Date.now()}`;
+    
+    const exemptionReport = {
+      ...report,
+      reportId,
+      createdAt: timestamp,
+      lastUpdated: timestamp,
+      status: report.status || 'draft',
+      reportType: 'exemption',
+      submittedBy: report.submittedBy || null,
+      submittedDate: report.submittedDate || null
+    };
+    
+    this.exemptionVerificationReports.set(reportId, exemptionReport);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Compliance Agent
+      activity: `Created Exemption Verification Report for ${report.year}`,
+      entityType: 'exemptionReport',
+      entityId: reportId
+    });
+    
+    return exemptionReport;
+  }
+  
+  async getExemptionVerificationReportByYear(year: number): Promise<any | undefined> {
+    return Array.from(this.exemptionVerificationReports.values())
+      .find(report => report.year === year);
+  }
+  
+  async createAppealComplianceReport(report: any): Promise<any> {
+    const timestamp = new Date();
+    const reportId = `appeal-compliance-${report.year}-${Date.now()}`;
+    
+    const appealReport = {
+      ...report,
+      reportId,
+      createdAt: timestamp,
+      lastUpdated: timestamp,
+      status: report.status || 'draft',
+      reportType: 'appeal-compliance',
+      submittedBy: report.submittedBy || null,
+      submittedDate: report.submittedDate || null
+    };
+    
+    this.appealComplianceReports.set(reportId, appealReport);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 2, // Compliance Agent
+      activity: `Created Appeal Compliance Report for ${report.year}`,
+      entityType: 'appealComplianceReport',
+      entityId: reportId
+    });
+    
+    return appealReport;
+  }
+  
+  async getAppealComplianceReportByYear(year: number): Promise<any | undefined> {
+    return Array.from(this.appealComplianceReports.values())
+      .find(report => report.year === year);
+  }
+  
+  async getAppealsByTaxYear(taxYear: number): Promise<Appeal[]> {
+    return Array.from(this.appeals.values())
+      .filter(appeal => {
+        // Check if the appeal has a tax year field or use the created date's year
+        const appealYear = appeal.taxYear || appeal.createdAt.getFullYear();
+        return appealYear === taxYear;
+      });
+  }
+  
+  async getAllExemptions(taxYear: number): Promise<any[]> {
+    // Get all properties with exemptions for the given tax year
+    return Array.from(this.properties.values())
+      .filter(property => {
+        // Check if the property has exemption data
+        const hasExemption = property.propertyType === 'exempt' || 
+                            (property.extraFields && property.extraFields.exemptionType);
+        
+        // Check if the exemption is valid for this tax year
+        const exemptionYear = property.extraFields?.exemptionYear || 
+                             property.lastUpdated.getFullYear();
+        
+        return hasExemption && exemptionYear === taxYear;
+      })
+      .map(property => {
+        return {
+          propertyId: property.propertyId,
+          address: property.address,
+          exemptionType: property.extraFields?.exemptionType || 'Unknown',
+          exemptionAmount: property.extraFields?.exemptionAmount || '0',
+          exemptionYear: property.extraFields?.exemptionYear || property.lastUpdated.getFullYear(),
+          ownerName: property.ownerName,
+          parcelNumber: property.parcelNumber
+        };
+      });
   }
 }
 
