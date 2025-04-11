@@ -161,15 +161,18 @@ export abstract class BaseAgent {
       this.performanceScore = Math.max(0, this.performanceScore - 5);
       await this.updateStatus('error', this.performanceScore);
       
+      // Get the error message safely, handling any type of error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
       // Log error
-      await this.logActivity('capability_error', `Error executing capability '${name}': ${error.message}`, {
+      await this.logActivity('capability_error', `Error executing capability '${name}': ${errorMessage}`, {
         capability: name,
-        error: error.message
+        error: errorMessage
       });
       
       return {
         success: false,
-        error: error.message,
+        error: errorMessage,
         agent: this.name,
         capability: name
       };
@@ -210,7 +213,13 @@ export abstract class BaseAgent {
   protected async updateStatus(status: string, performance: number): Promise<void> {
     try {
       this.performanceScore = performance;
-      await this.storage.updateAiAgentStatus(this.id, status, performance);
+      // Check if the method exists before calling it
+      if (typeof this.storage.updateAiAgentStatus === 'function') {
+        await this.storage.updateAiAgentStatus(this.id, status, performance);
+      } else {
+        // Fallback: just log to console if the method doesn't exist
+        console.log(`Agent ${this.name} status update: status=${status}, performance=${performance}`);
+      }
     } catch (error) {
       console.error(`Error updating agent status for '${this.name}':`, error);
     }
@@ -238,7 +247,13 @@ export abstract class BaseAgent {
         created_at: new Date()
       };
       
-      await this.storage.createSystemActivity(activityData);
+      // Check if the method exists before calling it
+      if (typeof this.storage.createSystemActivity === 'function') {
+        await this.storage.createSystemActivity(activityData);
+      } else {
+        // Fallback: log to console
+        console.log(`Agent ${this.name} activity: ${activityType} - ${message}`);
+      }
     } catch (error) {
       console.error(`Error logging activity for agent '${this.name}':`, error);
     }
@@ -248,7 +263,14 @@ export abstract class BaseAgent {
    * Get available tools from MCP
    */
   protected async getAvailableMCPTools(): Promise<any[]> {
-    return this.mcpService.getAvailableTools(this.permissions);
+    // Safely check if the method exists
+    if (typeof this.mcpService.getAvailableTools === 'function') {
+      return this.mcpService.getAvailableTools(this.permissions);
+    } else {
+      // Fallback: return empty array if method doesn't exist
+      console.log(`Agent ${this.name}: MCP getAvailableTools not available, using empty array`);
+      return [];
+    }
   }
 
   /**
