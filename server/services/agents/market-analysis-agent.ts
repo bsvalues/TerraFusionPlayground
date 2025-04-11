@@ -276,14 +276,89 @@ export class MarketAnalysisAgent extends BaseAgent {
           // If we have the LLM service, use it for enhanced anomaly detection
           if (this.llmService) {
             try {
-              const anomalyResult = await this.llmService.detectValuationAnomalies(
-                propertyId,
-                property,
-                comparables,
-                threshold
-              );
+              // Prepare succinct property and comparable data for the LLM
+              const propertyData = {
+                propertyId: property.propertyId,
+                address: property.address,
+                value: property.value,
+                propertyType: property.propertyType,
+                yearBuilt: property.extraFields?.yearBuilt,
+                squareFootage: property.extraFields?.squareFootage,
+                lotSize: property.extraFields?.lotSize,
+                bedrooms: property.extraFields?.bedrooms,
+                bathrooms: property.extraFields?.bathrooms
+              };
               
-              return { success: true, result: JSON.parse(anomalyResult.text) };
+              const compData = comparables.map(comp => ({
+                propertyId: comp.propertyId,
+                value: comp.value,
+                propertyType: comp.propertyType,
+                yearBuilt: comp.extraFields?.yearBuilt,
+                squareFootage: comp.extraFields?.squareFootage,
+                lotSize: comp.extraFields?.lotSize,
+                distance: comp.extraFields?.distance
+              }));
+              
+              // Generate prompt for LLM
+              const prompt = [
+                {
+                  role: "system",
+                  content: "You are a property valuation expert for Benton County, Washington, specializing in detecting valuation anomalies."
+                },
+                {
+                  role: "user",
+                  content: `Analyze if the subject property's valuation is anomalous compared to comparable properties.
+                  
+                  Subject Property:
+                  ${JSON.stringify(propertyData, null, 2)}
+                  
+                  Comparable Properties (${comparables.length}):
+                  ${JSON.stringify(compData, null, 2)}
+                  
+                  Anomaly Detection Threshold: ${threshold}
+                  
+                  Analyze the data and provide a detailed assessment of whether the subject property's value is anomalous. 
+                  Calculate statistical measures (mean, median, standard deviation, z-score) and evaluate the property's value 
+                  in the context of these comparable properties.
+                  
+                  Respond with a JSON object containing:
+                  1. Basic statistics about the comparables
+                  2. Anomaly detection metrics
+                  3. Whether the property's value is anomalous
+                  4. Confidence level in the valuation
+                  5. Possible explanations for any deviations
+                  6. Recommendations for property assessors
+                  
+                  Include factors that might explain the anomaly, such as property condition, 
+                  special features, location specifics, or potential data issues.`
+                }
+              ];
+              
+              const anomalyResult = await this.llmService.prompt(prompt);
+              
+              if (anomalyResult?.text) {
+                try {
+                  // Extract JSON from the response
+                  const jsonMatch = anomalyResult.text.match(/```json\n([\s\S]*?)\n```/) || 
+                                   anomalyResult.text.match(/\{[\s\S]*\}/);
+                                   
+                  if (jsonMatch) {
+                    const jsonString = jsonMatch[1] || jsonMatch[0];
+                    const parsedResult = JSON.parse(jsonString);
+                    
+                    // Ensure the result has the expected structure
+                    if (parsedResult.anomalyDetection) {
+                      // Add analysis timestamp
+                      parsedResult.analysisTimestamp = new Date().toISOString();
+                      parsedResult.propertyId = propertyId;
+                      return { success: true, result: parsedResult };
+                    }
+                  }
+                } catch (parseError) {
+                  console.error('Error parsing LLM anomaly detection response:', parseError);
+                  // Continue to fallback
+                }
+              }
             } catch (llmError) {
               console.error('LLM anomaly detection error:', llmError);
               // Fall back to standard detection if LLM fails
@@ -301,19 +376,33 @@ export class MarketAnalysisAgent extends BaseAgent {
               count: comparables.length,
               averageValue: valuationStats.mean,
               medianValue: valuationStats.median,
-              standardDeviation: valuationStats.stdDev
+              standardDeviation: valuationStats.stdDev,
+              valueRange: {
+                min: Math.min(...comparables.map(c => c.value)),
+                max: Math.max(...comparables.map(c => c.value))
+              }
             },
             anomalyMetrics: {
               deviationFromAverage: valuationStats.deviationPercent,
               deviationFromMedian: valuationStats.medianDeviationPercent,
-              zScore: valuationStats.zScore
+              zScore: valuationStats.zScore,
+              percentileRank: this.calculatePercentileRank(property.value, comparables.map(c => c.value))
+            },
+            propertyCharacteristics: {
+              yearBuilt: property.extraFields?.yearBuilt,
+              squareFootage: property.extraFields?.squareFootage,
+              lotSize: property.extraFields?.lotSize,
+              bedrooms: property.extraFields?.bedrooms,
+              bathrooms: property.extraFields?.bathrooms
             },
             anomalyDetection: {
               isValueAnomaly: isAnomaly,
-              valuationConfidence: isAnomaly ? 'Low' : 'High',
+              valuationConfidence: isAnomaly ? 'Low' : 'High', 
+              anomalySeverity: this.getAnomalySeverity(valuationStats.zScore),
               anomalyThreshold: threshold,
               possibleExplanations: this.generateAnomalyExplanations(property, valuationStats, comparables)
             },
+            recommendations: this.generateValuationRecommendations(property, valuationStats, isAnomaly),
             analysisDate: new Date().toISOString()
           };
           
@@ -1326,6 +1415,249 @@ export class MarketAnalysisAgent extends BaseAgent {
     }
     
     return opportunities;
+  }
+  
+  /**
+   * Calculate valuation statistics for anomaly detection
+   */
+  private calculateValuationStatistics(property: any, comparables: any[]): {
+    mean: number;
+    median: number;
+    stdDev: number;
+    deviation: number;
+    deviationPercent: number;
+    medianDeviation: number;
+    medianDeviationPercent: number;
+    zScore: number;
+  } {
+    // Extract property values from comparables
+    const values = comparables.map((comp: any) => comp.value);
+    
+    // Calculate mean
+    const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+    
+    // Calculate median
+    const sortedValues = [...values].sort((a, b) => a - b);
+    const midpoint = Math.floor(sortedValues.length / 2);
+    const median = sortedValues.length % 2 === 0
+      ? (sortedValues[midpoint - 1] + sortedValues[midpoint]) / 2
+      : sortedValues[midpoint];
+    
+    // Calculate standard deviation
+    const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
+    const variance = squaredDiffs.reduce((sum, val) => sum + val, 0) / values.length;
+    const stdDev = Math.sqrt(variance);
+    
+    // Calculate deviation from mean
+    const deviation = property.value - mean;
+    const deviationPercent = (deviation / mean) * 100;
+    
+    // Calculate deviation from median
+    const medianDeviation = property.value - median;
+    const medianDeviationPercent = (medianDeviation / median) * 100;
+    
+    // Calculate z-score (number of standard deviations from the mean)
+    const zScore = stdDev > 0 ? deviation / stdDev : 0;
+    
+    return {
+      mean,
+      median,
+      stdDev,
+      deviation,
+      deviationPercent,
+      medianDeviation,
+      medianDeviationPercent,
+      zScore
+    };
+  }
+  
+  /**
+   * Generate explanations for valuation anomalies
+   */
+  private generateAnomalyExplanations(
+    property: any, 
+    valuationStats: any, 
+    comparables: any[]
+  ): string[] {
+    const explanations: string[] = [];
+    
+    // Determine if property is significantly overvalued or undervalued
+    const isOvervalued = valuationStats.zScore > 1.5;
+    const isUndervalued = valuationStats.zScore < -1.5;
+    const isSignificantAnomaly = Math.abs(valuationStats.zScore) > 2.5;
+    
+    // Generate explanations based on property characteristics
+    if (isOvervalued) {
+      explanations.push(`Property value is ${Math.abs(valuationStats.deviationPercent).toFixed(1)}% higher than comparable properties in the area.`);
+      
+      // Check for possible improvements that might explain higher value
+      if (property.extraFields?.hasRecentRenovation) {
+        explanations.push('Recent renovations may account for the higher valuation compared to similar properties.');
+      }
+      
+      if (property.extraFields?.hasView || property.address.toLowerCase().includes('view')) {
+        explanations.push('Property may have desirable views or features not shared by comparable properties.');
+      }
+      
+      // Check for lot size differences
+      const avgLotSize = this.calculateAverageLotSize(comparables);
+      if (property.extraFields?.lotSize && avgLotSize && property.extraFields.lotSize > avgLotSize * 1.25) {
+        explanations.push(`Larger lot size (${property.extraFields.lotSize.toFixed(2)} acres vs. average ${avgLotSize.toFixed(2)}) may justify higher valuation.`);
+      }
+      
+      if (isSignificantAnomaly) {
+        explanations.push('The significant deviation suggests a potential valuation error or missing comparable data.');
+      }
+    } else if (isUndervalued) {
+      explanations.push(`Property value is ${Math.abs(valuationStats.deviationPercent).toFixed(1)}% lower than comparable properties in the area.`);
+      
+      // Check for possible issues that might explain lower value
+      const yearBuilt = property.extraFields?.yearBuilt || 0;
+      const avgYearBuilt = this.calculateAverageYearBuilt(comparables);
+      
+      if (yearBuilt > 0 && avgYearBuilt > 0 && yearBuilt < avgYearBuilt - 15) {
+        explanations.push(`Older construction (built in ${yearBuilt} vs. average ${avgYearBuilt}) may contribute to lower valuation.`);
+      }
+      
+      // Check for square footage differences
+      const avgSqFt = this.calculateAverageSquareFootage(comparables);
+      if (property.extraFields?.squareFootage && avgSqFt && property.extraFields.squareFootage < avgSqFt * 0.8) {
+        explanations.push(`Smaller living area (${property.extraFields.squareFootage.toLocaleString()} sq ft vs. average ${avgSqFt.toLocaleString()}) may explain lower valuation.`);
+      }
+      
+      if (isSignificantAnomaly) {
+        explanations.push('The significant deviation suggests a potential valuation error or special circumstances affecting this property.');
+      }
+    } else {
+      explanations.push('Property value is within expected range based on comparable properties.');
+    }
+    
+    // Add general explanation if no specific ones were found
+    if (explanations.length <= 1) {
+      explanations.push('Factors such as specific property condition, interior features, or recent market changes may account for valuation differences.');
+    }
+    
+    return explanations;
+  }
+  
+  /**
+   * Calculate average lot size from comparables
+   */
+  private calculateAverageLotSize(comparables: any[]): number | null {
+    const lotSizes = comparables
+      .map(comp => comp.extraFields?.lotSize)
+      .filter(size => typeof size === 'number' && size > 0);
+    
+    if (lotSizes.length === 0) {
+      return null;
+    }
+    
+    return lotSizes.reduce((sum, size) => sum + size, 0) / lotSizes.length;
+  }
+  
+  /**
+   * Calculate average year built from comparables
+   */
+  private calculateAverageYearBuilt(comparables: any[]): number | null {
+    const years = comparables
+      .map(comp => comp.extraFields?.yearBuilt)
+      .filter(year => typeof year === 'number' && year > 1800 && year < 2050);
+    
+    if (years.length === 0) {
+      return null;
+    }
+    
+    return Math.round(years.reduce((sum, year) => sum + year, 0) / years.length);
+  }
+  
+  /**
+   * Calculate average square footage from comparables
+   */
+  private calculateAverageSquareFootage(comparables: any[]): number | null {
+    const sqFootages = comparables
+      .map(comp => comp.extraFields?.squareFootage)
+      .filter(sqft => typeof sqft === 'number' && sqft > 0);
+    
+    if (sqFootages.length === 0) {
+      return null;
+    }
+    
+    return Math.round(sqFootages.reduce((sum, sqft) => sum + sqft, 0) / sqFootages.length);
+  }
+  
+  /**
+   * Calculate percentile rank of a value in a dataset
+   */
+  private calculatePercentileRank(value: number, dataset: number[]): number {
+    if (dataset.length === 0) return 0;
+    
+    // Sort the dataset
+    const sortedData = [...dataset].sort((a, b) => a - b);
+    
+    // Count values less than the target value
+    const lessThanCount = sortedData.filter(v => v < value).length;
+    
+    // Count values equal to the target value
+    const equalCount = sortedData.filter(v => v === value).length;
+    
+    // Calculate percentile rank
+    // Using the "Weighted Percentile Rank" method:
+    // PR = (L + 0.5E) / N * 100
+    // Where:
+    // L = count of values less than the target value
+    // E = count of values equal to the target value
+    // N = total count of values in the dataset
+    const percentileRank = (lessThanCount + 0.5 * equalCount) / dataset.length * 100;
+    
+    return Math.round(percentileRank * 100) / 100; // Round to 2 decimal places
+  }
+  
+  /**
+   * Get anomaly severity level based on z-score
+   */
+  private getAnomalySeverity(zScore: number): string {
+    const absZScore = Math.abs(zScore);
+    
+    if (absZScore < 1.0) {
+      return 'Normal';
+    } else if (absZScore < 2.0) {
+      return 'Mild';
+    } else if (absZScore < 3.0) {
+      return 'Moderate';
+    } else {
+      return 'Severe';
+    }
+  }
+  
+  /**
+   * Generate valuation recommendations based on anomaly analysis
+   */
+  private generateValuationRecommendations(property: any, valuationStats: any, isAnomaly: boolean): string[] {
+    const recommendations: string[] = [];
+    
+    if (isAnomaly) {
+      if (valuationStats.zScore > 0) {
+        // Overvalued property
+        recommendations.push('Review property assessment methodology to identify factors contributing to higher valuation.');
+        recommendations.push('Consider performing a detailed on-site inspection to verify property condition and features.');
+        recommendations.push('Evaluate if recent improvements or special characteristics justify the higher valuation.');
+      } else {
+        // Undervalued property
+        recommendations.push('Verify property data for completeness and accuracy, as the property may be undervalued.');
+        recommendations.push('Schedule property reassessment to capture potential improvements or market changes.');
+        recommendations.push('Check for comparable sales that may have occurred after the last assessment date.');
+      }
+      
+      // General recommendations for anomalies
+      recommendations.push('Compare valuation methods with those used for comparable properties to ensure consistency.');
+      recommendations.push('Document factors that explain the deviation from comparable properties for future reference.');
+    } else {
+      // Normal valuation
+      recommendations.push('Valuation appears consistent with market comparables; routine validation is sufficient.');
+      recommendations.push('Continue monitoring neighborhood sales for market changes that may affect future valuations.');
+    }
+    
+    return recommendations;
   }
   
   /**
