@@ -172,7 +172,7 @@ export function AgentSystemPanel() {
   const getAgentCapabilities = () => {
     if (!systemStatus || !selectedAgent) return [];
     
-    const agent = systemStatus.agents.find((a: any) => a.name === selectedAgent);
+    const agent = agentsArray.find((a: any) => a.name === selectedAgent);
     return agent?.capabilities || [];
   };
 
@@ -210,7 +210,7 @@ export function AgentSystemPanel() {
   const isSystemReady = () => {
     if (!systemStatus) return false;
     return systemStatus.initialized && 
-           systemStatus.agents.every((agent: any) => agent.status !== 'pending');
+           agentsArray.every((agent: any) => agent.status !== 'pending');
   };
 
   // Get status badge for an agent
@@ -284,13 +284,13 @@ export function AgentSystemPanel() {
                 
                 <h3 className="font-medium mb-2">Agents</h3>
                 <div className="space-y-3">
-                  {systemStatus?.agents.map((agent: any) => (
+                  {agentsArray.map((agent: any) => (
                     <div key={agent.name} className="flex items-center justify-between bg-muted/50 p-3 rounded-md">
                       <div className="flex items-center gap-3">
                         {getAgentIcon(agent.name)}
                         <div>
                           <p className="font-medium">{agent.displayName}</p>
-                          <p className="text-sm text-muted-foreground">{agent.capabilities.length} capabilities</p>
+                          <p className="text-sm text-muted-foreground">{agent.capabilities?.length || 0} capabilities</p>
                         </div>
                       </div>
                       {getStatusBadge(agent.status)}
@@ -344,7 +344,7 @@ export function AgentSystemPanel() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {systemStatus?.agents.map((agent: any) => (
+                    {agentsArray.map((agent: any) => (
                       <div key={agent.name} className="flex items-center justify-between bg-muted/30 p-2 rounded">
                         <span>{agent.displayName}</span>
                         {getStatusBadge(agent.status)}
@@ -372,7 +372,7 @@ export function AgentSystemPanel() {
                   className="w-full px-3 py-2 border rounded-md"
                 >
                   <option value="">-- Select an agent --</option>
-                  {systemStatus?.agents.map((agent: any) => (
+                  {agentsArray.map((agent: any) => (
                     <option key={agent.name} value={agent.name}>
                       {agent.displayName}
                     </option>
