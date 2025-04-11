@@ -15,6 +15,7 @@ import { SpatialGISAgent } from './agents/spatial-gis-agent';
 import { MarketAnalysisAgent } from './agents/market-analysis-agent';
 import { FtpDataAgent } from './agents/ftp-data-agent';
 import { SuperintelligenceAgent } from './agents/superintelligence-agent';
+import { ComplianceAgentImpl } from './agents/compliance-agent';
 import { PropertyStoryGenerator } from './property-story-generator';
 import { FtpService } from './ftp-service';
 import { ArcGISService } from './arcgis-service';
@@ -22,6 +23,7 @@ import { BentonMarketFactorService } from './benton-market-factor-service';
 import { LLMService } from './llm-service';
 import { MarketPredictionModel } from './market-prediction-model';
 import { RiskAssessmentEngine } from './risk-assessment-engine';
+import { NotificationService } from './notification-service';
 
 export class AgentSystem {
   private _storage: IStorage;
@@ -127,6 +129,17 @@ export class AgentSystem {
         this.mcpService
       );
       this.registerAgent('ftp_data', ftpDataAgent);
+      
+      // Create notification service for compliance agent
+      const notificationService = new NotificationService(this.storage);
+      
+      // Create the compliance agent for regulatory compliance
+      console.log("Creating Compliance Agent...");
+      const complianceAgent = new ComplianceAgentImpl(
+        this.storage,
+        notificationService
+      );
+      this.registerAgent('compliance', complianceAgent);
       
       // Create advanced services for superintelligence agent
       console.log("Creating Market Prediction Model...");
