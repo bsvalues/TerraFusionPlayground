@@ -109,7 +109,9 @@ async function searchPropertyDataFiles(): Promise<FtpFile[]> {
     // Sort by date (newest first)
     propertyDataFiles.sort((a, b) => {
       if (a.date && b.date) {
-        return b.date.getTime() - a.date.getTime();
+        const dateA = typeof a.date === 'string' ? new Date(a.date) : a.date as Date;
+        const dateB = typeof b.date === 'string' ? new Date(b.date) : b.date as Date;
+        return dateB.getTime() - dateA.getTime();
       }
       return 0;
     });
@@ -164,11 +166,9 @@ async function downloadAndImportFile(file: FtpFile): Promise<boolean> {
     fs.writeFileSync(importLogPath, JSON.stringify(logData, null, 2));
     logger.log(`Detailed import log saved to ${importLogPath}`);
     
-    // Clean up local file
-    if (fs.existsSync(localPath)) {
-      fs.unlinkSync(localPath);
-      logger.log(`Deleted temporary file ${localPath}`);
-    }
+    // Keep the downloaded file for inspection
+    logger.log(`File saved at ${localPath} for inspection`);
+    // We're not deleting the file so we can examine it
     
     return true;
   } catch (error) {
@@ -185,7 +185,7 @@ async function downloadAndImportFile(file: FtpFile): Promise<boolean> {
 }
 
 // Main function
-async function synchronizeFtpData() {
+async function synchronizeFtpData(): Promise<boolean> {
   logger.log('Starting Benton County FTP data synchronization...');
   
   try {
