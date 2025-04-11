@@ -126,12 +126,12 @@ async function searchPropertyDataFiles(): Promise<FtpFile[]> {
     );
     
     // Combine with priority: use code files first, then property files, then others
-    propertyDataFiles = [...useCodeFiles, ...propertyFiles, ...otherFiles];
+    const sortedFiles = [...useCodeFiles, ...propertyFiles, ...otherFiles];
     
     logger.log(`Categorized files: ${useCodeFiles.length} use code files, ${propertyFiles.length} property files, ${otherFiles.length} other files.`);
     
     // Sort by date (newest first)
-    propertyDataFiles.sort((a, b) => {
+    sortedFiles.sort((a, b) => {
       if (a.date && b.date) {
         const dateA = typeof a.date === 'string' ? new Date(a.date) : a.date as Date;
         const dateB = typeof b.date === 'string' ? new Date(b.date) : b.date as Date;
@@ -140,7 +140,7 @@ async function searchPropertyDataFiles(): Promise<FtpFile[]> {
       return 0;
     });
     
-    return propertyDataFiles;
+    return sortedFiles;
   } catch (error) {
     logger.error('Error searching for property data files', error);
     return [];
