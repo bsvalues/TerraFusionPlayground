@@ -104,6 +104,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Validation routes
   app.use('/api/validation', createValidationRoutes(storage));
 
+  /**
+   * Data Lineage Routes
+   * Track and retrieve history of data changes
+   */
+  app.get('/api/data-lineage/property/:propertyId', async (req: Request, res: Response) => {
+    try {
+      const { propertyId } = req.params;
+      
+      if (!propertyId) {
+        return res.status(400).json({ error: 'Property ID is required' });
+      }
+      
+      const lineageRecords = await storage.getDataLineageByProperty(propertyId);
+      
+      // Group records by fieldName for better organization
+      const groupedRecords: Record<string, any[]> = {};
+      
+      lineageRecords.forEach(record => {
+        if (!groupedRecords[record.fieldName]) {
+          groupedRecords[record.fieldName] = [];
+        }
+        groupedRecords[record.fieldName].push(record);
+      });
+      
+      return res.status(200).json({ 
+        propertyId,
+        lineage: groupedRecords,
+        totalRecords: lineageRecords.length
+      });
+    } catch (error) {
+      console.error('Error retrieving data lineage:', error);
+      return res.status(500).json({ error: 'Failed to retrieve data lineage history' });
+    }
+  });
+
+  app.get('/api/data-lineage/property/:propertyId/field/:fieldName', async (req: Request, res: Response) => {
+    try {
+      const { propertyId, fieldName } = req.params;
+      
+      if (!propertyId || !fieldName) {
+        return res.status(400).json({ error: 'Property ID and field name are required' });
+      }
+      
+      const lineageRecords = await storage.getDataLineageByField(propertyId, fieldName);
+      
+      return res.status(200).json({ 
+        propertyId,
+        fieldName,
+        lineage: lineageRecords,
+        totalRecords: lineageRecords.length
+      });
+    } catch (error) {
+      console.error('Error retrieving field data lineage:', error);
+      return res.status(500).json({ error: 'Failed to retrieve field data lineage history' });
+    }
+  });
+
+  app.get('/api/data-lineage/user/:userId', async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: 'Valid user ID is required' });
+      }
+      
+      const lineageRecords = await storage.getDataLineageByUser(userId, limit);
+      
+      return res.status(200).json({ 
+        userId,
+        lineage: lineageRecords,
+        totalRecords: lineageRecords.length
+      });
+    } catch (error) {
+      console.error('Error retrieving user data lineage:', error);
+      return res.status(500).json({ error: 'Failed to retrieve user data lineage history' });
+    }
+  });
+
+  app.get('/api/data-lineage/source/:source', async (req: Request, res: Response) => {
+    try {
+      const { source } = req.params;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      
+      if (!source) {
+        return res.status(400).json({ error: 'Source is required' });
+      }
+      
+      const lineageRecords = await storage.getDataLineageBySource(source, limit);
+      
+      return res.status(200).json({
+        source,
+        lineage: lineageRecords,
+        totalRecords: lineageRecords.length
+      });
+    } catch (error) {
+      console.error('Error retrieving source data lineage:', error);
+      return res.status(500).json({ error: 'Failed to retrieve source data lineage history' });
+    }
+  });
+
+  app.get('/api/data-lineage/date-range', async (req: Request, res: Response) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Both startDate and endDate are required' });
+      }
+      
+      const startDateObj = new Date(startDate as string);
+      const endDateObj = new Date(endDate as string);
+      
+      if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
+        return res.status(400).json({ error: 'Invalid date format' });
+      }
+      
+      const lineageRecords = await storage.getDataLineageByDateRange(startDateObj, endDateObj, limit);
+      
+      return res.status(200).json({
+        startDate: startDateObj,
+        endDate: endDateObj,
+        lineage: lineageRecords,
+        totalRecords: lineageRecords.length
+      });
+    } catch (error) {
+      console.error('Error retrieving date range data lineage:', error);
+      return res.status(500).json({ error: 'Failed to retrieve date range data lineage history' });
+    }
+  });
+
   // Register Market routes
   app.use('/api/market', createMarketRoutes(storage));
   
