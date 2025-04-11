@@ -12,6 +12,7 @@ import {
   systemActivities, SystemActivity, InsertSystemActivity,
   mcpToolExecutionLogs, MCPToolExecutionLog, InsertMCPToolExecutionLog,
   pacsModules, PacsModule, InsertPacsModule,
+  agentMessages, AgentMessage, InsertAgentMessage,
   propertyInsightShares, PropertyInsightShare, InsertPropertyInsightShare,
   comparableSales, ComparableSale, InsertComparableSale,
   comparableSalesAnalyses, ComparableSalesAnalysis, InsertComparableSalesAnalysis,
@@ -26,7 +27,7 @@ import {
   agentExperiences, AgentExperience, InsertAgentExperience,
   learningUpdates, LearningUpdate, InsertLearningUpdate,
   // Enum types needed for validation and workflow
-  RuleCategory, RuleLevel, EntityType, IssueStatus
+  RuleCategory, RuleLevel, EntityType, IssueStatus, MessagePriority, MessageEventType
 } from "@shared/schema";
 import { MarketTrend, EconomicIndicator } from "./services/market-prediction-model";
 import { RegulatoryFramework } from "./services/risk-assessment-engine";
@@ -118,6 +119,18 @@ export interface IStorage {
   getPacsModuleById(id: number): Promise<PacsModule | undefined>;
   getPacsModulesByCategory(): Promise<PacsModule[]>;
   updatePacsModuleSyncStatus(id: number, syncStatus: string, lastSyncTimestamp: Date): Promise<PacsModule | undefined>;
+  
+  // Agent Messages methods
+  createAgentMessage(message: InsertAgentMessage): Promise<AgentMessage>;
+  getAgentMessageById(id: number): Promise<AgentMessage | undefined>;
+  getAgentMessagesByType(messageType: MessageEventType): Promise<AgentMessage[]>;
+  getAgentMessagesByPriority(priority: MessagePriority): Promise<AgentMessage[]>;
+  getAgentMessagesBySourceAgent(sourceAgentId: string): Promise<AgentMessage[]>;
+  getAgentMessagesByTargetAgent(targetAgentId: string): Promise<AgentMessage[]>;
+  getAgentMessagesByStatus(status: string): Promise<AgentMessage[]>;
+  getRecentAgentMessages(limit?: number): Promise<AgentMessage[]>;
+  updateAgentMessageStatus(id: number, status: string): Promise<AgentMessage | undefined>;
+  getAgentMessagesForEntity(entityType: EntityType, entityId: string): Promise<AgentMessage[]>;
   
   // Property Insight Sharing methods
   createPropertyInsightShare(share: InsertPropertyInsightShare): Promise<PropertyInsightShare>;
@@ -321,6 +334,7 @@ export class MemStorage implements IStorage {
   private systemActivities: Map<number, SystemActivity>;
   private mcpToolExecutionLogs: Map<number, MCPToolExecutionLog>;
   private pacsModules: Map<number, PacsModule>;
+  private agentMessages: Map<number, AgentMessage>;
   private propertyInsightShares: Map<string, PropertyInsightShare>;
   private comparableSales: Map<number, ComparableSale>;
   private comparableSalesAnalyses: Map<string, ComparableSalesAnalysis>;
@@ -356,6 +370,7 @@ export class MemStorage implements IStorage {
   private currentComparableAnalysisEntryId: number;
   private currentMCPToolExecutionLogId: number;
   private currentWorkflowStepHistoryId: number;
+  private currentAgentMessageId: number;
 
   constructor() {
     this.users = new Map();
@@ -371,6 +386,7 @@ export class MemStorage implements IStorage {
     this.systemActivities = new Map();
     this.mcpToolExecutionLogs = new Map();
     this.pacsModules = new Map();
+    this.agentMessages = new Map();
     this.propertyInsightShares = new Map();
     this.comparableSales = new Map();
     this.comparableSalesAnalyses = new Map();
@@ -406,6 +422,7 @@ export class MemStorage implements IStorage {
     this.currentComparableAnalysisEntryId = 1;
     this.currentMCPToolExecutionLogId = 1;
     this.currentWorkflowStepHistoryId = 1;
+    this.currentAgentMessageId = 1;
     
     // Initialize with sample data
     this.seedData();
@@ -1365,6 +1382,81 @@ export class MemStorage implements IStorage {
   async updatePacsModuleSyncStatus(id: number, syncStatus: string, lastSyncTimestamp: Date): Promise<PacsModule | undefined> {
     // Use the specialized function from pacs-storage.ts
     return updatePacsSyncStatus(this.pacsModules, id, syncStatus, lastSyncTimestamp);
+  }
+  
+  // Agent Messages methods
+  async createAgentMessage(message: InsertAgentMessage): Promise<AgentMessage> {
+    const id = ++this.currentAgentMessageId;
+    const timestamp = new Date();
+    const newMessage: AgentMessage = {
+      ...message,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      status: message.status || 'pending' // Default status is pending
+    };
+    
+    this.agentMessages.set(id, newMessage);
+    return newMessage;
+  }
+
+  async getAgentMessageById(id: number): Promise<AgentMessage | undefined> {
+    return this.agentMessages.get(id);
+  }
+
+  async getAgentMessagesByType(messageType: MessageEventType): Promise<AgentMessage[]> {
+    return Array.from(this.agentMessages.values())
+      .filter(message => message.messageType === messageType);
+  }
+
+  async getAgentMessagesByPriority(priority: MessagePriority): Promise<AgentMessage[]> {
+    return Array.from(this.agentMessages.values())
+      .filter(message => message.priority === priority);
+  }
+
+  async getAgentMessagesBySourceAgent(sourceAgentId: string): Promise<AgentMessage[]> {
+    return Array.from(this.agentMessages.values())
+      .filter(message => message.senderAgentId === sourceAgentId);
+  }
+
+  async getAgentMessagesByTargetAgent(targetAgentId: string): Promise<AgentMessage[]> {
+    return Array.from(this.agentMessages.values())
+      .filter(message => message.receiverAgentId === targetAgentId);
+  }
+
+  async getAgentMessagesByStatus(status: string): Promise<AgentMessage[]> {
+    return Array.from(this.agentMessages.values())
+      .filter(message => message.status === status);
+  }
+
+  async getRecentAgentMessages(limit: number = 100): Promise<AgentMessage[]> {
+    return Array.from(this.agentMessages.values())
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit);
+  }
+
+  async updateAgentMessageStatus(id: number, status: string): Promise<AgentMessage | undefined> {
+    const message = this.agentMessages.get(id);
+    if (!message) {
+      return undefined;
+    }
+    
+    const updatedMessage: AgentMessage = {
+      ...message,
+      status,
+      updatedAt: new Date()
+    };
+    
+    this.agentMessages.set(id, updatedMessage);
+    return updatedMessage;
+  }
+
+  async getAgentMessagesForEntity(entityType: EntityType, entityId: string): Promise<AgentMessage[]> {
+    return Array.from(this.agentMessages.values())
+      .filter(message => 
+        message.entityType === entityType && 
+        message.entityId === entityId
+      );
   }
   
   // Property Insight Sharing methods

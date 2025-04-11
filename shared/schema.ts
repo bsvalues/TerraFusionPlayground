@@ -30,6 +30,25 @@ export enum EntityType {
   WORKFLOW = 'workflow'
 }
 
+export enum MessageEventType {
+  COMMAND = 'COMMAND',
+  EVENT = 'EVENT',
+  QUERY = 'QUERY',
+  RESPONSE = 'RESPONSE',
+  ERROR = 'ERROR',
+  STATUS_UPDATE = 'STATUS_UPDATE',
+  ASSISTANCE_REQUESTED = 'ASSISTANCE_REQUESTED'
+}
+
+// Agent Message Priority Levels
+export enum MessagePriority {
+  LOW = 'low',         // Background or non-time-sensitive messages
+  NORMAL = 'normal',   // Default priority
+  HIGH = 'high',       // Important messages that should be processed soon
+  URGENT = 'urgent',   // Critical messages that need immediate attention
+  SYSTEM = 'system'    // System-level messages (highest priority)
+}
+
 export enum IssueStatus {
   OPEN = 'open',
   ACKNOWLEDGED = 'acknowledged',
@@ -352,6 +371,43 @@ export const insertPacsModuleSchema = createInsertSchema(pacsModules).pick({
   lastSyncTimestamp: true,
 });
 
+// Agent Messages table for inter-agent communication
+export const agentMessages = pgTable("agent_messages", {
+  id: serial("id").primaryKey(),
+  messageId: text("message_id").notNull().unique(), // UUID for message identification
+  conversationId: text("conversation_id"), // Thread/conversation ID for related messages
+  senderAgentId: text("sender_agent_id").notNull(), // ID of agent sending the message
+  receiverAgentId: text("receiver_agent_id"), // ID of agent receiving the message (null for broadcasts)
+  messageType: text("message_type").notNull(), // Corresponds to MessageEventType enum
+  subject: text("subject").notNull(), // Brief summary of message content
+  content: jsonb("content").notNull(), // Structured message content
+  contextData: jsonb("context_data").default({}), // Additional context for the message
+  priority: text("priority").notNull().default("normal"), // Corresponds to MessagePriority enum
+  status: text("status").notNull().default("pending"), // pending, delivered, processed, failed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  deliveredAt: timestamp("delivered_at"), // When message was received
+  processedAt: timestamp("processed_at"), // When message was fully processed
+  retryCount: integer("retry_count").default(0), // Number of delivery attempts
+  expiresAt: timestamp("expires_at"), // Optional TTL for message
+  correlationId: text("correlation_id"), // ID for correlating messages (request/response)
+  isAcknowledged: boolean("is_acknowledged").default(false), // Whether receipt was acknowledged
+});
+
+export const insertAgentMessageSchema = createInsertSchema(agentMessages).pick({
+  messageId: true,
+  conversationId: true,
+  senderAgentId: true,
+  receiverAgentId: true,
+  messageType: true,
+  subject: true,
+  content: true,
+  contextData: true,
+  priority: true,
+  status: true,
+  expiresAt: true,
+  correlationId: true,
+});
+
 // Define type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -391,6 +447,9 @@ export type InsertMCPToolExecutionLog = z.infer<typeof insertMCPToolExecutionLog
 
 export type PacsModule = typeof pacsModules.$inferSelect;
 export type InsertPacsModule = z.infer<typeof insertPacsModuleSchema>;
+
+export type AgentMessage = typeof agentMessages.$inferSelect;
+export type InsertAgentMessage = z.infer<typeof insertAgentMessageSchema>;
 
 // Property Insights Sharing table
 export const propertyInsightShares = pgTable("property_insight_shares", {
