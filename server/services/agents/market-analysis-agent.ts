@@ -469,10 +469,17 @@ export class MarketAnalysisAgent extends BaseAgent {
    */
   private async forecastPropertyValue(params: any): Promise<any> {
     try {
-      const { propertyId, yearsAhead = 3 } = params;
+      const { propertyId, yearsAhead = 3, scenarioAnalysis = false } = params;
       
       if (!propertyId) {
         return { success: false, error: 'Property ID is required' };
+      }
+      
+      // Get the property
+      const property = await this.executeMCPTool('property.getByPropertyId', { propertyId });
+      
+      if (!property?.success || !property.result) {
+        return { success: false, error: 'Property not found' };
       }
       
       // Get the forecast using the MCP tool
@@ -485,51 +492,169 @@ export class MarketAnalysisAgent extends BaseAgent {
         return { success: false, error: 'Failed to forecast property value' };
       }
       
+      // Get historical sales and assessment data
+      let historicalData = [];
+      try {
+        // Add current value data point
+        historicalData.push({
+          date: new Date().toISOString().split('T')[0],
+          value: property.result.value,
+          type: 'Assessment'
+        });
+        
+        // Add last sale price if available
+        if (property.result.extraFields?.lastSaleDate && property.result.extraFields?.lastSalePrice) {
+          historicalData.push({
+            date: property.result.extraFields.lastSaleDate,
+            value: property.result.extraFields.lastSalePrice,
+            type: 'Sale'
+          });
+        }
+        
+        // Sort by date
+        historicalData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      } catch (historyError) {
+        console.error('Error fetching historical data:', historyError);
+        // Continue without historical data
+      }
+      
       // Get local market factors for analysis
       const marketFactors = await this.marketFactorService.getPropertyMarketFactors(propertyId);
+      const marketImpact = this.marketFactorService.calculateMarketFactorImpact(marketFactors);
       
-      // Generate a narrative forecast using the LLM
-      let narrativeForecast = '';
+      // Create alternative scenarios if requested
+      let scenarios = null;
+      if (scenarioAnalysis) {
+        // Base forecast confidence level as the margin of error for scenarios
+        const confidenceLevel = forecastResult.result.marketAnalysis.confidenceScore || 0.7;
+        const marginOfError = (1 - confidenceLevel) * 0.5; // Half of the uncertainty range
+        
+        // Get the forecast end value
+        const baseValue = forecastResult.result.predictedValues[forecastResult.result.predictedValues.length - 1].predictedValue;
+        
+        // Calculate optimistic and pessimistic scenarios
+        scenarios = {
+          optimistic: {
+            predictedValue: Math.round(baseValue * (1 + marginOfError * 2)),
+            growthFactor: marginOfError * 2,
+            scenario: 'optimistic',
+            description: this.generateScenarioDescription(marketFactors, 'optimistic')
+          },
+          base: {
+            predictedValue: baseValue,
+            growthFactor: 0,
+            scenario: 'base',
+            description: "Base scenario using current market conditions and trends."
+          },
+          pessimistic: {
+            predictedValue: Math.round(baseValue * (1 - marginOfError * 2)),
+            growthFactor: -marginOfError * 2,
+            scenario: 'pessimistic',
+            description: this.generateScenarioDescription(marketFactors, 'pessimistic')
+          }
+        };
+      }
+      
+      // Generate a detailed forecast using LLM for enhanced accuracy
+      let enhancedForecast = null;
       if (this.llmService) {
         try {
-          const property = await this.executeMCPTool('property.getByPropertyId', { propertyId });
+          // Convert market factors to text for the LLM
+          const marketFactorsText = marketFactors.map(f => 
+            `${f.name}: ${f.value} (${f.impact} impact, ${f.trend} trend)`
+          ).join('\n');
           
-          if (property?.success && property.result) {
-            const llmResponse = await this.llmService.prompt([
-              {
-                role: "system",
-                content: "You are a real estate market analysis expert for Benton County, Washington."
-              },
-              {
-                role: "user",
-                content: `Generate a brief market forecast narrative for a property in Benton County, Washington. 
-                Use the following data:
-                - Property: ${property.result.address} (${property.result.propertyType})
-                - Current value: $${property.result.value.toLocaleString()}
-                - Year built: ${property.result.extraFields?.yearBuilt || 'Unknown'}
-                - Square footage: ${property.result.extraFields?.squareFootage?.toLocaleString() || 'Unknown'}
-                - Current market factors: ${marketFactors.map(f => `${f.name} (${f.impact} impact, ${f.trend} trend)`).join(', ')}
-                - Predicted value in ${yearsAhead} years: $${forecastResult.result.predictedValues[forecastResult.result.predictedValues.length - 1].predictedValue.toLocaleString()}
-                - Market outlook: ${forecastResult.result.marketAnalysis.marketOutlook}
-                
-                Write a professional, concise paragraph (150 words max) explaining the forecast, key factors influencing the value, and confidence level.
-                Focus only on the forecast and do not include general information about the property.`
-              }
-            ]);
+          // Get comparable properties for context
+          const compsResult = await this.executeMCPTool('property.getComparables', { 
+            propertyId,
+            count: 3
+          });
+          
+          const comparablesText = compsResult?.success ? 
+            compsResult.result.map((comp: any) => 
+              `- ${comp.address}: $${comp.value} (${comp.distanceMiles} miles away)`
+            ).join('\n') : 'No comparable properties found.';
             
-            // Extract the response text
-            narrativeForecast = llmResponse?.text || '';
+          // Get area trends
+          const propertyAddress = property.result.address;
+          const zipMatch = propertyAddress.match(/\d{5}(?:-\d{4})?/);
+          const zipCode = zipMatch ? zipMatch[0] : '';
+          
+          const areaTrends = await this.executeMCPTool('market.getTrends', { 
+            area: zipCode || this.extractCity(propertyAddress),
+            timeframe: '3year'
+          });
+          
+          const trendsText = areaTrends?.success ? 
+            `Area trends:\n- Appreciation: ${areaTrends.result.trends.appreciation}%\n- Days on market: ${areaTrends.result.trends.daysOnMarket}\n- Inventory: ${areaTrends.result.trends.inventory} months` : 
+            'Area trends not available.';
+            
+          // Use LLM to generate both a narrative and enhanced prediction
+          const llmResponse = await this.llmService.predictFutureValue(
+            propertyId,
+            property.result,
+            historicalData,
+            yearsAhead,
+            marketFactors.map(f => `${f.name} (${f.impact}, ${f.trend})`),
+            `Based on Benton County, WA market analysis:\n${marketFactorsText}\n\n${trendsText}\n\nComparable properties:\n${comparablesText}`
+          );
+          
+          // Parse the JSON response from the LLM
+          let enhancedPrediction = null;
+          try {
+            // Check if response is already JSON
+            if (typeof llmResponse.text === 'object') {
+              enhancedPrediction = llmResponse.text;
+            } else {
+              // Try to parse the response as JSON
+              enhancedPrediction = JSON.parse(llmResponse.text);
+            }
+          } catch (jsonError) {
+            console.error('Error parsing LLM prediction JSON:', jsonError);
+            // Continue with just the narrative
           }
+          
+          // Generate a separate narrative forecast
+          const narrativeResponse = await this.llmService.prompt([
+            {
+              role: "system",
+              content: "You are a real estate market analysis expert for Benton County, Washington."
+            },
+            {
+              role: "user",
+              content: `Generate a brief market forecast narrative for a property in Benton County, Washington. 
+              Use the following data:
+              - Property: ${property.result.address} (${property.result.propertyType})
+              - Current value: $${property.result.value.toLocaleString()}
+              - Year built: ${property.result.extraFields?.yearBuilt || 'Unknown'}
+              - Square footage: ${property.result.extraFields?.squareFootage?.toLocaleString() || 'Unknown'}
+              - Current market factors: ${marketFactors.map(f => `${f.name} (${f.impact} impact, ${f.trend} trend)`).join(', ')}
+              - Predicted value in ${yearsAhead} years: $${forecastResult.result.predictedValues[forecastResult.result.predictedValues.length - 1].predictedValue.toLocaleString()}
+              - Market outlook: ${forecastResult.result.marketAnalysis.marketOutlook}
+              
+              Write a professional, concise paragraph (150 words max) explaining the forecast, key factors influencing the value, and confidence level.
+              Focus only on the forecast and do not include general information about the property.`
+            }
+          ]);
+          
+          enhancedForecast = {
+            llmPrediction: enhancedPrediction,
+            narrativeForecast: narrativeResponse?.text || '',
+            modelUsed: llmResponse.model,
+            generationDate: new Date().toISOString()
+          };
         } catch (llmError) {
-          console.error('Error generating narrative forecast:', llmError);
-          // Continue without the narrative - it's optional
+          console.error('Error generating enhanced forecast:', llmError);
+          // Continue without the enhanced forecast - it's optional
         }
       }
       
-      // Create an enhanced result with the narrative
+      // Create an enhanced result with the narrative and scenarios
       const result = {
         ...forecastResult.result,
-        narrativeForecast,
+        historicalData,
+        enhancedForecast,
+        scenarios,
         marketFactors: marketFactors.map(f => ({
           name: f.name,
           impact: f.impact,
@@ -537,7 +662,13 @@ export class MarketAnalysisAgent extends BaseAgent {
           value: f.value,
           description: f.description,
           source: f.source
-        }))
+        })),
+        marketImpactAnalysis: {
+          dominantFactors: marketImpact.dominantFactors,
+          marketOutlook: marketImpact.marketOutlook,
+          confidenceScore: marketImpact.confidenceLevel,
+          totalMarketImpact: marketImpact.totalImpact
+        }
       };
       
       await this.logActivity('value_forecast_generated', 'Property value forecast generated', { propertyId });
@@ -557,6 +688,31 @@ export class MarketAnalysisAgent extends BaseAgent {
         capability: 'forecastPropertyValue',
         error: `Failed to forecast property value: ${error.message}`
       };
+    }
+  }
+  
+  /**
+   * Generate scenario description based on market factors
+   */
+  private generateScenarioDescription(marketFactors: any[], scenario: 'optimistic' | 'pessimistic'): string {
+    if (scenario === 'optimistic') {
+      // Find positive factors
+      const positiveFactors = marketFactors.filter(f => f.impact === 'positive').map(f => f.name);
+      
+      if (positiveFactors.length > 0) {
+        return `Assumes accelerated improvements in ${positiveFactors.slice(0, 2).join(' and ')}, with higher than expected growth in the Benton County market.`;
+      } else {
+        return 'Assumes favorable shifts in local market conditions and strong economic growth in Benton County.';
+      }
+    } else {
+      // Find negative factors
+      const negativeFactors = marketFactors.filter(f => f.impact === 'negative').map(f => f.name);
+      
+      if (negativeFactors.length > 0) {
+        return `Assumes worsening ${negativeFactors.slice(0, 2).join(' and ')}, with lower than expected growth in the Benton County market.`;
+      } else {
+        return 'Assumes challenging market conditions and economic headwinds in Benton County.';
+      }
     }
   }
   
