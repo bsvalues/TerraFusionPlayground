@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Play, Square, FileText, Activity, Database, BarChart } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Agent, AgentSystemStatus, AgentCapability, ExecuteCapabilityRequest, ExecuteCapabilityResponse } from '../../shared/agent-types';
+import { Agent, AgentSystemStatus, AgentCapability, ExecuteCapabilityRequest, ExecuteCapabilityResponse } from '@/types/agent-types';
 
 /**
  * Agent System Panel Component
@@ -210,8 +210,8 @@ export function AgentSystemPanel() {
   // Determine if system is ready (all agents initialized and not in pending state)
   const isSystemReady = () => {
     if (!systemStatus) return false;
-    return systemStatus.initialized && 
-           agentsArray.every((agent: any) => agent.status !== 'pending');
+    return systemStatus.isInitialized && 
+           agentsArray.every((agent: Agent) => agent.status !== 'pending');
   };
 
   // Get status badge for an agent
@@ -270,7 +270,7 @@ export function AgentSystemPanel() {
                   <div>
                     <h3 className="text-sm font-medium">System State</h3>
                     <p className="text-lg font-semibold">
-                      {systemStatus?.initialized ? 'Initialized' : 'Not Initialized'}
+                      {systemStatus?.isInitialized ? 'Initialized' : 'Not Initialized'}
                     </p>
                   </div>
                   <div>
@@ -307,7 +307,7 @@ export function AgentSystemPanel() {
             <div className="grid grid-cols-1 gap-4">
               <Button 
                 onClick={() => initMutation.mutate()}
-                disabled={initMutation.isPending || (systemStatus?.initialized === true)}
+                disabled={initMutation.isPending || (systemStatus?.isInitialized === true)}
                 className="w-full"
                 variant="outline"
               >
