@@ -276,7 +276,7 @@ export function AgentSystemPanel() {
                   <div>
                     <h3 className="text-sm font-medium">Active Agents</h3>
                     <p className="text-lg font-semibold">
-                      {agentsArray.filter((a: any) => a.status === 'online').length || 0} / {agentsArray.length || 0}
+                      {agentsArray.filter((a: Agent) => a.status === 'online').length || 0} / {agentsArray.length || 0}
                     </p>
                   </div>
                 </div>
@@ -285,7 +285,7 @@ export function AgentSystemPanel() {
                 
                 <h3 className="font-medium mb-2">Agents</h3>
                 <div className="space-y-3">
-                  {agentsArray.map((agent: any) => (
+                  {agentsArray.map((agent: Agent) => (
                     <div key={agent.name} className="flex items-center justify-between bg-muted/50 p-3 rounded-md">
                       <div className="flex items-center gap-3">
                         {getAgentIcon(agent.name)}
@@ -318,7 +318,7 @@ export function AgentSystemPanel() {
               <div className="grid grid-cols-2 gap-4">
                 <Button 
                   onClick={() => startAgentsMutation.mutate()}
-                  disabled={startAgentsMutation.isPending || !systemStatus?.initialized}
+                  disabled={startAgentsMutation.isPending || !systemStatus?.isInitialized}
                   className="w-full"
                   variant="outline"
                 >
@@ -328,7 +328,7 @@ export function AgentSystemPanel() {
                 
                 <Button 
                   onClick={() => stopAgentsMutation.mutate()}
-                  disabled={stopAgentsMutation.isPending || !systemStatus?.initialized}
+                  disabled={stopAgentsMutation.isPending || !systemStatus?.isInitialized}
                   className="w-full" 
                   variant="outline"
                 >
@@ -345,7 +345,7 @@ export function AgentSystemPanel() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {agentsArray.map((agent: any) => (
+                    {agentsArray.map((agent: Agent) => (
                       <div key={agent.name} className="flex items-center justify-between bg-muted/30 p-2 rounded">
                         <span>{agent.displayName}</span>
                         {getStatusBadge(agent.status)}
@@ -373,7 +373,7 @@ export function AgentSystemPanel() {
                   className="w-full px-3 py-2 border rounded-md"
                 >
                   <option value="">-- Select an agent --</option>
-                  {agentsArray.map((agent: any) => (
+                  {agentsArray.map((agent: Agent) => (
                     <option key={agent.name} value={agent.name}>
                       {agent.displayName}
                     </option>
@@ -394,7 +394,7 @@ export function AgentSystemPanel() {
                     className="w-full px-3 py-2 border rounded-md"
                   >
                     <option value="">-- Select a capability --</option>
-                    {getAgentCapabilities().map((capability: any) => (
+                    {getAgentCapabilities().map((capability: AgentCapability) => (
                       <option key={capability.name} value={capability.name}>
                         {capability.displayName}
                       </option>
@@ -411,7 +411,7 @@ export function AgentSystemPanel() {
                     <p className="text-sm text-muted-foreground">No parameters required</p>
                   ) : (
                     <div className="space-y-3">
-                      {getCapabilityParams().map((param: any) => (
+                      {getCapabilityParams().map((param: AgentCapabilityParameter) => (
                         <div key={param.name}>
                           <label htmlFor={`param-${param.name}`} className="block text-sm font-medium mb-1">
                             {param.displayName || param.name} 
@@ -484,7 +484,7 @@ export function AgentSystemPanel() {
             <span className="flex items-center">
               <Loader2 className="h-3 w-3 animate-spin mr-1" /> Checking status...
             </span>
-          ) : systemStatus?.initialized ? (
+          ) : systemStatus?.isInitialized ? (
             <span className="text-green-600">System Ready</span>
           ) : (
             <span className="text-amber-600">Not Initialized</span>
