@@ -222,7 +222,21 @@ export interface IStorage {
   createComplianceReport(report: InsertComplianceReport): Promise<ComplianceReport>;
   getComplianceReportById(reportId: string): Promise<ComplianceReport | null>;
   getComplianceReportsByYear(year: number): Promise<ComplianceReport[]>;
+  getComplianceReportsByType(reportType: string): Promise<ComplianceReport[]>;
   updateComplianceReport(reportId: string, updates: Partial<ComplianceReport>): Promise<ComplianceReport | null>;
+  updateComplianceReportStatus(reportId: string, status: string, submittedBy?: number): Promise<ComplianceReport | null>;
+  
+  // Washington State Specific Compliance Reports
+  createEqualizationReport(report: any): Promise<any>; // Equalization ratio report (RCW 84.48)
+  getEqualizationReportByYear(year: number): Promise<any | undefined>;
+  createRevaluationCycleReport(report: any): Promise<any>; // Revaluation cycle report (WAC 458-07-015)
+  getRevaluationCycleReportByYear(year: number): Promise<any | undefined>;  
+  createExemptionVerificationReport(report: any): Promise<any>; // Exemption verification report
+  getExemptionVerificationReportByYear(year: number): Promise<any | undefined>;
+  createAppealComplianceReport(report: any): Promise<any>; // Appeal compliance report
+  getAppealComplianceReportByYear(year: number): Promise<any | undefined>;
+  getAppealsByTaxYear(taxYear: number): Promise<Appeal[]>;
+  getAllExemptions(taxYear: number): Promise<any[]>;
   
   // Validation methods
   createValidationRule(rule: Omit<ValidationRule, 'id' | 'createdAt' | 'updatedAt'>): Promise<ValidationRule>;
