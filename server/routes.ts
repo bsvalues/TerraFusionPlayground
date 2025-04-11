@@ -24,6 +24,9 @@ import { createPropertyStoryRoutes } from "./routes/property-story-routes";
 import { createPropertyRoutes } from "./routes/property-routes";
 import { createAgentRoutes } from "./routes/agent-routes";
 import { createAuthRoutes } from "./routes/auth-routes";
+import { createMarketRoutes } from "./routes/market-routes";
+import { createRiskRoutes } from "./routes/risk-routes";
+import { createAnalyticsRoutes } from "./routes/analytics-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -36,6 +39,10 @@ import { SecurityService } from "./services/security";
 import { AuthService } from "./services/auth-service";
 import { IPacsIntegrationService } from "./services/pacs-integration";
 import { mockPacsIntegrationService } from "./services/mock-pacs-integration";
+import { LLMService } from "./services/llm-service";
+import { EnhancedMarketPredictionModel } from "./services/enhanced-market-prediction-model";
+import { EnhancedRiskAssessmentEngine } from "./services/enhanced-risk-assessment-engine";
+import { errorHandler, notFoundHandler } from "./middleware/error-middleware";
 
 import { validateApiKey, verifyToken, requireScope, TokenScope } from "./middleware/auth-middleware";
 
@@ -2222,6 +2229,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register data import routes
   app.use("/api/data-import", createDataImportRoutes(storage));
+  
+  // Initialize services for advanced analytics
+  const llmService = new LLMService();
+  
+  // Set the LLM configuration if API key is available
+  if (process.env.OPENAI_API_KEY) {
+    llmService.setConfig({
+      provider: 'openai',
+      apiKey: process.env.OPENAI_API_KEY
+    });
+  }
+  
+  const marketPredictionModel = new EnhancedMarketPredictionModel(storage, llmService);
+  const riskAssessmentEngine = new EnhancedRiskAssessmentEngine(storage, llmService);
+  
+  // Register market, risk, and analytics routes
+  app.use('/api/market', createMarketRoutes(storage, llmService));
+  app.use('/api/risk-assessment', createRiskRoutes(storage, llmService));
+  app.use('/api/analytics', createAnalyticsRoutes(
+    storage, 
+    marketPredictionModel,
+    riskAssessmentEngine,
+    llmService
+  ));
+  
+  // Add error handling middleware
+  app.use(errorHandler);
+  app.use(notFoundHandler);
   
   // Create HTTP server and initialize WebSocket for real-time notifications
   const httpServer = createServer(app);

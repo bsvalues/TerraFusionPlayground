@@ -70,8 +70,12 @@ export class AgentSystem {
       const arcgisService = new ArcGISService(this.storage);
       const bentonMarketFactorService = new BentonMarketFactorService(this.storage);
       const llmService = new LLMService({
-        apiKey: process.env.OPENAI_API_KEY,
-        model: 'gpt-4o'
+        defaultProvider: 'openai',
+        openaiApiKey: process.env.OPENAI_API_KEY,
+        defaultModels: {
+          openai: 'gpt-4o',
+          anthropic: 'claude-3-opus-20240229'
+        }
       });
       
       // Create and register agents

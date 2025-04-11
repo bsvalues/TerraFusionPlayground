@@ -71,20 +71,43 @@ export class LLMService {
   private anthropicClient: Anthropic | null = null;
   private config: LLMServiceConfig;
   
-  constructor(config: LLMServiceConfig) {
-    this.config = config;
+  constructor(config?: LLMServiceConfig) {
+    // Set default config if none provided
+    this.config = config || {
+      defaultProvider: 'openai',
+      defaultModels: {
+        openai: 'gpt-4o',
+        anthropic: 'claude-3-opus-20240229'
+      }
+    };
+    
+    // Ensure defaultModels is initialized
+    if (!this.config.defaultModels) {
+      this.config.defaultModels = {
+        openai: 'gpt-4o',
+        anthropic: 'claude-3-opus-20240229'
+      };
+    } else {
+      // Ensure both providers are defined
+      if (!this.config.defaultModels.openai) {
+        this.config.defaultModels.openai = 'gpt-4o';
+      }
+      if (!this.config.defaultModels.anthropic) {
+        this.config.defaultModels.anthropic = 'claude-3-opus-20240229';
+      }
+    }
     
     // Initialize OpenAI client if API key provided
-    if (config.openaiApiKey || process.env.OPENAI_API_KEY) {
+    if ((this.config.openaiApiKey || process.env.OPENAI_API_KEY)) {
       this.openaiClient = new OpenAI({
-        apiKey: config.openaiApiKey || process.env.OPENAI_API_KEY,
+        apiKey: this.config.openaiApiKey || process.env.OPENAI_API_KEY,
       });
     }
     
     // Initialize Anthropic client if API key provided
-    if (config.anthropicApiKey || process.env.ANTHROPIC_API_KEY) {
+    if ((this.config.anthropicApiKey || process.env.ANTHROPIC_API_KEY)) {
       this.anthropicClient = new Anthropic({
-        apiKey: config.anthropicApiKey || process.env.ANTHROPIC_API_KEY,
+        apiKey: this.config.anthropicApiKey || process.env.ANTHROPIC_API_KEY,
       });
     }
   }
@@ -104,6 +127,37 @@ export class LLMService {
       openai: !!this.openaiClient,
       anthropic: !!this.anthropicClient,
     };
+  }
+  
+  /**
+   * Update the LLM service configuration
+   */
+  public setConfig(config: {provider?: 'openai' | 'anthropic', apiKey?: string}): void {
+    // Update default provider if specified
+    if (config.provider) {
+      this.config.defaultProvider = config.provider;
+    }
+    
+    // Update API key based on the provider
+    if (config.apiKey) {
+      if (config.provider === 'anthropic' || 
+          (!config.provider && this.config.defaultProvider === 'anthropic')) {
+        this.config.anthropicApiKey = config.apiKey;
+        
+        // Initialize or reinitialize the Anthropic client
+        this.anthropicClient = new Anthropic({
+          apiKey: config.apiKey,
+        });
+      } else {
+        // Default to OpenAI if provider is not specified or is openai
+        this.config.openaiApiKey = config.apiKey;
+        
+        // Initialize or reinitialize the OpenAI client
+        this.openaiClient = new OpenAI({
+          apiKey: config.apiKey,
+        });
+      }
+    }
   }
   
   /**
@@ -291,7 +345,7 @@ export class LLMService {
        
        ${request.marketFactors ? `Market Factors to Consider:\n${request.marketFactors.join(', ')}` : ''}`;
     
-    const messages = [
+    const messages: { role: 'user' | 'assistant' | 'system'; content: string }[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ];

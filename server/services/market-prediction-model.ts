@@ -60,7 +60,8 @@ export class MarketPredictionModel {
       this.llmService = new LLMService({
         defaultProvider: 'openai',
         defaultModels: {
-          openai: 'gpt-4o'
+          openai: 'gpt-4o',
+          anthropic: 'claude-3-opus-20240229'
         }
       });
     }
