@@ -14,11 +14,14 @@ import { ReportingAgent } from './agents/reporting-agent';
 import { SpatialGISAgent } from './agents/spatial-gis-agent';
 import { MarketAnalysisAgent } from './agents/market-analysis-agent';
 import { FtpDataAgent } from './agents/ftp-data-agent';
+import { SuperintelligenceAgent } from './agents/superintelligence-agent';
 import { PropertyStoryGenerator } from './property-story-generator';
 import { FtpService } from './ftp-service';
 import { ArcGISService } from './arcgis-service';
 import { BentonMarketFactorService } from './benton-market-factor-service';
 import { LLMService } from './llm-service';
+import { MarketPredictionModel } from './market-prediction-model';
+import { RiskAssessmentEngine } from './risk-assessment-engine';
 
 export class AgentSystem {
   private _storage: IStorage;
@@ -120,6 +123,24 @@ export class AgentSystem {
         this.mcpService
       );
       this.registerAgent('ftp_data', ftpDataAgent);
+      
+      // Create advanced services for superintelligence agent
+      console.log("Creating Market Prediction Model...");
+      const marketPredictionModel = new MarketPredictionModel(this.storage, llmService);
+      
+      console.log("Creating Risk Assessment Engine...");
+      const riskAssessmentEngine = new RiskAssessmentEngine(this.storage, llmService);
+      
+      console.log("Creating Superintelligence Agent...");
+      const superintelligenceAgent = new SuperintelligenceAgent(
+        this.storage,
+        this.mcpService,
+        llmService,
+        propertyStoryGenerator,
+        marketPredictionModel,
+        riskAssessmentEngine
+      );
+      this.registerAgent('superintelligence', superintelligenceAgent);
       
       // Initialize agents
       for (const [name, agent] of this.agents.entries()) {
