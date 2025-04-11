@@ -20,6 +20,7 @@ import {
 } from "@shared/schema";
 import { createDataImportRoutes } from "./routes/data-import-routes";
 import ftpRoutes from "./routes/ftp-routes";
+import voiceRoutes from "./routes/voice-routes";
 import { createPropertyStoryRoutes } from "./routes/property-story-routes";
 import { createPropertyRoutes } from "./routes/property-routes";
 import { createAgentRoutes } from "./routes/agent-routes";
@@ -95,6 +96,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Authentication routes
   app.use('/api/auth', createAuthRoutes());
+  
+  // Register Voice routes
+  app.use('/api/voice', voiceRoutes);
   
   // Initialize agent system
   (async () => {

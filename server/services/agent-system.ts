@@ -27,17 +27,20 @@ import { RiskAssessmentEngine } from './risk-assessment-engine';
 import { NotificationService } from './notification-service';
 import { PropertyValidationEngine } from './data-quality/property-validation-engine';
 import { AgentReplayBufferService, ReplayBufferConfig } from './agent-replay-buffer';
+import { CommandStructure } from './command-structure';
 
 export class AgentSystem {
   private _storage: IStorage;
   private mcpService: MCPService;
   private agents: Map<string, BaseAgent> = new Map();
   private replayBuffer: AgentReplayBufferService;
+  private commandStructure: CommandStructure;
   private isInitialized: boolean = false;
   
   constructor(storage: IStorage) {
     this._storage = storage;
     this.mcpService = new MCPService(storage);
+    this.commandStructure = new CommandStructure(storage);
     
     // Initialize the agent replay buffer with default config
     const replayBufferConfig: ReplayBufferConfig = {
@@ -62,6 +65,13 @@ export class AgentSystem {
    */
   get replayBufferService(): AgentReplayBufferService {
     return this.replayBuffer;
+  }
+  
+  /**
+   * Get the command structure
+   */
+  get commandStructureService(): CommandStructure {
+    return this.commandStructure;
   }
   
   /**
@@ -199,6 +209,11 @@ export class AgentSystem {
         }
       }
       
+      // Initialize the command structure
+      console.log("Initializing Command Structure...");
+      await this.commandStructure.initialize();
+      console.log("Command Structure initialized successfully.");
+      
       this.isInitialized = true;
       console.log("Agent System initialized successfully.");
       
@@ -294,7 +309,7 @@ export class AgentSystem {
   }
   
   /**
-   * Get the status of all agents and the replay buffer
+   * Get the status of all agents, command structure, and the replay buffer
    */
   public getSystemStatus(): any {
     const agentStatuses = {};
@@ -310,7 +325,12 @@ export class AgentSystem {
       isInitialized: this.isInitialized,
       agentCount: this.agents.size,
       agents: agentStatuses,
-      replayBuffer: replayBufferStats
+      replayBuffer: replayBufferStats,
+      commandStructure: {
+        architectPrime: this.commandStructure.getArchitectPrime().getStatus(),
+        integrationCoordinator: this.commandStructure.getIntegrationCoordinator().getStatus(),
+        bsbcmasterLead: this.commandStructure.getBSBCmasterLead().getStatus()
+      }
     };
   }
 }
