@@ -61,6 +61,14 @@ interface PacsModuleRow {
 
 // Define the storage interface
 export interface IStorage {
+  // Data Lineage methods
+  createDataLineageRecord(record: InsertDataLineageRecord): Promise<DataLineageRecord>;
+  getDataLineageByField(propertyId: string, fieldName: string): Promise<DataLineageRecord[]>;
+  getDataLineageByProperty(propertyId: string): Promise<DataLineageRecord[]>;
+  getDataLineageByUser(userId: number, limit?: number): Promise<DataLineageRecord[]>;
+  getDataLineageByDateRange(startDate: Date, endDate: Date, limit?: number): Promise<DataLineageRecord[]>;
+  getDataLineageBySource(source: string, limit?: number): Promise<DataLineageRecord[]>;
+  
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -330,6 +338,7 @@ export class MemStorage implements IStorage {
   private appeals: Map<number, Appeal>;
   private appealComments: Map<number, AppealComment>;
   private appealEvidence: Map<number, AppealEvidence>;
+  private dataLineageRecords: Map<number, DataLineageRecord>;
   private auditLogs: Map<number, AuditLog>;
   private aiAgents: Map<number, AiAgent>;
   private systemActivities: Map<number, SystemActivity>;
@@ -382,6 +391,7 @@ export class MemStorage implements IStorage {
     this.appeals = new Map();
     this.appealComments = new Map();
     this.appealEvidence = new Map();
+    this.dataLineageRecords = new Map();
     this.auditLogs = new Map();
     this.aiAgents = new Map();
     this.systemActivities = new Map();
@@ -3866,6 +3876,77 @@ export class PgStorage implements IStorage {
   async getLearningUpdatesByType(updateType: string): Promise<LearningUpdate[]> {
     return Array.from(this.learningUpdates.values())
       .filter(update => update.updateType === updateType);
+  }
+  
+  // Data Lineage methods
+  async createDataLineageRecord(record: InsertDataLineageRecord): Promise<DataLineageRecord> {
+    const id = this.dataLineageRecords.size + 1;
+    const timestamp = new Date();
+    
+    const newRecord: DataLineageRecord = {
+      ...record,
+      id,
+      createdAt: timestamp
+    };
+    
+    this.dataLineageRecords.set(id, newRecord);
+    
+    // Create system activity for audit trail
+    await this.createSystemActivity({
+      activity_type: 'data_change',
+      component: 'Data Lineage Tracker',
+      status: 'info',
+      details: {
+        propertyId: record.propertyId,
+        fieldName: record.fieldName,
+        source: record.source
+      }
+    });
+    
+    return newRecord;
+  }
+  
+  async getDataLineageByField(propertyId: string, fieldName: string): Promise<DataLineageRecord[]> {
+    return Array.from(this.dataLineageRecords.values())
+      .filter(record => record.propertyId === propertyId && record.fieldName === fieldName)
+      .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime());
+  }
+  
+  async getDataLineageByProperty(propertyId: string): Promise<DataLineageRecord[]> {
+    return Array.from(this.dataLineageRecords.values())
+      .filter(record => record.propertyId === propertyId)
+      .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime());
+  }
+  
+  async getDataLineageByUser(userId: number, limit: number = 100): Promise<DataLineageRecord[]> {
+    return Array.from(this.dataLineageRecords.values())
+      .filter(record => record.userId === userId)
+      .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime())
+      .slice(0, limit);
+  }
+  
+  async getDataLineageByDateRange(
+    startDate: Date,
+    endDate: Date,
+    limit: number = 100
+  ): Promise<DataLineageRecord[]> {
+    return Array.from(this.dataLineageRecords.values())
+      .filter(record => 
+        record.changeTimestamp >= startDate && 
+        record.changeTimestamp <= endDate
+      )
+      .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime())
+      .slice(0, limit);
+  }
+  
+  async getDataLineageBySource(
+    source: string,
+    limit: number = 100
+  ): Promise<DataLineageRecord[]> {
+    return Array.from(this.dataLineageRecords.values())
+      .filter(record => record.source === source)
+      .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime())
+      .slice(0, limit);
   }
 }
 
