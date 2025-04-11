@@ -18,6 +18,8 @@ import {
   comparableAnalysisEntries, ComparableAnalysisEntry, InsertComparableAnalysisEntry,
   importStaging, StagedProperty, InsertStagedProperty
 } from "@shared/schema";
+import { MarketTrend, EconomicIndicator } from "./services/market-prediction-model";
+import { RegulatoryFramework } from "./services/risk-assessment-engine";
 import pg from 'pg';
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq, desc } from "drizzle-orm";
@@ -141,6 +143,18 @@ export interface IStorage {
   getStagedPropertyById(stagingId: string): Promise<StagedProperty | null>;
   updateStagedProperty(stagingId: string, updates: Partial<StagedProperty>): Promise<StagedProperty | null>;
   deleteStagedProperty(stagingId: string): Promise<boolean>;
+  
+  // Market and Economic Data methods
+  getMarketTrends(region: string): Promise<any[]>;
+  getEconomicIndicators(region: string): Promise<any>;
+  findComparableProperties(propertyId: string, count: number): Promise<any[]>;
+  getPropertyHistory(propertyId: string): Promise<any>;
+  getRegionalHistoricalData(region: string): Promise<any>;
+  
+  // Regulatory and Risk Data methods
+  getRegulatoryFramework(region: string): Promise<any>;
+  getHistoricalRegulatoryChanges(region: string): Promise<any[]>;
+  getEnvironmentalRisks(propertyId: string): Promise<any>;
 }
 
 // Implement the in-memory storage
@@ -1113,6 +1127,643 @@ export class MemStorage implements IStorage {
     });
     
     return true;
+  }
+  
+  // Market and Economic Data methods
+  async getMarketTrends(region: string): Promise<MarketTrend[]> {
+    // Log the access to market trends
+    await this.createSystemActivity({
+      agentId: 5, // Market Analysis Agent
+      activity: `Retrieved market trends for region: ${region}`,
+      entityType: 'marketTrends',
+      entityId: region
+    });
+    
+    // Determine most likely zip code for this region
+    const zipCode = region.includes('Benton') ? '97330' : 
+                    region.includes('Portland') ? '97201' : 
+                    region.includes('Salem') ? '97301' : '97330';
+    
+    // Return market trends for the region
+    return [
+      {
+        metric: 'median_price',
+        timeframe: '1_year',
+        value: 450000,
+        trend: 'increasing',
+        confidence: 0.85
+      },
+      {
+        metric: 'days_on_market',
+        timeframe: '3_months',
+        value: 12,
+        trend: 'decreasing',
+        confidence: 0.78
+      },
+      {
+        metric: 'price_per_sqft',
+        timeframe: '6_months',
+        value: 275,
+        trend: 'stable',
+        confidence: 0.92
+      },
+      {
+        metric: 'inventory_level',
+        timeframe: '1_month',
+        value: 1.8,
+        trend: 'decreasing',
+        confidence: 0.88
+      }
+    ];
+  }
+
+  async getEconomicIndicators(region: string): Promise<EconomicIndicator[]> {
+    // Log access to economic indicators
+    await this.createSystemActivity({
+      agentId: 5, // Market Analysis Agent
+      activity: `Retrieved economic indicators for region: ${region}`,
+      entityType: 'economicIndicators',
+      entityId: region
+    });
+    
+    // Return economic indicators for the region
+    return [
+      {
+        name: 'interest_rate',
+        value: 6.25,
+        impact: 'negative',
+        significance: 0.9
+      },
+      {
+        name: 'unemployment_rate',
+        value: 3.8,
+        impact: 'positive',
+        significance: 0.75
+      },
+      {
+        name: 'local_gdp_growth',
+        value: 2.7,
+        impact: 'positive',
+        significance: 0.82
+      },
+      {
+        name: 'construction_permits',
+        value: 1250,
+        impact: 'negative',
+        significance: 0.69
+      },
+      {
+        name: 'population_growth',
+        value: 1.5,
+        impact: 'positive',
+        significance: 0.85
+      }
+    ];
+  }
+
+  async findComparableProperties(propertyId: string, count: number): Promise<Property[]> {
+    // Get the target property
+    const targetProperty = await this.getPropertyByPropertyId(propertyId);
+    if (!targetProperty) {
+      return [];
+    }
+    
+    // Get all properties
+    const allProperties = await this.getAllProperties();
+    
+    // Remove the target property from the list
+    const otherProperties = allProperties.filter(p => p.propertyId !== propertyId);
+    
+    // Get property type for filtering
+    const propertyType = targetProperty.propertyType;
+    
+    // Get improvements for the target property
+    const targetImprovements = await this.getImprovementsByPropertyId(propertyId);
+    
+    // Extract key metrics for comparison
+    const targetMetrics = {
+      propertyType: propertyType,
+      squareFeet: targetImprovements.length > 0 ? targetImprovements[0].squareFeet : null,
+      bedrooms: targetImprovements.length > 0 ? targetImprovements[0].bedrooms : null,
+      bathrooms: targetImprovements.length > 0 ? targetImprovements[0].bathrooms : null
+    };
+    
+    // Create a scoring function for properties based on similarity
+    const scoreProperty = async (property: Property) => {
+      const improvements = await this.getImprovementsByPropertyId(property.propertyId);
+      
+      // Basic score starts with property type match
+      let score = property.propertyType === targetMetrics.propertyType ? 100 : 0;
+      
+      // If we have improvements to compare
+      if (improvements.length > 0 && targetImprovements.length > 0) {
+        const imp = improvements[0];
+        
+        // Square footage similarity (within 20% = good)
+        if (imp.squareFeet && targetMetrics.squareFeet) {
+          const sqftDiff = Math.abs(Number(imp.squareFeet) - Number(targetMetrics.squareFeet));
+          const sqftRatio = sqftDiff / Number(targetMetrics.squareFeet);
+          score += (1 - Math.min(sqftRatio, 1)) * 50; // Max 50 points for size
+        }
+        
+        // Bedroom match
+        if (imp.bedrooms && targetMetrics.bedrooms) {
+          const bedroomDiff = Math.abs(Number(imp.bedrooms) - Number(targetMetrics.bedrooms));
+          score += bedroomDiff === 0 ? 25 : bedroomDiff === 1 ? 15 : 0;
+        }
+        
+        // Bathroom match
+        if (imp.bathrooms && targetMetrics.bathrooms) {
+          const bathroomDiff = Math.abs(Number(imp.bathrooms) - Number(targetMetrics.bathrooms));
+          score += bathroomDiff === 0 ? 25 : bathroomDiff === 1 ? 15 : 0;
+        }
+      }
+      
+      return { property, score };
+    };
+    
+    // Score all properties
+    const scoredProperties = await Promise.all(otherProperties.map(scoreProperty));
+    
+    // Sort by score and take the top 'count'
+    const comparables = scoredProperties
+      .sort((a, b) => b.score - a.score)
+      .slice(0, count)
+      .map(item => item.property);
+    
+    // Log the comparable search
+    await this.createSystemActivity({
+      agentId: 5, // Market Analysis Agent
+      activity: `Found ${comparables.length} comparable properties for: ${propertyId}`,
+      entityType: 'propertyComparables',
+      entityId: propertyId
+    });
+    
+    return comparables;
+  }
+
+  async getPropertyHistory(propertyId: string): Promise<any> {
+    // Log the history access
+    await this.createSystemActivity({
+      agentId: 5, // Market Analysis Agent
+      activity: `Retrieved property history for: ${propertyId}`,
+      entityType: 'propertyHistory',
+      entityId: propertyId
+    });
+    
+    // Get the property
+    const property = await this.getPropertyByPropertyId(propertyId);
+    if (!property) {
+      return { history: [] };
+    }
+    
+    const currentYear = new Date().getFullYear();
+    
+    // Generate a simulated history of valuations and significant events
+    const valueChanges = [];
+    let baseValue = property.value ? Number(property.value) * 0.8 : 300000; // Start 20% lower or default
+    
+    // Generate 10 years of history or less if property is newer
+    for (let year = currentYear - 10; year <= currentYear; year++) {
+      // Apply a random adjustment between -2% and +8% each year
+      const yearlyChange = baseValue * (Math.random() * 0.1 - 0.02);
+      baseValue += yearlyChange;
+      
+      valueChanges.push({
+        year: year,
+        value: Math.round(baseValue),
+        percentChange: Math.round((yearlyChange / (baseValue - yearlyChange)) * 100 * 10) / 10,
+        assessmentType: 'Annual Valuation'
+      });
+    }
+    
+    // Add some significant property events
+    const events = [
+      {
+        date: `${currentYear - 8}-06-15`,
+        type: 'Sale',
+        description: `Property sold for $${Math.round(valueChanges[2].value).toLocaleString()}`
+      },
+      {
+        date: `${currentYear - 6}-03-22`,
+        type: 'Improvement',
+        description: 'Major kitchen renovation completed'
+      },
+      {
+        date: `${currentYear - 4}-09-05`,
+        type: 'Appeal',
+        description: 'Valuation appealed by owner - No change'
+      },
+      {
+        date: `${currentYear - 2}-05-30`,
+        type: 'Zoning',
+        description: 'Area rezoned to allow mixed-use development'
+      }
+    ];
+    
+    return {
+      propertyId: propertyId,
+      address: property.address,
+      valueHistory: valueChanges,
+      events: events
+    };
+  }
+
+  async getRegionalHistoricalData(region: string): Promise<any> {
+    // Log the access to regional data
+    await this.createSystemActivity({
+      agentId: 5, // Market Analysis Agent
+      activity: `Retrieved regional historical data for: ${region}`,
+      entityType: 'regionalData',
+      entityId: region
+    });
+    
+    const currentYear = new Date().getFullYear();
+    const startYear = currentYear - 10;
+    
+    // Generate baseline median values depending on region
+    let baselineMedianValue = region.includes('Benton') ? 350000 : 
+                             region.includes('Portland') ? 450000 : 
+                             region.includes('Salem') ? 325000 : 
+                             region.includes('Eugene') ? 375000 : 400000;
+    
+    // Generate annual median values with realistic growth patterns
+    const annualMedianValues = [];
+    const annualGrowthRates = [];
+    let priorValue = baselineMedianValue * 0.7; // Start 30% lower 10 years ago
+    
+    for (let year = startYear; year <= currentYear; year++) {
+      // Growth rate pattern with recession in 2020 and recovery thereafter
+      let growthRate;
+      if (year === 2020) {
+        growthRate = -0.03; // 3% decline in 2020
+      } else if (year === 2021) {
+        growthRate = 0.08; // Strong recovery
+      } else if (year === 2022) {
+        growthRate = 0.12; // Very strong growth
+      } else if (year === 2023) {
+        growthRate = 0.09; // Sustained strong growth
+      } else if (year === 2024) {
+        growthRate = 0.05; // Moderation
+      } else if (year === 2025) {
+        growthRate = 0.03; // Further moderation
+      } else {
+        growthRate = 0.04 + (Math.random() * 0.03 - 0.01); // Random 3-6% growth
+      }
+      
+      const newValue = priorValue * (1 + growthRate);
+      annualMedianValues.push({
+        year: year,
+        value: Math.round(newValue)
+      });
+      
+      annualGrowthRates.push({
+        year: year,
+        rate: Math.round(growthRate * 1000) / 10 // Convert to percentage with one decimal
+      });
+      
+      priorValue = newValue;
+    }
+    
+    // Generate inventory data
+    const inventoryLevels = [];
+    for (let year = startYear; year <= currentYear; year++) {
+      // Inventory typically declines in hot markets and increases in slow ones
+      // 2020-2022 had very low inventory
+      let inventoryMonths;
+      if (year >= 2020 && year <= 2022) {
+        inventoryMonths = 1.0 + (Math.random() * 0.5);
+      } else if (year >= 2023) {
+        inventoryMonths = 2.0 + (Math.random() * 0.8);
+      } else {
+        inventoryMonths = 3.5 + (Math.random() * 1.5);
+      }
+      
+      inventoryLevels.push({
+        year: year,
+        months: Math.round(inventoryMonths * 10) / 10
+      });
+    }
+    
+    // Generate population data
+    const populationData = [];
+    let population = region.includes('Benton') ? 95000 : 
+                    region.includes('Portland') ? 650000 : 
+                    region.includes('Salem') ? 175000 : 
+                    region.includes('Eugene') ? 170000 : 120000;
+    
+    for (let year = startYear; year <= currentYear; year++) {
+      // Population growth is typically 1-2% annually
+      const growthRate = 0.01 + (Math.random() * 0.01);
+      population = Math.round(population * (1 + growthRate));
+      
+      populationData.push({
+        year: year,
+        population: population,
+        growthRate: Math.round(growthRate * 1000) / 10
+      });
+    }
+    
+    return {
+      region: region,
+      period: `${startYear}-${currentYear}`,
+      medianValues: annualMedianValues,
+      growthRates: annualGrowthRates,
+      inventory: inventoryLevels,
+      population: populationData
+    };
+  }
+  
+  // Regulatory and Risk Data methods
+  async getRegulatoryFramework(region: string): Promise<RegulatoryFramework> {
+    // Log the access
+    await this.createSystemActivity({
+      agentId: 5, // Market Analysis Agent
+      activity: `Retrieved regulatory framework for: ${region}`,
+      entityType: 'regulatoryFramework',
+      entityId: region
+    });
+    
+    return {
+      region: region,
+      zoningRegulations: [
+        {
+          code: "R-1",
+          name: "Single Family Residential",
+          description: "Low-density residential zoning for single-family dwellings",
+          maxDensity: "6 units per acre",
+          heightLimit: "35 feet",
+          setbacks: {
+            front: "20 feet",
+            side: "5 feet",
+            rear: "15 feet"
+          }
+        },
+        {
+          code: "R-2",
+          name: "Medium Density Residential",
+          description: "Medium-density residential zoning allowing duplexes and townhomes",
+          maxDensity: "12 units per acre",
+          heightLimit: "35 feet",
+          setbacks: {
+            front: "15 feet",
+            side: "5 feet",
+            rear: "10 feet"
+          }
+        },
+        {
+          code: "C-1",
+          name: "Neighborhood Commercial",
+          description: "Small-scale commercial uses serving neighborhood needs",
+          maxDensity: "N/A",
+          heightLimit: "35 feet",
+          setbacks: {
+            front: "10 feet",
+            side: "10 feet if adjacent to residential",
+            rear: "10 feet if adjacent to residential"
+          }
+        }
+      ],
+      buildingCodes: [
+        {
+          code: "IBC 2021",
+          name: "International Building Code 2021",
+          adoption: "January 1, 2023",
+          scope: "All commercial construction"
+        },
+        {
+          code: "IRC 2021",
+          name: "International Residential Code 2021",
+          adoption: "January 1, 2023",
+          scope: "All residential construction"
+        },
+        {
+          code: "IECC 2021",
+          name: "International Energy Conservation Code 2021",
+          adoption: "January 1, 2023",
+          scope: "Energy efficiency standards for all construction"
+        }
+      ],
+      environmentalRegulations: [
+        {
+          code: "ESA-OV",
+          name: "Environmentally Sensitive Areas Overlay",
+          description: "Regulations protecting wetlands, streams, and habitats",
+          requirements: "Buffer zones, mitigation for impacts, special permits"
+        },
+        {
+          code: "FP-OV",
+          name: "Floodplain Overlay",
+          description: "Regulations for development in FEMA designated floodplains",
+          requirements: "Elevated structures, floodproofing, special permits"
+        },
+        {
+          code: "ESI",
+          name: "Environmental Site Investigation",
+          description: "Requirements for sites with potential contamination",
+          requirements: "Phase I/II Environmental Assessments, remediation plans"
+        }
+      ],
+      taxPolicies: [
+        {
+          name: "Property Tax Limitation",
+          description: "Annual increases in assessed value limited to 3% for existing properties",
+          implementation: "1997",
+          exceptions: "New construction, major improvements, property use changes"
+        },
+        {
+          name: "Veterans' Exemption",
+          description: "Partial property tax exemption for qualifying veterans",
+          amount: "$4,000 - $8,000 depending on disability status",
+          application: "Annual filing required"
+        },
+        {
+          name: "Senior Deferral Program",
+          description: "Tax deferral for qualifying seniors",
+          eligibility: "Age 62+, income limits apply",
+          application: "Annual filing required"
+        }
+      ],
+      lastUpdated: new Date()
+    };
+  }
+
+  async getHistoricalRegulatoryChanges(region: string): Promise<any[]> {
+    // Log the access
+    await this.createSystemActivity({
+      agentId: 5, // Market Analysis Agent
+      activity: `Retrieved historical regulatory changes for: ${region}`,
+      entityType: 'regulatoryChanges',
+      entityId: region
+    });
+    
+    const currentYear = new Date().getFullYear();
+    
+    return [
+      {
+        date: `${currentYear - 10}-05-15`,
+        category: "Zoning",
+        description: "Comprehensive Plan Update - Increased density in transit corridors",
+        impact: "Positive impact on multi-family and mixed-use property values",
+        marketEffect: "High"
+      },
+      {
+        date: `${currentYear - 8}-07-01`,
+        category: "Building Code",
+        description: "Adoption of 2015 International Building Code",
+        impact: "Increased construction costs for new development",
+        marketEffect: "Medium"
+      },
+      {
+        date: `${currentYear - 6}-01-15`,
+        category: "Environmental",
+        description: "Expanded Wetland Protection Ordinance - Added buffer requirements",
+        impact: "Reduced developable land area in certain zones",
+        marketEffect: "Medium-High"
+      },
+      {
+        date: `${currentYear - 5}-03-22`,
+        category: "Tax Policy",
+        description: "School bond measure passed - Property tax rate increase of $1.20 per $1,000",
+        impact: "Increased carrying costs for property owners",
+        marketEffect: "Low-Medium"
+      },
+      {
+        date: `${currentYear - 3}-09-10`,
+        category: "Zoning",
+        description: "Accessory Dwelling Unit (ADU) ordinance - Reduced restrictions",
+        impact: "Increased property utilization options in residential zones",
+        marketEffect: "Medium"
+      },
+      {
+        date: `${currentYear - 2}-11-05`,
+        category: "Environmental",
+        description: "Updated Flood Insurance Rate Maps (FIRM) - Expanded floodplain areas",
+        impact: "Increased insurance costs and building requirements in affected areas",
+        marketEffect: "High"
+      },
+      {
+        date: `${currentYear - 1}-04-01`,
+        category: "Building Code",
+        description: "Adoption of 2021 International Energy Conservation Code",
+        impact: "Increased construction costs for energy efficiency compliance",
+        marketEffect: "Medium"
+      },
+      {
+        date: `${currentYear}-01-15`,
+        category: "Zoning",
+        description: "Mixed-Use Overlay District expanded to additional commercial corridors",
+        impact: "Increased development potential for affected commercial properties",
+        marketEffect: "High"
+      }
+    ];
+  }
+
+  async getEnvironmentalRisks(propertyId: string): Promise<any> {
+    // Get the property
+    const property = await this.getPropertyByPropertyId(propertyId);
+    if (!property) {
+      return { risks: [] };
+    }
+    
+    // Log the access
+    await this.createSystemActivity({
+      agentId: 6, // Risk Assessment Agent
+      activity: `Retrieved environmental risks for property: ${propertyId}`,
+      entityType: 'environmentalRisks',
+      entityId: propertyId
+    });
+    
+    // Use property ID to determine some pseudo-random but consistent risks
+    const propertyIdNum = parseInt(propertyId.replace(/\D/g, '')) || 0;
+    
+    // Flood risk - based on last digit
+    const floodRiskLevel = propertyIdNum % 10 <= 2 ? 'High' : 
+                          propertyIdNum % 10 <= 5 ? 'Medium' : 'Low';
+                          
+    // Wildfire risk - based on second-to-last digit
+    const wildfireRiskLevel = Math.floor((propertyIdNum % 100) / 10) <= 2 ? 'High' : 
+                             Math.floor((propertyIdNum % 100) / 10) <= 5 ? 'Medium' : 'Low';
+                             
+    // Earthquake risk - based on third-to-last digit
+    const earthquakeRiskLevel = Math.floor((propertyIdNum % 1000) / 100) <= 2 ? 'High' : 
+                               Math.floor((propertyIdNum % 1000) / 100) <= 5 ? 'Medium' : 'Low';
+    
+    return {
+      propertyId: propertyId,
+      address: property.address,
+      risks: [
+        {
+          type: "Flood",
+          level: floodRiskLevel,
+          description: floodRiskLevel === 'High' ? 
+                      "Property is located in or near FEMA designated 100-year floodplain" : 
+                      floodRiskLevel === 'Medium' ? 
+                      "Property is located in or near FEMA designated 500-year floodplain" : 
+                      "Property is not located in a designated floodplain",
+          mitigationOptions: floodRiskLevel !== 'Low' ? [
+            "Elevate structure above base flood elevation",
+            "Install flood vents in foundation",
+            "Implement proper site grading and drainage",
+            "Consider flood insurance even if not in mandatory purchase area"
+          ] : [],
+          insuranceConsiderations: floodRiskLevel !== 'Low' ? "Flood insurance recommended or required" : "Standard coverage typically sufficient"
+        },
+        {
+          type: "Wildfire",
+          level: wildfireRiskLevel,
+          description: wildfireRiskLevel === 'High' ? 
+                      "Property is located in a Wildland-Urban Interface (WUI) high-risk zone" : 
+                      wildfireRiskLevel === 'Medium' ? 
+                      "Property is located near areas with elevated wildfire potential" : 
+                      "Property is in an area with low historical wildfire activity",
+          mitigationOptions: wildfireRiskLevel !== 'Low' ? [
+            "Create defensible space around structures",
+            "Use fire-resistant building materials",
+            "Implement ember-resistant venting",
+            "Maintain and manage vegetation"
+          ] : [],
+          insuranceConsiderations: wildfireRiskLevel === 'High' ? "Specialized coverage likely required, high premiums" : 
+                                  wildfireRiskLevel === 'Medium' ? "Standard coverage with wildfire endorsement recommended" : 
+                                  "Standard coverage typically sufficient"
+        },
+        {
+          type: "Earthquake",
+          level: earthquakeRiskLevel,
+          description: earthquakeRiskLevel === 'High' ? 
+                      "Property is located in an area with significant seismic activity potential" : 
+                      earthquakeRiskLevel === 'Medium' ? 
+                      "Property is located in an area with moderate seismic risk" : 
+                      "Property is in an area with low seismic activity potential",
+          mitigationOptions: earthquakeRiskLevel !== 'Low' ? [
+            "Structural retrofitting",
+            "Foundation bolting and bracing",
+            "Flexible utility connections",
+            "Secure heavy furniture and appliances"
+          ] : [],
+          insuranceConsiderations: earthquakeRiskLevel !== 'Low' ? "Separate earthquake insurance policy recommended" : "Optional earthquake endorsement may be considered"
+        }
+      ],
+      environmentalHazards: [
+        {
+          type: "Soil Contamination",
+          probability: propertyIdNum % 7 === 0 ? "Medium" : "Low",
+          description: "Historical land use in the area included some industrial activity"
+        },
+        {
+          type: "Radon",
+          probability: propertyIdNum % 5 === 0 ? "Medium" : "Low",
+          description: "Area has known radon potential based on geological characteristics"
+        }
+      ],
+      assessmentDate: new Date(),
+      recommendations: [
+        "Conduct professional environmental site assessment for detailed analysis",
+        "Review FEMA flood maps and consider elevation certificate if in flood zone",
+        "Implement appropriate risk mitigation measures based on identified risks",
+        "Review insurance coverage to ensure adequate protection against identified hazards"
+      ]
+    };
   }
   
   private seedData() {
