@@ -1,364 +1,349 @@
 import * as React from 'react';
 import { format } from 'date-fns';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Clock, ArrowRight, FileText, User, Tag, Calendar, Info, Database } from 'lucide-react';
-import { DataLineageRecord, getSourceLabel, formatLineageTimestamp } from '@/lib/dataLineageService';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Activity, AlertCircle, Clock, Database, FileEdit, FileText, User } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-// Interface for the diff viewer component
+interface DataLineageRecord {
+  id: number;
+  propertyId: string;
+  fieldName: string;
+  source: string;
+  oldValue: string;
+  newValue: string;
+  changeTimestamp: Date | string;
+  userId: number;
+  sourceDetails?: any;
+}
+
 interface DiffViewerProps {
   oldValue: string;
   newValue: string;
 }
 
-// Component to show differences between values
 function DiffViewer({ oldValue, newValue }: DiffViewerProps) {
-  // Convert empty strings to a visible placeholder
-  const displayOldValue = oldValue === '' ? '<empty>' : oldValue;
-  const displayNewValue = newValue === '' ? '<empty>' : newValue;
+  // Handle empty values
+  const oldText = oldValue || '(empty)';
+  const newText = newValue || '(empty)';
   
-  // Check if values are JSON
-  const isOldJson = React.useMemo(() => {
-    try {
-      if (oldValue.trim().startsWith('{') || oldValue.trim().startsWith('[')) {
-        JSON.parse(oldValue);
-        return true;
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }, [oldValue]);
-  
-  const isNewJson = React.useMemo(() => {
-    try {
-      if (newValue.trim().startsWith('{') || newValue.trim().startsWith('[')) {
-        JSON.parse(newValue);
-        return true;
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }, [newValue]);
-  
-  // Format JSON for display
-  const formattedOldValue = React.useMemo(() => {
-    if (isOldJson) {
-      try {
-        return JSON.stringify(JSON.parse(oldValue), null, 2);
-      } catch (e) {
-        return displayOldValue;
-      }
-    }
-    return displayOldValue;
-  }, [oldValue, isOldJson, displayOldValue]);
-  
-  const formattedNewValue = React.useMemo(() => {
-    if (isNewJson) {
-      try {
-        return JSON.stringify(JSON.parse(newValue), null, 2);
-      } catch (e) {
-        return displayNewValue;
-      }
-    }
-    return displayNewValue;
-  }, [newValue, isNewJson, displayNewValue]);
+  // If values are the same, don't show diff
+  if (oldText === newText) {
+    return (
+      <div className="text-sm">
+        <p>No change detected in values.</p>
+      </div>
+    );
+  }
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="space-y-2">
-        <div className="font-medium text-sm text-muted-foreground">Previous Value:</div>
-        <div className={`p-3 rounded-md bg-muted/50 ${isOldJson ? 'font-mono text-sm whitespace-pre overflow-x-auto' : ''}`}>
-          {formattedOldValue}
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-muted-foreground">Previous Value</p>
+        <div className="bg-muted/50 p-3 rounded-md text-sm">
+          <pre className="whitespace-pre-wrap">{oldText}</pre>
         </div>
       </div>
-      
-      <div className="space-y-2">
-        <div className="font-medium text-sm text-muted-foreground">New Value:</div>
-        <div className={`p-3 rounded-md bg-muted/50 ${isNewJson ? 'font-mono text-sm whitespace-pre overflow-x-auto' : ''}`}>
-          {formattedNewValue}
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-muted-foreground">New Value</p>
+        <div className="bg-muted/50 p-3 rounded-md text-sm">
+          <pre className="whitespace-pre-wrap">{newText}</pre>
         </div>
       </div>
     </div>
   );
 }
 
-// Interface for a single event in the timeline
 interface LineageEventProps {
   record: DataLineageRecord;
   index: number;
   showDetails: (record: DataLineageRecord) => void;
 }
 
-// Component for a single timeline event
 function LineageEvent({ record, index, showDetails }: LineageEventProps) {
-  // Format the timestamp
-  const formattedTime = formatLineageTimestamp(record.changeTimestamp);
+  // Convert string timestamps to Date objects if needed
+  const timestamp = record.changeTimestamp instanceof Date 
+    ? record.changeTimestamp 
+    : new Date(record.changeTimestamp);
   
-  // Get the source label
-  const sourceLabel = getSourceLabel(record.source);
+  // Determine source icon
+  const getSourceIcon = () => {
+    switch(record.source.toLowerCase()) {
+      case 'import':
+        return <Database className="h-4 w-4" />;
+      case 'api':
+        return <Activity className="h-4 w-4" />;
+      case 'manual':
+        return <FileEdit className="h-4 w-4" />;
+      case 'validated':
+        return <AlertCircle className="h-4 w-4" />;
+      case 'correction':
+        return <FileText className="h-4 w-4" />;
+      default:
+        return <Database className="h-4 w-4" />;
+    }
+  };
   
-  // Determine if the value is empty or has a short diff
-  const isValueEmpty = !record.oldValue && !record.newValue;
-  const isShortDiff = record.oldValue.length < 50 && record.newValue.length < 50;
-  
-  // Get initials for the avatar
-  const userInitials = `U${record.userId}`;
+  // Get source badge variant
+  const getSourceVariant = () => {
+    switch(record.source.toLowerCase()) {
+      case 'import':
+        return 'default';
+      case 'api':
+        return 'secondary';
+      case 'manual':
+        return 'outline';
+      case 'validated':
+        return 'destructive';
+      case 'correction':
+        return 'warning';
+      default:
+        return 'secondary';
+    }
+  };
   
   return (
-    <div className="flex items-start gap-4 py-4 group">
-      <div className="flex flex-col items-center">
-        <Avatar className="h-8 w-8 border-2 border-border">
-          <AvatarFallback>{userInitials}</AvatarFallback>
-        </Avatar>
-        <div className="w-0.5 h-full bg-border mt-2" />
+    <div className="relative pl-5 pb-8 last:pb-0">
+      {/* Timeline connector */}
+      {index < 20 && (
+        <div className="absolute top-6 left-2 bottom-0 w-px bg-border"></div>
+      )}
+      
+      {/* Timeline dot */}
+      <div className={cn(
+        "absolute top-1.5 left-0 h-4 w-4 rounded-full border-2 border-background",
+        "bg-primary flex items-center justify-center"
+      )}>
+        <span className="h-1.5 w-1.5 rounded-full bg-background"></span>
       </div>
       
-      <div className="flex-1 space-y-2">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">{sourceLabel}</Badge>
-            <span className="text-sm font-medium">{record.fieldName}</span>
-          </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Clock className="h-3 w-3 mr-1" />
-            {formattedTime}
-          </div>
-        </div>
-        
-        {isValueEmpty ? (
-          <div className="text-sm text-muted-foreground italic">No value change recorded</div>
-        ) : isShortDiff ? (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="py-1 px-2 rounded bg-muted/50">{record.oldValue || '<empty>'}</span>
-            <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            <span className="py-1 px-2 rounded bg-muted/50">{record.newValue || '<empty>'}</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <div className="text-sm text-muted-foreground truncate max-w-md">
-              {record.oldValue.substring(0, 30)}
-              {record.oldValue.length > 30 ? '...' : ''}
-              {' → '}
-              {record.newValue.substring(0, 30)}
-              {record.newValue.length > 30 ? '...' : ''}
+      {/* Content */}
+      <Card className="mb-2">
+        <CardHeader className="p-4 pb-2">
+          <div className="flex flex-wrap justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <Badge variant={getSourceVariant()} className="capitalize flex items-center gap-1">
+                {getSourceIcon()}
+                {record.source}
+              </Badge>
+              <Badge variant="outline" className="ml-1">
+                {record.fieldName}
+              </Badge>
+            </div>
+            <div className="flex items-center text-xs text-muted-foreground gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              <span>{format(timestamp, 'MMM d, yyyy h:mm a')}</span>
             </div>
           </div>
-        )}
-        
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => showDetails(record)}>
-            <Info className="h-3 w-3 mr-1" />
-            View Details
-          </Button>
-        </div>
-      </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          <div className="mt-2 space-y-2">
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Previous</p>
+                <div className="bg-muted/50 p-1.5 rounded-sm truncate max-h-12 overflow-hidden">
+                  {record.oldValue || <span className="text-muted-foreground italic">(empty)</span>}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">New</p>
+                <div className="bg-muted/50 p-1.5 rounded-sm truncate max-h-12 overflow-hidden">
+                  {record.newValue || <span className="text-muted-foreground italic">(empty)</span>}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-between items-center pt-1">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <User className="h-3.5 w-3.5" />
+                <span>User ID: {record.userId}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => showDetails(record)}
+              >
+                View Details
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-// Interface for the details dialog
 interface LineageDetailsDialogProps {
   record: DataLineageRecord | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-// Component for the details dialog
 function LineageDetailsDialog({ record, open, onOpenChange }: LineageDetailsDialogProps) {
   if (!record) return null;
   
-  // Format timestamps
-  const formattedChangeTime = formatLineageTimestamp(record.changeTimestamp);
-  const formattedCreateTime = format(new Date(record.createdAt), 'MMM d, yyyy h:mm a');
-  
-  // Get source label
-  const sourceLabel = getSourceLabel(record.source);
-  
-  // Get source details as string if available
-  const sourceDetails = record.sourceDetails 
-    ? (typeof record.sourceDetails === 'string' 
-        ? record.sourceDetails 
-        : JSON.stringify(record.sourceDetails, null, 2)) 
-    : 'No details available';
+  // Convert string timestamps to Date objects if needed
+  const timestamp = record.changeTimestamp instanceof Date 
+    ? record.changeTimestamp 
+    : new Date(record.changeTimestamp);
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Data Change Details</DialogTitle>
+          <DialogDescription>
+            Detailed information about this data change event
+          </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="max-h-[80vh]">
-          <div className="space-y-6 p-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Field Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center gap-2">
-                    <div className="text-sm font-medium">Property ID</div>
-                    <div className="text-sm">{record.propertyId}</div>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between items-center gap-2">
-                    <div className="text-sm font-medium">Field Name</div>
-                    <div className="text-sm">{record.fieldName}</div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center">
-                    <User className="h-4 w-4 mr-2" />
-                    User & Source
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center gap-2">
-                    <div className="text-sm font-medium">User ID</div>
-                    <div className="text-sm">{record.userId}</div>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between items-center gap-2">
-                    <div className="text-sm font-medium">Source</div>
-                    <Badge variant="outline">{sourceLabel}</Badge>
-                  </div>
-                </CardContent>
-              </Card>
+        <ScrollArea className="flex-1 pr-4">
+          <div className="space-y-6 py-4">
+            {/* Field and Property Information */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium">Changed Field</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Field Name</p>
+                  <p className="text-base">{record.fieldName}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Property ID</p>
+                  <p className="text-base font-mono">{record.propertyId}</p>
+                </div>
+              </div>
             </div>
             
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Timestamps
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center gap-2">
-                  <div className="text-sm font-medium">Change Time</div>
-                  <div className="text-sm">{formattedChangeTime}</div>
-                </div>
-                <Separator />
-                <div className="flex justify-between items-center gap-2">
-                  <div className="text-sm font-medium">Record Created</div>
-                  <div className="text-sm">{formattedCreateTime}</div>
-                </div>
-              </CardContent>
-            </Card>
+            <Separator />
             
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center">
-                  <Tag className="h-4 w-4 mr-2" />
-                  Value Changes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DiffViewer
-                  oldValue={record.oldValue}
-                  newValue={record.newValue}
-                />
-              </CardContent>
-            </Card>
+            {/* Change Values */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium">Change Details</h3>
+              <DiffViewer oldValue={record.oldValue} newValue={record.newValue} />
+            </div>
             
+            <Separator />
+            
+            {/* Metadata */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium">Metadata</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Change Source</p>
+                  <Badge variant="secondary" className="mt-1 capitalize">
+                    {record.source}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">User ID</p>
+                  <p className="text-base">{record.userId}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Timestamp</p>
+                  <p className="text-base">{format(timestamp, 'PPpp')}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Record ID</p>
+                  <p className="text-base font-mono">{record.id}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Source Details (if available) */}
             {record.sourceDetails && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center">
-                    <Database className="h-4 w-4 mr-2" />
-                    Source Details
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="font-mono text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded-md overflow-x-auto">
-                    {sourceDetails}
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <h3 className="text-lg font-medium">Source Details</h3>
+                  <div className="bg-muted/50 p-4 rounded-md">
+                    <pre className="text-sm whitespace-pre-wrap">
+                      {JSON.stringify(record.sourceDetails, null, 2)}
+                    </pre>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </>
             )}
           </div>
         </ScrollArea>
         
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-        </DialogFooter>
+        <div className="pt-4 flex justify-end">
+          <DialogClose asChild>
+            <Button>Close</Button>
+          </DialogClose>
+        </div>
       </DialogContent>
     </Dialog>
   );
 }
 
-// Interface for the main timeline component
 interface LineageTimelineProps {
   records: DataLineageRecord[];
   title?: string;
 }
 
-// Main timeline component
 export function LineageTimeline({ records, title = 'Data Change Timeline' }: LineageTimelineProps) {
-  const [selectedRecord, setSelectedRecord] = React.useState<DataLineageRecord | null>(null);
+  const [detailRecord, setDetailRecord] = React.useState<DataLineageRecord | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   
-  // Handle showing details
   const showDetails = (record: DataLineageRecord) => {
-    setSelectedRecord(record);
+    setDetailRecord(record);
     setDialogOpen(true);
   };
   
-  // Sort records by timestamp (newest first)
-  const sortedRecords = React.useMemo(() => {
-    return [...records].sort((a, b) => {
-      return new Date(b.changeTimestamp).getTime() - new Date(a.changeTimestamp).getTime();
-    });
-  }, [records]);
-  
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>
-          {records.length} change{records.length !== 1 ? 's' : ''} recorded
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {sortedRecords.length > 0 ? (
-          <div className="space-y-0">
-            {sortedRecords.map((record, index) => (
-              <LineageEvent
-                key={record.id}
-                record={record}
-                index={index}
-                showDetails={showDetails}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            No data changes have been recorded.
-          </div>
-        )}
-      </CardContent>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>
+            Showing {records.length} changes in chronological order
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {records.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="text-muted-foreground">No data change records found.</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Try adjusting your filters or selecting a different date range.
+              </p>
+            </div>
+          ) : (
+            <div className="pt-2">
+              {records.map((record, index) => (
+                <LineageEvent 
+                  key={record.id} 
+                  record={record} 
+                  index={index} 
+                  showDetails={showDetails}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
       
-      <LineageDetailsDialog
-        record={selectedRecord}
+      <LineageDetailsDialog 
+        record={detailRecord}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
       />
-    </Card>
+    </>
   );
 }

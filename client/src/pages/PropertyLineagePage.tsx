@@ -1,276 +1,221 @@
 import * as React from 'react';
-import { useParams, Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { getPropertyLineage, DataLineageRecord } from '@/lib/dataLineageService';
-import { LineageFilters, LineageFiltersState } from '@/components/data-lineage/LineageFilters';
+import { useRoute } from 'wouter';
 import { LineageTimeline } from '@/components/data-lineage/LineageTimeline';
+import { LineageFilters, LineageFiltersState } from '@/components/data-lineage/LineageFilters';
+import { 
+  PageHeader, 
+  PageHeaderDescription, 
+  PageHeaderHeading 
+} from '@/components/ui/page-header';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink } from '@/components/ui/breadcrumb';
+import { Separator } from '@/components/ui/separator';
+import { Icons } from '@/components/ui/icons';
 import { Button } from '@/components/ui/button';
+import { Icons as LucideIcons } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Info, ChevronLeft } from 'lucide-react';
+import { CardSkeleton } from '@/components/ui/card-skeleton';
+import { apiRequest } from '@/lib/queryClient';
 
 export function PropertyLineagePage() {
-  const { propertyId } = useParams<{ propertyId: string }>();
+  const [, params] = useRoute('/properties/:propertyId/lineage');
+  const propertyId = params?.propertyId;
+  
   const [filters, setFilters] = React.useState<LineageFiltersState>({});
   
-  // Fetch property lineage data
-  const {
-    data: lineageData,
-    isLoading,
-    isError,
-    error
-  } = useQuery({
-    queryKey: ['/api/property-lineage', propertyId],
-    queryFn: () => getPropertyLineage(propertyId),
-    enabled: !!propertyId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+  // Fetch property details
+  const propertyQuery = useQuery({
+    queryKey: ['/api/properties', propertyId],
+    enabled: !!propertyId
   });
   
-  // Process lineage data into a flat array
-  const allRecords = React.useMemo(() => {
-    if (!lineageData) return [];
-    
-    const records: DataLineageRecord[] = [];
-    
-    // Flatten the lineage object into an array
-    Object.values(lineageData.lineage).forEach(fieldRecords => {
-      records.push(...fieldRecords);
-    });
-    
-    return records;
-  }, [lineageData]);
+  // Fetch available sources, users, and fields for this property
+  const filtersQuery = useQuery({
+    queryKey: ['/api/data-lineage/filters', propertyId],
+    enabled: !!propertyId
+  });
   
-  // Get current property field values
-  const currentValues = React.useMemo(() => {
-    if (!lineageData || !allRecords.length) return {};
+  // Fetch lineage records
+  const lineageQuery = useQuery({
+    queryKey: ['/api/data-lineage/property', propertyId, filters],
+    enabled: !!propertyId
+  });
+  
+  // Process lineage records to create a timeline of field changes
+  const processedRecords = React.useMemo(() => {
+    if (!lineageQuery.data) return [];
     
-    // Get the most recent value for each field
+    // Sort the records by timestamp (newest first)
+    return [...lineageQuery.data].sort((a, b) => {
+      const dateA = new Date(a.changeTimestamp);
+      const dateB = new Date(b.changeTimestamp);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [lineageQuery.data]);
+  
+  // Create a property history timeline
+  const propertyHistory = React.useMemo(() => {
+    if (!lineageQuery.data) return [];
+    
+    // Group records by field to track its history
     const values: Record<string, { value: string; timestamp: Date }> = {};
+    const timeline: { field: string; history: { value: string; timestamp: Date }[] }[] = [];
     
-    Object.entries(lineageData.lineage).forEach(([fieldName, records]) => {
-      if (records.length > 0) {
-        // Sort by timestamp (newest first)
-        const sortedRecords = [...records].sort((a, b) => 
-          new Date(b.changeTimestamp).getTime() - new Date(a.changeTimestamp).getTime()
-        );
-        
-        // Get the most recent value
-        values[fieldName] = {
-          value: sortedRecords[0].newValue,
-          timestamp: new Date(sortedRecords[0].changeTimestamp)
-        };
+    // Process all records to build field value history
+    lineageQuery.data.forEach(record => {
+      const timestamp = new Date(record.changeTimestamp);
+      const field = record.fieldName;
+      
+      // Update current value for this field
+      values[field] = {
+        value: record.newValue,
+        timestamp
+      };
+      
+      // Find or create a timeline entry for this field
+      let fieldTimeline = timeline.find(t => t.field === field);
+      if (!fieldTimeline) {
+        fieldTimeline = { field, history: [] };
+        timeline.push(fieldTimeline);
       }
-    });
-    
-    return values;
-  }, [lineageData, allRecords]);
-  
-  // Get available fields
-  const availableFields = React.useMemo(() => {
-    if (!lineageData) return [];
-    return Object.keys(lineageData.lineage);
-  }, [lineageData]);
-  
-  // Get unique sources
-  const availableSources = React.useMemo(() => {
-    if (!allRecords.length) return [];
-    
-    const sources = new Set<string>();
-    
-    allRecords.forEach(record => {
-      sources.add(record.source);
-    });
-    
-    return Array.from(sources);
-  }, [allRecords]);
-  
-  // Get unique users
-  const availableUsers = React.useMemo(() => {
-    if (!allRecords.length) return [];
-    
-    const users = new Map<number, string>();
-    
-    allRecords.forEach(record => {
-      users.set(record.userId, `User #${record.userId}`);
-    });
-    
-    return Array.from(users.entries()).map(([id, name]) => ({ id, name }));
-  }, [allRecords]);
-  
-  // Filter records based on the current filters
-  const filteredRecords = React.useMemo(() => {
-    if (!allRecords.length) return [];
-    
-    let records = [...allRecords];
-    
-    // Apply date range filter
-    if (filters.startDate || filters.endDate) {
-      records = records.filter(record => {
-        const timestamp = new Date(record.changeTimestamp);
-        if (filters.startDate && timestamp < filters.startDate) return false;
-        if (filters.endDate) {
-          // Set the end date to the end of the day
-          const endDate = new Date(filters.endDate);
-          endDate.setHours(23, 59, 59, 999);
-          if (timestamp > endDate) return false;
-        }
-        return true;
+      
+      // Add this value to the field's history
+      fieldTimeline.history.push({
+        value: record.newValue,
+        timestamp
       });
-    }
+    });
     
-    // Apply source filter
-    if (filters.sources && filters.sources.length > 0) {
-      records = records.filter(record => 
-        filters.sources!.includes(record.source)
-      );
-    }
-    
-    // Apply user filter
-    if (filters.users && filters.users.length > 0) {
-      records = records.filter(record => 
-        filters.users!.includes(record.userId)
-      );
-    }
-    
-    // Apply field filter
-    if (filters.fields && filters.fields.length > 0) {
-      records = records.filter(record => 
-        filters.fields!.includes(record.fieldName)
-      );
-    }
-    
-    return records;
-  }, [allRecords, filters]);
+    return timeline;
+  }, [lineageQuery.data]);
   
+  // Handle filter changes from the LineageFilters component
   const handleFilterChange = (newFilters: LineageFiltersState) => {
     setFilters(newFilters);
   };
   
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="container py-6 space-y-6">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/data-lineage">
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Back to Dashboard
-            </Link>
-          </Button>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">Property Lineage</h1>
-          <div className="text-muted-foreground">
-            <Skeleton className="h-6 w-40" />
-          </div>
-        </div>
-        
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-96 w-full" />
-      </div>
-    );
-  }
+  // Determine available filters for this property
+  const availableSources = React.useMemo(() => {
+    return filtersQuery.data?.sources || [];
+  }, [filtersQuery.data]);
   
-  // Error state
-  if (isError || !lineageData) {
-    return (
-      <div className="container py-6 space-y-6">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/data-lineage">
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Back to Dashboard
-            </Link>
-          </Button>
-        </div>
-        
-        <h1 className="text-2xl font-bold">Property Lineage</h1>
-        
-        <Alert variant="destructive">
-          <Info className="h-4 w-4" />
-          <AlertTitle>Error Loading Data</AlertTitle>
-          <AlertDescription>
-            {error instanceof Error 
-              ? error.message 
-              : "Could not load property lineage data. The property ID may be invalid or the data is unavailable."
-            }
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  const availableUsers = React.useMemo(() => {
+    return filtersQuery.data?.users || [];
+  }, [filtersQuery.data]);
+  
+  const availableFields = React.useMemo(() => {
+    return filtersQuery.data?.fields || [];
+  }, [filtersQuery.data]);
+  
+  // Get property name or default to ID
+  const propertyName = React.useMemo(() => {
+    if (propertyQuery.isLoading) return 'Loading...';
+    if (propertyQuery.isError) return `Property ${propertyId}`;
+    return propertyQuery.data?.address || `Property ${propertyId}`;
+  }, [propertyQuery.data, propertyQuery.isLoading, propertyQuery.isError, propertyId]);
+  
+  // Create summary stats
+  const stats = React.useMemo(() => {
+    if (!lineageQuery.data) return { total: 0, fields: 0, sources: 0 };
+    
+    const uniqueFields = new Set(lineageQuery.data.map(record => record.fieldName));
+    const uniqueSources = new Set(lineageQuery.data.map(record => record.source));
+    
+    return {
+      total: lineageQuery.data.length,
+      fields: uniqueFields.size,
+      sources: uniqueSources.size
+    };
+  }, [lineageQuery.data]);
+  
+  const isLoading = propertyQuery.isLoading || lineageQuery.isLoading || filtersQuery.isLoading;
+  const isError = propertyQuery.isError || lineageQuery.isError || filtersQuery.isError;
   
   return (
     <div className="container py-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/data-lineage">
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Back to Dashboard
-          </Link>
-        </Button>
-      </div>
+      <Breadcrumb>
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/properties">Properties</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbItem>
+          <BreadcrumbLink href={`/properties/${propertyId}`}>{propertyId}</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbItem>
+          <BreadcrumbLink>Data Lineage</BreadcrumbLink>
+        </BreadcrumbItem>
+      </Breadcrumb>
       
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Property Lineage</h1>
-          <div className="text-muted-foreground">
-            Property ID: {propertyId}
-          </div>
+      <PageHeader>
+        <div className="flex items-center gap-4">
+          <PageHeaderHeading>{propertyName}</PageHeaderHeading>
+          {!isLoading && !isError && (
+            <Button variant="outline" size="sm" asChild>
+              <a href={`/properties/${propertyId}`}>
+                <Icons.ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Property
+              </a>
+            </Button>
+          )}
         </div>
+        <PageHeaderDescription>
+          Data change history and lineage tracking for this property
+        </PageHeaderDescription>
         
-        <div className="space-y-1">
-          <div className="text-sm text-muted-foreground">
-            {Object.keys(lineageData.lineage).length} tracked fields
+        {!isLoading && !isError && (
+          <div className="flex flex-wrap gap-4 mt-2">
+            <div className="flex items-center gap-2">
+              <LucideIcons.FileText className="h-5 w-5 opacity-70" />
+              <span className="text-sm">
+                <strong>{stats.total}</strong> changes tracked
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <LucideIcons.Tag className="h-5 w-5 opacity-70" />
+              <span className="text-sm">
+                <strong>{stats.fields}</strong> fields modified
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <LucideIcons.Database className="h-5 w-5 opacity-70" />
+              <span className="text-sm">
+                <strong>{stats.sources}</strong> data sources
+              </span>
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground">
-            {allRecords.length} total changes
-          </div>
-        </div>
-      </div>
+        )}
+      </PageHeader>
       
-      <LineageFilters 
-        onChange={handleFilterChange}
-        availableSources={availableSources}
-        availableUsers={availableUsers}
-        availableFields={availableFields}
-        value={filters}
-      />
+      <Separator />
       
-      {filteredRecords.length > 0 ? (
-        <LineageTimeline 
-          records={filteredRecords}
-          title="Property Change Timeline"
-        />
-      ) : (
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertTitle>No Records Found</AlertTitle>
+      {isError ? (
+        <Alert variant="destructive">
+          <LucideIcons.AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Error loading property data lineage</AlertTitle>
           <AlertDescription>
-            No lineage records match your current filter criteria. Try adjusting your filters.
+            There was a problem fetching the data lineage information for this property.
+            Please try again later or contact support.
           </AlertDescription>
         </Alert>
-      )}
-      
-      {Object.keys(currentValues).length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">Current Property Values</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Object.entries(currentValues).map(([fieldName, { value, timestamp }]) => (
-              <div 
-                key={fieldName} 
-                className="border rounded-lg p-4 bg-card text-card-foreground shadow-sm"
-              >
-                <div className="text-sm font-medium">{fieldName}</div>
-                <div className="mt-1 text-base truncate">{value || '<empty>'}</div>
-                <div className="mt-2 text-xs text-muted-foreground">
-                  Last updated: {new Date(timestamp).toLocaleDateString()}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      ) : isLoading ? (
+        <>
+          <div className="h-[180px] animate-pulse rounded-lg bg-muted"></div>
+          <CardSkeleton />
+        </>
+      ) : (
+        <>
+          <LineageFilters 
+            onChange={handleFilterChange}
+            availableSources={availableSources}
+            availableUsers={availableUsers}
+            availableFields={availableFields}
+            value={filters}
+          />
+          
+          <LineageTimeline 
+            records={processedRecords}
+            title={`Data Lineage for ${propertyName}`}
+          />
+        </>
       )}
     </div>
   );

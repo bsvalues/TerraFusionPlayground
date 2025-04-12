@@ -1,24 +1,32 @@
 import * as React from 'react';
-import { addDays, format, subDays } from 'date-fns';
-import { Calendar } from '@/components/ui/calendar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { addDays, startOfDay, endOfDay, format, subDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
+  Popover, 
+  PopoverContent, 
+  PopoverTrigger 
+} from "@/components/ui/popover";
+import { 
+  Form, 
+  FormControl, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormMessage 
+} from '@/components/ui/form';
+import { Calendar } from "@/components/ui/calendar";
+import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { X, Calendar as CalendarIcon, Filter, ChevronDown } from 'lucide-react';
+import { MultiSelect, Option } from '@/components/multi-select';
+import { Calendar as CalendarIcon, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useForm } from 'react-hook-form';
 
-// Date range preset options
+// Date preset types
 type DatePreset = '1d' | '7d' | '30d' | 'custom';
 
-// Filter state interface
+// Filters state interface
 export interface LineageFiltersState {
   startDate?: Date;
   endDate?: Date;
@@ -27,7 +35,7 @@ export interface LineageFiltersState {
   fields?: string[];
 }
 
-// Component props
+// Props interface
 interface LineageFiltersProps {
   onChange: (filters: LineageFiltersState) => void;
   availableSources?: string[];
@@ -36,440 +44,452 @@ interface LineageFiltersProps {
   value?: LineageFiltersState;
 }
 
+// Main component
 export function LineageFilters({
   onChange,
   availableSources = [],
   availableUsers = [],
   availableFields = [],
-  value
+  value = {}
 }: LineageFiltersProps) {
-  const [isOpen, setIsOpen] = React.useState(false);
-  const [datePreset, setDatePreset] = React.useState<DatePreset>('30d');
-  const [filters, setFilters] = React.useState<LineageFiltersState>(value || {
-    startDate: subDays(new Date(), 30),
-    endDate: new Date()
+  const [datePreset, setDatePreset] = React.useState<DatePreset>('7d');
+  const [calendarOpen, setCalendarOpen] = React.useState(false);
+  
+  // Setup form with react-hook-form
+  const form = useForm<LineageFiltersState>({
+    defaultValues: {
+      startDate: value.startDate,
+      endDate: value.endDate,
+      sources: value.sources || [],
+      users: value.users || [],
+      fields: value.fields || []
+    }
   });
   
-  // Initialize with provided value when it changes
-  React.useEffect(() => {
-    if (value) {
-      setFilters(value);
-      
-      // Determine date preset based on the value
-      if (value.startDate && value.endDate) {
-        const daysDiff = Math.round(
-          (value.endDate.getTime() - value.startDate.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        
-        if (daysDiff === 0) {
-          setDatePreset('1d');
-        } else if (daysDiff === 6) {
-          setDatePreset('7d');
-        } else if (daysDiff === 29) {
-          setDatePreset('30d');
-        } else {
-          setDatePreset('custom');
-        }
-      }
-    }
-  }, [value]);
-  
-  // Helper to format dates for display
+  // Format date for display
   const formatDate = (date?: Date) => {
     if (!date) return '';
     return format(date, 'MMM d, yyyy');
   };
   
-  // Set a preset date range
+  // Helper for setting date range based on preset
   const setPresetDateRange = (preset: DatePreset) => {
     setDatePreset(preset);
     
-    const endDate = new Date();
-    let startDate: Date;
-    
-    switch (preset) {
-      case '1d':
-        startDate = endDate;
-        break;
-      case '7d':
-        startDate = subDays(endDate, 6);
-        break;
-      case '30d':
-        startDate = subDays(endDate, 29);
-        break;
-      case 'custom':
-        // Don't change the dates for custom preset
-        return;
+    if (preset === 'custom') {
+      return;
     }
     
-    setFilters(prev => ({
-      ...prev,
-      startDate,
-      endDate
-    }));
+    const now = new Date();
+    let startDate: Date;
+    
+    // Calculate start date based on preset
+    switch (preset) {
+      case '1d':
+        startDate = startOfDay(now);
+        break;
+      case '7d':
+        startDate = startOfDay(subDays(now, 6));
+        break;
+      case '30d':
+        startDate = startOfDay(subDays(now, 29));
+        break;
+      default:
+        startDate = startOfDay(subDays(now, 6));
+    }
+    
+    // Set the form values
+    form.setValue('startDate', startDate);
+    form.setValue('endDate', endOfDay(now));
+    
+    // Trigger form submission
+    form.handleSubmit(onSubmit)();
   };
   
   // Handle date range changes
   const handleDateRangeChange = (field: 'startDate' | 'endDate', date?: Date) => {
     setDatePreset('custom');
-    setFilters(prev => ({
-      ...prev,
-      [field]: date
-    }));
+    form.setValue(field, date);
+    
+    // If both dates are set, submit the form
+    if (form.getValues('startDate') && form.getValues('endDate')) {
+      form.handleSubmit(onSubmit)();
+    }
   };
   
-  // Toggle a source filter
-  const toggleSource = (source: string) => {
-    setFilters(prev => {
-      const sources = prev.sources || [];
-      const newSources = sources.includes(source)
-        ? sources.filter(s => s !== source)
-        : [...sources, source];
-      
-      return {
-        ...prev,
-        sources: newSources.length > 0 ? newSources : undefined
-      };
-    });
-  };
-  
-  // Toggle a user filter
-  const toggleUser = (userId: number) => {
-    setFilters(prev => {
-      const users = prev.users || [];
-      const newUsers = users.includes(userId)
-        ? users.filter(id => id !== userId)
-        : [...users, userId];
-      
-      return {
-        ...prev,
-        users: newUsers.length > 0 ? newUsers : undefined
-      };
-    });
-  };
-  
-  // Toggle a field filter
-  const toggleField = (field: string) => {
-    setFilters(prev => {
-      const fields = prev.fields || [];
-      const newFields = fields.includes(field)
-        ? fields.filter(f => f !== field)
-        : [...fields, field];
-      
-      return {
-        ...prev,
-        fields: newFields.length > 0 ? newFields : undefined
-      };
-    });
-  };
-  
-  // Apply the current filters
-  const applyFilters = () => {
-    onChange(filters);
-    setIsOpen(false);
+  // Form submission handler
+  const onSubmit = (data: LineageFiltersState) => {
+    onChange(data);
   };
   
   // Reset all filters
   const resetFilters = () => {
-    const resetState: LineageFiltersState = {
-      startDate: undefined,
-      endDate: undefined,
-      sources: undefined,
-      users: undefined,
-      fields: undefined
-    };
-    
-    setFilters(resetState);
+    const resetState: LineageFiltersState = {};
+    form.reset(resetState);
+    setDatePreset('7d');
     onChange(resetState);
-    setIsOpen(false);
   };
   
-  // Count the number of active filters
-  const activeFilterCount = React.useMemo(() => {
-    let count = 0;
-    if (filters.startDate || filters.endDate) count++;
-    if (filters.sources && filters.sources.length > 0) count++;
-    if (filters.users && filters.users.length > 0) count++;
-    if (filters.fields && filters.fields.length > 0) count++;
-    return count;
-  }, [filters]);
+  // Process sources into options for MultiSelect
+  const sourceOptions = React.useMemo(() => {
+    return availableSources.map(source => ({
+      label: source.charAt(0).toUpperCase() + source.slice(1),
+      value: source
+    }));
+  }, [availableSources]);
   
-  // Helper to check if a filter is active
-  const isFilterActive = (type: 'date' | 'source' | 'user' | 'field') => {
-    switch (type) {
-      case 'date':
-        return filters.startDate !== undefined || filters.endDate !== undefined;
-      case 'source':
-        return filters.sources !== undefined && filters.sources.length > 0;
-      case 'user':
-        return filters.users !== undefined && filters.users.length > 0;
-      case 'field':
-        return filters.fields !== undefined && filters.fields.length > 0;
+  // Process users into options for MultiSelect
+  const userOptions = React.useMemo(() => {
+    return availableUsers.map(user => ({
+      label: user.name,
+      value: user.id.toString()
+    }));
+  }, [availableUsers]);
+  
+  // Process fields into options for MultiSelect
+  const fieldOptions = React.useMemo(() => {
+    return availableFields.map(field => ({
+      label: field,
+      value: field
+    }));
+  }, [availableFields]);
+  
+  // Derived selected sources, users and fields
+  const selectedSources = form.watch('sources') || [];
+  const selectedUsers = form.watch('users') || [];
+  const selectedFields = form.watch('fields') || [];
+  
+  // Handle source filter changes
+  const handleSourceFilterChange = (selected: string[]) => {
+    form.setValue('sources', selected);
+    form.handleSubmit(onSubmit)();
+  };
+  
+  // Handle user filter changes
+  const handleUserFilterChange = (selected: string[]) => {
+    form.setValue('users', selected.map(id => parseInt(id)));
+    form.handleSubmit(onSubmit)();
+  };
+  
+  // Handle field filter changes
+  const handleFieldFilterChange = (selected: string[]) => {
+    form.setValue('fields', selected);
+    form.handleSubmit(onSubmit)();
+  };
+  
+  // Initialize preset on mount and when value changes
+  React.useEffect(() => {
+    // Initialize with filter values if provided
+    if (value.startDate && value.endDate) {
+      form.setValue('startDate', value.startDate);
+      form.setValue('endDate', value.endDate);
+      
+      const diffDays = Math.round((value.endDate.getTime() - value.startDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) {
+        setDatePreset('1d');
+      } else if (diffDays === 6) {
+        setDatePreset('7d');
+      } else if (diffDays === 29) {
+        setDatePreset('30d');
+      } else {
+        setDatePreset('custom');
+      }
+    } else {
+      // Default to 7-day range if no date filters provided
+      setPresetDateRange('7d');
     }
-  };
+    
+    if (value.sources?.length) {
+      form.setValue('sources', value.sources);
+    }
+    
+    if (value.users?.length) {
+      form.setValue('users', value.users);
+    }
+    
+    if (value.fields?.length) {
+      form.setValue('fields', value.fields);
+    }
+  }, []);
   
   return (
-    <div className="space-y-2">
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
-            <Button 
-              variant="outline" 
-              className="flex justify-between w-full sm:w-auto"
-            >
-              <span className="flex items-center">
-                <Filter className="mr-2 h-4 w-4" />
-                Filter Data
-              </span>
-              {activeFilterCount > 0 && (
-                <Badge variant="secondary" className="ml-2">
-                  {activeFilterCount}
-                </Badge>
-              )}
-              <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-full sm:w-[500px] p-0" align="start">
-            <div className="grid gap-4 p-4">
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Date Range</h4>
-                <div className="flex flex-wrap gap-2">
-                  <Button 
-                    size="sm" 
-                    variant={datePreset === '1d' ? 'default' : 'outline'} 
-                    onClick={() => setPresetDateRange('1d')}
-                  >
-                    Today
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant={datePreset === '7d' ? 'default' : 'outline'} 
-                    onClick={() => setPresetDateRange('7d')}
-                  >
-                    Last 7 days
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant={datePreset === '30d' ? 'default' : 'outline'} 
-                    onClick={() => setPresetDateRange('30d')}
-                  >
-                    Last 30 days
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant={datePreset === 'custom' ? 'default' : 'outline'} 
-                    onClick={() => setPresetDateRange('custom')}
-                  >
-                    Custom
-                  </Button>
-                </div>
+    <Card className="mb-6">
+      <CardContent className="pt-6">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Date Range Filter */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="font-medium text-sm min-w-[100px]">Date Range:</div>
+              
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  type="button"
+                  size="sm"
+                  variant={datePreset === '1d' ? 'default' : 'outline'}
+                  onClick={() => setPresetDateRange('1d')}
+                >
+                  Today
+                </Button>
+                <Button 
+                  type="button"
+                  size="sm"
+                  variant={datePreset === '7d' ? 'default' : 'outline'}
+                  onClick={() => setPresetDateRange('7d')}
+                >
+                  Last 7 Days
+                </Button>
+                <Button 
+                  type="button"
+                  size="sm"
+                  variant={datePreset === '30d' ? 'default' : 'outline'}
+                  onClick={() => setPresetDateRange('30d')}
+                >
+                  Last 30 Days
+                </Button>
+                <Button 
+                  type="button"
+                  size="sm"
+                  variant={datePreset === 'custom' ? 'default' : 'outline'}
+                  onClick={() => setDatePreset('custom')}
+                >
+                  Custom Range
+                </Button>
                 
                 {datePreset === 'custom' && (
-                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                    <div className="grid gap-1">
-                      <div className="text-xs">From</div>
-                      <Popover>
-                        <PopoverTrigger asChild>
+                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        id="date-range"
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "justify-start text-left font-normal",
+                          !form.getValues('startDate') && !form.getValues('endDate') && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {form.getValues('startDate') && form.getValues('endDate') ? (
+                          `${formatDate(form.getValues('startDate'))} - ${formatDate(form.getValues('endDate'))}`
+                        ) : (
+                          "Select date range"
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <div className="p-3 border-b">
+                        <div className="flex justify-between items-center space-x-2">
+                          <div>
+                            <p className="text-sm font-medium">Date Range</p>
+                            <p className="text-xs text-muted-foreground">
+                              Select start and end dates
+                            </p>
+                          </div>
                           <Button 
-                            variant="outline" 
-                            className={cn(
-                              "justify-start text-left font-normal w-full",
-                              !filters.startDate && "text-muted-foreground"
-                            )}
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => {
+                              form.setValue('startDate', undefined);
+                              form.setValue('endDate', undefined);
+                              form.handleSubmit(onSubmit)();
+                              setCalendarOpen(false);
+                            }}
                           >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {filters.startDate ? formatDate(filters.startDate) : "Pick a date"}
+                            <X className="h-4 w-4" />
                           </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 p-3">
+                        <div>
+                          <FormLabel className="text-xs">Start Date</FormLabel>
                           <Calendar
                             mode="single"
-                            selected={filters.startDate}
+                            selected={form.getValues('startDate')}
                             onSelect={(date) => handleDateRangeChange('startDate', date)}
+                            disabled={(date) => date > new Date() || (form.getValues('endDate') ? date > form.getValues('endDate')! : false)}
                             initialFocus
-                            disabled={(date) => 
-                              filters.endDate ? date > filters.endDate : date > new Date()
-                            }
                           />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    
-                    <div className="grid gap-1">
-                      <div className="text-xs">To</div>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            className={cn(
-                              "justify-start text-left font-normal w-full",
-                              !filters.endDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {filters.endDate ? formatDate(filters.endDate) : "Pick a date"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        </div>
+                        <div>
+                          <FormLabel className="text-xs">End Date</FormLabel>
                           <Calendar
                             mode="single"
-                            selected={filters.endDate}
+                            selected={form.getValues('endDate')}
                             onSelect={(date) => handleDateRangeChange('endDate', date)}
+                            disabled={(date) => date > new Date() || (form.getValues('startDate') ? date < form.getValues('startDate')! : false)}
                             initialFocus
-                            disabled={(date) => 
-                              filters.startDate ? date < filters.startDate : date > new Date()
-                            }
-                            fromDate={filters.startDate}
-                            toDate={new Date()}
                           />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
+                        </div>
+                      </div>
+                      <div className="p-3 border-t">
+                        <Button 
+                          size="sm" 
+                          className="w-full"
+                          onClick={() => {
+                            form.handleSubmit(onSubmit)();
+                            setCalendarOpen(false);
+                          }}
+                        >
+                          Apply Date Range
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 )}
               </div>
-              
-              {availableSources.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Data Source</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {availableSources.map(source => (
-                      <Badge
-                        key={source}
-                        variant={filters.sources?.includes(source) ? "default" : "outline"}
-                        className="cursor-pointer hover:opacity-80"
-                        onClick={() => toggleSource(source)}
-                      >
-                        {source}
-                      </Badge>
-                    ))}
-                  </div>
+            </div>
+            
+            <Separator />
+            
+            {/* Additional Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Source Filter */}
+              <div>
+                <FormLabel className="text-sm">Data Source</FormLabel>
+                <div className="mt-1">
+                  <MultiSelect
+                    options={sourceOptions}
+                    selected={selectedSources}
+                    onChange={handleSourceFilterChange}
+                    placeholder="Select sources"
+                    className="w-full"
+                  />
                 </div>
-              )}
+              </div>
               
-              {availableUsers.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">User</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {availableUsers.map(user => (
-                      <Badge
-                        key={user.id}
-                        variant={filters.users?.includes(user.id) ? "default" : "outline"}
-                        className="cursor-pointer hover:opacity-80"
-                        onClick={() => toggleUser(user.id)}
-                      >
-                        {user.name}
-                      </Badge>
-                    ))}
-                  </div>
+              {/* User Filter */}
+              <div>
+                <FormLabel className="text-sm">Modified By</FormLabel>
+                <div className="mt-1">
+                  <MultiSelect
+                    options={userOptions}
+                    selected={selectedUsers.map(id => id.toString())}
+                    onChange={handleUserFilterChange}
+                    placeholder="Select users"
+                    className="w-full"
+                  />
                 </div>
-              )}
+              </div>
               
-              {availableFields.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Field</h4>
-                  <div className="max-h-40 overflow-y-auto">
-                    <div className="flex flex-wrap gap-2">
-                      {availableFields.map(field => (
-                        <Badge
-                          key={field}
-                          variant={filters.fields?.includes(field) ? "default" : "outline"}
-                          className="cursor-pointer hover:opacity-80"
-                          onClick={() => toggleField(field)}
-                        >
-                          {field}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
+              {/* Field Filter */}
+              <div>
+                <FormLabel className="text-sm">Fields</FormLabel>
+                <div className="mt-1">
+                  <MultiSelect
+                    options={fieldOptions}
+                    selected={selectedFields}
+                    onChange={handleFieldFilterChange}
+                    placeholder="Select fields"
+                    className="w-full"
+                  />
                 </div>
-              )}
-              
-              <div className="flex justify-between pt-2">
-                <Button variant="ghost" onClick={resetFilters}>
-                  Reset
-                </Button>
-                <Button onClick={applyFilters}>
-                  Apply Filters
-                </Button>
               </div>
             </div>
-          </PopoverContent>
-        </Popover>
-        
-        <div className="flex flex-wrap gap-2">
-          {isFilterActive('date') && (
-            <Badge variant="secondary" className="flex items-center">
-              <span className="mr-1">
-                Date: {formatDate(filters.startDate)} - {formatDate(filters.endDate)}
-              </span>
-              <X
-                className="h-3 w-3 cursor-pointer"
-                onClick={() => {
-                  setFilters(prev => ({ ...prev, startDate: undefined, endDate: undefined }));
-                  onChange({ ...filters, startDate: undefined, endDate: undefined });
-                }}
-              />
-            </Badge>
-          )}
-          
-          {isFilterActive('source') && (
-            <Badge variant="secondary" className="flex items-center">
-              <span className="mr-1">
-                Sources: {filters.sources?.length}
-              </span>
-              <X
-                className="h-3 w-3 cursor-pointer"
-                onClick={() => {
-                  setFilters(prev => ({ ...prev, sources: undefined }));
-                  onChange({ ...filters, sources: undefined });
-                }}
-              />
-            </Badge>
-          )}
-          
-          {isFilterActive('user') && (
-            <Badge variant="secondary" className="flex items-center">
-              <span className="mr-1">
-                Users: {filters.users?.length}
-              </span>
-              <X
-                className="h-3 w-3 cursor-pointer"
-                onClick={() => {
-                  setFilters(prev => ({ ...prev, users: undefined }));
-                  onChange({ ...filters, users: undefined });
-                }}
-              />
-            </Badge>
-          )}
-          
-          {isFilterActive('field') && (
-            <Badge variant="secondary" className="flex items-center">
-              <span className="mr-1">
-                Fields: {filters.fields?.length}
-              </span>
-              <X
-                className="h-3 w-3 cursor-pointer"
-                onClick={() => {
-                  setFilters(prev => ({ ...prev, fields: undefined }));
-                  onChange({ ...filters, fields: undefined });
-                }}
-              />
-            </Badge>
-          )}
-          
-          {activeFilterCount > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-7 px-2 text-xs" 
-              onClick={resetFilters}
-            >
-              Clear All
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
+            
+            <Separator />
+            
+            {/* Active Filters */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="font-medium text-sm min-w-[100px]">Active Filters:</div>
+              
+              <div className="flex flex-wrap gap-2">
+                {/* Date Range Badge */}
+                {form.getValues('startDate') && form.getValues('endDate') && (
+                  <Badge variant="secondary" className="font-normal">
+                    {datePreset === '1d' ? 'Today' : datePreset === '7d' ? 'Last 7 Days' : datePreset === '30d' ? 'Last 30 Days' : 
+                      `${formatDate(form.getValues('startDate'))} - ${formatDate(form.getValues('endDate'))}`}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="ml-1 h-4 w-4 rounded-full p-0"
+                      onClick={() => {
+                        form.setValue('startDate', undefined);
+                        form.setValue('endDate', undefined);
+                        form.handleSubmit(onSubmit)();
+                      }}
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </Button>
+                  </Badge>
+                )}
+                
+                {/* Source Badges */}
+                {selectedSources.map(source => (
+                  <Badge key={source} variant="secondary" className="font-normal">
+                    Source: {source.charAt(0).toUpperCase() + source.slice(1)}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="ml-1 h-4 w-4 rounded-full p-0"
+                      onClick={() => {
+                        const updated = selectedSources.filter(s => s !== source);
+                        form.setValue('sources', updated);
+                        form.handleSubmit(onSubmit)();
+                      }}
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </Button>
+                  </Badge>
+                ))}
+                
+                {/* User Badges */}
+                {selectedUsers.map(userId => {
+                  const user = availableUsers.find(u => u.id === userId);
+                  return (
+                    <Badge key={userId} variant="secondary" className="font-normal">
+                      User: {user?.name || `ID: ${userId}`}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="ml-1 h-4 w-4 rounded-full p-0"
+                        onClick={() => {
+                          const updated = selectedUsers.filter(u => u !== userId);
+                          form.setValue('users', updated);
+                          form.handleSubmit(onSubmit)();
+                        }}
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </Button>
+                    </Badge>
+                  );
+                })}
+                
+                {/* Field Badges */}
+                {selectedFields.map(field => (
+                  <Badge key={field} variant="secondary" className="font-normal">
+                    Field: {field}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="ml-1 h-4 w-4 rounded-full p-0"
+                      onClick={() => {
+                        const updated = selectedFields.filter(f => f !== field);
+                        form.setValue('fields', updated);
+                        form.handleSubmit(onSubmit)();
+                      }}
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </Button>
+                  </Badge>
+                ))}
+                
+                {/* Reset Button (only show if there are active filters) */}
+                {(selectedSources.length > 0 || selectedUsers.length > 0 || selectedFields.length > 0 || 
+                  (form.getValues('startDate') && form.getValues('endDate'))) && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={resetFilters}
+                    className="text-muted-foreground"
+                  >
+                    Reset All
+                  </Button>
+                )}
+              </div>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }

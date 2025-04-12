@@ -1,85 +1,121 @@
 import * as React from 'react';
-import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'wouter';
+import { useNavigate } from 'wouter';
+import { getDateRangeLineage, getSourceLineage, getUserLineage, formatLineageTimestamp } from '@/lib/dataLineageService';
 import { LineageFilters, LineageFiltersState } from '@/components/data-lineage/LineageFilters';
 import { LineageTimeline } from '@/components/data-lineage/LineageTimeline';
-import { getDateRangeLineage, getSourceLineage, getUserLineage, DataLineageRecord } from '@/lib/dataLineageService';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Info, FileText, Download, BarChart2, PieChart as PieChartIcon } from 'lucide-react';
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Info, FileBarChart2, Database, Users, Calendar } from 'lucide-react';
 
 export function DataLineageDashboardPage() {
-  const [filters, setFilters] = React.useState<LineageFiltersState>({
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
-    endDate: new Date()
-  });
+  const navigate = useNavigate();
+  const [filters, setFilters] = React.useState<LineageFiltersState>({});
+  const [tab, setTab] = React.useState('date');
+  const [propertyId, setPropertyId] = React.useState('');
+  const [searchDialogOpen, setSearchDialogOpen] = React.useState(false);
   
-  // Format dates for the API call
-  const formattedStartDate = React.useMemo(() => {
-    if (!filters.startDate) return '';
-    return filters.startDate.toISOString().split('T')[0];
-  }, [filters.startDate]);
-  
-  const formattedEndDate = React.useMemo(() => {
-    if (!filters.endDate) return '';
-    return filters.endDate.toISOString().split('T')[0];
-  }, [filters.endDate]);
-  
-  // Determine which API to call based on the filters
-  const queryFunction = React.useCallback(() => {
-    // Filter by source if selected
-    if (filters.sources && filters.sources.length === 1) {
-      return getSourceLineage(filters.sources[0]);
+  // Build query parameters based on filters and tab
+  const queryParams = React.useMemo(() => {
+    switch (tab) {
+      case 'date':
+        return {
+          startDate: filters.startDate ? filters.startDate.toISOString() : undefined,
+          endDate: filters.endDate ? filters.endDate.toISOString() : undefined
+        };
+      case 'source':
+        return {
+          source: filters.sources && filters.sources.length > 0 ? filters.sources[0] : undefined
+        };
+      case 'user':
+        return {
+          userId: filters.users && filters.users.length > 0 ? filters.users[0] : undefined
+        };
+      default:
+        return {};
     }
-    // Filter by user if selected
-    else if (filters.users && filters.users.length === 1) {
-      return getUserLineage(filters.users[0]);
-    }
-    // Default to date range query
-    else if (formattedStartDate && formattedEndDate) {
-      return getDateRangeLineage(formattedStartDate, formattedEndDate);
-    }
-    
-    // Fallback to an empty array if no filter is applied
-    return Promise.resolve({ lineage: [] });
-  }, [filters, formattedStartDate, formattedEndDate]);
+  }, [tab, filters]);
   
   // Fetch lineage data
-  const { 
-    data: lineageData, 
-    isLoading, 
+  const {
+    data: lineageData,
+    isLoading,
     isError,
     error
   } = useQuery({
-    queryKey: ['/api/data-lineage', filters, formattedStartDate, formattedEndDate],
-    queryFn: queryFunction,
-    staleTime: 1000 * 60 * 5 // 5 minutes
+    queryKey: ['/api/lineage', tab, queryParams],
+    queryFn: async () => {
+      // Choose the appropriate API based on the active tab
+      switch (tab) {
+        case 'date':
+          if (queryParams.startDate && queryParams.endDate) {
+            return getDateRangeLineage(queryParams.startDate, queryParams.endDate);
+          }
+          break;
+        case 'source':
+          if (queryParams.source) {
+            return getSourceLineage(queryParams.source);
+          }
+          break;
+        case 'user':
+          if (queryParams.userId) {
+            return getUserLineage(queryParams.userId);
+          }
+          break;
+      }
+      
+      // Default: fetch last 7 days of lineage if no specific filter
+      const endDate = new Date().toISOString();
+      const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      return getDateRangeLineage(startDate, endDate);
+    },
+    enabled: true,
   });
   
-  // Filter records based on current filters
+  // Get available sources
+  const availableSources = React.useMemo(() => {
+    if (!lineageData?.lineage || lineageData.lineage.length === 0) return [];
+    
+    const sources = new Set<string>();
+    lineageData.lineage.forEach(record => {
+      sources.add(record.source);
+    });
+    
+    return Array.from(sources);
+  }, [lineageData]);
+  
+  // Get available users
+  const availableUsers = React.useMemo(() => {
+    if (!lineageData?.lineage || lineageData.lineage.length === 0) return [];
+    
+    const users = new Map<number, string>();
+    lineageData.lineage.forEach(record => {
+      users.set(record.userId, `User #${record.userId}`);
+    });
+    
+    return Array.from(users.entries()).map(([id, name]) => ({ id, name }));
+  }, [lineageData]);
+  
+  // Filter records based on the current filters
   const filteredRecords = React.useMemo(() => {
-    if (!lineageData?.lineage) return [];
+    if (!lineageData?.lineage || lineageData.lineage.length === 0) return [];
     
     let records = [...lineageData.lineage];
     
-    // Apply source filter (if we're not using the source-specific API)
-    if (filters.sources && filters.sources.length > 0 && 
-        !(filters.sources.length === 1 && queryFunction.toString().includes('getSourceLineage'))) {
+    // Apply source filter (if tab is not already filtering by source)
+    if (tab !== 'source' && filters.sources && filters.sources.length > 0) {
       records = records.filter(record => 
         filters.sources!.includes(record.source)
       );
     }
     
-    // Apply user filter (if we're not using the user-specific API)
-    if (filters.users && filters.users.length > 0 && 
-        !(filters.users.length === 1 && queryFunction.toString().includes('getUserLineage'))) {
+    // Apply user filter (if tab is not already filtering by user)
+    if (tab !== 'user' && filters.users && filters.users.length > 0) {
       records = records.filter(record => 
         filters.users!.includes(record.userId)
       );
@@ -93,98 +129,29 @@ export function DataLineageDashboardPage() {
     }
     
     return records;
-  }, [lineageData, filters, queryFunction]);
+  }, [lineageData, filters, tab]);
   
-  // Calculate data for visualizations
-  const sourceChartData = React.useMemo(() => {
-    if (!filteredRecords.length) return [];
-    
-    const sourceCounts: Record<string, number> = {};
-    
-    filteredRecords.forEach(record => {
-      sourceCounts[record.source] = (sourceCounts[record.source] || 0) + 1;
-    });
-    
-    return Object.entries(sourceCounts).map(([name, value]) => ({ name, value }));
-  }, [filteredRecords]);
+  // Navigate to specific property lineage
+  const handlePropertySearch = () => {
+    if (propertyId.trim()) {
+      navigate(`/property/${propertyId.trim()}/lineage`);
+    }
+    setSearchDialogOpen(false);
+  };
   
-  const fieldChartData = React.useMemo(() => {
-    if (!filteredRecords.length) return [];
-    
-    const fieldCounts: Record<string, number> = {};
-    
-    filteredRecords.forEach(record => {
-      fieldCounts[record.fieldName] = (fieldCounts[record.fieldName] || 0) + 1;
-    });
-    
-    // Sort by count and limit to top 10
-    return Object.entries(fieldCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([name, value]) => ({ name, value }));
-  }, [filteredRecords]);
+  const handleFilterChange = (newFilters: LineageFiltersState) => {
+    setFilters(newFilters);
+  };
   
-  const timeChartData = React.useMemo(() => {
-    if (!filteredRecords.length) return [];
-    
-    const dateCounts: Record<string, number> = {};
-    
-    filteredRecords.forEach(record => {
-      const date = new Date(record.changeTimestamp).toISOString().split('T')[0];
-      dateCounts[date] = (dateCounts[date] || 0) + 1;
-    });
-    
-    // Convert to array sorted by date
-    return Object.entries(dateCounts)
-      .map(([date, count]) => ({ date, count }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [filteredRecords]);
+  const handleTabChange = (value: string) => {
+    setTab(value);
+  };
   
-  // Get unique properties from the filtered records
-  const uniqueProperties = React.useMemo(() => {
-    if (!filteredRecords.length) return [];
-    
-    const propertySet = new Set<string>();
-    
-    filteredRecords.forEach(record => {
-      propertySet.add(record.propertyId);
-    });
-    
-    return Array.from(propertySet);
-  }, [filteredRecords]);
-  
-  // Get unique sources from the filtered records
-  const availableSources = React.useMemo(() => {
-    if (!lineageData?.lineage) return [];
-    
-    const sources = new Set<string>();
-    
-    lineageData.lineage.forEach(record => {
-      sources.add(record.source);
-    });
-    
-    return Array.from(sources);
-  }, [lineageData]);
-  
-  // Get unique users from the filtered records
-  const availableUsers = React.useMemo(() => {
-    if (!lineageData?.lineage) return [];
-    
-    const users = new Map<number, string>();
-    
-    lineageData.lineage.forEach(record => {
-      users.set(record.userId, `User #${record.userId}`);
-    });
-    
-    return Array.from(users.entries()).map(([id, name]) => ({ id, name }));
-  }, [lineageData]);
-  
-  // Get unique fields from the filtered records
+  // Get available fields
   const availableFields = React.useMemo(() => {
-    if (!lineageData?.lineage) return [];
+    if (!lineageData?.lineage || lineageData.lineage.length === 0) return [];
     
     const fields = new Set<string>();
-    
     lineageData.lineage.forEach(record => {
       fields.add(record.fieldName);
     });
@@ -192,81 +159,92 @@ export function DataLineageDashboardPage() {
     return Array.from(fields);
   }, [lineageData]);
   
-  const handleFilterChange = (newFilters: LineageFiltersState) => {
-    setFilters(newFilters);
+  // Tab filter help text
+  const getTabDescription = () => {
+    switch (tab) {
+      case 'date':
+        return "View data changes by date range";
+      case 'source':
+        return "Filter data changes by source type";
+      case 'user':
+        return "View data changes by user";
+      default:
+        return "View data changes";
+    }
   };
   
-  // Handle exporting data as CSV
-  const exportCSV = () => {
-    if (!filteredRecords.length) return;
+  // Compute dashboard statistics
+  const stats = React.useMemo(() => {
+    if (!lineageData?.lineage || lineageData.lineage.length === 0) {
+      return {
+        totalChanges: 0,
+        uniqueProperties: 0,
+        uniqueFields: 0,
+        bySource: {},
+        recentActivity: {
+          last24h: 0,
+          last7d: 0
+        }
+      };
+    }
     
-    const headers = ['ID', 'Property ID', 'Field Name', 'Source', 'User ID', 'Old Value', 'New Value', 'Timestamp'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredRecords.map(record => [
-        record.id,
-        record.propertyId,
-        record.fieldName,
-        record.source,
-        record.userId,
-        `"${record.oldValue.replace(/"/g, '""')}"`,
-        `"${record.newValue.replace(/"/g, '""')}"`,
-        new Date(record.changeTimestamp).toISOString()
-      ].join(','))
-    ].join('\n');
+    const uniqueProperties = new Set();
+    const uniqueFields = new Set();
+    const bySource: Record<string, number> = {};
+    let last24h = 0;
+    let last7d = 0;
     
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `lineage-export-${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+    const now = new Date().getTime();
+    const day = 24 * 60 * 60 * 1000;
+    const week = 7 * day;
+    
+    lineageData.lineage.forEach(record => {
+      uniqueProperties.add(record.propertyId);
+      uniqueFields.add(record.fieldName);
+      
+      // Count by source
+      bySource[record.source] = (bySource[record.source] || 0) + 1;
+      
+      // Recent activity
+      const recordTime = new Date(record.changeTimestamp).getTime();
+      if (now - recordTime < day) {
+        last24h++;
+      }
+      if (now - recordTime < week) {
+        last7d++;
+      }
+    });
+    
+    return {
+      totalChanges: lineageData.lineage.length,
+      uniqueProperties: uniqueProperties.size,
+      uniqueFields: uniqueFields.size,
+      bySource,
+      recentActivity: {
+        last24h,
+        last7d
+      }
+    };
+  }, [lineageData]);
   
+  // Loading state
   if (isLoading) {
     return (
       <div className="container py-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Data Lineage Dashboard</h1>
-          <Button variant="outline" size="sm" disabled>
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
+        <h1 className="text-2xl font-bold">Data Lineage Dashboard</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array(4).fill(0).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full" />
+          ))}
         </div>
-        
         <Skeleton className="h-16 w-full" />
-        
-        <Tabs defaultValue="timeline">
-          <TabsList>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="properties">Properties</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="timeline" className="space-y-4 mt-4">
-            <Skeleton className="h-96 w-full" />
-          </TabsContent>
-          
-          <TabsContent value="analytics" className="mt-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Skeleton className="h-80 w-full" />
-              <Skeleton className="h-80 w-full" />
-              <Skeleton className="h-80 w-full" />
-              <Skeleton className="h-80 w-full" />
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="properties" className="mt-4">
-            <Skeleton className="h-96 w-full" />
-          </TabsContent>
-        </Tabs>
+        <Skeleton className="h-96 w-full" />
       </div>
     );
   }
   
-  if (isError) {
+  // Error state
+  if (isError || !lineageData) {
     return (
       <div className="container py-6 space-y-6">
         <h1 className="text-2xl font-bold">Data Lineage Dashboard</h1>
@@ -277,290 +255,184 @@ export function DataLineageDashboardPage() {
           <AlertDescription>
             {error instanceof Error 
               ? error.message 
-              : "An error occurred while loading lineage data."
+              : "Could not load lineage data. Please try again later or check the API endpoint."
             }
           </AlertDescription>
         </Alert>
       </div>
     );
   }
-  
+
   return (
     <div className="container py-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">Data Lineage Dashboard</h1>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={exportCSV}
-          disabled={filteredRecords.length === 0}
-        >
-          <Download className="h-4 w-4 mr-1" />
-          Export Records
-        </Button>
+        
+        <div className="flex items-center gap-2">
+          <Dialog open={searchDialogOpen} onOpenChange={setSearchDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                Search by Property ID
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Property Lineage Search</DialogTitle>
+                <DialogDescription>
+                  Enter a property ID to view its detailed change history.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex items-center gap-2 mt-4">
+                <Input 
+                  placeholder="Enter property ID" 
+                  value={propertyId} 
+                  onChange={(e) => setPropertyId(e.target.value)} 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handlePropertySearch();
+                    }
+                  }}
+                />
+                <Button onClick={handlePropertySearch}>Search</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
       
-      <LineageFilters 
-        onChange={handleFilterChange} 
-        availableSources={availableSources}
-        availableUsers={availableUsers}
-        availableFields={availableFields}
-        value={filters}
-      />
-      
-      <Tabs defaultValue="timeline">
-        <TabsList>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="properties">Properties</TabsTrigger>
-        </TabsList>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-sm font-medium">Total Changes</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold">{stats.totalChanges.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Across {stats.uniqueProperties} properties
+            </p>
+          </CardContent>
+        </Card>
         
-        <TabsContent value="timeline" className="space-y-4 mt-4">
-          {filteredRecords.length > 0 ? (
-            <LineageTimeline 
-              records={filteredRecords}
-              title="Data Change Timeline"
-            />
-          ) : (
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>No Records Found</AlertTitle>
-              <AlertDescription>
-                No lineage records match your current filter criteria. Try adjusting your filters 
-                or selecting a different date range.
-              </AlertDescription>
-            </Alert>
-          )}
-        </TabsContent>
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold">{stats.recentActivity.last24h.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Last 24 hours ({stats.recentActivity.last7d.toLocaleString()} changes this week)
+            </p>
+          </CardContent>
+        </Card>
         
-        <TabsContent value="analytics" className="mt-4">
-          {filteredRecords.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center text-lg">
-                    <BarChart2 className="h-5 w-5 mr-2" />
-                    Changes by Date
-                  </CardTitle>
-                  <CardDescription>
-                    Number of changes recorded per day
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={timeChartData}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="date" 
-                          angle={-45} 
-                          textAnchor="end" 
-                          tick={{ fontSize: 12 }}
-                          height={70}
-                        />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`${value} changes`, 'Count']} />
-                        <Bar dataKey="count" fill="#8884d8" name="Changes" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center text-lg">
-                    <PieChartIcon className="h-5 w-5 mr-2" />
-                    Changes by Source
-                  </CardTitle>
-                  <CardDescription>
-                    Distribution of changes by source type
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={sourceChartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {sourceChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => [`${value} changes`, 'Count']} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center text-lg">
-                    <BarChart2 className="h-5 w-5 mr-2" />
-                    Top Changed Fields
-                  </CardTitle>
-                  <CardDescription>
-                    Fields with the most frequent changes
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={fieldChartData}
-                        layout="vertical"
-                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" />
-                        <YAxis 
-                          type="category" 
-                          dataKey="name" 
-                          tick={{ fontSize: 12 }}
-                          width={100}
-                        />
-                        <Tooltip formatter={(value) => [`${value} changes`, 'Count']} />
-                        <Bar dataKey="value" fill="#82ca9d" name="Changes" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Lineage Summary</CardTitle>
-                  <CardDescription>
-                    Overview of the current data set
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium">Total Changes</div>
-                        <div className="text-3xl font-bold">{filteredRecords.length}</div>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium">Properties Affected</div>
-                        <div className="text-3xl font-bold">{uniqueProperties.length}</div>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium">Date Range</div>
-                        <div className="text-base">
-                          {filters.startDate && filters.endDate ? (
-                            `${format(filters.startDate, 'MMM d, yyyy')} - ${format(filters.endDate, 'MMM d, yyyy')}`
-                          ) : (
-                            'All time'
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium">Fields Changed</div>
-                        <div className="text-base">{availableFields.length}</div>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium">Users Involved</div>
-                        <div className="text-base">{availableUsers.length}</div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>No Data to Analyze</AlertTitle>
-              <AlertDescription>
-                No lineage records match your current filter criteria. Try adjusting your filters 
-                or selecting a different date range to see analytics.
-              </AlertDescription>
-            </Alert>
-          )}
-        </TabsContent>
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-sm font-medium">Fields Changed</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold">{stats.uniqueFields.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Distinct fields with recorded changes
+            </p>
+          </CardContent>
+        </Card>
         
-        <TabsContent value="properties" className="mt-4">
-          {uniqueProperties.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Properties with Changes</CardTitle>
-                <CardDescription>
-                  Properties that have changes recorded in the selected time period
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {uniqueProperties.slice(0, 30).map((propertyId) => {
-                    // Count changes for this property
-                    const changeCount = filteredRecords.filter(
-                      record => record.propertyId === propertyId
-                    ).length;
-                    
-                    return (
-                      <Card key={propertyId} className="overflow-hidden">
-                        <CardHeader className="p-4 pb-2">
-                          <CardTitle className="text-sm font-medium truncate">
-                            Property ID: {propertyId}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-0">
-                          <div className="text-sm text-muted-foreground">
-                            {changeCount} change{changeCount !== 1 ? 's' : ''} recorded
-                          </div>
-                        </CardContent>
-                        <CardFooter className="p-4 pt-0">
-                          <Button variant="ghost" size="sm" asChild className="w-full">
-                            <Link to={`/property-lineage/${propertyId}`}>
-                              <FileText className="h-4 w-4 mr-1" />
-                              View Changes
-                            </Link>
-                          </Button>
-                        </CardFooter>
-                      </Card>
-                    );
-                  })}
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-sm font-medium">Top Source</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            {Object.keys(stats.bySource).length > 0 ? (
+              <>
+                <div className="text-2xl font-bold capitalize">
+                  {Object.entries(stats.bySource).sort((a, b) => b[1] - a[1])[0][0]}
                 </div>
-                
-                {uniqueProperties.length > 30 && (
-                  <div className="text-center mt-6 text-sm text-muted-foreground">
-                    Showing 30 of {uniqueProperties.length} properties. 
-                    Use filters to narrow down the results.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>No Properties Found</AlertTitle>
-              <AlertDescription>
-                No properties have changes recorded that match your current filter criteria. 
-                Try adjusting your filters or selecting a different date range.
-              </AlertDescription>
-            </Alert>
-          )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {Object.entries(stats.bySource).sort((a, b) => b[1] - a[1])[0][1].toLocaleString()} changes
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">-</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  No source data available
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Filter Tabs */}
+      <Tabs value={tab} onValueChange={handleTabChange} className="w-full">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+          <TabsList>
+            <TabsTrigger value="date" className="flex items-center gap-1">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Date Range</span>
+            </TabsTrigger>
+            <TabsTrigger value="source" className="flex items-center gap-1">
+              <Database className="h-3.5 w-3.5" />
+              <span>Source</span>
+            </TabsTrigger>
+            <TabsTrigger value="user" className="flex items-center gap-1">
+              <Users className="h-3.5 w-3.5" />
+              <span>User</span>
+            </TabsTrigger>
+          </TabsList>
+          
+          <div className="text-sm text-muted-foreground">
+            {getTabDescription()}
+          </div>
+        </div>
+        
+        <TabsContent value="date" className="m-0 pt-2">
+          <LineageFilters 
+            onChange={handleFilterChange}
+            availableSources={availableSources}
+            availableUsers={availableUsers}
+            availableFields={availableFields}
+            value={filters}
+          />
+        </TabsContent>
+        
+        <TabsContent value="source" className="m-0 pt-2">
+          <LineageFilters 
+            onChange={handleFilterChange}
+            availableSources={availableSources}
+            availableUsers={availableUsers}
+            availableFields={availableFields}
+            value={filters}
+          />
+        </TabsContent>
+        
+        <TabsContent value="user" className="m-0 pt-2">
+          <LineageFilters 
+            onChange={handleFilterChange}
+            availableSources={availableSources}
+            availableUsers={availableUsers}
+            availableFields={availableFields}
+            value={filters}
+          />
         </TabsContent>
       </Tabs>
+      
+      {/* Timeline View */}
+      {filteredRecords.length > 0 ? (
+        <LineageTimeline 
+          records={filteredRecords}
+          title="System Data Change Timeline"
+        />
+      ) : (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>No Records Found</AlertTitle>
+          <AlertDescription>
+            No lineage records match your current filter criteria. Try adjusting your filters or tab selection.
+          </AlertDescription>
+        </Alert>
+      )}
     </div>
   );
 }
