@@ -476,6 +476,48 @@ export type InsertPacsModule = z.infer<typeof insertPacsModuleSchema>;
 export type AgentMessage = typeof agentMessages.$inferSelect;
 export type InsertAgentMessage = z.infer<typeof insertAgentMessageSchema>;
 
+// Code Improvement Enums
+export enum ImprovementType {
+  FEATURE_SUGGESTION = 'feature_suggestion',
+  CODE_IMPROVEMENT = 'code_improvement',
+  BUG_FIX = 'bug_fix',
+  PERFORMANCE_OPTIMIZATION = 'performance_optimization',
+  ARCHITECTURE_RECOMMENDATION = 'architecture_recommendation',
+  DATA_MODEL_ENHANCEMENT = 'data_model_enhancement'
+}
+
+// Code Improvements table for storing agent-suggested code improvements
+export const codeImprovements = pgTable("code_improvements", {
+  id: text("id").primaryKey(), // Unique identifier for the improvement
+  type: text("type").notNull(), // Type of improvement (enum value)
+  title: text("title").notNull(), // Brief title of the improvement
+  description: text("description").notNull(), // Detailed description
+  agentId: text("agent_id").notNull(), // ID of the agent suggesting the improvement
+  agentName: text("agent_name").notNull(), // Name of the agent for display
+  affectedFiles: jsonb("affected_files"), // List of files affected by this improvement
+  suggestedChanges: jsonb("suggested_changes"), // Detailed code change suggestions
+  priority: text("priority").notNull().default("medium"), // low, medium, high
+  status: text("status").notNull().default("pending"), // pending, approved, rejected, implemented
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCodeImprovementSchema = createInsertSchema(codeImprovements).pick({
+  id: true,
+  type: true,
+  title: true,
+  description: true,
+  agentId: true,
+  agentName: true,
+  affectedFiles: true,
+  suggestedChanges: true,
+  priority: true,
+  status: true,
+});
+
+export type CodeImprovement = typeof codeImprovements.$inferSelect;
+export type InsertCodeImprovement = z.infer<typeof insertCodeImprovementSchema>;
+
 export type DataLineageRecord = typeof dataLineageRecords.$inferSelect;
 export type InsertDataLineageRecord = z.infer<typeof insertDataLineageRecordSchema>;
 

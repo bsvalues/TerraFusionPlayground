@@ -27,8 +27,9 @@ import {
   agentExperiences, AgentExperience, InsertAgentExperience,
   learningUpdates, LearningUpdate, InsertLearningUpdate,
   dataLineageRecords, DataLineageRecord, InsertDataLineageRecord,
+  codeImprovements, CodeImprovement, InsertCodeImprovement,
   // Enum types needed for validation and workflow
-  RuleCategory, RuleLevel, EntityType, IssueStatus, MessagePriority, MessageEventType
+  RuleCategory, RuleLevel, EntityType, IssueStatus, MessagePriority, MessageEventType, ImprovementType
 } from "@shared/schema";
 import { MarketTrend, EconomicIndicator } from "./services/market-prediction-model";
 import { RegulatoryFramework } from "./services/risk-assessment-engine";
@@ -292,6 +293,14 @@ export interface IStorage {
   acknowledgeValidationIssue(issueId: string, notes?: string): Promise<ValidationIssue | null>;
   waiveValidationIssue(issueId: string, reason: string, userId?: number): Promise<ValidationIssue | null>;
   
+  // Code Improvement methods
+  createCodeImprovement(improvement: InsertCodeImprovement): Promise<CodeImprovement>;
+  getCodeImprovements(): Promise<CodeImprovement[]>;
+  getCodeImprovementById(id: string): Promise<CodeImprovement | null>;
+  getCodeImprovementsByAgent(agentId: string): Promise<CodeImprovement[]>;
+  getCodeImprovementsByType(type: ImprovementType): Promise<CodeImprovement[]>;
+  updateCodeImprovementStatus(id: string, status: 'pending' | 'approved' | 'rejected' | 'implemented'): Promise<CodeImprovement | null>;
+  
   // Workflow methods
   createWorkflowDefinition(definition: Omit<WorkflowDefinition, 'definitionId' | 'createdAt'>): Promise<WorkflowDefinition>;
   getWorkflowDefinitionById(definitionId: string): Promise<WorkflowDefinition | null>;
@@ -362,6 +371,7 @@ export class MemStorage implements IStorage {
   private appealComplianceReports: Map<string, any>; // Washington-specific appeal compliance reports
   private agentExperiences: Map<string, AgentExperience>; // Agent experiences for replay buffer
   private learningUpdates: Map<string, LearningUpdate>; // Learning updates from agent experiences
+  private codeImprovements: Map<string, CodeImprovement>; // Agent-suggested code improvements
   
   private currentUserId: number;
   private currentPropertyId: number;
@@ -415,6 +425,7 @@ export class MemStorage implements IStorage {
     this.appealComplianceReports = new Map<string, any>();
     this.agentExperiences = new Map<string, AgentExperience>();
     this.learningUpdates = new Map<string, LearningUpdate>();
+    this.codeImprovements = new Map<string, CodeImprovement>();
     
     this.currentUserId = 1;
     this.currentPropertyId = 1;
@@ -4016,6 +4027,73 @@ export class PgStorage implements IStorage {
   async getLearningUpdatesByType(updateType: string): Promise<LearningUpdate[]> {
     return Array.from(this.learningUpdates.values())
       .filter(update => update.updateType === updateType);
+  }
+  
+  // Code Improvement methods
+  async createCodeImprovement(improvement: InsertCodeImprovement): Promise<CodeImprovement> {
+    const timestamp = new Date();
+    const codeImprovement: CodeImprovement = {
+      ...improvement,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      // Convert JSON to proper structure if needed
+      affectedFiles: improvement.affectedFiles || [],
+      suggestedChanges: improvement.suggestedChanges || []
+    };
+    
+    this.codeImprovements.set(improvement.id, codeImprovement);
+    
+    // Create system activity for the improvement
+    await this.createSystemActivity({
+      agentId: typeof improvement.agentId === 'number' ? improvement.agentId : 1,
+      activity: `Agent suggested code improvement: ${improvement.title}`,
+      entityType: 'codeImprovement',
+      entityId: improvement.id
+    });
+    
+    return codeImprovement;
+  }
+  
+  async getCodeImprovements(): Promise<CodeImprovement[]> {
+    return Array.from(this.codeImprovements.values());
+  }
+  
+  async getCodeImprovementById(id: string): Promise<CodeImprovement | null> {
+    const improvement = this.codeImprovements.get(id);
+    return improvement || null;
+  }
+  
+  async getCodeImprovementsByAgent(agentId: string): Promise<CodeImprovement[]> {
+    return Array.from(this.codeImprovements.values())
+      .filter(improvement => improvement.agentId.toString() === agentId);
+  }
+  
+  async getCodeImprovementsByType(type: ImprovementType): Promise<CodeImprovement[]> {
+    return Array.from(this.codeImprovements.values())
+      .filter(improvement => improvement.type === type);
+  }
+  
+  async updateCodeImprovementStatus(id: string, status: 'pending' | 'approved' | 'rejected' | 'implemented'): Promise<CodeImprovement | null> {
+    const improvement = this.codeImprovements.get(id);
+    if (!improvement) return null;
+    
+    const updated = {
+      ...improvement,
+      status,
+      updatedAt: new Date()
+    };
+    
+    this.codeImprovements.set(id, updated);
+    
+    // Create system activity for the status update
+    await this.createSystemActivity({
+      agentId: typeof improvement.agentId === 'number' ? improvement.agentId : 1,
+      activity: `Code improvement status updated to ${status}: ${improvement.title}`,
+      entityType: 'codeImprovement',
+      entityId: improvement.id
+    });
+    
+    return updated;
   }
   
   // Data Lineage methods
