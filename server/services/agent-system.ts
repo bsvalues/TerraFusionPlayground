@@ -262,6 +262,13 @@ export class AgentSystem {
   }
   
   /**
+   * Get all registered agents
+   */
+  public getAllAgents(): Map<string, BaseAgent> {
+    return this.agents;
+  }
+  
+  /**
    * Start all agents
    */
   public async startAllAgents(): Promise<void> {
