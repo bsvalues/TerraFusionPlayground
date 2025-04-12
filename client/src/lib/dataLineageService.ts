@@ -1,101 +1,135 @@
+import { format } from 'date-fns';
 import { apiRequest } from './queryClient';
 
-// Types for data lineage
+export type LineageSource = 'validated' | 'import' | 'manual' | 'api' | 'calculated' | 'correction';
+
 export interface DataLineageRecord {
   id: number;
   propertyId: string;
   fieldName: string;
+  source: LineageSource;
+  userId: number;
   oldValue: string;
   newValue: string;
-  changeTimestamp: string;
-  source: 'validated' | 'import' | 'manual' | 'api' | 'calculated' | 'correction';
-  userId: number;
+  changeTimestamp: Date;
+  createdAt: Date;
   sourceDetails: any;
-  createdAt: string;
 }
 
 export interface PropertyLineageResponse {
   propertyId: string;
-  lineage: {
-    [fieldName: string]: DataLineageRecord[];
-  };
-  totalRecords: number;
+  lineage: { [fieldName: string]: DataLineageRecord[] };
 }
 
-export interface FieldLineageResponse {
-  propertyId: string;
-  fieldName: string;
+export interface LineageListResponse {
   lineage: DataLineageRecord[];
-  totalRecords: number;
-}
-
-export interface SourceLineageResponse {
-  source: string;
-  lineage: DataLineageRecord[];
-  totalRecords: number;
-}
-
-export interface DateRangeLineageResponse {
-  startDate: string;
-  endDate: string;
-  lineage: DataLineageRecord[];
-  totalRecords: number;
-}
-
-export interface UserLineageResponse {
-  userId: number;
-  lineage: DataLineageRecord[];
-  totalRecords: number;
 }
 
 /**
- * Gets the lineage history for a specific property
+ * Get lineage data for a specific property
  */
-export const getPropertyLineage = async (propertyId: string): Promise<PropertyLineageResponse> => {
-  return apiRequest(`/api/data-lineage/property/${propertyId}`);
-};
+export async function getPropertyLineage(propertyId: string): Promise<PropertyLineageResponse> {
+  const response = await apiRequest(`/api/data-lineage/property/${propertyId}`, {
+    method: 'GET',
+  });
+  
+  // Convert string timestamps to Date objects
+  if (response.lineage) {
+    Object.keys(response.lineage).forEach(fieldName => {
+      response.lineage[fieldName] = response.lineage[fieldName].map(record => ({
+        ...record,
+        changeTimestamp: new Date(record.changeTimestamp),
+        createdAt: new Date(record.createdAt)
+      }));
+    });
+  }
+  
+  return response;
+}
 
 /**
- * Gets the lineage history for a specific field of a property
+ * Get lineage data by date range
  */
-export const getFieldLineage = async (propertyId: string, fieldName: string): Promise<FieldLineageResponse> => {
-  return apiRequest(`/api/data-lineage/property/${propertyId}/field/${fieldName}`);
-};
+export async function getDateRangeLineage(startDate: string, endDate: string): Promise<LineageListResponse> {
+  const response = await apiRequest('/api/data-lineage/date-range', {
+    method: 'POST',
+    body: JSON.stringify({ startDate, endDate }),
+  });
+  
+  // Convert string timestamps to Date objects
+  if (response.lineage) {
+    response.lineage = response.lineage.map((record: any) => ({
+      ...record,
+      changeTimestamp: new Date(record.changeTimestamp),
+      createdAt: new Date(record.createdAt)
+    }));
+  }
+  
+  return response;
+}
 
 /**
- * Gets the lineage history for a specific source type
+ * Get lineage data by source type
  */
-export const getSourceLineage = async (source: string): Promise<SourceLineageResponse> => {
-  return apiRequest(`/api/data-lineage/source/${source}`);
-};
+export async function getSourceLineage(source: string): Promise<LineageListResponse> {
+  const response = await apiRequest('/api/data-lineage/source', {
+    method: 'POST',
+    body: JSON.stringify({ source }),
+  });
+  
+  // Convert string timestamps to Date objects
+  if (response.lineage) {
+    response.lineage = response.lineage.map((record: any) => ({
+      ...record,
+      changeTimestamp: new Date(record.changeTimestamp),
+      createdAt: new Date(record.createdAt)
+    }));
+  }
+  
+  return response;
+}
 
 /**
- * Gets the lineage history for a specific date range
+ * Get lineage data by user
  */
-export const getDateRangeLineage = async (startDate: string, endDate: string): Promise<DateRangeLineageResponse> => {
-  return apiRequest(`/api/data-lineage/date-range?startDate=${startDate}&endDate=${endDate}`);
-};
+export async function getUserLineage(userId: number): Promise<LineageListResponse> {
+  const response = await apiRequest('/api/data-lineage/user', {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
+  });
+  
+  // Convert string timestamps to Date objects
+  if (response.lineage) {
+    response.lineage = response.lineage.map((record: any) => ({
+      ...record,
+      changeTimestamp: new Date(record.changeTimestamp),
+      createdAt: new Date(record.createdAt)
+    }));
+  }
+  
+  return response;
+}
 
 /**
- * Gets the lineage history for a specific user
+ * Format lineage timestamp for display
  */
-export const getUserLineage = async (userId: number): Promise<UserLineageResponse> => {
-  return apiRequest(`/api/data-lineage/user/${userId}`);
-};
+export function formatLineageTimestamp(timestamp: Date): string {
+  return format(timestamp, 'MMM d, yyyy h:mm a');
+}
 
 /**
- * Get formatted source label for display
+ * Get user-friendly label for a source type
  */
-export const getSourceLabel = (source: string): string => {
+export function getSourceLabel(source: string): string {
   switch (source) {
     case 'validated':
-      return 'System Validation';
+      return 'Validated';
     case 'import':
       return 'Data Import';
     case 'manual':
-      return 'Manual Update';
+      return 'Manual Entry';
     case 'api':
-      return 'API Integration';
+      return 'API Change';
     case 'calculated':
       return 'Calculated Value';
     case 'correction':
@@ -103,12 +137,4 @@ export const getSourceLabel = (source: string): string => {
     default:
       return source.charAt(0).toUpperCase() + source.slice(1);
   }
-};
-
-/**
- * Formats a timestamp for display
- */
-export const formatLineageTimestamp = (timestamp: string): string => {
-  const date = new Date(timestamp);
-  return date.toLocaleString();
-};
+}

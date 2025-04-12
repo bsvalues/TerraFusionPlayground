@@ -15,6 +15,8 @@ import PropertyStoryPage from "@/pages/PropertyStoryPage";
 import DataImportPage from "@/pages/DataImportPage";
 import AgentSystemPage from "@/pages/AgentSystemPage";
 import VoiceSearchDemoPage from "@/pages/VoiceSearchDemoPage";
+import { PropertyLineagePage } from "@/pages/PropertyLineagePage";
+import { DataLineageDashboardPage } from "@/pages/DataLineageDashboardPage";
 import AppLayout from "@/layout/app-layout";
 
 function Router() {
@@ -89,6 +91,18 @@ function Router() {
       <Route path="/voice-search">
         <AppLayout>
           <VoiceSearchDemoPage />
+        </AppLayout>
+      </Route>
+
+      <Route path="/data-lineage">
+        <AppLayout>
+          <DataLineageDashboardPage />
+        </AppLayout>
+      </Route>
+
+      <Route path="/property/:propertyId/lineage">
+        <AppLayout>
+          <PropertyLineagePage />
         </AppLayout>
       </Route>
 

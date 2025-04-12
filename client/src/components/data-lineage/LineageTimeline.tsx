@@ -1,125 +1,249 @@
-import React from 'react';
+import * as React from 'react';
 import { DataLineageRecord, formatLineageTimestamp, getSourceLabel } from '@/lib/dataLineageService';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/components/ui/dialog';
+import { Calendar, Clock, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Clock, ArrowRight, File, UserIcon } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+// Define color map for different sources
+const sourceColorMap: Record<string, string> = {
+  validated: 'bg-green-100 text-green-800 border-green-200',
+  import: 'bg-blue-100 text-blue-800 border-blue-200',
+  manual: 'bg-purple-100 text-purple-800 border-purple-200',
+  api: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  calculated: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  correction: 'bg-red-100 text-red-800 border-red-200',
+};
+
+interface DiffViewerProps {
+  oldValue: string;
+  newValue: string;
+}
+
+function DiffViewer({ oldValue, newValue }: DiffViewerProps) {
+  return (
+    <div className="grid grid-cols-2 gap-4 p-2 rounded-md bg-gray-50">
+      <div className="text-sm">
+        <div className="font-semibold text-xs text-gray-500 mb-1">Previous Value:</div>
+        <div className="p-2 bg-white rounded border border-gray-200 whitespace-pre-wrap min-h-[40px]">
+          {oldValue || <span className="text-gray-400 italic">Empty</span>}
+        </div>
+      </div>
+      <div className="text-sm">
+        <div className="font-semibold text-xs text-gray-500 mb-1">New Value:</div>
+        <div className="p-2 bg-white rounded border border-gray-200 whitespace-pre-wrap min-h-[40px]">
+          {newValue || <span className="text-gray-400 italic">Empty</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface LineageEventProps {
+  record: DataLineageRecord;
+  index: number;
+  showDetails: (record: DataLineageRecord) => void;
+}
+
+function LineageEvent({ record, index, showDetails }: LineageEventProps) {
+  const sourceClass = sourceColorMap[record.source] || 'bg-gray-100 text-gray-800 border-gray-200';
+  
+  return (
+    <div className="relative pl-8 pb-8">
+      {/* Timeline connector line */}
+      <div className="absolute top-0 left-3 bottom-0 w-px bg-gray-200" />
+      
+      {/* Event dot */}
+      <div className={`absolute left-0 top-0 w-6 h-6 rounded-full ${sourceClass.split(' ')[0]} border-2 border-white flex items-center justify-center z-10`}>
+        <span className="text-xs font-medium">{index + 1}</span>
+      </div>
+      
+      {/* Event content */}
+      <Card className="mb-2 hover:shadow-md transition-shadow cursor-pointer" onClick={() => showDetails(record)}>
+        <CardHeader className="p-4 pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium">
+              Field: <span className="font-semibold">{record.fieldName}</span>
+            </CardTitle>
+            <Badge variant="outline" className={`${sourceClass} text-xs`}>
+              {getSourceLabel(record.source)}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          <DiffViewer oldValue={record.oldValue} newValue={record.newValue} />
+          
+          <div className="mt-3 flex items-center text-xs text-gray-500">
+            <Clock className="h-3 w-3 mr-1" />
+            <span>{formatLineageTimestamp(record.changeTimestamp)}</span>
+            <span className="mx-2">•</span>
+            <User className="h-3 w-3 mr-1" />
+            <span>User #{record.userId}</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+interface LineageDetailsDialogProps {
+  record: DataLineageRecord | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+function LineageDetailsDialog({ record, open, onOpenChange }: LineageDetailsDialogProps) {
+  if (!record) return null;
+  
+  const sourceClass = sourceColorMap[record.source] || 'bg-gray-100 text-gray-800 border-gray-200';
+  
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Data Change Details</DialogTitle>
+          <DialogDescription>
+            Complete information about this data change event
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2 items-center">
+            <Badge variant="outline" className={`${sourceClass} text-xs`}>
+              {getSourceLabel(record.source)}
+            </Badge>
+            <span className="text-sm">Change ID: {record.id}</span>
+          </div>
+          
+          <div className="grid gap-3">
+            <div>
+              <h4 className="text-sm font-semibold mb-1">Property & Field</h4>
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                <div>
+                  <span className="text-gray-500">Property ID:</span> {record.propertyId}
+                </div>
+                <div>
+                  <span className="text-gray-500">Field Name:</span> {record.fieldName}
+                </div>
+              </div>
+            </div>
+            
+            <Separator />
+            
+            <div>
+              <h4 className="text-sm font-semibold mb-1">Change Details</h4>
+              <DiffViewer oldValue={record.oldValue} newValue={record.newValue} />
+            </div>
+            
+            <Separator />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-sm font-semibold mb-1">Timestamp</h4>
+                <div className="flex items-center text-sm">
+                  <Calendar className="h-3.5 w-3.5 mr-1" />
+                  {formatLineageTimestamp(record.changeTimestamp)}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-semibold mb-1">Changed By</h4>
+                <div className="flex items-center text-sm">
+                  <User className="h-3.5 w-3.5 mr-1" />
+                  User ID: {record.userId}
+                </div>
+              </div>
+            </div>
+            
+            {record.sourceDetails && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="text-sm font-semibold mb-1">Additional Details</h4>
+                  <div className="text-sm bg-gray-50 p-3 rounded-md">
+                    <pre className="whitespace-pre-wrap text-xs">
+                      {JSON.stringify(record.sourceDetails, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 interface LineageTimelineProps {
   records: DataLineageRecord[];
   title?: string;
-  showPropertyId?: boolean;
 }
 
-export function LineageTimeline({ records, title = 'Data Change History', showPropertyId = false }: LineageTimelineProps) {
-  // Sort records by timestamp (newest first)
-  const sortedRecords = [...records].sort((a, b) => 
-    new Date(b.changeTimestamp).getTime() - new Date(a.changeTimestamp).getTime()
-  );
-
-  // Function to get the appropriate badge color based on source
-  const getSourceBadgeColor = (source: string): string => {
-    switch (source) {
-      case 'validated':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'import':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'manual':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
-      case 'api':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-      case 'calculated':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'correction':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-    }
+export function LineageTimeline({ records, title = 'Data Change Timeline' }: LineageTimelineProps) {
+  const [selectedRecord, setSelectedRecord] = React.useState<DataLineageRecord | null>(null);
+  const [detailsOpen, setDetailsOpen] = React.useState(false);
+  
+  // Show details for a lineage record
+  const showDetails = (record: DataLineageRecord) => {
+    setSelectedRecord(record);
+    setDetailsOpen(true);
   };
-
-  return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="text-xl flex items-center gap-2">
-          <Clock size={18} />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {sortedRecords.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            No change history available.
+  
+  // Sort records by timestamp (newest first)
+  const sortedRecords = React.useMemo(() => {
+    return [...records].sort((a, b) => {
+      return new Date(b.changeTimestamp).getTime() - new Date(a.changeTimestamp).getTime();
+    });
+  }, [records]);
+  
+  if (sortedRecords.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-gray-500">
+            No data lineage records found.
           </div>
-        ) : (
-          <div className="relative">
-            <div className="absolute left-6 top-0 bottom-0 w-px bg-muted/50"></div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return (
+    <div>
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="pl-4">
             {sortedRecords.map((record, index) => (
-              <div key={record.id} className="relative pl-14 mb-8">
-                <div className="absolute left-[22px] w-3 h-3 rounded-full bg-primary -mt-1"></div>
-                <div className="flex flex-col space-y-2 pt-1">
-                  <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-                    <span className="text-sm text-muted-foreground">
-                      {formatLineageTimestamp(record.changeTimestamp)}
-                    </span>
-                    <Badge variant="outline" className={`${getSourceBadgeColor(record.source)} ml-0 md:ml-2`}>
-                      {getSourceLabel(record.source)}
-                    </Badge>
-                    {showPropertyId && (
-                      <span className="text-sm font-medium">
-                        Property: {record.propertyId}
-                      </span>
-                    )}
-                  </div>
-                  <div className="bg-muted/30 p-3 rounded-md">
-                    <h4 className="font-medium mb-2">Field: {record.fieldName}</h4>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                      <div className="px-3 py-1.5 bg-background rounded border text-sm">
-                        {record.oldValue || "(empty)"}
-                      </div>
-                      <ArrowRight className="mx-1" />
-                      <div className="px-3 py-1.5 bg-background rounded border text-sm">
-                        {record.newValue || "(empty)"}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <UserIcon size={14} className="inline mr-1" /> 
-                            User ID: {record.userId}
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>User who made this change</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      
-                      {record.sourceDetails && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <File size={14} className="inline mr-1" /> 
-                              Details available
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <pre className="text-xs max-w-[300px] whitespace-pre-wrap">
-                                {JSON.stringify(record.sourceDetails, null, 2)}
-                              </pre>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {index < sortedRecords.length - 1 && <Separator className="mt-4" />}
-              </div>
+              <LineageEvent 
+                key={record.id} 
+                record={record} 
+                index={index}
+                showDetails={showDetails}
+              />
             ))}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+      
+      <LineageDetailsDialog 
+        record={selectedRecord} 
+        open={detailsOpen} 
+        onOpenChange={setDetailsOpen} 
+      />
+    </div>
   );
 }
