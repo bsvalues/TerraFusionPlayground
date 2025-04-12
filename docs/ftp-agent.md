@@ -1,77 +1,47 @@
 # FTP Data Agent Documentation
 
-The FTP Data Agent is responsible for connecting to remote FTP servers (primarily SpatialEst's FTP server) and synchronizing property assessment data into the system. This document provides a comprehensive overview of the agent's capabilities and usage instructions.
+## Overview
 
-## Architecture
+The FTP Data Agent is a specialized agent in the property intelligence platform that facilitates automated synchronization of property data from external FTP servers. This agent is specifically designed to work with common property assessment data formats and provides robust error handling, scheduling, and reporting capabilities.
 
-The FTP Data Agent is built with a modular architecture consisting of:
+## Key Features
 
-1. **FTP Service Layer**: Handles low-level FTP connection details, file operations, and authentication
-2. **Data Import Service**: Processes and validates imported data files
-3. **Scheduling System**: Manages synchronization timing and execution
-4. **Error Handling Layer**: Provides robust error recovery and reporting
+- **Secure FTP Connectivity**: Connect to SpatialEst and other property assessment FTP servers with authentication
+- **Automated Synchronization**: Schedule regular data imports or run one-time sync operations
+- **Selective Synchronization**: Target specific directories or file types for import
+- **Incremental Updates**: Import only new or changed files since last synchronization
+- **Comprehensive Logging**: Detailed logs of all synchronization activities
+- **Robust Error Handling**: Retry mechanisms and detailed error reporting
+- **Status Monitoring**: Real-time status checks and historical statistics
+- **Configurable Settings**: Customize behavior through environment variables or configuration files
 
-## Key Capabilities
+## Environment Variables
 
-### 1. FTP Connection Management
+The FTP agent uses the following environment variables:
 
-- Secure connection to SpatialEst FTP server
-- Authentication with configurable credentials
-- Connection pool management for optimal performance
-- Automatic retry with exponential backoff
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `FTP_HOST` | FTP server hostname | N/A (required) |
+| `FTP_USER` | FTP username | N/A (required) |
+| `FTP_PASSWORD` | FTP password | N/A (required) |
+| `FTP_PORT` | FTP server port | `21` |
+| `FTP_SECURE` | Use FTPS (secure FTP) | `false` |
+| `FTP_BASE_DIR` | Base directory on FTP server | `/` |
+| `FTP_LOCAL_DIR` | Local directory for downloads | `./downloads` |
+| `FTP_RETRY_COUNT` | Number of retries on failure | `3` |
+| `FTP_RETRY_DELAY` | Delay between retries (ms) | `5000` |
+| `FTP_TIMEOUT` | Connection timeout (ms) | `30000` |
+| `FTP_SYNC_INTERVAL` | Default sync interval (hours) | `24` |
 
-### 2. Data Synchronization
+## Agent Capabilities
 
-- Full directory synchronization
-- Individual file synchronization
-- File differencing to identify changes
-- File format validation
-- Data integrity verification
-
-### 3. Scheduling
-
-- Configurable interval-based scheduling (1 hour to 7 days)
-- One-time synchronization option
-- Smart overlap prevention
-- Human-readable schedule information
-- Calendar-aware timing adjustments
-
-### 4. Monitoring and Status Reporting
-
-- Detailed sync activity history
-- Success/failure statistics
-- File processing metrics
-- Performance measurement
-- Comprehensive error reporting
-
-## Configuration
-
-The FTP agent can be configured through the following settings:
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `enabled` | Enable/disable scheduled synchronization | `false` |
-| `intervalHours` | Hours between sync operations (1-168) | `24` |
-| `maxRetries` | Maximum connection retry attempts | `5` |
-| `backoffFactor` | Retry delay multiplication factor | `1.5` |
-| `fileTypes` | File extensions to process | `.csv, .xml, .json` |
-
-## API Methods
-
-### Connection
+The FTP data agent provides the following capabilities:
 
 - `testFtpConnection()`: Test connection to FTP server
-- `listFtpDirectories()`: List available directories
-- `browseDirectory(path)`: Browse contents of a specific directory
-
-### Synchronization
-
-- `synchronizeFtpData(path)`: Sync data from specific FTP path
-- `downloadFile(remotePath, localPath)`: Download a specific file
-- `validateFile(path)`: Validate a downloaded file
-
-### Scheduling
-
+- `synchronizeFtpData({ path, force })`: Sync data from FTP server
+- `listFtpFiles({ path })`: List files in a specific directory
+- `getFtpFileDetails({ path })`: Get details about a specific file
+- `downloadFtpFile({ remotePath, localPath })`: Download a specific file
 - `scheduleFtpSync({ enabled, intervalHours, runOnce })`: Configure sync schedule
 - `getFtpStatus()`: Get current FTP connection and sync status
 - `getSyncScheduleInfo()`: Get human-readable schedule information
@@ -153,3 +123,40 @@ Common issues and solutions:
 | "Sync already in progress" | A previous sync job is still running, wait for completion |
 | File format errors | Check that the source files match expected formats |
 | Scheduling errors | Ensure intervalHours is within the valid range (1-168) |
+
+## Implementation Details
+
+### Data Processing Flow
+
+The agent follows a structured data processing flow:
+
+1. **Connection**: Establish connection to FTP server
+2. **Directory Scan**: Recursively scan directories based on configuration
+3. **Change Detection**: Compare file timestamps with previously imported data
+4. **Download**: Transfer new or modified files to local storage
+5. **Validation**: Validate file format and structure before importing
+6. **Import**: Parse and import data into the platform's storage
+7. **Cleanup**: Remove temporary files and update sync metadata
+8. **Logging**: Record detailed activity for auditing and diagnostics
+
+### File Format Support
+
+The agent currently supports the following file formats:
+
+- CSV (comma-separated values)
+- TSV (tab-separated values)
+- JSON (JavaScript Object Notation)
+- XML (Extensible Markup Language)
+- Excel (XLSX/XLS)
+- SpatialEst export formats
+- CAMA (Computer Assisted Mass Appraisal) data formats
+
+### Performance Considerations
+
+For optimal performance:
+
+- Schedule synchronizations during off-peak hours
+- Use selective sync for large repositories
+- Configure appropriate retry parameters based on network reliability
+- Monitor disk space for downloaded files
+- Review sync logs regularly for potential optimizations
