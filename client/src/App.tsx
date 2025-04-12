@@ -15,7 +15,7 @@ import PropertyStoryPage from "@/pages/PropertyStoryPage";
 import DataImportPage from "@/pages/DataImportPage";
 import AgentSystemPage from "@/pages/AgentSystemPage";
 import VoiceSearchDemoPage from "@/pages/VoiceSearchDemoPage";
-import { PropertyLineagePage } from "@/pages/PropertyLineagePage";
+import PropertyLineagePage from "@/pages/PropertyLineagePage";
 import { DataLineageDashboardPage } from "@/pages/DataLineageDashboardPage";
 import AppLayout from "@/layout/app-layout";
 

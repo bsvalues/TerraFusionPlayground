@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 import { getDateRangeLineage, getSourceLineage, getUserLineage, formatLineageTimestamp } from '@/lib/dataLineageService';
 import { LineageFilters, LineageFiltersState } from '@/components/data-lineage/LineageFilters';
 import { LineageTimeline } from '@/components/data-lineage/LineageTimeline';
@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Info, FileBarChart2, Database, Users, Calendar } from 'lucide-react';
 
 export function DataLineageDashboardPage() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [filters, setFilters] = React.useState<LineageFiltersState>({});
   const [tab, setTab] = React.useState('date');
   const [propertyId, setPropertyId] = React.useState('');
@@ -134,7 +134,7 @@ export function DataLineageDashboardPage() {
   // Navigate to specific property lineage
   const handlePropertySearch = () => {
     if (propertyId.trim()) {
-      navigate(`/property/${propertyId.trim()}/lineage`);
+      setLocation(`/property/${propertyId.trim()}/lineage`);
     }
     setSearchDialogOpen(false);
   };
@@ -421,8 +421,8 @@ export function DataLineageDashboardPage() {
       {/* Timeline View */}
       {filteredRecords.length > 0 ? (
         <LineageTimeline 
-          records={filteredRecords}
-          title="System Data Change Timeline"
+          entries={filteredRecords}
+          onEntryClick={(entry) => setLocation(`/property/${entry.propertyId}/lineage`)}
         />
       ) : (
         <Alert>
