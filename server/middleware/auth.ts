@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { validateApiKey, TokenScope, requireScope } from './auth-middleware';
+import { TokenScope } from './auth-middleware';
 
 // Interface for AuthRequest
 export interface AuthRequest extends Request {
@@ -11,31 +11,31 @@ export interface AuthRequest extends Request {
   };
 }
 
-// Authentication middleware that validates tokens or API keys
+// Authentication middleware - bypassed for Windows Auth integration
 export function authenticate(req: Request, res: Response, next: NextFunction) {
-  // Use the validateApiKey middleware which already handles both token and API key auth
-  validateApiKey(req, res, next);
+  // Bypassing token validation - will be replaced with Windows Auth
+  // Set default user for development
+  (req as AuthRequest).user = {
+    userId: 1,
+    username: 'county_admin',
+    role: 'admin',
+    scope: ['admin', 'read', 'write']
+  };
+  next();
 }
 
-// Authorization middleware to check for specific permissions
+// Authorization middleware - bypassed for Windows Auth integration
 export function authorize(requiredPermission: string) {
-  // Map our permission strings to token scopes
-  let requiredScope: TokenScope;
-  
-  if (requiredPermission.includes('admin')) {
-    requiredScope = TokenScope.ADMIN;
-  } else if (requiredPermission.includes('write')) {
-    requiredScope = TokenScope.READ_WRITE;
-  } else {
-    requiredScope = TokenScope.READ_ONLY;
-  }
-  
-  return requireScope(requiredScope);
+  return (req: Request, res: Response, next: NextFunction) => {
+    // Bypassing scope checks - will be replaced with Windows Auth
+    next();
+  };
 }
 
-// Check API key middleware - direct pass-through to validateApiKey
+// Check API key middleware - bypassed for Windows Auth integration
 export function checkApiKey(req: Request, res: Response, next: NextFunction) {
-  validateApiKey(req, res, next);
+  // Bypassing API key validation - will be replaced with Windows Auth
+  next();
 }
 
 // Export default middleware
