@@ -113,7 +113,7 @@ export class AgentDevAssistant {
    */
   private async enhancePropertyAssessmentAgent(agent: BaseAgent): Promise<void> {
     // Add property assessment specific development capabilities
-    agent.registerCapability({
+    agent.addDevelopmentCapability({
       name: 'improvePropertyValuationLogic',
       description: 'Analyze and suggest improvements to property valuation algorithms',
       parameters: {},
@@ -122,7 +122,7 @@ export class AgentDevAssistant {
       }
     });
     
-    agent.registerCapability({
+    agent.addDevelopmentCapability({
       name: 'suggestComparableAlgorithmEnhancements',
       description: 'Suggest enhancements to the comparable property selection algorithm',
       parameters: {},
@@ -140,7 +140,7 @@ export class AgentDevAssistant {
    */
   private async enhanceDataIngestionAgent(agent: BaseAgent): Promise<void> {
     // Add data ingestion specific development capabilities
-    agent.registerCapability({
+    agent.addDevelopmentCapability({
       name: 'improveDataValidation',
       description: 'Analyze and suggest improvements to data validation rules',
       parameters: {},
@@ -149,7 +149,7 @@ export class AgentDevAssistant {
       }
     });
     
-    agent.registerCapability({
+    agent.addDevelopmentCapability({
       name: 'enhanceDataLineageTracking',
       description: 'Suggest enhancements to data lineage tracking system',
       parameters: {},
@@ -167,7 +167,7 @@ export class AgentDevAssistant {
    */
   private async enhanceMarketAnalysisAgent(agent: BaseAgent): Promise<void> {
     // Add market analysis specific development capabilities
-    agent.registerCapability({
+    agent.addDevelopmentCapability({
       name: 'improveTrendDetection',
       description: 'Analyze and suggest improvements to market trend detection algorithms',
       parameters: {},
@@ -185,7 +185,7 @@ export class AgentDevAssistant {
    */
   private async enhanceSpatialGISAgent(agent: BaseAgent): Promise<void> {
     // Add spatial GIS specific development capabilities
-    agent.registerCapability({
+    agent.addDevelopmentCapability({
       name: 'improveSpatialQueries',
       description: 'Analyze and suggest improvements to spatial query performance',
       parameters: {},
@@ -203,7 +203,7 @@ export class AgentDevAssistant {
    */
   private async enhanceComplianceAgent(agent: BaseAgent): Promise<void> {
     // Add compliance specific development capabilities
-    agent.registerCapability({
+    agent.addDevelopmentCapability({
       name: 'improveRegulatoryChecks',
       description: 'Analyze and suggest improvements to regulatory compliance checks',
       parameters: {},

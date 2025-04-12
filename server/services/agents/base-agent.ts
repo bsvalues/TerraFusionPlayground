@@ -214,6 +214,14 @@ export abstract class BaseAgent {
   protected registerCapability(capability: AgentCapability): void {
     this.capabilities.set(capability.name, capability);
   }
+  
+  /**
+   * Add a development-related capability to this agent
+   * This public method allows the development assistant to add capabilities
+   */
+  public addDevelopmentCapability(capability: AgentCapability): void {
+    this.registerCapability(capability);
+  }
 
   /**
    * Update agent status in the database
