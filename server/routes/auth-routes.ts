@@ -11,28 +11,38 @@ export function createAuthRoutes() {
   const authService = new AuthService(storage, securityService);
 
   /**
-   * Login route
+   * Login route - BYPASSED for Windows Authentication integration
    */
   router.post('/login', async (req, res) => {
     try {
       const { username, password } = req.body;
       
-      if (!username || !password) {
-        return res.status(400).json({ error: 'Username and password are required' });
-      }
+      // Always return success for the dummy login
+      const dummyToken = 'windows-auth-integration-dummy-token-' + Date.now();
+      const defaultUser = {
+        userId: 1,
+        username: 'county_admin',
+        role: 'admin',
+        scope: ['admin', 'read', 'write']
+      };
       
-      const result = await authService.login(username, password);
+      // Log the login bypass for audit purposes
+      securityService.logSecurityEvent({
+        eventType: 'authentication',
+        component: 'auth-routes',
+        userId: 1,
+        ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
+        details: {
+          username: username || 'county_admin',
+          note: 'Login bypass for Windows Authentication integration'
+        },
+        severity: 'info'
+      }).catch(err => console.error('Failed to log login bypass:', err));
       
-      if (result.success) {
-        res.json({
-          token: result.token,
-          user: result.user
-        });
-      } else {
-        res.status(401).json({
-          error: 'Invalid credentials'
-        });
-      }
+      res.json({
+        token: dummyToken,
+        user: defaultUser
+      });
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({ error: 'Internal server error' });

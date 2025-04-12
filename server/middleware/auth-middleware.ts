@@ -156,26 +156,31 @@ export function validateApiKey(req: Request, res: Response, next: NextFunction) 
 
 /**
  * Generate a test JWT token for development and testing purposes
+ * MODIFIED for Windows Authentication integration
  * WARNING: This should only be used in development environments
  * @param userId The user ID to include in the token
  * @param role The user role (default: 'admin')
- * @returns A JWT token string
+ * @returns A dummy token string
  */
 export function generateTestToken(userId: number = 1, role: string = 'admin'): string {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('Test tokens cannot be generated in production environments');
   }
   
-  const scopes = role === 'admin' 
-    ? [TokenScope.READ_ONLY, TokenScope.READ_WRITE, TokenScope.ADMIN]
-    : role === 'user' 
-      ? [TokenScope.READ_ONLY, TokenScope.READ_WRITE]
-      : [TokenScope.READ_ONLY];
+  // Log the test token generation for audit purposes
+  securityService.logSecurityEvent({
+    eventType: 'authentication',
+    component: 'auth-middleware',
+    userId: userId,
+    ipAddress: 'localhost',
+    details: {
+      userId,
+      role,
+      note: 'Test token generation bypassed for Windows Authentication integration'
+    },
+    severity: 'info'
+  }).catch(err => console.error('Failed to log test token generation:', err));
   
-  return authService.generateToken({
-    userId,
-    username: `test_${role}_${userId}`,
-    role,
-    scope: scopes.map(s => s.toString())
-  });
+  // Return a dummy token string since token authentication is bypassed
+  return 'windows-auth-integration-dummy-token-' + Date.now();
 }
