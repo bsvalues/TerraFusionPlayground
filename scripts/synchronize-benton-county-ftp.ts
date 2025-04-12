@@ -1,315 +1,131 @@
-#!/usr/bin/env tsx
 /**
- * Benton County FTP Synchronization Script
+ * Benton County FTP Data Synchronization Script
  * 
- * This script uses the FTP Data Agent to connect to the Benton County FTP server
- * at ftp.spatialest.com, discover new property data files, and import them.
+ * This script provides a command-line interface for running the FTP data agent
+ * synchronization tasks. It can be invoked manually or scheduled via a cron job.
  * 
- * It also checks for pending staged imports and can commit them if needed.
+ * Usage:
+ *   npx tsx scripts/synchronize-benton-county-ftp.ts [--force] [--silent] [--path=/remote/path]
+ * 
+ * Options:
+ *   --force    Force synchronization even if another sync job is in progress
+ *   --silent   Run in silent mode without console output
+ *   --path     Specify a particular remote path to synchronize (default: all)
+ * 
+ * Examples:
+ *   # Synchronize all data
+ *   npx tsx scripts/synchronize-benton-county-ftp.ts
+ * 
+ *   # Synchronize only property valuation data
+ *   npx tsx scripts/synchronize-benton-county-ftp.ts --path=/valuations
+ * 
+ *   # Force synchronization (for cron recovery)
+ *   npx tsx scripts/synchronize-benton-county-ftp.ts --force
  */
+
+import { AgentSystem } from '../server/services/agent-system';
 import { MemStorage } from '../server/storage';
 import { FtpService } from '../server/services/ftp-service';
 import { DataImportService } from '../server/services/data-import-service';
-import { AgentSystem } from '../server/services/agent-system';
-import { MCPService } from '../server/services/mcp';
-import * as path from 'path';
-import * as fs from 'fs';
-import { fileURLToPath } from 'url';
+import { LogLevel, Logger } from '../server/utils/logger';
+import path from 'path';
+import fs from 'fs';
 
-// Calculate __dirname in ESM
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// Create temporary directory for working files
-const TEMP_DIR = path.join(__dirname, '..', 'uploads', 'temp');
-if (!fs.existsSync(TEMP_DIR)) {
-  fs.mkdirSync(TEMP_DIR, { recursive: true });
-}
-
-// Create log directory
-const LOG_DIR = path.join(__dirname, '..', 'logs', 'ftp-sync');
-if (!fs.existsSync(LOG_DIR)) {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
-}
-
-// Initialize storage and services
-const storage = new MemStorage();
-const mcpService = new MCPService(storage);
-const ftpService = new FtpService(storage);
-const dataImportService = new DataImportService(storage);
-const agentSystem = new AgentSystem(storage);
-
-// Logging utility
-const logFile = path.join(LOG_DIR, `ftp-sync-${new Date().toISOString().replace(/:/g, '-')}.log`);
-const logger = {
-  log: (message) => {
-    const timestamp = new Date().toISOString();
-    const logMessage = `[${timestamp}] ${message}`;
-    console.log(logMessage);
-    fs.appendFileSync(logFile, logMessage + '\n');
-  },
-  error: (message, error) => {
-    const timestamp = new Date().toISOString();
-    const errorStack = error && error.stack ? `\n${error.stack}` : '';
-    const logMessage = `[${timestamp}] ERROR: ${message}${errorStack}`;
-    console.error(logMessage);
-    fs.appendFileSync(logFile, logMessage + '\n');
-  }
+// Parse command-line arguments
+const args = process.argv.slice(2);
+const options = {
+  force: args.includes('--force'),
+  silent: args.includes('--silent'),
+  path: args.find(arg => arg.startsWith('--path='))?.split('=')[1] || '/',
+  logFile: args.find(arg => arg.startsWith('--log='))?.split('=')[1] || 'logs/ftp-sync.log'
 };
 
-// Function to test FTP connection
-async function testFtpConnection(): Promise<boolean> {
-  logger.log('Testing connection to Benton County FTP server...');
+// Ensure log directory exists
+const logDir = path.dirname(options.logFile);
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
+
+// Configure logger
+const logger = new Logger({
+  level: options.silent ? LogLevel.ERROR : LogLevel.INFO,
+  filePath: options.logFile
+});
+
+// Display startup banner
+if (!options.silent) {
+  console.log('==================================================');
+  console.log('Benton County FTP Data Synchronization');
+  console.log('==================================================');
+  console.log(`Date: ${new Date().toISOString()}`);
+  console.log(`Options: ${JSON.stringify(options, null, 2)}`);
+  console.log('--------------------------------------------------');
+}
+
+async function main() {
   try {
-    const connected = await ftpService.testConnection();
+    logger.info('Initializing services...');
+    const storage = new MemStorage();
+    const ftpService = new FtpService();
+    const dataImportService = new DataImportService(storage);
     
-    if (!connected) {
-      throw new Error('Failed to connect to FTP server. Check credentials and try again.');
+    logger.info('Creating agent system...');
+    const agentSystem = new AgentSystem(storage);
+    await agentSystem.initialize();
+    
+    logger.info(`Starting synchronization of path: ${options.path}`);
+    const ftpAgent = agentSystem.getAgentById('ftp-data-agent');
+    
+    if (!ftpAgent) {
+      throw new Error('FTP Data Agent not found in agent system');
     }
     
-    logger.log('Successfully connected to FTP server.');
-    return true;
-  } catch (error) {
-    logger.error('FTP connection test failed', error);
-    return false;
-  }
-}
-
-interface FtpFile {
-  name: string;
-  type: number;
-  size: number;
-  date?: string | Date;
-}
-
-interface ImportResult {
-  importResult: {
-    total: number;
-    successfulImports: number;
-    failedImports: number;
-    errors?: string[];
-  };
-  filename: string;
-}
-
-// Function to search for property data files
-async function searchPropertyDataFiles(): Promise<FtpFile[]> {
-  logger.log('Searching for property data files on the FTP server...');
-  try {
-    // Start with the root directory
-    const files = await ftpService.listFiles('/');
-    
-    // Filter for CSV files with property data
-    const propertyDataFiles = files.filter(file => 
-      file.type === 1 && // File (not directory)
-      (file.name.toLowerCase().includes('property') || 
-       file.name.toLowerCase().includes('parcel') ||
-       file.name.toLowerCase().includes('assessment') ||
-       file.name.toLowerCase().includes('tax')) &&
-      file.name.toLowerCase().endsWith('.csv')
-    );
-    
-    logger.log(`Found ${propertyDataFiles.length} potential property data files.`);
-    
-    // Categorize files by type
-    const useCodeFiles = propertyDataFiles.filter(file => 
-      file.name.toLowerCase().includes('usecode') || 
-      file.name.toLowerCase().includes('use_code') ||
-      file.name.toLowerCase().includes('property_code')
-    );
-    
-    const propertyFiles = propertyDataFiles.filter(file => 
-      !useCodeFiles.includes(file) && 
-      (file.name.toLowerCase().includes('property') || 
-       file.name.toLowerCase().includes('parcel'))
-    );
-    
-    // Include any remaining CSV files that don't match the specific categories
-    const otherFiles = propertyDataFiles.filter(file => 
-      !useCodeFiles.includes(file) && 
-      !propertyFiles.includes(file)
-    );
-    
-    // Combine with priority: use code files first, then property files, then others
-    const sortedFiles = [...useCodeFiles, ...propertyFiles, ...otherFiles];
-    
-    logger.log(`Categorized files: ${useCodeFiles.length} use code files, ${propertyFiles.length} property files, ${otherFiles.length} other files.`);
-    
-    // Sort by date (newest first)
-    sortedFiles.sort((a, b) => {
-      if (a.date && b.date) {
-        const dateA = typeof a.date === 'string' ? new Date(a.date) : a.date as Date;
-        const dateB = typeof b.date === 'string' ? new Date(b.date) : b.date as Date;
-        return dateB.getTime() - dateA.getTime();
+    // Run the synchronization
+    const syncResult = await ftpAgent.handleRequest({
+      action: 'synchronizeFtpData',
+      parameters: {
+        path: options.path,
+        force: options.force
       }
-      return 0;
     });
     
-    return sortedFiles;
-  } catch (error) {
-    logger.error('Error searching for property data files', error);
-    return [];
-  }
-}
-
-// Function to download and import a file
-async function downloadAndImportFile(file: FtpFile): Promise<boolean> {
-  const remotePath = `/${file.name}`;
-  const localPath = path.join(TEMP_DIR, file.name);
-  
-  logger.log(`Downloading ${file.name}...`);
-  try {
-    const downloadSuccess = await ftpService.downloadFile(remotePath, localPath);
-    
-    if (!downloadSuccess) {
-      throw new Error(`Failed to download file from ${remotePath}`);
-    }
-    
-    logger.log(`Successfully downloaded ${file.name}.`);
-    
-    // Import the file
-    logger.log(`Importing data from ${file.name}...`);
-    let importResult;
-    
-    // Check if this is a property use codes file
-    if (file.name.toLowerCase().includes('usecode') || 
-        file.name.toLowerCase().includes('use_code') ||
-        file.name.toLowerCase().includes('property_code')) {
-      // Use the property use codes import capability
-      logger.log('Detected property use codes file, using specialized import...');
-      // Call the agent capability via the agent system
-      const result = await agentSystem.executeCapability(
-        'ftp_data', 
-        'importPropertyUseCodes', 
-        { remotePath }
-      );
+    if (syncResult.success) {
+      logger.info('Synchronization completed successfully');
+      logger.info(`Files processed: ${syncResult.result.filesProcessed}`);
+      logger.info(`Records imported: ${syncResult.result.recordsImported}`);
       
-      if (!result.success) {
-        throw new Error(`Failed to import property use codes: ${result.error}`);
+      if (!options.silent) {
+        console.log('\nSynchronization completed successfully');
+        console.log(`Files processed: ${syncResult.result.filesProcessed}`);
+        console.log(`Records imported: ${syncResult.result.recordsImported}`);
       }
-      
-      // Format to match regular import result structure
-      importResult = {
-        importResult: {
-          total: result.result.totalRecords || 0,
-          successfulImports: result.result.importedRecords || 0,
-          failedImports: (result.result.totalRecords || 0) - (result.result.importedRecords || 0),
-          errors: result.result.errors || []
-        },
-        filename: file.name
-      };
     } else {
-      // Use the regular property import
-      importResult = await ftpService.importPropertiesFromFtp(remotePath);
-    }
-    
-    logger.log(`Import completed. Processed ${importResult.importResult.total} properties.`);
-    logger.log(`Successfully imported: ${importResult.importResult.successfulImports}, Failed: ${importResult.importResult.failedImports}`);
-    
-    if (importResult.importResult.errors && importResult.importResult.errors.length > 0) {
-      logger.log('Import errors:');
-      importResult.importResult.errors.forEach(error => {
-        logger.log(`- ${error}`);
-      });
-    }
-    
-    // Create a detailed log file
-    const importLogPath = path.join(LOG_DIR, `import-${file.name}-${new Date().toISOString().replace(/:/g, '-')}.json`);
-    const logData = {
-      file: file.name,
-      importTime: new Date().toISOString(),
-      totalRecords: importResult.importResult.total,
-      successfulImports: importResult.importResult.successfulImports,
-      failedImports: importResult.importResult.failedImports,
-      errors: importResult.importResult.errors
-    };
-    
-    fs.writeFileSync(importLogPath, JSON.stringify(logData, null, 2));
-    logger.log(`Detailed import log saved to ${importLogPath}`);
-    
-    // Keep the downloaded file for inspection
-    logger.log(`File saved at ${localPath} for inspection`);
-    // We're not deleting the file so we can examine it
-    
-    return true;
-  } catch (error) {
-    logger.error(`Error processing file ${file.name}`, error);
-    
-    // Clean up local file if it exists
-    if (fs.existsSync(localPath)) {
-      fs.unlinkSync(localPath);
-      logger.log(`Deleted temporary file ${localPath}`);
-    }
-    
-    return false;
-  }
-}
-
-// Main function
-async function synchronizeFtpData(): Promise<boolean> {
-  logger.log('Starting Benton County FTP data synchronization...');
-  
-  try {
-    // Test connection
-    const connected = await testFtpConnection();
-    if (!connected) {
-      return false;
-    }
-    
-    // Search for property data files
-    const files = await searchPropertyDataFiles();
-    if (files.length === 0) {
-      logger.log('No property data files found. Nothing to import.');
-      return true;
-    }
-    
-    // Get the most recent file
-    const latestFile = files[0];
-    logger.log(`Selected ${latestFile.name} for import (most recent).`);
-    
-    // Process the file
-    const importSuccess = await downloadAndImportFile(latestFile);
-    
-    if (importSuccess) {
-      logger.log('FTP synchronization completed successfully.');
-      return true;
-    } else {
-      logger.log('FTP synchronization completed with errors.');
-      return false;
+      logger.error(`Synchronization failed: ${syncResult.error}`);
+      if (!options.silent) {
+        console.error(`\nSynchronization failed: ${syncResult.error}`);
+      }
+      process.exit(1);
     }
   } catch (error) {
-    logger.error('Error during FTP synchronization', error);
-    return false;
-  }
-}
-
-// Initialize and run the agents before starting synchronization
-async function initializeAgents() {
-  logger.log('Initializing agent system...');
-  try {
-    await agentSystem.initialize();
-    logger.log('Agent system initialized successfully');
-    return true;
-  } catch (error) {
-    logger.error('Failed to initialize agent system', error);
-    return false;
-  }
-}
-
-// Run the sync process
-initializeAgents()
-  .then(initialized => {
-    if (initialized) {
-      return synchronizeFtpData();
-    } else {
-      logger.log('Aborting synchronization due to agent initialization failure');
-      return false;
+    logger.error('Fatal error during synchronization:', error);
+    if (!options.silent) {
+      console.error('Fatal error during synchronization:');
+      console.error(error);
     }
-  })
-  .then(success => {
-    logger.log(`FTP synchronization ${success ? 'succeeded' : 'failed'}.`);
-    process.exit(success ? 0 : 1);
-  })
-  .catch(error => {
-    logger.error('Unexpected error during execution', error);
     process.exit(1);
-  });
+  }
+}
+
+main().catch(error => {
+  logger.error('Unhandled exception:', error);
+  if (!options.silent) {
+    console.error('Unhandled exception:');
+    console.error(error);
+  }
+  process.exit(1);
+}).finally(() => {
+  if (!options.silent) {
+    console.log('\nSynchronization process completed');
+    console.log('==================================================');
+  }
+});

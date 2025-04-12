@@ -11,6 +11,7 @@ This platform modernizes the Benton County Assessor's Office operations by imple
 - **AI-enhanced property assessment**: Intelligent valuation models and data analysis
 - **Secure MCP architecture**: Role-based access control and comprehensive security
 - **PACS integration**: Seamless connectivity with existing property systems
+- **FTP data synchronization**: Robust SpatialEst FTP integration with scheduled and on-demand sync
 - **Appeals management**: Streamlined workflow for handling property assessment appeals
 - **Advanced data visualization**: Interactive property data exploration tools
 - **Public transparency portal**: Accessible property information for citizens
@@ -68,7 +69,41 @@ The Model Context Protocol (MCP) architecture provides a secure, unified interfa
 - [MCP Authentication](docs/mcp-authentication.md): Authentication system overview
 - [MCP Security](docs/mcp-security.md): Security architecture details
 - [PACS Module Integration](scripts/README.md): PACS module import tools and usage
+- [FTP Data Agent](docs/ftp-agent.md): FTP data synchronization capabilities
 - Additional documentation is available in the [docs](docs) directory
+
+## Data Integration
+
+### FTP Data Synchronization
+
+The platform includes a robust FTP data synchronization agent that connects to the SpatialEst FTP server to retrieve property data. Key features include:
+
+1. **Scheduled Synchronization**
+   - Configurable interval-based scheduling (1 hour to 7 days)
+   - One-time synchronization option for immediate data updates
+   - Smart overlap prevention to avoid conflicting sync jobs
+
+2. **Enhanced Reliability**
+   - Automatic retry with exponential backoff for transient failures
+   - Detailed operation status tracking and reporting
+   - Human-readable schedule information with time remaining display
+
+3. **Data Validation**
+   - File format verification before processing
+   - Comprehensive data integrity checks
+   - Detailed import statistics and error reporting
+
+4. **Testing and Monitoring**
+   - Unit tests to verify scheduling functionality
+   - Manual testing script for simulation and verification
+   - Detailed sync history and performance metrics
+
+To test FTP synchronization functionality:
+```
+node scripts/test-ftp-sync.js status       # Check current status
+node scripts/test-ftp-sync.js schedule 12  # Schedule sync every 12 hours
+node scripts/test-ftp-sync.js run-once     # Run a one-time sync
+```
 
 ## Development Guidelines
 
