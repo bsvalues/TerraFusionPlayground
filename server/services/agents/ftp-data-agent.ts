@@ -18,6 +18,17 @@ import { InsertProperty } from '../../../shared/schema';
 import * as path from 'path';
 import * as fs from 'fs';
 
+/**
+ * Interface for retry options
+ */
+interface RetryOptions {
+  maxRetries: number;
+  initialDelay: number;
+  maxDelay: number;
+  backoffFactor: number;
+  retryableErrors?: string[];
+}
+
 interface FtpScheduleConfig {
   enabled: boolean;
   intervalHours: number;
@@ -850,18 +861,174 @@ export class FtpDataAgent extends BaseAgent {
       // Update last run time
       this.schedule.lastRun = new Date();
       
-      // TODO: Implement sync logic
-      // For now, just log that it ran
+      // Implement automatic sync logic
       await this.logActivity(
         'ftp_scheduled_sync_run',
-        'Scheduled sync executed'
+        'Starting scheduled FTP sync process'
+      );
+      
+      // Step 1: List property data files in the root directory
+      const rootListResult = await this.listFtpDirectories({ path: '/' });
+      if (!rootListResult.success) {
+        await this.logActivity(
+          'ftp_scheduled_sync_error',
+          `Failed to list files: ${rootListResult.error}`
+        );
+        return;
+      }
+      
+      // Step 2: Find CSV files that might contain property data
+      const propertyDataFiles = rootListResult.result.files.filter(file => {
+        // Only process files (not directories)
+        if (file.isDirectory) return false;
+        
+        // Look for CSV files with property-related names
+        const lowerName = file.name.toLowerCase();
+        return lowerName.endsWith('.csv') && (
+          lowerName.includes('property') || 
+          lowerName.includes('parcel') || 
+          lowerName.includes('assessment') ||
+          lowerName.includes('valuation')
+        );
+      });
+      
+      if (propertyDataFiles.length === 0) {
+        await this.logActivity(
+          'ftp_scheduled_sync_complete',
+          'No property data files found for sync'
+        );
+        return;
+      }
+      
+      // Step 3: Process each property file
+      const syncResults = {
+        totalFiles: propertyDataFiles.length,
+        processedFiles: 0,
+        successfulImports: 0,
+        failedImports: 0,
+        totalRecords: 0,
+        errors: [] as string[]
+      };
+      
+      for (const file of propertyDataFiles) {
+        try {
+          await this.logActivity(
+            'ftp_file_sync',
+            `Processing file: ${file.name}`
+          );
+          
+          // Import the file data
+          const importResult = await this.importFtpProperties({ remotePath: file.path });
+          syncResults.processedFiles++;
+          
+          if (importResult.success) {
+            syncResults.successfulImports++;
+            syncResults.totalRecords += importResult.result.totalRecords || 0;
+          } else {
+            syncResults.failedImports++;
+            syncResults.errors.push(`Failed to import ${file.name}: ${importResult.error}`);
+            
+            await this.logActivity(
+              'ftp_file_sync_error',
+              `Error importing ${file.name}: ${importResult.error}`
+            );
+          }
+        } catch (error: any) {
+          syncResults.failedImports++;
+          syncResults.errors.push(`Error processing ${file.name}: ${error.message}`);
+          
+          await this.logActivity(
+            'ftp_file_sync_error',
+            `Error processing ${file.name}: ${error.message}`
+          );
+        }
+      }
+      
+      // Step 4: Check for property use code files
+      const useCodeFiles = rootListResult.result.files.filter(file => {
+        if (file.isDirectory) return false;
+        
+        const lowerName = file.name.toLowerCase();
+        return lowerName.endsWith('.csv') && (
+          lowerName.includes('usecode') ||
+          lowerName.includes('use_code') ||
+          lowerName.includes('property_code')
+        );
+      });
+      
+      // Process use code files if found
+      for (const file of useCodeFiles) {
+        try {
+          await this.logActivity(
+            'ftp_file_sync',
+            `Processing use code file: ${file.name}`
+          );
+          
+          const importResult = await this.importPropertyUseCodes({ remotePath: file.path });
+          
+          if (importResult.success) {
+            await this.logActivity(
+              'ftp_file_sync_success',
+              `Successfully imported use codes from ${file.name}`
+            );
+          } else {
+            syncResults.errors.push(`Failed to import use codes from ${file.name}: ${importResult.error}`);
+            
+            await this.logActivity(
+              'ftp_file_sync_error',
+              `Error importing use codes from ${file.name}: ${importResult.error}`
+            );
+          }
+        } catch (error: any) {
+          syncResults.errors.push(`Error processing use code file ${file.name}: ${error.message}`);
+          
+          await this.logActivity(
+            'ftp_file_sync_error',
+            `Error processing use code file ${file.name}: ${error.message}`
+          );
+        }
+      }
+      
+      // Step 5: Record sync completion with detailed results
+      await this.logActivity(
+        'ftp_scheduled_sync_complete',
+        `Completed sync of ${syncResults.processedFiles} files. ` +
+        `Successful: ${syncResults.successfulImports}, ` +
+        `Failed: ${syncResults.failedImports}, ` +
+        `Total records: ${syncResults.totalRecords}`,
+        {
+          syncResults: {
+            timestamp: new Date().toISOString(),
+            totalFiles: syncResults.totalFiles,
+            processedFiles: syncResults.processedFiles,
+            successfulImports: syncResults.successfulImports,
+            failedImports: syncResults.failedImports,
+            totalRecords: syncResults.totalRecords,
+            errors: syncResults.errors.length > 0 ? syncResults.errors : undefined
+          }
+        }
       );
       
     } catch (error: any) {
+      const errorDetails = {
+        message: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString(),
+        lastSuccessfulSync: this.schedule.lastRun ? this.schedule.lastRun.toISOString() : null,
+        syncAttemptCount: this.schedule.lastRun ? 
+          Math.floor((Date.now() - this.schedule.lastRun.getTime()) / (this.schedule.intervalHours * 60 * 60 * 1000)) : 0
+      };
+      
+      // Log error with full details for troubleshooting
       await this.logActivity(
         'ftp_scheduled_sync_error',
-        `Scheduled sync error: ${error.message}`
+        `Scheduled sync error: ${error.message}`,
+        { error: errorDetails }
       );
+      
+      // Also log to console for immediate visibility
+      console.error('FTP Scheduled Sync Error:', error.message);
+      console.error('Error Details:', JSON.stringify(errorDetails, null, 2));
     }
   }
   
@@ -964,6 +1131,32 @@ export class FtpDataAgent extends BaseAgent {
       const connectionTest = await this.testFtpConnection();
       const connected = connectionTest.result.connected;
       
+      // Get recent sync activities to provide more details
+      const recentSyncActivities = await this.storage.getActivitiesByType(
+        'ftp_scheduled_sync_complete',
+        5
+      );
+      
+      // Extract most recent sync results
+      let lastSyncResults = null;
+      if (recentSyncActivities.length > 0) {
+        try {
+          const latestActivity = recentSyncActivities[0];
+          if (latestActivity.details) {
+            const details = typeof latestActivity.details === 'string' 
+              ? JSON.parse(latestActivity.details) 
+              : latestActivity.details;
+              
+            // Extract sync statistics from activity details
+            if (details && details.syncResults) {
+              lastSyncResults = details.syncResults;
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing sync activity details:', error);
+        }
+      }
+      
       const status = {
         connected,
         host: 'ftp.spatialest.com',
@@ -971,6 +1164,12 @@ export class FtpDataAgent extends BaseAgent {
         scheduleIntervalHours: this.schedule.intervalHours,
         lastSync: this.schedule.lastRun ? this.schedule.lastRun.toISOString() : null,
         nextSync: this.getNextSyncTime(),
+        lastSyncResults,
+        recentSyncActivities: recentSyncActivities.map(activity => ({
+          timestamp: activity.created_at,
+          status: activity.status,
+          details: activity.details
+        })),
         connectionDetails: connected ? {
           secure: true,
           port: 21
