@@ -3,17 +3,17 @@
  * 
  * This file contains routes for interacting with the MCP Agent system,
  * allowing agents to be controlled, monitored, and accessed via API endpoints.
+ * 
+ * NOTE: Authentication removed pending Windows authentication integration
  */
 
 import { Router } from 'express';
 import { AgentSystem } from '../services/agent-system';
-import { authenticate } from '../middleware/auth';
 
 export function createAgentRoutes(agentSystem: AgentSystem) {
   const router = Router();
   
-  // Apply authentication middleware to all agent routes
-  router.use(authenticate);
+  // Authentication removed - will be integrated with Windows Authentication
   
   /**
    * Get system status
