@@ -2,115 +2,255 @@
 
 ## Overview
 
-The FTP Data Agent is a specialized agent in the property intelligence platform that facilitates automated synchronization of property data from external FTP servers. This agent is specifically designed to work with common property assessment data formats and provides robust error handling, scheduling, and reporting capabilities.
+The FTP Data Agent is a specialized agent that handles synchronization of data between your application and external FTP servers. It's designed specifically for integrating with property assessment and tax data servers, and includes robust capabilities for scheduling, error handling, and status reporting.
 
 ## Key Features
 
-- **Secure FTP Connectivity**: Connect to SpatialEst and other property assessment FTP servers with authentication
-- **Automated Synchronization**: Schedule regular data imports or run one-time sync operations
-- **Selective Synchronization**: Target specific directories or file types for import
-- **Incremental Updates**: Import only new or changed files since last synchronization
-- **Comprehensive Logging**: Detailed logs of all synchronization activities
-- **Robust Error Handling**: Retry mechanisms and detailed error reporting
-- **Status Monitoring**: Real-time status checks and historical statistics
-- **Configurable Settings**: Customize behavior through environment variables or configuration files
+- **Automatic Synchronization**: Schedule periodic data synchronization with configurable intervals
+- **Error Handling & Retries**: Robust error recovery with configurable retry attempts
+- **Detailed Logging**: Comprehensive logging of all FTP operations
+- **Status Reporting**: Human-readable status reports including next scheduled syncs, success rates, etc.
+- **Selective Downloads**: Synchronize specific directories or the entire FTP structure
+- **Overlap Prevention**: Safety mechanisms to prevent multiple concurrent syncs
+- **Flexible Automation**: Support for cron jobs and one-time synchronizations
 
-## Environment Variables
+## Configuration
 
-The FTP agent uses the following environment variables:
+The FTP Data Agent can be configured in several ways:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `FTP_HOST` | FTP server hostname | N/A (required) |
-| `FTP_USER` | FTP username | N/A (required) |
-| `FTP_PASSWORD` | FTP password | N/A (required) |
-| `FTP_PORT` | FTP server port | `21` |
-| `FTP_SECURE` | Use FTPS (secure FTP) | `false` |
-| `FTP_BASE_DIR` | Base directory on FTP server | `/` |
-| `FTP_LOCAL_DIR` | Local directory for downloads | `./downloads` |
-| `FTP_RETRY_COUNT` | Number of retries on failure | `3` |
-| `FTP_RETRY_DELAY` | Delay between retries (ms) | `5000` |
-| `FTP_TIMEOUT` | Connection timeout (ms) | `30000` |
-| `FTP_SYNC_INTERVAL` | Default sync interval (hours) | `24` |
+### Connection Settings
 
-## Agent Capabilities
+The agent uses the following environment variables for connection:
 
-The FTP data agent provides the following capabilities:
-
-- `testFtpConnection()`: Test connection to FTP server
-- `synchronizeFtpData({ path, force })`: Sync data from FTP server
-- `listFtpFiles({ path })`: List files in a specific directory
-- `getFtpFileDetails({ path })`: Get details about a specific file
-- `downloadFtpFile({ remotePath, localPath })`: Download a specific file
-- `scheduleFtpSync({ enabled, intervalHours, runOnce })`: Configure sync schedule
-- `getFtpStatus()`: Get current FTP connection and sync status
-- `getSyncScheduleInfo()`: Get human-readable schedule information
-
-## Usage Examples
-
-### Testing Connection
-
-```javascript
-const result = await ftpAgent.testFtpConnection();
-if (result.success) {
-  console.log('Successfully connected to FTP server');
-}
+```
+FTP_HOST=example.ftp.server
+FTP_USERNAME=username
+FTP_PASSWORD=password
+FTP_PORT=21  # Optional, defaults to 21
+FTP_SECURE=true  # Optional, defaults to false (use FTPS)
 ```
 
-### Scheduling Synchronization
+### Advanced Settings
+
+Additional settings can be configured programmatically through the agent API:
+
+- **Download Path**: Where synchronized files are stored locally
+- **Max Retry Attempts**: Number of retry attempts for failed operations
+- **Retry Delay**: Delay between retry attempts
+- **Timeout**: Connection timeout settings
+- **File Filters**: Patterns to include/exclude specific files
+
+## Scheduled Synchronization
+
+The FTP Data Agent supports scheduled synchronization with flexible interval settings:
+
+### Enabling Scheduled Sync
 
 ```javascript
-// Schedule sync every 12 hours
+// Enable hourly synchronization
 await ftpAgent.scheduleFtpSync({ 
   enabled: true, 
-  intervalHours: 12 
+  intervalHours: 1 
 });
 
-// Run a one-time sync immediately
-await ftpAgent.scheduleFtpSync({ runOnce: true });
+// Enable daily synchronization (every 24 hours)
+await ftpAgent.scheduleFtpSync({ 
+  enabled: true, 
+  intervalHours: 24 
+});
+```
 
+### One-time Synchronization
+
+```javascript
+// Run a one-time sync now
+await ftpAgent.scheduleFtpSync({ runOnce: true });
+```
+
+### Disabling Scheduled Sync
+
+```javascript
 // Disable scheduled synchronization
 await ftpAgent.scheduleFtpSync({ enabled: false });
 ```
 
-### Checking Status
+## REST API Endpoints
 
-```javascript
-const status = await ftpAgent.getFtpStatus();
-console.log('Connection status:', status.result.connection.connected);
-console.log('Next sync:', status.result.schedule.nextSyncFormatted);
-console.log('Success rate:', status.result.syncStats.successRate + '%');
+The FTP Data Agent exposes REST API endpoints for administration:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/ftp/status` | GET | Get current FTP agent status |
+| `/api/ftp/sync` | POST | Trigger manual synchronization |
+| `/api/ftp/schedule` | POST | Configure synchronization schedule |
+| `/api/ftp/files` | GET | List files on the FTP server |
+| `/api/ftp/download` | POST | Download a specific file |
+
+### Example Request (Configure Schedule)
+
+```http
+POST /api/ftp/schedule
+Content-Type: application/json
+
+{
+  "enabled": true,
+  "intervalHours": 24
+}
 ```
 
-## Error Handling
+## Command Line Interface
 
-The FTP agent includes sophisticated error handling:
+The FTP agent can be controlled through command-line tools:
 
-1. **Connection Errors**: Automatically retried with exponential backoff
-2. **Authentication Errors**: Reported with detailed diagnostics
-3. **File Access Errors**: Path and permission issues identified
-4. **Data Format Errors**: File format validation with specific error codes
-5. **Timeout Errors**: Long operations monitored and recovered
-
-## Testing
-
-Two testing approaches are available:
-
-1. **Unit Tests**: Jest tests in `tests/ftp-agent-scheduler.test.js`
-2. **Manual Testing**: Command-line interface in `scripts/test-ftp-sync.js`
-
-Run the tests using:
+### Testing Connection
 
 ```bash
-# Run automated tests
-npm test -- tests/ftp-agent-scheduler.test.js
-
-# Run manual tests (interactive)
-node scripts/test-ftp-sync.js status
-
-# Or use the test runner script
-scripts/run-ftp-tests.sh
+node scripts/test-ftp-sync.js connect
 ```
+
+### Checking Status
+
+```bash
+node scripts/test-ftp-sync.js status
+```
+
+### Manual Synchronization
+
+```bash
+node scripts/test-ftp-sync.js sync [/optional/path]
+```
+
+### Listing Files
+
+```bash
+node scripts/test-ftp-sync.js list /path/to/directory
+```
+
+### Configure Schedule
+
+```bash
+# Enable with 12-hour interval
+node scripts/test-ftp-sync.js schedule --enable --interval=12
+
+# Disable scheduling
+node scripts/test-ftp-sync.js schedule --disable
+
+# Run once immediately
+node scripts/test-ftp-sync.js schedule --once
+```
+
+### Downloading Files
+
+```bash
+node scripts/test-ftp-sync.js download /path/to/remote/file.csv
+```
+
+## Automated Synchronization with Cron
+
+For production deployments, the FTP agent is designed to be scheduled using cron jobs. Here are example cron entries:
+
+### Hourly Synchronization
+
+```
+0 * * * * cd /path/to/app && node scripts/synchronize-benton-county-ftp.ts --silent
+```
+
+### Daily Synchronization (midnight)
+
+```
+0 0 * * * cd /path/to/app && node scripts/synchronize-benton-county-ftp.ts --silent
+```
+
+### Weekly Synchronization (Sunday midnight)
+
+```
+0 0 * * 0 cd /path/to/app && node scripts/synchronize-benton-county-ftp.ts --silent
+```
+
+## Setup Assistant
+
+To help set up cron jobs automatically, use the setup assistant:
+
+```bash
+node scripts/setup-ftp-cron.js [hourly|daily|weekly]
+```
+
+This will generate the appropriate crontab entries and instructions for installation.
+
+## Automated Testing
+
+The FTP agent includes a comprehensive testing suite:
+
+```bash
+# Run the full test suite
+scripts/run-ftp-tests.sh
+
+# Run only basic tests (quick mode)
+scripts/run-ftp-tests.sh --quick
+
+# Run with actual synchronization (caution!)
+scripts/run-ftp-tests.sh --force
+
+# Test a specific file download
+scripts/run-ftp-tests.sh --force --file=/path/to/test.csv
+```
+
+## Status Reporting
+
+The FTP agent provides detailed status reporting, including:
+
+- **Connection Status**: Current connection state
+- **Synchronization Stats**: Success/failure counts and percentages
+- **Last Sync Time**: When the last synchronization occurred
+- **Next Sync Time**: When the next scheduled sync will occur
+- **Active Operations**: Currently running FTP operations
+- **Transferred Data**: Statistics on transferred files and bytes
+
+## Error Handling & Debugging
+
+The FTP agent includes robust error handling:
+
+- **Automatic Retries**: Failed operations are automatically retried
+- **Detailed Logs**: All operations are logged with timestamps
+- **Error Classifications**: Errors are categorized (connection, authentication, permission, etc.)
+- **Diagnostics**: Self-diagnostic capabilities for connection issues
+
+Logs are saved to:
+- `logs/ftp-agent.log`: Main operational logs
+- `logs/ftp-error.log`: Detailed error logs
+- `logs/ftp-sync.log`: Synchronization-specific logs
+
+## API Reference
+
+The FTP Data Agent exposes the following JavaScript API:
+
+| Method | Description |
+|--------|-------------|
+| `initialize()` | Initialize the agent |
+| `testFtpConnection()` | Test connection to FTP server |
+| `getFtpStatus()` | Get current agent status |
+| `scheduleFtpSync(options)` | Configure synchronization schedule |
+| `synchronizeFtpData(path)` | Synchronize data from specified path |
+| `listFtpFiles(path)` | List files in a directory |
+| `downloadFtpFile(remotePath, localPath)` | Download a specific file |
+| `getSyncScheduleInfo()` | Get human-readable schedule information |
+| `checkSchedule()` | Check and run scheduled tasks if needed |
+
+## Security Considerations
+
+The FTP Data Agent implements several security best practices:
+
+- **Credential Protection**: FTP credentials are never logged
+- **Secure Connection**: FTPS support for encrypted data transfer
+- **Restricted Access**: Downloads are restricted to configured directories
+- **Input Validation**: All paths and parameters are validated
+- **Content Verification**: File integrity checks
+
+## Limitations & Known Issues
+
+- The agent is optimized for structured data synchronization and may not be ideal for very large binary files
+- To prevent memory issues, there is a 100MB size limit for individual files
+- Synchronization of very large directories (10,000+ files) may take significant time
 
 ## Troubleshooting
 
@@ -118,45 +258,8 @@ Common issues and solutions:
 
 | Issue | Solution |
 |-------|----------|
-| Connection timeout | Check network connectivity and firewall settings |
-| Authentication failure | Verify FTP credentials in environment variables |
-| "Sync already in progress" | A previous sync job is still running, wait for completion |
-| File format errors | Check that the source files match expected formats |
-| Scheduling errors | Ensure intervalHours is within the valid range (1-168) |
-
-## Implementation Details
-
-### Data Processing Flow
-
-The agent follows a structured data processing flow:
-
-1. **Connection**: Establish connection to FTP server
-2. **Directory Scan**: Recursively scan directories based on configuration
-3. **Change Detection**: Compare file timestamps with previously imported data
-4. **Download**: Transfer new or modified files to local storage
-5. **Validation**: Validate file format and structure before importing
-6. **Import**: Parse and import data into the platform's storage
-7. **Cleanup**: Remove temporary files and update sync metadata
-8. **Logging**: Record detailed activity for auditing and diagnostics
-
-### File Format Support
-
-The agent currently supports the following file formats:
-
-- CSV (comma-separated values)
-- TSV (tab-separated values)
-- JSON (JavaScript Object Notation)
-- XML (Extensible Markup Language)
-- Excel (XLSX/XLS)
-- SpatialEst export formats
-- CAMA (Computer Assisted Mass Appraisal) data formats
-
-### Performance Considerations
-
-For optimal performance:
-
-- Schedule synchronizations during off-peak hours
-- Use selective sync for large repositories
-- Configure appropriate retry parameters based on network reliability
-- Monitor disk space for downloaded files
-- Review sync logs regularly for potential optimizations
+| Connection failures | Check network connectivity, credentials, and firewall settings |
+| Timeout errors | Increase timeout settings for larger files |
+| Permission errors | Verify FTP user permissions on target directories |
+| Scheduling issues | Check for clock synchronization problems |
+| "Already in progress" errors | Use `--force` to override or wait for current sync to complete |
