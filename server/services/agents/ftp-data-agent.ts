@@ -830,10 +830,39 @@ export class FtpDataAgent extends BaseAgent {
         };
       }
       
-      // Import properties directly from FTP
-      const importResult = await this.ftpService.importPropertiesFromFtp(remotePath);
+      // Configure retry options
+      const retryOptions: RetryOptions = {
+        maxRetries: 3,
+        initialDelay: 1000,  // 1 second
+        maxDelay: 15000,     // 15 seconds
+        backoffFactor: 2,    // exponential backoff
+        retryableErrors: [
+          'ETIMEDOUT', 
+          'ECONNRESET', 
+          'ENOTFOUND',
+          'connection closed',
+          'timeout',
+          'network error',
+          'Failed to download data',
+          'Failed to parse data'
+        ]
+      };
       
-      await this.logActivity('ftp_properties_import', `Imported properties from ${remotePath}`);
+      // Import properties directly from FTP with retries
+      const importResult = await withRetry(
+        async () => await this.ftpService.importPropertiesFromFtp(remotePath),
+        retryOptions
+      );
+      
+      await this.logActivity(
+        'ftp_properties_import', 
+        `Imported ${importResult.importResult.successfulImports} properties from ${remotePath}`,
+        {
+          fileName: importResult.filename,
+          successfulImports: importResult.importResult.successfulImports,
+          totalRecords: importResult.importResult.total
+        }
+      );
       
       return {
         success: true,
@@ -850,13 +879,26 @@ export class FtpDataAgent extends BaseAgent {
         }
       };
     } catch (error: any) {
-      await this.logActivity('ftp_import_error', `FTP import error: ${error.message}`);
+      const errorDetails = {
+        message: error.message,
+        remotePath: params.remotePath,
+        timestamp: new Date().toISOString(),
+        attemptsMade: error.attemptsMade || 1,
+        stack: error.stack
+      };
+      
+      await this.logActivity(
+        'ftp_import_error', 
+        `FTP import error: ${error.message}`,
+        { error: errorDetails }
+      );
       
       return {
         success: false,
         agent: this.config.name,
         capability: 'importFtpProperties',
-        error: `FTP import error: ${error.message}`
+        error: `FTP import error: ${error.message}`,
+        details: errorDetails
       };
     }
   }
@@ -877,10 +919,39 @@ export class FtpDataAgent extends BaseAgent {
         };
       }
       
-      // Stage properties from FTP for review
-      const stagingResult = await this.ftpService.stagePropertiesFromFtp(remotePath);
+      // Configure retry options
+      const retryOptions: RetryOptions = {
+        maxRetries: 3,
+        initialDelay: 1000,  // 1 second
+        maxDelay: 15000,     // 15 seconds
+        backoffFactor: 2,    // exponential backoff
+        retryableErrors: [
+          'ETIMEDOUT', 
+          'ECONNRESET', 
+          'ENOTFOUND',
+          'connection closed',
+          'timeout',
+          'network error',
+          'Failed to download data',
+          'Failed to parse data'
+        ]
+      };
       
-      await this.logActivity('ftp_properties_staging', `Staged properties from ${remotePath}`);
+      // Stage properties from FTP for review with retries
+      const stagingResult = await withRetry(
+        async () => await this.ftpService.stagePropertiesFromFtp(remotePath),
+        retryOptions
+      );
+      
+      await this.logActivity(
+        'ftp_properties_staging', 
+        `Staged properties from ${remotePath}`,
+        {
+          fileName: stagingResult.filename,
+          stagingTime: new Date().toISOString(),
+          recordCount: stagingResult.stagingResult.total || 0
+        }
+      );
       
       return {
         success: true,
@@ -894,13 +965,26 @@ export class FtpDataAgent extends BaseAgent {
         }
       };
     } catch (error: any) {
-      await this.logActivity('ftp_staging_error', `FTP staging error: ${error.message}`);
+      const errorDetails = {
+        message: error.message,
+        remotePath: params.remotePath,
+        timestamp: new Date().toISOString(),
+        attemptsMade: error.attemptsMade || 1,
+        stack: error.stack
+      };
+      
+      await this.logActivity(
+        'ftp_staging_error', 
+        `FTP staging error: ${error.message}`,
+        { error: errorDetails }
+      );
       
       return {
         success: false,
         agent: this.config.name,
         capability: 'stageFtpProperties',
-        error: `FTP staging error: ${error.message}`
+        error: `FTP staging error: ${error.message}`,
+        details: errorDetails
       };
     }
   }
@@ -912,11 +996,51 @@ export class FtpDataAgent extends BaseAgent {
     try {
       const { enabled, intervalHours = 24 } = params;
       
+      // Validate input parameters
+      if (typeof enabled !== 'boolean') {
+        return {
+          success: false,
+          agent: this.config.name,
+          capability: 'scheduleFtpSync',
+          error: 'Parameter "enabled" must be a boolean'
+        };
+      }
+      
+      // Validate interval hours is a reasonable value
+      let validatedIntervalHours = 24; // Default to 24 hours if invalid
+      if (intervalHours) {
+        if (typeof intervalHours !== 'number') {
+          return {
+            success: false,
+            agent: this.config.name,
+            capability: 'scheduleFtpSync',
+            error: 'Parameter "intervalHours" must be a number'
+          };
+        }
+        
+        if (intervalHours <= 0) {
+          return {
+            success: false,
+            agent: this.config.name,
+            capability: 'scheduleFtpSync',
+            error: 'Parameter "intervalHours" must be greater than 0'
+          };
+        }
+        
+        // Cap the interval at a reasonable maximum (168 hours = 7 days)
+        validatedIntervalHours = Math.min(intervalHours, 168);
+      }
+      
+      // Store the previous schedule state for logging
+      const previousState = {
+        enabled: this.schedule.enabled,
+        intervalHours: this.schedule.intervalHours,
+        lastRun: this.schedule.lastRun ? this.schedule.lastRun.toISOString() : null
+      };
+      
       // Update schedule configuration
       this.schedule.enabled = enabled;
-      if (intervalHours && typeof intervalHours === 'number' && intervalHours > 0) {
-        this.schedule.intervalHours = intervalHours;
-      }
+      this.schedule.intervalHours = validatedIntervalHours;
       
       // Clear existing scheduler if any
       if (this.scheduler) {
@@ -927,14 +1051,49 @@ export class FtpDataAgent extends BaseAgent {
       // Setup new scheduler if enabled
       if (enabled) {
         const intervalMs = this.schedule.intervalHours * 60 * 60 * 1000;
+        
+        // Perform a test connection first to verify FTP is accessible
+        const connectionTest = await this.testFtpConnection();
+        if (!connectionTest.result.connected) {
+          await this.logActivity(
+            'ftp_schedule_warning', 
+            'Enabled FTP sync schedule, but current FTP connection test failed. ' +
+            'Sync will be attempted at scheduled times anyway.',
+            {
+              schedule: {
+                enabled,
+                intervalHours: validatedIntervalHours,
+                intervalMs,
+                nextSync: new Date(Date.now() + intervalMs).toISOString()
+              },
+              connectionTest: connectionTest.result
+            }
+          );
+        }
+        
         this.scheduler = setInterval(() => this.runScheduledSync(), intervalMs);
         
         await this.logActivity(
           'ftp_sync_scheduled', 
-          `Scheduled FTP sync every ${this.schedule.intervalHours} hours`
+          `Scheduled FTP sync every ${this.schedule.intervalHours} hours`,
+          {
+            schedule: {
+              enabled,
+              intervalHours: validatedIntervalHours,
+              previousState,
+              nextSync: this.getNextSyncTime(),
+              firstSyncInMs: intervalMs
+            }
+          }
         );
       } else {
-        await this.logActivity('ftp_sync_disabled', 'Disabled scheduled FTP sync');
+        await this.logActivity(
+          'ftp_sync_disabled', 
+          'Disabled scheduled FTP sync',
+          {
+            previousState
+          }
+        );
       }
       
       return {
@@ -943,18 +1102,36 @@ export class FtpDataAgent extends BaseAgent {
         capability: 'scheduleFtpSync',
         result: {
           enabled,
-          intervalHours: this.schedule.intervalHours,
-          nextSyncTime: this.getNextSyncTime()
+          intervalHours: validatedIntervalHours,
+          nextSyncTime: this.getNextSyncTime(),
+          previousState
         }
       };
     } catch (error: any) {
-      await this.logActivity('ftp_schedule_error', `Error scheduling FTP sync: ${error.message}`);
+      const errorDetails = {
+        message: error.message,
+        stack: error.stack,
+        params,
+        timestamp: new Date().toISOString(),
+        currentSchedule: {
+          enabled: this.schedule.enabled,
+          intervalHours: this.schedule.intervalHours,
+          lastRun: this.schedule.lastRun ? this.schedule.lastRun.toISOString() : null
+        }
+      };
+      
+      await this.logActivity(
+        'ftp_schedule_error', 
+        `Error scheduling FTP sync: ${error.message}`,
+        { error: errorDetails }
+      );
       
       return {
         success: false,
         agent: this.config.name,
         capability: 'scheduleFtpSync',
-        error: `Error scheduling FTP sync: ${error.message}`
+        error: `Error scheduling FTP sync: ${error.message}`,
+        details: errorDetails
       };
     }
   }
@@ -1182,58 +1359,144 @@ export class FtpDataAgent extends BaseAgent {
         };
       }
       
-      // Step 1: Download the file from FTP
+      // Configure retry options for download
+      const retryOptions: RetryOptions = {
+        maxRetries: 3,
+        initialDelay: 1000,  // 1 second
+        maxDelay: 15000,     // 15 seconds
+        backoffFactor: 2,    // exponential backoff
+        retryableErrors: [
+          'ETIMEDOUT', 
+          'ECONNRESET', 
+          'ENOTFOUND',
+          'connection closed',
+          'timeout',
+          'network error',
+          'Failed to download data'
+        ]
+      };
+      
+      // Step 1: Download the file from FTP with retries
       const downloadResult = await this.downloadFtpFile({ remotePath });
       if (!downloadResult.success) {
         return {
           success: false,
           agent: this.config.name,
           capability: 'importPropertyUseCodes',
-          error: `Failed to download property use codes: ${downloadResult.error}`
+          error: `Failed to download property use codes: ${downloadResult.error}`,
+          details: downloadResult.details
         };
       }
       
-      // Step 2: Use the mapper to transform the data
-      const localFilePath = downloadResult.result.localPath;
-      const mapper = new PropertyUseCodesMapper();
-      
-      // Process and map the file
-      const mappingResult = await mapper.mapPropertyUseCodes(localFilePath);
-      
-      // Step 3: Import the mapped data
-      const importResult = await this.dataImportService.importPropertyUseCodes(mappingResult.mappedData);
-      
-      await this.logActivity(
-        'property_use_codes_import', 
-        `Imported ${importResult.total} property use codes from ${remotePath}`
-      );
-      
-      return {
-        success: true,
-        agent: this.config.name,
-        capability: 'importPropertyUseCodes',
-        result: {
-          remotePath,
-          localFilePath,
-          fileName: path.basename(remotePath),
-          totalCodes: importResult.total,
-          successfulImports: importResult.successfulImports,
-          failedImports: importResult.failedImports,
-          errors: importResult.errors,
-          importTime: new Date().toISOString()
-        }
-      };
+      try {
+        // Step 2: Use the mapper to transform the data
+        const localFilePath = downloadResult.result.localPath;
+        const mapper = new PropertyUseCodesMapper();
+        
+        // Process and map the file
+        const mappingResult = await withRetry(
+          async () => await mapper.mapPropertyUseCodes(localFilePath),
+          {
+            maxRetries: 2,
+            initialDelay: 500,
+            maxDelay: 2000,
+            backoffFactor: 2,
+            retryableErrors: [
+              'Failed to parse data',
+              'Unexpected file format',
+              'Invalid CSV structure'
+            ]
+          }
+        );
+        
+        // Step 3: Import the mapped data with retries
+        const importResult = await withRetry(
+          async () => await this.dataImportService.importPropertyUseCodes(mappingResult.mappedData),
+          {
+            maxRetries: 2,
+            initialDelay: 1000,
+            maxDelay: 5000,
+            backoffFactor: 2,
+            retryableErrors: [
+              'Database connection error',
+              'Transaction failed',
+              'Timeout'
+            ]
+          }
+        );
+        
+        await this.logActivity(
+          'property_use_codes_import', 
+          `Imported ${importResult.total} property use codes from ${remotePath}`,
+          {
+            fileName: path.basename(remotePath),
+            successfulImports: importResult.successfulImports,
+            totalCodes: importResult.total
+          }
+        );
+        
+        return {
+          success: true,
+          agent: this.config.name,
+          capability: 'importPropertyUseCodes',
+          result: {
+            remotePath,
+            localFilePath,
+            fileName: path.basename(remotePath),
+            totalCodes: importResult.total,
+            successfulImports: importResult.successfulImports,
+            failedImports: importResult.failedImports,
+            errors: importResult.errors,
+            importTime: new Date().toISOString()
+          }
+        };
+      } catch (mappingError: any) {
+        // Handle mapping/import specific errors
+        const errorDetails = {
+          message: mappingError.message,
+          remotePath: params.remotePath,
+          localPath: downloadResult.result.localPath,
+          timestamp: new Date().toISOString(),
+          attemptsMade: mappingError.attemptsMade || 1,
+          stack: mappingError.stack,
+          phase: mappingError.message.includes('map') ? 'mapping' : 'importing'
+        };
+        
+        await this.logActivity(
+          'property_use_codes_mapping_error',
+          `Error processing property use codes: ${mappingError.message}`,
+          { error: errorDetails }
+        );
+        
+        return {
+          success: false,
+          agent: this.config.name,
+          capability: 'importPropertyUseCodes',
+          error: `Error processing property use codes: ${mappingError.message}`,
+          details: errorDetails
+        };
+      }
     } catch (error: any) {
+      const errorDetails = {
+        message: error.message,
+        remotePath: params.remotePath,
+        timestamp: new Date().toISOString(),
+        attemptsMade: error.attemptsMade || 1,
+        stack: error.stack
+      };
+      
       await this.logActivity(
         'property_use_codes_import_error',
-        `Error importing property use codes: ${error.message}`
+        `Error importing property use codes: ${error.message}`,
+        { error: errorDetails }
       );
       
       return {
         success: false,
         agent: this.config.name,
         capability: 'importPropertyUseCodes',
-        error: `Error importing property use codes: ${error.message}`
+        error: `Error importing property use codes: ${error.message}`,
+        details: errorDetails
       };
     }
   }
