@@ -29,6 +29,53 @@ interface RetryOptions {
   retryableErrors?: string[];
 }
 
+/**
+ * Utility function for retrying operations with exponential backoff
+ * 
+ * @param operation - The async operation to retry
+ * @param options - Retry configuration options
+ * @returns The result of the operation if successful
+ * @throws The last error encountered if all retries fail
+ */
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  options: RetryOptions
+): Promise<T> {
+  let lastError: Error | null = null;
+  let delay = options.initialDelay;
+  
+  for (let attempt = 0; attempt <= options.maxRetries; attempt++) {
+    try {
+      // Attempt the operation
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Check if we should retry based on the error message
+      if (options.retryableErrors && 
+          options.retryableErrors.length > 0 && 
+          !options.retryableErrors.some(errMsg => error.message.includes(errMsg))) {
+        // Error is not in the list of retryable errors
+        throw error;
+      }
+      
+      // Check if we've exhausted our retry attempts
+      if (attempt >= options.maxRetries) {
+        throw error;
+      }
+      
+      // Wait before the next retry attempt
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      // Increase delay for next retry using exponential backoff, but cap at maxDelay
+      delay = Math.min(delay * options.backoffFactor, options.maxDelay);
+    }
+  }
+  
+  // This should never be reached due to the throw in the loop, but TypeScript requires it
+  throw lastError || new Error('Operation failed after retries');
+}
+
 interface FtpScheduleConfig {
   enabled: boolean;
   intervalHours: number;
@@ -608,12 +655,34 @@ export class FtpDataAgent extends BaseAgent {
       
       const localPath = customLocalPath || path.join(defaultLocalDir, fileName);
       
-      // Download the file
-      const downloadSuccess = await this.ftpService.downloadFile(remotePath, localPath);
+      // Configure retry options
+      const retryOptions: RetryOptions = {
+        maxRetries: 3,
+        initialDelay: 1000,  // 1 second
+        maxDelay: 10000,     // 10 seconds
+        backoffFactor: 2,    // exponential backoff
+        retryableErrors: [
+          'ETIMEDOUT', 
+          'ECONNRESET', 
+          'ENOTFOUND',
+          'connection closed',
+          'timeout',
+          'network error',
+          'Failed to download file'
+        ]
+      };
       
-      if (!downloadSuccess) {
-        throw new Error(`Failed to download file from ${remotePath}`);
-      }
+      // Download the file with retries
+      await withRetry(
+        async () => {
+          const downloadSuccess = await this.ftpService.downloadFile(remotePath, localPath);
+          if (!downloadSuccess) {
+            throw new Error(`Failed to download file from ${remotePath}`);
+          }
+          return downloadSuccess;
+        },
+        retryOptions
+      );
       
       await this.logActivity('ftp_file_download', `Downloaded file from ${remotePath}`);
       
@@ -629,13 +698,25 @@ export class FtpDataAgent extends BaseAgent {
         }
       };
     } catch (error: any) {
-      await this.logActivity('ftp_download_error', `FTP download error: ${error.message}`);
+      const errorDetails = {
+        message: error.message,
+        remotePath: params.remotePath,
+        timestamp: new Date().toISOString(),
+        attemptsMade: error.attemptsMade || 1
+      };
+      
+      await this.logActivity(
+        'ftp_download_error', 
+        `FTP download error: ${error.message}`,
+        { error: errorDetails }
+      );
       
       return {
         success: false,
         agent: this.config.name,
         capability: 'downloadFtpFile',
-        error: `FTP download error: ${error.message}`
+        error: `FTP download error: ${error.message}`,
+        details: errorDetails
       };
     }
   }
@@ -666,12 +747,34 @@ export class FtpDataAgent extends BaseAgent {
         };
       }
       
-      // Upload the file
-      const uploadSuccess = await this.ftpService.uploadFile(localPath, remotePath);
+      // Configure retry options
+      const retryOptions: RetryOptions = {
+        maxRetries: 3,
+        initialDelay: 1000,  // 1 second
+        maxDelay: 10000,     // 10 seconds
+        backoffFactor: 2,    // exponential backoff
+        retryableErrors: [
+          'ETIMEDOUT', 
+          'ECONNRESET', 
+          'ENOTFOUND',
+          'connection closed',
+          'timeout',
+          'network error',
+          'Failed to upload file'
+        ]
+      };
       
-      if (!uploadSuccess) {
-        throw new Error(`Failed to upload file to ${remotePath}`);
-      }
+      // Upload the file with retries
+      await withRetry(
+        async () => {
+          const uploadSuccess = await this.ftpService.uploadFile(localPath, remotePath);
+          if (!uploadSuccess) {
+            throw new Error(`Failed to upload file to ${remotePath}`);
+          }
+          return uploadSuccess;
+        },
+        retryOptions
+      );
       
       await this.logActivity('ftp_file_upload', `Uploaded file to ${remotePath}`);
       
@@ -687,13 +790,26 @@ export class FtpDataAgent extends BaseAgent {
         }
       };
     } catch (error: any) {
-      await this.logActivity('ftp_upload_error', `FTP upload error: ${error.message}`);
+      const errorDetails = {
+        message: error.message,
+        localPath: params.localPath,
+        remotePath: params.remotePath,
+        timestamp: new Date().toISOString(),
+        attemptsMade: error.attemptsMade || 1
+      };
+      
+      await this.logActivity(
+        'ftp_upload_error',
+        `FTP upload error: ${error.message}`,
+        { error: errorDetails }
+      );
       
       return {
         success: false,
         agent: this.config.name,
         capability: 'uploadFtpFile',
-        error: `FTP upload error: ${error.message}`
+        error: `FTP upload error: ${error.message}`,
+        details: errorDetails
       };
     }
   }
