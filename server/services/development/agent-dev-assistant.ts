@@ -221,7 +221,7 @@ export class AgentDevAssistant {
    */
   private async enhanceReportingAgent(agent: BaseAgent): Promise<void> {
     // Add reporting specific development capabilities
-    agent.registerCapability({
+    agent.addDevelopmentCapability({
       name: 'improveReportGeneration',
       description: 'Analyze and suggest improvements to report generation',
       parameters: {},
@@ -238,7 +238,7 @@ export class AgentDevAssistant {
    * Add generic development capabilities to any agent
    */
   private async addGenericDevCapabilities(agent: BaseAgent): Promise<void> {
-    agent.registerCapability({
+    agent.addDevelopmentCapability({
       name: 'analyzeCode',
       description: 'Analyze a specific file or component and suggest improvements',
       parameters: {
@@ -250,7 +250,7 @@ export class AgentDevAssistant {
       }
     });
     
-    agent.registerCapability({
+    agent.addDevelopmentCapability({
       name: 'suggestNewFeature',
       description: 'Suggest a new feature for the application',
       parameters: {
