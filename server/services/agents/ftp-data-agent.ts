@@ -528,19 +528,79 @@ export class FtpDataAgent extends BaseAgent {
         searchString = '',
         fileType = '',
         maxResults = 50,
-        recursive = false
+        recursive = false,
+        startPath = '/'
       } = options;
       
-      // Start search at root directory
-      const rootPath = '/';
+      // Validate inputs
+      const path = startPath || '/';
+      const validatedMaxResults = Math.min(Math.max(1, maxResults), 200); // Ensure maxResults is between 1 and 200
       
-      // Get initial file list
-      const allFiles = await this.searchFilesRecursive(rootPath, searchString, fileType, recursive);
+      // Configure retry options for network operations
+      const retryOptions: RetryOptions = {
+        maxRetries: 3,
+        initialDelay: 1000,  // 1 second
+        maxDelay: 15000,     // 15 seconds
+        backoffFactor: 2,    // exponential backoff
+        retryableErrors: [
+          'ETIMEDOUT', 
+          'ECONNRESET', 
+          'ENOTFOUND',
+          'connection closed',
+          'timeout',
+          'network error'
+        ]
+      };
+      
+      // Get initial file list with retry capability
+      const allFiles = await withRetry(
+        async () => {
+          const files = await this.searchFilesRecursive(
+            path, 
+            searchString, 
+            fileType, 
+            recursive
+          );
+          
+          if (!files || !Array.isArray(files)) {
+            throw new Error('Failed to retrieve file list from FTP server');
+          }
+          
+          return files;
+        },
+        retryOptions
+      );
       
       // Limit results
-      const limitedResults = allFiles.slice(0, maxResults);
+      const limitedResults = allFiles.slice(0, validatedMaxResults);
       
-      await this.logActivity('ftp_search_files', `Searched FTP files with criteria: ${searchString}`);
+      // Prepare detailed search statistics
+      const searchStats = {
+        searchTime: new Date().toISOString(),
+        criteria: {
+          searchString: searchString || '(none)',
+          fileType: fileType || '(any)',
+          startPath: path,
+          recursive
+        },
+        results: {
+          totalFound: allFiles.length,
+          returned: limitedResults.length,
+          limited: allFiles.length > validatedMaxResults
+        },
+        // Add file type distribution stats
+        fileTypes: allFiles.reduce((acc: Record<string, number>, file: any) => {
+          const ext = file.name.split('.').pop()?.toLowerCase() || 'none';
+          acc[ext] = (acc[ext] || 0) + 1;
+          return acc;
+        }, {})
+      };
+      
+      await this.logActivity(
+        'ftp_search_files', 
+        `Searched FTP files with criteria: ${searchString || '(none)'}, type: ${fileType || '(any)'}`,
+        { searchStats }
+      );
       
       return {
         success: true,
@@ -553,24 +613,47 @@ export class FtpDataAgent extends BaseAgent {
           searchCriteria: {
             searchString,
             fileType,
+            startPath: path,
             recursive
-          }
+          },
+          stats: searchStats
         }
       };
     } catch (error: any) {
-      await this.logActivity('ftp_search_error', `FTP search error: ${error.message}`);
+      const errorDetails = {
+        message: error.message,
+        stack: error.stack,
+        options: params.options,
+        timestamp: new Date().toISOString(),
+        attemptsMade: error.attemptsMade || 1
+      };
+      
+      await this.logActivity(
+        'ftp_search_error', 
+        `FTP search error: ${error.message}`,
+        { error: errorDetails }
+      );
       
       return {
         success: false,
         agent: this.config.name,
         capability: 'searchFtpFiles',
-        error: `FTP search error: ${error.message}`
+        error: `FTP search error: ${error.message}`,
+        details: errorDetails
       };
     }
   }
   
   /**
    * Recursive file search helper
+   * 
+   * @param currentPath - The current FTP directory path to search
+   * @param searchString - Optional string to filter filenames by
+   * @param fileType - Optional file extension to filter by
+   * @param recursive - Whether to recursively search subdirectories
+   * @param depth - Current recursion depth (internal parameter)
+   * @param maxDepth - Maximum recursion depth to prevent excessive traversal
+   * @returns Array of matching files with metadata
    */
   private async searchFilesRecursive(
     currentPath: string,
@@ -580,50 +663,148 @@ export class FtpDataAgent extends BaseAgent {
     depth: number = 0,
     maxDepth: number = 3
   ): Promise<any[]> {
-    // Prevent excessive recursion
+    // Prevent excessive recursion with a safety limit
     if (depth > maxDepth) {
       return [];
     }
     
+    // Normalize the current path to ensure it's valid
+    const normalizedPath = currentPath.replace(/\/+/g, '/');
+    
     try {
-      const files = await this.ftpService.listFiles(currentPath);
+      // Configure retry options for this directory listing
+      const retryOptions: RetryOptions = {
+        maxRetries: 2,
+        initialDelay: 500,  // Start with a short delay
+        maxDelay: 5000,     // Max 5 second delay
+        backoffFactor: 2,
+        retryableErrors: [
+          'ETIMEDOUT', 
+          'ECONNRESET', 
+          'ENOTFOUND',
+          'connection closed',
+          'timeout',
+          'network error'
+        ]
+      };
+      
+      // List files with retry capability
+      const files = await withRetry(
+        async () => {
+          const dirFiles = await this.ftpService.listFiles(normalizedPath);
+          if (!dirFiles || !Array.isArray(dirFiles)) {
+            throw new Error(`Failed to list files in directory: ${normalizedPath}`);
+          }
+          return dirFiles;
+        },
+        retryOptions
+      );
+      
       let results: any[] = [];
       
+      // Process each file in the directory
       for (const file of files) {
-        const fullPath = `${currentPath}${currentPath.endsWith('/') ? '' : '/'}${file.name}`;
+        // Skip invalid entries
+        if (!file || !file.name) continue;
         
-        // Check if file matches search criteria
-        const matchesSearch = !searchString || file.name.toLowerCase().includes(searchString.toLowerCase());
-        const matchesType = !fileType || (file.type === 1 && file.name.toLowerCase().endsWith(`.${fileType.toLowerCase()}`));
+        // Skip special directory entries
+        if (file.name === '.' || file.name === '..') continue;
         
-        if (file.type === 1 && matchesSearch && matchesType) {
-          // File matches criteria
+        // Construct the full path for this file
+        const fullPath = `${normalizedPath}${normalizedPath.endsWith('/') ? '' : '/'}${file.name}`;
+        
+        // Determine if this file is a match based on search criteria
+        // Note: file.type === 1 generally means regular file, file.type === 2 generally means directory
+        const isFile = file.type === 1;
+        const isDirectory = file.type === 2;
+        
+        // Apply search filters
+        const matchesSearch = !searchString || 
+          file.name.toLowerCase().includes(searchString.toLowerCase());
+        
+        const matchesType = !fileType || 
+          (isFile && file.name.toLowerCase().endsWith(`.${fileType.toLowerCase()}`));
+        
+        // Add matching files to results
+        if (isFile && matchesSearch && matchesType) {
+          // Format date consistently
+          let formattedDate: string | null = null;
+          if (file.date) {
+            try {
+              formattedDate = typeof file.date === 'string' 
+                ? file.date 
+                : new Date(file.date).toISOString();
+            } catch (e) {
+              // If date parsing fails, use the raw value
+              formattedDate = String(file.date);
+            }
+          }
+          
+          // Add normalized file information to results
           results.push({
             name: file.name,
             path: fullPath,
-            size: file.size,
-            date: file.date ? (typeof file.date === 'string' ? file.date : new Date(file.date).toISOString()) : null,
-            isDirectory: false
+            size: typeof file.size === 'number' ? file.size : 0,
+            date: formattedDate,
+            isDirectory: false,
+            fileType: file.name.split('.').pop()?.toLowerCase() || '',
+            lastModified: formattedDate
           });
         }
         
-        // Recurse into subdirectories if needed
-        if (recursive && file.type === 2 && file.name !== '.' && file.name !== '..') {
-          const subResults = await this.searchFilesRecursive(
-            fullPath,
-            searchString,
-            fileType,
-            recursive,
-            depth + 1,
-            maxDepth
-          );
-          results = [...results, ...subResults];
+        // Recurse into subdirectories if requested
+        if (recursive && isDirectory) {
+          try {
+            const subResults = await this.searchFilesRecursive(
+              fullPath,
+              searchString,
+              fileType,
+              recursive,
+              depth + 1,
+              maxDepth
+            );
+            results = [...results, ...subResults];
+          } catch (subDirError) {
+            // Log subdirectory errors but continue with other directories
+            console.warn(`Error searching subdirectory ${fullPath}:`, subDirError);
+            
+            await this.logActivity(
+              'ftp_search_subdirectory_error',
+              `Error searching subdirectory ${fullPath}: ${subDirError.message}`,
+              {
+                path: fullPath,
+                depth,
+                error: subDirError.message,
+                stack: subDirError.stack
+              }
+            );
+            
+            // Continue with other files/directories
+            continue;
+          }
         }
       }
       
       return results;
-    } catch (error) {
-      console.error(`Error searching directory ${currentPath}:`, error);
+    } catch (error: any) {
+      // Log the error with detailed information
+      const errorInfo = {
+        path: normalizedPath,
+        depth,
+        message: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.error(`Error searching directory ${normalizedPath}:`, errorInfo);
+      
+      await this.logActivity(
+        'ftp_search_directory_error',
+        `Error searching directory ${normalizedPath}: ${error.message}`,
+        { error: errorInfo }
+      );
+      
+      // Return empty results rather than failing the entire search
       return [];
     }
   }
