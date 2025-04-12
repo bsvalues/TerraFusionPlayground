@@ -1,8 +1,10 @@
 import { format } from 'date-fns';
 import { apiRequest } from './queryClient';
 
+// Possible data sources that can create changes
 export type LineageSource = 'validated' | 'import' | 'manual' | 'api' | 'calculated' | 'correction';
 
+// A single data lineage record tracking a change to a property field
 export interface DataLineageRecord {
   id: number;
   propertyId: string;
@@ -16,11 +18,13 @@ export interface DataLineageRecord {
   sourceDetails: any;
 }
 
+// Property lineage response groups records by field
 export interface PropertyLineageResponse {
   propertyId: string;
   lineage: { [fieldName: string]: DataLineageRecord[] };
 }
 
+// Lineage list response for filtered queries
 export interface LineageListResponse {
   lineage: DataLineageRecord[];
 }
@@ -33,14 +37,10 @@ export async function getPropertyLineage(propertyId: string): Promise<PropertyLi
     method: 'GET',
   });
   
-  // Convert string timestamps to Date objects
+  // Parse dates in the response
   if (response.lineage) {
-    Object.keys(response.lineage).forEach(fieldName => {
-      response.lineage[fieldName] = response.lineage[fieldName].map(record => ({
-        ...record,
-        changeTimestamp: new Date(record.changeTimestamp),
-        createdAt: new Date(record.createdAt)
-      }));
+    Object.keys(response.lineage).forEach(field => {
+      response.lineage[field] = response.lineage[field].map(parseLineageRecord);
     });
   }
   
@@ -51,18 +51,13 @@ export async function getPropertyLineage(propertyId: string): Promise<PropertyLi
  * Get lineage data by date range
  */
 export async function getDateRangeLineage(startDate: string, endDate: string): Promise<LineageListResponse> {
-  const response = await apiRequest('/api/data-lineage/date-range', {
-    method: 'POST',
-    body: JSON.stringify({ startDate, endDate }),
+  const response = await apiRequest(`/api/data-lineage/date-range?startDate=${startDate}&endDate=${endDate}`, {
+    method: 'GET',
   });
   
-  // Convert string timestamps to Date objects
+  // Parse dates in the response
   if (response.lineage) {
-    response.lineage = response.lineage.map((record: any) => ({
-      ...record,
-      changeTimestamp: new Date(record.changeTimestamp),
-      createdAt: new Date(record.createdAt)
-    }));
+    response.lineage = response.lineage.map(parseLineageRecord);
   }
   
   return response;
@@ -72,18 +67,13 @@ export async function getDateRangeLineage(startDate: string, endDate: string): P
  * Get lineage data by source type
  */
 export async function getSourceLineage(source: string): Promise<LineageListResponse> {
-  const response = await apiRequest('/api/data-lineage/source', {
-    method: 'POST',
-    body: JSON.stringify({ source }),
+  const response = await apiRequest(`/api/data-lineage/source/${source}`, {
+    method: 'GET',
   });
   
-  // Convert string timestamps to Date objects
+  // Parse dates in the response
   if (response.lineage) {
-    response.lineage = response.lineage.map((record: any) => ({
-      ...record,
-      changeTimestamp: new Date(record.changeTimestamp),
-      createdAt: new Date(record.createdAt)
-    }));
+    response.lineage = response.lineage.map(parseLineageRecord);
   }
   
   return response;
@@ -93,21 +83,27 @@ export async function getSourceLineage(source: string): Promise<LineageListRespo
  * Get lineage data by user
  */
 export async function getUserLineage(userId: number): Promise<LineageListResponse> {
-  const response = await apiRequest('/api/data-lineage/user', {
-    method: 'POST',
-    body: JSON.stringify({ userId }),
+  const response = await apiRequest(`/api/data-lineage/user/${userId}`, {
+    method: 'GET',
   });
   
-  // Convert string timestamps to Date objects
+  // Parse dates in the response
   if (response.lineage) {
-    response.lineage = response.lineage.map((record: any) => ({
-      ...record,
-      changeTimestamp: new Date(record.changeTimestamp),
-      createdAt: new Date(record.createdAt)
-    }));
+    response.lineage = response.lineage.map(parseLineageRecord);
   }
   
   return response;
+}
+
+/**
+ * Helper function to parse string dates into Date objects
+ */
+function parseLineageRecord(record: any): DataLineageRecord {
+  return {
+    ...record,
+    changeTimestamp: new Date(record.changeTimestamp),
+    createdAt: new Date(record.createdAt)
+  };
 }
 
 /**
@@ -129,7 +125,7 @@ export function getSourceLabel(source: string): string {
     case 'manual':
       return 'Manual Entry';
     case 'api':
-      return 'API Change';
+      return 'API Update';
     case 'calculated':
       return 'Calculated Value';
     case 'correction':
