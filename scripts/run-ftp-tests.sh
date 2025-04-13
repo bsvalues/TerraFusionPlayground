@@ -2,6 +2,15 @@
 
 # FTP Tests Runner Script
 # This script runs all FTP-related tests in the correct order
+# 
+# Usage: ./run-ftp-tests.sh [options]
+#   Options:
+#     --help           Display this help message
+#     --connection     Test FTP connection only
+#     --directories    Test directory structure only
+#     --processor      Test FTP data processor only
+#     --scheduler      Test scheduler and lock mechanism only
+#     --all            Run all tests (default)
 
 # Set text formatting options
 BOLD="\033[1m"
@@ -15,6 +24,68 @@ RESET="\033[0m"
 TESTS_PASSED=0
 TESTS_FAILED=0
 TOTAL_TESTS=0
+
+# Parse command line arguments
+RUN_CONNECTION=false
+RUN_DIRECTORIES=false
+RUN_PROCESSOR=false
+RUN_SCHEDULER=false
+RUN_ALL=true
+
+if [ "$#" -gt 0 ]; then
+  RUN_ALL=false
+  for arg in "$@"; do
+    case $arg in
+      --help)
+        echo "FTP Tests Runner Script"
+        echo ""
+        echo "Usage: ./run-ftp-tests.sh [options]"
+        echo "  Options:"
+        echo "    --help           Display this help message"
+        echo "    --connection     Test FTP connection only"
+        echo "    --directories    Test directory structure only"
+        echo "    --processor      Test FTP data processor only" 
+        echo "    --scheduler      Test scheduler and lock mechanism only"
+        echo "    --all            Run all tests (default)"
+        echo ""
+        exit 0
+        ;;
+      --connection)
+        RUN_CONNECTION=true
+        ;;
+      --directories)
+        RUN_DIRECTORIES=true
+        ;;
+      --processor)
+        RUN_PROCESSOR=true
+        ;;
+      --scheduler)
+        RUN_SCHEDULER=true
+        ;;
+      --all)
+        RUN_ALL=true
+        ;;
+      *)
+        echo "Unknown option: $arg"
+        echo "Use --help for usage information"
+        exit 1
+        ;;
+    esac
+  done
+fi
+
+# If no specific tests were selected, run all tests
+if [ "$RUN_CONNECTION" = false ] && [ "$RUN_DIRECTORIES" = false ] && [ "$RUN_PROCESSOR" = false ] && [ "$RUN_SCHEDULER" = false ] && [ "$RUN_ALL" = false ]; then
+  RUN_ALL=true
+fi
+
+# If --all is specified, run all tests
+if [ "$RUN_ALL" = true ]; then
+  RUN_CONNECTION=true
+  RUN_DIRECTORIES=true
+  RUN_PROCESSOR=true
+  RUN_SCHEDULER=true
+fi
 
 print_header() {
   echo -e "\n${BOLD}${BLUE}==========================================${RESET}"
@@ -58,7 +129,7 @@ run_test() {
   fi
 }
 
-# Ensure the server isn't running
+# Start execution
 print_header "FTP TESTS"
 
 # Step 1: Check if the required directories exist
@@ -79,26 +150,39 @@ if [ ! -d "./logs" ]; then
 fi
 print_success "Directory checks passed"
 
-# Step 2: Test FTP connection and small sync 
-run_test "FTP Connection Test" "node scripts/test-ftp-sync.js --test-connection"
+# Execute tests based on flags
+if [ "$RUN_CONNECTION" = true ]; then
+  print_header "CONNECTION TESTS"
+  # Test FTP connection and small sync 
+  run_test "FTP Connection & Small Sync Test" "node scripts/test-ftp-sync.js --small-sync-only"
+fi
 
-# Step 3: Test FTP directory structure
-run_test "FTP Directory Structure Test" "node scripts/test-ftp-sync.js --test-directories"
+if [ "$RUN_DIRECTORIES" = true ]; then
+  print_header "DIRECTORY STRUCTURE TESTS"
+  # Test FTP directory structure
+  run_test "FTP Directory Structure Test" "node scripts/test-ftp-sync.js --check-dirs --no-small-sync"
+fi
 
-# Step 4: Test FTP data processor configurations
-run_test "FTP Data Processor Configurations Test" "node scripts/test-ftp-data-processor.js --test-configs"
+if [ "$RUN_PROCESSOR" = true ]; then
+  print_header "DATA PROCESSOR TESTS"
+  # Test FTP data processor configurations
+  run_test "FTP Data Processor Configurations Test" "node scripts/test-ftp-data-processor.js --test-configs"
 
-# Step 5: Test FTP data processor field mappings
-run_test "FTP Data Processor Field Mappings Test" "node scripts/test-ftp-data-processor.js --test-mappings"
+  # Test FTP data processor field mappings
+  run_test "FTP Data Processor Field Mappings Test" "node scripts/test-ftp-data-processor.js --test-mappings"
 
-# Step 6: Test FTP data processor parsing
-run_test "FTP Data Processor Parsing Test" "node scripts/test-ftp-data-processor.js --test-parsing"
+  # Test FTP data processor parsing
+  run_test "FTP Data Processor Parsing Test" "node scripts/test-ftp-data-processor.js --test-parsing"
+fi
 
-# Step 7: Test FTP synchronization scheduler
-run_test "FTP Synchronization Scheduler Test" "node scripts/setup-ftp-cron.js --test"
+if [ "$RUN_SCHEDULER" = true ]; then
+  print_header "SCHEDULER TESTS"
+  # Test FTP synchronization scheduler
+  run_test "FTP Synchronization Scheduler Test" "node scripts/setup-ftp-cron.js --test"
 
-# Step 8: Test lock mechanism on scheduler
-run_test "FTP Lock Mechanism Test" "node tests/ftp-agent-scheduler.test.js"
+  # Test lock mechanism on scheduler
+  run_test "FTP Lock Mechanism Test" "node tests/ftp-agent-scheduler.test.js"
+fi
 
 # Print summary
 print_header "TEST SUMMARY"

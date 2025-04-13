@@ -16,11 +16,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.join(__dirname, '..');
 
-// Test configuration
+// Process command line arguments
+const args = process.argv.slice(2);
+
+// Test configuration with defaults
 const testOptions = {
-  smallSync: true, // Only sync a small test directory 
-  checkDownloadDir: true, // Verify download directory exists
-  fullSync: false // Whether to do a full sync after small test
+  // Default to running all tests except full sync unless specified
+  smallSync: args.includes('--small-sync') || !args.includes('--no-small-sync') && !args.includes('--full-sync-only'), 
+  checkDownloadDir: args.includes('--check-dirs') || !args.includes('--no-check-dirs') && !args.includes('--small-sync-only') && !args.includes('--full-sync-only'),
+  fullSync: args.includes('--full-sync') || args.includes('--full-sync-only')
 };
 
 /**
@@ -125,10 +129,36 @@ async function runFullSyncTest() {
 }
 
 /**
+ * Display help information
+ */
+function showHelp() {
+  console.log('FTP Synchronization Test Script');
+  console.log('');
+  console.log('Available command-line options:');
+  console.log('  --help             Display this help message');
+  console.log('  --small-sync       Run the small sync test only');
+  console.log('  --no-small-sync    Skip the small sync test');
+  console.log('  --check-dirs       Check download directories only');
+  console.log('  --no-check-dirs    Skip checking download directories');
+  console.log('  --full-sync        Run a full synchronization test');
+  console.log('  --full-sync-only   Run only the full synchronization test');
+  console.log('  --small-sync-only  Run only the small sync test');
+  console.log('');
+  console.log('By default, small sync and directory checks are enabled, full sync is disabled');
+}
+
+/**
  * Run all selected tests
  */
 async function runTests() {
+  // Show help if requested
+  if (args.includes('--help')) {
+    showHelp();
+    return;
+  }
+  
   console.log('Starting FTP synchronization tests...');
+  console.log(`Test configuration: ${JSON.stringify(testOptions, null, 2)}`);
   
   try {
     // Run tests based on configuration
