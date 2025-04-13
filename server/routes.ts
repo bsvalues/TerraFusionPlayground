@@ -65,6 +65,17 @@ const propertyStoryGenerator = new PropertyStoryGenerator(storage);
 const propertyInsightSharingService = new PropertyInsightSharingService(storage);
 const agentSystem = new AgentSystem(storage);
 
+// Initialize agent system
+(async () => {
+  try {
+    console.log("Initializing Agent System...");
+    await agentSystem.initialize();
+    console.log("Agent System initialized successfully");
+  } catch (error) {
+    console.error("Failed to initialize Agent System:", error);
+  }
+})();
+
 // Create dummy implementation for pacsIntegration
 const pacsIntegration = {
   getPropertyFullDetails: async (propertyId: string) => ({}),
@@ -251,17 +262,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Analytics routes
   app.use('/api/analytics', createAnalyticsRoutes(storage));
-  
-  // Initialize agent system
-  (async () => {
-    try {
-      console.log("Initializing Agent System...");
-      await agentSystem.initialize();
-      console.log("Agent System initialized successfully");
-    } catch (error) {
-      console.error("Failed to initialize Agent System:", error);
-    }
-  })();
   
   // Health check
   app.get("/api/health", (_req, res) => {
