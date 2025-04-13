@@ -61,9 +61,9 @@ const TopNavigation = () => {
           {/* Logo and brand */}
           <div className="flex items-center gap-4">
             <Link href="/">
-              <a className="flex items-center">
+              <div className="flex items-center cursor-pointer">
                 <span className="text-xl font-semibold">SpatialEst</span>
-              </a>
+              </div>
             </Link>
           </div>
 
@@ -71,15 +71,15 @@ const TopNavigation = () => {
           <nav className="hidden md:ml-6 md:flex md:items-center md:space-x-4">
             {menuItems.map((item) => (
               <Link key={item.path} href={item.path}>
-                <a 
-                  className={`px-3 py-2 text-sm font-medium rounded-md ${
+                <div 
+                  className={`px-3 py-2 text-sm font-medium rounded-md cursor-pointer ${
                     location === item.path
                       ? 'text-white bg-primary-600/10'
                       : 'text-white/70 hover:text-white hover:bg-white/10'
                   } transition-colors duration-150 ease-in-out`}
                 >
                   {item.label}
-                </a>
+                </div>
               </Link>
             ))}
           </nav>
@@ -183,8 +183,8 @@ const TopNavigation = () => {
         <div className="px-4 pt-4 pb-6 space-y-2 border-t border-white/10">
           {menuItems.map((item) => (
             <Link key={item.path} href={item.path}>
-              <a 
-                className={`flex items-center px-3 py-3 rounded-lg text-base font-medium ${
+              <div 
+                className={`flex items-center px-3 py-3 rounded-lg text-base font-medium cursor-pointer ${
                   location === item.path
                     ? 'bg-white/10 text-white'
                     : 'text-white/80 hover:text-white'
@@ -199,7 +199,7 @@ const TopNavigation = () => {
                     </svg>
                   </span>
                 )}
-              </a>
+              </div>
             </Link>
           ))}
         </div>
