@@ -5,8 +5,8 @@
  * the Benton County FTP server and syncing a small directory.
  */
 
-import { FtpService } from '../server/services/ftp-service.ts';
-import { synchronizeBentonCountyFTP } from './synchronize-benton-county-ftp.js';
+import { FtpService } from '../server/services/ftp-service.js';
+import { synchronizeBentonCountyFTP } from './synchronize-benton-county-ftp.js'; // Keep as .js extension since this refers to the JavaScript file
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
