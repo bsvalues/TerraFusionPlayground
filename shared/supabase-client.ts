@@ -5,28 +5,30 @@
  * It uses environment variables for configuration.
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { Database } from './supabase-types';
+import { logger } from '../server/utils/logger';
 
-// Check if environment variables are present
-if (!process.env.SUPABASE_URL) {
-  console.warn('SUPABASE_URL environment variable is not set. Supabase functionality may not work correctly.');
+// Retrieve Supabase credentials from environment variables
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
+// Validate that credentials are present
+if (!supabaseUrl || !supabaseKey) {
+  logger.warn('Supabase credentials not found in environment variables. Supabase functionality will be limited.');
 }
 
-if (!process.env.SUPABASE_KEY) {
-  console.warn('SUPABASE_KEY environment variable is not set. Supabase functionality may not work correctly.');
-}
-
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_KEY || '';
-
-const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: true,
-  },
-});
+// Create the Supabase client
+const supabase = createClient<Database>(
+  supabaseUrl || 'https://placeholder-url.supabase.co',
+  supabaseKey || 'placeholder-key',
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: true
+    }
+  }
+);
 
 /**
  * Function to check Supabase connectivity
@@ -34,24 +36,27 @@ const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
  */
 export const checkSupabaseHealth = async (): Promise<boolean> => {
   try {
-    // Basic query to test connectivity
-    const { error } = await supabase.from('system_health').select('count(*)', { count: 'exact', head: true });
-    
-    // Table doesn't exist error (PGRST116) is still okay for checking connectivity
-    if (error && error.code !== 'PGRST116') {
-      console.error('Supabase health check failed:', error);
+    if (!supabaseUrl || !supabaseKey) {
+      logger.error('Supabase credentials not found in environment variables');
       return false;
     }
     
+    // Attempt to ping Supabase
+    const { data, error } = await supabase.from('properties').select('count').limit(1);
+    
+    if (error && error.code !== 'PGRST116') {
+      // If we get any error other than table not found, connection is not valid
+      logger.error('Supabase health check failed:', error);
+      return false;
+    }
+    
+    logger.info('Supabase health check passed');
     return true;
   } catch (error) {
-    console.error('Supabase health check error:', error);
+    logger.error('Error during Supabase health check:', error);
     return false;
   }
 };
 
-// Export the Supabase client instance
+export default supabase;
 export const database = supabase;
-
-// Export typed client for convenience
-export default supabase as SupabaseClient<Database>;
