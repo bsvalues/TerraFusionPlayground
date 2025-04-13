@@ -5,8 +5,8 @@
  * all property assessment data files to the local downloads directory.
  */
 
-import { FtpService } from '../server/services/ftp-service.js';
-import { logger } from '../server/utils/logger.js';
+import { FtpService } from '../server/services/ftp-service.ts';
+import { logger } from '../server/utils/logger.ts';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';

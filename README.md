@@ -70,6 +70,7 @@ The Model Context Protocol (MCP) architecture provides a secure, unified interfa
 - [MCP Security](docs/mcp-security.md): Security architecture details
 - [PACS Module Integration](scripts/README.md): PACS module import tools and usage
 - [FTP Data Agent](docs/ftp-agent.md): FTP data synchronization capabilities
+- [FTP Testing Framework](docs/ftp-testing.md): Comprehensive testing suite for FTP functionality
 - Additional documentation is available in the [docs](docs) directory
 
 ## Data Integration
@@ -94,15 +95,27 @@ The platform includes a robust FTP data synchronization agent that connects to t
    - Detailed import statistics and error reporting
 
 4. **Testing and Monitoring**
-   - Unit tests to verify scheduling functionality
-   - Manual testing script for simulation and verification
+   - Comprehensive testing framework with unified test runner
+   - Unit tests to verify scheduling functionality 
+   - Data processor verification for fixed-width file parsing
+   - Lock mechanism testing to prevent concurrent synchronization
    - Detailed sync history and performance metrics
 
-To test FTP synchronization functionality:
-```
-node scripts/test-ftp-sync.js status       # Check current status
-node scripts/test-ftp-sync.js schedule 12  # Schedule sync every 12 hours
-node scripts/test-ftp-sync.js run-once     # Run a one-time sync
+For FTP synchronization testing:
+```bash
+# Run all FTP-related tests
+./scripts/run-ftp-tests.sh
+
+# Run specific test groups
+./scripts/run-ftp-tests.sh --connection    # Test FTP connection only
+./scripts/run-ftp-tests.sh --directories   # Test directory structure only
+./scripts/run-ftp-tests.sh --processor     # Test data processor only
+./scripts/run-ftp-tests.sh --scheduler     # Test scheduler only
+
+# Individual test commands
+node scripts/test-ftp-sync.js --small-sync-only       # Run small sync test
+node scripts/test-ftp-sync.js --check-dirs            # Check directory structure
+node scripts/test-ftp-data-processor.js --test-configs # Test processor configs
 ```
 
 ## Development Guidelines
