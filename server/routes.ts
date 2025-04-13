@@ -87,6 +87,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register FTP routes
   app.use('/api/ftp', ftpRoutes);
   
+  // Register FTP data processor routes
+  app.use('/api/ftp/data', ftpDataProcessorRoutes);
+  
   // Register Property Story routes
   app.use('/api/property-stories', createPropertyStoryRoutes(storage));
   
