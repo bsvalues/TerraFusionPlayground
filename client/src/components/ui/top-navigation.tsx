@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '@/providers/auth-provider';
+import { ExtensionMenuItems } from '@/components/extensions/ExtensionMenuItems';
+import { useExtension } from '@/providers/extension-provider';
 
 const TopNavigation = ({ toggleSidebar }: { toggleSidebar: () => void }) => {
   const { user } = useAuth();
+  const { executeCommand } = useExtension();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isExtensionsMenuOpen, setIsExtensionsMenuOpen] = useState(false);
   
   return (
     <div className="relative z-10 flex-shrink-0 flex h-16 bg-white shadow">
@@ -65,6 +69,32 @@ const TopNavigation = ({ toggleSidebar }: { toggleSidebar: () => void }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
+          </div>
+          
+          {/* Extensions dropdown */}
+          <div className="ml-3 relative">
+            <button 
+              type="button" 
+              className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              onClick={() => setIsExtensionsMenuOpen(!isExtensionsMenuOpen)}
+            >
+              <span className="sr-only">Extensions</span>
+              <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+              </svg>
+            </button>
+            
+            {isExtensionsMenuOpen && (
+              <div 
+                className="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none" 
+                role="menu" 
+                aria-orientation="vertical"
+              >
+                <div className="py-1">
+                  <ExtensionMenuItems onItemClick={() => setIsExtensionsMenuOpen(false)} />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Profile dropdown */}
