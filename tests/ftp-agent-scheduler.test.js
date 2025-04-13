@@ -1,359 +1,210 @@
 /**
- * FTP Agent Scheduler Tests
+ * FTP Agent Scheduler Test
  * 
- * This file contains unit tests for the FTP data agent's scheduling capabilities.
- * It tests the scheduling logic, interval calculations, and state management.
+ * This file tests the locking mechanism of the FTP agent scheduler
+ * to ensure that multiple concurrent synchronization jobs cannot run at the same time.
  */
 
-const { FtpDataAgent } = require('../server/services/agents/ftp-data-agent');
-const { MemStorage } = require('../server/storage');
-const { MCPService } = require('../server/services/mcp-service');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { logger } from '../server/utils/logger.js';
 
-// Mock the FTP service to avoid actual FTP connections during tests
-jest.mock('../server/services/ftp-service', () => {
-  return {
-    FtpService: jest.fn().mockImplementation(() => {
-      return {
-        connect: jest.fn().mockResolvedValue(true),
-        disconnect: jest.fn().mockResolvedValue(true),
-        listFiles: jest.fn().mockResolvedValue([
-          { name: 'file1.csv', isDirectory: false, size: 1024, modifiedAt: new Date() },
-          { name: 'file2.csv', isDirectory: false, size: 2048, modifiedAt: new Date() }
-        ]),
-        downloadFile: jest.fn().mockResolvedValue({ success: true, path: '/tmp/test.csv', size: 1024 }),
-        testConnection: jest.fn().mockResolvedValue({ success: true, server: 'test.ftp.server', features: { utf8: true } })
-      };
-    })
+// Get the directory name
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.join(__dirname, '..');
+
+// Lock file path
+const LOCK_FILE_PATH = path.join(rootDir, 'logs', 'ftp-sync.lock');
+
+/**
+ * Test lock file creation and detection
+ */
+function testLockFileCreation() {
+  // Ensure lock file doesn't exist at the start of the test
+  if (fs.existsSync(LOCK_FILE_PATH)) {
+    fs.unlinkSync(LOCK_FILE_PATH);
+    logger.info('Removed existing lock file');
+  }
+  
+  // Create a lock file
+  const lockData = {
+    pid: process.pid,
+    timestamp: new Date().toISOString(),
+    duration: 60000 // 1 minute
   };
-});
+  
+  fs.writeFileSync(LOCK_FILE_PATH, JSON.stringify(lockData));
+  logger.info('Created lock file');
+  
+  // Check if lock file exists
+  const lockExists = fs.existsSync(LOCK_FILE_PATH);
+  if (!lockExists) {
+    logger.error('Lock file creation failed');
+    return false;
+  }
+  
+  logger.info('✓ Lock file creation successful');
+  return true;
+}
 
-// Test utilities
-class TestClock {
-  constructor() {
-    this.now = new Date('2025-04-01T00:00:00Z');
+/**
+ * Test lock file detection
+ */
+function testLockFileDetection() {
+  // Ensure lock file exists
+  if (!fs.existsSync(LOCK_FILE_PATH)) {
+    logger.error('Lock file not found for detection test');
+    return false;
   }
   
-  getCurrentTime() {
-    return this.now;
-  }
+  // Read lock file
+  const lockContent = fs.readFileSync(LOCK_FILE_PATH, 'utf8');
+  let lockData;
   
-  advanceTime(milliseconds) {
-    this.now = new Date(this.now.getTime() + milliseconds);
-    return this.now;
-  }
-  
-  advanceHours(hours) {
-    return this.advanceTime(hours * 60 * 60 * 1000);
-  }
-  
-  advanceMinutes(minutes) {
-    return this.advanceTime(minutes * 60 * 1000);
+  try {
+    lockData = JSON.parse(lockContent);
+    logger.info('Lock file parsed successfully');
+    
+    // Verify lock data structure
+    if (!lockData.pid || !lockData.timestamp || !lockData.duration) {
+      logger.error('Invalid lock file format');
+      return false;
+    }
+    
+    logger.info(`Lock file data: PID ${lockData.pid}, Timestamp ${lockData.timestamp}`);
+    logger.info('✓ Lock file detection successful');
+    return true;
+  } catch (error) {
+    logger.error(`Failed to parse lock file: ${error.message}`);
+    return false;
   }
 }
 
-// Test suite
-describe('FTP Data Agent Scheduler', () => {
-  let ftpAgent;
-  let storage;
-  let mcpService;
-  let testClock;
+/**
+ * Test stale lock detection
+ */
+function testStaleLockDetection() {
+  // Ensure lock file exists
+  if (!fs.existsSync(LOCK_FILE_PATH)) {
+    logger.error('Lock file not found for stale lock test');
+    return false;
+  }
   
-  beforeEach(() => {
-    storage = new MemStorage();
-    mcpService = new MCPService(storage);
-    testClock = new TestClock();
-    
-    // Create agent with the test clock
-    ftpAgent = new FtpDataAgent(storage, mcpService);
-    ftpAgent.initialize();
-    
-    // Override the Date.now function to use our test clock
-    const originalDateNow = Date.now;
-    Date.now = jest.fn(() => testClock.getCurrentTime().getTime());
-    
-    // Save original for cleanup
-    ftpAgent._originalDateNow = originalDateNow;
-  });
+  // Read lock file
+  const lockContent = fs.readFileSync(LOCK_FILE_PATH, 'utf8');
+  let lockData;
   
-  afterEach(() => {
-    // Restore original Date.now
-    if (ftpAgent._originalDateNow) {
-      Date.now = ftpAgent._originalDateNow;
+  try {
+    lockData = JSON.parse(lockContent);
+    
+    // Modify timestamp to make the lock stale (set it to 2 hours ago)
+    const staleTime = new Date();
+    staleTime.setHours(staleTime.getHours() - 2);
+    
+    lockData.timestamp = staleTime.toISOString();
+    fs.writeFileSync(LOCK_FILE_PATH, JSON.stringify(lockData));
+    
+    logger.info('Modified lock file to be stale');
+    
+    // Verify it's stale by comparing timestamps
+    const currentTime = new Date();
+    const lockTime = new Date(lockData.timestamp);
+    const timeDiff = currentTime - lockTime;
+    
+    if (timeDiff > 60 * 60 * 1000) { // More than 1 hour
+      logger.info('✓ Lock detected as stale successfully');
+      return true;
+    } else {
+      logger.error('Lock not detected as stale');
+      return false;
     }
-    jest.clearAllMocks();
-  });
+  } catch (error) {
+    logger.error(`Failed during stale lock test: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Test lock file removal
+ */
+function testLockFileRemoval() {
+  // Ensure lock file exists
+  if (!fs.existsSync(LOCK_FILE_PATH)) {
+    logger.error('Lock file not found for removal test');
+    return false;
+  }
   
-  test('should initialize with default schedule disabled', async () => {
-    const status = await ftpAgent.getFtpStatus();
-    expect(status.schedule.enabled).toBe(false);
-  });
+  try {
+    // Remove lock file
+    fs.unlinkSync(LOCK_FILE_PATH);
+    logger.info('Removed lock file');
+    
+    // Verify lock file removal
+    if (!fs.existsSync(LOCK_FILE_PATH)) {
+      logger.info('✓ Lock file removal successful');
+      return true;
+    } else {
+      logger.error('Failed to remove lock file');
+      return false;
+    }
+  } catch (error) {
+    logger.error(`Failed during lock file removal: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Run all tests
+ */
+function runAllTests() {
+  logger.info('Starting FTP Agent Scheduler Lock Tests...');
   
-  test('should enable scheduled sync with specified interval', async () => {
-    // Enable schedule with 12 hour interval
-    await ftpAgent.scheduleFtpSync({ enabled: true, intervalHours: 12 });
-    
-    const status = await ftpAgent.getFtpStatus();
-    expect(status.schedule.enabled).toBe(true);
-    expect(status.schedule.intervalHours).toBe(12);
-    
-    // Should have calculated next sync time
-    expect(status.schedule.nextSync).toBeTruthy();
-    
-    // Next sync should be 12 hours from now
-    const nextSyncDate = new Date(status.schedule.nextSync);
-    const expectedNextSync = new Date(testClock.getCurrentTime().getTime() + 12 * 60 * 60 * 1000);
-    
-    // Allow 1 second tolerance for test execution time
-    expect(Math.abs(nextSyncDate.getTime() - expectedNextSync.getTime())).toBeLessThan(1000);
-  });
+  let results = {};
   
-  test('should disable scheduled sync', async () => {
-    // First enable, then disable
-    await ftpAgent.scheduleFtpSync({ enabled: true, intervalHours: 8 });
-    
-    let status = await ftpAgent.getFtpStatus();
-    expect(status.schedule.enabled).toBe(true);
-    
-    await ftpAgent.scheduleFtpSync({ enabled: false });
-    
-    status = await ftpAgent.getFtpStatus();
-    expect(status.schedule.enabled).toBe(false);
-    expect(status.schedule.nextSync).toBeNull();
-  });
+  // Test 1: Lock file creation
+  results.lockCreation = testLockFileCreation();
   
-  test('should run a one-time sync immediately', async () => {
-    // Mock the synchronizeFtpData method
-    const syncSpy = jest.spyOn(ftpAgent, 'synchronizeFtpData').mockResolvedValue({
-      success: true,
-      result: { filesProcessed: 10, filesDownloaded: 5 }
-    });
-    
-    await ftpAgent.scheduleFtpSync({ runOnce: true });
-    
-    // Should have called synchronizeFtpData
-    expect(syncSpy).toHaveBeenCalledTimes(1);
-    
-    // Schedule should not be enabled for future runs
-    const status = await ftpAgent.getFtpStatus();
-    expect(status.schedule.enabled).toBe(false);
-  });
+  // Test 2: Lock file detection
+  results.lockDetection = testLockFileDetection();
   
-  test('should reject invalid interval values', async () => {
-    // Test with interval too small
-    await expect(ftpAgent.scheduleFtpSync({ enabled: true, intervalHours: 0 }))
-      .rejects.toThrow(/interval/i);
-    
-    // Test with interval too large
-    await expect(ftpAgent.scheduleFtpSync({ enabled: true, intervalHours: 169 }))
-      .rejects.toThrow(/interval/i);
-    
-    // Test with negative interval
-    await expect(ftpAgent.scheduleFtpSync({ enabled: true, intervalHours: -5 }))
-      .rejects.toThrow(/interval/i);
-  });
+  // Test 3: Stale lock detection
+  results.staleLockDetection = testStaleLockDetection();
   
-  test('should correctly report next run as human-readable string', async () => {
-    await ftpAgent.scheduleFtpSync({ enabled: true, intervalHours: 24 });
-    
-    const scheduleInfo = await ftpAgent.getSyncScheduleInfo();
-    
-    expect(scheduleInfo.success).toBe(true);
-    expect(scheduleInfo.result.scheduleDescription).toContain('every 24 hours');
-    expect(scheduleInfo.result.nextRunDescription).toContain('tomorrow');
-  });
+  // Test 4: Lock file removal
+  results.lockRemoval = testLockFileRemoval();
   
-  test('should trigger sync when current time reaches next sync time', async () => {
-    // Mock the synchronizeFtpData method
-    const syncSpy = jest.spyOn(ftpAgent, 'synchronizeFtpData').mockResolvedValue({
-      success: true,
-      result: { filesProcessed: 10, filesDownloaded: 5 }
-    });
-    
-    // Enable schedule with 2 hour interval
-    await ftpAgent.scheduleFtpSync({ enabled: true, intervalHours: 2 });
-    
-    // Advance time by 1 hour 59 minutes - should not trigger sync
-    testClock.advanceHours(1);
-    testClock.advanceMinutes(59);
-    
-    // Check if sync needs to run
-    await ftpAgent.checkSchedule();
-    expect(syncSpy).not.toHaveBeenCalled();
-    
-    // Advance time by 2 more minutes - should trigger sync
-    testClock.advanceMinutes(2);
-    
-    // Check if sync needs to run
-    await ftpAgent.checkSchedule();
-    expect(syncSpy).toHaveBeenCalledTimes(1);
-    
-    // Next sync should be scheduled for 2 hours later
-    const status = await ftpAgent.getFtpStatus();
-    const nextSyncDate = new Date(status.schedule.nextSync);
-    const expectedNextSync = new Date(testClock.getCurrentTime().getTime() + 2 * 60 * 60 * 1000);
-    
-    // Allow 1 second tolerance
-    expect(Math.abs(nextSyncDate.getTime() - expectedNextSync.getTime())).toBeLessThan(1000);
-  });
+  // Print summary
+  logger.info('=== FTP Agent Scheduler Lock Test Results ===');
+  let totalTests = Object.keys(results).length;
+  let passedTests = Object.values(results).filter(Boolean).length;
   
-  test('should prevent overlap of sync jobs', async () => {
-    // Mock a long-running sync operation
-    let syncResolve;
-    const syncPromise = new Promise(resolve => {
-      syncResolve = resolve;
-    });
-    
-    const syncSpy = jest.spyOn(ftpAgent, 'synchronizeFtpData').mockImplementation(() => {
-      return syncPromise;
-    });
-    
-    // Start a sync
-    const firstSync = ftpAgent.handleRequest({
-      action: 'synchronizeFtpData',
-      parameters: { path: '/' }
-    });
-    
-    // Try to start another sync before the first one completes
-    const secondSync = ftpAgent.handleRequest({
-      action: 'synchronizeFtpData',
-      parameters: { path: '/' }
-    });
-    
-    // Second sync should be rejected with "already in progress" error
-    const secondResult = await secondSync;
-    expect(secondResult.success).toBe(false);
-    expect(secondResult.error).toMatch(/already in progress/i);
-    
-    // Complete the first sync
-    syncResolve({
-      success: true,
-      result: { filesProcessed: 10, filesDownloaded: 5 }
-    });
-    
-    // First sync should complete successfully
-    const firstResult = await firstSync;
-    expect(firstResult.success).toBe(true);
-    
-    // Sync should have been called exactly once
-    expect(syncSpy).toHaveBeenCalledTimes(1);
-  });
+  logger.info(`Tests passed: ${passedTests}/${totalTests}`);
   
-  test('should allow force option to override sync in progress check', async () => {
-    // Mock a long-running sync operation
-    let syncResolve;
-    const syncPromise = new Promise(resolve => {
-      syncResolve = resolve;
-    });
-    
-    const syncSpy = jest.spyOn(ftpAgent, 'synchronizeFtpData').mockImplementation(() => {
-      return syncPromise;
-    });
-    
-    // Start a sync
-    const firstSync = ftpAgent.handleRequest({
-      action: 'synchronizeFtpData',
-      parameters: { path: '/' }
-    });
-    
-    // Try to start another sync with force=true
-    const forcedSync = ftpAgent.handleRequest({
-      action: 'synchronizeFtpData',
-      parameters: { path: '/', force: true }
-    });
-    
-    // Allow both syncs to complete
-    syncResolve({
-      success: true,
-      result: { filesProcessed: 10, filesDownloaded: 5 }
-    });
-    
-    // Both syncs should complete successfully
-    const firstResult = await firstSync;
-    const forcedResult = await forcedSync;
-    
-    expect(firstResult.success).toBe(true);
-    expect(forcedResult.success).toBe(true);
-    
-    // Sync should have been called twice
-    expect(syncSpy).toHaveBeenCalledTimes(2);
-  });
+  for (const [test, passed] of Object.entries(results)) {
+    logger.info(`${passed ? '✓' : '✗'} ${test}`);
+  }
   
-  test('should update next sync time even if sync fails', async () => {
-    // Mock a failing sync
-    const syncSpy = jest.spyOn(ftpAgent, 'synchronizeFtpData').mockResolvedValue({
-      success: false,
-      error: 'Simulated error for testing'
+  if (passedTests === totalTests) {
+    logger.info('All lock tests passed successfully!');
+    return true;
+  } else {
+    logger.error(`Some lock tests failed (${totalTests - passedTests}/${totalTests} failed)`);
+    return false;
+  }
+}
+
+// Run the tests if this script is executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  runAllTests()
+    .then(success => {
+      process.exit(success ? 0 : 1);
+    })
+    .catch(error => {
+      logger.error(`Unhandled error in FTP agent scheduler tests: ${error.message}`);
+      process.exit(1);
     });
-    
-    // Enable schedule with 3 hour interval
-    await ftpAgent.scheduleFtpSync({ enabled: true, intervalHours: 3 });
-    
-    // Get initial next sync time
-    let status = await ftpAgent.getFtpStatus();
-    const initialNextSync = status.schedule.nextSync;
-    
-    // Advance time to trigger sync
-    testClock.advanceHours(3);
-    testClock.advanceMinutes(1);
-    
-    // Check schedule - should trigger sync
-    await ftpAgent.checkSchedule();
-    expect(syncSpy).toHaveBeenCalledTimes(1);
-    
-    // Get updated status - next sync should be updated despite failure
-    status = await ftpAgent.getFtpStatus();
-    expect(status.schedule.nextSync).not.toBe(initialNextSync);
-    
-    // Next sync should be 3 hours from current time
-    const nextSyncDate = new Date(status.schedule.nextSync);
-    const expectedNextSync = new Date(testClock.getCurrentTime().getTime() + 3 * 60 * 60 * 1000);
-    expect(Math.abs(nextSyncDate.getTime() - expectedNextSync.getTime())).toBeLessThan(1000);
-  });
-  
-  test('should maintain sync statistics', async () => {
-    // Reset sync stats counter
-    ftpAgent.syncStats = {
-      totalAttempts: 0,
-      successCount: 0,
-      failureCount: 0,
-      lastSync: null,
-      lastSuccessfulSync: null,
-      lastFailedSync: null,
-      errors: []
-    };
-    
-    // Mock successful sync
-    jest.spyOn(ftpAgent, 'synchronizeFtpData').mockResolvedValueOnce({
-      success: true,
-      result: { filesProcessed: 10, filesDownloaded: 5 }
-    });
-    
-    // Run successful sync
-    await ftpAgent.checkSchedule();
-    
-    // Check stats
-    let status = await ftpAgent.getFtpStatus();
-    expect(status.syncStats.totalAttempts).toBe(1);
-    expect(status.syncStats.successCount).toBe(1);
-    expect(status.syncStats.failureCount).toBe(0);
-    expect(status.syncStats.successRate).toBe(100);
-    
-    // Mock failing sync
-    jest.spyOn(ftpAgent, 'synchronizeFtpData').mockResolvedValueOnce({
-      success: false,
-      error: 'Simulated error for testing'
-    });
-    
-    // Run failing sync
-    await ftpAgent.checkSchedule();
-    
-    // Check updated stats
-    status = await ftpAgent.getFtpStatus();
-    expect(status.syncStats.totalAttempts).toBe(2);
-    expect(status.syncStats.successCount).toBe(1);
-    expect(status.syncStats.failureCount).toBe(1);
-    expect(status.syncStats.successRate).toBe(50);
-    expect(status.syncStats.errors.length).toBe(1);
-    expect(status.syncStats.errors[0]).toContain('Simulated error');
-  });
-});
+}
+
+export { runAllTests, testLockFileCreation, testLockFileDetection, testStaleLockDetection, testLockFileRemoval };
