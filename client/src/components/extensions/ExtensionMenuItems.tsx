@@ -1,12 +1,21 @@
 import { useState, useEffect } from 'react';
-import { useExtension } from '@/providers/extension-provider';
 import { apiRequest } from '@/lib/queryClient';
+import { useExtension } from '@/providers/extension-provider';
+import { WebviewPanel } from './WebviewPanel';
+import { Loader2 } from 'lucide-react';
+
+interface WebviewInfo {
+  id: string;
+  title: string;
+  extensionId: string;
+}
 
 interface MenuItem {
   id: string;
-  extensionId: string;
   label: string;
   command: string;
+  webviewId?: string;
+  extensionId: string;
 }
 
 interface ExtensionMenuItemsProps {
@@ -16,86 +25,152 @@ interface ExtensionMenuItemsProps {
 export function ExtensionMenuItems({ onItemClick }: ExtensionMenuItemsProps) {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { executeCommand, openWebview } = useExtension();
-  
+  const [error, setError] = useState<string | null>(null);
+  const [activeWebview, setActiveWebview] = useState<WebviewInfo | null>(null);
+  const { executeCommand } = useExtension();
+
   useEffect(() => {
-    const fetchMenuItems = async () => {
+    const fetchExtensionMenu = async () => {
       try {
         setIsLoading(true);
-        const response = await apiRequest('/api/extensions/menu-items');
-        const data = await response.json();
-        setMenuItems(data);
-      } catch (error) {
-        console.error('Error fetching extension menu items:', error);
+        setError(null);
+        
+        // First, get all webviews
+        const webviewsResponse = await apiRequest('/api/extensions/webviews');
+        if (!webviewsResponse.ok) {
+          throw new Error(`Failed to load webviews: ${webviewsResponse.statusText}`);
+        }
+        
+        const webviews: WebviewInfo[] = await webviewsResponse.json();
+        console.log('Fetched webviews:', webviews);
+        
+        // Get all extensions to generate menu items
+        const extensionsResponse = await apiRequest('/api/extensions');
+        if (!extensionsResponse.ok) {
+          throw new Error(`Failed to load extensions: ${extensionsResponse.statusText}`);
+        }
+        
+        const extensions = await extensionsResponse.json();
+        console.log('Fetched extensions:', extensions);
+        
+        // Create an array of menu items
+        const items: MenuItem[] = [];
+        
+        // Add menu items for each active extension
+        for (const extension of extensions.filter(ext => ext.isActive)) {
+          // Fetch extension details to get commands
+          const extensionResponse = await apiRequest(`/api/extensions/${extension.id}`);
+          if (!extensionResponse.ok) continue;
+          
+          const extensionDetails = await extensionResponse.json();
+          
+          // Add webview items
+          const extensionWebviews = webviews.filter(w => w.extensionId === extension.id);
+          for (const webview of extensionWebviews) {
+            items.push({
+              id: `${extension.id}-webview-${webview.id}`,
+              label: webview.title,
+              command: `extension.${extension.id}.openWebview.${webview.id}`,
+              webviewId: webview.id,
+              extensionId: extension.id
+            });
+          }
+          
+          // Add command items (if any)
+          if (extensionDetails.commands) {
+            extensionDetails.commands.forEach(cmd => {
+              if (!cmd.hidden && !cmd.id.startsWith('extension.')) {
+                items.push({
+                  id: `${extension.id}-command-${cmd.id}`,
+                  label: cmd.title,
+                  command: cmd.id,
+                  extensionId: extension.id
+                });
+              }
+            });
+          }
+        }
+        
+        setMenuItems(items);
+      } catch (err) {
+        console.error('Error loading extension menu:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load extension menu');
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchMenuItems();
+    fetchExtensionMenu();
   }, []);
   
-  const handleItemClick = async (item: MenuItem) => {
+  const handleMenuItemClick = async (item: MenuItem) => {
+    if (onItemClick) {
+      onItemClick();
+    }
+    
     try {
-      if (item.command) {
-        // Execute the command
-        const result = await executeCommand(item.command);
-        
-        // If the command returns a webview to open
-        if (result && result.webview) {
-          openWebview(result.webview.id, result.webview.title);
-        }
+      if (item.webviewId) {
+        // If this is a webview item, open the webview
+        setActiveWebview({
+          id: item.webviewId,
+          title: item.label,
+          extensionId: item.extensionId
+        });
+      } else {
+        // Otherwise, execute the command
+        await executeCommand(item.command);
       }
-      
-      // Call the onItemClick callback if provided
-      onItemClick?.();
     } catch (error) {
-      console.error('Error executing command:', error);
+      console.error('Error handling menu item click:', error);
     }
   };
   
   if (isLoading) {
     return (
-      <div className="px-4 py-2 text-sm text-gray-700">
-        Loading extensions...
+      <div className="flex justify-center p-4">
+        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        <span className="ml-2 text-sm text-gray-500">Loading extensions...</span>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="p-4 text-center text-red-500 text-sm">
+        <p>Error loading extensions</p>
       </div>
     );
   }
   
   if (menuItems.length === 0) {
     return (
-      <div className="px-4 py-2 text-sm text-gray-700">
-        No extensions available
+      <div className="p-4 text-center text-gray-500 text-sm">
+        <p>No extension menu items available</p>
       </div>
     );
   }
   
-  // Group menu items by extension ID
-  const groupedItems: Record<string, MenuItem[]> = {};
-  menuItems.forEach(item => {
-    if (!groupedItems[item.extensionId]) {
-      groupedItems[item.extensionId] = [];
-    }
-    groupedItems[item.extensionId].push(item);
-  });
-  
   return (
     <>
-      {Object.entries(groupedItems).map(([extensionId, items], index) => (
-        <div key={extensionId}>
-          {index > 0 && <div className="border-t border-gray-200 my-1"></div>}
-          
-          {items.map(item => (
-            <button
-              key={item.id}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-              onClick={() => handleItemClick(item)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+      {menuItems.map((item) => (
+        <button
+          key={item.id}
+          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+          onClick={() => handleMenuItemClick(item)}
+        >
+          {item.label}
+        </button>
       ))}
+      
+      {activeWebview && (
+        <WebviewPanel 
+          webviewId={activeWebview.id}
+          extensionId={activeWebview.extensionId}
+          title={activeWebview.title}
+          isOpen={!!activeWebview}
+          onClose={() => setActiveWebview(null)}
+        />
+      )}
     </>
   );
 }

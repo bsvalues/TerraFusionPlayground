@@ -1,21 +1,16 @@
-import { ExtensionsPanel } from "@/components/extensions/ExtensionsPanel";
-import AppLayout from "@/layout/app-layout";
+import { ExtensionsPanel } from '@/components/extensions/ExtensionsPanel';
 
 export function ExtensionsPage() {
   return (
-    <AppLayout>
-      <div className="h-full flex flex-col">
-        <div className="border-b py-4 px-6">
-          <h1 className="text-2xl font-bold">Extensions</h1>
-          <p className="text-muted-foreground">
-            Discover, install, and manage platform extensions
-          </p>
-        </div>
-        
-        <div className="flex-1 overflow-hidden">
-          <ExtensionsPanel />
-        </div>
+    <div className="py-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Extensions</h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
+          Manage and configure extensions that enhance the capabilities of the platform.
+        </p>
       </div>
-    </AppLayout>
+      
+      <ExtensionsPanel />
+    </div>
   );
 }
