@@ -35,7 +35,7 @@ export class AgentSystem {
   private agents: Map<string, BaseAgent> = new Map();
   private replayBuffer: AgentReplayBufferService;
   private commandStructure: CommandStructure;
-  private isInitialized: boolean = false;
+  public isInitialized: boolean = false;
   
   constructor(storage: IStorage) {
     this._storage = storage;
@@ -266,6 +266,13 @@ export class AgentSystem {
    */
   public getAllAgents(): Map<string, BaseAgent> {
     return this.agents;
+  }
+  
+  /**
+   * Get the count of registered agents
+   */
+  public getAgentCount(): number {
+    return this.agents.size;
   }
   
   /**

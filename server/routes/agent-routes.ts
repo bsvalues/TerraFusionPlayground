@@ -20,11 +20,32 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
    */
   router.get('/status', async (req, res) => {
     try {
+      // Check if agentSystem is initialized
+      if (!agentSystem.isInitialized) {
+        return res.status(503).json({ 
+          error: 'Agent system not yet initialized',
+          status: {
+            isInitialized: false,
+            agentCount: 0,
+            agents: {}
+          }
+        });
+      }
+      
       const status = agentSystem.getSystemStatus();
       res.json(status);
     } catch (error) {
       console.error('Error getting agent system status:', error);
-      res.status(500).json({ error: 'Failed to get system status' });
+      // Return partial status information instead of failing
+      res.status(200).json({ 
+        error: 'Failed to get complete system status',
+        status: {
+          isInitialized: agentSystem.isInitialized || false,
+          agentCount: agentSystem.getAgentCount ? agentSystem.getAgentCount() : 0,
+          agents: {},
+          partialData: true
+        }
+      });
     }
   });
   
