@@ -42,6 +42,84 @@ router.get('/', async (req, res) => {
 });
 
 /**
+ * GET /api/extensions/webviews - Get all webviews from active extensions
+ * Note: This route must be defined before the /:id route to prevent conflicts
+ */
+router.get('/webviews', async (req, res) => {
+  try {
+    // Log for debugging
+    console.log('Fetching all webviews...');
+    console.log('Active extensions:', registry.getExtensions().filter(ext => ext.isActive()).map(ext => ext.getMetadata().id));
+    
+    const webviews = registry.getAllWebviews();
+    console.log('Found webviews:', webviews.length);
+    
+    res.json(webviews);
+  } catch (error) {
+    console.error('Error getting webviews:', error);
+    res.status(500).json({ error: 'Failed to get webviews' });
+  }
+});
+
+/**
+ * GET /api/extensions/webviews/:id - Get a specific webview by ID
+ * Note: This route must be defined before the /:id route to prevent conflicts
+ */
+router.get('/webviews/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const webview = registry.getWebview(id);
+    
+    if (!webview) {
+      return res.status(404).json({ error: `Webview '${id}' not found` });
+    }
+    
+    res.json(webview);
+  } catch (error) {
+    console.error(`Error getting webview ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to get webview' });
+  }
+});
+
+/**
+ * GET /api/extensions/menu-items - Get all menu items from active extensions
+ * Note: This route must be defined before the /:id route to prevent conflicts
+ */
+router.get('/menu-items', async (req, res) => {
+  try {
+    const commands = registry.getAllCommands();
+    
+    // Build a tree of menu items
+    const menuItems = commands
+      .filter(item => !item.parent)
+      .sort((a, b) => (a.position || 0) - (b.position || 0));
+    
+    // Helper function to build the menu tree
+    const buildMenuTree = (items: any[], parentId: string): any[] => {
+      return items
+        .filter(item => item.parent === parentId)
+        .map(item => {
+          return {
+            ...item,
+            children: buildMenuTree(commands, item.id)
+          };
+        })
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+    };
+    
+    // Add children to root items
+    menuItems.forEach(item => {
+      item.children = buildMenuTree(commands, item.id);
+    });
+    
+    res.json(menuItems);
+  } catch (error) {
+    console.error('Error getting menu items:', error);
+    res.status(500).json({ error: 'Failed to get menu items' });
+  }
+});
+
+/**
  * GET /api/extensions/:id - Get extension by ID
  */
 router.get('/:id', async (req, res) => {
@@ -216,79 +294,6 @@ router.post('/:id/command/:command', async (req, res) => {
   }
 });
 
-/**
- * GET /api/extensions/webviews - Get all webviews from active extensions
- */
-router.get('/webviews', async (req, res) => {
-  try {
-    // Log for debugging
-    console.log('Fetching all webviews...');
-    console.log('Active extensions:', registry.getExtensions().filter(ext => ext.isActive()).map(ext => ext.getMetadata().id));
-    
-    const webviews = registry.getAllWebviews();
-    console.log('Found webviews:', webviews.length);
-    
-    res.json(webviews);
-  } catch (error) {
-    console.error('Error getting webviews:', error);
-    res.status(500).json({ error: 'Failed to get webviews' });
-  }
-});
 
-/**
- * GET /api/extensions/webviews/:id - Get a specific webview by ID
- */
-router.get('/webviews/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const webview = registry.getWebview(id);
-    
-    if (!webview) {
-      return res.status(404).json({ error: `Webview '${id}' not found` });
-    }
-    
-    res.json(webview);
-  } catch (error) {
-    console.error(`Error getting webview ${req.params.id}:`, error);
-    res.status(500).json({ error: 'Failed to get webview' });
-  }
-});
-
-/**
- * GET /api/extensions/menu-items - Get all menu items from active extensions
- */
-router.get('/menu-items', async (req, res) => {
-  try {
-    const commands = registry.getAllCommands();
-    
-    // Build a tree of menu items
-    const menuItems = commands
-      .filter(item => !item.parent)
-      .sort((a, b) => (a.position || 0) - (b.position || 0));
-    
-    // Helper function to build the menu tree
-    const buildMenuTree = (items: any[], parentId: string): any[] => {
-      return items
-        .filter(item => item.parent === parentId)
-        .map(item => {
-          return {
-            ...item,
-            children: buildMenuTree(commands, item.id)
-          };
-        })
-        .sort((a, b) => (a.position || 0) - (b.position || 0));
-    };
-    
-    // Add children to root items
-    menuItems.forEach(item => {
-      item.children = buildMenuTree(commands, item.id);
-    });
-    
-    res.json(menuItems);
-  } catch (error) {
-    console.error('Error getting menu items:', error);
-    res.status(500).json({ error: 'Failed to get menu items' });
-  }
-});
 
 export default router;
