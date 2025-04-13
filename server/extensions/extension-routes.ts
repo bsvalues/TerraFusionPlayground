@@ -221,7 +221,13 @@ router.post('/:id/command/:command', async (req, res) => {
  */
 router.get('/webviews', async (req, res) => {
   try {
+    // Log for debugging
+    console.log('Fetching all webviews...');
+    console.log('Active extensions:', registry.getExtensions().filter(ext => ext.isActive()).map(ext => ext.getMetadata().id));
+    
     const webviews = registry.getAllWebviews();
+    console.log('Found webviews:', webviews.length);
+    
     res.json(webviews);
   } catch (error) {
     console.error('Error getting webviews:', error);
