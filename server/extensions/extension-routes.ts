@@ -215,7 +215,7 @@ router.post('/:id/command/:command', async (req, res) => {
 /**
  * GET /api/extensions/webviews - Get all webviews from active extensions
  */
-router.get('/webviews', async (req, res) => {
+router.get('/api/webviews', async (req, res) => {
   try {
     const webviews = registry.getAllWebviews();
     res.json(webviews);
@@ -228,7 +228,7 @@ router.get('/webviews', async (req, res) => {
 /**
  * GET /api/extensions/webviews/:id - Get a specific webview by ID
  */
-router.get('/webviews/:id', async (req, res) => {
+router.get('/api/webviews/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const webview = registry.getWebview(id);
@@ -247,7 +247,7 @@ router.get('/webviews/:id', async (req, res) => {
 /**
  * GET /api/extensions/menu-items - Get all menu items from active extensions
  */
-router.get('/menu-items', async (req, res) => {
+router.get('/api/menu-items', async (req, res) => {
   try {
     const commands = registry.getAllCommands();
     
@@ -257,7 +257,7 @@ router.get('/menu-items', async (req, res) => {
       .sort((a, b) => (a.position || 0) - (b.position || 0));
     
     // Helper function to build the menu tree
-    const buildMenuTree = (items, parentId) => {
+    const buildMenuTree = (items: any[], parentId: string) => {
       return items
         .filter(item => item.parent === parentId)
         .map(item => {
