@@ -20,6 +20,7 @@ import {
 } from "@shared/schema";
 import { createDataImportRoutes } from "./routes/data-import-routes";
 import ftpRoutes from "./routes/ftp-routes";
+import ftpDataProcessorRoutes from "./routes/ftp-data-processor-routes";
 import voiceRoutes from "./routes/voice-routes";
 import { createPropertyStoryRoutes } from "./routes/property-story-routes";
 import { createPropertyRoutes } from "./routes/property-routes";
