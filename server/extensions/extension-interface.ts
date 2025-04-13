@@ -1,32 +1,36 @@
 /**
- * Extension Interface
+ * Extension System Interface Definitions
  * 
- * This file defines the interface that all extensions must implement to be
- * compatible with the SpatialEst platform extension system.
+ * This file defines the core interfaces for the extension system,
+ * including extension metadata, contexts, and event handling.
  */
 
 import { IStorage } from '../storage';
 
 /**
- * Permission type for extensions
+ * Extension setting type definitions
  */
-export type ExtensionPermission = 
-  | 'read:properties' 
-  | 'write:properties'
-  | 'read:land-records'
-  | 'write:land-records'
-  | 'read:improvements'
-  | 'write:improvements'
-  | 'read:fields'
-  | 'write:fields'
-  | 'read:appeals'
-  | 'write:appeals'
-  | 'read:mcp-tools'
-  | 'execute:mcp-tools'
-  | 'use:ai-services'
-  | 'use:file-system'
-  | 'use:ftp'
-  | 'use:gis';
+export type ExtensionSettingType = 'string' | 'number' | 'boolean' | 'select' | 'multiselect';
+
+/**
+ * Extension setting option (for select and multiselect types)
+ */
+export interface ExtensionSettingOption {
+  label: string;
+  value: string;
+}
+
+/**
+ * Extension setting definition
+ */
+export interface ExtensionSetting {
+  id: string;
+  label: string;
+  description: string;
+  type: ExtensionSettingType;
+  default: any;
+  options?: ExtensionSettingOption[];
+}
 
 /**
  * Extension metadata
@@ -39,41 +43,9 @@ export interface ExtensionMetadata {
   author: string;
   authorUrl?: string;
   homepage?: string;
-  repository?: string;
-  license?: string;
-  icon?: string;
-  category: 'data-import' | 'data-export' | 'visualization' | 'analysis' | 'workflow' | 'integration' | 'other';
-  requiredPermissions: ExtensionPermission[];
+  category: string;
+  requiredPermissions: string[];
   settings?: ExtensionSetting[];
-}
-
-/**
- * Extension setting definition
- */
-export interface ExtensionSetting {
-  id: string;
-  label: string;
-  description?: string;
-  type: 'string' | 'number' | 'boolean' | 'select';
-  default?: any;
-  options?: { label: string; value: any }[];
-}
-
-/**
- * Extension activation context
- */
-export interface ExtensionContext {
-  storage: IStorage;
-  settings: Record<string, any>;
-  logger: {
-    info(message: string, data?: any): void;
-    warn(message: string, data?: any): void;
-    error(message: string, data?: any): void;
-    debug(message: string, data?: any): void;
-  };
-  registerCommand(command: string, callback: (...args: any[]) => any): void;
-  registerWebviewPanel(id: string, title: string, content: string): void;
-  registerMenuItem(item: ExtensionMenuItem): void;
 }
 
 /**
@@ -82,30 +54,61 @@ export interface ExtensionContext {
 export interface ExtensionMenuItem {
   id: string;
   label: string;
-  parent?: string;
-  position?: number;
   icon?: string;
+  parent?: string;
   command?: string;
-  commandArgs?: any[];
+  position?: number;
+}
+
+/**
+ * Extension webview panel
+ */
+export interface WebviewPanel {
+  id: string;
+  title: string;
+  content: string;
+}
+
+/**
+ * Extension logger
+ */
+export interface ExtensionLogger {
+  info(message: string, data?: any): void;
+  warn(message: string, data?: any): void;
+  error(message: string, data?: any): void;
+  debug(message: string, data?: any): void;
+}
+
+/**
+ * Command registration
+ */
+export interface CommandRegistration {
+  extensionId: string;
+  callback: (...args: any[]) => any;
+}
+
+/**
+ * Extension context
+ * Provides services and utilities to extensions
+ */
+export interface ExtensionContext {
+  readonly extensionId: string;
+  readonly storage: IStorage;
+  readonly logger: ExtensionLogger;
+  readonly settings: Record<string, any>;
+  
+  registerCommand(command: string, callback: (...args: any[]) => any): void;
+  registerWebviewPanel(id: string, title: string, content: string): void;
+  registerMenuItem(item: ExtensionMenuItem): void;
 }
 
 /**
  * Extension interface
+ * Defines the contract for extensions
  */
 export interface IExtension {
-  /**
-   * Extension metadata
-   */
-  metadata: ExtensionMetadata;
+  readonly metadata: ExtensionMetadata;
   
-  /**
-   * Called when the extension is activated
-   * @param context Extension context
-   */
   activate(context: ExtensionContext): Promise<void>;
-  
-  /**
-   * Called when the extension is deactivated
-   */
   deactivate(): Promise<void>;
 }

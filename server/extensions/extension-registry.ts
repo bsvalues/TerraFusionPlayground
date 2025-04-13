@@ -1,301 +1,352 @@
 /**
  * Extension Registry
  * 
- * This service manages the lifecycle of extensions, including:
- * - Loading extensions from disk or code
- * - Activating and deactivating extensions
- * - Managing extension settings
- * - Handling extension permissions
- * - Providing an API for extension interoperability
+ * The extension registry manages all extensions in the system, including
+ * registration, activation, and deactivation. It also provides a central
+ * point for command execution and webview management.
  */
 
 import { IStorage } from '../storage';
 import { 
   IExtension, 
-  ExtensionMetadata, 
-  ExtensionContext, 
-  ExtensionMenuItem 
+  ExtensionMetadata,
+  ExtensionContext,
+  ExtensionLogger,
+  CommandRegistration,
+  WebviewPanel,
+  ExtensionMenuItem
 } from './extension-interface';
 
-// Define types for command registry
-type CommandCallback = (...args: any[]) => any;
-interface CommandRegistration {
-  extension: string;
-  callback: CommandCallback;
-}
-
-// Define types for webview panel registry
-interface WebviewPanel {
-  id: string;
-  title: string;
-  content: string;
-  extension: string;
-}
-
-// Define types for menu item registry
-interface MenuItemRegistration extends ExtensionMenuItem {
-  extension: string;
-}
-
 /**
- * Extension Registry Service
+ * Extension Registry Class
+ * 
+ * Manages all extensions in the system
  */
 export class ExtensionRegistry {
   private extensions: Map<string, IExtension> = new Map();
-  private activeExtensions: Set<string> = new Set();
+  private activeExtensions: Map<string, ExtensionContext> = new Map();
+  private commands: Map<string, CommandRegistration> = new Map();
+  private webviews: Map<string, WebviewPanel> = new Map();
+  private menuItems: ExtensionMenuItem[] = [];
   private extensionSettings: Map<string, Record<string, any>> = new Map();
   
-  // Extension capability registries
-  private commands: Map<string, CommandRegistration> = new Map();
-  private webviewPanels: Map<string, WebviewPanel> = new Map();
-  private menuItems: MenuItemRegistration[] = [];
-
-  constructor(private storage: IStorage) {}
-
   /**
-   * Register an extension with the registry
+   * Constructor
+   */
+  constructor(private storage: IStorage) {}
+  
+  /**
+   * Register an extension
+   * @param extension Extension to register
    */
   public registerExtension(extension: IExtension): void {
     if (this.extensions.has(extension.metadata.id)) {
-      throw new Error(`Extension with ID '${extension.metadata.id}' is already registered`);
+      throw new Error(`Extension with ID ${extension.metadata.id} is already registered`);
     }
     
     this.extensions.set(extension.metadata.id, extension);
-    this.extensionSettings.set(extension.metadata.id, this.getDefaultSettings(extension.metadata));
     
-    console.log(`Registered extension: ${extension.metadata.name} (${extension.metadata.id})`);
+    // Initialize default settings
+    const defaultSettings: Record<string, any> = {};
+    extension.metadata.settings?.forEach(setting => {
+      defaultSettings[setting.id] = setting.default;
+    });
+    this.extensionSettings.set(extension.metadata.id, defaultSettings);
+    
+    console.log(`Extension ${extension.metadata.name} (${extension.metadata.id}) registered`);
   }
-
-  /**
-   * Get an extension by ID
-   */
-  public getExtension(id: string): IExtension | undefined {
-    return this.extensions.get(id);
-  }
-
-  /**
-   * Get all registered extensions
-   */
-  public getAllExtensions(): Map<string, IExtension> {
-    return this.extensions;
-  }
-
-  /**
-   * Check if an extension is active
-   */
-  public isExtensionActive(id: string): boolean {
-    return this.activeExtensions.has(id);
-  }
-
+  
   /**
    * Activate an extension
+   * @param extensionId ID of the extension to activate
    */
-  public async activateExtension(id: string): Promise<boolean> {
-    if (this.activeExtensions.has(id)) {
-      return true; // Already active
-    }
+  public async activateExtension(extensionId: string): Promise<void> {
+    const extension = this.extensions.get(extensionId);
     
-    const extension = this.extensions.get(id);
     if (!extension) {
-      throw new Error(`Extension with ID '${id}' not found`);
+      throw new Error(`Extension with ID ${extensionId} is not registered`);
     }
     
-    try {
-      console.log(`Activating extension: ${extension.metadata.name} (${id})`);
-      
-      // Create extension context
-      const context: ExtensionContext = {
-        storage: this.storage,
-        settings: this.extensionSettings.get(id) || {},
-        logger: {
-          info: (message, data) => console.log(`[${extension.metadata.name}] INFO: ${message}`, data || ''),
-          warn: (message, data) => console.warn(`[${extension.metadata.name}] WARN: ${message}`, data || ''),
-          error: (message, data) => console.error(`[${extension.metadata.name}] ERROR: ${message}`, data || ''),
-          debug: (message, data) => console.debug(`[${extension.metadata.name}] DEBUG: ${message}`, data || ''),
-        },
-        registerCommand: (command, callback) => this.registerCommand(id, command, callback),
-        registerWebviewPanel: (panelId, title, content) => this.registerWebviewPanel(id, panelId, title, content),
-        registerMenuItem: (item) => this.registerMenuItem(id, item),
-      };
-      
-      // Activate the extension
-      await extension.activate(context);
-      
-      // Mark as active
-      this.activeExtensions.add(id);
-      
-      console.log(`Extension activated: ${extension.metadata.name} (${id})`);
-      return true;
-    } catch (error) {
-      console.error(`Failed to activate extension ${id}:`, error);
-      return false;
+    if (this.activeExtensions.has(extensionId)) {
+      console.log(`Extension ${extensionId} is already active`);
+      return;
     }
+    
+    // Create extension context
+    const context: ExtensionContext = {
+      extensionId,
+      storage: this.storage,
+      logger: this.createLogger(extensionId),
+      settings: this.extensionSettings.get(extensionId) || {},
+      
+      registerCommand: (command: string, callback: (...args: any[]) => any) => {
+        this.registerCommand(extensionId, command, callback);
+      },
+      
+      registerWebviewPanel: (id: string, title: string, content: string) => {
+        this.registerWebviewPanel(extensionId, id, title, content);
+      },
+      
+      registerMenuItem: (item: ExtensionMenuItem) => {
+        this.registerMenuItem(extensionId, item);
+      }
+    };
+    
+    // Activate the extension
+    await extension.activate(context);
+    
+    // Store the context
+    this.activeExtensions.set(extensionId, context);
+    
+    console.log(`Extension ${extension.metadata.name} (${extensionId}) activated`);
   }
-
+  
   /**
    * Deactivate an extension
+   * @param extensionId ID of the extension to deactivate
    */
-  public async deactivateExtension(id: string): Promise<boolean> {
-    if (!this.activeExtensions.has(id)) {
-      return true; // Already inactive
-    }
+  public async deactivateExtension(extensionId: string): Promise<void> {
+    const extension = this.extensions.get(extensionId);
     
-    const extension = this.extensions.get(id);
     if (!extension) {
-      throw new Error(`Extension with ID '${id}' not found`);
+      throw new Error(`Extension with ID ${extensionId} is not registered`);
     }
     
-    try {
-      console.log(`Deactivating extension: ${extension.metadata.name} (${id})`);
-      
-      // Deactivate the extension
-      await extension.deactivate();
-      
-      // Clean up registered commands, webviews, and menu items
-      this.cleanupExtensionRegistrations(id);
-      
-      // Mark as inactive
-      this.activeExtensions.delete(id);
-      
-      console.log(`Extension deactivated: ${extension.metadata.name} (${id})`);
-      return true;
-    } catch (error) {
-      console.error(`Failed to deactivate extension ${id}:`, error);
-      return false;
+    if (!this.activeExtensions.has(extensionId)) {
+      console.log(`Extension ${extensionId} is not active`);
+      return;
     }
-  }
-
-  /**
-   * Clean up registrations for a deactivated extension
-   */
-  private cleanupExtensionRegistrations(extensionId: string): void {
-    // Clean up commands
-    for (const [commandId, registration] of this.commands.entries()) {
-      if (registration.extension === extensionId) {
-        this.commands.delete(commandId);
+    
+    // Deactivate the extension
+    await extension.deactivate();
+    
+    // Remove all commands registered by this extension
+    this.commands = new Map(
+      [...this.commands.entries()].filter(([_, cmd]) => cmd.extensionId !== extensionId)
+    );
+    
+    // Remove all webviews registered by this extension
+    for (const [id, panel] of this.webviews.entries()) {
+      if (id.startsWith(`${extensionId}.`)) {
+        this.webviews.delete(id);
       }
     }
     
-    // Clean up webview panels
-    for (const [panelId, panel] of this.webviewPanels.entries()) {
-      if (panel.extension === extensionId) {
-        this.webviewPanels.delete(panelId);
-      }
-    }
+    // Remove all menu items registered by this extension
+    this.menuItems = this.menuItems.filter(item => !item.id.startsWith(`${extensionId}.`));
     
-    // Clean up menu items
-    this.menuItems = this.menuItems.filter(item => item.extension !== extensionId);
-  }
-
-  /**
-   * Update extension settings
-   */
-  public updateExtensionSettings(id: string, settings: Record<string, any>): void {
-    if (!this.extensions.has(id)) {
-      throw new Error(`Extension with ID '${id}' not found`);
-    }
+    // Remove the context
+    this.activeExtensions.delete(extensionId);
     
-    const currentSettings = this.extensionSettings.get(id) || {};
-    this.extensionSettings.set(id, { ...currentSettings, ...settings });
+    console.log(`Extension ${extension.metadata.name} (${extensionId}) deactivated`);
   }
-
-  /**
-   * Get extension settings
-   */
-  public getExtensionSettings(id: string): Record<string, any> {
-    return this.extensionSettings.get(id) || {};
-  }
-
-  /**
-   * Get default settings for an extension
-   */
-  private getDefaultSettings(metadata: ExtensionMetadata): Record<string, any> {
-    const defaults: Record<string, any> = {};
-    
-    if (metadata.settings) {
-      for (const setting of metadata.settings) {
-        if (setting.default !== undefined) {
-          defaults[setting.id] = setting.default;
-        }
-      }
-    }
-    
-    return defaults;
-  }
-
+  
   /**
    * Register a command for an extension
+   * @param extensionId ID of the extension registering the command
+   * @param command Command name
+   * @param callback Command callback
    */
-  private registerCommand(extension: string, command: string, callback: CommandCallback): void {
-    const commandId = `${extension}.${command}`;
+  private registerCommand(extensionId: string, command: string, callback: (...args: any[]) => any): void {
+    const fullCommandName = `${extensionId}.${command}`;
     
-    if (this.commands.has(commandId)) {
-      throw new Error(`Command '${commandId}' is already registered`);
+    if (this.commands.has(fullCommandName)) {
+      throw new Error(`Command ${fullCommandName} is already registered`);
     }
     
-    this.commands.set(commandId, { extension, callback });
+    this.commands.set(fullCommandName, {
+      extensionId,
+      callback
+    });
+    
+    console.log(`Command ${fullCommandName} registered`);
   }
-
+  
   /**
    * Execute a command
+   * @param command Command name
+   * @param args Command arguments
+   * @returns Command result
    */
-  public executeCommand(command: string, ...args: any[]): any {
-    const registration = this.commands.get(command);
-    
-    if (!registration) {
-      throw new Error(`Command '${command}' not found`);
+  public async executeCommand(command: string, ...args: any[]): Promise<any> {
+    if (!this.commands.has(command)) {
+      throw new Error(`Command ${command} is not registered`);
     }
     
-    if (!this.isExtensionActive(registration.extension)) {
-      throw new Error(`Extension '${registration.extension}' is not active`);
-    }
+    const registration = this.commands.get(command)!;
     
     return registration.callback(...args);
   }
-
+  
   /**
    * Register a webview panel for an extension
+   * @param extensionId ID of the extension registering the webview
+   * @param id Panel ID
+   * @param title Panel title
+   * @param content Panel content
    */
-  private registerWebviewPanel(extension: string, id: string, title: string, content: string): void {
-    const panelId = `${extension}.${id}`;
+  private registerWebviewPanel(extensionId: string, id: string, title: string, content: string): void {
+    const fullPanelId = `${extensionId}.${id}`;
     
-    if (this.webviewPanels.has(panelId)) {
-      throw new Error(`Webview panel '${panelId}' is already registered`);
+    if (this.webviews.has(fullPanelId)) {
+      throw new Error(`Webview panel ${fullPanelId} is already registered`);
     }
     
-    this.webviewPanels.set(panelId, { id, title, content, extension });
+    this.webviews.set(fullPanelId, {
+      id: fullPanelId,
+      title,
+      content
+    });
+    
+    console.log(`Webview panel ${fullPanelId} registered`);
   }
-
-  /**
-   * Get a webview panel
-   */
-  public getWebviewPanel(id: string): WebviewPanel | undefined {
-    return this.webviewPanels.get(id);
-  }
-
-  /**
-   * Get all webview panels
-   */
-  public getAllWebviewPanels(): WebviewPanel[] {
-    return Array.from(this.webviewPanels.values());
-  }
-
+  
   /**
    * Register a menu item for an extension
+   * @param extensionId ID of the extension registering the menu item
+   * @param item Menu item
    */
-  private registerMenuItem(extension: string, item: ExtensionMenuItem): void {
-    const menuItem: MenuItemRegistration = {
-      ...item,
-      extension
-    };
+  private registerMenuItem(extensionId: string, item: ExtensionMenuItem): void {
+    const fullItemId = `${extensionId}.${item.id}`;
     
-    this.menuItems.push(menuItem);
+    // Check if the item already exists
+    if (this.menuItems.some(menuItem => menuItem.id === fullItemId)) {
+      throw new Error(`Menu item ${fullItemId} is already registered`);
+    }
+    
+    // If there's a parent, make sure it's fully qualified
+    const parent = item.parent 
+      ? item.parent.includes('.')
+        ? item.parent
+        : `${extensionId}.${item.parent}`
+      : undefined;
+    
+    // If there's a command, make sure it's fully qualified
+    const command = item.command
+      ? item.command.includes('.')
+        ? item.command
+        : `${extensionId}.${item.command}`
+      : undefined;
+    
+    // Add the menu item
+    this.menuItems.push({
+      ...item,
+      id: fullItemId,
+      parent,
+      command
+    });
+    
+    // Sort menu items by position
+    this.menuItems.sort((a, b) => {
+      const posA = a.position ?? Number.MAX_SAFE_INTEGER;
+      const posB = b.position ?? Number.MAX_SAFE_INTEGER;
+      return posA - posB;
+    });
+    
+    console.log(`Menu item ${fullItemId} registered`);
   }
-
+  
   /**
-   * Get all menu items
+   * Update extension settings
+   * @param extensionId ID of the extension
+   * @param settings New settings
    */
-  public getAllMenuItems(): MenuItemRegistration[] {
+  public updateExtensionSettings(extensionId: string, settings: Record<string, any>): void {
+    if (!this.extensions.has(extensionId)) {
+      throw new Error(`Extension with ID ${extensionId} is not registered`);
+    }
+    
+    // Get the current settings
+    const currentSettings = this.extensionSettings.get(extensionId) || {};
+    
+    // Update the settings
+    this.extensionSettings.set(extensionId, {
+      ...currentSettings,
+      ...settings
+    });
+    
+    console.log(`Extension ${extensionId} settings updated`);
+  }
+  
+  /**
+   * Get all registered extensions
+   */
+  public getAllExtensions(): { id: string; metadata: ExtensionMetadata; active: boolean }[] {
+    return Array.from(this.extensions.entries()).map(([id, extension]) => ({
+      id,
+      metadata: extension.metadata,
+      active: this.activeExtensions.has(id)
+    }));
+  }
+  
+  /**
+   * Get extension metadata
+   * @param extensionId Extension ID
+   */
+  public getExtensionMetadata(extensionId: string): ExtensionMetadata | undefined {
+    const extension = this.extensions.get(extensionId);
+    return extension?.metadata;
+  }
+  
+  /**
+   * Get extension settings
+   * @param extensionId Extension ID
+   */
+  public getExtensionSettings(extensionId: string): Record<string, any> | undefined {
+    return this.extensionSettings.get(extensionId);
+  }
+  
+  /**
+   * Get all registered commands
+   */
+  public getAllCommands(): string[] {
+    return Array.from(this.commands.keys());
+  }
+  
+  /**
+   * Get all registered webview panels
+   */
+  public getAllWebviewPanels(): WebviewPanel[] {
+    return Array.from(this.webviews.values());
+  }
+  
+  /**
+   * Get a specific webview panel
+   * @param id Panel ID
+   */
+  public getWebviewPanel(id: string): WebviewPanel | undefined {
+    return this.webviews.get(id);
+  }
+  
+  /**
+   * Get all registered menu items
+   */
+  public getAllMenuItems(): ExtensionMenuItem[] {
     return this.menuItems;
+  }
+  
+  /**
+   * Create a logger for an extension
+   * @param extensionId Extension ID
+   * @returns Extension logger
+   */
+  private createLogger(extensionId: string): ExtensionLogger {
+    return {
+      info: (message: string, data?: any) => {
+        console.log(`[${extensionId}] INFO: ${message}`, data || '');
+      },
+      
+      warn: (message: string, data?: any) => {
+        console.warn(`[${extensionId}] WARN: ${message}`, data || '');
+      },
+      
+      error: (message: string, data?: any) => {
+        console.error(`[${extensionId}] ERROR: ${message}`, data || '');
+      },
+      
+      debug: (message: string, data?: any) => {
+        console.debug(`[${extensionId}] DEBUG: ${message}`, data || '');
+      }
+    };
   }
 }

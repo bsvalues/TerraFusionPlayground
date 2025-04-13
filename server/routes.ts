@@ -31,6 +31,7 @@ import { createMarketRoutes } from "./routes/market-routes";
 import { createRiskRoutes } from "./routes/risk-routes";
 import { createAnalyticsRoutes } from "./routes/analytics-routes";
 import { createValidationRoutes } from "./routes/validation-routes";
+import { createExtensionRoutes } from "./extensions/extension-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -59,11 +60,16 @@ import { PropertyStoryGenerator, PropertyStoryOptions } from "./services/propert
 import { PropertyInsightSharingService } from "./services/property-insight-sharing-service";
 import { sharingUtils, SharingUtilsService } from "./services/sharing-utils";
 import { AgentSystem } from "./services/agent-system";
+import { initializeExtensionSystem } from "./extensions";
+import { ExtensionRegistry } from "./extensions/extension-registry";
 
 // Initialize services that require other services
 const propertyStoryGenerator = new PropertyStoryGenerator(storage);
 const propertyInsightSharingService = new PropertyInsightSharingService(storage);
 const agentSystem = new AgentSystem(storage);
+
+// Initialize extension system
+const extensionRegistry = initializeExtensionSystem(storage);
 
 // Initialize agent system
 (async () => {
@@ -122,6 +128,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Validation routes
   app.use('/api/validation', createValidationRoutes(storage));
+  
+  // Register Extension routes
+  app.use('/api/extensions', createExtensionRoutes(extensionRegistry));
 
   /**
    * Data Lineage Routes
