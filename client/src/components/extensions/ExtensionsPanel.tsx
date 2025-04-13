@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { WebviewPanel } from './WebviewPanel';
 import { 
   Settings, 
   Package, 
@@ -63,6 +64,7 @@ type ExtensionWebview = {
 export function ExtensionsPanel() {
   const [selectedExtensionId, setSelectedExtensionId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('installed');
+  const [activeWebview, setActiveWebview] = useState<{ id: string; title: string } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -237,6 +239,16 @@ export function ExtensionsPanel() {
     });
   };
   
+  // Handle opening webview
+  const handleOpenWebview = (webviewId: string, title: string) => {
+    setActiveWebview({ id: webviewId, title });
+  };
+  
+  // Handle closing webview
+  const handleCloseWebview = () => {
+    setActiveWebview(null);
+  };
+  
   // Set the first extension as selected if none is selected
   useEffect(() => {
     if (extensions && extensions.length > 0 && !selectedExtensionId) {
@@ -260,6 +272,19 @@ export function ExtensionsPanel() {
   
   return (
     <div className="flex flex-col h-full">
+      {activeWebview && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+          <div className="container flex items-center justify-center h-full max-w-7xl">
+            <div className="w-full h-[90vh] max-w-6xl">
+              <WebviewPanel 
+                webviewId={activeWebview.id}
+                title={activeWebview.title}
+                onClose={handleCloseWebview}
+              />
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex-1 overflow-hidden flex">
         {/* Sidebar list of extensions */}
         <div className="w-72 border-r overflow-y-auto h-full">
@@ -475,7 +500,10 @@ export function ExtensionsPanel() {
                                   {webview.contentPreview}
                                 </p>
                               )}
-                              <Button variant="outline">
+                              <Button 
+                                variant="outline"
+                                onClick={() => handleOpenWebview(webview.id, webview.title)}
+                              >
                                 Open Webview
                               </Button>
                             </div>
