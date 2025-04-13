@@ -1,5 +1,4 @@
-import { ReactNode, useState } from 'react';
-import Sidebar from '@/components/ui/sidebar';
+import { ReactNode } from 'react';
 import TopNavigation from '@/components/ui/top-navigation';
 
 interface AppLayoutProps {
@@ -7,29 +6,15 @@ interface AppLayoutProps {
 }
 
 const AppLayout = ({ children }: AppLayoutProps) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar - Hidden on mobile unless toggled */}
-      <div className={`${isSidebarOpen ? 'block' : 'hidden'} md:flex md:flex-shrink-0`}>
-        <Sidebar />
-      </div>
+    <div className="flex flex-col h-screen overflow-hidden bg-white">
+      {/* Top Navigation Bar */}
+      <TopNavigation />
 
-      {/* Main Content */}
-      <div className="flex flex-col w-0 flex-1 overflow-hidden">
-        {/* Top Navigation Bar */}
-        <TopNavigation toggleSidebar={toggleSidebar} />
-
-        {/* Page Content */}
-        <main className="flex-1 relative overflow-y-auto focus:outline-none">
-          {children}
-        </main>
-      </div>
+      {/* Page Content */}
+      <main className="flex-1 relative overflow-y-auto focus:outline-none">
+        {children}
+      </main>
     </div>
   );
 };
