@@ -17,6 +17,7 @@ import AgentSystemPage from "@/pages/AgentSystemPage";
 import VoiceSearchDemoPage from "@/pages/VoiceSearchDemoPage";
 import PropertyLineagePage from "@/pages/PropertyLineagePage";
 import { DataLineageDashboardPage } from "@/pages/DataLineageDashboardPage";
+import ExtensionsPage from "@/pages/ExtensionsPage";
 import AppLayout from "@/layout/app-layout";
 
 function Router() {
@@ -103,6 +104,12 @@ function Router() {
       <Route path="/property/:propertyId/lineage">
         <AppLayout>
           <PropertyLineagePage />
+        </AppLayout>
+      </Route>
+
+      <Route path="/extensions">
+        <AppLayout>
+          <ExtensionsPage />
         </AppLayout>
       </Route>
 
