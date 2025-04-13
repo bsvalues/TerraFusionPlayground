@@ -21,7 +21,7 @@ import {
 import { createDataImportRoutes } from "./routes/data-import-routes";
 import ftpRoutes from "./routes/ftp-routes";
 import ftpDataProcessorRoutes from "./routes/ftp-data-processor-routes";
-import supabaseRoutes from "./routes/supabase-routes";
+import { registerSupabaseRoutes } from "./routes/supabase-routes";
 import voiceRoutes from "./routes/voice-routes";
 import { createPropertyStoryRoutes } from "./routes/property-story-routes";
 import { createPropertyRoutes } from "./routes/property-routes";
@@ -92,7 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/ftp/data', ftpDataProcessorRoutes);
   
   // Register Supabase routes
-  app.use('/api/supabase', supabaseRoutes);
+  registerSupabaseRoutes(app, storage);
   
   // Register Property Story routes
   app.use('/api/property-stories', createPropertyStoryRoutes(storage));

@@ -9,26 +9,23 @@ import { createClient } from '@supabase/supabase-js';
 import { Database } from './supabase-types';
 import { logger } from '../server/utils/logger';
 
-// Retrieve Supabase credentials from environment variables
+// Get Supabase URL and key from environment variables
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 
-// Validate that credentials are present
+// Validate that we have the required environment variables
 if (!supabaseUrl || !supabaseKey) {
-  logger.warn('Supabase credentials not found in environment variables. Supabase functionality will be limited.');
+  logger.error('Missing required Supabase environment variables (SUPABASE_URL, SUPABASE_KEY)');
+  throw new Error('Missing required Supabase environment variables. Please check your .env file.');
 }
 
 // Create the Supabase client
-const supabase = createClient<Database>(
-  supabaseUrl || 'https://placeholder-url.supabase.co',
-  supabaseKey || 'placeholder-key',
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: true
-    }
-  }
-);
+export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false, // We'll handle session management ourselves
+    autoRefreshToken: true,
+  },
+});
 
 /**
  * Function to check Supabase connectivity
@@ -36,21 +33,15 @@ const supabase = createClient<Database>(
  */
 export const checkSupabaseHealth = async (): Promise<boolean> => {
   try {
-    if (!supabaseUrl || !supabaseKey) {
-      logger.error('Supabase credentials not found in environment variables');
-      return false;
-    }
+    // Simple query to check connection
+    const { error } = await supabase.from('properties').select('id').limit(1);
     
-    // Attempt to ping Supabase
-    const { data, error } = await supabase.from('properties').select('count').limit(1);
-    
-    if (error && error.code !== 'PGRST116') {
-      // If we get any error other than table not found, connection is not valid
+    if (error) {
       logger.error('Supabase health check failed:', error);
       return false;
     }
     
-    logger.info('Supabase health check passed');
+    logger.info('Supabase health check successful');
     return true;
   } catch (error) {
     logger.error('Error during Supabase health check:', error);
@@ -58,5 +49,5 @@ export const checkSupabaseHealth = async (): Promise<boolean> => {
   }
 };
 
-export default supabase;
+// Export the supabase client as "database" as well for compatibility
 export const database = supabase;

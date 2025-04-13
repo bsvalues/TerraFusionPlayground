@@ -1,501 +1,621 @@
 /**
  * Supabase Migration Service
  * 
- * This service provides functionality to migrate data from the existing database
- * to Supabase. It includes methods for migrating specific data types and
- * utilities for data transformation.
+ * This service handles the migration of data from the existing database to Supabase.
+ * It includes functionality for validating connections, migrating data in batches,
+ * and tracking progress of the migration.
  */
 
-import supabase from '../../shared/supabase-client';
-import { IStorage } from '../storage';
-import { TABLES } from '../../shared/supabase-schema';
+import { supabase } from '../../shared/supabase-client';
+import { Database } from '../../shared/supabase-types';
+import { TABLES, DATA_CHANGE_SOURCES } from '../../shared/supabase-schema';
 import { logger } from '../utils/logger';
-import { v4 as uuid } from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
+import { storage } from '../storage';
+
+// Type definitions for migration progress tracking
+interface MigrationStats {
+  total: number;
+  migrated: number;
+  failed: number;
+  startTime: Date;
+  endTime?: Date;
+  status: 'in_progress' | 'completed' | 'failed';
+  error?: string;
+}
+
+interface MigrationProgress {
+  properties: MigrationStats;
+  propertyAnalyses: MigrationStats;
+  propertyAppeals: MigrationStats;
+  propertyDataChanges: MigrationStats;
+  propertyInsightShares: MigrationStats;
+  propertyMarketTrends: MigrationStats;
+  agentExperiences: MigrationStats;
+}
 
 export class SupabaseMigrationService {
-  private storage: IStorage;
-  private batchSize: number = 100; // Default batch size for migrations
+  private migrationProgress: MigrationProgress;
+  private batchSize: number;
 
-  /**
-   * Create a new instance of SupabaseMigrationService
-   * @param {IStorage} storage - Storage instance to use for retrieving existing data
-   */
-  constructor(storage: IStorage) {
-    this.storage = storage;
-    logger.info('SupabaseMigrationService initialized');
+  constructor(batchSize = 50) {
+    this.batchSize = batchSize;
+    // Initialize migration progress tracking
+    this.migrationProgress = {
+      properties: this.createDefaultMigrationStats(),
+      propertyAnalyses: this.createDefaultMigrationStats(),
+      propertyAppeals: this.createDefaultMigrationStats(),
+      propertyDataChanges: this.createDefaultMigrationStats(),
+      propertyInsightShares: this.createDefaultMigrationStats(),
+      propertyMarketTrends: this.createDefaultMigrationStats(),
+      agentExperiences: this.createDefaultMigrationStats(),
+    };
   }
 
   /**
-   * Set the batch size for migrations
-   * @param {number} size - The batch size to use
+   * Create default migration stats object
    */
-  setBatchSize(size: number): void {
-    this.batchSize = size;
-    logger.info(`Migration batch size set to ${size}`);
+  private createDefaultMigrationStats(): MigrationStats {
+    return {
+      total: 0,
+      migrated: 0,
+      failed: 0,
+      startTime: new Date(),
+      status: 'in_progress'
+    };
   }
 
   /**
-   * Validate Supabase connection
-   * @returns {Promise<boolean>} - True if connection is valid, false otherwise
+   * Validates connection to Supabase and checks that tables exist
    */
-  async validateConnection(): Promise<boolean> {
+  async validateConnection(): Promise<{ valid: boolean; message: string }> {
     try {
-      // Attempt to fetch a small amount of data to validate connection
+      // Check that we can connect to Supabase
       const { data, error } = await supabase
         .from(TABLES.PROPERTIES)
         .select('id')
         .limit(1);
-      
-      if (error && error.code !== 'PGRST116') {
-        // If we get any error other than table not found, connection is not valid
+
+      if (error) {
         logger.error('Supabase connection validation failed:', error);
-        return false;
+        return { 
+          valid: false, 
+          message: `Failed to connect to Supabase: ${error.message}` 
+        };
       }
-      
-      // Connection is valid
+
       logger.info('Supabase connection validation successful');
-      return true;
+      return { valid: true, message: 'Successfully connected to Supabase' };
     } catch (error) {
-      logger.error('Error validating Supabase connection:', error);
-      return false;
+      logger.error('Error during Supabase connection validation:', error);
+      return { 
+        valid: false, 
+        message: `Exception during connection validation: ${error instanceof Error ? error.message : String(error)}` 
+      };
     }
   }
 
   /**
-   * Migrate properties from the existing database to Supabase
-   * @returns {Promise<{success: boolean, count?: number, error?: any}>} - Migration result
+   * Migrates all data from existing storage to Supabase
    */
-  async migrateProperties(): Promise<{success: boolean, count?: number, error?: any}> {
+  async migrateAllData(): Promise<MigrationProgress> {
+    logger.info('Starting complete data migration to Supabase');
+    
     try {
-      logger.info('Starting property migration to Supabase');
+      // Migrate properties first as they are referenced by other tables
+      await this.migrateProperties();
       
-      // Get properties from existing storage
-      const properties = await this.storage.getProperties();
+      // Migrate other data in parallel for efficiency
+      await Promise.all([
+        this.migratePropertyAnalyses(),
+        this.migratePropertyAppeals(),
+        this.migratePropertyDataChanges(),
+        this.migratePropertyInsightShares(),
+        this.migratePropertyMarketTrends(),
+        this.migrateAgentExperiences()
+      ]);
+
+      logger.info('Complete data migration finished successfully');
+      return this.migrationProgress;
+    } catch (error) {
+      logger.error('Error during complete data migration:', error);
       
-      if (properties.length === 0) {
-        logger.info('No properties found to migrate');
-        return { success: true, count: 0 };
+      // Mark all unfinished migrations as failed
+      for (const key of Object.keys(this.migrationProgress)) {
+        const stats = this.migrationProgress[key as keyof MigrationProgress];
+        if (stats.status === 'in_progress') {
+          stats.status = 'failed';
+          stats.endTime = new Date();
+          stats.error = error instanceof Error ? error.message : String(error);
+        }
       }
       
-      logger.info(`Found ${properties.length} properties to migrate`);
+      return this.migrationProgress;
+    }
+  }
+
+  /**
+   * Migrates properties from existing storage to Supabase
+   */
+  async migrateProperties(): Promise<MigrationStats> {
+    const stats = this.migrationProgress.properties;
+    stats.startTime = new Date();
+    stats.status = 'in_progress';
+    
+    try {
+      // Get all properties from existing storage
+      const properties = await storage.getAllProperties();
+      stats.total = properties.length;
       
-      // Create batches for processing
-      const batches = this.createBatches(properties, this.batchSize);
-      let totalMigrated = 0;
+      logger.info(`Starting migration of ${stats.total} properties`);
       
-      // Process each batch
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
-        const supabaseProperties = batch.map(prop => ({
-          id: uuid(),
-          property_id: prop.propertyId,
-          address: prop.address,
-          parcel_number: prop.parcelNumber,
-          property_type: prop.propertyType,
-          status: prop.status,
-          acres: parseFloat(prop.acres) || 0,
-          value: prop.value ? parseFloat(prop.value) : null,
-          extra_fields: prop.extraFields || null,
-          created_at: new Date(prop.createdAt).toISOString(),
-          updated_at: new Date(prop.lastUpdated).toISOString()
+      // Process in batches
+      for (let i = 0; i < properties.length; i += this.batchSize) {
+        const batch = properties.slice(i, i + this.batchSize);
+        
+        const supabaseProperties = batch.map(property => ({
+          id: uuidv4(),
+          property_id: property.propertyId,
+          address: property.address,
+          parcel_number: property.parcelNumber,
+          property_type: property.propertyType,
+          status: property.status,
+          acres: parseFloat(property.acres), // Convert string to number if stored as string
+          value: property.value ? parseFloat(property.value.toString()) : null,
+          extra_fields: property.extraFields || null,
+          created_at: property.createdAt.toISOString(),
+          updated_at: property.lastUpdated.toISOString()
         }));
         
-        // Insert the batch into Supabase
         const { error } = await supabase
           .from(TABLES.PROPERTIES)
           .insert(supabaseProperties);
-        
+          
         if (error) {
-          logger.error(`Error migrating property batch ${i+1}:`, error);
-          return { success: false, count: totalMigrated, error };
+          logger.error(`Error migrating properties batch (${i}-${i + batch.length}):`, error);
+          stats.failed += batch.length;
+        } else {
+          stats.migrated += batch.length;
+          logger.info(`Migrated properties batch: ${stats.migrated}/${stats.total}`);
         }
-        
-        totalMigrated += batch.length;
-        logger.info(`Migrated property batch ${i+1}/${batches.length} (${totalMigrated}/${properties.length})`);
       }
       
-      logger.info(`Property migration complete: ${totalMigrated} properties migrated`);
-      return { success: true, count: totalMigrated };
+      stats.status = 'completed';
+      stats.endTime = new Date();
+      logger.info(`Completed migration of properties: ${stats.migrated}/${stats.total} successful`);
+      
+      return stats;
     } catch (error) {
       logger.error('Error during property migration:', error);
-      return { success: false, error };
+      stats.status = 'failed';
+      stats.endTime = new Date();
+      stats.error = error instanceof Error ? error.message : String(error);
+      return stats;
     }
   }
 
   /**
-   * Migrate property analyses from the existing database to Supabase
-   * @returns {Promise<{success: boolean, count?: number, error?: any}>} - Migration result
+   * Migrates property analyses from existing storage to Supabase
    */
-  async migratePropertyAnalyses(): Promise<{success: boolean, count?: number, error?: any}> {
+  async migratePropertyAnalyses(): Promise<MigrationStats> {
+    const stats = this.migrationProgress.propertyAnalyses;
+    stats.startTime = new Date();
+    stats.status = 'in_progress';
+    
     try {
-      logger.info('Starting property analyses migration to Supabase');
+      // Get all property analyses from existing storage
+      const analyses = await storage.getAllPropertyAnalyses();
+      stats.total = analyses.length;
       
-      // Get property analyses from existing storage
-      const analyses = await this.storage.getPropertyAnalyses();
+      logger.info(`Starting migration of ${stats.total} property analyses`);
       
-      if (analyses.length === 0) {
-        logger.info('No property analyses found to migrate');
-        return { success: true, count: 0 };
-      }
-      
-      logger.info(`Found ${analyses.length} property analyses to migrate`);
-      
-      // Create batches for processing
-      const batches = this.createBatches(analyses, this.batchSize);
-      let totalMigrated = 0;
-      
-      // Process each batch
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
+      // Process in batches
+      for (let i = 0; i < analyses.length; i += this.batchSize) {
+        const batch = analyses.slice(i, i + this.batchSize);
+        
         const supabaseAnalyses = batch.map(analysis => ({
-          id: uuid(),
+          id: uuidv4(),
           property_id: analysis.propertyId,
           analysis_id: analysis.analysisId,
           title: analysis.title,
           description: analysis.description,
           methodology: analysis.methodology,
-          value_conclusion: analysis.valueConclusion ? parseFloat(analysis.valueConclusion) : null,
-          confidence_level: analysis.confidenceLevel || null,
+          value_conclusion: analysis.valueConclusion ? parseFloat(analysis.valueConclusion.toString()) : null,
+          confidence_level: analysis.confidenceLevel,
           comparable_properties: analysis.comparableProperties || null,
-          adjustment_notes: analysis.adjustmentNotes || null,
+          adjustment_notes: analysis.adjustmentNotes,
           created_by: analysis.createdBy.toString(),
           approved_by: analysis.approvedBy ? analysis.approvedBy.toString() : null,
-          review_date: analysis.reviewDate ? new Date(analysis.reviewDate).toISOString() : null,
-          created_at: new Date(analysis.createdAt).toISOString(),
-          updated_at: new Date(analysis.lastUpdated).toISOString(),
+          review_date: analysis.reviewDate ? analysis.reviewDate.toISOString() : null,
+          created_at: analysis.createdAt.toISOString(),
+          updated_at: analysis.lastUpdated.toISOString(),
           status: analysis.status
         }));
         
-        // Insert the batch into Supabase
         const { error } = await supabase
           .from(TABLES.PROPERTY_ANALYSES)
           .insert(supabaseAnalyses);
-        
+          
         if (error) {
-          logger.error(`Error migrating property analysis batch ${i+1}:`, error);
-          return { success: false, count: totalMigrated, error };
+          logger.error(`Error migrating property analyses batch (${i}-${i + batch.length}):`, error);
+          stats.failed += batch.length;
+        } else {
+          stats.migrated += batch.length;
+          logger.info(`Migrated property analyses batch: ${stats.migrated}/${stats.total}`);
         }
-        
-        totalMigrated += batch.length;
-        logger.info(`Migrated property analysis batch ${i+1}/${batches.length} (${totalMigrated}/${analyses.length})`);
       }
       
-      logger.info(`Property analyses migration complete: ${totalMigrated} analyses migrated`);
-      return { success: true, count: totalMigrated };
+      stats.status = 'completed';
+      stats.endTime = new Date();
+      logger.info(`Completed migration of property analyses: ${stats.migrated}/${stats.total} successful`);
+      
+      return stats;
     } catch (error) {
       logger.error('Error during property analyses migration:', error);
-      return { success: false, error };
+      stats.status = 'failed';
+      stats.endTime = new Date();
+      stats.error = error instanceof Error ? error.message : String(error);
+      return stats;
     }
   }
 
   /**
-   * Migrate property appeals from the existing database to Supabase
-   * @returns {Promise<{success: boolean, count?: number, error?: any}>} - Migration result
+   * Migrates property appeals from existing storage to Supabase
    */
-  async migratePropertyAppeals(): Promise<{success: boolean, count?: number, error?: any}> {
+  async migratePropertyAppeals(): Promise<MigrationStats> {
+    const stats = this.migrationProgress.propertyAppeals;
+    stats.startTime = new Date();
+    stats.status = 'in_progress';
+    
     try {
-      logger.info('Starting property appeals migration to Supabase');
+      // Get all property appeals from existing storage
+      const appeals = await storage.getAllPropertyAppeals();
+      stats.total = appeals.length;
       
-      // Get property appeals from existing storage
-      const appeals = await this.storage.getPropertyAppeals();
+      logger.info(`Starting migration of ${stats.total} property appeals`);
       
-      if (appeals.length === 0) {
-        logger.info('No property appeals found to migrate');
-        return { success: true, count: 0 };
-      }
-      
-      logger.info(`Found ${appeals.length} property appeals to migrate`);
-      
-      // Create batches for processing
-      const batches = this.createBatches(appeals, this.batchSize);
-      let totalMigrated = 0;
-      
-      // Process each batch
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
+      // Process in batches
+      for (let i = 0; i < appeals.length; i += this.batchSize) {
+        const batch = appeals.slice(i, i + this.batchSize);
+        
         const supabaseAppeals = batch.map(appeal => ({
-          id: uuid(),
+          id: uuidv4(),
           property_id: appeal.propertyId,
           user_id: appeal.userId.toString(),
           appeal_number: appeal.appealNumber,
           appeal_type: appeal.appealType,
           reason: appeal.reason,
           evidence_urls: appeal.evidenceUrls,
-          hearing_date: appeal.hearingDate ? new Date(appeal.hearingDate).toISOString() : null,
+          hearing_date: appeal.hearingDate ? appeal.hearingDate.toISOString() : null,
           decision: appeal.decision,
-          decision_date: appeal.decisionDate ? new Date(appeal.decisionDate).toISOString() : null,
+          decision_date: appeal.decisionDate ? appeal.decisionDate.toISOString() : null,
           notes: appeal.notes,
           status: appeal.status,
-          created_at: new Date(appeal.createdAt).toISOString(),
-          updated_at: new Date(appeal.lastUpdated).toISOString(),
+          created_at: appeal.createdAt.toISOString(),
+          updated_at: appeal.lastUpdated.toISOString(),
           notification_sent: appeal.notificationSent
         }));
         
-        // Insert the batch into Supabase
         const { error } = await supabase
           .from(TABLES.PROPERTY_APPEALS)
           .insert(supabaseAppeals);
-        
+          
         if (error) {
-          logger.error(`Error migrating property appeal batch ${i+1}:`, error);
-          return { success: false, count: totalMigrated, error };
+          logger.error(`Error migrating property appeals batch (${i}-${i + batch.length}):`, error);
+          stats.failed += batch.length;
+        } else {
+          stats.migrated += batch.length;
+          logger.info(`Migrated property appeals batch: ${stats.migrated}/${stats.total}`);
         }
-        
-        totalMigrated += batch.length;
-        logger.info(`Migrated property appeal batch ${i+1}/${batches.length} (${totalMigrated}/${appeals.length})`);
       }
       
-      logger.info(`Property appeals migration complete: ${totalMigrated} appeals migrated`);
-      return { success: true, count: totalMigrated };
+      stats.status = 'completed';
+      stats.endTime = new Date();
+      logger.info(`Completed migration of property appeals: ${stats.migrated}/${stats.total} successful`);
+      
+      return stats;
     } catch (error) {
       logger.error('Error during property appeals migration:', error);
-      return { success: false, error };
+      stats.status = 'failed';
+      stats.endTime = new Date();
+      stats.error = error instanceof Error ? error.message : String(error);
+      return stats;
     }
   }
 
   /**
-   * Migrate data lineage records from the existing database to Supabase
-   * @returns {Promise<{success: boolean, count?: number, error?: any}>} - Migration result
+   * Migrates property data changes from existing storage to Supabase
    */
-  async migrateDataLineage(): Promise<{success: boolean, count?: number, error?: any}> {
+  async migratePropertyDataChanges(): Promise<MigrationStats> {
+    const stats = this.migrationProgress.propertyDataChanges;
+    stats.startTime = new Date();
+    stats.status = 'in_progress';
+    
     try {
-      logger.info('Starting data lineage migration to Supabase');
+      // Get all property data changes from existing storage
+      const dataChanges = await storage.getAllPropertyDataChanges();
+      stats.total = dataChanges.length;
       
-      // Get data lineage records from existing storage
-      const lineageRecords = await this.storage.getDataLineageRecords();
+      logger.info(`Starting migration of ${stats.total} property data changes`);
       
-      if (lineageRecords.length === 0) {
-        logger.info('No data lineage records found to migrate');
-        return { success: true, count: 0 };
-      }
-      
-      logger.info(`Found ${lineageRecords.length} data lineage records to migrate`);
-      
-      // Create batches for processing
-      const batches = this.createBatches(lineageRecords, this.batchSize);
-      let totalMigrated = 0;
-      
-      // Process each batch
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
-        const supabaseLineageRecords = batch.map(record => ({
-          id: uuid(),
-          property_id: record.propertyId,
-          field_name: record.fieldName,
-          old_value: record.oldValue,
-          new_value: record.newValue,
-          change_timestamp: new Date(record.changeTimestamp).toISOString(),
-          source: record.source,
-          user_id: record.userId.toString(),
-          source_details: record.sourceDetails || null,
-          created_at: new Date(record.createdAt).toISOString()
+      // Process in batches
+      for (let i = 0; i < dataChanges.length; i += this.batchSize) {
+        const batch = dataChanges.slice(i, i + this.batchSize);
+        
+        const supabaseDataChanges = batch.map(change => ({
+          id: uuidv4(),
+          property_id: change.propertyId,
+          field_name: change.fieldName,
+          old_value: change.oldValue,
+          new_value: change.newValue,
+          change_timestamp: change.changeTimestamp.toISOString(),
+          source: change.source,
+          user_id: change.userId.toString(),
+          source_details: change.sourceDetails || null,
+          created_at: change.createdAt.toISOString()
         }));
         
-        // Insert the batch into Supabase
         const { error } = await supabase
           .from(TABLES.PROPERTY_DATA_CHANGES)
-          .insert(supabaseLineageRecords);
-        
+          .insert(supabaseDataChanges);
+          
         if (error) {
-          logger.error(`Error migrating data lineage batch ${i+1}:`, error);
-          return { success: false, count: totalMigrated, error };
+          logger.error(`Error migrating property data changes batch (${i}-${i + batch.length}):`, error);
+          stats.failed += batch.length;
+        } else {
+          stats.migrated += batch.length;
+          logger.info(`Migrated property data changes batch: ${stats.migrated}/${stats.total}`);
         }
-        
-        totalMigrated += batch.length;
-        logger.info(`Migrated data lineage batch ${i+1}/${batches.length} (${totalMigrated}/${lineageRecords.length})`);
       }
       
-      logger.info(`Data lineage migration complete: ${totalMigrated} records migrated`);
-      return { success: true, count: totalMigrated };
+      stats.status = 'completed';
+      stats.endTime = new Date();
+      logger.info(`Completed migration of property data changes: ${stats.migrated}/${stats.total} successful`);
+      
+      return stats;
     } catch (error) {
-      logger.error('Error during data lineage migration:', error);
-      return { success: false, error };
+      logger.error('Error during property data changes migration:', error);
+      stats.status = 'failed';
+      stats.endTime = new Date();
+      stats.error = error instanceof Error ? error.message : String(error);
+      return stats;
     }
   }
 
   /**
-   * Migrate agent experiences from the existing database to Supabase
-   * @returns {Promise<{success: boolean, count?: number, error?: any}>} - Migration result
+   * Migrates property insight shares from existing storage to Supabase
    */
-  async migrateAgentExperiences(): Promise<{success: boolean, count?: number, error?: any}> {
+  async migratePropertyInsightShares(): Promise<MigrationStats> {
+    const stats = this.migrationProgress.propertyInsightShares;
+    stats.startTime = new Date();
+    stats.status = 'in_progress';
+    
     try {
-      logger.info('Starting agent experiences migration to Supabase');
+      // Get all property insight shares from existing storage
+      const shares = await storage.getAllPropertyInsightShares();
+      stats.total = shares.length;
       
-      // Get agent experiences from existing storage
-      const experiences = await this.storage.getAgentExperiences();
+      logger.info(`Starting migration of ${stats.total} property insight shares`);
       
-      if (!experiences || experiences.length === 0) {
-        logger.info('No agent experiences found to migrate');
-        return { success: true, count: 0 };
-      }
-      
-      logger.info(`Found ${experiences.length} agent experiences to migrate`);
-      
-      // Create batches for processing
-      const batches = this.createBatches(experiences, this.batchSize);
-      let totalMigrated = 0;
-      
-      // Process each batch
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
-        const supabaseExperiences = batch.map(exp => ({
-          id: uuid(),
-          agent_id: exp.agentId.toString(),
-          agent_name: exp.agentName,
-          experience_id: exp.experienceId,
-          action: exp.action,
-          entity_type: exp.entityType,
-          entity_id: exp.entityId,
-          state: exp.state,
-          reward: exp.reward,
-          priority: exp.priority,
-          feedback: exp.feedback,
-          timestamp: new Date(exp.timestamp).toISOString(),
-          created_at: new Date(exp.createdAt).toISOString(),
-          used_for_training: exp.usedForTraining
+      // Process in batches
+      for (let i = 0; i < shares.length; i += this.batchSize) {
+        const batch = shares.slice(i, i + this.batchSize);
+        
+        const supabaseShares = batch.map(share => ({
+          id: uuidv4(),
+          share_id: share.shareId,
+          property_id: share.propertyId,
+          property_name: share.propertyName,
+          property_address: share.propertyAddress,
+          analysis_ids: share.analysisIds,
+          created_by: share.createdBy.toString(),
+          access_token: share.accessToken,
+          expires_at: share.expiresAt ? share.expiresAt.toISOString() : null,
+          created_at: share.createdAt.toISOString(),
+          access_count: share.accessCount,
+          last_accessed_at: share.lastAccessedAt ? share.lastAccessedAt.toISOString() : null
         }));
         
-        // Insert the batch into Supabase
         const { error } = await supabase
-          .from(TABLES.AGENT_EXPERIENCES)
-          .insert(supabaseExperiences);
-        
+          .from(TABLES.PROPERTY_INSIGHT_SHARES)
+          .insert(supabaseShares);
+          
         if (error) {
-          logger.error(`Error migrating agent experience batch ${i+1}:`, error);
-          return { success: false, count: totalMigrated, error };
+          logger.error(`Error migrating property insight shares batch (${i}-${i + batch.length}):`, error);
+          stats.failed += batch.length;
+        } else {
+          stats.migrated += batch.length;
+          logger.info(`Migrated property insight shares batch: ${stats.migrated}/${stats.total}`);
         }
-        
-        totalMigrated += batch.length;
-        logger.info(`Migrated agent experience batch ${i+1}/${batches.length} (${totalMigrated}/${experiences.length})`);
       }
       
-      logger.info(`Agent experiences migration complete: ${totalMigrated} experiences migrated`);
-      return { success: true, count: totalMigrated };
+      stats.status = 'completed';
+      stats.endTime = new Date();
+      logger.info(`Completed migration of property insight shares: ${stats.migrated}/${stats.total} successful`);
+      
+      return stats;
     } catch (error) {
-      logger.error('Error during agent experiences migration:', error);
-      return { success: false, error };
+      logger.error('Error during property insight shares migration:', error);
+      stats.status = 'failed';
+      stats.endTime = new Date();
+      stats.error = error instanceof Error ? error.message : String(error);
+      return stats;
     }
   }
 
   /**
-   * Migrate property market trends from the existing database to Supabase
-   * @returns {Promise<{success: boolean, count?: number, error?: any}>} - Migration result
+   * Migrates property market trends from existing storage to Supabase
    */
-  async migratePropertyMarketTrends(): Promise<{success: boolean, count?: number, error?: any}> {
+  async migratePropertyMarketTrends(): Promise<MigrationStats> {
+    const stats = this.migrationProgress.propertyMarketTrends;
+    stats.startTime = new Date();
+    stats.status = 'in_progress';
+    
     try {
-      logger.info('Starting property market trends migration to Supabase');
+      // Get all property market trends from existing storage
+      const trends = await storage.getAllPropertyMarketTrends();
+      stats.total = trends.length;
       
-      // Get property market trends from existing storage
-      const trends = await this.storage.getPropertyMarketTrends();
+      logger.info(`Starting migration of ${stats.total} property market trends`);
       
-      if (!trends || trends.length === 0) {
-        logger.info('No property market trends found to migrate');
-        return { success: true, count: 0 };
-      }
-      
-      logger.info(`Found ${trends.length} property market trends to migrate`);
-      
-      // Create batches for processing
-      const batches = this.createBatches(trends, this.batchSize);
-      let totalMigrated = 0;
-      
-      // Process each batch
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
+      // Process in batches
+      for (let i = 0; i < trends.length; i += this.batchSize) {
+        const batch = trends.slice(i, i + this.batchSize);
+        
         const supabaseTrends = batch.map(trend => ({
-          id: uuid(),
+          id: uuidv4(),
           property_id: trend.propertyId,
-          timestamp: new Date(trend.timestamp).toISOString(),
-          value: trend.value,
-          percent_change: trend.percentChange,
+          timestamp: trend.timestamp.toISOString(),
+          value: parseFloat(trend.value.toString()),
+          percent_change: parseFloat(trend.percentChange.toString()),
           comparable_sales: trend.comparableSales,
           market_indicators: trend.marketIndicators,
           prediction_factors: trend.predictionFactors,
-          confidence_score: trend.confidenceScore,
-          created_at: new Date(trend.createdAt).toISOString()
+          confidence_score: parseFloat(trend.confidenceScore.toString()),
+          created_at: trend.createdAt.toISOString()
         }));
         
-        // Insert the batch into Supabase
         const { error } = await supabase
           .from(TABLES.PROPERTY_MARKET_TRENDS)
           .insert(supabaseTrends);
-        
+          
         if (error) {
-          logger.error(`Error migrating property market trend batch ${i+1}:`, error);
-          return { success: false, count: totalMigrated, error };
+          logger.error(`Error migrating property market trends batch (${i}-${i + batch.length}):`, error);
+          stats.failed += batch.length;
+        } else {
+          stats.migrated += batch.length;
+          logger.info(`Migrated property market trends batch: ${stats.migrated}/${stats.total}`);
         }
-        
-        totalMigrated += batch.length;
-        logger.info(`Migrated property market trend batch ${i+1}/${batches.length} (${totalMigrated}/${trends.length})`);
       }
       
-      logger.info(`Property market trends migration complete: ${totalMigrated} trends migrated`);
-      return { success: true, count: totalMigrated };
+      stats.status = 'completed';
+      stats.endTime = new Date();
+      logger.info(`Completed migration of property market trends: ${stats.migrated}/${stats.total} successful`);
+      
+      return stats;
     } catch (error) {
       logger.error('Error during property market trends migration:', error);
-      return { success: false, error };
+      stats.status = 'failed';
+      stats.endTime = new Date();
+      stats.error = error instanceof Error ? error.message : String(error);
+      return stats;
     }
   }
 
   /**
-   * Migrate all data from the existing database to Supabase
-   * @returns {Promise<{success: boolean, results: Record<string, {success: boolean, count?: number, error?: any}>}>} - Migration result
+   * Migrates agent experiences from existing storage to Supabase
    */
-  async migrateAllData(): Promise<{
-    success: boolean,
-    results: Record<string, {success: boolean, count?: number, error?: any}>
-  }> {
-    logger.info('Starting full data migration to Supabase');
+  async migrateAgentExperiences(): Promise<MigrationStats> {
+    const stats = this.migrationProgress.agentExperiences;
+    stats.startTime = new Date();
+    stats.status = 'in_progress';
     
-    // Validate connection first
-    const connectionValid = await this.validateConnection();
-    if (!connectionValid) {
-      return {
-        success: false,
-        results: {
-          connection: { success: false, error: 'Could not establish a valid connection to Supabase' }
+    try {
+      // Get all agent experiences from existing storage
+      const experiences = await storage.getAllAgentExperiences();
+      stats.total = experiences.length;
+      
+      logger.info(`Starting migration of ${stats.total} agent experiences`);
+      
+      // Process in batches
+      for (let i = 0; i < experiences.length; i += this.batchSize) {
+        const batch = experiences.slice(i, i + this.batchSize);
+        
+        const supabaseExperiences = batch.map(experience => ({
+          id: uuidv4(),
+          agent_id: experience.agentId.toString(),
+          agent_name: experience.agentName,
+          experience_id: experience.experienceId,
+          action: experience.action,
+          entity_type: experience.entityType,
+          entity_id: experience.entityId,
+          state: experience.state,
+          reward: parseFloat(experience.reward.toString()),
+          priority: experience.priority,
+          feedback: experience.feedback,
+          timestamp: experience.timestamp.toISOString(),
+          created_at: experience.createdAt.toISOString(),
+          used_for_training: experience.usedForTraining || false
+        }));
+        
+        const { error } = await supabase
+          .from(TABLES.AGENT_EXPERIENCES)
+          .insert(supabaseExperiences);
+          
+        if (error) {
+          logger.error(`Error migrating agent experiences batch (${i}-${i + batch.length}):`, error);
+          stats.failed += batch.length;
+        } else {
+          stats.migrated += batch.length;
+          logger.info(`Migrated agent experiences batch: ${stats.migrated}/${stats.total}`);
         }
-      };
+      }
+      
+      stats.status = 'completed';
+      stats.endTime = new Date();
+      logger.info(`Completed migration of agent experiences: ${stats.migrated}/${stats.total} successful`);
+      
+      return stats;
+    } catch (error) {
+      logger.error('Error during agent experiences migration:', error);
+      stats.status = 'failed';
+      stats.endTime = new Date();
+      stats.error = error instanceof Error ? error.message : String(error);
+      return stats;
     }
-    
-    // Migrate all data types
-    const results: Record<string, {success: boolean, count?: number, error?: any}> = {};
-    
-    results.properties = await this.migrateProperties();
-    results.propertyAnalyses = await this.migratePropertyAnalyses();
-    results.propertyAppeals = await this.migratePropertyAppeals();
-    results.dataLineage = await this.migrateDataLineage();
-    results.agentExperiences = await this.migrateAgentExperiences();
-    results.propertyMarketTrends = await this.migratePropertyMarketTrends();
-    
-    // Check if all migrations were successful
-    const allSuccessful = Object.values(results).every(result => result.success);
-    
-    if (allSuccessful) {
-      logger.info('Full data migration to Supabase completed successfully');
-    } else {
-      logger.error('Some migrations failed during full data migration process');
-    }
-    
-    return {
-      success: allSuccessful,
-      results
-    };
   }
 
   /**
-   * Helper method to create batches of items for processing
-   * @param {T[]} items - Array of items to batch
-   * @param {number} batchSize - Size of each batch
-   * @returns {T[][]} - Array of batches
+   * Gets the current migration progress
    */
-  private createBatches<T>(items: T[], batchSize: number): T[][] {
-    const batches: T[][] = [];
-    
-    for (let i = 0; i < items.length; i += batchSize) {
-      batches.push(items.slice(i, i + batchSize));
+  getMigrationProgress(): MigrationProgress {
+    return this.migrationProgress;
+  }
+
+  /**
+   * Create FTP property change record in Supabase
+   * Used when syncing FTP data directly to Supabase
+   */
+  async recordPropertyChangeFromFTP(
+    propertyId: string, 
+    fieldName: string, 
+    oldValue: string, 
+    newValue: string, 
+    userId: string = 'system'
+  ): Promise<boolean> {
+    try {
+      const changeRecord = {
+        id: uuidv4(),
+        property_id: propertyId,
+        field_name: fieldName,
+        old_value: oldValue,
+        new_value: newValue,
+        change_timestamp: new Date().toISOString(),
+        source: DATA_CHANGE_SOURCES.FTP_SYNC,
+        user_id: userId,
+        source_details: { 
+          system: 'FTP Import',
+          sync_timestamp: new Date().toISOString()
+        },
+        created_at: new Date().toISOString()
+      };
+      
+      const { error } = await supabase
+        .from(TABLES.PROPERTY_DATA_CHANGES)
+        .insert(changeRecord);
+        
+      if (error) {
+        logger.error(`Error recording property change from FTP for property ${propertyId}:`, error);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      logger.error(`Exception recording property change from FTP for property ${propertyId}:`, error);
+      return false;
     }
-    
-    return batches;
   }
 }
+
+// Export a singleton instance for use throughout the application
+export const supabaseMigrationService = new SupabaseMigrationService();
