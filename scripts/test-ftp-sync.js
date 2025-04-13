@@ -1,345 +1,159 @@
 /**
- * FTP Agent Test Script
+ * Test FTP Synchronization Script
  * 
- * This script provides a command-line interface for testing the FTP data agent directly.
- * It can be used to verify connection, sync data, check status, and more.
- * 
- * Usage:
- *   node scripts/test-ftp-sync.js <command> [options]
- * 
- * Commands:
- *   connect               Test connection to FTP server
- *   status                Get current FTP status
- *   info                  Get schedule information
- *   sync [path]           Synchronize data from path (or all if not specified)
- *   list <path>           List files in directory
- *   download <path>       Download a specific file
- *   schedule <options>    Configure synchronization schedule
- * 
- * Options for schedule:
- *   --enable              Enable scheduled synchronization
- *   --disable             Disable scheduled synchronization
- *   --interval=X          Set interval in hours (1-168)
- *   --once                Run once immediately
- * 
- * Examples:
- *   node scripts/test-ftp-sync.js connect
- *   node scripts/test-ftp-sync.js sync /valuations
- *   node scripts/test-ftp-sync.js schedule --enable --interval=12
- *   node scripts/test-ftp-sync.js schedule --once
+ * This script tests the FTP synchronization functionality by connecting to
+ * the Benton County FTP server and syncing a small directory.
  */
 
-const { AgentSystem } = require('../server/services/agent-system');
-const { MemStorage } = require('../server/storage');
-const path = require('path');
-const fs = require('fs');
+import { FtpService } from '../server/services/ftp-service.js';
+import { synchronizeBentonCountyFTP } from './synchronize-benton-county-ftp.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Create output directories if they don't exist
-const ensureDirectoryExists = (dirPath) => {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
-  }
+// Get the directory name
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.join(__dirname, '..');
+
+// Test configuration
+const testOptions = {
+  smallSync: true, // Only sync a small test directory 
+  checkDownloadDir: true, // Verify download directory exists
+  fullSync: false // Whether to do a full sync after small test
 };
 
-// Configuration
-const LOG_DIR = path.join(__dirname, '../logs');
-const DOWNLOADS_DIR = path.join(__dirname, '../downloads');
-ensureDirectoryExists(LOG_DIR);
-ensureDirectoryExists(DOWNLOADS_DIR);
-
-// Helper function to log to console and file
-function log(message, level = 'info') {
-  const timestamp = new Date().toISOString();
-  const formattedMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
+/**
+ * Run a small test sync to a test directory
+ */
+async function testSmallSync() {
+  console.log('=== Testing small directory sync ===');
   
-  // Log to console with color
-  const colors = {
-    info: '\x1b[36m%s\x1b[0m',     // Cyan
-    success: '\x1b[32m%s\x1b[0m',  // Green
-    warn: '\x1b[33m%s\x1b[0m',     // Yellow
-    error: '\x1b[31m%s\x1b[0m'     // Red
-  };
-  
-  console.log(colors[level] || colors.info, formattedMessage);
-  
-  // Log to file
-  const logFile = path.join(LOG_DIR, 'ftp-test.log');
-  fs.appendFileSync(logFile, formattedMessage + '\n');
-}
-
-// Format JSON output nicely
-function formatJson(obj) {
-  return JSON.stringify(obj, null, 2);
-}
-
-// FTP Agent Command Handler
-class FtpAgentTester {
-  constructor() {
-    this.storage = new MemStorage();
-    this.agentSystem = new AgentSystem(this.storage);
+  // Create a temporary test directory
+  const testDownloadPath = path.join(rootDir, 'downloads', 'test-sync');
+  if (!fs.existsSync(testDownloadPath)) {
+    fs.mkdirSync(testDownloadPath, { recursive: true });
   }
   
-  async initialize() {
-    log('Initializing agent system...', 'info');
-    await this.agentSystem.initialize();
-    this.ftpAgent = this.agentSystem.getAgent('ftp-data-agent');
-    
-    if (!this.ftpAgent) {
-      log('FTP Agent not found in the agent system', 'error');
-      process.exit(1);
-    }
-    
-    log('FTP Agent initialized successfully', 'success');
-  }
-  
-  async testConnection() {
-    log('Testing connection to FTP server...', 'info');
-    const result = await this.ftpAgent.handleRequest({
-      action: 'testFtpConnection',
-      parameters: {}
-    });
-    
-    if (result.success) {
-      log('Successfully connected to FTP server', 'success');
-      log(`Server details: ${result.result.server}`, 'info');
-      log(`Feature support: ${formatJson(result.result.features)}`, 'info');
-    } else {
-      log(`Connection failed: ${result.error}`, 'error');
-    }
-    
-    return result;
-  }
-  
-  async getStatus() {
-    log('Fetching FTP agent status...', 'info');
-    const result = await this.ftpAgent.handleRequest({
-      action: 'getFtpStatus',
-      parameters: {}
-    });
-    
-    if (result.success) {
-      log('Status retrieved successfully', 'success');
-      log(`Connection: ${result.result.connection.connected ? 'Connected' : 'Disconnected'}`, 'info');
-      log(`Last sync: ${result.result.lastSync || 'Never'}`, 'info');
-      log(`Next sync: ${result.result.schedule.nextSyncFormatted || 'Not scheduled'}`, 'info');
-      log(`Success rate: ${result.result.syncStats.successRate}%`, 'info');
-      log(`Settings: ${formatJson(result.result.settings)}`, 'info');
-    } else {
-      log(`Failed to get status: ${result.error}`, 'error');
-    }
-    
-    return result;
-  }
-  
-  async getScheduleInfo() {
-    log('Fetching schedule information...', 'info');
-    const result = await this.ftpAgent.handleRequest({
-      action: 'getSyncScheduleInfo',
-      parameters: {}
-    });
-    
-    if (result.success) {
-      log('Schedule info retrieved successfully', 'success');
-      log(`Current schedule: ${result.result.scheduleDescription}`, 'info');
-      log(`Next sync: ${result.result.nextRunDescription}`, 'info');
-      log(`Status: ${result.result.status}`, 'info');
-    } else {
-      log(`Failed to get schedule info: ${result.error}`, 'error');
-    }
-    
-    return result;
-  }
-  
-  async synchronizeData(remotePath) {
-    const path = remotePath || '';
-    log(`Synchronizing data from ${path || 'root directory'}...`, 'info');
-    
-    const result = await this.ftpAgent.handleRequest({
-      action: 'synchronizeFtpData',
-      parameters: { path, force: true }
-    });
-    
-    if (result.success) {
-      log('Synchronization completed successfully', 'success');
-      log(`Files processed: ${result.result.filesProcessed}`, 'info');
-      log(`Files downloaded: ${result.result.filesDownloaded}`, 'info');
-      log(`Bytes transferred: ${result.result.bytesTransferred}`, 'info');
-      log(`Duration: ${result.result.duration}ms`, 'info');
-    } else {
-      log(`Synchronization failed: ${result.error}`, 'error');
-    }
-    
-    return result;
-  }
-  
-  async listFiles(remotePath) {
-    if (!remotePath) {
-      log('Path is required for listing files', 'error');
-      return { success: false, error: 'Path is required' };
-    }
-    
-    log(`Listing files in ${remotePath}...`, 'info');
-    const result = await this.ftpAgent.handleRequest({
-      action: 'listFtpFiles',
-      parameters: { path: remotePath }
-    });
-    
-    if (result.success) {
-      log(`Found ${result.result.files.length} files in ${remotePath}`, 'success');
-      result.result.files.forEach(file => {
-        const type = file.isDirectory ? 'DIR' : 'FILE';
-        const size = file.isDirectory ? '--' : `${file.size} bytes`;
-        const modified = new Date(file.modifiedAt).toLocaleString();
-        log(`[${type}] ${file.name} (${size}) - Last modified: ${modified}`, 'info');
-      });
-    } else {
-      log(`Failed to list files: ${result.error}`, 'error');
-    }
-    
-    return result;
-  }
-  
-  async downloadFile(remotePath) {
-    if (!remotePath) {
-      log('Remote path is required for downloading file', 'error');
-      return { success: false, error: 'Remote path is required' };
-    }
-    
-    const filename = path.basename(remotePath);
-    const localPath = path.join(DOWNLOADS_DIR, filename);
-    
-    log(`Downloading ${remotePath} to ${localPath}...`, 'info');
-    const result = await this.ftpAgent.handleRequest({
-      action: 'downloadFtpFile',
-      parameters: { remotePath, localPath }
-    });
-    
-    if (result.success) {
-      log(`File downloaded successfully to ${localPath}`, 'success');
-      log(`File size: ${result.result.size} bytes`, 'info');
-      log(`Duration: ${result.result.duration}ms`, 'info');
-    } else {
-      log(`Download failed: ${result.error}`, 'error');
-    }
-    
-    return result;
-  }
-  
-  async configureSchedule(options) {
-    const parameters = {};
-    
-    if (options.enable) {
-      parameters.enabled = true;
-    } else if (options.disable) {
-      parameters.enabled = false;
-    }
-    
-    if (options.interval) {
-      parameters.intervalHours = parseInt(options.interval, 10);
-    }
-    
-    if (options.once) {
-      parameters.runOnce = true;
-    }
-    
-    log(`Configuring schedule with options: ${formatJson(parameters)}`, 'info');
-    const result = await this.ftpAgent.handleRequest({
-      action: 'scheduleFtpSync',
-      parameters
-    });
-    
-    if (result.success) {
-      log('Schedule configured successfully', 'success');
-      log(`Schedule status: ${result.result.enabled ? 'Enabled' : 'Disabled'}`, 'info');
-      log(`Next sync: ${result.result.nextSyncFormatted || 'Not scheduled'}`, 'info');
-    } else {
-      log(`Failed to configure schedule: ${result.error}`, 'error');
-    }
-    
-    return result;
-  }
-}
-
-// Main function to parse command line args and run commands
-async function main() {
-  const args = process.argv.slice(2);
-  const command = args[0];
-  
-  if (!command) {
-    log('No command specified. Use one of: connect, status, info, sync, list, download, schedule', 'error');
-    process.exit(1);
-  }
+  // Create FTP service with test configuration
+  const ftpService = new FtpService({
+    host: process.env.FTP_HOST || 'ftp.bentoncounty.spatialest.com',
+    port: parseInt(process.env.FTP_PORT || '21', 10),
+    user: process.env.FTP_USER || 'bcftp',
+    password: process.env.FTP_PASSWORD || 'anonymous',
+    secure: process.env.FTP_SECURE === 'true',
+    downloadPath: testDownloadPath
+  });
   
   try {
-    const tester = new FtpAgentTester();
-    await tester.initialize();
+    // Initialize and connect
+    await ftpService.initialize();
+    await ftpService.connect();
+    console.log('Connected to FTP server for test');
     
-    let result;
+    // Sync a small directory (metadata only)
+    const testResult = await ftpService.syncDirectory('/property-assessment-data/metadata', {
+      recursive: false,
+      deleteLocal: false,
+      maxFiles: 5 // Limit to 5 files for quick test
+    });
     
-    switch (command) {
-      case 'connect':
-        result = await tester.testConnection();
-        break;
-        
-      case 'status':
-        result = await tester.getStatus();
-        break;
-        
-      case 'info':
-        result = await tester.getScheduleInfo();
-        break;
-        
-      case 'sync':
-        const syncPath = args[1];
-        result = await tester.synchronizeData(syncPath);
-        break;
-        
-      case 'list':
-        const listPath = args[1];
-        result = await tester.listFiles(listPath);
-        break;
-        
-      case 'download':
-        const downloadPath = args[1];
-        result = await tester.downloadFile(downloadPath);
-        break;
-        
-      case 'schedule':
-        const scheduleOptions = {
-          enable: args.includes('--enable'),
-          disable: args.includes('--disable'),
-          once: args.includes('--once')
-        };
-        
-        const intervalArg = args.find(arg => arg.startsWith('--interval='));
-        if (intervalArg) {
-          scheduleOptions.interval = intervalArg.split('=')[1];
-        }
-        
-        result = await tester.configureSchedule(scheduleOptions);
-        break;
-        
-      default:
-        log(`Unknown command: ${command}`, 'error');
-        log('Available commands: connect, status, info, sync, list, download, schedule', 'error');
-        process.exit(1);
+    console.log(`Test sync completed: ${testResult.filesDownloaded} files downloaded`);
+    console.log(`Total size: ${(testResult.totalSizeBytes / 1024 / 1024).toFixed(2)} MB`);
+    
+    return testResult;
+  } catch (error) {
+    console.error(`Test sync error: ${error.message}`);
+    throw error;
+  } finally {
+    try {
+      await ftpService.disconnect();
+    } catch (error) {
+      console.warn(`Error during test disconnect: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Check that download directories exist and have expected structure
+ */
+function checkDownloadDirectories() {
+  console.log('=== Checking download directories ===');
+  
+  const mainDownloadPath = path.join(rootDir, 'downloads', 'benton-county');
+  const testDownloadPath = path.join(rootDir, 'downloads', 'test-sync');
+  
+  // Check main download directory
+  if (fs.existsSync(mainDownloadPath)) {
+    console.log(`✓ Main download directory exists: ${mainDownloadPath}`);
+  } else {
+    console.log(`✗ Main download directory missing: ${mainDownloadPath}`);
+  }
+  
+  // Check test download directory
+  if (fs.existsSync(testDownloadPath)) {
+    console.log(`✓ Test download directory exists: ${testDownloadPath}`);
+    
+    // Check if there are files in the test directory
+    const files = fs.readdirSync(testDownloadPath);
+    console.log(`  Found ${files.length} files/directories in test directory`);
+    
+    if (files.length > 0) {
+      // List a few files as example
+      const sampleFiles = files.slice(0, 3);
+      console.log(`  Sample files: ${sampleFiles.join(', ')}${files.length > 3 ? '...' : ''}`);
+    }
+  } else {
+    console.log(`✗ Test download directory missing: ${testDownloadPath}`);
+  }
+}
+
+/**
+ * Run full synchronization test
+ */
+async function runFullSyncTest() {
+  console.log('=== Running full synchronization test ===');
+  try {
+    const result = await synchronizeBentonCountyFTP();
+    console.log(`Full sync completed: ${result.filesDownloaded} files downloaded`);
+    console.log(`Total size: ${(result.totalSizeBytes / 1024 / 1024).toFixed(2)} MB`);
+    return result;
+  } catch (error) {
+    console.error(`Full sync test error: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Run all selected tests
+ */
+async function runTests() {
+  console.log('Starting FTP synchronization tests...');
+  
+  try {
+    // Run tests based on configuration
+    if (testOptions.smallSync) {
+      await testSmallSync();
     }
     
-    // Save result to log file
-    const resultLogFile = path.join(LOG_DIR, `ftp-test-${command}-result.json`);
-    fs.writeFileSync(resultLogFile, formatJson(result));
-    log(`Detailed result saved to ${resultLogFile}`, 'info');
+    if (testOptions.checkDownloadDir) {
+      checkDownloadDirectories();
+    }
     
-    process.exit(result.success ? 0 : 1);
+    if (testOptions.fullSync) {
+      await runFullSyncTest();
+    }
+    
+    console.log('All FTP synchronization tests completed successfully');
   } catch (error) {
-    log(`Unhandled error: ${error.message}`, 'error');
-    log(error.stack, 'error');
+    console.error(`Test suite failed: ${error.message}`);
     process.exit(1);
   }
 }
 
-// Run the script
-main().catch(error => {
-  log(`Fatal error: ${error.message}`, 'error');
-  process.exit(1);
-});
+// Run the tests if this script is executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  runTests();
+}
+
+export { runTests, testSmallSync, checkDownloadDirectories, runFullSyncTest };
