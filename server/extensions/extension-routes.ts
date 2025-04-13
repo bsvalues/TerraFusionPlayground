@@ -1,283 +1,284 @@
 /**
  * Extension Routes
  * 
- * This file defines the API routes for managing extensions,
- * including listing, activating, deactivating, and configuring extensions.
+ * This module exports Express routes for extension management.
  */
 
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import { ExtensionRegistry } from './extension-registry';
 
+// Create the router
+const router = Router();
+
+// Extension registry instance
+const registry = ExtensionRegistry.getInstance();
+
 /**
- * Create extension routes
- * @param extensionRegistry Extension registry
- * @returns Express router with extension routes
+ * GET /api/extensions - Get all extensions
  */
-export function createExtensionRoutes(extensionRegistry: ExtensionRegistry) {
-  const router = Router();
-  
-  /**
-   * Get all extensions and their status
-   */
-  router.get('/', async (req: Request, res: Response) => {
-    try {
-      const extensions = extensionRegistry.getAllExtensions();
-      
-      // Format the response
-      const formattedExtensions = extensions.map(ext => ({
-        id: ext.id,
-        name: ext.metadata.name,
-        version: ext.metadata.version,
-        description: ext.metadata.description,
-        author: ext.metadata.author,
-        active: ext.active,
-        category: ext.metadata.category
-      }));
-      
-      res.json(formattedExtensions);
-    } catch (error) {
-      console.error('Error getting extensions:', error);
-      res.status(500).json({ error: 'Failed to get extensions' });
+router.get('/', async (req, res) => {
+  try {
+    const extensions = registry.getExtensions().map(ext => {
+      const metadata = ext.getMetadata();
+      return {
+        id: metadata.id,
+        name: metadata.name,
+        version: metadata.version,
+        description: metadata.description,
+        author: metadata.author,
+        category: metadata.category,
+        active: ext.isActive()
+      };
+    });
+    
+    res.json(extensions);
+  } catch (error) {
+    console.error('Error getting extensions:', error);
+    res.status(500).json({ error: 'Failed to get extensions' });
+  }
+});
+
+/**
+ * GET /api/extensions/:id - Get extension by ID
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const extension = registry.getExtension(id);
+    
+    if (!extension) {
+      return res.status(404).json({ error: `Extension '${id}' not found` });
     }
-  });
-  
-  /**
-   * Get extension details
-   */
-  router.get('/:id', async (req: Request, res: Response) => {
-    try {
-      const extensionId = req.params.id;
-      const metadata = extensionRegistry.getExtensionMetadata(extensionId);
-      
-      if (!metadata) {
-        return res.status(404).json({ error: 'Extension not found' });
-      }
-      
-      const extensions = extensionRegistry.getAllExtensions();
-      const extension = extensions.find(ext => ext.id === extensionId);
-      const settings = extensionRegistry.getExtensionSettings(extensionId);
-      
-      res.json({
-        id: extensionId,
-        metadata,
-        settings,
-        active: extension?.active || false
-      });
-    } catch (error) {
-      console.error(`Error getting extension ${req.params.id}:`, error);
-      res.status(500).json({ error: 'Failed to get extension details' });
+    
+    const metadata = extension.getMetadata();
+    const settings = extension.getSettings();
+    
+    res.json({
+      id: metadata.id,
+      name: metadata.name,
+      version: metadata.version,
+      description: metadata.description,
+      author: metadata.author,
+      category: metadata.category,
+      active: extension.isActive(),
+      metadata,
+      settings
+    });
+  } catch (error) {
+    console.error(`Error getting extension ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to get extension details' });
+  }
+});
+
+/**
+ * POST /api/extensions/:id/activate - Activate an extension
+ */
+router.post('/:id/activate', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const extension = registry.getExtension(id);
+    
+    if (!extension) {
+      return res.status(404).json({ error: `Extension '${id}' not found` });
     }
-  });
-  
-  /**
-   * Activate an extension
-   */
-  router.post('/:id/activate', async (req: Request, res: Response) => {
-    try {
-      const extensionId = req.params.id;
-      const metadata = extensionRegistry.getExtensionMetadata(extensionId);
-      
-      if (!metadata) {
-        return res.status(404).json({ error: 'Extension not found' });
-      }
-      
-      const extensions = extensionRegistry.getAllExtensions();
-      const extension = extensions.find(ext => ext.id === extensionId);
-      
-      if (extension?.active) {
-        return res.json({ message: 'Extension is already active' });
-      }
-      
-      await extensionRegistry.activateExtension(extensionId);
-      
-      res.json({ success: true, message: `Extension ${metadata.name} activated` });
-    } catch (error) {
-      console.error(`Error activating extension ${req.params.id}:`, error);
-      res.status(500).json({ error: `Failed to activate extension: ${error instanceof Error ? error.message : 'Unknown error'}` });
+    
+    if (extension.isActive()) {
+      return res.json({ message: `Extension '${id}' is already active` });
     }
-  });
-  
-  /**
-   * Deactivate an extension
-   */
-  router.post('/:id/deactivate', async (req: Request, res: Response) => {
-    try {
-      const extensionId = req.params.id;
-      const metadata = extensionRegistry.getExtensionMetadata(extensionId);
-      
-      if (!metadata) {
-        return res.status(404).json({ error: 'Extension not found' });
-      }
-      
-      const extensions = extensionRegistry.getAllExtensions();
-      const extension = extensions.find(ext => ext.id === extensionId);
-      
-      if (!extension?.active) {
-        return res.json({ message: 'Extension is already inactive' });
-      }
-      
-      await extensionRegistry.deactivateExtension(extensionId);
-      
-      res.json({ success: true, message: `Extension ${metadata.name} deactivated` });
-    } catch (error) {
-      console.error(`Error deactivating extension ${req.params.id}:`, error);
-      res.status(500).json({ error: `Failed to deactivate extension: ${error instanceof Error ? error.message : 'Unknown error'}` });
+    
+    await registry.activateExtension(id);
+    
+    res.json({ 
+      success: true, 
+      message: `Extension '${extension.getMetadata().name}' activated successfully` 
+    });
+  } catch (error) {
+    console.error(`Error activating extension ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to activate extension' });
+  }
+});
+
+/**
+ * POST /api/extensions/:id/deactivate - Deactivate an extension
+ */
+router.post('/:id/deactivate', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const extension = registry.getExtension(id);
+    
+    if (!extension) {
+      return res.status(404).json({ error: `Extension '${id}' not found` });
     }
-  });
-  
-  /**
-   * Update extension settings
-   */
-  router.patch('/:id/settings', async (req: Request, res: Response) => {
-    try {
-      const extensionId = req.params.id;
-      const newSettings = req.body;
+    
+    if (!extension.isActive()) {
+      return res.json({ message: `Extension '${id}' is already inactive` });
+    }
+    
+    await registry.deactivateExtension(id);
+    
+    res.json({ 
+      success: true, 
+      message: `Extension '${extension.getMetadata().name}' deactivated successfully` 
+    });
+  } catch (error) {
+    console.error(`Error deactivating extension ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to deactivate extension' });
+  }
+});
+
+/**
+ * POST /api/extensions/:id/settings - Update extension settings
+ */
+router.post('/:id/settings', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { settings } = req.body;
+    
+    if (!settings || typeof settings !== 'object') {
+      return res.status(400).json({ error: 'Invalid settings object' });
+    }
+    
+    const extension = registry.getExtension(id);
+    
+    if (!extension) {
+      return res.status(404).json({ error: `Extension '${id}' not found` });
+    }
+    
+    // Update each setting
+    Object.entries(settings).forEach(([key, value]) => {
+      const settingDef = extension.getMetadata().settings?.find(s => s.id === key);
       
-      const metadata = extensionRegistry.getExtensionMetadata(extensionId);
-      
-      if (!metadata) {
-        return res.status(404).json({ error: 'Extension not found' });
+      if (!settingDef) {
+        return; // Skip unknown settings
       }
       
-      // Validate settings against metadata
-      const validSettings: Record<string, any> = {};
-      const invalidSettings: string[] = [];
+      // Validate setting type
+      let typedValue = value;
       
-      for (const [key, value] of Object.entries(newSettings)) {
-        const settingDef = metadata.settings?.find(s => s.id === key);
-        
-        if (!settingDef) {
-          invalidSettings.push(key);
-          continue;
+      // Convert value based on the expected type
+      if (settingDef.type === 'number' && typeof value === 'string') {
+        typedValue = parseFloat(value);
+        if (isNaN(typedValue)) {
+          return; // Skip invalid numbers
         }
-        
-        // Simple type validation
-        if (settingDef.type === 'number' && typeof value !== 'number') {
-          invalidSettings.push(key);
-        } else if (settingDef.type === 'string' && typeof value !== 'string') {
-          invalidSettings.push(key);
-        } else if (settingDef.type === 'boolean' && typeof value !== 'boolean') {
-          invalidSettings.push(key);
-        } else if ((settingDef.type === 'select' || settingDef.type === 'multiselect') && 
-                  !settingDef.options?.some(option => option.value === value)) {
-          invalidSettings.push(key);
-        } else {
-          validSettings[key] = value;
+      } else if (settingDef.type === 'boolean' && typeof value === 'string') {
+        typedValue = value.toLowerCase() === 'true';
+      } else if (settingDef.type === 'select' && settingDef.options) {
+        const isValid = settingDef.options.some(option => option.value === value);
+        if (!isValid) {
+          return; // Skip invalid options
         }
       }
       
-      if (invalidSettings.length > 0) {
-        return res.status(400).json({ 
-          error: 'Invalid settings',
-          invalidSettings
-        });
-      }
-      
-      extensionRegistry.updateExtensionSettings(extensionId, validSettings);
-      
-      const updatedSettings = extensionRegistry.getExtensionSettings(extensionId);
-      
-      res.json({ 
-        success: true, 
-        message: `Settings updated for extension ${metadata.name}`,
-        settings: updatedSettings
-      });
-    } catch (error) {
-      console.error(`Error updating settings for extension ${req.params.id}:`, error);
-      res.status(500).json({ error: `Failed to update extension settings: ${error instanceof Error ? error.message : 'Unknown error'}` });
+      extension.setSetting(key, typedValue);
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `Settings for extension '${extension.getMetadata().name}' updated successfully`,
+      settings: extension.getSettings()
+    });
+  } catch (error) {
+    console.error(`Error updating settings for extension ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to update extension settings' });
+  }
+});
+
+/**
+ * POST /api/extensions/:id/command/:command - Execute an extension command
+ */
+router.post('/:id/command/:command', async (req, res) => {
+  try {
+    const { id, command } = req.params;
+    const extension = registry.getExtension(id);
+    
+    if (!extension) {
+      return res.status(404).json({ error: `Extension '${id}' not found` });
     }
-  });
-  
-  /**
-   * Execute a command
-   */
-  router.post('/commands/:command', async (req: Request, res: Response) => {
-    try {
-      const command = req.params.command;
-      const args = req.body.args || [];
-      
-      const result = await extensionRegistry.executeCommand(command, ...args);
-      
-      res.json({ success: true, result });
-    } catch (error) {
-      console.error(`Error executing command ${req.params.command}:`, error);
-      res.status(500).json({ error: `Failed to execute command: ${error instanceof Error ? error.message : 'Unknown error'}` });
+    
+    if (!extension.isActive()) {
+      return res.status(400).json({ error: `Extension '${id}' is not active` });
     }
-  });
-  
-  /**
-   * Get all webview panels
-   */
-  router.get('/webviews', async (req: Request, res: Response) => {
-    try {
-      const webviews = extensionRegistry.getAllWebviewPanels();
-      
-      // Format the response to include metadata but not the full content
-      const formattedWebviews = webviews.map(webview => ({
-        id: webview.id,
-        title: webview.title,
-        contentPreview: webview.content.substring(0, 100) + (webview.content.length > 100 ? '...' : '')
-      }));
-      
-      res.json(formattedWebviews);
-    } catch (error) {
-      console.error('Error getting webview panels:', error);
-      res.status(500).json({ error: 'Failed to get webview panels' });
+    
+    const result = await registry.sendMessageToExtension(id, {
+      command,
+      ...req.body
+    });
+    
+    res.json(result);
+  } catch (error) {
+    console.error(`Error executing command for extension ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to execute extension command' });
+  }
+});
+
+/**
+ * GET /api/extensions/webviews - Get all webviews from active extensions
+ */
+router.get('/webviews', async (req, res) => {
+  try {
+    const webviews = registry.getAllWebviews();
+    res.json(webviews);
+  } catch (error) {
+    console.error('Error getting webviews:', error);
+    res.status(500).json({ error: 'Failed to get webviews' });
+  }
+});
+
+/**
+ * GET /api/extensions/webviews/:id - Get a specific webview by ID
+ */
+router.get('/webviews/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const webview = registry.getWebview(id);
+    
+    if (!webview) {
+      return res.status(404).json({ error: `Webview '${id}' not found` });
     }
-  });
-  
-  /**
-   * Get a specific webview panel
-   */
-  router.get('/webviews/:id', async (req: Request, res: Response) => {
-    try {
-      const webviewId = req.params.id;
-      const webview = extensionRegistry.getWebviewPanel(webviewId);
-      
-      if (!webview) {
-        return res.status(404).json({ error: 'Webview panel not found' });
-      }
-      
-      res.json({
-        id: webview.id,
-        title: webview.title,
-        content: webview.content
-      });
-    } catch (error) {
-      console.error(`Error getting webview panel ${req.params.id}:`, error);
-      res.status(500).json({ error: 'Failed to get webview panel' });
-    }
-  });
-  
-  /**
-   * Get all menu items
-   */
-  router.get('/menu-items', async (req: Request, res: Response) => {
-    try {
-      const menuItems = extensionRegistry.getAllMenuItems();
-      
-      // Build a menu tree
-      const topLevelItems = menuItems.filter(item => !item.parent);
-      const childItems = menuItems.filter(item => item.parent);
-      
-      const buildMenuTree = (items: any[]) => {
-        return items.map(item => {
-          const children = childItems.filter(child => child.parent === item.id);
+    
+    res.json(webview);
+  } catch (error) {
+    console.error(`Error getting webview ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to get webview' });
+  }
+});
+
+/**
+ * GET /api/extensions/menu-items - Get all menu items from active extensions
+ */
+router.get('/menu-items', async (req, res) => {
+  try {
+    const commands = registry.getAllCommands();
+    
+    // Build a tree of menu items
+    const menuItems = commands
+      .filter(item => !item.parent)
+      .sort((a, b) => (a.position || 0) - (b.position || 0));
+    
+    // Helper function to build the menu tree
+    const buildMenuTree = (items, parentId) => {
+      return items
+        .filter(item => item.parent === parentId)
+        .map(item => {
           return {
             ...item,
-            children: children.length > 0 ? buildMenuTree(children) : []
+            children: buildMenuTree(commands, item.id)
           };
-        });
-      };
-      
-      const menuTree = buildMenuTree(topLevelItems);
-      
-      res.json(menuTree);
-    } catch (error) {
-      console.error('Error getting menu items:', error);
-      res.status(500).json({ error: 'Failed to get menu items' });
-    }
-  });
-  
-  return router;
-}
+        })
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+    };
+    
+    // Add children to root items
+    menuItems.forEach(item => {
+      item.children = buildMenuTree(commands, item.id);
+    });
+    
+    res.json(menuItems);
+  } catch (error) {
+    console.error('Error getting menu items:', error);
+    res.status(500).json({ error: 'Failed to get menu items' });
+  }
+});
+
+export default router;

@@ -1,160 +1,222 @@
 /**
- * Base Extension
+ * Base Extension Class
  * 
- * A base class for extensions that provides common functionality and
- * simplifies extension development by handling some boilerplate.
+ * This abstract class serves as the foundation for all extensions in the platform.
+ * It provides lifecycle methods and standardized ways to register functionality.
  */
 
-import { 
-  IExtension, 
-  ExtensionMetadata, 
-  ExtensionContext,
-  ExtensionMenuItem
-} from './extension-interface';
+export type ExtensionMetadata = {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  category: string;
+  settings?: Array<{
+    id: string;
+    label: string;
+    description: string;
+    type: 'string' | 'number' | 'boolean' | 'select';
+    default: any;
+    options?: Array<{value: string, label: string}>;
+  }>;
+  requiredPermissions?: string[];
+};
 
-/**
- * Base Extension class
- */
-export abstract class BaseExtension implements IExtension {
-  protected context: ExtensionContext | null = null;
-  protected activated: boolean = false;
+export type WebviewPanel = {
+  id: string;
+  title: string;
+  content: string;
+  contentPreview?: string;
+};
+
+export type CommandRegistration = {
+  id: string;
+  label: string;
+  command: string;
+  icon?: string;
+  parent?: string;
+  position?: number;
+  children?: CommandRegistration[];
+};
+
+export abstract class BaseExtension {
+  private _isActive: boolean = false;
+  private _webviews: Map<string, WebviewPanel> = new Map();
+  private _commands: Map<string, CommandRegistration> = new Map();
+  private _settings: Map<string, any> = new Map();
+  
+  constructor(protected metadata: ExtensionMetadata) {}
   
   /**
-   * Constructor
-   * @param metadata Extension metadata
+   * Returns the extension's metadata
    */
-  constructor(public readonly metadata: ExtensionMetadata) {}
+  public getMetadata(): ExtensionMetadata {
+    return this.metadata;
+  }
+  
+  /**
+   * Returns whether the extension is active
+   */
+  public isActive(): boolean {
+    return this._isActive;
+  }
   
   /**
    * Called when the extension is activated
-   * @param context Extension context
    */
-  public async activate(context: ExtensionContext): Promise<void> {
-    if (this.activated) {
-      return;
-    }
-    
-    this.context = context;
-    try {
-      // Register core extension commands
-      this.registerCoreCommands();
-      
-      // Call the extension's onActivate hook
-      await this.onActivate();
-      
-      this.activated = true;
-      this.log(`Extension activated`);
-    } catch (error) {
-      this.error(`Failed to activate extension: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
-    }
-  }
+  public abstract activate(): Promise<void>;
   
   /**
    * Called when the extension is deactivated
    */
-  public async deactivate(): Promise<void> {
-    if (!this.activated) {
-      return;
-    }
-    
-    try {
-      // Call the extension's onDeactivate hook
-      await this.onDeactivate();
-      
-      this.activated = false;
-      this.log(`Extension deactivated`);
-    } catch (error) {
-      this.error(`Failed to deactivate extension: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
-    } finally {
-      this.context = null;
-    }
-  }
+  public abstract deactivate(): Promise<void>;
   
   /**
-   * Register core extension commands
+   * Internal method to mark the extension as active
    */
-  private registerCoreCommands(): void {
-    if (!this.context) {
-      return;
-    }
-    
-    // Register core commands for all extensions
-    this.context.registerCommand('getMetadata', () => this.metadata);
-    this.context.registerCommand('getSettings', () => this.context?.settings || {});
-  }
-  
-  /**
-   * Extension activation hook
-   * Override this method to implement your extension's activation logic
-   */
-  protected abstract onActivate(): Promise<void>;
-  
-  /**
-   * Extension deactivation hook
-   * Override this method to implement your extension's deactivation logic
-   */
-  protected abstract onDeactivate(): Promise<void>;
-  
-  /**
-   * Register a command
-   */
-  protected registerCommand(command: string, callback: (...args: any[]) => any): void {
-    if (!this.context) {
-      throw new Error('Extension context is not available');
-    }
-    
-    this.context.registerCommand(command, callback);
+  public setActive(active: boolean): void {
+    this._isActive = active;
   }
   
   /**
    * Register a webview panel
+   * @param id Unique ID for the webview
+   * @param title Title of the webview panel
+   * @param content HTML content of the webview
+   * @param contentPreview Optional preview text for the webview in listings
    */
-  protected registerWebviewPanel(id: string, title: string, content: string): void {
-    if (!this.context) {
-      throw new Error('Extension context is not available');
+  protected registerWebview(id: string, title: string, content: string, contentPreview?: string): void {
+    this._webviews.set(id, { id, title, content, contentPreview });
+  }
+  
+  /**
+   * Get all registered webviews
+   */
+  public getWebviews(): WebviewPanel[] {
+    return Array.from(this._webviews.values());
+  }
+  
+  /**
+   * Get a specific webview by ID
+   */
+  public getWebview(id: string): WebviewPanel | undefined {
+    return this._webviews.get(id);
+  }
+  
+  /**
+   * Register a command
+   */
+  protected registerCommand(
+    id: string, 
+    label: string, 
+    command: string, 
+    options: { 
+      icon?: string, 
+      parent?: string, 
+      position?: number 
+    } = {}
+  ): void {
+    const { icon, parent, position } = options;
+    
+    this._commands.set(id, { 
+      id, 
+      label, 
+      command, 
+      icon, 
+      parent, 
+      position: position || 0,
+      children: []
+    });
+  }
+  
+  /**
+   * Get all registered commands
+   */
+  public getCommands(): CommandRegistration[] {
+    return Array.from(this._commands.values());
+  }
+  
+  /**
+   * Get a specific command by ID
+   */
+  public getCommand(id: string): CommandRegistration | undefined {
+    return this._commands.get(id);
+  }
+  
+  /**
+   * Set a setting value
+   */
+  public setSetting(key: string, value: any): void {
+    this._settings.set(key, value);
+  }
+  
+  /**
+   * Get a setting value
+   */
+  public getSetting(key: string): any {
+    const setting = this.metadata.settings?.find(s => s.id === key);
+    
+    // If the setting exists, return the value or default
+    if (setting) {
+      return this._settings.has(key) ? this._settings.get(key) : setting.default;
     }
     
-    this.context.registerWebviewPanel(id, title, content);
+    return undefined;
   }
   
   /**
-   * Register a menu item
+   * Get all settings
    */
-  protected registerMenuItem(item: ExtensionMenuItem): void {
-    if (!this.context) {
-      throw new Error('Extension context is not available');
-    }
+  public getSettings(): Record<string, any> {
+    const settings: Record<string, any> = {};
     
-    this.context.registerMenuItem(item);
+    // First fill with defaults from metadata
+    this.metadata.settings?.forEach(setting => {
+      settings[setting.id] = setting.default;
+    });
+    
+    // Then override with actual values
+    this._settings.forEach((value, key) => {
+      settings[key] = value;
+    });
+    
+    return settings;
   }
   
   /**
-   * Log an info message
+   * Hook called before creating a property record
    */
-  protected log(message: string, data?: any): void {
-    this.context?.logger.info(message, data);
+  public async onBeforePropertyCreate(propertyData: any): Promise<any> {
+    return propertyData;
   }
   
   /**
-   * Log a warning message
+   * Hook called after creating a property record
    */
-  protected warn(message: string, data?: any): void {
-    this.context?.logger.warn(message, data);
+  public async onAfterPropertyCreate(property: any): Promise<void> {
+    // Default implementation does nothing
   }
   
   /**
-   * Log an error message
+   * Hook called before updating a property record
    */
-  protected error(message: string, data?: any): void {
-    this.context?.logger.error(message, data);
+  public async onBeforePropertyUpdate(propertyId: string, propertyData: any): Promise<any> {
+    return propertyData;
   }
   
   /**
-   * Log a debug message
+   * Hook called after updating a property record
    */
-  protected debug(message: string, data?: any): void {
-    this.context?.logger.debug(message, data);
+  public async onAfterPropertyUpdate(propertyId: string, property: any): Promise<void> {
+    // Default implementation does nothing
+  }
+  
+  /**
+   * Hook called when the extension receives a message from the frontend
+   */
+  public async onMessage(message: any): Promise<any> {
+    // Default implementation returns empty object
+    return {};
   }
 }

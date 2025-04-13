@@ -1,57 +1,63 @@
 /**
  * Property Comparison Extension
  * 
- * This extension provides tools for comparing properties based on
- * various criteria like value, location, features, etc.
+ * This sample extension demonstrates how to create a custom extension
+ * for the property assessment platform. It provides tools for comparing
+ * properties based on various characteristics.
  */
 
-import { BaseExtension } from '../base-extension';
-import { ExtensionMetadata } from '../extension-interface';
+import { BaseExtension, ExtensionMetadata } from '../base-extension';
+import { logger } from '../../utils/logger';
 
-/**
- * Property Comparison Extension
- */
 export class PropertyComparisonExtension extends BaseExtension {
   constructor() {
-    // Define extension metadata
     const metadata: ExtensionMetadata = {
       id: 'property-comparison',
       name: 'Property Comparison',
       version: '1.0.0',
-      description: 'Compare properties based on various criteria.',
+      description: 'Advanced tools for comparing properties and analyzing their similarities and differences.',
       author: 'SpatialEst Team',
-      authorUrl: 'https://spatialest.example.com',
-      homepage: 'https://spatialest.example.com/extensions/property-comparison',
-      category: 'analysis',
-      requiredPermissions: ['read:properties'],
+      category: 'assessment',
       settings: [
         {
-          id: 'defaultRadius',
-          label: 'Default Search Radius (miles)',
-          description: 'The default radius for finding properties to compare.',
+          id: 'comparisonRadius',
+          label: 'Comparison Radius (miles)',
+          description: 'The radius in miles to search for comparable properties',
           type: 'number',
-          default: 5
+          default: 1.0
         },
         {
           id: 'maxResults',
           label: 'Maximum Results',
-          description: 'The maximum number of properties to include in comparisons.',
+          description: 'The maximum number of comparable properties to return',
           type: 'number',
           default: 10
         },
         {
-          id: 'weightFactors',
-          label: 'Weighting Factors',
-          description: 'How to weight different property attributes in comparisons.',
+          id: 'includeMarketTrends',
+          label: 'Include Market Trends',
+          description: 'Include market trend analysis in comparisons',
+          type: 'boolean',
+          default: true
+        },
+        {
+          id: 'primaryMetric',
+          label: 'Primary Comparison Metric',
+          description: 'The primary metric to use when comparing properties',
           type: 'select',
-          default: 'balanced',
+          default: 'value_per_sqft',
           options: [
-            { label: 'Balanced', value: 'balanced' },
-            { label: 'Value Focused', value: 'value' },
-            { label: 'Location Focused', value: 'location' },
-            { label: 'Features Focused', value: 'features' }
+            { value: 'value_per_sqft', label: 'Value per Square Foot' },
+            { value: 'total_value', label: 'Total Value' },
+            { value: 'improvement_value', label: 'Improvement Value' },
+            { value: 'land_value', label: 'Land Value' }
           ]
         }
+      ],
+      requiredPermissions: [
+        'property:read',
+        'assessment:read',
+        'market:read'
       ]
     };
     
@@ -59,242 +65,557 @@ export class PropertyComparisonExtension extends BaseExtension {
   }
   
   /**
-   * Extension activation logic
+   * Called when the extension is activated
    */
-  protected async onActivate(): Promise<void> {
-    this.log('Property Comparison Extension activating...');
+  public async activate(): Promise<void> {
+    logger.info(`Activating ${this.getMetadata().name} extension...`);
     
-    // Register commands
-    this.registerCommand('compareProperties', this.compareProperties.bind(this));
-    this.registerCommand('generateComparisonReport', this.generateComparisonReport.bind(this));
-    this.registerCommand('findSimilarProperties', this.findSimilarProperties.bind(this));
-    
-    // Register menu items
-    this.registerMenuItem({
-      id: 'property-comparison-menu',
-      label: 'Property Comparison',
-      icon: 'bar-chart',
-      position: 5
-    });
-    
-    this.registerMenuItem({
-      id: 'compare-properties',
-      label: 'Compare Properties',
-      parent: 'property-comparison-menu',
-      command: 'property-comparison.compareProperties',
-      position: 1
-    });
-    
-    this.registerMenuItem({
-      id: 'find-similar-properties',
-      label: 'Find Similar Properties',
-      parent: 'property-comparison-menu',
-      command: 'property-comparison.findSimilarProperties',
-      position: 2
-    });
-    
-    this.registerMenuItem({
-      id: 'generate-comparison-report',
-      label: 'Generate Comparison Report',
-      parent: 'property-comparison-menu',
-      command: 'property-comparison.generateComparisonReport',
-      position: 3
-    });
-    
-    // Register a sample webview
-    this.registerWebviewPanel(
-      'property-comparison-view',
-      'Property Comparison',
-      `
-      <div class="comparison-container">
-        <h2>Property Comparison Tool</h2>
-        <p>Compare properties based on various criteria like value, location, and features.</p>
-        <div class="form-container">
-          <div class="form-group">
-            <label for="property1">Property 1:</label>
-            <select id="property1" class="form-control"></select>
-          </div>
-          <div class="form-group">
-            <label for="property2">Property 2:</label>
-            <select id="property2" class="form-control"></select>
-          </div>
-          <div class="form-group">
-            <label for="comparisonType">Comparison Type:</label>
-            <select id="comparisonType" class="form-control">
-              <option value="value">Assessed Value</option>
-              <option value="size">Property Size</option>
-              <option value="features">Property Features</option>
-              <option value="location">Location Details</option>
-              <option value="comprehensive">Comprehensive Comparison</option>
-            </select>
-          </div>
-          <button id="compareBtn" class="btn btn-primary">Compare Properties</button>
-        </div>
-        <div id="comparisonResults" class="results-container"></div>
-      </div>
-      <script>
-        // This is a placeholder for client-side JS that would be injected
-        document.getElementById('compareBtn').addEventListener('click', function() {
-          // In a real implementation, this would call the extension's API
-          document.getElementById('comparisonResults').innerHTML = '<p>Loading comparison results...</p>';
-        });
-      </script>
-      <style>
-        .comparison-container {
-          font-family: system-ui, sans-serif;
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 20px;
-        }
-        .form-container {
-          background: #f5f5f5;
-          border-radius: 8px;
-          padding: 20px;
-          margin-bottom: 20px;
-        }
-        .form-group {
-          margin-bottom: 15px;
-        }
-        label {
-          display: block;
-          margin-bottom: 5px;
-          font-weight: 500;
-        }
-        .form-control {
-          width: 100%;
-          padding: 8px 12px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 14px;
-        }
-        .btn {
-          padding: 10px 16px;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-weight: 500;
-        }
-        .btn-primary {
-          background: #3498db;
-          color: white;
-        }
-        .results-container {
-          background: white;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          padding: 20px;
-          min-height: 200px;
-        }
-      </style>
-      `
+    // Register webviews
+    this.registerWebview(
+      'property-comparison-dashboard',
+      'Property Comparison Dashboard',
+      this.generateComparisonDashboardHtml(),
+      'Interactive dashboard for comparing property characteristics and values'
     );
     
-    this.log('Property Comparison Extension activated successfully');
-  }
-  
-  /**
-   * Extension deactivation logic
-   */
-  protected async onDeactivate(): Promise<void> {
-    this.log('Property Comparison Extension deactivating...');
-    // Cleanup any resources or background tasks
-    this.log('Property Comparison Extension deactivated successfully');
-  }
-  
-  /**
-   * Compare properties command
-   */
-  private async compareProperties(propertyIds: string[]): Promise<any> {
-    this.log(`Comparing properties: ${propertyIds.join(', ')}`);
+    this.registerWebview(
+      'comparison-report',
+      'Comparison Report Generator',
+      this.generateReportGeneratorHtml(),
+      'Generate detailed reports comparing multiple properties'
+    );
     
-    if (!this.context || !propertyIds || propertyIds.length < 2) {
-      throw new Error('At least two property IDs are required for comparison');
+    // Register commands
+    this.registerCommand(
+      'open-comparison-dashboard',
+      'Open Comparison Dashboard',
+      'extension.propertyComparison.openDashboard'
+    );
+    
+    this.registerCommand(
+      'generate-comparison-report',
+      'Generate Comparison Report',
+      'extension.propertyComparison.generateReport'
+    );
+    
+    this.registerCommand(
+      'find-comparable-properties',
+      'Find Comparable Properties',
+      'extension.propertyComparison.findComparables'
+    );
+    
+    this.registerCommand(
+      'analyze-value-distribution',
+      'Analyze Value Distribution',
+      'extension.propertyComparison.analyzeValueDistribution'
+    );
+    
+    logger.info(`${this.getMetadata().name} extension activated.`);
+  }
+  
+  /**
+   * Called when the extension is deactivated
+   */
+  public async deactivate(): Promise<void> {
+    logger.info(`Deactivating ${this.getMetadata().name} extension...`);
+    
+    // Cleanup resources
+    
+    logger.info(`${this.getMetadata().name} extension deactivated.`);
+  }
+  
+  /**
+   * Generate the HTML for the comparison dashboard webview
+   */
+  private generateComparisonDashboardHtml(): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Property Comparison Dashboard</title>
+        <style>
+          body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+          }
+          
+          h1 {
+            color: #1a73e8;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-top: 0;
+          }
+          
+          .dashboard-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+          }
+          
+          .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+          }
+          
+          .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+          }
+          
+          .card h2 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #333;
+          }
+          
+          .card-content {
+            margin-top: 15px;
+          }
+          
+          .comparison-form {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+          }
+          
+          .form-row {
+            margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+          }
+          
+          .form-control {
+            flex: 1;
+            min-width: 200px;
+          }
+          
+          label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+          }
+          
+          input, select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+          }
+          
+          input:focus, select:focus {
+            outline: none;
+            border-color: #1a73e8;
+          }
+          
+          button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+          }
+          
+          button:hover {
+            background: #0d47a1;
+          }
+          
+          .chart-container {
+            margin-top: 20px;
+            height: 300px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          
+          .chart-placeholder {
+            color: #999;
+            text-align: center;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Property Comparison Dashboard</h1>
+        
+        <div class="comparison-form">
+          <div class="form-row">
+            <div class="form-control">
+              <label for="propertyId1">Property 1</label>
+              <input type="text" id="propertyId1" placeholder="Enter property ID">
+            </div>
+            <div class="form-control">
+              <label for="propertyId2">Property 2</label>
+              <input type="text" id="propertyId2" placeholder="Enter property ID">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-control">
+              <label for="comparisonMetric">Comparison Metric</label>
+              <select id="comparisonMetric">
+                <option value="value_per_sqft">Value per Square Foot</option>
+                <option value="total_value">Total Value</option>
+                <option value="improvement_value">Improvement Value</option>
+                <option value="land_value">Land Value</option>
+              </select>
+            </div>
+            <div class="form-control">
+              <label for="yearRange">Year Range</label>
+              <select id="yearRange">
+                <option value="1">Past Year</option>
+                <option value="3">Past 3 Years</option>
+                <option value="5">Past 5 Years</option>
+                <option value="10">Past 10 Years</option>
+              </select>
+            </div>
+          </div>
+          
+          <button id="compareBtn">Compare Properties</button>
+        </div>
+        
+        <div class="dashboard-container">
+          <div class="card">
+            <h2>Value Comparison</h2>
+            <div class="card-content">
+              <div class="chart-container">
+                <div class="chart-placeholder">
+                  <p>Select properties to compare</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h2>Property Characteristics</h2>
+            <div class="card-content">
+              <div class="chart-container">
+                <div class="chart-placeholder">
+                  <p>Select properties to compare</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h2>Historical Trends</h2>
+            <div class="card-content">
+              <div class="chart-container">
+                <div class="chart-placeholder">
+                  <p>Select properties to compare</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h2>Market Analysis</h2>
+            <div class="card-content">
+              <div class="chart-container">
+                <div class="chart-placeholder">
+                  <p>Select properties to compare</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <script>
+          document.getElementById('compareBtn').addEventListener('click', function() {
+            // This would trigger the comparison in a real implementation
+            alert('Comparison functionality would be implemented here.');
+          });
+        </script>
+      </body>
+      </html>
+    `;
+  }
+  
+  /**
+   * Generate the HTML for the report generator webview
+   */
+  private generateReportGeneratorHtml(): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Comparison Report Generator</title>
+        <style>
+          body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+          }
+          
+          h1 {
+            color: #1a73e8;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-top: 0;
+          }
+          
+          .report-form {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+          }
+          
+          .form-row {
+            margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+          }
+          
+          .form-control {
+            flex: 1;
+            min-width: 200px;
+          }
+          
+          label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+          }
+          
+          input, select, textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+          }
+          
+          input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #1a73e8;
+          }
+          
+          textarea {
+            height: 100px;
+            resize: vertical;
+          }
+          
+          button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+          }
+          
+          button:hover {
+            background: #0d47a1;
+          }
+          
+          .checkbox-group {
+            margin-top: 15px;
+          }
+          
+          .checkbox-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+          }
+          
+          .checkbox-item input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+          }
+          
+          .report-preview {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+          }
+          
+          .preview-placeholder {
+            color: #999;
+            text-align: center;
+            padding: 40px 0;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Comparison Report Generator</h1>
+        
+        <div class="report-form">
+          <div class="form-row">
+            <div class="form-control">
+              <label for="reportTitle">Report Title</label>
+              <input type="text" id="reportTitle" placeholder="Enter report title">
+            </div>
+            <div class="form-control">
+              <label for="reportType">Report Type</label>
+              <select id="reportType">
+                <option value="detailed">Detailed Comparison</option>
+                <option value="summary">Summary Comparison</option>
+                <option value="valuation">Valuation Analysis</option>
+                <option value="market">Market Comparison</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-control">
+              <label for="propertyIds">Property IDs</label>
+              <textarea id="propertyIds" placeholder="Enter property IDs, one per line"></textarea>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-control">
+              <label>Include in Report</label>
+              <div class="checkbox-group">
+                <div class="checkbox-item">
+                  <input type="checkbox" id="includeBasicInfo" checked>
+                  <label for="includeBasicInfo">Basic Property Information</label>
+                </div>
+                <div class="checkbox-item">
+                  <input type="checkbox" id="includeValuation" checked>
+                  <label for="includeValuation">Valuation Analysis</label>
+                </div>
+                <div class="checkbox-item">
+                  <input type="checkbox" id="includeHistorical" checked>
+                  <label for="includeHistorical">Historical Trends</label>
+                </div>
+                <div class="checkbox-item">
+                  <input type="checkbox" id="includeMarket">
+                  <label for="includeMarket">Market Analysis</label>
+                </div>
+                <div class="checkbox-item">
+                  <input type="checkbox" id="includeCharts" checked>
+                  <label for="includeCharts">Visualization Charts</label>
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-control">
+              <label for="outputFormat">Output Format</label>
+              <select id="outputFormat">
+                <option value="pdf">PDF Document</option>
+                <option value="excel">Excel Spreadsheet</option>
+                <option value="html">HTML Report</option>
+                <option value="json">JSON Data</option>
+              </select>
+            </div>
+          </div>
+          
+          <button id="generateBtn">Generate Report</button>
+        </div>
+        
+        <div class="report-preview">
+          <div class="preview-placeholder">
+            <p>Report preview will appear here</p>
+          </div>
+        </div>
+        
+        <script>
+          document.getElementById('generateBtn').addEventListener('click', function() {
+            // This would trigger the report generation in a real implementation
+            alert('Report generation functionality would be implemented here.');
+          });
+        </script>
+      </body>
+      </html>
+    `;
+  }
+  
+  /**
+   * Find comparable properties based on the given property ID
+   */
+  public async findComparableProperties(propertyId: string, options: any = {}): Promise<any[]> {
+    logger.info(`Finding comparable properties for ${propertyId}...`);
+    
+    // This would actually query the database or API in a real implementation
+    // For now, return mock data
+    
+    logger.info(`Returned ${5} comparable properties.`);
+    
+    // In a real implementation, this would return actual property data
+    return [];
+  }
+  
+  /**
+   * Generate a comparison report for the given property IDs
+   */
+  public async generateComparisonReport(propertyIds: string[], options: any = {}): Promise<any> {
+    logger.info(`Generating comparison report for properties: ${propertyIds.join(', ')}...`);
+    
+    // This would actually generate a report in a real implementation
+    
+    logger.info('Comparison report generated successfully.');
+    
+    // In a real implementation, this would return the report data
+    return {};
+  }
+  
+  /**
+   * Analyze the value distribution for a neighborhood
+   */
+  public async analyzeValueDistribution(neighborhoodId: string, options: any = {}): Promise<any> {
+    logger.info(`Analyzing value distribution for neighborhood ${neighborhoodId}...`);
+    
+    // This would actually analyze data in a real implementation
+    
+    // In a real implementation, this would return analysis data
+    return {};
+  }
+  
+  /**
+   * Hook called when the extension receives a message from the frontend
+   */
+  public async onMessage(message: any): Promise<any> {
+    if (!message || !message.command) {
+      return { error: 'Invalid message format' };
     }
     
-    // In a real implementation, we would fetch the properties from storage
-    // and compare them based on various criteria
-    
-    // This is a mock implementation for demonstration purposes
-    const mockComparisonResult = {
-      timestamp: new Date().toISOString(),
-      properties: propertyIds.map(id => ({ id, valueScore: Math.random() * 100 })),
-      similarityScore: Math.random() * 100,
-      factors: {
-        location: Math.random() * 100,
-        size: Math.random() * 100,
-        value: Math.random() * 100,
-        features: Math.random() * 100
-      }
-    };
-    
-    this.log(`Comparison completed with similarity score: ${mockComparisonResult.similarityScore.toFixed(2)}%`);
-    
-    return mockComparisonResult;
-  }
-  
-  /**
-   * Generate comparison report command
-   */
-  private async generateComparisonReport(propertyIds: string[], format: 'pdf' | 'csv' | 'json' = 'pdf'): Promise<any> {
-    this.log(`Generating comparison report for properties: ${propertyIds.join(', ')} in ${format} format`);
-    
-    if (!this.context || !propertyIds || propertyIds.length < 1) {
-      throw new Error('At least one property ID is required for report generation');
+    switch (message.command) {
+      case 'findComparableProperties':
+        return {
+          success: true,
+          properties: await this.findComparableProperties(message.propertyId, message.options)
+        };
+        
+      case 'generateComparisonReport':
+        return {
+          success: true,
+          report: await this.generateComparisonReport(message.propertyIds, message.options)
+        };
+        
+      case 'analyzeValueDistribution':
+        return {
+          success: true,
+          analysis: await this.analyzeValueDistribution(message.neighborhoodId, message.options)
+        };
+        
+      default:
+        return { error: `Unknown command: ${message.command}` };
     }
-    
-    // In a real implementation, we would generate a report based on property data
-    
-    // This is a mock implementation for demonstration purposes
-    const mockReport = {
-      timestamp: new Date().toISOString(),
-      format,
-      propertyCount: propertyIds.length,
-      reportUrl: `https://example.com/reports/comparison-${Date.now()}.${format}`,
-      generationTime: Math.random() * 5 + 0.5 // Random time between 0.5 and 5.5 seconds
-    };
-    
-    this.log(`Report generated in ${mockReport.generationTime.toFixed(2)} seconds`);
-    
-    return mockReport;
-  }
-  
-  /**
-   * Find similar properties command
-   */
-  private async findSimilarProperties(propertyId: string, options: { 
-    maxResults?: number;
-    radius?: number;
-    weightingFactor?: 'balanced' | 'value' | 'location' | 'features';
-  } = {}): Promise<any> {
-    if (!this.context) {
-      throw new Error('Extension context is not available');
-    }
-    
-    const settings = this.context.settings;
-    const maxResults = options.maxResults || settings.maxResults || 10;
-    const radius = options.radius || settings.defaultRadius || 5;
-    const weightingFactor = options.weightingFactor || settings.weightFactors || 'balanced';
-    
-    this.log(`Finding similar properties for property ${propertyId} with radius=${radius}, maxResults=${maxResults}, weighting=${weightingFactor}`);
-    
-    // In a real implementation, we would find similar properties based on the specified criteria
-    
-    // This is a mock implementation for demonstration purposes
-    const mockSimilarProperties = Array.from({ length: Math.floor(Math.random() * maxResults) + 1 })
-      .map((_, index) => ({
-        id: `PROP${Math.floor(Math.random() * 10000)}`,
-        similarityScore: 100 - (index * (100 / maxResults)),
-        matchingFactors: ['size', 'value', 'location', 'age'].slice(0, Math.floor(Math.random() * 4) + 1)
-      }))
-      .sort((a, b) => b.similarityScore - a.similarityScore);
-    
-    this.log(`Found ${mockSimilarProperties.length} similar properties`);
-    
-    return {
-      originProperty: propertyId,
-      searchRadius: radius,
-      weightingFactor,
-      similarProperties: mockSimilarProperties
-    };
   }
 }

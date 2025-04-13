@@ -1,42 +1,39 @@
 /**
- * Extensions System Entry Point
+ * Extension System
  * 
- * This file exports the extension system components and provides
- * initialization for the extension system.
+ * This module initializes the extension system and exports
+ * the necessary utilities to interact with it.
  */
 
 import { IStorage } from '../storage';
 import { ExtensionRegistry } from './extension-registry';
-import { createExtensionRoutes } from './extension-routes';
-import { PropertyComparisonExtension } from './samples/property-comparison-extension';
-
-// Export core extension types and classes
-export * from './extension-interface';
-export * from './base-extension';
-export * from './extension-registry';
-export * from './extension-routes';
-
-// Sample extensions
-export * from './samples/property-comparison-extension';
+import { BaseExtension } from './base-extension';
+import extensionRoutes from './extension-routes';
 
 /**
- * Initialize the extension system with built-in and installed extensions
- * @param storage Storage instance to use with extensions
- * @returns Initialized ExtensionRegistry instance
+ * Initialize the extension system
  */
 export function initializeExtensionSystem(storage: IStorage): ExtensionRegistry {
-  // Create the extension registry
-  const extensionRegistry = new ExtensionRegistry(storage);
-  
-  // Register built-in extensions
-  const propertyComparisonExtension = new PropertyComparisonExtension();
-  extensionRegistry.registerExtension(propertyComparisonExtension);
-  
-  // TODO: Implement dynamic loading of installed extensions from disk/database
-  
-  // Activate built-in extensions
-  extensionRegistry.activateExtension(propertyComparisonExtension.metadata.id)
-    .catch(error => console.error(`Failed to activate extension ${propertyComparisonExtension.metadata.id}:`, error));
-  
-  return extensionRegistry;
+  try {
+    // Get the registry instance
+    const registry = ExtensionRegistry.getInstance();
+    
+    // Initialize the registry
+    registry.initialize()
+      .then(() => {
+        console.log('Extension system initialized successfully');
+      })
+      .catch(error => {
+        console.error('Failed to initialize extension system:', error);
+      });
+    
+    return registry;
+  } catch (error) {
+    console.error('Error initializing extension system:', error);
+    throw error;
+  }
 }
+
+// Export core extension classes and types
+export { ExtensionRegistry, BaseExtension, extensionRoutes };
+export type { ExtensionMetadata, WebviewPanel, CommandRegistration } from './base-extension';

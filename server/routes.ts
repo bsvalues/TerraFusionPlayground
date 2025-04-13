@@ -31,7 +31,7 @@ import { createMarketRoutes } from "./routes/market-routes";
 import { createRiskRoutes } from "./routes/risk-routes";
 import { createAnalyticsRoutes } from "./routes/analytics-routes";
 import { createValidationRoutes } from "./routes/validation-routes";
-import { createExtensionRoutes } from "./extensions/extension-routes";
+import extensionRoutes from "./extensions/extension-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -130,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/validation', createValidationRoutes(storage));
   
   // Register Extension routes
-  app.use('/api/extensions', createExtensionRoutes(extensionRegistry));
+  app.use('/api/extensions', extensionRoutes);
 
   /**
    * Data Lineage Routes
