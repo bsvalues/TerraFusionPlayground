@@ -6,6 +6,7 @@
  */
 
 import { WebSocket } from 'ws';
+import http from 'http';
 
 console.log('Running in ESM environment');
 
@@ -13,6 +14,32 @@ console.log('Running in ESM environment');
 // From server/index.ts we know the server runs on port 5000
 const port = process.env.PORT || 5000;
 console.log(`Using port ${port}`);
+
+// First verify HTTP server is running
+console.log(`Checking if HTTP server is running on port ${port}...`);
+
+// Create HTTP request to verify server is up
+const httpRequest = http.request({
+  hostname: 'localhost',
+  port: port,
+  path: '/api/health',
+  method: 'GET'
+});
+
+httpRequest.on('error', (error) => {
+  console.error(`HTTP connection error: ${error.message}`);
+  console.error('Server may not be running on this port. Please verify server is running.');
+  process.exit(1);
+});
+
+httpRequest.on('response', (response) => {
+  console.log(`HTTP server responded with status: ${response.statusCode}`);
+  
+  // Continue with WebSocket connection after validating HTTP server
+  connectWebSocket();
+});
+
+httpRequest.end();
 
 // Print debug information
 console.log('WS module loaded: true');
@@ -24,10 +51,19 @@ console.log('WebSocket ReadyState Values:', {
   CLOSED: WebSocket.CLOSED
 });
 
-// Create WebSocket connection
-// From collaboration-websocket-service.ts we can see the path is '/ws/collaboration'
-console.log(`Creating WebSocket connection to ws://localhost:${port}/ws/collaboration`);
-const socket = new WebSocket(`ws://localhost:${port}/ws/collaboration`);
+function connectWebSocket() {
+  // Create WebSocket connection
+  // From collaboration-websocket-service.ts we can see the path is '/ws/collaboration'
+  console.log(`Creating WebSocket connection to ws://localhost:${port}/ws/collaboration`);
+
+  // Adding custom headers for debugging
+  const socket = new WebSocket(`ws://localhost:${port}/ws/collaboration`, {
+    headers: {
+      'User-Agent': 'WebSocketTestClient',
+      'X-Test-Client': 'true'
+    },
+    handshakeTimeout: 5000 // 5 seconds timeout for handshake
+  });
 
 console.log('WebSocket client created, type:', typeof socket);
 console.log('Socket object keys:', Object.keys(socket));
@@ -124,3 +160,4 @@ setTimeout(() => {
   console.log('Test complete, exiting process.');
   process.exit(0);
 }, 10000);
+} // Close connectWebSocket function
