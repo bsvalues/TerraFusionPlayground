@@ -79,13 +79,32 @@ class CollaborationWebSocketService {
 
   public initialize(server: HTTPServer): void {
     // Create WebSocket server with a specific path for collaboration
+    console.log('Initializing Collaboration WebSocket service at path: /ws/collaboration');
     this.wss = new WebSocketServer({ 
       server, 
       path: '/ws/collaboration'
     });
 
-    this.wss.on('connection', this.handleConnection.bind(this));
-    this.wss.on('error', this.handleWSServerError.bind(this));
+    // Debug: Log WebSocket server instance details
+    console.log('WebSocket server created:', {
+      path: this.wss.options.path,
+      clients: this.wss.clients.size,
+    });
+
+    // Set up event handlers
+    this.wss.on('connection', (socket, request) => {
+      console.log('New WebSocket connection received:', {
+        url: request.url,
+        headers: request.headers,
+        method: request.method
+      });
+      this.handleConnection(socket);
+    });
+
+    this.wss.on('error', (error) => {
+      console.error('WebSocket server error:', error);
+      this.handleWSServerError(error);
+    });
 
     // Set up a ping interval to keep connections alive
     this.pingInterval = setInterval(() => {
