@@ -4310,6 +4310,371 @@ export class PgStorage implements IStorage {
       .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime())
       .slice(0, limit);
   }
+  
+  // Shared Workflow methods
+  async createSharedWorkflow(workflow: InsertSharedWorkflow): Promise<SharedWorkflow> {
+    const id = this.sharedWorkflows.size + 1;
+    const timestamp = new Date();
+    
+    const sharedWorkflow: SharedWorkflow = {
+      id,
+      workflowId: workflow.workflowId,
+      name: workflow.name,
+      description: workflow.description || null,
+      ownerId: workflow.ownerId,
+      shareCode: workflow.shareCode || this.generateShareCode(),
+      status: workflow.status || 'active',
+      isPublic: workflow.isPublic || false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      expiresAt: workflow.expiresAt || null,
+      settings: workflow.settings || {},
+      viewCount: 0,
+      lastViewed: null
+    };
+    
+    this.sharedWorkflows.set(id, sharedWorkflow);
+    
+    // Log activity
+    await this.createSystemActivity({
+      activity_type: 'workflow_shared',
+      component: 'workflow_collaboration',
+      details: {
+        workflow_id: workflow.workflowId,
+        owner_id: workflow.ownerId,
+        name: workflow.name
+      }
+    });
+    
+    return sharedWorkflow;
+  }
+  
+  async getSharedWorkflowById(id: number): Promise<SharedWorkflow | null> {
+    const workflow = this.sharedWorkflows.get(id);
+    return workflow || null;
+  }
+  
+  async getSharedWorkflowByShareCode(shareCode: string): Promise<SharedWorkflow | null> {
+    const workflow = Array.from(this.sharedWorkflows.values())
+      .find(w => w.shareCode === shareCode);
+    return workflow || null;
+  }
+  
+  async getSharedWorkflowsByUser(userId: number): Promise<SharedWorkflow[]> {
+    return Array.from(this.sharedWorkflows.values())
+      .filter(workflow => workflow.ownerId === userId);
+  }
+  
+  async getSharedWorkflowsByWorkflowId(workflowId: number): Promise<SharedWorkflow[]> {
+    return Array.from(this.sharedWorkflows.values())
+      .filter(workflow => workflow.workflowId === workflowId);
+  }
+  
+  async getPublicSharedWorkflows(): Promise<SharedWorkflow[]> {
+    return Array.from(this.sharedWorkflows.values())
+      .filter(workflow => workflow.isPublic && workflow.status === 'active');
+  }
+  
+  async updateSharedWorkflow(id: number, updates: Partial<InsertSharedWorkflow>): Promise<SharedWorkflow | null> {
+    const workflow = this.sharedWorkflows.get(id);
+    if (!workflow) return null;
+    
+    const updatedWorkflow: SharedWorkflow = {
+      ...workflow,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.sharedWorkflows.set(id, updatedWorkflow);
+    
+    await this.createSystemActivity({
+      activity_type: 'workflow_updated',
+      component: 'workflow_collaboration',
+      details: {
+        workflow_id: workflow.workflowId,
+        shared_workflow_id: id
+      }
+    });
+    
+    return updatedWorkflow;
+  }
+  
+  async deleteSharedWorkflow(id: number): Promise<boolean> {
+    const workflow = this.sharedWorkflows.get(id);
+    if (!workflow) return false;
+    
+    // First delete all related records
+    const collaborators = await this.getCollaboratorsByWorkflowId(id);
+    for (const collaborator of collaborators) {
+      this.sharedWorkflowCollaborators.delete(collaborator.id);
+    }
+    
+    const activities = await this.getWorkflowActivities(id);
+    for (const activity of activities) {
+      this.sharedWorkflowActivities.delete(activity.id);
+    }
+    
+    // Delete all active sessions
+    const sessions = await this.getActiveWorkflowSessions(id);
+    for (const session of sessions) {
+      this.workflowSessions.delete(session.sessionId);
+    }
+    
+    // Finally delete the workflow itself
+    this.sharedWorkflows.delete(id);
+    
+    await this.createSystemActivity({
+      activity_type: 'workflow_deleted',
+      component: 'workflow_collaboration',
+      details: {
+        workflow_id: workflow.workflowId,
+        shared_workflow_id: id
+      }
+    });
+    
+    return true;
+  }
+  
+  // Collaborator methods
+  async addCollaborator(collaborator: InsertSharedWorkflowCollaborator): Promise<SharedWorkflowCollaborator> {
+    const id = this.sharedWorkflowCollaborators.size + 1;
+    const timestamp = new Date();
+    
+    const newCollaborator: SharedWorkflowCollaborator = {
+      id,
+      sharedWorkflowId: collaborator.sharedWorkflowId,
+      userId: collaborator.userId,
+      role: collaborator.role || 'viewer',
+      invitedBy: collaborator.invitedBy,
+      invitedAt: timestamp,
+      status: collaborator.status || 'pending',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      lastActive: null
+    };
+    
+    this.sharedWorkflowCollaborators.set(id, newCollaborator);
+    
+    // Get the workflow name
+    const workflow = await this.getSharedWorkflowById(collaborator.sharedWorkflowId);
+    
+    await this.createSystemActivity({
+      activity_type: 'collaborator_added',
+      component: 'workflow_collaboration',
+      details: {
+        shared_workflow_id: collaborator.sharedWorkflowId,
+        workflow_name: workflow?.name || 'Unknown',
+        user_id: collaborator.userId,
+        role: collaborator.role || 'viewer'
+      }
+    });
+    
+    return newCollaborator;
+  }
+  
+  async getCollaboratorsByWorkflowId(sharedWorkflowId: number): Promise<SharedWorkflowCollaborator[]> {
+    return Array.from(this.sharedWorkflowCollaborators.values())
+      .filter(collaborator => collaborator.sharedWorkflowId === sharedWorkflowId);
+  }
+  
+  async getCollaboratorsByUserId(userId: number): Promise<SharedWorkflowCollaborator[]> {
+    return Array.from(this.sharedWorkflowCollaborators.values())
+      .filter(collaborator => collaborator.userId === userId);
+  }
+  
+  async updateCollaboratorRole(id: number, role: CollaborationRole): Promise<SharedWorkflowCollaborator | null> {
+    const collaborator = this.sharedWorkflowCollaborators.get(id);
+    if (!collaborator) return null;
+    
+    const updatedCollaborator: SharedWorkflowCollaborator = {
+      ...collaborator,
+      role,
+      updatedAt: new Date()
+    };
+    
+    this.sharedWorkflowCollaborators.set(id, updatedCollaborator);
+    
+    await this.createSystemActivity({
+      activity_type: 'collaborator_role_updated',
+      component: 'workflow_collaboration',
+      details: {
+        shared_workflow_id: collaborator.sharedWorkflowId,
+        user_id: collaborator.userId,
+        role: role
+      }
+    });
+    
+    return updatedCollaborator;
+  }
+  
+  // Workflow Activity methods
+  async logWorkflowActivity(activity: InsertSharedWorkflowActivity): Promise<SharedWorkflowActivity> {
+    const id = this.sharedWorkflowActivities.size + 1;
+    const timestamp = new Date();
+    
+    const newActivity: SharedWorkflowActivity = {
+      id,
+      sharedWorkflowId: activity.sharedWorkflowId,
+      userId: activity.userId,
+      activityType: activity.activityType,
+      details: activity.details || {},
+      createdAt: timestamp
+    };
+    
+    this.sharedWorkflowActivities.set(id, newActivity);
+    return newActivity;
+  }
+  
+  async getWorkflowActivities(sharedWorkflowId: number, limit: number = 100): Promise<SharedWorkflowActivity[]> {
+    return Array.from(this.sharedWorkflowActivities.values())
+      .filter(activity => activity.sharedWorkflowId === sharedWorkflowId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit);
+  }
+  
+  // Workflow Session methods
+  async createWorkflowSession(session: InsertWorkflowSession): Promise<WorkflowSession> {
+    const timestamp = new Date();
+    
+    const newSession: WorkflowSession = {
+      sessionId: session.sessionId,
+      sharedWorkflowId: session.sharedWorkflowId,
+      createdBy: session.createdBy,
+      status: 'active',
+      startTime: timestamp,
+      lastActivity: timestamp,
+      endTime: null,
+      participants: session.participants || [],
+      data: session.data || {},
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+    
+    this.workflowSessions.set(session.sessionId, newSession);
+    
+    await this.createSystemActivity({
+      activity_type: 'collaboration_session_started',
+      component: 'workflow_collaboration',
+      details: {
+        shared_workflow_id: session.sharedWorkflowId,
+        session_id: session.sessionId,
+        created_by: session.createdBy
+      }
+    });
+    
+    return newSession;
+  }
+  
+  async getActiveWorkflowSessions(sharedWorkflowId: number): Promise<WorkflowSession[]> {
+    return Array.from(this.workflowSessions.values())
+      .filter(session => 
+        session.sharedWorkflowId === sharedWorkflowId && 
+        session.status === 'active'
+      );
+  }
+  
+  async updateWorkflowSessionStatus(sessionId: string, status: string): Promise<WorkflowSession | null> {
+    const session = this.workflowSessions.get(sessionId);
+    if (!session) return null;
+    
+    const updatedSession: WorkflowSession = {
+      ...session,
+      status,
+      lastActivity: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.workflowSessions.set(sessionId, updatedSession);
+    
+    await this.createSystemActivity({
+      activity_type: 'collaboration_session_status_updated',
+      component: 'workflow_collaboration',
+      details: {
+        shared_workflow_id: session.sharedWorkflowId,
+        session_id: sessionId,
+        status: status
+      }
+    });
+    
+    return updatedSession;
+  }
+  
+  async updateWorkflowSessionParticipants(sessionId: string, participants: any[]): Promise<WorkflowSession | null> {
+    const session = this.workflowSessions.get(sessionId);
+    if (!session) return null;
+    
+    const updatedSession: WorkflowSession = {
+      ...session,
+      participants,
+      lastActivity: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.workflowSessions.set(sessionId, updatedSession);
+    
+    await this.createSystemActivity({
+      activity_type: 'collaboration_session_participants_updated',
+      component: 'workflow_collaboration',
+      details: {
+        shared_workflow_id: session.sharedWorkflowId,
+        session_id: sessionId,
+        participant_count: participants.length
+      }
+    });
+    
+    return updatedSession;
+  }
+  
+  async endWorkflowSession(sessionId: string): Promise<WorkflowSession | null> {
+    const session = this.workflowSessions.get(sessionId);
+    if (!session) return null;
+    
+    const timestamp = new Date();
+    const updatedSession: WorkflowSession = {
+      ...session,
+      status: 'ended',
+      endTime: timestamp,
+      lastActivity: timestamp,
+      updatedAt: timestamp
+    };
+    
+    this.workflowSessions.set(sessionId, updatedSession);
+    
+    await this.createSystemActivity({
+      activity_type: 'collaboration_session_ended',
+      component: 'workflow_collaboration',
+      details: {
+        shared_workflow_id: session.sharedWorkflowId,
+        session_id: sessionId,
+        duration_minutes: Math.round((timestamp.getTime() - session.startTime.getTime()) / 60000)
+      }
+    });
+    
+    return updatedSession;
+  }
+  
+  // Helper method to generate unique share codes
+  private generateShareCode(): string {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const length = 10;
+    let result = '';
+    
+    // Create a reasonably unique code
+    for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    
+    // Ensure it's not already in use
+    const existing = Array.from(this.sharedWorkflows.values())
+      .find(wf => wf.shareCode === result);
+      
+    if (existing) {
+      // If collision, try again
+      return this.generateShareCode();
+    }
+    
+    return result;
+  }
 }
 
 // Use database storage instead of in-memory
