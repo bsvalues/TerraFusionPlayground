@@ -51,7 +51,7 @@ export function AgentSystemStatus({
     let eventUnsubscribe: (() => void) | null = null;
     
     // Only attempt to register if we're connected
-    if (connectionStatus === 'connected') {
+    if (connectionStatus === 'connected' && typeof on === 'function') {
       eventUnsubscribe = on('*', messageListener);
     }
     
