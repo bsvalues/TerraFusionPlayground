@@ -38,6 +38,7 @@ import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmai
 // import { PacsIntegration } from "./services/pacs-integration"; // Not implemented yet
 import { mappingIntegration } from "./services/mapping-integration";
 import { notificationService, NotificationType } from "./services/notification-service";
+import { agentWebSocketService } from "./services/agent-websocket-service";
 import { perplexityService } from "./services/perplexity";
 import { MCPService, MCPRequest } from "./services/mcp";
 import { SecurityService } from "./services/security";
@@ -2438,6 +2439,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Initialize notification service with the HTTP server
   notificationService.initialize(httpServer);
+  
+  // Initialize agent WebSocket service with the HTTP server
+  agentWebSocketService.initialize(httpServer);
   
   return httpServer;
 }
