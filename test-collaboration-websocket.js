@@ -138,12 +138,18 @@ if (typeof window !== 'undefined') {
 // For Node.js environment (running as script)
 if (typeof module !== 'undefined' && module.exports) {
   console.log('Running in Node.js environment');
+  
+  // Determine the port based on environment or use default
+  // For Replit, we need to use the actual port where the server is running
+  const port = process.env.PORT || 5173; // Using Vite's default port
+  console.log(`Attempting to connect to WebSocket server on port ${port}...`);
+  
   // When running in Node.js, create a WebSocket client
   const WebSocket = require('ws');
-  const socket = new WebSocket('ws://localhost:3000/ws/collaboration');
+  const socket = new WebSocket(`ws://localhost:${port}/ws/collaboration`);
   
   socket.on('open', function open() {
-    console.log('Connected to WebSocket server');
+    console.log('SUCCESS: Connected to WebSocket server');
     
     // Join a test session
     const joinMessage = {
@@ -157,22 +163,91 @@ if (typeof module !== 'undefined' && module.exports) {
       }
     };
     
+    console.log('Sending join session message:', JSON.stringify(joinMessage, null, 2));
     socket.send(JSON.stringify(joinMessage));
-    console.log('Sent join session message');
+    console.log('Join session message sent successfully');
     
-    // Continue with test messages...
-    // Similar to browser implementation but using Node.js WebSocket API
+    // Send cursor position after a delay
+    setTimeout(() => {
+      const cursorMessage = {
+        type: 'cursor_position',
+        sessionId: 'test-session-1',
+        userId: 1,
+        userName: 'Test User',
+        timestamp: Date.now(),
+        payload: {
+          x: 120,
+          y: 250,
+          section: 'property-details'
+        }
+      };
+      
+      console.log('Sending cursor position message:', JSON.stringify(cursorMessage, null, 2));
+      socket.send(JSON.stringify(cursorMessage));
+      console.log('Cursor position message sent successfully');
+    }, 2000);
+    
+    // Send a comment after a delay
+    setTimeout(() => {
+      const commentMessage = {
+        type: 'comment',
+        sessionId: 'test-session-1',
+        userId: 1,
+        userName: 'Test User',
+        timestamp: Date.now(),
+        payload: {
+          text: 'This is a test comment from Node.js client'
+        }
+      };
+      
+      console.log('Sending comment message:', JSON.stringify(commentMessage, null, 2));
+      socket.send(JSON.stringify(commentMessage));
+      console.log('Comment message sent successfully');
+    }, 4000);
+    
+    // Leave the session after a delay
+    setTimeout(() => {
+      const leaveMessage = {
+        type: 'leave_session',
+        sessionId: 'test-session-1',
+        userId: 1,
+        userName: 'Test User',
+        timestamp: Date.now()
+      };
+      
+      console.log('Sending leave session message:', JSON.stringify(leaveMessage, null, 2));
+      socket.send(JSON.stringify(leaveMessage));
+      console.log('Leave session message sent successfully');
+      
+      // Close socket after another delay
+      setTimeout(() => {
+        console.log('Closing WebSocket connection...');
+        socket.close();
+      }, 1000);
+    }, 6000);
   });
   
   socket.on('message', function incoming(data) {
-    console.log('Received:', data);
+    console.log('Received message from server:');
+    try {
+      const jsonData = JSON.parse(data);
+      console.log(JSON.stringify(jsonData, null, 2));
+    } catch (e) {
+      console.log('Raw message (not JSON):', data.toString());
+    }
   });
   
-  socket.on('close', function close() {
-    console.log('Disconnected from WebSocket server');
+  socket.on('close', function close(code, reason) {
+    console.log(`WebSocket connection closed: Code=${code}, Reason="${reason || 'No reason provided'}"`);
   });
   
   socket.on('error', function error(err) {
-    console.error('WebSocket error:', err);
+    console.error('WebSocket error occurred:', err);
   });
+  
+  // Keep the process running for a bit to complete the test
+  setTimeout(() => {
+    console.log('Test complete, exiting process.');
+    process.exit(0);
+  }, 10000);
 }
