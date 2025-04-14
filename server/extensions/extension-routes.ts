@@ -21,7 +21,17 @@ const routePrefix = '';
  */
 router.get('/', async (req, res) => {
   try {
-    const extensions = registry.getExtensions().map(ext => {
+    console.log('GET /api/extensions called');
+    
+    if (!registry) {
+      console.error('Extension registry is not initialized');
+      return res.status(500).json({ error: 'Extension registry is not initialized' });
+    }
+    
+    const allExtensions = registry.getExtensions();
+    console.log(`Found ${allExtensions.length} extensions`);
+    
+    const extensions = allExtensions.map(ext => {
       const metadata = ext.getMetadata();
       return {
         id: metadata.id,
@@ -37,7 +47,7 @@ router.get('/', async (req, res) => {
     res.json(extensions);
   } catch (error) {
     console.error('Error getting extensions:', error);
-    res.status(500).json({ error: 'Failed to get extensions' });
+    res.status(500).json({ error: 'Failed to get extensions', details: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
 
@@ -48,16 +58,35 @@ router.get('/', async (req, res) => {
 router.get('/webviews', async (req, res) => {
   try {
     // Log for debugging
-    console.log('Fetching all webviews...');
-    console.log('Active extensions:', registry.getExtensions().filter(ext => ext.isActive()).map(ext => ext.getMetadata().id));
+    console.log('GET /api/extensions/webviews called');
+    
+    if (!registry) {
+      console.error('Extension registry is not initialized');
+      return res.status(500).json({ error: 'Extension registry is not initialized' });
+    }
+    
+    const activeExtensions = registry.getExtensions().filter(ext => ext.isActive());
+    console.log('Active extensions:', activeExtensions.map(ext => ext.getMetadata().id));
     
     const webviews = registry.getAllWebviews();
     console.log('Found webviews:', webviews.length);
     
-    res.json(webviews);
+    // Add more details to each webview for better debugging
+    const enhancedWebviews = webviews.map(webview => ({
+      ...webview,
+      extensionDetails: {
+        name: registry.getExtension(webview.extensionId)?.getMetadata().name || 'Unknown',
+        active: registry.getExtension(webview.extensionId)?.isActive() || false
+      }
+    }));
+    
+    res.json(enhancedWebviews);
   } catch (error) {
     console.error('Error getting webviews:', error);
-    res.status(500).json({ error: 'Failed to get webviews' });
+    res.status(500).json({ 
+      error: 'Failed to get webviews',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
@@ -67,17 +96,29 @@ router.get('/webviews', async (req, res) => {
  */
 router.get('/webviews/:id', async (req, res) => {
   try {
+    console.log(`GET /api/extensions/webviews/${req.params.id} called`);
+    
+    if (!registry) {
+      console.error('Extension registry is not initialized');
+      return res.status(500).json({ error: 'Extension registry is not initialized' });
+    }
+    
     const { id } = req.params;
     const webview = registry.getWebview(id);
     
     if (!webview) {
+      console.error(`Webview '${id}' not found`);
       return res.status(404).json({ error: `Webview '${id}' not found` });
     }
     
+    console.log(`Found webview: ${id} from extension ${webview.extensionId}`);
     res.json(webview);
   } catch (error) {
     console.error(`Error getting webview ${req.params.id}:`, error);
-    res.status(500).json({ error: 'Failed to get webview' });
+    res.status(500).json({ 
+      error: 'Failed to get webview',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
@@ -291,6 +332,62 @@ router.post('/:id/command/:command', async (req, res) => {
   } catch (error) {
     console.error(`Error executing command for extension ${req.params.id}:`, error);
     res.status(500).json({ error: 'Failed to execute extension command' });
+  }
+});
+
+/**
+ * GET /api/extensions/:id/webviews/:webviewId - Get webview content
+ */
+router.get('/:id/webviews/:webviewId', async (req, res) => {
+  try {
+    console.log(`GET /api/extensions/${req.params.id}/webviews/${req.params.webviewId} called`);
+    
+    const { id, webviewId } = req.params;
+    const extension = registry.getExtension(id);
+    
+    if (!extension) {
+      console.error(`Extension '${id}' not found`);
+      return res.status(404).json({ error: `Extension '${id}' not found` });
+    }
+    
+    if (!extension.isActive()) {
+      console.error(`Extension '${id}' is not active`);
+      return res.status(400).json({ error: `Extension '${id}' is not active` });
+    }
+    
+    // Retrieve the webview info from registry
+    const webview = registry.getWebview(webviewId);
+    if (!webview) {
+      console.error(`Webview '${webviewId}' not found`);
+      return res.status(404).json({ error: `Webview '${webviewId}' not found` });
+    }
+    
+    if (webview.extensionId !== id) {
+      console.error(`Webview '${webviewId}' does not belong to extension '${id}'`);
+      return res.status(400).json({ 
+        error: `Webview '${webviewId}' does not belong to extension '${id}'`,
+        actualExtensionId: webview.extensionId
+      });
+    }
+    
+    // Get the webview content from the extension
+    const contentTemplate = await registry.getWebviewContent(id, webviewId);
+    if (!contentTemplate) {
+      console.error(`Failed to get content for webview '${webviewId}'`);
+      return res.status(500).json({ error: `Failed to get content for webview '${webviewId}'` });
+    }
+    
+    console.log(`Successfully retrieved content for webview '${webviewId}'`);
+    
+    // Return the content as HTML
+    res.header('Content-Type', 'text/html');
+    res.send(contentTemplate);
+  } catch (error) {
+    console.error(`Error getting webview content for extension ${req.params.id}, webview ${req.params.webviewId}:`, error);
+    res.status(500).json({ 
+      error: 'Failed to get webview content',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 

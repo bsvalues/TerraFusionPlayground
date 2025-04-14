@@ -38,12 +38,32 @@ export function WebviewPanel({
         setIsLoading(true);
         setError(null);
         
+        console.log(`Fetching webview content for ${extensionId}/${webviewId}...`);
+        
+        // First check if the extension itself exists and is active
+        const extensionResponse = await apiRequest(`/api/extensions/${extensionId}`);
+        if (!extensionResponse.ok) {
+          const errorText = await extensionResponse.text();
+          console.error(`Failed to fetch extension ${extensionId}:`, errorText);
+          throw new Error(`Extension not available. Details: ${errorText}`);
+        }
+        
+        const extensionData = await extensionResponse.json();
+        if (!extensionData.active) {
+          console.error(`Extension ${extensionId} is not active.`);
+          throw new Error(`Extension ${extensionData.name} is not active. Please activate it first.`);
+        }
+        
+        // Now fetch the webview content
         const response = await apiRequest(`/api/extensions/${extensionId}/webviews/${webviewId}`);
         if (!response.ok) {
-          throw new Error(`Failed to load webview content: ${response.statusText}`);
+          const errorText = await response.text();
+          console.error(`Failed to load webview content: ${response.statusText}`, errorText);
+          throw new Error(`Failed to load webview content: ${response.statusText}. Details: ${errorText}`);
         }
         
         const contentText = await response.text();
+        console.log(`Successfully loaded webview content for ${extensionId}/${webviewId}`);
         setContent(contentText);
       } catch (err) {
         console.error('Error loading webview content:', err);
@@ -79,12 +99,56 @@ export function WebviewPanel({
     // Setup listeners for messages from the iframe
     messageChannel.port1.onmessage = (event) => {
       if (event.data.type === 'webview.ready') {
-        console.log('Webview is ready');
+        console.log('Webview is ready', event.data.status || 'success');
       } else if (event.data.type === 'webview.action') {
         // Handle actions requested by the webview
-        console.log('Webview action:', event.data.action);
+        console.log('Webview action:', event.data.action, event.data);
+        
         if (event.data.action === 'close') {
           onClose();
+        } else if (event.data.action === 'retry') {
+          console.log('Retrying webview content load...');
+          setIsLoading(true);
+          setError(null);
+          setContent(null);
+          
+          // Re-fetch the content after a short delay
+          setTimeout(() => {
+            const fetchWebviewContent = async () => {
+              try {
+                const response = await apiRequest(`/api/extensions/${extensionId}/webviews/${webviewId}`);
+                if (!response.ok) {
+                  const errorText = await response.text();
+                  throw new Error(`Failed to load webview content: ${response.statusText}. Details: ${errorText}`);
+                }
+                const contentText = await response.text();
+                setContent(contentText);
+              } catch (err) {
+                console.error('Error reloading webview content:', err);
+                setError(err instanceof Error ? err.message : 'Failed to reload webview content');
+              } finally {
+                setIsLoading(false);
+              }
+            };
+            
+            fetchWebviewContent();
+          }, 500);
+        } else if (event.data.action === 'activate') {
+          console.log(`Attempting to activate extension ${extensionId}...`);
+          
+          apiRequest(`/api/extensions/${extensionId}/activate`, { method: 'POST' })
+            .then(response => {
+              if (response.ok) {
+                console.log(`Extension ${extensionId} activated successfully`);
+                // Retry loading the webview
+                setIsLoading(true);
+                setError(null);
+                setTimeout(() => window.location.reload(), 1000);
+              } else {
+                console.error(`Failed to activate extension ${extensionId}`, response.statusText);
+              }
+            })
+            .catch(err => console.error(`Error activating extension ${extensionId}`, err));
         }
       }
     };
@@ -121,9 +185,46 @@ export function WebviewPanel({
             </div>
           ) : error ? (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center p-4">
+              <div className="text-center p-4 max-w-lg">
                 <p className="text-red-500 font-medium mb-2">Error loading webview</p>
-                <p className="text-gray-600">{error}</p>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <div className="flex flex-col space-y-2">
+                  <button 
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onClick={() => {
+                      console.log(`Attempting to activate extension ${extensionId}...`);
+                      apiRequest(`/api/extensions/${extensionId}/activate`, { method: 'POST' })
+                        .then(response => {
+                          if (response.ok) {
+                            console.log(`Extension ${extensionId} activated successfully`);
+                            // Retry loading the webview
+                            setIsLoading(true);
+                            setError(null);
+                            setTimeout(() => {
+                              window.location.reload();
+                            }, 1000);
+                          } else {
+                            console.error(`Failed to activate extension ${extensionId}`, response.statusText);
+                          }
+                        })
+                        .catch(err => console.error(`Error activating extension ${extensionId}`, err));
+                    }}
+                  >
+                    Activate Extension
+                  </button>
+                  <button 
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                    onClick={() => {
+                      setIsLoading(true);
+                      setError(null);
+                      setTimeout(() => {
+                        window.location.reload();
+                      }, 500);
+                    }}
+                  >
+                    Retry
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
