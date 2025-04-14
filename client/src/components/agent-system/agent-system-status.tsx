@@ -37,26 +37,32 @@ export function AgentSystemStatus({
 
   // Update the last message time when receiving messages
   useEffect(() => {
-    const unsubscribe = connect().then(() => {
-      // Once connected, set up the event listener
-      return on('*', () => {
-        setLastMessageTime(new Date());
-      });
-    }).catch(error => {
-      console.error('Failed to connect for message listening:', error);
-      // Return a no-op function in case of error
-      return () => {};
-    });
+    // Create a flag to track if component is still mounted
+    let isMounted = true;
     
-    return () => {
-      // This is now a Promise<Function>, so we need to handle it properly
-      if (typeof unsubscribe === 'function') {
-        unsubscribe();
-      } else if (unsubscribe && typeof unsubscribe.then === 'function') {
-        unsubscribe.then(fn => typeof fn === 'function' && fn());
+    // Set up event listener for all messages
+    const messageListener = () => {
+      if (isMounted) {
+        setLastMessageTime(new Date());
       }
     };
-  }, [connect, on]);
+
+    // Register the event listener
+    let eventUnsubscribe: (() => void) | null = null;
+    
+    // Only attempt to register if we're connected
+    if (connectionStatus === 'connected') {
+      eventUnsubscribe = on('*', messageListener);
+    }
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      if (eventUnsubscribe) {
+        eventUnsubscribe();
+      }
+    };
+  }, [connectionStatus, on]);
 
   // Fetch active agent count
   useEffect(() => {
