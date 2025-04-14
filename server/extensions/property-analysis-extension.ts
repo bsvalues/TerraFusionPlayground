@@ -277,7 +277,7 @@ export class PropertyAnalysisAIExtension extends AIExtension {
     }
     
     // Get comparable properties
-    const comparableProperties = await this.storage.getComparableProperties(propertyId, 5);
+    const comparableProperties = await this.storage.findComparableProperties(propertyId, 5);
     
     // Get historical property data
     const propertyHistory = await this.storage.getPropertyHistory(propertyId);
