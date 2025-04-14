@@ -140,13 +140,33 @@ if (typeof module !== 'undefined' && module.exports) {
   console.log('Running in Node.js environment');
   
   // Determine the port based on environment or use default
-  // For Replit, we need to use the actual port where the server is running
-  const port = process.env.PORT || 5173; // Using Vite's default port
-  console.log(`Attempting to connect to WebSocket server on port ${port}...`);
+  // For Replit, try multiple common ports
+  const possiblePorts = [3000, 5173, 8080];
+  const port = process.env.PORT || 3000;
+  
+  console.log('Available environment variables:', Object.keys(process.env).join(', '));
+  console.log(`Using port ${port} from environment or default`);
   
   // When running in Node.js, create a WebSocket client
   const WebSocket = require('ws');
+  
+  // Print debug information
+  console.log('WS module loaded:', !!WebSocket);
+  console.log('WebSocket.OPEN value:', WebSocket.OPEN);
+  console.log('WebSocket ReadyState Values:', {
+    CONNECTING: WebSocket.CONNECTING,
+    OPEN: WebSocket.OPEN,
+    CLOSING: WebSocket.CLOSING,
+    CLOSED: WebSocket.CLOSED
+  });
+  
+  console.log(`Creating WebSocket connection to ws://localhost:${port}/ws/collaboration`);
   const socket = new WebSocket(`ws://localhost:${port}/ws/collaboration`);
+  
+  console.log('WebSocket client created, type:', typeof socket);
+  console.log('Socket object keys:', Object.keys(socket));
+  console.log('Initial ready state:', socket.readyState);
+  console.log('Waiting for connection events...');
   
   socket.on('open', function open() {
     console.log('SUCCESS: Connected to WebSocket server');
@@ -242,7 +262,13 @@ if (typeof module !== 'undefined' && module.exports) {
   });
   
   socket.on('error', function error(err) {
-    console.error('WebSocket error occurred:', err);
+    console.error('WebSocket error occurred:');
+    console.error(err.toString());
+    console.error('Error details:', JSON.stringify({
+      code: err.code,
+      message: err.message,
+      stack: err.stack
+    }, null, 2));
   });
   
   // Keep the process running for a bit to complete the test
