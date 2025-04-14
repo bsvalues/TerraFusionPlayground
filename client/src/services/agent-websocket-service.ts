@@ -61,7 +61,19 @@ export class AgentWebSocketService {
       
       // Determine WebSocket URL (handle both HTTP and HTTPS)
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const baseUrl = `${protocol}//${window.location.host}`;
+      
+      // Special handling for Replit environments
+      const host = window.location.hostname;
+      let baseUrl;
+      
+      // Use relative path for Replit deployments
+      if (host.endsWith('.replit.dev') || host.endsWith('.repl.co')) {
+        baseUrl = `${protocol}//${window.location.host}`;
+      } else {
+        // Use IP address for local development 
+        baseUrl = `${protocol}//${window.location.hostname}:${window.location.port || (protocol === 'wss:' ? '443' : '80')}`;
+      }
+      
       const wsUrl = `${baseUrl}/api/agents/ws`;
       
       console.log(`Connecting to agent WebSocket at ${wsUrl}`);

@@ -174,6 +174,14 @@ export function AgentSystemStatus({
           <span className="ml-1">{getStatusText()}</span>
         </Badge>
       </div>
+      
+      {connectionStatus !== 'connected' && (
+        <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded p-1.5 mb-2">
+          <p className="text-xs text-yellow-700 dark:text-yellow-400">
+            WebSocket not connected. Using fallback API polling.
+          </p>
+        </div>
+      )}
 
       {isExpanded && (
         <>

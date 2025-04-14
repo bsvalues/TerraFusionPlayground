@@ -169,18 +169,32 @@ export function AgentControlPanel() {
 
   // Load data when component mounts
   useEffect(() => {
+    // Initial data load
     fetchAgents();
     fetchTasks();
     
-    // Poll for updates every 10 seconds
-    const interval = setInterval(() => {
+    // Set up polling intervals
+    const shortInterval = setInterval(() => {
+      // For disconnected state, poll more frequently (every 5 seconds)
+      if (connectionStatus !== 'connected') {
+        fetchAgents();
+        fetchTasks();
+      }
+    }, 5000);
+    
+    const longInterval = setInterval(() => {
+      // For connected state, poll less frequently (every 15 seconds)
       if (connectionStatus === 'connected') {
         fetchAgents();
         fetchTasks();
       }
-    }, 10000);
+    }, 15000);
     
-    return () => clearInterval(interval);
+    // Clean up both intervals on unmount
+    return () => {
+      clearInterval(shortInterval);
+      clearInterval(longInterval);
+    };
   }, [connectionStatus]);
 
   return (
