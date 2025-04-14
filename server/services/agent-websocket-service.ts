@@ -96,51 +96,55 @@ export class AgentWebSocketService {
     
     // Handle new connections
     this.wss.on('connection', (ws: WebSocket, req) => {
-      const clientId = `client_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      
-      logger.info(`New client connected to agent WebSocket service: ${clientId}`);
-      
-      // Store client information
-      const client: WSClient = {
-        ws,
-        id: clientId,
-        type: ClientType.FRONTEND, // Default to frontend - will be updated during auth
-        isAuthenticated: false
-      };
-      
-      this.clients.set(clientId, client);
-      
-      // Send connection acknowledgment
       try {
+        const clientId = `client_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        
+        // Log the new connection
+        logger.info(`New WebSocket connection established: ${clientId}`);
+        
+        // Send connection acknowledgment immediately
         ws.send(JSON.stringify({
           type: 'connection_established',
-          message: 'Connected to agent WebSocket service',
-          clientId
+          clientId,
+          message: 'Connection established',
+          timestamp: Date.now()
         }));
-      } catch (err) {
-        logger.error('Error sending welcome message:', err);
+      
+        logger.info(`New client connected to agent WebSocket service: ${clientId}`);
+        
+        // Store client information
+        const client: WSClient = {
+          ws,
+          id: clientId,
+          type: ClientType.FRONTEND, // Default to frontend - will be updated during auth
+          isAuthenticated: false
+        };
+        
+        this.clients.set(clientId, client);
+        
+        // Handle WebSocket errors
+        ws.on('error', (err) => {
+          logger.error(`WebSocket client ${clientId} error:`, err);
+        });
+        
+        // Handle messages from client
+        ws.on('message', (message: string) => {
+          try {
+            const data = JSON.parse(message.toString());
+            this.handleClientMessage(clientId, data);
+          } catch (error) {
+            logger.error(`Error handling WebSocket message from client ${clientId}:`, error);
+          }
+        });
+        
+        // Handle disconnections
+        ws.on('close', () => {
+          logger.info(`Client ${clientId} disconnected from agent WebSocket service`);
+          this.clients.delete(clientId);
+        });
+      } catch (error) {
+        logger.error('Error setting up WebSocket connection:', error);
       }
-      
-      // Handle WebSocket errors
-      ws.on('error', (err) => {
-        logger.error(`WebSocket client ${clientId} error:`, err);
-      });
-      
-      // Handle messages from client
-      ws.on('message', (message: string) => {
-        try {
-          const data = JSON.parse(message.toString());
-          this.handleClientMessage(clientId, data);
-        } catch (error) {
-          logger.error(`Error handling WebSocket message from client ${clientId}:`, error);
-        }
-      });
-      
-      // Handle disconnections
-      ws.on('close', () => {
-        logger.info(`Client ${clientId} disconnected from agent WebSocket service`);
-        this.clients.delete(clientId);
-      });
     });
   }
   
