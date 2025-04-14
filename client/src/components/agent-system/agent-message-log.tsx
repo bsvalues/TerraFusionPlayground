@@ -66,7 +66,8 @@ export function AgentMessageLog({
   const [filter, setFilter] = useState<AgentLogType | null>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { connectionStatus } = useAgentWebSocket({ autoConnect: true });
+  const websocketService = useAgentWebSocket({ autoConnect: true });
+  const { connectionStatus, on } = websocketService;
 
   // Add a message to the log
   const addMessage = (entry: AgentLogEntry) => {
@@ -92,7 +93,7 @@ export function AgentMessageLog({
   useEffect(() => {
     // Each handler converts incoming messages to our AgentLogEntry format
     const handlers = [
-      useAgentWebSocket().on('agent_message', (data) => {
+      on('agent_message', (data) => {
         addMessage({
           id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           type: AgentLogType.MESSAGE,
@@ -104,7 +105,7 @@ export function AgentMessageLog({
         });
       }),
       
-      useAgentWebSocket().on('agent_activity', (data) => {
+      on('agent_activity', (data) => {
         addMessage({
           id: `act_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           type: AgentLogType.ACTIVITY,
@@ -114,7 +115,7 @@ export function AgentMessageLog({
         });
       }),
       
-      useAgentWebSocket().on('agent_coordination', (data) => {
+      on('agent_coordination', (data) => {
         addMessage({
           id: `coord_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           type: AgentLogType.COORDINATION,
@@ -125,7 +126,7 @@ export function AgentMessageLog({
         });
       }),
       
-      useAgentWebSocket().on('notification', (data) => {
+      on('notification', (data) => {
         addMessage({
           id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           type: AgentLogType.NOTIFICATION,
@@ -135,7 +136,7 @@ export function AgentMessageLog({
         });
       }),
       
-      useAgentWebSocket().on('error', (data) => {
+      on('error', (data) => {
         addMessage({
           id: `err_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           type: AgentLogType.ERROR,
@@ -161,7 +162,7 @@ export function AgentMessageLog({
     return () => {
       handlers.forEach(unsubscribe => unsubscribe());
     };
-  }, [connectionStatus]);
+  }, [connectionStatus, on, maxMessages]);
 
   const clearMessages = () => {
     setMessages([]);

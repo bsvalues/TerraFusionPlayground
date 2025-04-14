@@ -26,7 +26,7 @@ export function AgentSystemStatus({
   className = '',
   variant = 'default'
 }: AgentSystemStatusProps) {
-  const { connectionStatus, connect, disconnect } = useAgentWebSocket({
+  const { connectionStatus, connect, disconnect, on } = useAgentWebSocket({
     autoConnect: true,
     showToasts: true
   });
@@ -37,12 +37,26 @@ export function AgentSystemStatus({
 
   // Update the last message time when receiving messages
   useEffect(() => {
-    const unsubscribe = useAgentWebSocket().on('*', () => {
-      setLastMessageTime(new Date());
+    const unsubscribe = connect().then(() => {
+      // Once connected, set up the event listener
+      return on('*', () => {
+        setLastMessageTime(new Date());
+      });
+    }).catch(error => {
+      console.error('Failed to connect for message listening:', error);
+      // Return a no-op function in case of error
+      return () => {};
     });
     
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      // This is now a Promise<Function>, so we need to handle it properly
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      } else if (unsubscribe && typeof unsubscribe.then === 'function') {
+        unsubscribe.then(fn => typeof fn === 'function' && fn());
+      }
+    };
+  }, [connect, on]);
 
   // Fetch active agent count
   useEffect(() => {

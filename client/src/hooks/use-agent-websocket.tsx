@@ -139,8 +139,7 @@ export function useAgentWebSocket({
           toast({
             title: message.title,
             description: message.message,
-            variant: message.level === 'error' ? 'destructive' : 
-                     message.level === 'warning' ? 'warning' : 'default',
+            variant: message.level === 'error' ? 'destructive' : 'default',
           });
         }
       });
