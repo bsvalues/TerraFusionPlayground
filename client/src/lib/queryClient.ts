@@ -31,13 +31,27 @@ function addAuthHeaders(url: string, options?: RequestInit): RequestInit {
   return requestOptions;
 }
 
-export async function apiRequest<T = any>(
+/**
+ * Makes an API request and returns the response object without parsing
+ * Use this for more control over response handling
+ */
+export async function apiRequest(
+  url: string,
+  options?: RequestInit
+): Promise<Response> {
+  const requestOptions = addAuthHeaders(url, options);
+  const res = await fetch(url, requestOptions);
+  return res;
+}
+
+/**
+ * Makes an API request and automatically parses JSON response
+ */
+export async function apiJsonRequest<T = any>(
   url: string,
   options?: RequestInit
 ): Promise<T> {
-  const requestOptions = addAuthHeaders(url, options);
-  const res = await fetch(url, requestOptions);
-
+  const res = await apiRequest(url, options);
   await throwIfResNotOk(res);
   return await res.json() as T;
 }
@@ -48,16 +62,26 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const url = queryKey[0] as string;
-    const requestOptions = addAuthHeaders(url);
-    const res = await fetch(url, requestOptions);
+    try {
+      const url = queryKey[0] as string;
+      const requestOptions = addAuthHeaders(url);
+      const res = await fetch(url, requestOptions);
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
+      }
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`API error: ${res.status} ${res.statusText} - ${errorText}`);
+        throw new Error(`${res.status}: ${errorText || res.statusText}`);
+      }
+
+      return await res.json();
+    } catch (error) {
+      console.error('Query error:', error);
+      throw error;
     }
-
-    await throwIfResNotOk(res);
-    return await res.json();
   };
 
 export const queryClient = new QueryClient({

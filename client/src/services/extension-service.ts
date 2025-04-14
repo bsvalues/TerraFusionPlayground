@@ -1,4 +1,4 @@
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, apiJsonRequest } from '@/lib/queryClient';
 
 export interface Extension {
   id: string;
