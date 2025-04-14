@@ -99,7 +99,7 @@ class CollaborationWebSocketService {
     const clientId = randomUUID();
 
     // Set up event handlers for this client
-    socket.on('message', (data: WebSocket.Data) => this.handleMessage(clientId, socket, data));
+    socket.on('message', (data) => this.handleMessage(clientId, socket, data));
     socket.on('close', () => this.handleDisconnect(clientId));
     socket.on('error', (error) => this.handleClientError(clientId, error));
 
@@ -554,11 +554,11 @@ class CollaborationWebSocketService {
     this.clients.forEach((client, clientId) => {
       if (now.getTime() - client.lastActivity.getTime() > staleTimeout) {
         // Client hasn't responded in too long
-        if (client.socket.readyState === WebSocket.OPEN) {
+        if (client.socket.readyState === 1) { // WebSocket.OPEN = 1
           client.socket.terminate();
         }
         this.handleDisconnect(clientId);
-      } else if (client.socket.readyState === WebSocket.OPEN) {
+      } else if (client.socket.readyState === 1) { // WebSocket.OPEN = 1
         // Send ping
         client.socket.send(JSON.stringify({
           type: CollaborationMessageType.PING,
@@ -580,7 +580,7 @@ class CollaborationWebSocketService {
   }
 
   private sendErrorToClient(socket: WebSocket, message: string): void {
-    if (socket.readyState === WebSocket.OPEN) {
+    if (socket.readyState === 1) { // WebSocket.OPEN = 1
       socket.send(JSON.stringify({
         type: CollaborationMessageType.ERROR,
         timestamp: Date.now(),
@@ -605,7 +605,7 @@ class CollaborationWebSocketService {
     const messageString = JSON.stringify(message);
     
     session.connections.forEach(socket => {
-      if (socket.readyState === WebSocket.OPEN) {
+      if (socket.readyState === 1) { // WebSocket.OPEN = 1
         // Find the client for this socket
         const clientEntry = Array.from(this.clients.entries())
           .find(([_, client]) => client.socket === socket && client.sessionId === sessionId);
@@ -706,7 +706,7 @@ class CollaborationWebSocketService {
     
     // Close all client connections
     this.clients.forEach(client => {
-      if (client.socket.readyState === WebSocket.OPEN) {
+      if (client.socket.readyState === 1) { // WebSocket.OPEN = 1
         client.socket.close();
       }
     });
