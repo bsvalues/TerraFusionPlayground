@@ -988,7 +988,8 @@ export class AgentCoordinator {
    * @returns Array of tasks with the specified status
    */
   public getTasksByStatus(status: TaskStatus): Task[] {
-    return Array.from(this.tasks.values()).filter(task => task.status === status);
+    // Use spread operator to convert values to array to avoid downlevelIteration issues
+    return [...this.tasks.values()].filter(task => task.status === status);
   }
   
   /**
@@ -998,7 +999,8 @@ export class AgentCoordinator {
    * @returns Array of tasks assigned to the agent
    */
   public getTasksByAgent(agentId: string): Task[] {
-    return Array.from(this.tasks.values()).filter(task => task.assignedTo === agentId);
+    // Use spread operator to convert values to array to avoid downlevelIteration issues
+    return [...this.tasks.values()].filter(task => task.assignedTo === agentId);
   }
   
   /**
@@ -1007,7 +1009,8 @@ export class AgentCoordinator {
    * @returns Array of all agents
    */
   public getAllAgents(): AgentInfo[] {
-    return Array.from(this.agents.values());
+    // Use spread operator to convert values to array to avoid downlevelIteration issues
+    return [...this.agents.values()];
   }
   
   /**

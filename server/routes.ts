@@ -62,23 +62,33 @@ import { sharingUtils, SharingUtilsService } from "./services/sharing-utils";
 import { AgentSystem } from "./services/agent-system";
 import { initializeExtensionSystem } from "./extensions";
 import { ExtensionRegistry } from "./extensions/extension-registry";
+import { AgentFactory } from "./services/agent-factory";
+import { AgentCoordinator } from "./services/agent-coordinator";
 
 // Initialize services that require other services
 const propertyStoryGenerator = new PropertyStoryGenerator(storage);
 const propertyInsightSharingService = new PropertyInsightSharingService(storage);
 const agentSystem = new AgentSystem(storage);
 
+// Initialize agent coordinator and factory 
+const agentCoordinator = AgentCoordinator.getInstance(storage);
+const agentFactory = AgentFactory.getInstance(storage);
+
 // Initialize extension system
 const extensionRegistry = initializeExtensionSystem(storage);
 
-// Initialize agent system
+// Initialize agent systems
 (async () => {
   try {
     console.log("Initializing Agent System...");
     await agentSystem.initialize();
     console.log("Agent System initialized successfully");
+    
+    console.log("Initializing Agent Factory...");
+    await agentFactory.initialize();
+    console.log("Agent Factory initialized successfully");
   } catch (error) {
-    console.error("Failed to initialize Agent System:", error);
+    console.error("Failed to initialize Agent Systems:", error);
   }
 })();
 
