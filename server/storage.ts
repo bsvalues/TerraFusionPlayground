@@ -31,7 +31,7 @@ import {
   // Enum types needed for validation and workflow
   RuleCategory, RuleLevel, EntityType, IssueStatus, MessagePriority, MessageEventType, ImprovementType
 } from "@shared/schema";
-import { MarketTrend, EconomicIndicator } from "./services/market-prediction-model";
+import { MarketTrend, PropertyHistoryDataPoint, PropertyAnalysisResult } from "@shared/schema";
 import { RegulatoryFramework } from "./services/risk-assessment-engine";
 import pg from 'pg';
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -186,7 +186,11 @@ export interface IStorage {
   getRegionalHistoricalData(region: string): Promise<any>;
   
   // Property methods (additional)
+  // Property Analysis methods
   getPropertyById(propertyId: string): Promise<any>;
+  getPropertyHistory(propertyId: string): Promise<PropertyHistoryDataPoint[]>;
+  getMarketTrends(region?: string): Promise<MarketTrend[]>;
+  findComparableProperties(propertyId: string, count?: number): Promise<Property[]>;
   
   // Regulatory and Risk Data methods
   getRegulatoryFramework(region: string): Promise<any>;
