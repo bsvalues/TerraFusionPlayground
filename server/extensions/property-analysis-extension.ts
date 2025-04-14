@@ -33,6 +33,28 @@ interface PropertyHistoryDataPoint {
  * PropertyAnalysisAIExtension provides AI-powered property analysis capabilities
  */
 export class PropertyAnalysisAIExtension extends AIExtension {
+  protected id: string = 'property-analysis';
+  protected settings: Array<{
+    id: string;
+    label: string;
+    type: string;
+    defaultValue: any;
+  }> = [];
+  protected storage: IStorage;
+  
+  /**
+   * Activate the extension
+   */
+  public activate(): void {
+    console.log('PropertyAnalysisAIExtension activated');
+  }
+  
+  /**
+   * Deactivate the extension
+   */
+  public deactivate(): void {
+    console.log('PropertyAnalysisAIExtension deactivated');
+  }
   private agentProtocol: AgentProtocol;
   
   /**

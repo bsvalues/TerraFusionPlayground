@@ -179,11 +179,14 @@ export interface IStorage {
   deleteStagedProperty(stagingId: string): Promise<boolean>;
   
   // Market and Economic Data methods
-  getMarketTrends(region: string): Promise<any[]>;
-  getEconomicIndicators(region: string): Promise<any>;
+  getMarketTrends(region?: string): Promise<any[]>;
+  getEconomicIndicators(region?: string): Promise<any>;
   findComparableProperties(propertyId: string, count: number): Promise<any[]>;
   getPropertyHistory(propertyId: string): Promise<any>;
   getRegionalHistoricalData(region: string): Promise<any>;
+  
+  // Property methods (additional)
+  getPropertyById(propertyId: string): Promise<any>;
   
   // Regulatory and Risk Data methods
   getRegulatoryFramework(region: string): Promise<any>;
@@ -488,6 +491,14 @@ export class MemStorage implements IStorage {
     return Array.from(this.properties.values()).find(
       (property) => property.propertyId === propertyId,
     );
+  }
+  
+  async getPropertyById(propertyId: string): Promise<any> {
+    const property = await this.getPropertyByPropertyId(propertyId);
+    if (!property) {
+      return null;
+    }
+    return property;
   }
   
   async createProperty(insertProperty: InsertProperty): Promise<Property> {
