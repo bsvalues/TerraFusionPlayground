@@ -10,7 +10,8 @@ import { WebSocket } from 'ws';
 console.log('Running in ESM environment');
 
 // Determine the port based on environment or use default
-const port = process.env.PORT || 3000;
+// From server/index.ts we know the server runs on port 5000
+const port = process.env.PORT || 5000;
 console.log(`Using port ${port}`);
 
 // Print debug information
@@ -24,6 +25,7 @@ console.log('WebSocket ReadyState Values:', {
 });
 
 // Create WebSocket connection
+// From collaboration-websocket-service.ts we can see the path is '/ws/collaboration'
 console.log(`Creating WebSocket connection to ws://localhost:${port}/ws/collaboration`);
 const socket = new WebSocket(`ws://localhost:${port}/ws/collaboration`);
 
