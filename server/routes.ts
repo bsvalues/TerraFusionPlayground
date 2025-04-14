@@ -31,6 +31,7 @@ import { createMarketRoutes } from "./routes/market-routes";
 import { createRiskRoutes } from "./routes/risk-routes";
 import { createAnalyticsRoutes } from "./routes/analytics-routes";
 import { createValidationRoutes } from "./routes/validation-routes";
+import collaborationRoutes from "./routes/collaboration-routes";
 import extensionRoutes from "./extensions/extension-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
@@ -142,6 +143,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Extension routes
   app.use('/api/extensions', extensionRoutes);
+  
+  // Register Collaborative Workflow routes
+  app.use('/api/collaboration', collaborationRoutes);
 
   /**
    * Data Lineage Routes
