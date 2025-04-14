@@ -14,7 +14,7 @@ function connectWebSocket() {
   // Determine protocol (ws or wss) based on current location
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   // Create WebSocket URL with the proper protocol and host
-  const wsUrl = `${protocol}//${window.location.hostname}:${window.location.port}/ws`;
+  const wsUrl = `${protocol}//${window.location.hostname}:${window.location.port}/ws/collaboration`;
   
   console.log(`Connecting to WebSocket at ${wsUrl}`);
   const socket = new WebSocket(wsUrl);
@@ -140,7 +140,7 @@ if (typeof module !== 'undefined' && module.exports) {
   console.log('Running in Node.js environment');
   // When running in Node.js, create a WebSocket client
   const WebSocket = require('ws');
-  const socket = new WebSocket('ws://localhost:3000/ws');
+  const socket = new WebSocket('ws://localhost:3000/ws/collaboration');
   
   socket.on('open', function open() {
     console.log('Connected to WebSocket server');

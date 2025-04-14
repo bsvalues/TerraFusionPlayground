@@ -50,7 +50,7 @@ const CollaborationTestPage: React.FC = () => {
   const connectWebSocket = useCallback(() => {
     // Create WebSocket connection
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const wsUrl = `${protocol}//${window.location.host}/ws/collaboration`;
     
     console.log(`Connecting to WebSocket at ${wsUrl}`);
     const socket = new WebSocket(wsUrl);
