@@ -28,8 +28,13 @@ import {
   learningUpdates, LearningUpdate, InsertLearningUpdate,
   dataLineageRecords, DataLineageRecord, InsertDataLineageRecord,
   codeImprovements, CodeImprovement, InsertCodeImprovement,
+  sharedWorkflows, SharedWorkflow, InsertSharedWorkflow,
+  sharedWorkflowCollaborators, SharedWorkflowCollaborator, InsertSharedWorkflowCollaborator,
+  sharedWorkflowActivities, SharedWorkflowActivity, InsertSharedWorkflowActivity,
+  workflowSessions, WorkflowSession, InsertWorkflowSession,
   // Enum types needed for validation and workflow
-  RuleCategory, RuleLevel, EntityType, IssueStatus, MessagePriority, MessageEventType, ImprovementType
+  RuleCategory, RuleLevel, EntityType, IssueStatus, MessagePriority, MessageEventType, ImprovementType,
+  CollaborationStatus, CollaborationRole
 } from "@shared/schema";
 import { MarketTrend, PropertyHistoryDataPoint, PropertyAnalysisResult } from "@shared/schema";
 import { RegulatoryFramework } from "./services/risk-assessment-engine";

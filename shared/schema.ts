@@ -868,6 +868,136 @@ export const insertWorkflowStepHistorySchema = createInsertSchema(workflowStepHi
 export type WorkflowStepHistory = typeof workflowStepHistory.$inferSelect;
 export type InsertWorkflowStepHistory = z.infer<typeof insertWorkflowStepHistorySchema>;
 
+// Shared Workflow tables for collaborative features
+export enum CollaborationStatus {
+  ACTIVE = 'active',
+  PAUSED = 'paused',
+  COMPLETED = 'completed',
+  ARCHIVED = 'archived'
+}
+
+export enum CollaborationRole {
+  OWNER = 'owner',
+  EDITOR = 'editor',
+  VIEWER = 'viewer'
+}
+
+// Shared Workflow table for collaborative workflow instances
+export const sharedWorkflows = pgTable("shared_workflows", {
+  id: serial("id").primaryKey(),
+  workflowId: integer("workflow_id").notNull().references(() => workflowDefinitions.id), // Reference to the workflow definition
+  name: text("name").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("active"), // active, paused, completed, archived
+  shareCode: text("share_code").notNull().unique(), // Unique code for sharing the workflow
+  isPublic: boolean("is_public").default(false), // Whether the workflow is publicly accessible
+  createdBy: integer("created_by").notNull(), // User ID who created the shared workflow
+  lastModified: timestamp("last_modified").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Indexes for performance
+    shareCodeIdx: index("shared_workflows_share_code_idx").on(table.shareCode),
+    createdByIdx: index("shared_workflows_created_by_idx").on(table.createdBy),
+    statusIdx: index("shared_workflows_status_idx").on(table.status),
+  };
+});
+
+export const insertSharedWorkflowSchema = createInsertSchema(sharedWorkflows).pick({
+  workflowId: true,
+  name: true,
+  description: true,
+  status: true,
+  shareCode: true,
+  isPublic: true,
+  createdBy: true,
+});
+
+// Shared Workflow Collaborators table for managing collaborators
+export const sharedWorkflowCollaborators = pgTable("shared_workflow_collaborators", {
+  id: serial("id").primaryKey(),
+  sharedWorkflowId: integer("shared_workflow_id").notNull().references(() => sharedWorkflows.id),
+  userId: integer("user_id").notNull(),
+  role: text("role").notNull().default("viewer"), // owner, editor, viewer
+  invitedBy: integer("invited_by").notNull(),
+  invitedAt: timestamp("invited_at").defaultNow().notNull(),
+  lastAccessedAt: timestamp("last_accessed_at"),
+}, (table) => {
+  return {
+    // Unique constraint to prevent duplicate collaborators
+    uniqueUserWorkflow: index("shared_workflow_collaborators_unique_user_workflow_idx")
+      .on(table.sharedWorkflowId, table.userId)
+  };
+});
+
+export const insertSharedWorkflowCollaboratorSchema = createInsertSchema(sharedWorkflowCollaborators).pick({
+  sharedWorkflowId: true,
+  userId: true,
+  role: true,
+  invitedBy: true,
+  lastAccessedAt: true,
+});
+
+// Shared Workflow Activity table for tracking changes and comments
+export const sharedWorkflowActivities = pgTable("shared_workflow_activities", {
+  id: serial("id").primaryKey(),
+  sharedWorkflowId: integer("shared_workflow_id").notNull().references(() => sharedWorkflows.id),
+  userId: integer("user_id").notNull(),
+  activityType: text("activity_type").notNull(), // edit, comment, status_change, etc.
+  details: jsonb("details").default({}),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Index for querying activities by workflow
+    workflowActivityIdx: index("shared_workflow_activities_workflow_idx").on(table.sharedWorkflowId)
+  };
+});
+
+export const insertSharedWorkflowActivitySchema = createInsertSchema(sharedWorkflowActivities).pick({
+  sharedWorkflowId: true,
+  userId: true,
+  activityType: true,
+  details: true,
+});
+
+// Workflow Session table for real-time collaboration
+export const workflowSessions = pgTable("workflow_sessions", {
+  id: serial("id").primaryKey(),
+  sharedWorkflowId: integer("shared_workflow_id").notNull().references(() => sharedWorkflows.id),
+  sessionId: text("session_id").notNull().unique(),
+  createdBy: integer("created_by").notNull(),
+  startTime: timestamp("start_time").defaultNow().notNull(),
+  endTime: timestamp("end_time"),
+  status: text("status").notNull().default("active"), // active, ended
+  participants: jsonb("participants").default([]),
+}, (table) => {
+  return {
+    // Index for active sessions
+    activeSessionsIdx: index("workflow_sessions_active_idx").on(table.status),
+  };
+});
+
+export const insertWorkflowSessionSchema = createInsertSchema(workflowSessions).pick({
+  sharedWorkflowId: true,
+  sessionId: true,
+  createdBy: true,
+  status: true,
+  participants: true,
+});
+
+// Types for shared workflow features
+export type SharedWorkflow = typeof sharedWorkflows.$inferSelect;
+export type InsertSharedWorkflow = z.infer<typeof insertSharedWorkflowSchema>;
+
+export type SharedWorkflowCollaborator = typeof sharedWorkflowCollaborators.$inferSelect;
+export type InsertSharedWorkflowCollaborator = z.infer<typeof insertSharedWorkflowCollaboratorSchema>;
+
+export type SharedWorkflowActivity = typeof sharedWorkflowActivities.$inferSelect;
+export type InsertSharedWorkflowActivity = z.infer<typeof insertSharedWorkflowActivitySchema>;
+
+export type WorkflowSession = typeof workflowSessions.$inferSelect;
+export type InsertWorkflowSession = z.infer<typeof insertWorkflowSessionSchema>;
+
 // Compliance Reports table
 export const complianceReports = pgTable("compliance_reports", {
   id: serial("id").primaryKey(),
