@@ -696,12 +696,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/ai-agents", async (_req, res) => {
     try {
       const agents = await storage.getAllAiAgents();
-      res.json(agents);
+      
+      // Enhance agents with additional data for the frontend
+      const enhancedAgents = agents.map(agent => ({
+        ...agent,
+        agentId: `agent_${agent.id}`,
+        description: getAgentDescription(agent.type),
+        capabilities: getAgentCapabilities(agent.type),
+      }));
+      
+      res.json(enhancedAgents);
     } catch (error) {
       console.error("Error fetching AI agents:", error);
       res.status(500).json({ message: "Failed to fetch AI agents" });
     }
   });
+  
+  // Get agent tasks
+  app.get("/api/tasks", async (_req, res) => {
+    try {
+      // Since we don't have a task table yet, we'll return mock data
+      // In a production environment, this would fetch from storage.getTasks()
+      const tasks = [
+        {
+          id: "task_1",
+          name: "Property Data Analysis",
+          status: "running",
+          assignedTo: "agent_1",
+          description: "Analyze property values in the north zone and generate report",
+          createdAt: new Date(Date.now() - 3600000).toISOString(),
+          priority: 3
+        },
+        {
+          id: "task_2",
+          name: "Data Import Validation",
+          status: "pending",
+          assignedTo: "agent_2",
+          description: "Validate the latest CSV import from county records",
+          createdAt: new Date(Date.now() - 7200000).toISOString(),
+          priority: 2
+        },
+        {
+          id: "task_3",
+          name: "Market Trend Analysis",
+          status: "completed",
+          assignedTo: "agent_3",
+          description: "Generate market trend analysis for commercial properties Q1 2025",
+          createdAt: new Date(Date.now() - 86400000).toISOString(),
+          completedAt: new Date().toISOString(),
+          priority: 1
+        }
+      ];
+      
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+  
+  // Helper functions for enhancing agent data
+  function getAgentDescription(type: string): string {
+    const descriptions: Record<string, string> = {
+      'data': 'Manages data import, validation, and synchronization with external systems',
+      'assessment': 'Performs property value assessments and generates valuation reports',
+      'reporting': 'Creates and distributes customized reports and data visualizations',
+      'coordination': 'Manages communication and task assignment between agents',
+      'research': 'Analyzes market trends and provides predictive insights'
+    };
+    
+    return descriptions[type.toLowerCase()] || `${type} agent for property assessment tasks`;
+  }
+  
+  function getAgentCapabilities(type: string): string[] {
+    const capabilities: Record<string, string[]> = {
+      'data': ['import', 'export', 'validate', 'transform'],
+      'assessment': ['analyze', 'valuate', 'compare', 'predict'],
+      'reporting': ['generate', 'schedule', 'distribute', 'customize'],
+      'coordination': ['assign', 'monitor', 'notify', 'optimize'],
+      'research': ['analyze', 'predict', 'recommend', 'visualize']
+    };
+    
+    return capabilities[type.toLowerCase()] || ['analyze', 'process', 'report'];
+  }
   
   app.patch("/api/ai-agents/:id", async (req, res) => {
     try {
