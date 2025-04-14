@@ -313,6 +313,34 @@ export interface IStorage {
   getCodeImprovementsByType(type: ImprovementType): Promise<CodeImprovement[]>;
   updateCodeImprovementStatus(id: string, status: 'pending' | 'approved' | 'rejected' | 'implemented'): Promise<CodeImprovement | null>;
   
+  // Collaborative Workflow methods
+  createSharedWorkflow(workflow: InsertSharedWorkflow): Promise<SharedWorkflow>;
+  getSharedWorkflowById(id: number): Promise<SharedWorkflow | null>;
+  getSharedWorkflowByShareCode(shareCode: string): Promise<SharedWorkflow | null>;
+  getSharedWorkflowsByUser(userId: number): Promise<SharedWorkflow[]>;
+  getSharedWorkflowsByWorkflowId(workflowId: number): Promise<SharedWorkflow[]>;
+  getPublicSharedWorkflows(): Promise<SharedWorkflow[]>;
+  updateSharedWorkflow(id: number, updates: Partial<InsertSharedWorkflow>): Promise<SharedWorkflow | null>;
+  deleteSharedWorkflow(id: number): Promise<boolean>;
+  
+  // Shared Workflow Collaborator methods
+  addCollaborator(collaborator: InsertSharedWorkflowCollaborator): Promise<SharedWorkflowCollaborator>;
+  getCollaboratorsByWorkflowId(sharedWorkflowId: number): Promise<SharedWorkflowCollaborator[]>;
+  getCollaboratorsByUserId(userId: number): Promise<SharedWorkflowCollaborator[]>;
+  updateCollaboratorRole(id: number, role: CollaborationRole): Promise<SharedWorkflowCollaborator | null>;
+  removeCollaborator(id: number): Promise<boolean>;
+  
+  // Shared Workflow Activity methods
+  logWorkflowActivity(activity: InsertSharedWorkflowActivity): Promise<SharedWorkflowActivity>;
+  getWorkflowActivities(sharedWorkflowId: number, limit?: number): Promise<SharedWorkflowActivity[]>;
+  
+  // Workflow Session methods
+  createWorkflowSession(session: InsertWorkflowSession): Promise<WorkflowSession>;
+  getActiveWorkflowSessions(sharedWorkflowId: number): Promise<WorkflowSession[]>;
+  updateWorkflowSessionStatus(sessionId: string, status: string): Promise<WorkflowSession | null>;
+  updateWorkflowSessionParticipants(sessionId: string, participants: any[]): Promise<WorkflowSession | null>;
+  endWorkflowSession(sessionId: string): Promise<WorkflowSession | null>;
+  
   // Workflow methods
   createWorkflowDefinition(definition: Omit<WorkflowDefinition, 'definitionId' | 'createdAt'>): Promise<WorkflowDefinition>;
   getWorkflowDefinitionById(definitionId: string): Promise<WorkflowDefinition | null>;
@@ -384,6 +412,10 @@ export class MemStorage implements IStorage {
   private agentExperiences: Map<string, AgentExperience>; // Agent experiences for replay buffer
   private learningUpdates: Map<string, LearningUpdate>; // Learning updates from agent experiences
   private codeImprovements: Map<string, CodeImprovement>; // Agent-suggested code improvements
+  private sharedWorkflows: Map<number, SharedWorkflow>; // Shared workflows for collaborative work
+  private sharedWorkflowCollaborators: Map<number, SharedWorkflowCollaborator>; // Collaborators for shared workflows
+  private sharedWorkflowActivities: Map<number, SharedWorkflowActivity>; // Activities within shared workflows
+  private workflowSessions: Map<string, WorkflowSession>; // Real-time sessions for collaborative work
   
   private currentUserId: number;
   private currentPropertyId: number;
@@ -438,6 +470,10 @@ export class MemStorage implements IStorage {
     this.agentExperiences = new Map<string, AgentExperience>();
     this.learningUpdates = new Map<string, LearningUpdate>();
     this.codeImprovements = new Map<string, CodeImprovement>();
+    this.sharedWorkflows = new Map<number, SharedWorkflow>();
+    this.sharedWorkflowCollaborators = new Map<number, SharedWorkflowCollaborator>();
+    this.sharedWorkflowActivities = new Map<number, SharedWorkflowActivity>();
+    this.workflowSessions = new Map<string, WorkflowSession>();
     
     this.currentUserId = 1;
     this.currentPropertyId = 1;
