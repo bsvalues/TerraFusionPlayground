@@ -159,25 +159,33 @@ export class PropertyAnalysisAIExtension extends AIExtension {
    * Register extension commands
    */
   private registerCommands(): void {
-    this.registerCommand('analyzeProperty', {
-      title: 'Analyze Property',
-      execute: async (propertyId: string) => this.analyzeProperty(propertyId)
-    });
+    this.registerCommand(
+      'analyze-property', 
+      'Analyze Property', 
+      'analyzeProperty',
+      { icon: 'bar-chart-2' }
+    );
     
-    this.registerCommand('predictFutureValue', {
-      title: 'Predict Future Value',
-      execute: async (propertyId: string, yearsAhead: number) => this.predictFutureValue(propertyId, yearsAhead)
-    });
+    this.registerCommand(
+      'predict-future-value', 
+      'Predict Future Value', 
+      'predictFutureValue',
+      { icon: 'trending-up' }
+    );
     
-    this.registerCommand('generatePropertyStory', {
-      title: 'Generate Property Story',
-      execute: async (propertyId: string) => this.generatePropertyStory(propertyId)
-    });
+    this.registerCommand(
+      'generate-property-story', 
+      'Generate Property Story', 
+      'generatePropertyStory',
+      { icon: 'book-open' }
+    );
     
-    this.registerCommand('findComparableProperties', {
-      title: 'Find Comparable Properties',
-      execute: async (propertyId: string, count: number = 5) => this.findComparableProperties(propertyId, count)
-    });
+    this.registerCommand(
+      'find-comparable-properties', 
+      'Find Comparable Properties', 
+      'findComparableProperties',
+      { icon: 'search' }
+    );
   }
   
   /**
@@ -216,17 +224,50 @@ export class PropertyAnalysisAIExtension extends AIExtension {
    * Create webviews for the extension
    */
   private createWebviews(): void {
-    this.registerWebview('property-analysis-dashboard', {
-      title: 'Property Analysis Dashboard',
-      icon: 'chart-bar',
-      showInSidebar: true
-    });
+    const dashboardContent = `
+      <div class="property-analysis-dashboard">
+        <h1>Property Analysis Dashboard</h1>
+        <div class="dashboard-content">
+          <div class="metrics-panel">
+            <h2>Key Metrics</h2>
+            <div id="key-metrics-content">
+              <!-- Dynamic content will be loaded here -->
+              <p>Select a property to view analysis</p>
+            </div>
+          </div>
+          <div class="valuation-panel">
+            <h2>Valuation History</h2>
+            <div id="valuation-chart">
+              <!-- Chart will be rendered here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
     
-    this.registerWebview('property-comparison', {
-      title: 'Property Comparison',
-      icon: 'git-compare',
-      showInSidebar: false
-    });
+    const comparisonContent = `
+      <div class="property-comparison-view">
+        <h1>Property Comparison</h1>
+        <div class="comparison-content">
+          <div class="property-list">
+            <h2>Comparable Properties</h2>
+            <div id="property-list-content">
+              <!-- Dynamic content will be loaded here -->
+              <p>Select properties to compare</p>
+            </div>
+          </div>
+          <div class="comparison-table">
+            <h2>Comparison Table</h2>
+            <div id="comparison-table-content">
+              <!-- Table will be rendered here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    this.registerWebview('property-analysis-dashboard', 'Property Analysis Dashboard', dashboardContent, 'AI-powered property analysis tools');
+    this.registerWebview('property-comparison', 'Property Comparison', comparisonContent, 'Compare properties with AI insights');
   }
   
   /**
