@@ -969,3 +969,39 @@ export const insertLearningUpdateSchema = createInsertSchema(learningUpdates).pi
 
 export type LearningUpdate = typeof learningUpdates.$inferSelect;
 export type InsertLearningUpdate = z.infer<typeof insertLearningUpdateSchema>;
+
+// Property Analysis Interfaces
+export interface PropertyHistoryDataPoint {
+  date: Date;
+  fieldName: string;
+  oldValue: string;
+  newValue: string;
+  source: string;
+  userId: number;
+}
+
+export interface MarketTrend {
+  region: string;
+  trendType: string;
+  period: string;
+  changePercentage: number;
+  startDate: Date;
+  endDate: Date;
+  avgValue?: number;
+  avgDaysOnMarket?: number;
+  totalProperties?: number;
+}
+
+export interface PropertyAnalysisResult {
+  propertyId: string;
+  estimatedValue: number;
+  confidenceScore: number;
+  factors: {
+    name: string;
+    impact: number;
+    description: string;
+  }[];
+  comparables: string[];
+  recommendations: string[];
+  marketTrends: string[];
+}

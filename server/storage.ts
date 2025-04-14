@@ -501,6 +501,94 @@ export class MemStorage implements IStorage {
     return property;
   }
   
+  async getComparableProperties(propertyId: string, count: number = 5): Promise<Property[]> {
+    // Get the target property
+    const targetProperty = await this.getPropertyByPropertyId(propertyId);
+    if (!targetProperty) {
+      return [];
+    }
+    
+    // Get all properties except the target one
+    const allProperties = await this.getAllProperties();
+    const otherProperties = allProperties.filter(p => p.propertyId !== propertyId);
+    
+    // Sort by similarity (using property type and acres as simple similarity metrics)
+    const sortedProperties = otherProperties.sort((a, b) => {
+      // Same property type gets priority
+      if (a.propertyType === targetProperty.propertyType && b.propertyType !== targetProperty.propertyType) {
+        return -1;
+      }
+      if (b.propertyType === targetProperty.propertyType && a.propertyType !== targetProperty.propertyType) {
+        return 1;
+      }
+      
+      // Similar acreage gets priority
+      const aAcres = parseFloat(a.acres);
+      const bAcres = parseFloat(b.acres);
+      const targetAcres = parseFloat(targetProperty.acres);
+      
+      const aDiff = Math.abs(aAcres - targetAcres);
+      const bDiff = Math.abs(bAcres - targetAcres);
+      
+      return aDiff - bDiff;
+    });
+    
+    // Return the top N most similar properties
+    return sortedProperties.slice(0, count);
+  }
+  
+  async getPropertyHistory(propertyId: string): Promise<PropertyHistoryDataPoint[]> {
+    // Get data lineage records for this property
+    const lineageRecords = await this.getDataLineageByProperty(propertyId);
+    
+    // Convert to history data points
+    const historyPoints: PropertyHistoryDataPoint[] = lineageRecords.map(record => ({
+      date: record.changeTimestamp,
+      fieldName: record.fieldName,
+      oldValue: record.oldValue,
+      newValue: record.newValue,
+      source: record.source,
+      userId: record.userId
+    }));
+    
+    // Sort by date, newest first
+    return historyPoints.sort((a, b) => b.date.getTime() - a.date.getTime());
+  }
+  
+  async getMarketTrends(): Promise<MarketTrend[]> {
+    // In a real implementation, this would fetch actual market trends
+    // For now, we'll return mock data
+    return [
+      {
+        region: 'Benton County',
+        trendType: 'price',
+        period: 'yearly',
+        changePercentage: 5.2,
+        startDate: new Date(new Date().setFullYear(new Date().getFullYear() - 1)),
+        endDate: new Date(),
+        avgValue: 320000
+      },
+      {
+        region: 'Benton County',
+        trendType: 'demand',
+        period: 'quarterly',
+        changePercentage: 3.8,
+        startDate: new Date(new Date().setMonth(new Date().getMonth() - 3)),
+        endDate: new Date(),
+        avgDaysOnMarket: 28
+      },
+      {
+        region: 'Benton County',
+        trendType: 'inventory',
+        period: 'monthly',
+        changePercentage: -2.1,
+        startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)),
+        endDate: new Date(),
+        totalProperties: 182
+      }
+    ];
+  }
+  
   async createProperty(insertProperty: InsertProperty): Promise<Property> {
     const id = this.currentPropertyId++;
     const timestamp = new Date();
