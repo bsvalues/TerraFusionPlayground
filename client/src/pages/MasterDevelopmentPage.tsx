@@ -14,8 +14,9 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { queryClient } from "@/lib/queryClient";
-import { LoaderCircle, Shield, Database, Zap, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { LoaderCircle, Shield, Database, Zap, CheckCircle, XCircle, AlertCircle, PackageOpen } from 'lucide-react';
 import RealTimeMonitoringDashboard from '@/components/master-development/RealTimeMonitoringDashboard';
+import ApplicationManagerPanel from '@/components/master-development/ApplicationManagerPanel';
 
 // Schema for schema validation form
 const schemaValidationFormSchema = z.object({
@@ -168,12 +169,16 @@ export default function MasterDevelopmentPage() {
       </p>
 
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-5 mb-6">
+        <TabsList className="grid grid-cols-6 mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="schema">Schema Registry</TabsTrigger>
           <TabsTrigger value="security">Security Policies</TabsTrigger>
           <TabsTrigger value="services">Active Services</TabsTrigger>
           <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+          <TabsTrigger value="applications">
+            <PackageOpen className="h-4 w-4 mr-2" />
+            Applications
+          </TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -806,6 +811,11 @@ export default function MasterDevelopmentPage() {
         {/* Monitoring Tab */}
         <TabsContent value="monitoring">
           <RealTimeMonitoringDashboard />
+        </TabsContent>
+        
+        {/* Applications Tab */}
+        <TabsContent value="applications">
+          <ApplicationManagerPanel />
         </TabsContent>
       </Tabs>
     </div>
