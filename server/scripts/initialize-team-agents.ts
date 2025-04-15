@@ -12,10 +12,10 @@
 
 import { storage } from '../storage';
 import { 
-  TeamMemberRole, 
-  TeamMemberStatus,
-  InsertTeamMember
+  TeamAgentRole as TeamMemberRole, 
+  TeamAgentStatus as TeamMemberStatus
 } from '@shared/team-agent-types';
+import { InsertTeamMember } from '@shared/schema';
 
 async function initializeTeamAgents() {
   console.log('Initializing team agents...');
@@ -147,7 +147,7 @@ async function initializeTeamAgents() {
     // County Assessor Office (Weekly feedback)
     const countyAssessor: InsertTeamMember = {
       name: 'County Assessor Agent',
-      role: TeamMemberRole.ASSESSOR,
+      role: TeamMemberRole.COUNTY_ASSESSOR,
       status: TeamMemberStatus.AVAILABLE,
       email: 'assessor.agent@spatialest.com',
       capabilities: {

@@ -1,465 +1,359 @@
-import express, { Request, Response, Router } from "express";
-import { IStorage } from "../storage";
-import { 
-  insertTeamMemberSchema, 
-  insertTeamTaskSchema as insertTaskSchema, 
-  insertTaskCommentSchema,
-  insertTeamCollaborationSessionSchema,
-  insertTeamFeedbackSchema,
-  insertTeamKnowledgeBaseItemSchema
-} from "@shared/schema";
-import { TeamAgentService } from "../services/team-agent-service";
-import { z } from "zod";
+import { Request, Response } from 'express';
+import { Express } from 'express';
+import { IStorage } from '../storage';
+import { v4 as uuidv4 } from 'uuid';
 
-export function createTeamAgentRoutes(storage: IStorage, teamAgentService: TeamAgentService): Router {
-  const router = express.Router();
-
-  // Team Member Routes
-  router.get("/members", async (req: Request, res: Response) => {
+/**
+ * Register team agent routes
+ * @param app Express application
+ * @param storage Storage implementation
+ */
+export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
+  /**
+   * Get all team agents
+   */
+  app.get('/api/team-agents', async (req: Request, res: Response) => {
     try {
-      const members = await storage.getAllTeamMembers();
-      res.json(members);
+      const agents = await storage.getTeamMembers();
+      res.json(agents);
     } catch (error) {
-      console.error("Error fetching team members:", error);
-      res.status(500).json({ message: "Failed to fetch team members" });
+      console.error('Error getting team agents:', error);
+      res.status(500).json({ error: 'Failed to retrieve team agents' });
     }
   });
 
-  router.get("/members/:id", async (req: Request, res: Response) => {
+  /**
+   * Get a specific team agent by ID
+   */
+  app.get('/api/team-agents/:id', async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid ID format" });
+      const agent = await storage.getTeamMember(id);
+      
+      if (!agent) {
+        return res.status(404).json({ error: 'Team agent not found' });
       }
-
-      const member = await storage.getTeamMemberById(id);
-      if (!member) {
-        return res.status(404).json({ message: "Team member not found" });
-      }
-
-      res.json(member);
+      
+      res.json(agent);
     } catch (error) {
-      console.error(`Error fetching team member:`, error);
-      res.status(500).json({ message: "Failed to fetch team member" });
+      console.error('Error getting team agent:', error);
+      res.status(500).json({ error: 'Failed to retrieve team agent' });
     }
   });
 
-  router.get("/members/role/:role", async (req: Request, res: Response) => {
+  /**
+   * Create a new team agent
+   */
+  app.post('/api/team-agents', async (req: Request, res: Response) => {
     try {
-      const role = req.params.role;
-      const members = await storage.getTeamMembersByRole(role);
-      res.json(members);
-    } catch (error) {
-      console.error(`Error fetching team members by role:`, error);
-      res.status(500).json({ message: "Failed to fetch team members by role" });
-    }
-  });
-
-  router.post("/members", async (req: Request, res: Response) => {
-    try {
-      const validation = insertTeamMemberSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Invalid team member data", 
-          errors: validation.error.errors 
-        });
+      const agent = req.body;
+      
+      if (!agent.name || !agent.role) {
+        return res.status(400).json({ error: 'Name and role are required' });
       }
-
-      const newMember = await storage.createTeamMember(validation.data);
-      res.status(201).json(newMember);
-    } catch (error) {
-      console.error("Error creating team member:", error);
-      res.status(500).json({ message: "Failed to create team member" });
-    }
-  });
-
-  router.patch("/members/:id", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid ID format" });
-      }
-
-      const member = await storage.getTeamMemberById(id);
-      if (!member) {
-        return res.status(404).json({ message: "Team member not found" });
-      }
-
-      const updatedMember = await storage.updateTeamMember(id, req.body);
-      res.json(updatedMember);
-    } catch (error) {
-      console.error("Error updating team member:", error);
-      res.status(500).json({ message: "Failed to update team member" });
-    }
-  });
-
-  router.patch("/members/:id/status", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid ID format" });
-      }
-
-      const statusSchema = z.object({ status: z.string() });
-      const validation = statusSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Invalid status", 
-          errors: validation.error.errors 
-        });
-      }
-
-      const member = await storage.updateTeamMemberStatus(id, validation.data.status);
-      res.json(member);
-    } catch (error) {
-      console.error("Error updating team member status:", error);
-      res.status(500).json({ message: "Failed to update team member status" });
-    }
-  });
-
-  router.delete("/members/:id", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid ID format" });
-      }
-
-      const success = await storage.deleteTeamMember(id);
-      if (!success) {
-        return res.status(404).json({ message: "Team member not found" });
-      }
-
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting team member:", error);
-      res.status(500).json({ message: "Failed to delete team member" });
-    }
-  });
-
-  // Team Task Routes
-  router.get("/tasks", async (req: Request, res: Response) => {
-    try {
-      const tasks = await storage.getAllTeamTasks();
-      res.json(tasks);
-    } catch (error) {
-      console.error("Error fetching team tasks:", error);
-      res.status(500).json({ message: "Failed to fetch team tasks" });
-    }
-  });
-
-  router.get("/tasks/:id", async (req: Request, res: Response) => {
-    try {
-      const task = await storage.getTeamTaskById(req.params.id);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
-
-      res.json(task);
-    } catch (error) {
-      console.error(`Error fetching task:`, error);
-      res.status(500).json({ message: "Failed to fetch task" });
-    }
-  });
-
-  router.get("/tasks/assignee/:assigneeId", async (req: Request, res: Response) => {
-    try {
-      const assigneeId = parseInt(req.params.assigneeId);
-      if (isNaN(assigneeId)) {
-        return res.status(400).json({ message: "Invalid assignee ID format" });
-      }
-
-      const tasks = await storage.getTeamTasksByAssignee(assigneeId);
-      res.json(tasks);
-    } catch (error) {
-      console.error(`Error fetching tasks by assignee:`, error);
-      res.status(500).json({ message: "Failed to fetch tasks by assignee" });
-    }
-  });
-
-  router.get("/tasks/status/:status", async (req: Request, res: Response) => {
-    try {
-      const status = req.params.status;
-      const tasks = await storage.getTeamTasksByStatus(status);
-      res.json(tasks);
-    } catch (error) {
-      console.error(`Error fetching tasks by status:`, error);
-      res.status(500).json({ message: "Failed to fetch tasks by status" });
-    }
-  });
-
-  router.post("/tasks", async (req: Request, res: Response) => {
-    try {
-      const validation = insertTaskSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Invalid task data", 
-          errors: validation.error.errors 
-        });
-      }
-
-      const newTask = await storage.createTeamTask(validation.data);
-      res.status(201).json(newTask);
-    } catch (error) {
-      console.error("Error creating task:", error);
-      res.status(500).json({ message: "Failed to create task" });
-    }
-  });
-
-  router.patch("/tasks/:id", async (req: Request, res: Response) => {
-    try {
-      const task = await storage.getTeamTaskById(req.params.id);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
-
-      const updatedTask = await storage.updateTeamTask(req.params.id, req.body);
-      res.json(updatedTask);
-    } catch (error) {
-      console.error("Error updating task:", error);
-      res.status(500).json({ message: "Failed to update task" });
-    }
-  });
-
-  router.patch("/tasks/:id/status", async (req: Request, res: Response) => {
-    try {
-      const statusSchema = z.object({ status: z.string() });
-      const validation = statusSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Invalid status", 
-          errors: validation.error.errors 
-        });
-      }
-
-      const task = await storage.updateTeamTaskStatus(req.params.id, validation.data.status);
-      res.json(task);
-    } catch (error) {
-      console.error("Error updating task status:", error);
-      res.status(500).json({ message: "Failed to update task status" });
-    }
-  });
-
-  router.patch("/tasks/:id/assign/:memberId", async (req: Request, res: Response) => {
-    try {
-      const memberId = parseInt(req.params.memberId);
-      if (isNaN(memberId)) {
-        return res.status(400).json({ message: "Invalid member ID format" });
-      }
-
-      const task = await storage.assignTeamTask(req.params.id, memberId);
-      res.json(task);
-    } catch (error) {
-      console.error("Error assigning task:", error);
-      res.status(500).json({ message: "Failed to assign task" });
-    }
-  });
-
-  router.delete("/tasks/:id", async (req: Request, res: Response) => {
-    try {
-      const success = await storage.deleteTeamTask(req.params.id);
-      if (!success) {
-        return res.status(404).json({ message: "Task not found" });
-      }
-
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      res.status(500).json({ message: "Failed to delete task" });
-    }
-  });
-
-  // Task Comment Routes
-  router.get("/tasks/:taskId/comments", async (req: Request, res: Response) => {
-    try {
-      const comments = await storage.getTaskCommentsByTaskId(req.params.taskId);
-      res.json(comments);
-    } catch (error) {
-      console.error(`Error fetching task comments:`, error);
-      res.status(500).json({ message: "Failed to fetch task comments" });
-    }
-  });
-
-  router.post("/tasks/:taskId/comments", async (req: Request, res: Response) => {
-    try {
-      const validation = insertTaskCommentSchema.safeParse({
-        ...req.body,
-        taskId: req.params.taskId
+      
+      const newAgent = await storage.createTeamMember({
+        name: agent.name,
+        role: agent.role,
+        email: agent.email || `${agent.role.toLowerCase()}@example.com`,
+        status: 'available',
+        capabilities: agent.capabilities || {
+          skills: [],
+          expertiseLevel: 'mid',
+          toolsAndFrameworks: [],
+          availability: {
+            hoursPerWeek: 40,
+            preferredWorkingHours: {
+              start: '09:00',
+              end: '17:00'
+            },
+            timeZone: 'UTC'
+          }
+        },
+        avatar: agent.avatar || null
       });
       
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Invalid comment data", 
-          errors: validation.error.errors 
-        });
-      }
-
-      const newComment = await storage.createTaskComment(validation.data);
-      res.status(201).json(newComment);
-    } catch (error) {
-      console.error("Error creating task comment:", error);
-      res.status(500).json({ message: "Failed to create task comment" });
-    }
-  });
-
-  // Team Collaboration Session Routes
-  router.get("/collaboration-sessions", async (req: Request, res: Response) => {
-    try {
-      const sessions = await storage.getAllTeamCollaborationSessions();
-      res.json(sessions);
-    } catch (error) {
-      console.error("Error fetching collaboration sessions:", error);
-      res.status(500).json({ message: "Failed to fetch collaboration sessions" });
-    }
-  });
-
-  router.post("/collaboration-sessions", async (req: Request, res: Response) => {
-    try {
-      const validation = insertTeamCollaborationSessionSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Invalid collaboration session data", 
-          errors: validation.error.errors 
-        });
-      }
-
-      const newSession = await storage.createTeamCollaborationSession(validation.data);
-      res.status(201).json(newSession);
-    } catch (error) {
-      console.error("Error creating collaboration session:", error);
-      res.status(500).json({ message: "Failed to create collaboration session" });
-    }
-  });
-
-  // Team feedback routes
-  router.get("/feedback", async (req: Request, res: Response) => {
-    try {
-      const feedback = await storage.getAllTeamFeedback();
-      res.json(feedback);
-    } catch (error) {
-      console.error("Error fetching team feedback:", error);
-      res.status(500).json({ message: "Failed to fetch team feedback" });
-    }
-  });
-
-  router.post("/feedback", async (req: Request, res: Response) => {
-    try {
-      const validation = insertTeamFeedbackSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Invalid feedback data", 
-          errors: validation.error.errors 
-        });
-      }
-
-      const newFeedback = await storage.createTeamFeedback(validation.data);
-      res.status(201).json(newFeedback);
-    } catch (error) {
-      console.error("Error creating team feedback:", error);
-      res.status(500).json({ message: "Failed to create team feedback" });
-    }
-  });
-
-  // Team Knowledge Base Routes
-  router.get("/knowledge-base", async (req: Request, res: Response) => {
-    try {
-      const items = await storage.getAllTeamKnowledgeBaseItems();
-      res.json(items);
-    } catch (error) {
-      console.error("Error fetching knowledge base items:", error);
-      res.status(500).json({ message: "Failed to fetch knowledge base items" });
-    }
-  });
-
-  router.post("/knowledge-base", async (req: Request, res: Response) => {
-    try {
-      const validation = insertTeamKnowledgeBaseItemSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Invalid knowledge base item data", 
-          errors: validation.error.errors 
-        });
-      }
-
-      const newItem = await storage.createTeamKnowledgeBaseItem(validation.data);
-      res.status(201).json(newItem);
-    } catch (error) {
-      console.error("Error creating knowledge base item:", error);
-      res.status(500).json({ message: "Failed to create knowledge base item" });
-    }
-  });
-  
-  // Team agent operations routes
-  router.post("/generate-solution", async (req: Request, res: Response) => {
-    try {
-      const { taskId, prompt } = req.body;
+      await storage.createSystemActivity({
+        activity_type: 'team_collaboration',
+        component: 'team_agents',
+        status: 'created',
+        details: {
+          agentId: newAgent.id,
+          agentName: newAgent.name,
+          agentRole: newAgent.role
+        }
+      });
       
-      if (!taskId || !prompt) {
-        return res.status(400).json({ 
-          message: "Invalid request, taskId and prompt are required" 
-        });
+      res.status(201).json(newAgent);
+    } catch (error) {
+      console.error('Error creating team agent:', error);
+      res.status(500).json({ error: 'Failed to create team agent' });
+    }
+  });
+
+  /**
+   * Update a team agent
+   */
+  app.put('/api/team-agents/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const agent = req.body;
+      
+      const existingAgent = await storage.getTeamMember(id);
+      if (!existingAgent) {
+        return res.status(404).json({ error: 'Team agent not found' });
       }
       
-      const solution = await teamAgentService.generateSolution(taskId, prompt);
-      res.json({ solution });
+      const updatedAgent = await storage.updateTeamMember(id, agent);
+      
+      await storage.createSystemActivity({
+        activity_type: 'team_collaboration',
+        component: 'team_agents',
+        status: 'updated',
+        details: {
+          agentId: updatedAgent.id,
+          agentName: updatedAgent.name,
+          agentRole: updatedAgent.role,
+          changes: Object.keys(agent)
+        }
+      });
+      
+      res.json(updatedAgent);
     } catch (error) {
-      console.error("Error generating solution:", error);
-      res.status(500).json({ message: "Failed to generate solution" });
+      console.error('Error updating team agent:', error);
+      res.status(500).json({ error: 'Failed to update team agent' });
     }
   });
 
-  router.post("/code-review", async (req: Request, res: Response) => {
+  /**
+   * Get team agent tasks
+   */
+  app.get('/api/team-tasks', async (req: Request, res: Response) => {
     try {
-      const { taskId, code } = req.body;
+      const tasks = await storage.getTasks();
       
-      if (!taskId || !code) {
-        return res.status(400).json({ 
-          message: "Invalid request, taskId and code are required" 
-        });
+      // Enhance tasks with comments
+      const enhancedTasks = await Promise.all(tasks.map(async (task) => {
+        const comments = await storage.getTaskComments(task.id);
+        return { ...task, comments };
+      }));
+      
+      res.json(enhancedTasks);
+    } catch (error) {
+      console.error('Error getting team tasks:', error);
+      res.status(500).json({ error: 'Failed to retrieve team tasks' });
+    }
+  });
+
+  /**
+   * Get a specific task
+   */
+  app.get('/api/team-tasks/:id', async (req: Request, res: Response) => {
+    try {
+      const taskId = req.params.id;
+      const task = await storage.getTask(taskId);
+      
+      if (!task) {
+        return res.status(404).json({ error: 'Task not found' });
       }
       
-      const review = await teamAgentService.performCodeReview(taskId, code);
-      res.json({ review });
+      const comments = await storage.getTaskComments(taskId);
+      
+      res.json({ ...task, comments });
     } catch (error) {
-      console.error("Error performing code review:", error);
-      res.status(500).json({ message: "Failed to perform code review" });
+      console.error('Error getting task:', error);
+      res.status(500).json({ error: 'Failed to retrieve task' });
     }
   });
 
-  router.post("/design-feedback", async (req: Request, res: Response) => {
+  /**
+   * Create a new task
+   */
+  app.post('/api/team-tasks', async (req: Request, res: Response) => {
     try {
-      const { taskId, designDescription } = req.body;
+      const task = req.body;
       
-      if (!taskId || !designDescription) {
-        return res.status(400).json({ 
-          message: "Invalid request, taskId and designDescription are required" 
-        });
+      if (!task.title || !task.createdBy) {
+        return res.status(400).json({ error: 'Title and creator are required' });
       }
       
-      const feedback = await teamAgentService.getDesignFeedback(taskId, designDescription);
-      res.json({ feedback });
+      const newTask = await storage.createTask({
+        id: uuidv4(),
+        title: task.title,
+        description: task.description || '',
+        status: task.status || 'pending',
+        priority: task.priority || 'medium',
+        createdBy: task.createdBy,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        assignedTo: task.assignedTo || null,
+        dueDate: task.dueDate || null,
+        estimatedHours: task.estimatedHours || null,
+        actualHours: task.actualHours || null,
+        tags: task.tags || [],
+        attachments: task.attachments || []
+      });
+      
+      await storage.createSystemActivity({
+        activity_type: 'team_collaboration',
+        component: 'team_tasks',
+        status: 'created',
+        details: {
+          taskId: newTask.id,
+          taskTitle: newTask.title,
+          assignedTo: newTask.assignedTo,
+          createdBy: newTask.createdBy
+        }
+      });
+      
+      res.status(201).json(newTask);
     } catch (error) {
-      console.error("Error getting design feedback:", error);
-      res.status(500).json({ message: "Failed to get design feedback" });
+      console.error('Error creating task:', error);
+      res.status(500).json({ error: 'Failed to create task' });
     }
   });
 
-  router.post("/compliance-check", async (req: Request, res: Response) => {
+  /**
+   * Update a task
+   */
+  app.put('/api/team-tasks/:id', async (req: Request, res: Response) => {
     try {
-      const { taskId, propertyData } = req.body;
+      const taskId = req.params.id;
+      const update = req.body;
       
-      if (!taskId || !propertyData) {
-        return res.status(400).json({ 
-          message: "Invalid request, taskId and propertyData are required" 
-        });
+      const existingTask = await storage.getTask(taskId);
+      if (!existingTask) {
+        return res.status(404).json({ error: 'Task not found' });
       }
       
-      const complianceReport = await teamAgentService.performComplianceCheck(taskId, propertyData);
-      res.json({ complianceReport });
+      // Prepare the update
+      const taskUpdate = {
+        ...update,
+        updatedAt: new Date()
+      };
+      
+      const updatedTask = await storage.updateTask(taskId, taskUpdate);
+      
+      await storage.createSystemActivity({
+        activity_type: 'team_collaboration',
+        component: 'team_tasks',
+        status: 'updated',
+        details: {
+          taskId: updatedTask.id,
+          taskTitle: updatedTask.title,
+          assignedTo: updatedTask.assignedTo,
+          status: updatedTask.status,
+          changes: Object.keys(update)
+        }
+      });
+      
+      res.json(updatedTask);
     } catch (error) {
-      console.error("Error performing compliance check:", error);
-      res.status(500).json({ message: "Failed to perform compliance check" });
+      console.error('Error updating task:', error);
+      res.status(500).json({ error: 'Failed to update task' });
     }
   });
 
-  return router;
+  /**
+   * Get task comments
+   */
+  app.get('/api/team-tasks/:id/comments', async (req: Request, res: Response) => {
+    try {
+      const taskId = req.params.id;
+      const comments = await storage.getTaskComments(taskId);
+      
+      res.json(comments);
+    } catch (error) {
+      console.error('Error getting task comments:', error);
+      res.status(500).json({ error: 'Failed to retrieve task comments' });
+    }
+  });
+
+  /**
+   * Add a comment to a task
+   */
+  app.post('/api/team-tasks/:id/comments', async (req: Request, res: Response) => {
+    try {
+      const taskId = req.params.id;
+      const { userId, content } = req.body;
+      
+      if (!userId || !content) {
+        return res.status(400).json({ error: 'User ID and content are required' });
+      }
+      
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+      
+      const comment = await storage.createTaskComment({
+        id: uuidv4(),
+        taskId,
+        userId,
+        content,
+        createdAt: new Date()
+      });
+      
+      await storage.createSystemActivity({
+        activity_type: 'team_collaboration',
+        component: 'task_comments',
+        status: 'created',
+        details: {
+          taskId,
+          taskTitle: task.title,
+          commentId: comment.id,
+          userId,
+          contentPreview: content.substring(0, 50) + (content.length > 50 ? '...' : '')
+        }
+      });
+      
+      res.status(201).json(comment);
+    } catch (error) {
+      console.error('Error creating task comment:', error);
+      res.status(500).json({ error: 'Failed to create task comment' });
+    }
+  });
+
+  /**
+   * Get all team chat messages for a session
+   */
+  app.get('/api/team-chat/:sessionId', async (req: Request, res: Response) => {
+    try {
+      const sessionId = req.params.sessionId;
+      const messages = await storage.getTeamChatMessages(sessionId);
+      
+      res.json(messages);
+    } catch (error) {
+      console.error('Error getting team chat messages:', error);
+      res.status(500).json({ error: 'Failed to retrieve team chat messages' });
+    }
+  });
+
+  /**
+   * Create a team chat message
+   */
+  app.post('/api/team-chat/:sessionId', async (req: Request, res: Response) => {
+    try {
+      const sessionId = req.params.sessionId;
+      const { fromUserId, content, threadId } = req.body;
+      
+      if (!fromUserId || !content) {
+        return res.status(400).json({ error: 'User ID and content are required' });
+      }
+      
+      const message = await storage.createTeamChatMessage({
+        id: uuidv4(),
+        sessionId,
+        fromUserId,
+        content,
+        timestamp: new Date(),
+        threadId: threadId || null
+      });
+      
+      res.status(201).json(message);
+    } catch (error) {
+      console.error('Error creating team chat message:', error);
+      res.status(500).json({ error: 'Failed to create team chat message' });
+    }
+  });
 }

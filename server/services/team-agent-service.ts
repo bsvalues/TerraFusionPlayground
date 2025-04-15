@@ -14,17 +14,17 @@ import { AgentSystem } from './agent-system';
 import { notificationService } from './notification-service';
 
 import {
-  TeamMemberRole,
-  TeamMemberStatus,
+  TeamAgentRole as TeamMemberRole,
+  TeamAgentStatus as TeamMemberStatus,
   TaskPriority,
   TaskStatus,
-  TeamMember,
-  TeamTask,
+  TeamAgent as TeamMember,
+  Task as TeamTask,
   TeamCollaborationSession,
-  TeamFeedback,
-  TeamKnowledgeBaseItem,
-  InsertTeamMember,
-  InsertTask
+  // TeamFeedback,
+  // TeamKnowledgeBaseItem,
+  // InsertTeamMember,
+  // InsertTask
 } from '../../shared/team-agent-types';
 
 /**
@@ -144,7 +144,7 @@ const DEFAULT_TEAM_AGENTS: TeamAgentConfig[] = [
   },
   {
     name: 'Taylor Washington',
-    role: TeamMemberRole.ASSESSOR,
+    role: TeamMemberRole.COUNTY_ASSESSOR,
     capabilities: {
       skills: ['Property Assessment', 'Tax Valuation', 'Regulatory Compliance', 'Geographic Information Systems'],
       expertiseLevel: 'expert',
@@ -787,7 +787,7 @@ export class TeamAgentService {
     ]);
     
     // County Assessor capabilities
-    this.teamAgentCapabilities.set(TeamMemberRole.ASSESSOR, [
+    this.teamAgentCapabilities.set(TeamMemberRole.COUNTY_ASSESSOR, [
       {
         name: 'review_property_assessment',
         description: 'Review a property assessment for accuracy and compliance',
@@ -1127,7 +1127,7 @@ export class TeamAgentService {
   ): Promise<TeamCollaborationSession> {
     try {
       // Get the assessor team member
-      const assessors = await this.storage.getTeamMembersByRole(TeamMemberRole.ASSESSOR);
+      const assessors = await this.storage.getTeamMembersByRole(TeamMemberRole.COUNTY_ASSESSOR);
       if (!assessors || assessors.length === 0) {
         throw new Error('No County Assessor team member found');
       }

@@ -2,8 +2,8 @@ import { pgTable, text, serial, integer, timestamp, numeric, json, boolean, json
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { 
-  TeamMemberRole, 
-  TeamMemberStatus, 
+  TeamAgentRole as TeamMemberRole, 
+  TeamAgentStatus as TeamMemberStatus, 
   TaskPriority, 
   TaskStatus
 } from "./team-agent-types";

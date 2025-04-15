@@ -20,6 +20,7 @@ import PropertyLineagePage from "@/pages/PropertyLineagePage";
 import { DataLineageDashboardPage } from "@/pages/DataLineageDashboardPage";
 import { ExtensionsPage } from "@/pages/ExtensionsPage";
 import CollaborationTestPage from "@/pages/collaboration-test";
+import TeamAgentsPage from "@/pages/TeamAgentsPage";
 import AppLayout from "@/layout/app-layout";
 
 function Router() {
@@ -118,6 +119,12 @@ function Router() {
       <Route path="/collaboration-test">
         <AppLayout>
           <CollaborationTestPage />
+        </AppLayout>
+      </Route>
+
+      <Route path="/team-agents">
+        <AppLayout>
+          <TeamAgentsPage />
         </AppLayout>
       </Route>
 

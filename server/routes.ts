@@ -33,7 +33,7 @@ import { createAnalyticsRoutes } from "./routes/analytics-routes";
 import { createValidationRoutes } from "./routes/validation-routes";
 import collaborationRoutes from "./routes/collaboration-routes";
 import extensionRoutes from "./extensions/extension-routes";
-import { createTeamAgentRoutes } from "./routes/team-agent-routes";
+import { registerTeamAgentRoutes } from "./routes/team-agent-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -163,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const teamAgentService = new TeamAgentService(storage, mcpService);
   
   // Register Team Agent routes
-  app.use('/api/team-agents', createTeamAgentRoutes(storage, teamAgentService));
+  registerTeamAgentRoutes(app, storage);
 
   /**
    * Data Lineage Routes

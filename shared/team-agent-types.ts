@@ -1,35 +1,79 @@
 /**
  * Team Agent Types
  * 
- * This file defines the types and interfaces for the team collaboration agents
- * that support property assessment operations by simulating different team members.
+ * This file contains type definitions for team agents and related entities.
  */
-
-import { z } from 'zod';
 
 /**
- * Team Member Role
+ * Team agent roles
  */
-export enum TeamMemberRole {
+export enum TeamAgentRole {
   FRONTEND_DEVELOPER = 'frontend_developer',
   BACKEND_DEVELOPER = 'backend_developer',
   DESIGNER = 'designer',
   QA_TESTER = 'qa_tester',
-  ASSESSOR = 'county_assessor'
+  COUNTY_ASSESSOR = 'county_assessor'
 }
 
 /**
- * Team Member Status
+ * Team agent status
  */
-export enum TeamMemberStatus {
+export enum TeamAgentStatus {
   AVAILABLE = 'available',
   BUSY = 'busy',
-  OFFLINE = 'offline',
-  IN_MEETING = 'in_meeting'
+  AWAY = 'away',
+  OFFLINE = 'offline'
 }
 
 /**
- * Task Priority
+ * Team agent expertise level
+ */
+export enum ExpertiseLevel {
+  JUNIOR = 'junior',
+  MID = 'mid',
+  SENIOR = 'senior',
+  EXPERT = 'expert'
+}
+
+/**
+ * Agent availability
+ */
+export interface AgentAvailability {
+  hoursPerWeek: number;
+  preferredWorkingHours: {
+    start: string;
+    end: string;
+  };
+  timeZone: string;
+}
+
+/**
+ * Agent capabilities
+ */
+export interface AgentCapabilities {
+  skills: string[];
+  expertiseLevel: ExpertiseLevel;
+  toolsAndFrameworks: string[];
+  availability: AgentAvailability;
+}
+
+/**
+ * Team agent model
+ */
+export interface TeamAgent {
+  id: number;
+  name: string;
+  role: string;
+  email: string;
+  status: string;
+  capabilities: AgentCapabilities;
+  avatar: string | null;
+  joinedAt: Date;
+  lastActive: Date;
+}
+
+/**
+ * Task priority levels
  */
 export enum TaskPriority {
   LOW = 'low',
@@ -39,156 +83,261 @@ export enum TaskPriority {
 }
 
 /**
- * Task Status
+ * Task status values
  */
 export enum TaskStatus {
-  BACKLOG = 'backlog',
-  TODO = 'todo',
+  PENDING = 'pending',
   IN_PROGRESS = 'in_progress',
   REVIEW = 'review',
-  TESTING = 'testing',
-  DONE = 'done',
-  BLOCKED = 'blocked'
+  COMPLETED = 'completed',
+  BLOCKED = 'blocked',
+  CANCELLED = 'cancelled'
 }
 
 /**
- * Team member capabilities schema
+ * Task model
  */
-export const teamMemberCapabilitiesSchema = z.object({
-  skills: z.array(z.string()),
-  expertiseLevel: z.enum(['junior', 'mid', 'senior', 'expert']),
-  toolsAndFrameworks: z.array(z.string()),
-  availability: z.object({
-    hoursPerWeek: z.number(),
-    preferredWorkingHours: z.object({
-      start: z.string(),
-      end: z.string()
-    }),
-    timeZone: z.string()
-  })
-});
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  createdBy: number;
+  createdAt: Date;
+  updatedAt: Date;
+  assignedTo: number | null;
+  dueDate: Date | null;
+  estimatedHours: number | null;
+  actualHours: number | null;
+  tags: string[];
+  attachments: string[];
+}
 
 /**
- * Team member schema
+ * Task comment model
  */
-export const teamMemberSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  role: z.string(), // TeamMemberRole as string for flexibility
-  status: z.string().default(TeamMemberStatus.AVAILABLE),
-  capabilities: teamMemberCapabilitiesSchema,
-  avatar: z.string().nullable().optional(),
-  email: z.string(),
-  joinedAt: z.date(),
-  lastActive: z.date()
-});
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  userId: number;
+  content: string;
+  createdAt: Date;
+}
 
 /**
- * Task schema
+ * Team chat message model
  */
-export const taskSchema = z.object({
-  id: z.string().uuid(),
-  title: z.string(),
-  description: z.string(),
-  assignedTo: z.number().nullable().optional(),
-  createdBy: z.number(),
-  status: z.string().default(TaskStatus.BACKLOG),
-  priority: z.string().default(TaskPriority.MEDIUM),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-  dueDate: z.date().nullable().optional(),
-  estimatedHours: z.number().nullable().optional(),
-  actualHours: z.number().nullable().optional(),
-  tags: z.array(z.string()).default([]),
-  attachments: z.array(z.string()).default([])
-});
+export interface TeamChatMessage {
+  id: string;
+  sessionId: string;
+  fromUserId: number;
+  content: string;
+  timestamp: Date;
+  threadId: string | null;
+}
 
 /**
- * Task comment schema
+ * Team collaboration session model
  */
-export const taskCommentSchema = z.object({
-  id: z.string().uuid(),
-  taskId: z.string().uuid(),
-  userId: z.number(),
-  content: z.string(),
-  timestamp: z.date(),
-  attachments: z.array(z.string()).default([])
-});
+export interface TeamCollaborationSession {
+  id: string;
+  name: string;
+  description: string;
+  createdBy: number;
+  createdAt: Date;
+  participants: number[];
+  status: string;
+  metadata: Record<string, any>;
+}
 
 /**
- * Team collaboration session schema
+ * WebSocket message types
  */
-export const teamCollaborationSessionSchema = z.object({
-  id: z.string().uuid(),
-  title: z.string(),
-  description: z.string(),
-  startTime: z.date(),
-  endTime: z.date().nullable().optional(),
-  status: z.string(), // scheduled, in_progress, completed, cancelled
-  participants: z.array(z.number()),
-  organizer: z.number(),
-  agenda: z.array(z.string()).default([]),
-  notes: z.string().nullable().optional(),
-  recordingUrl: z.string().nullable().optional(),
-  taskIds: z.array(z.string().uuid()).default([])
-});
+export enum TeamCollaborationMessageType {
+  JOIN_SESSION = 'join_session',
+  LEAVE_SESSION = 'leave_session',
+  CHAT_MESSAGE = 'chat_message',
+  STATUS_UPDATE = 'status_update',
+  TASK_ASSIGNED = 'task_assigned',
+  TASK_UPDATED = 'task_updated',
+  COMMENT_ADDED = 'comment_added',
+  USER_ACTIVITY = 'user_activity',
+  MEETING_REMINDER = 'meeting_reminder',
+  ERROR = 'error',
+  AUTH_REQUIRED = 'auth_required',
+  AUTH_SUCCESS = 'auth_success',
+  SESSION_STATE = 'session_state'
+}
 
 /**
- * Team feedback schema
+ * Base WebSocket message interface
  */
-export const teamFeedbackSchema = z.object({
-  id: z.string().uuid(),
-  fromUserId: z.number(),
-  toUserId: z.number(),
-  content: z.string(),
-  rating: z.number().min(1).max(5),
-  timestamp: z.date(),
-  category: z.string(), // code_quality, communication, timeliness, problem_solving, other
-  taskId: z.string().uuid().nullable().optional()
-});
+export interface BaseMessage {
+  type: TeamCollaborationMessageType;
+  timestamp: string;
+}
 
 /**
- * Team knowledge base item schema
+ * Authentication required message
  */
-export const teamKnowledgeBaseItemSchema = z.object({
-  id: z.string().uuid(),
-  title: z.string(),
-  content: z.string(),
-  category: z.string(),
-  createdBy: z.number(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-  tags: z.array(z.string()).default([]),
-  attachments: z.array(z.string()).default([]),
-  relatedItemIds: z.array(z.string().uuid()).default([])
-});
+export interface AuthRequiredMessage extends BaseMessage {
+  type: TeamCollaborationMessageType.AUTH_REQUIRED;
+  connectionId: string;
+}
 
 /**
- * Team agent types
+ * Authentication success message
  */
-export type TeamMemberCapabilities = z.infer<typeof teamMemberCapabilitiesSchema>;
-export type TeamMember = z.infer<typeof teamMemberSchema>;
-export type TeamTask = z.infer<typeof taskSchema>;
-export type TaskComment = z.infer<typeof taskCommentSchema>;
-export type TeamCollaborationSession = z.infer<typeof teamCollaborationSessionSchema>;
-export type TeamFeedback = z.infer<typeof teamFeedbackSchema>;
-export type TeamKnowledgeBaseItem = z.infer<typeof teamKnowledgeBaseItemSchema>;
+export interface AuthSuccessMessage extends BaseMessage {
+  type: TeamCollaborationMessageType.AUTH_SUCCESS;
+  userId: number;
+  userName: string;
+  sessionId: string;
+}
 
-// Insert types (omitting auto-generated fields)
-export const insertTeamMemberSchema = teamMemberSchema.omit({ id: true, joinedAt: true, lastActive: true });
-export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
+/**
+ * Session state message
+ */
+export interface SessionStateMessage extends BaseMessage {
+  type: TeamCollaborationMessageType.SESSION_STATE;
+  sessionId: string;
+  participants: {
+    userId: number;
+    userName: string;
+    userRole: string;
+    status: string;
+  }[];
+  recentMessages: TeamChatMessage[];
+}
 
-export const insertTaskSchema = taskSchema.omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertTask = z.infer<typeof insertTaskSchema>;
+/**
+ * Chat message
+ */
+export interface ChatMessage extends BaseMessage {
+  type: TeamCollaborationMessageType.CHAT_MESSAGE;
+  sessionId: string;
+  senderId: number;
+  senderName: string;
+  content: string;
+}
 
-export const insertTaskCommentSchema = taskCommentSchema.omit({ id: true });
-export type InsertTaskComment = z.infer<typeof insertTaskCommentSchema>;
+/**
+ * Status update message
+ */
+export interface StatusUpdateMessage extends BaseMessage {
+  type: TeamCollaborationMessageType.STATUS_UPDATE;
+  sessionId: string;
+  senderId: number;
+  senderName: string;
+  status: string;
+  activity: string;
+}
 
-export const insertTeamCollaborationSessionSchema = teamCollaborationSessionSchema.omit({ id: true });
-export type InsertTeamCollaborationSession = z.infer<typeof insertTeamCollaborationSessionSchema>;
+/**
+ * Task assigned message
+ */
+export interface TaskAssignedMessage extends BaseMessage {
+  type: TeamCollaborationMessageType.TASK_ASSIGNED;
+  sessionId: string;
+  senderId: number;
+  senderName: string;
+  taskId: string;
+  taskTitle: string;
+  assigneeId: number;
+  assigneeName: string;
+  priority: string;
+}
 
-export const insertTeamFeedbackSchema = teamFeedbackSchema.omit({ id: true });
-export type InsertTeamFeedback = z.infer<typeof insertTeamFeedbackSchema>;
+/**
+ * Task updated message
+ */
+export interface TaskUpdatedMessage extends BaseMessage {
+  type: TeamCollaborationMessageType.TASK_UPDATED;
+  sessionId: string;
+  senderId: number;
+  senderName: string;
+  taskId: string;
+  taskTitle: string;
+  updates: {
+    field: string;
+    oldValue: any;
+    newValue: any;
+  }[];
+}
 
-export const insertTeamKnowledgeBaseItemSchema = teamKnowledgeBaseItemSchema.omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertTeamKnowledgeBaseItem = z.infer<typeof insertTeamKnowledgeBaseItemSchema>;
+/**
+ * Comment added message
+ */
+export interface CommentAddedMessage extends BaseMessage {
+  type: TeamCollaborationMessageType.COMMENT_ADDED;
+  sessionId: string;
+  senderId: number;
+  senderName: string;
+  taskId: string;
+  commentId: string;
+  content: string;
+}
+
+/**
+ * User activity message
+ */
+export interface UserActivityMessage extends BaseMessage {
+  type: TeamCollaborationMessageType.USER_ACTIVITY;
+  sessionId: string;
+  userId: number;
+  userName: string;
+  activity: string;
+  entityType?: string;
+  entityId?: string;
+}
+
+/**
+ * Meeting reminder message
+ */
+export interface MeetingReminderMessage extends BaseMessage {
+  type: TeamCollaborationMessageType.MEETING_REMINDER;
+  sessionId: string;
+  meetingId: string;
+  title: string;
+  startTime: string;
+  participants: number[];
+}
+
+/**
+ * Error message
+ */
+export interface ErrorMessage extends BaseMessage {
+  type: TeamCollaborationMessageType.ERROR;
+  errorCode: string;
+  errorMessage: string;
+}
+
+/**
+ * Authentication message
+ * Sent from client to server to authenticate
+ */
+export interface AuthenticationMessage {
+  type: 'authenticate';
+  connectionId: string;
+  sessionId: string;
+  userId: number;
+  userName: string;
+  userRole: string;
+}
+
+/**
+ * Union type of all message types
+ */
+export type TeamCollaborationMessage =
+  | AuthRequiredMessage
+  | AuthSuccessMessage
+  | SessionStateMessage
+  | ChatMessage
+  | StatusUpdateMessage
+  | TaskAssignedMessage
+  | TaskUpdatedMessage
+  | CommentAddedMessage
+  | UserActivityMessage
+  | MeetingReminderMessage
+  | ErrorMessage;
