@@ -14,9 +14,10 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { queryClient } from "@/lib/queryClient";
-import { LoaderCircle, Shield, Database, Zap, CheckCircle, XCircle, AlertCircle, PackageOpen } from 'lucide-react';
+import { LoaderCircle, Shield, Database, Zap, CheckCircle, XCircle, AlertCircle, PackageOpen, Code, Brain } from 'lucide-react';
 import RealTimeMonitoringDashboard from '@/components/master-development/RealTimeMonitoringDashboard';
 import ApplicationManagerPanel from '@/components/master-development/ApplicationManagerPanel';
+import CodeAssistantPanel from '@/components/master-development/CodeAssistantPanel';
 
 // Schema for schema validation form
 const schemaValidationFormSchema = z.object({
@@ -169,7 +170,7 @@ export default function MasterDevelopmentPage() {
       </p>
 
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-6 mb-6">
+        <TabsList className="grid grid-cols-7 mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="schema">Schema Registry</TabsTrigger>
           <TabsTrigger value="security">Security Policies</TabsTrigger>
@@ -178,6 +179,10 @@ export default function MasterDevelopmentPage() {
           <TabsTrigger value="applications">
             <PackageOpen className="h-4 w-4 mr-2" />
             Applications
+          </TabsTrigger>
+          <TabsTrigger value="developer">
+            <Code className="h-4 w-4 mr-2" />
+            Developer
           </TabsTrigger>
         </TabsList>
 
@@ -816,6 +821,17 @@ export default function MasterDevelopmentPage() {
         {/* Applications Tab */}
         <TabsContent value="applications">
           <ApplicationManagerPanel />
+        </TabsContent>
+        
+        {/* Developer Tab */}
+        <TabsContent value="developer">
+          <div className="mb-4">
+            <h2 className="text-xl font-bold">County-Specific Development Tools</h2>
+            <p className="text-gray-500">
+              Professional development environment specialized for Benton County property assessment applications
+            </p>
+          </div>
+          <CodeAssistantPanel />
         </TabsContent>
       </Tabs>
     </div>
