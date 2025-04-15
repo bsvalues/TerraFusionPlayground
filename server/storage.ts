@@ -3153,6 +3153,570 @@ export class MemStorage implements IStorage {
       this.systemActivities.set(id, systemActivity);
     });
   }
+
+  // Team Agent methods implementation
+  async getAllTeamMembers(): Promise<TeamMember[]> {
+    return Array.from(this.teamMembers.values());
+  }
+
+  async getTeamMemberById(id: number): Promise<TeamMember | null> {
+    const member = this.teamMembers.get(id);
+    return member || null;
+  }
+
+  async getTeamMembersByRole(role: string): Promise<TeamMember[]> {
+    return Array.from(this.teamMembers.values())
+      .filter(member => member.role === role);
+  }
+
+  async createTeamMember(member: InsertTeamMember): Promise<TeamMember> {
+    const id = this.currentTeamMemberId++;
+    const timestamp = new Date();
+    
+    const newMember: TeamMember = {
+      ...member,
+      id,
+      joinedAt: timestamp,
+      lastActive: timestamp,
+      avatar: member.avatar || null
+    };
+    
+    this.teamMembers.set(id, newMember);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_member_created',
+      component: 'team',
+      status: 'success',
+      details: { teamMember: newMember }
+    });
+    
+    return newMember;
+  }
+
+  async updateTeamMember(id: number, updates: Partial<TeamMember>): Promise<TeamMember | null> {
+    const member = this.teamMembers.get(id);
+    if (!member) {
+      return null;
+    }
+    
+    const updatedMember = {
+      ...member,
+      ...updates,
+      lastActive: new Date()
+    };
+    
+    this.teamMembers.set(id, updatedMember);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_member_updated',
+      component: 'team',
+      status: 'success',
+      details: { teamMemberId: id, updates }
+    });
+    
+    return updatedMember;
+  }
+
+  async updateTeamMemberStatus(id: number, status: string): Promise<TeamMember> {
+    const member = await this.getTeamMemberById(id);
+    if (!member) {
+      throw new Error(`Team member with ID ${id} not found`);
+    }
+    
+    const updatedMember = await this.updateTeamMember(id, { status, lastActive: new Date() });
+    
+    await this.createSystemActivity({
+      activity_type: 'team_member_status_updated',
+      component: 'team',
+      status: 'success',
+      details: { teamMemberId: id, newStatus: status }
+    });
+    
+    return updatedMember!;
+  }
+
+  async deleteTeamMember(id: number): Promise<boolean> {
+    const exists = this.teamMembers.has(id);
+    if (!exists) {
+      return false;
+    }
+    
+    this.teamMembers.delete(id);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_member_deleted',
+      component: 'team',
+      status: 'success',
+      details: { teamMemberId: id }
+    });
+    
+    return true;
+  }
+
+  // Team Task methods implementation
+  async getAllTeamTasks(): Promise<TeamTask[]> {
+    return Array.from(this.teamTasks.values());
+  }
+
+  async getTeamTaskById(id: string): Promise<TeamTask | null> {
+    const task = this.teamTasks.get(id);
+    return task || null;
+  }
+
+  async getTeamTasksByAssignee(assigneeId: number): Promise<TeamTask[]> {
+    return Array.from(this.teamTasks.values())
+      .filter(task => task.assignedTo === assigneeId);
+  }
+
+  async getTeamTasksByStatus(status: string): Promise<TeamTask[]> {
+    return Array.from(this.teamTasks.values())
+      .filter(task => task.status === status);
+  }
+
+  async createTeamTask(task: InsertTask): Promise<TeamTask> {
+    const id = `task_${this.currentTeamTaskId++}`;
+    const timestamp = new Date();
+    
+    const newTask: TeamTask = {
+      ...task,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      status: task.status || TaskStatus.TODO,
+      tags: task.tags || [],
+      attachments: task.attachments || [],
+      assignedTo: task.assignedTo || null,
+      dueDate: task.dueDate || null,
+      estimatedHours: task.estimatedHours || null,
+      actualHours: task.actualHours || null
+    };
+    
+    this.teamTasks.set(id, newTask);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_task_created',
+      component: 'team',
+      status: 'success',
+      details: { task: newTask }
+    });
+    
+    return newTask;
+  }
+
+  async updateTeamTask(id: string, updates: Partial<TeamTask>): Promise<TeamTask | null> {
+    const task = this.teamTasks.get(id);
+    if (!task) {
+      return null;
+    }
+    
+    const updatedTask = {
+      ...task,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.teamTasks.set(id, updatedTask);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_task_updated',
+      component: 'team',
+      status: 'success',
+      details: { taskId: id, updates }
+    });
+    
+    return updatedTask;
+  }
+
+  async updateTeamTaskStatus(id: string, status: string): Promise<TeamTask> {
+    const task = await this.getTeamTaskById(id);
+    if (!task) {
+      throw new Error(`Task with ID ${id} not found`);
+    }
+    
+    const updatedTask = await this.updateTeamTask(id, { status, updatedAt: new Date() });
+    
+    await this.createSystemActivity({
+      activity_type: 'team_task_status_updated',
+      component: 'team',
+      status: 'success',
+      details: { taskId: id, newStatus: status }
+    });
+    
+    return updatedTask!;
+  }
+
+  async assignTeamTask(taskId: string, teamMemberId: number): Promise<TeamTask> {
+    const task = await this.getTeamTaskById(taskId);
+    if (!task) {
+      throw new Error(`Task with ID ${taskId} not found`);
+    }
+    
+    const member = await this.getTeamMemberById(teamMemberId);
+    if (!member) {
+      throw new Error(`Team member with ID ${teamMemberId} not found`);
+    }
+    
+    const updatedTask = await this.updateTeamTask(taskId, { 
+      assignedTo: teamMemberId,
+      updatedAt: new Date() 
+    });
+    
+    await this.createSystemActivity({
+      activity_type: 'team_task_assigned',
+      component: 'team',
+      status: 'success',
+      details: { taskId, teamMemberId, taskTitle: task.title }
+    });
+    
+    return updatedTask!;
+  }
+
+  async deleteTeamTask(id: string): Promise<boolean> {
+    const exists = this.teamTasks.has(id);
+    if (!exists) {
+      return false;
+    }
+    
+    this.teamTasks.delete(id);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_task_deleted',
+      component: 'team',
+      status: 'success',
+      details: { taskId: id }
+    });
+    
+    return true;
+  }
+
+  // Team Collaboration Session methods implementation
+  async getAllTeamCollaborationSessions(): Promise<TeamCollaborationSession[]> {
+    return Array.from(this.teamCollaborationSessions.values());
+  }
+
+  async getTeamCollaborationSessionById(id: string): Promise<TeamCollaborationSession | null> {
+    const session = this.teamCollaborationSessions.get(id);
+    return session || null;
+  }
+
+  async getTeamCollaborationSessionsByOrganizer(organizerId: number): Promise<TeamCollaborationSession[]> {
+    return Array.from(this.teamCollaborationSessions.values())
+      .filter(session => session.organizer === organizerId);
+  }
+
+  async getTeamCollaborationSessionsByParticipant(participantId: number): Promise<TeamCollaborationSession[]> {
+    return Array.from(this.teamCollaborationSessions.values())
+      .filter(session => session.participants.includes(participantId));
+  }
+
+  async createTeamCollaborationSession(session: InsertTeamCollaborationSession): Promise<TeamCollaborationSession> {
+    const id = `session_${this.currentTeamCollaborationSessionId++}`;
+    
+    const newSession: TeamCollaborationSession = {
+      ...session,
+      id,
+      status: session.status || 'scheduled',
+      endTime: session.endTime || null,
+      notes: session.notes || null,
+      recordingUrl: session.recordingUrl || null,
+      agenda: session.agenda || [],
+      taskIds: session.taskIds || []
+    };
+    
+    this.teamCollaborationSessions.set(id, newSession);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_collaboration_session_created',
+      component: 'team',
+      status: 'success',
+      details: { session: newSession }
+    });
+    
+    return newSession;
+  }
+
+  async updateTeamCollaborationSession(id: string, updates: Partial<TeamCollaborationSession>): Promise<TeamCollaborationSession | null> {
+    const session = this.teamCollaborationSessions.get(id);
+    if (!session) {
+      return null;
+    }
+    
+    const updatedSession = {
+      ...session,
+      ...updates
+    };
+    
+    this.teamCollaborationSessions.set(id, updatedSession);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_collaboration_session_updated',
+      component: 'team',
+      status: 'success',
+      details: { sessionId: id, updates }
+    });
+    
+    return updatedSession;
+  }
+
+  async deleteTeamCollaborationSession(id: string): Promise<boolean> {
+    const exists = this.teamCollaborationSessions.has(id);
+    if (!exists) {
+      return false;
+    }
+    
+    this.teamCollaborationSessions.delete(id);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_collaboration_session_deleted',
+      component: 'team',
+      status: 'success',
+      details: { sessionId: id }
+    });
+    
+    return true;
+  }
+
+  // Team Feedback methods implementation
+  async getAllTeamFeedback(): Promise<TeamFeedback[]> {
+    return Array.from(this.teamFeedback.values());
+  }
+
+  async getTeamFeedbackById(id: string): Promise<TeamFeedback | null> {
+    const feedback = this.teamFeedback.get(id);
+    return feedback || null;
+  }
+
+  async getTeamFeedbackByReceiver(receiverId: number): Promise<TeamFeedback[]> {
+    return Array.from(this.teamFeedback.values())
+      .filter(feedback => feedback.receiverId === receiverId);
+  }
+
+  async getTeamFeedbackByProvider(providerId: number): Promise<TeamFeedback[]> {
+    return Array.from(this.teamFeedback.values())
+      .filter(feedback => feedback.providerId === providerId);
+  }
+
+  async createTeamFeedback(feedback: InsertTeamFeedback): Promise<TeamFeedback> {
+    const id = `feedback_${this.currentTeamFeedbackId++}`;
+    const timestamp = new Date();
+    
+    const newFeedback: TeamFeedback = {
+      ...feedback,
+      id,
+      createdAt: timestamp
+    };
+    
+    this.teamFeedback.set(id, newFeedback);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_feedback_created',
+      component: 'team',
+      status: 'success',
+      details: { feedback: newFeedback }
+    });
+    
+    return newFeedback;
+  }
+
+  async updateTeamFeedback(id: string, updates: Partial<TeamFeedback>): Promise<TeamFeedback | null> {
+    const feedback = this.teamFeedback.get(id);
+    if (!feedback) {
+      return null;
+    }
+    
+    const updatedFeedback = {
+      ...feedback,
+      ...updates
+    };
+    
+    this.teamFeedback.set(id, updatedFeedback);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_feedback_updated',
+      component: 'team',
+      status: 'success',
+      details: { feedbackId: id, updates }
+    });
+    
+    return updatedFeedback;
+  }
+
+  async deleteTeamFeedback(id: string): Promise<boolean> {
+    const exists = this.teamFeedback.has(id);
+    if (!exists) {
+      return false;
+    }
+    
+    this.teamFeedback.delete(id);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_feedback_deleted',
+      component: 'team',
+      status: 'success',
+      details: { feedbackId: id }
+    });
+    
+    return true;
+  }
+
+  // Team Knowledge Base methods implementation
+  async getAllTeamKnowledgeBaseItems(): Promise<TeamKnowledgeBaseItem[]> {
+    return Array.from(this.teamKnowledgeBaseItems.values());
+  }
+
+  async getTeamKnowledgeBaseItemById(id: string): Promise<TeamKnowledgeBaseItem | null> {
+    const item = this.teamKnowledgeBaseItems.get(id);
+    return item || null;
+  }
+
+  async getTeamKnowledgeBaseItemsByCategory(category: string): Promise<TeamKnowledgeBaseItem[]> {
+    return Array.from(this.teamKnowledgeBaseItems.values())
+      .filter(item => item.category === category);
+  }
+
+  async createTeamKnowledgeBaseItem(item: InsertTeamKnowledgeBaseItem): Promise<TeamKnowledgeBaseItem> {
+    const id = `kb_${this.currentTeamKnowledgeBaseItemId++}`;
+    const timestamp = new Date();
+    
+    const newItem: TeamKnowledgeBaseItem = {
+      ...item,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      tags: item.tags || []
+    };
+    
+    this.teamKnowledgeBaseItems.set(id, newItem);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_kb_item_created',
+      component: 'team',
+      status: 'success',
+      details: { knowledgeBaseItem: newItem }
+    });
+    
+    return newItem;
+  }
+
+  async updateTeamKnowledgeBaseItem(id: string, updates: Partial<TeamKnowledgeBaseItem>): Promise<TeamKnowledgeBaseItem | null> {
+    const item = this.teamKnowledgeBaseItems.get(id);
+    if (!item) {
+      return null;
+    }
+    
+    const updatedItem = {
+      ...item,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.teamKnowledgeBaseItems.set(id, updatedItem);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_kb_item_updated',
+      component: 'team',
+      status: 'success',
+      details: { itemId: id, updates }
+    });
+    
+    return updatedItem;
+  }
+
+  async deleteTeamKnowledgeBaseItem(id: string): Promise<boolean> {
+    const exists = this.teamKnowledgeBaseItems.has(id);
+    if (!exists) {
+      return false;
+    }
+    
+    this.teamKnowledgeBaseItems.delete(id);
+    
+    await this.createSystemActivity({
+      activity_type: 'team_kb_item_deleted',
+      component: 'team',
+      status: 'success',
+      details: { itemId: id }
+    });
+    
+    return true;
+  }
+
+  // Task Comment methods implementation
+  async getAllTaskComments(): Promise<TaskComment[]> {
+    return Array.from(this.taskComments.values());
+  }
+
+  async getTaskCommentById(id: string): Promise<TaskComment | null> {
+    const comment = this.taskComments.get(id);
+    return comment || null;
+  }
+
+  async getTaskCommentsByTaskId(taskId: string): Promise<TaskComment[]> {
+    return Array.from(this.taskComments.values())
+      .filter(comment => comment.taskId === taskId);
+  }
+
+  async createTaskComment(comment: InsertTaskComment): Promise<TaskComment> {
+    const id = `comment_${this.currentTaskCommentId++}`;
+    const timestamp = new Date();
+    
+    const newComment: TaskComment = {
+      ...comment,
+      id,
+      createdAt: timestamp
+    };
+    
+    this.taskComments.set(id, newComment);
+    
+    await this.createSystemActivity({
+      activity_type: 'task_comment_created',
+      component: 'team',
+      status: 'success',
+      details: { comment: newComment }
+    });
+    
+    return newComment;
+  }
+
+  async updateTaskComment(id: string, updates: Partial<TaskComment>): Promise<TaskComment | null> {
+    const comment = this.taskComments.get(id);
+    if (!comment) {
+      return null;
+    }
+    
+    const updatedComment = {
+      ...comment,
+      ...updates
+    };
+    
+    this.taskComments.set(id, updatedComment);
+    
+    await this.createSystemActivity({
+      activity_type: 'task_comment_updated',
+      component: 'team',
+      status: 'success',
+      details: { commentId: id, updates }
+    });
+    
+    return updatedComment;
+  }
+
+  async deleteTaskComment(id: string): Promise<boolean> {
+    const exists = this.taskComments.has(id);
+    if (!exists) {
+      return false;
+    }
+    
+    this.taskComments.delete(id);
+    
+    await this.createSystemActivity({
+      activity_type: 'task_comment_deleted',
+      component: 'team',
+      status: 'success',
+      details: { commentId: id }
+    });
+    
+    return true;
+  }
 }
 
 // Create a PostgreSQL implementation of the storage interface
