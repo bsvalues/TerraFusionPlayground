@@ -2043,7 +2043,7 @@ Tech Stack:
       </div>
 
       <Tabs defaultValue="assistant" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-5 mb-6">
+        <TabsList className="grid grid-cols-6 mb-6">
           <TabsTrigger value="assistant" className="flex items-center">
             <Brain className="mr-2 h-4 w-4" />
             AI Assistant
@@ -2063,6 +2063,10 @@ Tech Stack:
           <TabsTrigger value="generator">
             <Sparkles className="mr-2 h-4 w-4" />
             App Generator
+          </TabsTrigger>
+          <TabsTrigger value="developer" className="flex items-center bg-amber-100">
+            <Cpu className="mr-2 h-4 w-4" />
+            Developer
           </TabsTrigger>
         </TabsList>
 
@@ -2767,6 +2771,522 @@ Tech Stack:
                 </Card>
               )}
             </div>
+          </div>
+        </TabsContent>
+
+        {/* Developer Tab with specialized property assessment development tools */}
+        <TabsContent value="developer">
+          <div className="grid grid-cols-1 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center">
+                  <Cpu className="h-5 w-5 mr-2 text-amber-500" />
+                  BCBS GeoAssessment Developer Tools
+                </CardTitle>
+                <CardDescription>
+                  Specialized tools for property assessment application development
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="ai-pair" value={activeDeveloperTab} onValueChange={setActiveDeveloperTab}>
+                  <TabsList className="grid grid-cols-5 mb-6">
+                    <TabsTrigger value="ai-pair" className="flex items-center">
+                      <Brain className="mr-2 h-4 w-4" />
+                      AI Pair Programming
+                    </TabsTrigger>
+                    <TabsTrigger value="cama-playground" className="flex items-center">
+                      <Calculator className="mr-2 h-4 w-4" />
+                      CAMA Playground
+                    </TabsTrigger>
+                    <TabsTrigger value="regulation-checker" className="flex items-center">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Regulation Checker
+                    </TabsTrigger>
+                    <TabsTrigger value="data-modeler" className="flex items-center">
+                      <Database className="mr-2 h-4 w-4" />
+                      Data Modeler
+                    </TabsTrigger>
+                    <TabsTrigger value="gis-tools" className="flex items-center">
+                      <Map className="mr-2 h-4 w-4" />
+                      GIS Tools
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* AI Pair Programming Tool */}
+                  <TabsContent value="ai-pair">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <Card className="lg:col-span-1">
+                        <CardHeader>
+                          <CardTitle className="text-base">Property Assessment Pair Programming</CardTitle>
+                          <CardDescription>AI-powered coding assistant specialized for property assessment</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div>
+                              <h3 className="text-sm font-medium mb-2">Specialized Context</h3>
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox id="context-pacs" />
+                                  <Label htmlFor="context-pacs">PACS Integration</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox id="context-regulations" defaultChecked />
+                                  <Label htmlFor="context-regulations">WA Assessment Regulations</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox id="context-gis" />
+                                  <Label htmlFor="context-gis">GIS Mapping</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox id="context-calculations" defaultChecked />
+                                  <Label htmlFor="context-calculations">Value Calculations</Label>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <h3 className="text-sm font-medium mb-2">Common Tasks</h3>
+                              <div className="space-y-2">
+                                <Button variant="outline" size="sm" className="w-full justify-start">
+                                  <FileCode className="mr-2 h-4 w-4" />
+                                  Property Lookup Component
+                                </Button>
+                                <Button variant="outline" size="sm" className="w-full justify-start">
+                                  <Calculator className="mr-2 h-4 w-4" />
+                                  CAMA Value Calculator
+                                </Button>
+                                <Button variant="outline" size="sm" className="w-full justify-start">
+                                  <Map className="mr-2 h-4 w-4" />
+                                  Parcel Map Integration
+                                </Button>
+                                <Button variant="outline" size="sm" className="w-full justify-start">
+                                  <BarChart className="mr-2 h-4 w-4" />
+                                  Value Analysis Dashboard
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="lg:col-span-2">
+                        <CardHeader>
+                          <CardTitle className="text-base">Code Workspace</CardTitle>
+                          <CardDescription>
+                            Specialized coding environment for assessment applications
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <Textarea 
+                              placeholder="Describe what you want to build, or paste code to enhance..."
+                              className="font-mono h-[200px] resize-none"
+                            />
+                            
+                            <div className="flex justify-between">
+                              <div className="flex space-x-2">
+                                <Select defaultValue="typescript">
+                                  <SelectTrigger className="w-[140px]">
+                                    <SelectValue placeholder="Language" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="typescript">TypeScript</SelectItem>
+                                    <SelectItem value="javascript">JavaScript</SelectItem>
+                                    <SelectItem value="python">Python</SelectItem>
+                                    <SelectItem value="sql">SQL</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                
+                                <Select defaultValue="component">
+                                  <SelectTrigger className="w-[140px]">
+                                    <SelectValue placeholder="Type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="component">UI Component</SelectItem>
+                                    <SelectItem value="calculation">Calculation</SelectItem>
+                                    <SelectItem value="data">Data Model</SelectItem>
+                                    <SelectItem value="utility">Utility</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              
+                              <Button>
+                                <Brain className="mr-2 h-4 w-4" />
+                                Generate Code
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+
+                  {/* CAMA Model Playground */}
+                  <TabsContent value="cama-playground">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <Card className="lg:col-span-1">
+                        <CardHeader>
+                          <CardTitle className="text-base">CAMA Models</CardTitle>
+                          <CardDescription>
+                            Test and develop property valuation models
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              {camaModels.map((model) => (
+                                <div 
+                                  key={model.id}
+                                  className={`p-3 border rounded-md cursor-pointer transition-colors ${
+                                    selectedCAMAModel?.id === model.id 
+                                      ? 'border-amber-500 bg-amber-50' 
+                                      : 'border-border hover:border-amber-300'
+                                  }`}
+                                  onClick={() => setSelectedCAMAModel(model)}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center">
+                                      <Calculator className="h-4 w-4 mr-2 text-amber-500" />
+                                      <span className="font-medium">{model.name}</span>
+                                    </div>
+                                    <Badge variant="outline" className="text-xs">
+                                      {model.type}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {model.description}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="lg:col-span-2">
+                        <CardHeader>
+                          <CardTitle className="text-base">Model Playground</CardTitle>
+                          <CardDescription>
+                            Test and visualize CAMA model results
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <Textarea 
+                              placeholder="Enter test property data as JSON..."
+                              className="font-mono h-[200px] resize-none"
+                              value={modelPlaygroundData}
+                              onChange={(e) => setModelPlaygroundData(e.target.value)}
+                            />
+                            
+                            <div className="flex justify-between">
+                              <div>
+                                <Select defaultValue="residential">
+                                  <SelectTrigger className="w-[160px]">
+                                    <SelectValue placeholder="Property Type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="residential">Residential</SelectItem>
+                                    <SelectItem value="commercial">Commercial</SelectItem>
+                                    <SelectItem value="agricultural">Agricultural</SelectItem>
+                                    <SelectItem value="industrial">Industrial</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              
+                              <div className="flex space-x-2">
+                                <Button variant="outline">
+                                  <FileText className="mr-2 h-4 w-4" />
+                                  Load Sample
+                                </Button>
+                                <Button>
+                                  <Calculator className="mr-2 h-4 w-4" />
+                                  Run Model
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+
+                  {/* Regulation Checker */}
+                  <TabsContent value="regulation-checker">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <Card className="lg:col-span-1">
+                        <CardHeader>
+                          <CardTitle className="text-base">Regulation Rules</CardTitle>
+                          <CardDescription>
+                            Assessment compliance rules for Washington State
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="h-[500px] overflow-auto">
+                          <div className="space-y-2">
+                            {regulationRules.map((rule) => (
+                              <div 
+                                key={rule.id}
+                                className={`p-3 border rounded-md cursor-pointer transition-colors ${
+                                  selectedRegulation?.id === rule.id 
+                                    ? 'border-amber-500 bg-amber-50' 
+                                    : 'border-border hover:border-amber-300'
+                                }`}
+                                onClick={() => setSelectedRegulation(rule)}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center">
+                                    {rule.severity === 'error' ? (
+                                      <div className="h-2 w-2 rounded-full bg-red-500 mr-2" />
+                                    ) : rule.severity === 'warning' ? (
+                                      <div className="h-2 w-2 rounded-full bg-amber-500 mr-2" />
+                                    ) : (
+                                      <div className="h-2 w-2 rounded-full bg-blue-500 mr-2" />
+                                    )}
+                                    <span className="font-medium text-sm">{rule.name}</span>
+                                  </div>
+                                  <Badge variant="outline" className="text-xs">
+                                    {rule.jurisdiction}
+                                  </Badge>
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {rule.description}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="lg:col-span-2">
+                        <CardHeader>
+                          <CardTitle className="text-base">Code Compliance Checker</CardTitle>
+                          <CardDescription>
+                            Check assessment code against regulations
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <Textarea 
+                              placeholder="Paste assessment code to check for compliance..."
+                              className="font-mono h-[200px] resize-none"
+                              value={codeToCheck}
+                              onChange={(e) => setCodeToCheck(e.target.value)}
+                            />
+                            
+                            <div className="flex justify-between">
+                              <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox id="rule-market-value" defaultChecked />
+                                  <Label htmlFor="rule-market-value">Market Value</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox id="rule-exemptions" defaultChecked />
+                                  <Label htmlFor="rule-exemptions">Exemptions</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox id="rule-notices" defaultChecked />
+                                  <Label htmlFor="rule-notices">Notices</Label>
+                                </div>
+                              </div>
+                              
+                              <Button>
+                                <FileText className="mr-2 h-4 w-4" />
+                                Check Compliance
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+
+                  {/* Visual Data Model Builder */}
+                  <TabsContent value="data-modeler">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <Card className="lg:col-span-1">
+                        <CardHeader>
+                          <CardTitle className="text-base">Property Models</CardTitle>
+                          <CardDescription>
+                            Design property assessment data models
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              {propertyModels.map((model) => (
+                                <div 
+                                  key={model.id}
+                                  className={`p-3 border rounded-md cursor-pointer transition-colors ${
+                                    selectedModel?.id === model.id 
+                                      ? 'border-amber-500 bg-amber-50' 
+                                      : 'border-border hover:border-amber-300'
+                                  }`}
+                                  onClick={() => setSelectedModel(model)}
+                                >
+                                  <div className="flex items-center">
+                                    <Database className="h-4 w-4 mr-2 text-amber-500" />
+                                    <span className="font-medium">{model.name}</span>
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {model.description}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            
+                            <Button variant="outline" size="sm" className="w-full">
+                              <PlusCircle className="mr-2 h-4 w-4" />
+                              New Data Model
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="lg:col-span-2">
+                        <CardHeader>
+                          <CardTitle className="text-base">Visual Model Designer</CardTitle>
+                          <CardDescription>
+                            Design and generate database schemas
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="border rounded-md h-[300px] p-4 bg-gray-50 flex items-center justify-center">
+                              {dataModelDiagram ? (
+                                <div>
+                                  {/* Visual diagram would go here */}
+                                  <div className="text-center text-gray-500">Data model diagram rendering</div>
+                                </div>
+                              ) : (
+                                <div className="text-center text-gray-500">
+                                  <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                  <p>Select a model to view or create a new one</p>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex justify-between">
+                              <div className="flex space-x-2">
+                                <Button variant="outline" size="sm">
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Export Schema
+                                </Button>
+                                <Button variant="outline" size="sm">
+                                  <Upload className="mr-2 h-4 w-4" />
+                                  Import Schema
+                                </Button>
+                              </div>
+                              
+                              <Button size="sm">
+                                <Database className="mr-2 h-4 w-4" />
+                                Generate Drizzle Schema
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+                  
+                  {/* GIS Integration Tools */}
+                  <TabsContent value="gis-tools">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <Card className="lg:col-span-1">
+                        <CardHeader>
+                          <CardTitle className="text-base">GIS Templates</CardTitle>
+                          <CardDescription>
+                            Map visualizations for property assessment
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              {gisTemplates.map((template) => (
+                                <div 
+                                  key={template.id}
+                                  className={`p-3 border rounded-md cursor-pointer transition-colors ${
+                                    selectedGISTemplate?.id === template.id 
+                                      ? 'border-amber-500 bg-amber-50' 
+                                      : 'border-border hover:border-amber-300'
+                                  }`}
+                                  onClick={() => setSelectedGISTemplate(template)}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center">
+                                      <Map className="h-4 w-4 mr-2 text-amber-500" />
+                                      <span className="font-medium">{template.name}</span>
+                                    </div>
+                                    <Badge variant="outline" className="text-xs">
+                                      {template.mapType}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {template.description}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="lg:col-span-2">
+                        <CardHeader>
+                          <CardTitle className="text-base">Map Component Builder</CardTitle>
+                          <CardDescription>
+                            Create property assessment map visualizations
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="border rounded-md h-[300px] p-4 bg-gray-50 flex items-center justify-center">
+                              {gisVisualizationData ? (
+                                <div>
+                                  {/* GIS visualization would go here */}
+                                  <div className="text-center text-gray-500">Map visualization preview</div>
+                                </div>
+                              ) : (
+                                <div className="text-center text-gray-500">
+                                  <Map className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                  <p>Select a GIS template to preview</p>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex justify-between">
+                              <div className="flex space-x-2">
+                                <Select defaultValue="parcel">
+                                  <SelectTrigger className="w-[160px]">
+                                    <SelectValue placeholder="Map Type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="parcel">Parcel Map</SelectItem>
+                                    <SelectItem value="zoning">Zoning Map</SelectItem>
+                                    <SelectItem value="district">District Map</SelectItem>
+                                    <SelectItem value="neighborhood">Neighborhood Map</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              
+                              <div className="flex space-x-2">
+                                <Button variant="outline" size="sm">
+                                  <FileText className="mr-2 h-4 w-4" />
+                                  Preview
+                                </Button>
+                                <Button size="sm">
+                                  <Map className="mr-2 h-4 w-4" />
+                                  Generate Component
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
