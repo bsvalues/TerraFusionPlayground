@@ -82,6 +82,9 @@ const agentFactory = AgentFactory.getInstance(storage);
 // Initialize extension system
 const extensionRegistry = initializeExtensionSystem(storage);
 
+// Import team agent initialization script
+import { initializeTeamAgents } from "./scripts/initialize-team-agents";
+
 // Initialize agent systems
 (async () => {
   try {
@@ -92,6 +95,11 @@ const extensionRegistry = initializeExtensionSystem(storage);
     console.log("Initializing Agent Factory...");
     await agentFactory.initialize();
     console.log("Agent Factory initialized successfully");
+    
+    // Initialize team agents (Frontend, Backend, Designer, QA, Assessor)
+    console.log("Initializing Team Agents...");
+    await initializeTeamAgents();
+    console.log("Team Agents initialized successfully");
   } catch (error) {
     console.error("Failed to initialize Agent Systems:", error);
   }
@@ -149,6 +157,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Collaborative Workflow routes
   app.use('/api/collaboration', collaborationRoutes);
+  
+  // Initialize team agent service
+  const teamAgentService = new TeamAgentService(storage, mcpService);
+  
+  // Register Team Agent routes
+  app.use('/api/team-agents', createTeamAgentRoutes(storage, teamAgentService));
 
   /**
    * Data Lineage Routes

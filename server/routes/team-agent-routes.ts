@@ -2,7 +2,7 @@ import express, { Request, Response, Router } from "express";
 import { IStorage } from "../storage";
 import { 
   insertTeamMemberSchema, 
-  insertTaskSchema, 
+  insertTeamTaskSchema as insertTaskSchema, 
   insertTaskCommentSchema,
   insertTeamCollaborationSessionSchema,
   insertTeamFeedbackSchema,
