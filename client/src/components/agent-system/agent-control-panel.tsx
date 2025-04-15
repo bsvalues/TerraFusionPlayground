@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useAgentWebSocket } from '@/hooks/use-agent-websocket';
+import { useAgentWebSocket, type ConnectionStatus } from '@/hooks/use-agent-websocket';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

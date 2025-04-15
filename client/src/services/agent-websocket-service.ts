@@ -852,8 +852,6 @@ export class AgentWebSocketService {
   public getConnectionStatus(): ConnectionStatus {
     return this.connectionStatus;
   }
-  
-  // isUsingFallback method is already defined above
 
   /**
    * Close the WebSocket connection
