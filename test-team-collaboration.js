@@ -4,6 +4,9 @@
  * This script tests the WebSocket collaboration functionality for team agents.
  * It connects to the WebSocket server and allows sending/receiving messages
  * between the AI team members.
+ * 
+ * UPDATED: Now fetches real collaboration session data from the API
+ * before connecting to ensure proper authentication.
  */
 
 import { WebSocket } from 'ws';
@@ -14,41 +17,105 @@ console.log('Running in ESM environment - Team Collaboration Test');
 // Get server details
 const PORT = process.env.PORT || 5000;
 const WS_PATH = '/ws/collaboration';
+const API_BASE = `http://localhost:${PORT}/api`;
 
 console.log(`Using port ${PORT}`);
 
-// First verify HTTP server is running
-console.log(`Checking if HTTP server is running on port ${PORT}...`);
+// Helper function to make HTTP requests and parse JSON response
+function makeRequest(options) {
+  return new Promise((resolve, reject) => {
+    const req = http.request(options, (res) => {
+      let data = '';
+      
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      
+      res.on('end', () => {
+        try {
+          const jsonData = JSON.parse(data);
+          resolve(jsonData);
+        } catch (err) {
+          console.error('Error parsing JSON response:', err);
+          reject(err);
+        }
+      });
+    });
+    
+    req.on('error', (err) => {
+      console.error('Request error:', err);
+      reject(err);
+    });
+    
+    req.end();
+  });
+}
 
-// Create HTTP request to verify server is up
-const httpRequest = http.request({
-  hostname: 'localhost',
-  port: PORT,
-  path: '/api/health',
-  method: 'GET'
-});
-
-httpRequest.on('error', (error) => {
-  console.error(`HTTP connection error: ${error.message}`);
-  console.error('Server may not be running. Please verify server is running.');
-  process.exit(1);
-});
-
-httpRequest.on('response', (response) => {
-  console.log(`HTTP server responded with status: ${response.statusCode}`);
+// Function to fetch team collaboration data
+async function fetchTeamData() {
+  console.log('Fetching team data from API...');
   
-  // Continue with WebSocket connection after validating HTTP server
-  connectWebSocket();
-});
+  try {
+    // Fetch collaboration sessions
+    const sessions = await makeRequest({
+      hostname: 'localhost',
+      port: PORT,
+      path: '/api/team-agents/collaboration-sessions',
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    console.log(`Found ${sessions.length} collaboration sessions`);
+    
+    // Fetch team members
+    const members = await makeRequest({
+      hostname: 'localhost',
+      port: PORT,
+      path: '/api/team-agents/members',
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    console.log(`Found ${members.length} team members`);
+    
+    return {
+      sessions,
+      members,
+      // Use first session and first member for testing
+      activeSession: sessions[0],
+      activeMember: members[0]
+    };
+  } catch (error) {
+    console.error('Error fetching team data:', error);
+    throw error;
+  }
+}
 
-httpRequest.end();
+// Main function to orchestrate the test
+async function runTest() {
+  try {
+    // First fetch team data
+    const teamData = await fetchTeamData();
+    console.log('Team data fetched successfully');
+    console.log('Active session:', teamData.activeSession.id);
+    console.log('Active member:', teamData.activeMember.name, '(ID:', teamData.activeMember.id, ')');
+    
+    // Now connect to WebSocket with real data
+    connectWebSocket(teamData);
+  } catch (error) {
+    console.error('Test failed:', error);
+    process.exit(1);
+  }
+}
 
 // Print debug information
 console.log('WS module loaded:', !!WebSocket);
 console.log('WebSocket.OPEN value:', WebSocket.OPEN);
 
 // Connect to the collaboration WebSocket
-function connectWebSocket() {
+function connectWebSocket(teamData) {
   // Create WebSocket URL
   const wsUrl = `ws://localhost:${PORT}${WS_PATH}`;
   console.log(`Connecting to WebSocket at ${wsUrl}`);
@@ -68,15 +135,15 @@ function connectWebSocket() {
   socket.on('open', () => {
     console.log('SUCCESS: WebSocket connection established');
     
-    // Send a join session message first
+    // Send a join session message first using real data
     const joinMessage = {
       type: 'join_session',
-      sessionId: 'team-session-1',
-      userId: 999,
-      userName: 'Test Client',
+      sessionId: teamData.activeSession.id,
+      userId: teamData.activeMember.id,
+      userName: teamData.activeMember.name,
       timestamp: Date.now(),
       payload: {
-        role: 'external-tester'
+        role: teamData.activeMember.role
       }
     };
     
@@ -87,11 +154,15 @@ function connectWebSocket() {
     // Send a team message after a delay
     setTimeout(() => {
       const teamMessage = {
-        type: 'TEAM_MESSAGE',
-        from: 'test-client',
-        to: 'all',
-        content: 'Hello team! This is a test message from the collaboration client.',
-        timestamp: new Date().toISOString()
+        type: 'comment',
+        sessionId: teamData.activeSession.id,
+        userId: teamData.activeMember.id,
+        userName: teamData.activeMember.name,
+        timestamp: Date.now(),
+        payload: {
+          comment: 'Hello team! This is a test message from the collaboration client.',
+          position: { section: 'general' }
+        }
       };
       
       console.log('Sending team message:', JSON.stringify(teamMessage, null, 2));
@@ -99,31 +170,35 @@ function connectWebSocket() {
       console.log('Team message sent successfully');
     }, 2000);
     
-    // Send a task assignment example after a delay
+    // Send a cursor position update after a delay
     setTimeout(() => {
-      const taskMessage = {
-        type: 'TASK_ASSIGNMENT',
-        from: 'test-client',
-        to: 'frontend-developer',
-        taskId: 'task-' + Date.now(),
-        title: 'Update Dashboard UI Components',
-        description: 'Enhance the property dashboard with new visualization components for assessments.',
-        priority: 'high',
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      const cursorMessage = {
+        type: 'cursor_position',
+        sessionId: teamData.activeSession.id,
+        userId: teamData.activeMember.id,
+        userName: teamData.activeMember.name,
+        timestamp: Date.now(),
+        payload: {
+          position: {
+            x: 100,
+            y: 200,
+            section: 'code-editor'
+          }
+        }
       };
       
-      console.log('Sending task assignment:', JSON.stringify(taskMessage, null, 2));
-      socket.send(JSON.stringify(taskMessage));
-      console.log('Task assignment sent successfully');
+      console.log('Sending cursor position:', JSON.stringify(cursorMessage, null, 2));
+      socket.send(JSON.stringify(cursorMessage));
+      console.log('Cursor position sent successfully');
     }, 4000);
     
     // Leave the session after a longer delay
     setTimeout(() => {
       const leaveMessage = {
         type: 'leave_session',
-        sessionId: 'team-session-1',
-        userId: 999,
-        userName: 'Test Client',
+        sessionId: teamData.activeSession.id,
+        userId: teamData.activeMember.id,
+        userName: teamData.activeMember.name,
         timestamp: Date.now()
       };
       
@@ -146,24 +221,36 @@ function connectWebSocket() {
   });
   
   socket.on('message', (data) => {
-    console.log('Received message from server:');
+    console.log('\n----- Received message from server: -----');
     try {
       const jsonData = JSON.parse(data.toString());
       console.log(JSON.stringify(jsonData, null, 2));
       
-      // Handle different message types
-      switch (jsonData.type) {
-        case 'TEAM_MESSAGE':
-          console.log(`\n[${jsonData.from}]: ${jsonData.content}`);
-          break;
-        case 'TASK_UPDATE':
-          console.log(`\nTask Update: ${jsonData.title} - ${jsonData.status}`);
-          break;
-        case 'AGENT_STATUS':
-          console.log(`\nAgent Status Update: ${jsonData.agentId} is now ${jsonData.status}`);
-          break;
-        default:
-          console.log('\nReceived message of type:', jsonData.type);
+      // Handle different message types based on the WebSocket protocol
+      if (jsonData.type) {
+        console.log(`\nReceived message of type: ${jsonData.type}`);
+        
+        // Additional handling for specific message types
+        switch (jsonData.type) {
+          case 'USER_JOINED':
+            console.log(`User ${jsonData.userName} (ID: ${jsonData.userId}) joined the session`);
+            break;
+          case 'USER_LEFT':
+            console.log(`User ${jsonData.userName} (ID: ${jsonData.userId}) left the session`);
+            break;
+          case 'COMMENT':
+            console.log(`Comment from ${jsonData.userName}: ${jsonData.payload?.comment}`);
+            break;
+          case 'CURSOR_POSITION':
+            console.log(`Cursor update from ${jsonData.userName} at position:`, jsonData.payload?.position);
+            break;
+          case 'EDIT_OPERATION':
+            console.log(`Edit operation from ${jsonData.userName}:`, jsonData.payload?.operation);
+            break;
+          case 'ERROR':
+            console.error(`Error from server: ${jsonData.payload?.message || 'Unknown error'}`);
+            break;
+        }
       }
     } catch (error) {
       console.error('Error parsing message:', error);
@@ -185,3 +272,9 @@ function connectWebSocket() {
     console.log(`WebSocket closed: Code=${code}, Reason="${reason || 'No reason provided'}"`);
   });
 }
+
+// Start the test
+runTest().catch(err => {
+  console.error('Test failed with error:', err);
+  process.exit(1);
+});
