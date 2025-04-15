@@ -2540,6 +2540,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   notificationService.initialize(httpServer);
   
   // Initialize agent WebSocket service with the HTTP server
+  // Add detailed logging to catch WebSocket issues
+  console.log('[WebSocket Debug] Setting up WebSocket server for agent system');
+  
+  // Debug upgrade requests before they're handled by the WebSocket server
+  httpServer.on('upgrade', (request, socket, head) => {
+    const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
+    console.log('[WebSocket Debug] Upgrade request for path:', pathname);
+    console.log('[WebSocket Debug] Headers:', JSON.stringify(request.headers, null, 2));
+  });
+  
   agentWebSocketService.initialize(httpServer);
   
   // Initialize collaboration WebSocket service with the HTTP server

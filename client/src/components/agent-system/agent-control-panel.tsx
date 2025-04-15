@@ -173,27 +173,19 @@ export function AgentControlPanel() {
     fetchAgents();
     fetchTasks();
     
-    // Set up polling intervals
-    const shortInterval = setInterval(() => {
-      // For disconnected state, poll more frequently (every 5 seconds)
-      if (connectionStatus !== 'connected') {
-        fetchAgents();
-        fetchTasks();
-      }
-    }, 5000);
+    console.log(`[Agent UI] Setting up polling with connection status: ${connectionStatus}`);
     
-    const longInterval = setInterval(() => {
-      // For connected state, poll less frequently (every 15 seconds)
-      if (connectionStatus === 'connected') {
-        fetchAgents();
-        fetchTasks();
-      }
-    }, 15000);
+    // Always poll for data regardless of WebSocket connection status
+    // This ensures the UI stays responsive even if the WebSocket is having issues
+    const pollingInterval = setInterval(() => {
+      console.log(`[Agent UI] Polling for data (connection: ${connectionStatus})`);
+      fetchAgents();
+      fetchTasks();
+    }, connectionStatus === 'connected' ? 10000 : 3000);
     
-    // Clean up both intervals on unmount
+    // Clean up interval on unmount
     return () => {
-      clearInterval(shortInterval);
-      clearInterval(longInterval);
+      clearInterval(pollingInterval);
     };
   }, [connectionStatus]);
 
