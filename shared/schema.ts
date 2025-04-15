@@ -1,6 +1,12 @@
-import { pgTable, text, serial, integer, timestamp, numeric, json, boolean, jsonb, date, varchar, index, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, numeric, json, boolean, jsonb, date, varchar, index, real, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { 
+  TeamMemberRole, 
+  TeamMemberStatus, 
+  TaskPriority, 
+  TaskStatus
+} from "./team-agent-types";
 
 // Enum definitions for validation and workflow
 export enum RuleCategory {
@@ -1099,6 +1105,138 @@ export const insertLearningUpdateSchema = createInsertSchema(learningUpdates).pi
 
 export type LearningUpdate = typeof learningUpdates.$inferSelect;
 export type InsertLearningUpdate = z.infer<typeof insertLearningUpdateSchema>;
+
+// Team Members table
+export const teamMembers = pgTable("team_members", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  role: text("role").notNull(), // Corresponds to TeamMemberRole enum
+  status: text("status").notNull().default("available"), // Corresponds to TeamMemberStatus enum
+  capabilities: jsonb("capabilities").notNull(), // Structured as TeamMemberCapabilities
+  avatar: text("avatar"),
+  email: text("email").notNull(),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+  lastActive: timestamp("last_active").defaultNow().notNull(),
+});
+
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({
+  id: true,
+  joinedAt: true,
+  lastActive: true,
+});
+
+// Team Tasks table
+export const teamTasks = pgTable("team_tasks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  assignedTo: integer("assigned_to"),
+  createdBy: integer("created_by").notNull(),
+  status: text("status").notNull().default("backlog"), // Corresponds to TaskStatus enum
+  priority: text("priority").notNull().default("medium"), // Corresponds to TaskPriority enum
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  dueDate: timestamp("due_date"),
+  estimatedHours: numeric("estimated_hours"),
+  actualHours: numeric("actual_hours"),
+  tags: text("tags").array().default([]),
+  attachments: text("attachments").array().default([]),
+});
+
+export const insertTeamTaskSchema = createInsertSchema(teamTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Task Comments table
+export const taskComments = pgTable("task_comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  taskId: uuid("task_id").notNull().references(() => teamTasks.id),
+  userId: integer("user_id").notNull(),
+  content: text("content").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  attachments: text("attachments").array().default([]),
+});
+
+export const insertTaskCommentSchema = createInsertSchema(taskComments).omit({
+  id: true,
+});
+
+// Team Collaboration Sessions table
+export const teamCollaborationSessions = pgTable("team_collaboration_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  status: text("status").notNull(), // scheduled, in_progress, completed, cancelled
+  participants: integer("participants").array().notNull(),
+  organizer: integer("organizer").notNull(),
+  agenda: text("agenda").array().default([]),
+  notes: text("notes"),
+  recordingUrl: text("recording_url"),
+  taskIds: uuid("task_ids").array().default([]),
+});
+
+export const insertTeamCollaborationSessionSchema = createInsertSchema(teamCollaborationSessions).omit({
+  id: true,
+});
+
+// Team Feedback table
+export const teamFeedbacks = pgTable("team_feedbacks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  fromUserId: integer("from_user_id").notNull(),
+  toUserId: integer("to_user_id").notNull(),
+  content: text("content").notNull(),
+  rating: integer("rating").notNull(), // 1-5 scale
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  category: text("category").notNull(), // code_quality, communication, timeliness, problem_solving, other
+  taskId: uuid("task_id").references(() => teamTasks.id),
+});
+
+export const insertTeamFeedbackSchema = createInsertSchema(teamFeedbacks).omit({
+  id: true,
+});
+
+// Team Knowledge Base Items table
+export const teamKnowledgeBaseItems = pgTable("team_knowledge_base_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  category: text("category").notNull(),
+  createdBy: integer("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  tags: text("tags").array().default([]),
+  attachments: text("attachments").array().default([]),
+  relatedItemIds: uuid("related_item_ids").array().default([]),
+});
+
+export const insertTeamKnowledgeBaseItemSchema = createInsertSchema(teamKnowledgeBaseItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Define type exports for team entities
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
+
+export type TeamTask = typeof teamTasks.$inferSelect;
+export type InsertTeamTask = z.infer<typeof insertTeamTaskSchema>;
+
+export type TaskComment = typeof taskComments.$inferSelect;
+export type InsertTaskComment = z.infer<typeof insertTaskCommentSchema>;
+
+export type TeamCollaborationSession = typeof teamCollaborationSessions.$inferSelect;
+export type InsertTeamCollaborationSession = z.infer<typeof insertTeamCollaborationSessionSchema>;
+
+export type TeamFeedback = typeof teamFeedbacks.$inferSelect;
+export type InsertTeamFeedback = z.infer<typeof insertTeamFeedbackSchema>;
+
+export type TeamKnowledgeBaseItem = typeof teamKnowledgeBaseItems.$inferSelect;
+export type InsertTeamKnowledgeBaseItem = z.infer<typeof insertTeamKnowledgeBaseItemSchema>;
 
 // Property Analysis Interfaces
 export interface PropertyHistoryDataPoint {
