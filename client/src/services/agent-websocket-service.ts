@@ -28,6 +28,7 @@ export class AgentWebSocketService {
   private maxReconnectAttempts: number = 5;
   private reconnectDelay: number = 2000; // Start with 2 seconds
   private pingInterval: number | null = null;
+  private connectionTimeout: ReturnType<typeof setTimeout> | null = null;
   private statusHandlers: Set<(status: ConnectionStatus) => void> = new Set();
   private pendingMessages: Array<{ type: string, payload: any }> = [];
 
@@ -133,6 +134,12 @@ export class AgentWebSocketService {
     this.updateConnectionStatus('connected');
     this.reconnectAttempts = 0;
     this.reconnectDelay = 2000; // Reset reconnect delay
+    
+    // Clear connection timeout
+    if (this.connectionTimeout !== null) {
+      clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = null;
+    }
     
     // Start ping interval to keep connection alive
     this.startPingInterval();
@@ -578,6 +585,12 @@ export class AgentWebSocketService {
    */
   public disconnect(): void {
     this.stopPingInterval();
+    
+    // Clear connection timeout if active
+    if (this.connectionTimeout !== null) {
+      clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = null;
+    }
     
     if (this.socket) {
       this.socket.close(1000, 'Client disconnected');
