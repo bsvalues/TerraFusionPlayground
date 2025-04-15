@@ -461,6 +461,14 @@ export class MemStorage implements IStorage {
   private revaluationCycleReports: Map<string, any>; // Washington-specific revaluation cycle reports
   private exemptionVerificationReports: Map<string, any>; // Washington-specific exemption verification reports
   private appealComplianceReports: Map<string, any>; // Washington-specific appeal compliance reports
+  
+  // Team Agent Storage
+  private teamMembers: Map<number, TeamMember>;
+  private teamTasks: Map<string, TeamTask>;
+  private taskComments: Map<string, TaskComment>;
+  private teamCollaborationSessions: Map<string, TeamCollaborationSession>;
+  private teamFeedback: Map<string, TeamFeedback>;
+  private teamKnowledgeBaseItems: Map<string, TeamKnowledgeBaseItem>;
   private agentExperiences: Map<string, AgentExperience>; // Agent experiences for replay buffer
   private learningUpdates: Map<string, LearningUpdate>; // Learning updates from agent experiences
   private codeImprovements: Map<string, CodeImprovement>; // Agent-suggested code improvements
@@ -487,6 +495,14 @@ export class MemStorage implements IStorage {
   private currentMCPToolExecutionLogId: number;
   private currentWorkflowStepHistoryId: number;
   private currentAgentMessageId: number;
+  
+  // Team Agent counters
+  private currentTeamMemberId: number;
+  private currentTeamTaskId: number;
+  private currentTaskCommentId: number;
+  private currentTeamCollaborationSessionId: number;
+  private currentTeamFeedbackId: number;
+  private currentTeamKnowledgeBaseItemId: number;
 
   constructor() {
     this.users = new Map();
@@ -527,6 +543,14 @@ export class MemStorage implements IStorage {
     this.sharedWorkflowActivities = new Map<number, SharedWorkflowActivity>();
     this.workflowSessions = new Map<string, WorkflowSession>();
     
+    // Initialize Team Agent maps
+    this.teamMembers = new Map<number, TeamMember>();
+    this.teamTasks = new Map<string, TeamTask>();
+    this.taskComments = new Map<string, TaskComment>();
+    this.teamCollaborationSessions = new Map<string, TeamCollaborationSession>();
+    this.teamFeedback = new Map<string, TeamFeedback>();
+    this.teamKnowledgeBaseItems = new Map<string, TeamKnowledgeBaseItem>();
+    
     this.currentUserId = 1;
     this.currentPropertyId = 1;
     this.currentLandRecordId = 1;
@@ -545,6 +569,14 @@ export class MemStorage implements IStorage {
     this.currentMCPToolExecutionLogId = 1;
     this.currentWorkflowStepHistoryId = 1;
     this.currentAgentMessageId = 1;
+    
+    // Initialize Team Agent counters
+    this.currentTeamMemberId = 1;
+    this.currentTeamTaskId = 1;
+    this.currentTaskCommentId = 1;
+    this.currentTeamCollaborationSessionId = 1;
+    this.currentTeamFeedbackId = 1;
+    this.currentTeamKnowledgeBaseItemId = 1;
     
     // Initialize with sample data
     this.seedData();
