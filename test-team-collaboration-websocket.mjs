@@ -22,7 +22,15 @@ function connectWebSocket() {
   
   // Use the /ws/team-collaboration endpoint for team collaboration
   const wsUrl = `ws://localhost:${port}/ws/team-collaboration`;
-  const socket = new WebSocket(wsUrl);
+  console.log(`WebSocket URL: ${wsUrl}`);
+  
+  // Add request headers for debugging
+  const socket = new WebSocket(wsUrl, {
+    headers: {
+      'Origin': `http://localhost:${port}`,
+      'User-Agent': 'NodeJS-WebSocket-Client'
+    }
+  });
   
   // Track the connection ID for authentication
   let connectionId = null;
