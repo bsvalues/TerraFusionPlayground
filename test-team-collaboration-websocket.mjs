@@ -24,12 +24,18 @@ function connectWebSocket() {
   const wsUrl = `ws://localhost:${port}/ws/team-collaboration`;
   console.log(`WebSocket URL: ${wsUrl}`);
   
-  // Add request headers for debugging
-  const socket = new WebSocket(wsUrl, {
+  // Add request headers for better compatibility
+  const socket = new WebSocket(wsUrl, [], {
     headers: {
       'Origin': `http://localhost:${port}`,
-      'User-Agent': 'NodeJS-WebSocket-Client'
-    }
+      'User-Agent': 'NodeJS-WebSocket-Client',
+      'Sec-WebSocket-Protocol': 'team-collaboration-protocol',
+      'Sec-WebSocket-Version': '13',
+      'Connection': 'Upgrade',
+      'Upgrade': 'websocket'
+    },
+    followRedirects: true,
+    handshakeTimeout: 5000
   });
   
   // Track the connection ID for authentication

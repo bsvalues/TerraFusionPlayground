@@ -226,7 +226,19 @@ export class TeamCollaborationWebSocketService {
     // Create WebSocket server
     this.wss = new WebSocketServer({ 
       server, 
-      path: '/ws/team-collaboration' 
+      path: '/ws/team-collaboration',
+      // Add more permissive config options
+      perMessageDeflate: false,
+      clientTracking: true,
+      verifyClient: (info, callback) => {
+        // Log headers for debugging
+        console.log('WebSocket verification - headers:', info.req.headers);
+        
+        // Always accept the connection at this stage
+        // We'll handle authentication after connection is established
+        if (callback) callback(true);
+        return true;
+      }
     });
     
     console.log('Team collaboration WebSocket server created at /ws/team-collaboration');
