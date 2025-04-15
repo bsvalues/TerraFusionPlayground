@@ -60,18 +60,72 @@ interface PropertyModel {
   }[];
 }
 
+// CAMA model types
+interface CAMAModel {
+  id: string;
+  name: string;
+  description: string;
+  type: 'market' | 'cost' | 'income' | 'hybrid';
+  complexity: 'basic' | 'intermediate' | 'advanced';
+  applicablePropertyTypes: string[];
+  parameters: {
+    name: string;
+    type: string;
+    description: string;
+    defaultValue: string;
+  }[];
+  algorithm: string;
+}
+
+// Regulation rule types
+interface RegulationRule {
+  id: string;
+  name: string;
+  description: string;
+  jurisdiction: string;
+  category: string;
+  severity: 'info' | 'warning' | 'error';
+  codePattern: string;
+  message: string;
+  suggestion: string;
+  reference: string;
+}
+
+// GIS template types
+interface GISTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  mapType: 'parcel' | 'zoning' | 'district' | 'neighborhood' | 'analytic';
+  previewImage: string;
+  templateCode: string;
+  dataRequirements: string[];
+}
+
 const CodeAssistantPanel: React.FC = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('assistant');
+  const [activeDeveloperTab, setActiveDeveloperTab] = useState('ai-pair');
+  const [activeDeveloperTool, setActiveDeveloperTool] = useState('pair-programming');
   const [inputValue, setInputValue] = useState('');
   const [outputCode, setOutputCode] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedModel, setSelectedModel] = useState<PropertyModel | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<DevelopmentTemplate | null>(null);
   const [selectedSnippet, setSelectedSnippet] = useState<CodeSnippet | null>(null);
+  const [selectedCAMAModel, setSelectedCAMAModel] = useState<CAMAModel | null>(null);
+  const [selectedRegulation, setSelectedRegulation] = useState<RegulationRule | null>(null);
+  const [selectedGISTemplate, setSelectedGISTemplate] = useState<GISTemplate | null>(null);
   const [codeContext, setCodeContext] = useState('');
   const [generatedComponents, setGeneratedComponents] = useState<string[]>([]);
   const [projectContext, setProjectContext] = useState('');
+  const [modelPlaygroundData, setModelPlaygroundData] = useState<string>('');
+  const [modelResults, setModelResults] = useState<any>(null);
+  const [codeToCheck, setCodeToCheck] = useState<string>('');
+  const [regulationResults, setRegulationResults] = useState<any>(null);
+  const [dataModelDiagram, setDataModelDiagram] = useState<string>('');
+  const [gisVisualizationData, setGISVisualizationData] = useState<string>('');
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const [applicationParts, setApplicationParts] = useState<string[]>([]);
   const [assistantHistory, setAssistantHistory] = useState<{role: 'user'|'assistant', content: string}[]>([]);
@@ -336,6 +390,733 @@ export class AssessmentCalculator {
     }, 0);
   }
 }`
+    }
+  ];
+
+  // Sample CAMA models - in production, these would be fetched from your API
+  const camaModels: CAMAModel[] = [
+    {
+      id: 'market-comparable-model',
+      name: 'Market Comparable Analysis Model',
+      description: 'CAMA model for property valuation based on comparable sales analysis',
+      type: 'market',
+      complexity: 'advanced',
+      applicablePropertyTypes: ['residential', 'commercial', 'vacant land'],
+      parameters: [
+        { name: 'radiusMiles', type: 'number', description: 'Search radius for comparable properties', defaultValue: '1.0' },
+        { name: 'maxAgeDays', type: 'number', description: 'Maximum age of sales to consider', defaultValue: '365' },
+        { name: 'adjustmentFactors', type: 'object', description: 'Adjustment factors for property characteristics', defaultValue: '{}' },
+        { name: 'minComparables', type: 'number', description: 'Minimum number of comparables required', defaultValue: '3' },
+        { name: 'qualityThreshold', type: 'number', description: 'Minimum quality score for comparables', defaultValue: '0.7' }
+      ],
+      algorithm: `/**
+ * Market Comparable Analysis Algorithm
+ * Benton County implementation
+ */
+export class MarketComparableAnalysis {
+  // Configuration parameters
+  private radiusMiles: number;
+  private maxAgeDays: number;
+  private adjustmentFactors: Record<string, number>;
+  private minComparables: number;
+  private qualityThreshold: number;
+  
+  constructor(parameters: {
+    radiusMiles: number;
+    maxAgeDays: number;
+    adjustmentFactors: Record<string, number>;
+    minComparables: number;
+    qualityThreshold: number;
+  }) {
+    this.radiusMiles = parameters.radiusMiles;
+    this.maxAgeDays = parameters.maxAgeDays;
+    this.adjustmentFactors = parameters.adjustmentFactors;
+    this.minComparables = parameters.minComparables;
+    this.qualityThreshold = parameters.qualityThreshold;
+  }
+  
+  async performValuation(subject: {
+    propertyId: string;
+    location: { lat: number; lng: number };
+    propertyType: string;
+    squareFeet: number;
+    yearBuilt: number;
+    bedrooms: number;
+    bathrooms: number;
+    lotSize: number;
+    features: string[];
+  }): Promise<{
+    estimatedValue: number;
+    comparables: any[];
+    adjustmentDetails: any[];
+    confidenceScore: number;
+    medianValue: number;
+    valueRange: [number, number];
+  }> {
+    // Fetch comparable sales within radius and time period
+    const comparables = await this.fetchComparables(
+      subject.location,
+      subject.propertyType
+    );
+    
+    if (comparables.length < this.minComparables) {
+      throw new Error(\`Insufficient comparables found (\${comparables.length})\`);
+    }
+    
+    // Calculate quality scores for each comparable
+    const scoredComparables = this.scoreComparables(subject, comparables);
+    
+    // Filter by quality threshold
+    const qualifiedComparables = scoredComparables
+      .filter(c => c.qualityScore >= this.qualityThreshold)
+      .sort((a, b) => b.qualityScore - a.qualityScore)
+      .slice(0, 10); // Use top 10 comparables
+    
+    if (qualifiedComparables.length < this.minComparables) {
+      throw new Error(\`Insufficient qualified comparables (\${qualifiedComparables.length})\`);
+    }
+    
+    // Apply adjustments to each comparable
+    const adjustedComparables = this.applyAdjustments(subject, qualifiedComparables);
+    
+    // Calculate final valuation
+    const valuationResult = this.calculateFinalValue(adjustedComparables);
+    
+    return {
+      estimatedValue: valuationResult.estimatedValue,
+      comparables: qualifiedComparables,
+      adjustmentDetails: adjustedComparables.map(c => c.adjustments),
+      confidenceScore: valuationResult.confidenceScore,
+      medianValue: valuationResult.medianValue,
+      valueRange: valuationResult.valueRange
+    };
+  }
+  
+  // Implementation details for helper methods would go here
+  private async fetchComparables(location: { lat: number; lng: number }, propertyType: string): Promise<any[]> {
+    // In a real implementation, this would call an API or database
+    return []; // Placeholder
+  }
+  
+  private scoreComparables(subject: any, comparables: any[]): any[] {
+    // Calculate similarity scores
+    return []; // Placeholder
+  }
+  
+  private applyAdjustments(subject: any, comparables: any[]): any[] {
+    // Apply adjustment factors to account for differences
+    return []; // Placeholder
+  }
+  
+  private calculateFinalValue(adjustedComparables: any[]): any {
+    // Calculate final value statistics
+    return {
+      estimatedValue: 0,
+      confidenceScore: 0,
+      medianValue: 0,
+      valueRange: [0, 0]
+    }; // Placeholder
+  }
+}`
+    },
+    {
+      id: 'cost-approach-model',
+      name: 'Cost Approach Valuation Model',
+      description: 'CAMA model for property valuation using the cost approach method',
+      type: 'cost',
+      complexity: 'intermediate',
+      applicablePropertyTypes: ['residential', 'commercial', 'industrial'],
+      parameters: [
+        { name: 'costManual', type: 'string', description: 'Cost manual to use for base costs', defaultValue: 'marshall-swift' },
+        { name: 'costMultiplier', type: 'number', description: 'Regional cost multiplier', defaultValue: '1.05' },
+        { name: 'depreciationMethod', type: 'string', description: 'Method for calculating depreciation', defaultValue: 'age-life' },
+        { name: 'economicObsolescence', type: 'number', description: 'Economic obsolescence factor', defaultValue: '0.0' }
+      ],
+      algorithm: `/**
+ * Cost Approach Valuation Model
+ * Benton County implementation
+ */
+export class CostApproachValuation {
+  // Configuration parameters
+  private costManual: string;
+  private costMultiplier: number;
+  private depreciationMethod: string;
+  private economicObsolescence: number;
+  
+  constructor(parameters: {
+    costManual: string;
+    costMultiplier: number;
+    depreciationMethod: string;
+    economicObsolescence: number;
+  }) {
+    this.costManual = parameters.costManual;
+    this.costMultiplier = parameters.costMultiplier;
+    this.depreciationMethod = parameters.depreciationMethod;
+    this.economicObsolescence = parameters.economicObsolescence;
+  }
+  
+  performValuation(property: {
+    landValue: number;
+    improvementDetails: {
+      type: string;
+      quality: string;
+      yearBuilt: number;
+      squareFeet: number;
+      stories: number;
+      features: Record<string, boolean>;
+    }[];
+  }): {
+    totalValue: number;
+    landValue: number;
+    improvementValue: number;
+    replacementCost: number;
+    depreciation: number;
+    calculationDetails: any;
+  } {
+    // Calculate land value (typically from a separate model)
+    const landValue = property.landValue;
+    
+    // Calculate replacement cost new for all improvements
+    let totalReplacementCost = 0;
+    const improvementDetails = [];
+    
+    for (const improvement of property.improvementDetails) {
+      const baseCost = this.getBaseCostPerSqFt(
+        improvement.type, 
+        improvement.quality
+      );
+      
+      // Apply adjustments for features
+      const featureAdjustments = this.calculateFeatureAdjustments(improvement.features);
+      
+      // Apply regional multiplier
+      const adjustedBaseCost = baseCost * this.costMultiplier;
+      
+      // Calculate total replacement cost
+      const replacementCost = adjustedBaseCost * improvement.squareFeet;
+      
+      // Calculate depreciation
+      const age = new Date().getFullYear() - improvement.yearBuilt;
+      const depreciation = this.calculateDepreciation(
+        age,
+        improvement.type,
+        replacementCost
+      );
+      
+      // Calculate depreciated value
+      const depreciatedValue = replacementCost - depreciation;
+      
+      totalReplacementCost += replacementCost;
+      
+      improvementDetails.push({
+        type: improvement.type,
+        squareFeet: improvement.squareFeet,
+        baseCost,
+        adjustedBaseCost,
+        replacementCost,
+        age,
+        depreciation,
+        depreciatedValue
+      });
+    }
+    
+    // Apply economic obsolescence if applicable
+    const economicObsolescenceAdjustment = 
+      totalReplacementCost * this.economicObsolescence;
+    
+    // Calculate total depreciation
+    const totalDepreciation = improvementDetails.reduce(
+      (sum, imp) => sum + imp.depreciation, 
+      0
+    ) + economicObsolescenceAdjustment;
+    
+    // Calculate total improvement value
+    const improvementValue = totalReplacementCost - totalDepreciation;
+    
+    // Calculate total property value
+    const totalValue = landValue + improvementValue;
+    
+    return {
+      totalValue,
+      landValue,
+      improvementValue,
+      replacementCost: totalReplacementCost,
+      depreciation: totalDepreciation,
+      calculationDetails: {
+        improvements: improvementDetails,
+        economicObsolescence: economicObsolescenceAdjustment
+      }
+    };
+  }
+  
+  // Implementation details for helper methods would go here
+  private getBaseCostPerSqFt(type: string, quality: string): number {
+    // In a real implementation, this would look up values in a cost manual
+    return 100; // Placeholder
+  }
+  
+  private calculateFeatureAdjustments(features: Record<string, boolean>): number {
+    // Calculate adjustments for special features
+    return 0; // Placeholder
+  }
+  
+  private calculateDepreciation(age: number, type: string, replacementCost: number): number {
+    // Calculate depreciation based on the selected method
+    return 0; // Placeholder
+  }
+}`
+    }
+  ];
+  
+  // Sample regulation rules - in production, these would be fetched from your API
+  const regulationRules: RegulationRule[] = [
+    {
+      id: 'wa-assessment-ratio',
+      name: 'Washington Assessment Ratio Requirement',
+      description: 'Ensures property assessments comply with Washington state ratio requirements',
+      jurisdiction: 'Washington',
+      category: 'Assessment Calculation',
+      severity: 'error',
+      codePattern: '(?:assessed|assessment)\\s*(?:value|ratio)\\s*=\\s*([^\\n]*)',
+      message: 'Washington state requires assessments at 100% of market value',
+      suggestion: 'Ensure assessment calculations do not include non-standard ratio adjustments',
+      reference: "RCW 84.40.030 - Basis of valuation, assessment, appraisal"
+    },
+    {
+      id: 'benton-exemption-code',
+      name: 'Benton County Exemption Code Validation',
+      description: 'Validates exemption codes used in assessment calculations',
+      jurisdiction: 'Benton County',
+      category: 'Exemptions',
+      severity: 'warning',
+      codePattern: 'exemptionCode\\s*=\\s*[\'"]([^\'"]*)[\'"]',
+      message: 'Unrecognized exemption code or format for Benton County',
+      suggestion: 'Use standard Benton County exemption codes with format BC-EX-###',
+      reference: "Benton County Assessor Office Exemption Code List 2025"
+    },
+    {
+      id: 'wa-appeals-notification',
+      name: 'Appeals Notification Requirement',
+      description: 'Checks that assessment notices include required appeals information',
+      jurisdiction: 'Washington',
+      category: 'Notifications',
+      severity: 'error',
+      codePattern: 'generate(?:Notice|Assessment)\\s*\\([^\\)]*\\)',
+      message: 'Assessment notices must include appeals rights and deadline information',
+      suggestion: 'Include appeals information in all assessment notice templates',
+      reference: "RCW 84.40.045 - Notice of change in valuation of real property"
+    }
+  ];
+  
+  // Sample GIS templates - in production, these would be fetched from your API
+  const gisTemplates: GISTemplate[] = [
+    {
+      id: 'parcel-viewer',
+      name: 'Benton County Parcel Viewer',
+      description: 'Interactive parcel map with property data display',
+      category: 'Property View',
+      mapType: 'parcel',
+      previewImage: 'parcel-viewer-preview.png',
+      templateCode: `import React, { useEffect, useRef, useState } from 'react';
+import { Map, NavigationControl, Source, Layer } from 'react-map-gl';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+export const ParcelViewer = () => {
+  const mapRef = useRef(null);
+  const [selectedParcel, setSelectedParcel] = useState(null);
+  const [parcelData, setParcelData] = useState([]);
+  const [viewport, setViewport] = useState({
+    longitude: -119.2,
+    latitude: 46.2,
+    zoom: 10
+  });
+
+  // Fetch parcel data
+  useEffect(() => {
+    const fetchParcelData = async () => {
+      try {
+        const response = await fetch('/api/gis/parcels');
+        if (response.ok) {
+          const data = await response.json();
+          setParcelData(data);
+        }
+      } catch (error) {
+        console.error('Error fetching parcel data:', error);
+      }
+    };
+    
+    fetchParcelData();
+  }, []);
+
+  // Handle parcel selection
+  const handleParcelClick = (event) => {
+    const feature = event.features[0];
+    if (feature) {
+      setSelectedParcel(feature.properties);
+    }
+  };
+
+  return (
+    <div className="h-[600px] w-full flex flex-col md:flex-row gap-4">
+      <div className="w-full md:w-3/4 h-full relative">
+        <Map
+          ref={mapRef}
+          mapboxApiAccessToken={process.env.MAPBOX_TOKEN}
+          {...viewport}
+          width="100%"
+          height="100%"
+          onViewportChange={setViewport}
+          interactiveLayerIds={['parcels-fill']}
+          onClick={handleParcelClick}
+        >
+          <NavigationControl position="top-right" />
+          
+          {/* Parcels Layer */}
+          <Source id="parcels" type="geojson" data={{ type: 'FeatureCollection', features: parcelData }}>
+            <Layer
+              id="parcels-fill"
+              type="fill"
+              paint={{
+                'fill-color': [
+                  'match',
+                  ['get', 'zoning'],
+                  'residential', '#A8E6CE',
+                  'commercial', '#DCEDC2',
+                  'industrial', '#FFD3B5',
+                  'agricultural', '#FFAAA6',
+                  '#CCCCCC'
+                ],
+                'fill-opacity': 0.6
+              }}
+            />
+            <Layer
+              id="parcels-outline"
+              type="line"
+              paint={{
+                'line-color': '#000000',
+                'line-width': 1
+              }}
+            />
+          </Source>
+        </Map>
+      </div>
+      
+      <div className="w-full md:w-1/4 h-full overflow-auto">
+        <Card className="h-full">
+          <CardHeader>
+            <CardTitle>Parcel Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {selectedParcel ? (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold">Property ID</h3>
+                  <p>{selectedParcel.property_id}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Owner</h3>
+                  <p>{selectedParcel.owner_name}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Address</h3>
+                  <p>{selectedParcel.site_address}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Zoning</h3>
+                  <p>{selectedParcel.zoning}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Assessed Value</h3>
+                  <p>${selectedParcel.assessed_value.toLocaleString()}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Land Area</h3>
+                  <p>{selectedParcel.acres.toFixed(2)} acres</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Tax Status</h3>
+                  <p>{selectedParcel.tax_status}</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500">Select a parcel to view details</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};`,
+      dataRequirements: ['parcel-boundaries', 'ownership-data', 'assessment-values', 'zoning-data']
+    },
+    {
+      id: 'sales-ratio-map',
+      name: 'Sales Ratio Analysis Map',
+      description: 'Visualization of assessed value to sale price ratios by neighborhood',
+      category: 'Analysis',
+      mapType: 'neighborhood',
+      previewImage: 'sales-ratio-preview.png',
+      templateCode: `import React, { useEffect, useState, useRef } from 'react';
+import { Map, NavigationControl, Source, Layer } from 'react-map-gl';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Legend, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+export const SalesRatioMap = () => {
+  const mapRef = useRef(null);
+  const [neighborhoodData, setNeighborhoodData] = useState([]);
+  const [salesData, setSalesData] = useState([]);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedNeighborhood, setSelectedNeighborhood] = useState(null);
+  const [viewport, setViewport] = useState({
+    longitude: -119.2,
+    latitude: 46.2,
+    zoom: 10
+  });
+
+  // Fetch neighborhood and sales data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch neighborhood boundaries
+        const neighborhoodResponse = await fetch('/api/gis/neighborhoods');
+        if (neighborhoodResponse.ok) {
+          const neighborhoods = await neighborhoodResponse.json();
+          setNeighborhoodData(neighborhoods);
+        }
+        
+        // Fetch sales ratio data for selected year
+        const salesResponse = await fetch(\`/api/sales-ratios?year=\${selectedYear}\`);
+        if (salesResponse.ok) {
+          const sales = await salesResponse.json();
+          setSalesData(sales);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+    
+    fetchData();
+  }, [selectedYear]);
+
+  // Calculate stats for each neighborhood
+  const calculateNeighborhoodStats = () => {
+    if (!neighborhoodData.length || !salesData.length) return [];
+    
+    const stats = neighborhoodData.map(neighborhood => {
+      // Find sales in this neighborhood
+      const neighborhoodSales = salesData.filter(
+        sale => sale.neighborhood_id === neighborhood.properties.id
+      );
+      
+      // Calculate median ratio
+      let medianRatio = 0;
+      if (neighborhoodSales.length) {
+        const ratios = neighborhoodSales.map(sale => sale.assessment_ratio);
+        ratios.sort((a, b) => a - b);
+        const mid = Math.floor(ratios.length / 2);
+        medianRatio = ratios.length % 2 === 0
+          ? (ratios[mid - 1] + ratios[mid]) / 2
+          : ratios[mid];
+      }
+      
+      return {
+        ...neighborhood,
+        properties: {
+          ...neighborhood.properties,
+          sales_count: neighborhoodSales.length,
+          median_ratio: medianRatio
+        }
+      };
+    });
+    
+    return stats;
+  };
+  
+  const enrichedNeighborhoods = calculateNeighborhoodStats();
+
+  // Handle neighborhood selection
+  const handleNeighborhoodClick = (event) => {
+    const feature = event.features[0];
+    if (feature) {
+      setSelectedNeighborhood(feature.properties);
+    }
+  };
+
+  // Calculate histogram data for selected neighborhood
+  const getHistogramData = () => {
+    if (!selectedNeighborhood) return [];
+    
+    const neighborhoodSales = salesData.filter(
+      sale => sale.neighborhood_id === selectedNeighborhood.id
+    );
+    
+    // Group by ratio ranges
+    const histogramData = [
+      { range: '<0.85', count: 0 },
+      { range: '0.85-0.90', count: 0 },
+      { range: '0.90-0.95', count: 0 },
+      { range: '0.95-1.00', count: 0 },
+      { range: '1.00-1.05', count: 0 },
+      { range: '1.05-1.10', count: 0 },
+      { range: '1.10-1.15', count: 0 },
+      { range: '>1.15', count: 0 }
+    ];
+    
+    neighborhoodSales.forEach(sale => {
+      const ratio = sale.assessment_ratio;
+      
+      if (ratio < 0.85) histogramData[0].count++;
+      else if (ratio < 0.90) histogramData[1].count++;
+      else if (ratio < 0.95) histogramData[2].count++;
+      else if (ratio < 1.00) histogramData[3].count++;
+      else if (ratio < 1.05) histogramData[4].count++;
+      else if (ratio < 1.10) histogramData[5].count++;
+      else if (ratio < 1.15) histogramData[6].count++;
+      else histogramData[7].count++;
+    });
+    
+    return histogramData;
+  };
+
+  return (
+    <div className="h-[600px] w-full flex flex-col md:flex-row gap-4">
+      <div className="w-full md:w-3/5 h-full relative">
+        <div className="absolute top-2 left-2 z-10 bg-white p-2 rounded shadow-md">
+          <Select value={selectedYear.toString()} onValueChange={value => setSelectedYear(parseInt(value))}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {[2025, 2024, 2023, 2022, 2021].map(year => (
+                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <Map
+          ref={mapRef}
+          mapboxApiAccessToken={process.env.MAPBOX_TOKEN}
+          {...viewport}
+          width="100%"
+          height="100%"
+          onViewportChange={setViewport}
+          interactiveLayerIds={['neighborhoods-fill']}
+          onClick={handleNeighborhoodClick}
+        >
+          <NavigationControl position="top-right" />
+          
+          {/* Neighborhoods Layer with sales ratio coloring */}
+          <Source id="neighborhoods" type="geojson" data={{ type: 'FeatureCollection', features: enrichedNeighborhoods }}>
+            <Layer
+              id="neighborhoods-fill"
+              type="fill"
+              paint={{
+                'fill-color': [
+                  'interpolate',
+                  ['linear'],
+                  ['get', 'median_ratio'],
+                  0.85, '#d73027',
+                  0.90, '#fc8d59',
+                  0.95, '#fee090',
+                  1.00, '#ffffbf',
+                  1.05, '#e0f3f8',
+                  1.10, '#91bfdb',
+                  1.15, '#4575b4'
+                ],
+                'fill-opacity': 0.7
+              }}
+            />
+            <Layer
+              id="neighborhoods-outline"
+              type="line"
+              paint={{
+                'line-color': '#000000',
+                'line-width': 1
+              }}
+            />
+            <Layer
+              id="neighborhoods-label"
+              type="symbol"
+              layout={{
+                'text-field': ['get', 'name'],
+                'text-font': ['Open Sans Regular'],
+                'text-size': 12
+              }}
+              paint={{
+                'text-color': '#000000',
+                'text-halo-color': '#FFFFFF',
+                'text-halo-width': 1
+              }}
+            />
+          </Source>
+        </Map>
+        
+        <div className="absolute bottom-2 left-2 bg-white p-2 rounded shadow-md">
+          <div className="text-xs">Assessment to Sale Price Ratio</div>
+          <div className="flex items-center mt-1">
+            <div className="w-full h-4 bg-gradient-to-r from-[#d73027] via-[#ffffbf] to-[#4575b4]"></div>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span>0.85</span>
+            <span>1.00</span>
+            <span>1.15</span>
+          </div>
+        </div>
+      </div>
+      
+      <div className="w-full md:w-2/5 h-full overflow-auto">
+        <Card className="h-full">
+          <CardHeader>
+            <CardTitle>Sales Ratio Analysis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {selectedNeighborhood ? (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-lg">{selectedNeighborhood.name}</h3>
+                  <p className="text-sm text-gray-500">Neighborhood ID: {selectedNeighborhood.id}</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-100 p-3 rounded">
+                    <div className="text-sm text-gray-500">Sales Count</div>
+                    <div className="text-xl font-bold">{selectedNeighborhood.sales_count}</div>
+                  </div>
+                  <div className="bg-gray-100 p-3 rounded">
+                    <div className="text-sm text-gray-500">Median Ratio</div>
+                    <div className="text-xl font-bold">{selectedNeighborhood.median_ratio.toFixed(2)}</div>
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <h4 className="font-medium mb-2">Ratio Distribution</h4>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={getHistogramData()}>
+                      <XAxis dataKey="range" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="count" fill="#8884d8" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <Button variant="outline" className="mt-2">Export Neighborhood Report</Button>
+              </div>
+            ) : (
+              <div className="text-center p-4">
+                <p className="text-gray-500">Select a neighborhood on the map to view sales ratio analysis</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};`,
+      dataRequirements: ['neighborhood-boundaries', 'sales-records', 'assessment-data', 'property-classifications']
     }
   ];
 
