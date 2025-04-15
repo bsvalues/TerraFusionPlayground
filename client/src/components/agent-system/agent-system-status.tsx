@@ -150,6 +150,9 @@ export function AgentSystemStatus({
               <p className="font-semibold">Agent System: {getStatusText()}</p>
               <p>Active Agents: {agentCount}</p>
               <p>Last activity: {formatTimestamp(lastMessageTime)}</p>
+              {connectionStatus !== 'connected' && (
+                <p className="text-blue-600 dark:text-blue-400 font-medium mt-1">Auto-polling active</p>
+              )}
             </div>
           </TooltipContent>
         </Tooltip>
@@ -176,9 +179,9 @@ export function AgentSystemStatus({
       </div>
       
       {connectionStatus !== 'connected' && (
-        <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded p-1.5 mb-2">
-          <p className="text-xs text-yellow-700 dark:text-yellow-400">
-            WebSocket not connected. Using fallback API polling.
+        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded p-1.5 mb-2">
+          <p className="text-xs text-blue-700 dark:text-blue-400">
+            <span className="font-semibold">Auto-polling active:</span> Real-time updates using polling (3-10s).
           </p>
         </div>
       )}

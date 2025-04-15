@@ -74,6 +74,7 @@ export class AgentWebSocketService {
         baseUrl = `${protocol}//${window.location.hostname}:${window.location.port || (protocol === 'wss:' ? '443' : '80')}`;
       }
       
+      // Primary WebSocket path
       const wsUrl = `${baseUrl}/api/agents/ws`;
       
       // Enhanced debug logging for WebSocket connection
@@ -86,6 +87,15 @@ export class AgentWebSocketService {
         
         // Add console logs for WebSocket events for debugging
         console.log(`[Agent WebSocket] WebSocket object created`);
+        
+        // Set a timeout for connection - if not successful within 5 seconds, 
+        // we'll treat this as a failed connection through this path
+        this.connectionTimeout = setTimeout(() => {
+          if (this.connectionStatus !== 'connected') {
+            console.log('[Agent WebSocket] Connection timeout reached');
+            this.socket?.close();
+          }
+        }, 5000);
         
         // Setup event handlers
         this.socket.onopen = (event) => {

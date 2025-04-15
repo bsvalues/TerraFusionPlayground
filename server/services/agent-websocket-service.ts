@@ -63,10 +63,22 @@ export class AgentWebSocketService {
    * @param server HTTP server to attach to
    */
   public initialize(server: Server) {
-    // Create WebSocket server with proper configuration
+    // Create a dedicated handler for WebSocket upgrade requests
+    server.on('upgrade', (request, socket, head) => {
+      const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
+      
+      // Only handle requests for our specific WebSocket path
+      if (pathname === '/api/agents/ws' && this.wss) {
+        console.log('[Agent WebSocket] Direct upgrade handling for WebSocket connection');
+        this.wss.handleUpgrade(request, socket, head, (ws) => {
+          this.wss?.emit('connection', ws, request);
+        });
+      }
+    });
+    
+    // Create WebSocket server with noServer option to use our custom handler
     this.wss = new WebSocketServer({
-      server,
-      path: '/api/agents/ws',
+      noServer: true,
       clientTracking: true,
       perMessageDeflate: false
     });
