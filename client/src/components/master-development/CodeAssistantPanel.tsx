@@ -2360,7 +2360,14 @@ import { Separator } from "@/components/ui/separator";
  * A specialized property value calculator for ${context.county} Assessor's Office
  * that implements the Computer Assisted Mass Appraisal (CAMA) methodology.
  */
-export const ${className}: React.FC = () => {
+
+/**
+ * PropertyAssessmentCalculator
+ * 
+ * A specialized property value calculator for Benton County Assessor's Office
+ * that implements the Computer Assisted Mass Appraisal (CAMA) methodology.
+ */
+export const PropertyAssessmentCalculator: React.FC = () => {
   const [activeTab, setActiveTab] = useState('residential');
   const [calculationResults, setCalculationResults] = useState<any>(null);
   
@@ -2567,7 +2574,7 @@ export const ${className}: React.FC = () => {
             Property Assessment Calculator
           </CardTitle>
           <CardDescription>
-            ${context.county} Computer Assisted Mass Appraisal (CAMA) model
+            {context.county} Computer Assisted Mass Appraisal (CAMA) model
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -2944,7 +2951,7 @@ export const ${className}: React.FC = () => {
           <CardHeader>
             <CardTitle>Calculation Results</CardTitle>
             <CardDescription>
-              CAMA assessment results based on ${context.county} methodology
+              CAMA assessment results based on {context.county} methodology
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -2995,7 +3002,7 @@ export const ${className}: React.FC = () => {
                 
                 <div className="pt-4">
                   <p className="text-sm text-gray-500">
-                    This assessment follows ${context.county} appraisal methodologies
+                    This assessment follows {context.county} appraisal methodologies
                     {context.includeRegulations && ' and Washington State assessment regulations'}
                   </p>
                 </div>
@@ -3199,14 +3206,14 @@ export const ${className}: React.FC = () => {
                       {assistantHistory.map((message, index) => (
                         <div 
                           key={index} 
-                          className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          className={"flex " + (message.role === 'user' ? 'justify-end' : 'justify-start')}
                         >
                           <div 
-                            className={`max-w-[80%] rounded-lg p-3 ${
-                              message.role === 'user' 
+                            className={"max-w-[80%] rounded-lg p-3 " + 
+                              (message.role === 'user' 
                                 ? 'bg-primary text-primary-foreground'
-                                : 'bg-gray-100 dark:bg-gray-800'
-                            }`}
+                                : 'bg-gray-100 dark:bg-gray-800')
+                            }
                           >
                             {message.role === 'user' ? (
                               <div className="flex items-start">
@@ -3446,11 +3453,11 @@ export const ${className}: React.FC = () => {
                     {propertyModels.map((model) => (
                       <div 
                         key={model.id}
-                        className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                          selectedModel?.id === model.id 
+                        className={"p-3 border rounded-md cursor-pointer transition-colors " + 
+                          (selectedModel?.id === model.id 
                             ? 'border-primary bg-primary/5' 
-                            : 'border-border hover:border-primary/50'
-                        }`}
+                            : 'border-border hover:border-primary/50')
+                        }
                         onClick={() => handleSelectModel(model)}
                       >
                         <div className="flex items-center justify-between">
@@ -3488,7 +3495,7 @@ export const ${className}: React.FC = () => {
                 <CardTitle>Model Details</CardTitle>
                 <CardDescription>
                   {selectedModel 
-                    ? `Viewing details for ${selectedModel.name} model` 
+                    ? ("Viewing details for " + selectedModel.name + " model") 
                     : 'Select a model to view details'}
                 </CardDescription>
               </CardHeader>
@@ -4020,11 +4027,11 @@ export const ${className}: React.FC = () => {
                               {camaModels.map((model) => (
                                 <div 
                                   key={model.id}
-                                  className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                                    selectedCAMAModel?.id === model.id 
+                                  className={"p-3 border rounded-md cursor-pointer transition-colors " + 
+                                    (selectedCAMAModel?.id === model.id 
                                       ? 'border-amber-500 bg-amber-50' 
-                                      : 'border-border hover:border-amber-300'
-                                  }`}
+                                      : 'border-border hover:border-amber-300')
+                                  }
                                   onClick={() => setSelectedCAMAModel(model)}
                                 >
                                   <div className="flex items-center justify-between">
@@ -4109,11 +4116,11 @@ export const ${className}: React.FC = () => {
                             {regulationRules.map((rule) => (
                               <div 
                                 key={rule.id}
-                                className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                                  selectedRegulation?.id === rule.id 
+                                className={"p-3 border rounded-md cursor-pointer transition-colors " + 
+                                  (selectedRegulation?.id === rule.id 
                                     ? 'border-amber-500 bg-amber-50' 
-                                    : 'border-border hover:border-amber-300'
-                                }`}
+                                    : 'border-border hover:border-amber-300')
+                                }
                                 onClick={() => setSelectedRegulation(rule)}
                               >
                                 <div className="flex items-center justify-between">
@@ -4199,11 +4206,11 @@ export const ${className}: React.FC = () => {
                               {propertyModels.map((model) => (
                                 <div 
                                   key={model.id}
-                                  className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                                    selectedModel?.id === model.id 
+                                  className={"p-3 border rounded-md cursor-pointer transition-colors " + 
+                                    (selectedModel?.id === model.id 
                                       ? 'border-amber-500 bg-amber-50' 
-                                      : 'border-border hover:border-amber-300'
-                                  }`}
+                                      : 'border-border hover:border-amber-300')
+                                  }
                                   onClick={() => setSelectedModel(model)}
                                 >
                                   <div className="flex items-center">
@@ -4287,11 +4294,11 @@ export const ${className}: React.FC = () => {
                               {gisTemplates.map((template) => (
                                 <div 
                                   key={template.id}
-                                  className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                                    selectedGISTemplate?.id === template.id 
+                                  className={"p-3 border rounded-md cursor-pointer transition-colors " + 
+                                    (selectedGISTemplate?.id === template.id 
                                       ? 'border-amber-500 bg-amber-50' 
-                                      : 'border-border hover:border-amber-300'
-                                  }`}
+                                      : 'border-border hover:border-amber-300')
+                                  }
                                   onClick={() => setSelectedGISTemplate(template)}
                                 >
                                   <div className="flex items-center justify-between">
