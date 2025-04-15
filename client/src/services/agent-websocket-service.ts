@@ -31,6 +31,11 @@ export class AgentWebSocketService {
   private connectionTimeout: ReturnType<typeof setTimeout> | null = null;
   private statusHandlers: Set<(status: ConnectionStatus) => void> = new Set();
   private pendingMessages: Array<{ type: string, payload: any }> = [];
+  
+  // Fallback mechanism
+  private usingFallback: boolean = false;
+  private pollingInterval: number | null = null;
+  private pollingDelay: number = 3000; // 3 seconds between polls
 
   /**
    * Create a new agent WebSocket service (private constructor for singleton)
@@ -76,15 +81,15 @@ export class AgentWebSocketService {
       }
       
       // Primary WebSocket path
-      const wsUrl = `${baseUrl}/api/agents/ws`;
+      const primaryWsUrl = `${baseUrl}/api/agents/ws`;
       
       // Enhanced debug logging for WebSocket connection
-      console.log(`[Agent WebSocket] Connecting to: ${wsUrl}`);
+      console.log(`[Agent WebSocket] Attempting to connect to: ${primaryWsUrl}`);
       console.log(`[Agent WebSocket] Browser URL: ${window.location.href}`);
       console.log(`[Agent WebSocket] Environment: ${host.endsWith('.replit.dev') ? 'Replit' : 'Local'}`);
       
       try {
-        this.socket = new WebSocket(wsUrl);
+        this.socket = new WebSocket(primaryWsUrl);
         
         // Add console logs for WebSocket events for debugging
         console.log(`[Agent WebSocket] WebSocket object created`);
@@ -93,8 +98,17 @@ export class AgentWebSocketService {
         // we'll treat this as a failed connection through this path
         this.connectionTimeout = setTimeout(() => {
           if (this.connectionStatus !== 'connected') {
-            console.log('[Agent WebSocket] Connection timeout reached');
-            this.socket?.close();
+            console.log('[Agent WebSocket] Connection timeout reached for primary WebSocket path');
+            if (this.socket) {
+              // Close the current connection attempt
+              this.socket.close();
+              this.socket = null;
+            }
+            
+            // Mark timeout as handled by setting to null - will be cleaned up in the error handler
+            this.connectionTimeout = null;
+            
+            throw new Error('Connection timeout');
           }
         }, 5000);
         
@@ -208,7 +222,134 @@ export class AgentWebSocketService {
   private handleSocketError(error: Event, reject: (reason: any) => void): void {
     console.error('WebSocket error:', error);
     this.updateConnectionStatus('error');
+    
+    // Initialize polling fallback if WebSocket fails
+    this.initPollingFallback();
+    
     reject(error);
+  }
+  
+  /**
+   * Initialize polling fallback when WebSocket fails
+   */
+  private initPollingFallback(): void {
+    if (this.usingFallback) {
+      console.log('Already using polling fallback, not initializing again');
+      return;
+    }
+    
+    console.log('Initializing polling fallback mechanism');
+    this.usingFallback = true;
+    
+    // Start polling for messages at regular intervals
+    this.startPollingInterval();
+  }
+  
+  /**
+   * Start polling interval for fallback mechanism
+   */
+  private startPollingInterval(): void {
+    if (this.pollingInterval !== null) {
+      clearInterval(this.pollingInterval);
+    }
+    
+    console.log(`Starting polling fallback with interval: ${this.pollingDelay}ms`);
+    
+    this.pollingInterval = window.setInterval(() => {
+      this.pollForMessages();
+    }, this.pollingDelay);
+  }
+  
+  /**
+   * Stop polling interval
+   */
+  private stopPollingInterval(): void {
+    if (this.pollingInterval !== null) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
+    }
+  }
+  
+  /**
+   * Poll for messages using REST API instead of WebSocket
+   */
+  private async pollForMessages(): Promise<void> {
+    try {
+      // Use the REST API to fetch any pending messages
+      const response = await fetch('/api/agents/messages/pending', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to poll for messages: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.messages && Array.isArray(data.messages)) {
+        // Process each message as if it came from WebSocket
+        data.messages.forEach((message: any) => {
+          this.dispatchMessage(message);
+        });
+      }
+    } catch (error) {
+      console.error('Error polling for messages:', error);
+    }
+  }
+  
+  /**
+   * Authenticate via REST API when WebSocket is not available
+   */
+  private async authenticateViaRest(): Promise<void> {
+    try {
+      console.log('Authenticating via REST API');
+      
+      const response = await fetch('/api/agents/auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          clientType: ClientType.FRONTEND
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Authentication failed: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        this.clientId = data.clientId || 'rest-fallback-client';
+        console.log(`REST authentication successful, client ID: ${this.clientId}`);
+        
+        // Simulate authentication success message
+        this.dispatchMessage({
+          type: 'auth_success',
+          clientId: this.clientId,
+          timestamp: Date.now()
+        });
+        
+        return;
+      } else {
+        throw new Error(data.message || 'Authentication failed');
+      }
+    } catch (error) {
+      console.error('Error authenticating via REST:', error);
+      
+      // Simulate authentication failure message
+      this.dispatchMessage({
+        type: 'auth_failed',
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: Date.now()
+      });
+      
+      throw error;
+    }
   }
 
   /**
@@ -216,6 +357,14 @@ export class AgentWebSocketService {
    */
   private async sendAuthMessage(): Promise<void> {
     return new Promise((resolve, reject) => {
+      // If using fallback, authenticate via REST API
+      if (this.usingFallback) {
+        this.authenticateViaRest()
+          .then(() => resolve())
+          .catch(error => reject(error));
+        return;
+      }
+      
       if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
         reject(new Error('WebSocket not connected'));
         return;

@@ -2544,30 +2544,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log('[WebSocket Debug] Setting up WebSocket server for agent system');
   
   // Debug upgrade requests before they're handled by the WebSocket server
+  // This should come BEFORE initializing the WebSocket services to ensure 
+  // we see all upgrade requests regardless of whether they're handled
   httpServer.on('upgrade', (request, socket, head) => {
-    const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
-    console.log('[WebSocket Debug] Upgrade request for path:', pathname);
-    console.log('[WebSocket Debug] Headers:', JSON.stringify(request.headers, null, 2));
+    try {
+      const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
+      
+      // Log all WebSocket upgrade attempts for debugging
+      console.log('[WebSocket Debug] Upgrade request for path:', pathname);
+      
+      // Only log detailed headers for our application paths (not Vite HMR)
+      if (pathname === '/api/agents/ws' || pathname === '/api/collaboration/ws') {
+        console.log('[WebSocket Debug] Headers:', JSON.stringify(request.headers, null, 2));
+      }
+    } catch (error) {
+      console.error('[WebSocket Debug] Error parsing upgrade request:', error);
+    }
   });
   
+  // Initialize agent WebSocket service with the HTTP server
+  console.log('Initializing Agent WebSocket service...');
   agentWebSocketService.initialize(httpServer);
+  console.log('Agent WebSocket service initialized');
   
   // Initialize collaboration WebSocket service with the HTTP server
+  console.log('Initializing Collaboration WebSocket service...');
   initializeCollaborationWebSocketService(storage);
   collaborationWebSocketService.initialize(httpServer);
   console.log('Collaboration WebSocket service initialized');
-  
-  // Add general WebSocket upgrade error handling
-  httpServer.on('upgrade', (request, socket, head) => {
-    const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
-    
-    // Log all WebSocket upgrade attempts for debugging
-    console.log(`[WebSocket Debug] Upgrade request for path: ${pathname}`);
-    console.log(`[WebSocket Debug] Headers:`, JSON.stringify(request.headers, null, 2));
-
-    // Let the specific WebSocket servers handle their paths
-    // This is just for global logging and debugging
-  });
 
   // Initialize team collaboration WebSocket service with error handling
   try {
