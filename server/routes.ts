@@ -42,6 +42,7 @@ import { mappingIntegration } from "./services/mapping-integration";
 import { notificationService, NotificationType } from "./services/notification-service";
 import { agentWebSocketService } from "./services/agent-websocket-service";
 import { collaborationWebSocketService, initializeCollaborationWebSocketService } from "./services/collaboration-websocket-service";
+import { TeamCollaborationWebSocketService } from "./services/team-collaboration-ws-service";
 import { perplexityService } from "./services/perplexity";
 import { MCPService, MCPRequest } from "./services/mcp";
 import { SecurityService } from "./services/security";

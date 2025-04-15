@@ -150,19 +150,50 @@ async function addTaskComment(teamData, task, message) {
   
   try {
     // Use the general comments endpoint instead
-    const comment = await makeRequest({
-      hostname: 'localhost',
-      port: PORT,
-      path: '/api/team-agents/comments',
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    }, commentData);
+    const response = await new Promise((resolve, reject) => {
+      const req = http.request({
+        hostname: 'localhost',
+        port: PORT,
+        path: '/api/team-agents/comments',
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      }, (res) => {
+        let data = '';
+        
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        
+        res.on('end', () => {
+          if (res.statusCode >= 400) {
+            console.error(`HTTP Error: ${res.statusCode} - ${data}`);
+            reject(new Error(`HTTP Error: ${res.statusCode}`));
+            return;
+          }
+          
+          // Just return success without trying to parse JSON
+          if (res.statusCode === 200 || res.statusCode === 201) {
+            resolve({ success: true, message: 'Comment added successfully' });
+          } else {
+            reject(new Error(`Unexpected status code: ${res.statusCode}`));
+          }
+        });
+      });
+      
+      req.on('error', (err) => {
+        console.error('Request error:', err);
+        reject(err);
+      });
+      
+      req.write(JSON.stringify(commentData));
+      req.end();
+    });
     
-    console.log('Comment added:', comment);
-    return comment;
+    console.log('Comment added:', response);
+    return response;
     
   } catch (error) {
     console.error('Error adding comment:', error);
@@ -309,37 +340,33 @@ async function performCodeReview(teamData, taskId, code) {
 ## Improvements Needed
 
 1. **Authentication**: The code should validate the session before allowing connections
-   ```typescript
-   // Add this method
-   private async validateSession(sessionId: string, userId: number): Promise<boolean> {
-     // Check if the session exists and the user has permission to join
-     const session = await this.storage.getSessionById(sessionId);
-     return session && session.participants.includes(userId);
-   }
-   ```
+
+// Add this method
+private async validateSession(sessionId: string, userId: number): Promise<boolean> {
+  // Check if the session exists and the user has permission to join
+  const session = await this.storage.getSessionById(sessionId);
+  return session && session.participants.includes(userId);
+}
 
 2. **Error Handling**: Add more specific error types
-   ```typescript
-   // Add error types
-   enum WebSocketErrorType {
-     AUTH_FAILED = 'auth_failed',
-     INVALID_MESSAGE = 'invalid_message',
-     SESSION_NOT_FOUND = 'session_not_found'
-   }
-   ```
+
+// Add error types
+enum WebSocketErrorType {
+  AUTH_FAILED = 'auth_failed',
+  INVALID_MESSAGE = 'invalid_message',
+  SESSION_NOT_FOUND = 'session_not_found'
+}
 
 3. **Connection Management**: Keep track of client connections by user ID
-   ```typescript
-   // Replace the Set with a Map
-   private activeSessions: Map<string, Map<number, WebSocket>> = new Map();
-   ```
+
+// Replace the Set with a Map
+private activeSessions: Map<string, Map<number, WebSocket>> = new Map();
 
 4. **Logging**: Add structured logging for easier debugging
-   ```typescript
-   private log(level: 'info' | 'warn' | 'error', message: string, data?: any) {
-     console[level](\`[\${new Date().toISOString()}] [\${level.toUpperCase()}] \${message}\`, data || '');
-   }
-   ```
+
+private log(level: 'info' | 'warn' | 'error', message: string, data?: any) {
+  console[level](\`[\${new Date().toISOString()}] [\${level.toUpperCase()}] \${message}\`, data || '');
+}
 
 Overall, the code is well-structured but needs additional work on security, connection management, and error handling.
 `,
