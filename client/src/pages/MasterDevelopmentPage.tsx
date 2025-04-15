@@ -17,7 +17,7 @@ import { queryClient } from "@/lib/queryClient";
 import { LoaderCircle, Shield, Database, Zap, CheckCircle, XCircle, AlertCircle, PackageOpen, Code, Brain } from 'lucide-react';
 import RealTimeMonitoringDashboard from '@/components/master-development/RealTimeMonitoringDashboard';
 import ApplicationManagerPanel from '@/components/master-development/ApplicationManagerPanel';
-import CodeAssistantPanel from '@/components/master-development/CodeAssistantPanel';
+import CodeAssistantPanel from '@/components/master-development/CodeAssistantPanel.test';
 
 // Schema for schema validation form
 const schemaValidationFormSchema = z.object({
