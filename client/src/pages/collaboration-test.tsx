@@ -52,7 +52,10 @@ const CollaborationTestPage: React.FC = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws/collaboration`;
     
-    console.log(`Connecting to WebSocket at ${wsUrl}`);
+    // Add debug logging to help diagnose connection issues
+    console.log(`[Collaboration Test] Connecting to WebSocket at: ${wsUrl}`);
+    console.log(`[Collaboration Test] window.location.host: ${window.location.host}`);
+    console.log(`[Collaboration Test] protocol: ${protocol}`);
     const socket = new WebSocket(wsUrl);
     
     socket.addEventListener('open', () => {

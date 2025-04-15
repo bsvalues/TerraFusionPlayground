@@ -188,6 +188,11 @@ const TeamAgentsPage = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/ws/team-collaboration`;
       
+      // Add debug logging to help diagnose connection issues
+      console.log(`[TeamAgents WebSocket] Using URL: ${wsUrl}`);
+      console.log(`[TeamAgents WebSocket] window.location.host: ${window.location.host}`);
+      console.log(`[TeamAgents WebSocket] protocol: ${protocol}`);
+      
       if (websocket.current?.readyState === WebSocket.OPEN) {
         console.log('WebSocket already connected');
         return;

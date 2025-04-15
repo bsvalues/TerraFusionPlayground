@@ -67,6 +67,11 @@ export class CollaborationWebSocketService {
       // Use the same path that the server is using in server/services/collaboration-websocket-service.ts
       const wsUrl = `${protocol}//${host}/ws/collaboration`;
       
+      // Add debug logging to help diagnose connection issues
+      console.log(`[Collaboration WebSocket] Using host: ${host}`);
+      console.log(`[Collaboration WebSocket] window.location.port: ${window.location.port || 'not specified'}`);
+      console.log(`[Collaboration WebSocket] protocol: ${protocol}`);
+      
       console.log(`Connecting to collaboration WebSocket at ${wsUrl}`);
       
       try {
