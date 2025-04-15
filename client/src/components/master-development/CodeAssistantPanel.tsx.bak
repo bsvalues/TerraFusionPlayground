@@ -1524,14 +1524,6 @@ export const ${className}: React.FC = () => {
 };`;
   };
   
-  // Handle form submission for AI assistant
-  const handleAssistantSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputValue.trim()) {
-      generateCodeMutation.mutate(inputValue);
-    }
-  };
-  
   // Mutation for generating code from AI assistant
   const generateCodeMutation = useMutation({
     mutationFn: async (prompt: string) => {
@@ -3006,14 +2998,11 @@ export const ${className}: React.FC = () => {
       )}
     </div>
   );
-};
-
-  // Handle adding a template to the project
-  const handleAddTemplate = (template: DevelopmentTemplate) => {
-    setOutputCode(template.templateCode);
-    toast({
+};`;
+  };
+        
       title: 'Template Added',
-      description: 'Template has been loaded into the editor'
+      description: `${template.name} has been loaded into the editor`;
     });
   };
 
@@ -3022,33 +3011,30 @@ export const ${className}: React.FC = () => {
     setOutputCode(snippet.code);
     toast({
       title: 'Snippet Added',
-      description: 'Snippet has been loaded into the editor'
+      description: `${snippet.title} has been loaded into the editor`
     });
   };
   
   // Select model
   const handleSelectModel = (model: PropertyModel) => {
     setSelectedModel(model);
-    // Create a simplified static model context instead of using template literals
-    const modelContextCode = "/**\n" +
-      " * " + model.name + " Model Interface\n" +
-      " *\n" +
-      " * Benton County Assessor's Office\n" +
-      " * This model defines the structure for properties\n" +
-      " */\n" +
-      "export interface " + model.name + " {\n" +
-      "  id: string;\n" +
-      "  propertyId: string;\n" +
-      "  address: string;\n" +
-      "  ownerName: string;\n" +
-      "  assessedValue: number;\n" +
-      "  // Additional fields would be included here\n" +
-      "}";
+    const modelContextCode = `/**
+ * ${model.name} Model Interface
+ *
+ * Benton County Assessor's Office
+ * This model defines the structure for ${model.description.toLowerCase()}
+ */
+export interface ${model.name} {
+${model.fields.map(field => `  ${field.name}: ${field.type}; // ${field.description}`).join('\n')}
+  
+  // Relationships
+${model.relationships.map(rel => `  // ${rel.description} (${rel.type})`).join('\n')}
+}`;
     
     setCodeContext(modelContextCode);
     toast({
       title: 'Model Selected',
-      description: 'Model details have been loaded'
+      description: `${model.name} model details have been loaded`
     });
   };
   
@@ -3062,56 +3048,26 @@ export const ${className}: React.FC = () => {
       'ComparablePropertiesPanel',
       'PropertyDataExport'
     ]);
-    setProjectContext("Project: Benton County Property Assessment Tool\n" +
-      "Domain: Tax Assessment\n" +
-      "Features:\n" +
-      "- Property search and lookup\n" +
-      "- Assessment history visualization\n" +
-      "- Comparable properties analysis\n" +
-      "- Tax lot mapping and visualization\n" +
-      "- Data export and reporting tools\n" +
-      "- Integration with PACS and GIS systems\n\n" +
-      "Tech Stack:\n" +
-      "- React + TypeScript frontend\n" +
-      "- Node.js + Express backend\n" +
-      "- PostgreSQL database\n" +
-      "- Mapping via Leaflet/ArcGIS");
+    setProjectContext(`Project: Benton County Property Assessment Tool
+Domain: Tax Assessment
+Features:
+- Property search and lookup
+- Assessment history visualization
+- Comparable properties analysis
+- Tax lot mapping and visualization
+- Data export and reporting tools
+- Integration with PACS and GIS systems
+
+Tech Stack:
+- React + TypeScript frontend
+- Node.js + Express backend
+- PostgreSQL database
+- Mapping via Leaflet/ArcGIS
+`);
     toast({
       title: 'Application Structure Generated',
       description: 'Property assessment application structure has been outlined'
     });
-  };
-
-  // Utility function to extract component name from code
-  const getComponentNameFromCode = (code: string): string => {
-    try {
-      // Try to extract the component name using regex
-      const match = code.match(/export (?:const|function) ([A-Za-z0-9_]+)/);
-      return match ? match[1] : '';
-    } catch (e) {
-      return '';
-    }
-  };
-  
-  // Copy the code to clipboard
-  const handleCopyCode = () => {
-    if (outputCode && navigator.clipboard) {
-      navigator.clipboard.writeText(outputCode)
-        .then(() => {
-          toast({
-            title: 'Code copied to clipboard',
-            description: 'The generated code has been copied to your clipboard.'
-          });
-        })
-        .catch((err) => {
-          console.error('Failed to copy code:', err);
-          toast({
-            title: 'Failed to copy code',
-            description: 'There was an error copying the code to your clipboard.',
-            variant: 'destructive'
-          });
-        });
-    }
   };
 
   return (
