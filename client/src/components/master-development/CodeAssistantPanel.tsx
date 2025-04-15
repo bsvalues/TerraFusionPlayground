@@ -723,7 +723,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const ParcelViewer = () => {
   const mapRef = useRef(null);
-  const [selectedParcel, setSelectedParcel] = useState(null);
+  const [selectedParcel, setSelectedParcel] = useState<{
+    property_id: string;
+    owner_name: string;
+    site_address: string;
+    zoning: string;
+    assessed_value: number;
+    acres: number;
+    tax_status: string;
+  } | null>(null);
   const [parcelData, setParcelData] = useState([]);
   const [viewport, setViewport] = useState({
     longitude: -119.2,
