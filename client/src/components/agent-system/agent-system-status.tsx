@@ -17,6 +17,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { ConnectionStatusIndicator } from './connection-status-indicator';
+import type { ConnectionStatus } from '@/hooks/use-agent-websocket';
 
 interface AgentSystemStatusProps {
   className?: string;
@@ -94,7 +95,7 @@ export function AgentSystemStatus({
         return 'bg-yellow-500';
       case 'disconnected':
         return 'bg-gray-500';
-      case 'error':
+      case 'errored':
         return 'bg-red-500';
       default:
         return 'bg-gray-500';
@@ -109,7 +110,7 @@ export function AgentSystemStatus({
         return <Loader2 className="h-4 w-4 animate-spin" />;
       case 'disconnected':
         return <WifiOff className="h-4 w-4" />;
-      case 'error':
+      case 'errored':
         return <AlertCircle className="h-4 w-4" />;
       default:
         return <WifiOff className="h-4 w-4" />;
@@ -124,7 +125,7 @@ export function AgentSystemStatus({
         return 'Connecting...';
       case 'disconnected':
         return 'Disconnected';
-      case 'error':
+      case 'errored':
         return 'Connection Error';
       default:
         return 'Unknown';
