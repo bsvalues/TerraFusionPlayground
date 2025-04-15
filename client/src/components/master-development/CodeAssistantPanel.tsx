@@ -819,31 +819,31 @@ export const ParcelViewer = () => {
               <div className="space-y-4">
                 <div>
                   <h3 className="font-semibold">Property ID</h3>
-                  <p>{selectedParcel.property_id}</p>
+                  <p>{selectedParcel?.property_id}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold">Owner</h3>
-                  <p>{selectedParcel.owner_name}</p>
+                  <p>{selectedParcel?.owner_name}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold">Address</h3>
-                  <p>{selectedParcel.site_address}</p>
+                  <p>{selectedParcel?.site_address}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold">Zoning</h3>
-                  <p>{selectedParcel.zoning}</p>
+                  <p>{selectedParcel?.zoning}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold">Assessed Value</h3>
-                  <p>${selectedParcel.assessed_value.toLocaleString()}</p>
+                  <p>${selectedParcel?.assessed_value?.toLocaleString()}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold">Land Area</h3>
-                  <p>{selectedParcel.acres.toFixed(2)} acres</p>
+                  <p>{selectedParcel?.acres.toFixed(2)} acres</p>
                 </div>
                 <div>
                   <h3 className="font-semibold">Tax Status</h3>
-                  <p>{selectedParcel.tax_status}</p>
+                  <p>{selectedParcel?.tax_status}</p>
                 </div>
               </div>
             ) : (
@@ -1446,19 +1446,25 @@ export const PropertySearchComponent: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {results.map((property: any) => (
+                  {results.map((property: {
+                    id: string;
+                    propertyId: string;
+                    address: string;
+                    ownerName: string;
+                    assessedValue: number;
+                  }) => (
                     <tr key={property.id} className="hover:bg-gray-50 cursor-pointer">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {property.propertyId}
+                        {property?.propertyId}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {property.address}
+                        {property?.address}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {property.ownerName}
+                        {property?.ownerName}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        ${property.assessedValue.toLocaleString()}
+                        ${property?.assessedValue?.toLocaleString()}
                       </td>
                     </tr>
                   ))}
