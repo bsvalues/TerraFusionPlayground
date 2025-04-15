@@ -34,6 +34,8 @@ const TopNavigation = () => {
     { label: 'Property Stories', path: '/property-stories' },
     { label: 'Data Lineage', path: '/data-lineage' },
     { label: 'Extensions', path: '/extensions' },
+    { label: 'Agent System', path: '/agent-system' },
+    { label: 'Master Development', path: '/master-development' },
   ];
   
   return (

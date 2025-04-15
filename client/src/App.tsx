@@ -21,6 +21,7 @@ import { DataLineageDashboardPage } from "@/pages/DataLineageDashboardPage";
 import { ExtensionsPage } from "@/pages/ExtensionsPage";
 import CollaborationTestPage from "@/pages/collaboration-test";
 import TeamAgentsPage from "@/pages/TeamAgentsPage";
+import MasterDevelopmentPage from "@/pages/MasterDevelopmentPage";
 import AppLayout from "@/layout/app-layout";
 
 function Router() {
@@ -125,6 +126,12 @@ function Router() {
       <Route path="/team-agents">
         <AppLayout>
           <TeamAgentsPage />
+        </AppLayout>
+      </Route>
+
+      <Route path="/master-development">
+        <AppLayout>
+          <MasterDevelopmentPage />
         </AppLayout>
       </Route>
 

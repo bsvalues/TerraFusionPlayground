@@ -335,16 +335,33 @@ export class AgentSystem {
     // Include replay buffer statistics in the system status
     const replayBufferStats = this.replayBuffer.getBufferStats();
     
+    // Safely get command structure information with error handling
+    let commandStructureInfo = {};
+    try {
+      // Check if each component is initialized before getting status
+      const architectPrime = this.commandStructure.getArchitectPrime();
+      const integrationCoordinator = this.commandStructure.getIntegrationCoordinator();
+      const bsbcmasterLead = this.commandStructure.getBSBCmasterLead();
+      
+      commandStructureInfo = {
+        architectPrime: architectPrime ? architectPrime.getStatus() : { status: 'not_initialized' },
+        integrationCoordinator: integrationCoordinator ? integrationCoordinator.getStatus() : { status: 'not_initialized' },
+        bsbcmasterLead: bsbcmasterLead ? bsbcmasterLead.getStatus() : { status: 'not_initialized' }
+      };
+    } catch (error) {
+      console.error('Error getting command structure status:', error);
+      commandStructureInfo = {
+        error: 'Failed to retrieve command structure status',
+        message: error.message
+      };
+    }
+    
     return {
       isInitialized: this.isInitialized,
       agentCount: this.agents.size,
       agents: agentStatuses,
       replayBuffer: replayBufferStats,
-      commandStructure: {
-        architectPrime: this.commandStructure.getArchitectPrime().getStatus(),
-        integrationCoordinator: this.commandStructure.getIntegrationCoordinator().getStatus(),
-        bsbcmasterLead: this.commandStructure.getBSBCmasterLead().getStatus()
-      }
+      commandStructure: commandStructureInfo
     };
   }
 }

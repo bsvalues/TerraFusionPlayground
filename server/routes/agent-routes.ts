@@ -50,6 +50,216 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
   });
   
   /**
+   * Get Master Development Agent (BSBCmaster Lead) status
+   */
+  router.get('/master-development-status', async (req, res) => {
+    try {
+      // Check if agentSystem is initialized
+      if (!agentSystem.isInitialized) {
+        return res.status(503).json({ 
+          error: 'Agent system not yet initialized'
+        });
+      }
+      
+      try {
+        const commandStructure = agentSystem.commandStructureService;
+        const bsbcmasterLead = commandStructure.getBSBCmasterLead();
+        
+        if (!bsbcmasterLead) {
+          return res.status(404).json({
+            error: 'Master Development Agent not found or not initialized'
+          });
+        }
+        
+        // Get status and specialist agents
+        const status = bsbcmasterLead.getStatus();
+        
+        // Type assertion since we know these methods exist in our implementation
+        const specialists = (bsbcmasterLead as any).getSpecialistAgents?.() || [];
+        const activeServices = (bsbcmasterLead as any).getActiveServices?.() || [];
+        
+        // Add additional info about the Master Development Agent
+        const enhancedStatus = {
+          ...status,
+          specialists,
+          componentName: 'BSBCmaster',
+          role: 'Component Lead',
+          activeServices,
+          lastActivityTimestamp: new Date().toISOString()
+        };
+        
+        res.json(enhancedStatus);
+      } catch (error: any) {
+        console.error('Error getting Master Development Agent status:', error);
+        res.status(500).json({
+          error: 'Failed to get Master Development Agent status',
+          message: error?.message || 'Unknown error'
+        });
+      }
+    } catch (error: any) {
+      console.error('General error in Master Development Agent status endpoint:', error);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error?.message || 'Unknown error'
+      });
+    }
+  });
+  
+  /**
+   * Validate entity against schema using Master Development Agent
+   */
+  router.post('/master-development/validate-schema', async (req, res) => {
+    try {
+      if (!agentSystem.isInitialized) {
+        return res.status(503).json({ 
+          error: 'Agent system not yet initialized'
+        });
+      }
+      
+      const { entityType, entity } = req.body;
+      
+      if (!entityType || !entity) {
+        return res.status(400).json({
+          error: 'Missing required parameters',
+          details: 'Both entityType and entity are required'
+        });
+      }
+      
+      try {
+        const commandStructure = agentSystem.commandStructureService;
+        const bsbcmasterLead = commandStructure.getBSBCmasterLead();
+        
+        if (!bsbcmasterLead) {
+          return res.status(404).json({
+            error: 'Master Development Agent not found or not initialized'
+          });
+        }
+        
+        // Call validateEntityAgainstSchema method using type assertion
+        const validationResult = await (bsbcmasterLead as any).validateEntityAgainstSchema(entityType, entity);
+        
+        res.json({
+          entityType,
+          validationResult,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        console.error('Error validating entity against schema:', error);
+        res.status(500).json({
+          error: 'Failed to validate entity against schema',
+          message: error?.message || 'Unknown error'
+        });
+      }
+    } catch (error: any) {
+      console.error('General error in schema validation endpoint:', error);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error?.message || 'Unknown error'
+      });
+    }
+  });
+  
+  /**
+   * Update schema using Master Development Agent
+   */
+  router.post('/master-development/update-schema', async (req, res) => {
+    try {
+      if (!agentSystem.isInitialized) {
+        return res.status(503).json({ 
+          error: 'Agent system not yet initialized'
+        });
+      }
+      
+      const { entityType, schemaUpdate } = req.body;
+      
+      if (!entityType || !schemaUpdate) {
+        return res.status(400).json({
+          error: 'Missing required parameters',
+          details: 'Both entityType and schemaUpdate are required'
+        });
+      }
+      
+      try {
+        const commandStructure = agentSystem.commandStructureService;
+        const bsbcmasterLead = commandStructure.getBSBCmasterLead();
+        
+        if (!bsbcmasterLead) {
+          return res.status(404).json({
+            error: 'Master Development Agent not found or not initialized'
+          });
+        }
+        
+        // Call updateSchema method using type assertion
+        const result = await (bsbcmasterLead as any).updateSchema(entityType, schemaUpdate);
+        
+        res.json({
+          entityType,
+          ...result,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        console.error('Error updating schema:', error);
+        res.status(500).json({
+          error: 'Failed to update schema',
+          message: error?.message || 'Unknown error'
+        });
+      }
+    } catch (error: any) {
+      console.error('General error in schema update endpoint:', error);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error?.message || 'Unknown error'
+      });
+    }
+  });
+  
+  /**
+   * Get security policies from Master Development Agent
+   */
+  router.get('/master-development/security-policies', async (req, res) => {
+    try {
+      if (!agentSystem.isInitialized) {
+        return res.status(503).json({ 
+          error: 'Agent system not yet initialized'
+        });
+      }
+      
+      try {
+        const commandStructure = agentSystem.commandStructureService;
+        const bsbcmasterLead = commandStructure.getBSBCmasterLead();
+        
+        if (!bsbcmasterLead) {
+          return res.status(404).json({
+            error: 'Master Development Agent not found or not initialized'
+          });
+        }
+        
+        // Access security policy using type assertion
+        const securityPolicy = (bsbcmasterLead as any).securityPolicy || {
+          error: 'Security policy not initialized'
+        };
+        
+        res.json({
+          ...securityPolicy,
+          requestTimestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        console.error('Error getting security policies:', error);
+        res.status(500).json({
+          error: 'Failed to get security policies',
+          message: error?.message || 'Unknown error'
+        });
+      }
+    } catch (error: any) {
+      console.error('General error in security policies endpoint:', error);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error?.message || 'Unknown error'
+      });
+    }
+  });
+  
+  /**
    * Initialize the agent system
    */
   router.post('/initialize', async (req, res) => {
