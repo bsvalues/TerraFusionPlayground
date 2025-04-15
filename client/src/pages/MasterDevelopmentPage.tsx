@@ -802,6 +802,11 @@ export default function MasterDevelopmentPage() {
             </div>
           )}
         </TabsContent>
+        
+        {/* Monitoring Tab */}
+        <TabsContent value="monitoring">
+          <RealTimeMonitoringDashboard />
+        </TabsContent>
       </Tabs>
     </div>
   );
