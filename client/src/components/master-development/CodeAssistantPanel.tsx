@@ -15,7 +15,7 @@ import { useMutation } from '@tanstack/react-query';
 import { LoaderCircle, Code, Copy, FileCode, Brain, Cpu, Braces, Sparkles, PlusCircle, Plus, TerminalSquare, 
   SquarePen, User, Book, Server, Workflow, Layers, GitBranch, Lightbulb, Archive, Download, Upload, 
   ChevronsRight, ChevronsLeft, Search, Layout, Map, Calculator, Check, FileText, BarChart, ListFilter,
-  Github } from 'lucide-react';
+  Github, Database } from 'lucide-react';
 
 // Development template types
 interface DevelopmentTemplate {

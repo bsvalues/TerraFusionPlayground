@@ -64,7 +64,7 @@ const TopNavigation = () => {
           <div className="flex items-center gap-4">
             <Link href="/">
               <div className="flex items-center cursor-pointer">
-                <span className="text-xl font-semibold">SpatialEst</span>
+                <span className="text-xl font-semibold">BCBS GeoAssessment</span>
               </div>
             </Link>
           </div>

@@ -164,9 +164,9 @@ export default function MasterDevelopmentPage() {
 
   return (
     <div className="container mx-auto py-6">
-      <h1 className="text-3xl font-bold mb-2">Master Development Agent Dashboard</h1>
+      <h1 className="text-3xl font-bold mb-2">BCBS GeoAssessment Development Hub</h1>
       <p className="text-gray-500 mb-6">
-        BSBCmaster Lead - Manage core system architecture, authentication, and data foundations
+        BSBCmaster Lead - Manage architecture, authentication, and advanced development tools for Benton County
       </p>
 
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
