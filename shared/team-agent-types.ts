@@ -74,11 +74,11 @@ export const teamMemberCapabilitiesSchema = z.object({
 export const teamMemberSchema = z.object({
   id: z.number(),
   name: z.string(),
-  role: z.nativeEnum(TeamMemberRole),
-  status: z.nativeEnum(TeamMemberStatus),
+  role: z.string(), // TeamMemberRole as string for flexibility
+  status: z.string().default(TeamMemberStatus.AVAILABLE),
   capabilities: teamMemberCapabilitiesSchema,
-  avatar: z.string().optional(),
-  email: z.string().email(),
+  avatar: z.string().nullable().optional(),
+  email: z.string(),
   joinedAt: z.date(),
   lastActive: z.date()
 });
@@ -87,77 +87,80 @@ export const teamMemberSchema = z.object({
  * Task schema
  */
 export const taskSchema = z.object({
-  id: z.string(),
+  id: z.string().uuid(),
   title: z.string(),
   description: z.string(),
-  assignedTo: z.number().nullable(),
+  assignedTo: z.number().nullable().optional(),
   createdBy: z.number(),
-  status: z.nativeEnum(TaskStatus),
-  priority: z.nativeEnum(TaskPriority),
+  status: z.string().default(TaskStatus.BACKLOG),
+  priority: z.string().default(TaskPriority.MEDIUM),
   createdAt: z.date(),
   updatedAt: z.date(),
-  dueDate: z.date().optional(),
-  estimatedHours: z.number().optional(),
-  actualHours: z.number().optional(),
-  tags: z.array(z.string()),
-  attachments: z.array(z.string()).optional(),
-  comments: z.array(
-    z.object({
-      id: z.string(),
-      userId: z.number(),
-      content: z.string(),
-      timestamp: z.date(),
-      attachments: z.array(z.string()).optional()
-    })
-  ).optional()
+  dueDate: z.date().nullable().optional(),
+  estimatedHours: z.number().nullable().optional(),
+  actualHours: z.number().nullable().optional(),
+  tags: z.array(z.string()).default([]),
+  attachments: z.array(z.string()).default([])
+});
+
+/**
+ * Task comment schema
+ */
+export const taskCommentSchema = z.object({
+  id: z.string().uuid(),
+  taskId: z.string().uuid(),
+  userId: z.number(),
+  content: z.string(),
+  timestamp: z.date(),
+  attachments: z.array(z.string()).default([])
 });
 
 /**
  * Team collaboration session schema
  */
 export const teamCollaborationSessionSchema = z.object({
-  id: z.string(),
+  id: z.string().uuid(),
   title: z.string(),
   description: z.string(),
   startTime: z.date(),
-  endTime: z.date().optional(),
-  status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']),
+  endTime: z.date().nullable().optional(),
+  status: z.string(), // scheduled, in_progress, completed, cancelled
   participants: z.array(z.number()),
   organizer: z.number(),
-  agenda: z.array(z.string()),
-  notes: z.string().optional(),
-  recordingUrl: z.string().optional(),
-  taskIds: z.array(z.string()).optional()
+  agenda: z.array(z.string()).default([]),
+  notes: z.string().nullable().optional(),
+  recordingUrl: z.string().nullable().optional(),
+  taskIds: z.array(z.string().uuid()).default([])
 });
 
 /**
  * Team feedback schema
  */
 export const teamFeedbackSchema = z.object({
-  id: z.string(),
+  id: z.string().uuid(),
   fromUserId: z.number(),
   toUserId: z.number(),
   content: z.string(),
   rating: z.number().min(1).max(5),
   timestamp: z.date(),
-  category: z.enum(['code_quality', 'communication', 'timeliness', 'problem_solving', 'other']),
-  taskId: z.string().optional()
+  category: z.string(), // code_quality, communication, timeliness, problem_solving, other
+  taskId: z.string().uuid().nullable().optional()
 });
 
 /**
  * Team knowledge base item schema
  */
 export const teamKnowledgeBaseItemSchema = z.object({
-  id: z.string(),
+  id: z.string().uuid(),
   title: z.string(),
   content: z.string(),
   category: z.string(),
   createdBy: z.number(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  tags: z.array(z.string()),
-  attachments: z.array(z.string()).optional(),
-  relatedItemIds: z.array(z.string()).optional()
+  tags: z.array(z.string()).default([]),
+  attachments: z.array(z.string()).default([]),
+  relatedItemIds: z.array(z.string().uuid()).default([])
 });
 
 /**
@@ -166,26 +169,26 @@ export const teamKnowledgeBaseItemSchema = z.object({
 export type TeamMemberCapabilities = z.infer<typeof teamMemberCapabilitiesSchema>;
 export type TeamMember = z.infer<typeof teamMemberSchema>;
 export type TeamTask = z.infer<typeof taskSchema>;
+export type TaskComment = z.infer<typeof taskCommentSchema>;
 export type TeamCollaborationSession = z.infer<typeof teamCollaborationSessionSchema>;
 export type TeamFeedback = z.infer<typeof teamFeedbackSchema>;
 export type TeamKnowledgeBaseItem = z.infer<typeof teamKnowledgeBaseItemSchema>;
 
-// Insert schemas for team members table
+// Insert types (omitting auto-generated fields)
 export const insertTeamMemberSchema = teamMemberSchema.omit({ id: true, joinedAt: true, lastActive: true });
 export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 
-// Insert schema for tasks table
 export const insertTaskSchema = taskSchema.omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 
-// Insert schema for collaboration sessions table
+export const insertTaskCommentSchema = taskCommentSchema.omit({ id: true });
+export type InsertTaskComment = z.infer<typeof insertTaskCommentSchema>;
+
 export const insertTeamCollaborationSessionSchema = teamCollaborationSessionSchema.omit({ id: true });
 export type InsertTeamCollaborationSession = z.infer<typeof insertTeamCollaborationSessionSchema>;
 
-// Insert schema for feedback table
 export const insertTeamFeedbackSchema = teamFeedbackSchema.omit({ id: true });
 export type InsertTeamFeedback = z.infer<typeof insertTeamFeedbackSchema>;
 
-// Insert schema for knowledge base items table
 export const insertTeamKnowledgeBaseItemSchema = teamKnowledgeBaseItemSchema.omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertTeamKnowledgeBaseItem = z.infer<typeof insertTeamKnowledgeBaseItemSchema>;

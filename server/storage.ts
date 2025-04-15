@@ -73,6 +73,52 @@ interface PacsModuleRow {
 
 // Define the storage interface
 export interface IStorage {
+  // Team Agent methods
+  getAllTeamMembers(): Promise<TeamMember[]>;
+  getTeamMemberById(id: number): Promise<TeamMember | null>;
+  getTeamMembersByRole(role: string): Promise<TeamMember[]>;
+  createTeamMember(member: InsertTeamMember): Promise<TeamMember>;
+  updateTeamMember(id: number, updates: Partial<TeamMember>): Promise<TeamMember | null>;
+  updateTeamMemberStatus(id: number, status: string): Promise<TeamMember>;
+  deleteTeamMember(id: number): Promise<boolean>;
+  
+  // Team Task methods
+  getAllTeamTasks(): Promise<TeamTask[]>;
+  getTeamTaskById(id: string): Promise<TeamTask | null>;
+  getTeamTasksByAssignee(assigneeId: number): Promise<TeamTask[]>;
+  getTeamTasksByStatus(status: string): Promise<TeamTask[]>;
+  createTeamTask(task: InsertTeamTask): Promise<TeamTask>;
+  updateTeamTask(id: string, updates: Partial<TeamTask>): Promise<TeamTask | null>;
+  updateTeamTaskStatus(id: string, status: string): Promise<TeamTask>;
+  assignTeamTask(taskId: string, teamMemberId: number): Promise<TeamTask>;
+  deleteTeamTask(id: string): Promise<boolean>;
+  
+  // Team Collaboration Session methods
+  getAllTeamCollaborationSessions(): Promise<TeamCollaborationSession[]>;
+  getTeamCollaborationSessionById(id: string): Promise<TeamCollaborationSession | null>;
+  getTeamCollaborationSessionsByOrganizer(organizerId: number): Promise<TeamCollaborationSession[]>;
+  getTeamCollaborationSessionsByParticipant(participantId: number): Promise<TeamCollaborationSession[]>;
+  createTeamCollaborationSession(session: InsertTeamCollaborationSession): Promise<TeamCollaborationSession>;
+  updateTeamCollaborationSession(id: string, updates: Partial<TeamCollaborationSession>): Promise<TeamCollaborationSession | null>;
+  deleteTeamCollaborationSession(id: string): Promise<boolean>;
+  
+  // Team Feedback methods
+  getAllTeamFeedback(): Promise<TeamFeedback[]>;
+  getTeamFeedbackById(id: string): Promise<TeamFeedback | null>;
+  getTeamFeedbackByReceiver(receiverId: number): Promise<TeamFeedback[]>;
+  getTeamFeedbackBySender(senderId: number): Promise<TeamFeedback[]>;
+  createTeamFeedback(feedback: InsertTeamFeedback): Promise<TeamFeedback>;
+  deleteTeamFeedback(id: string): Promise<boolean>;
+  
+  // Team Knowledge Base methods
+  getAllTeamKnowledgeBaseItems(): Promise<TeamKnowledgeBaseItem[]>;
+  getTeamKnowledgeBaseItemById(id: string): Promise<TeamKnowledgeBaseItem | null>;
+  getTeamKnowledgeBaseItemsByCategory(category: string): Promise<TeamKnowledgeBaseItem[]>;
+  getTeamKnowledgeBaseItemsByCreator(creatorId: number): Promise<TeamKnowledgeBaseItem[]>;
+  createTeamKnowledgeBaseItem(item: InsertTeamKnowledgeBaseItem): Promise<TeamKnowledgeBaseItem>;
+  updateTeamKnowledgeBaseItem(id: string, updates: Partial<TeamKnowledgeBaseItem>): Promise<TeamKnowledgeBaseItem | null>;
+  deleteTeamKnowledgeBaseItem(id: string): Promise<boolean>;
+  
   // Data Lineage methods
   createDataLineageRecord(record: InsertDataLineageRecord): Promise<DataLineageRecord>;
   getDataLineageByField(propertyId: string, fieldName: string): Promise<DataLineageRecord[]>;

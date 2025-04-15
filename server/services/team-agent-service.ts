@@ -24,7 +24,7 @@ import {
   TeamFeedback,
   TeamKnowledgeBaseItem,
   InsertTeamMember,
-  InsertTeamTask
+  InsertTask
 } from '../../shared/team-agent-types';
 
 /**
