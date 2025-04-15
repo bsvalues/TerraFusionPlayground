@@ -9,8 +9,8 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { agentWebSocketService } from '../../services/agent-websocket-service';
-import type { ConnectionStatus } from '../../services/agent-websocket-service';
+import { agentWebSocketService } from '@/services/agent-websocket-service';
+import type { ConnectionStatus } from '@/hooks/use-agent-websocket';
 
 /**
  * Connection status indicator component

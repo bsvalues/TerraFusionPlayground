@@ -10,7 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { agentWebSocketService } from '@/services/agent-websocket-service';
 import { useToast } from '@/hooks/use-toast';
 
-type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'errored';
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'errored';
 type MessageHandler = (message: any) => void;
 
 interface UseAgentWebSocketProps {
