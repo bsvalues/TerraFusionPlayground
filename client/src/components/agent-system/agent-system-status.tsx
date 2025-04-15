@@ -16,6 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { ConnectionStatusIndicator } from './connection-status-indicator';
 
 interface AgentSystemStatusProps {
   className?: string;
@@ -172,10 +173,7 @@ export function AgentSystemStatus({
           <div className={`h-3 w-3 rounded-full ${getStatusColor()}`}></div>
           <h3 className="text-sm font-medium">Agent System</h3>
         </div>
-        <Badge variant="outline" className="text-xs">
-          {getStatusIcon()}
-          <span className="ml-1">{getStatusText()}</span>
-        </Badge>
+        <ConnectionStatusIndicator />
       </div>
       
       {connectionStatus !== 'connected' && (

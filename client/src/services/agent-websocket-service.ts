@@ -7,7 +7,7 @@
  */
 
 type MessageHandler = (message: any) => void;
-type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'errored';
 
 /**
  * Client types for WebSocket connections
@@ -134,7 +134,7 @@ export class AgentWebSocketService {
         };
       } catch (error) {
         console.error('[Agent WebSocket] Error creating connection:', error);
-        this.updateConnectionStatus('error');
+        this.updateConnectionStatus('errored');
         reject(error);
       }
     });
@@ -167,7 +167,7 @@ export class AgentWebSocketService {
       })
       .catch((error) => {
         console.error('Authentication failed:', error);
-        this.updateConnectionStatus('error');
+        this.updateConnectionStatus('errored');
         resolve(false);
       });
   }
@@ -221,7 +221,7 @@ export class AgentWebSocketService {
    */
   private handleSocketError(error: Event, reject: (reason: any) => void): void {
     console.error('WebSocket error:', error);
-    this.updateConnectionStatus('error');
+    this.updateConnectionStatus('errored');
     
     // Initialize polling fallback if WebSocket fails
     this.initPollingFallback();
@@ -844,6 +844,13 @@ export class AgentWebSocketService {
    */
   public getConnectionStatus(): ConnectionStatus {
     return this.connectionStatus;
+  }
+  
+  /**
+   * Check if using fallback mode
+   */
+  public isUsingFallback(): boolean {
+    return this.usingFallback;
   }
 
   /**
