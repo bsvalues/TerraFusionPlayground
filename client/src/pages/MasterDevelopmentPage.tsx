@@ -15,6 +15,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { queryClient } from "@/lib/queryClient";
 import { LoaderCircle, Shield, Database, Zap, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import RealTimeMonitoringDashboard from '@/components/master-development/RealTimeMonitoringDashboard';
 
 // Schema for schema validation form
 const schemaValidationFormSchema = z.object({
@@ -167,11 +168,12 @@ export default function MasterDevelopmentPage() {
       </p>
 
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 mb-6">
+        <TabsList className="grid grid-cols-5 mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="schema">Schema Registry</TabsTrigger>
           <TabsTrigger value="security">Security Policies</TabsTrigger>
           <TabsTrigger value="services">Active Services</TabsTrigger>
+          <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
