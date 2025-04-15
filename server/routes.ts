@@ -2547,5 +2547,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   collaborationWebSocketService.initialize(httpServer);
   console.log('Collaboration WebSocket service initialized');
   
+  // Initialize team collaboration WebSocket service
+  const teamCollaborationWsService = new TeamCollaborationWebSocketService(httpServer, storage);
+  console.log('Team Collaboration WebSocket service initialized');
+  
   return httpServer;
 }
