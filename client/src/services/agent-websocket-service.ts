@@ -361,7 +361,7 @@ export class AgentWebSocketService {
       if (this.usingFallback) {
         this.authenticateViaRest()
           .then(() => resolve())
-          .catch(error => reject(error));
+          .catch((error: Error) => reject(error));
         return;
       }
       
@@ -471,6 +471,14 @@ export class AgentWebSocketService {
    */
   public sendAgentMessage(recipientId: string, message: any): Promise<string> {
     return new Promise((resolve, reject) => {
+      // If using fallback, send via REST API instead
+      if (this.usingFallback) {
+        this.sendAgentMessageViaRest(recipientId, message)
+          .then(messageId => resolve(messageId))
+          .catch((error: Error) => reject(error));
+        return;
+      }
+      
       if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
         console.log('WebSocket not connected, queueing message');
         this.pendingMessages.push({ 
@@ -534,6 +542,14 @@ export class AgentWebSocketService {
    */
   public sendActionRequest(targetAgent: string, action: string, params: any = {}): Promise<string> {
     return new Promise((resolve, reject) => {
+      // If using fallback, send via REST API instead
+      if (this.usingFallback) {
+        this.sendActionRequestViaRest(targetAgent, action, params)
+          .then((messageId: string) => resolve(messageId))
+          .catch((error: Error) => reject(error));
+        return;
+      }
+      
       if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
         console.log('WebSocket not connected, queueing action request');
         this.pendingMessages.push({ 
@@ -589,6 +605,107 @@ export class AgentWebSocketService {
     });
   }
 
+  /**
+   * Send an agent message via REST API
+   * 
+   * @param recipientId Agent ID to send the message to
+   * @param message Message payload
+   * @returns Promise that resolves when the message is acknowledged
+   */
+  private async sendAgentMessageViaRest(recipientId: string, message: any): Promise<string> {
+    try {
+      console.log(`Sending agent message via REST API to ${recipientId}`);
+      
+      const response = await fetch('/api/agents/message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          recipientId,
+          message
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to send message via REST: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Simulate message sent
+        this.dispatchMessage({
+          type: 'message_sent',
+          messageId: data.messageId || `rest-${Date.now()}`,
+          originalMessage: {
+            recipientId,
+            ...message
+          },
+          timestamp: Date.now()
+        });
+        
+        return data.messageId || `rest-${Date.now()}`;
+      } else {
+        throw new Error(data.message || 'Failed to send message');
+      }
+    } catch (error) {
+      console.error('Error sending agent message via REST:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Send an action request via REST API
+   * 
+   * @param targetAgent Agent ID to send the action to
+   * @param action Action to perform
+   * @param params Parameters for the action
+   * @returns Promise that resolves when the action is acknowledged
+   */
+  private async sendActionRequestViaRest(targetAgent: string, action: string, params: any = {}): Promise<string> {
+    try {
+      console.log(`Sending action request via REST API to ${targetAgent}: ${action}`);
+      
+      const response = await fetch('/api/agents/action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          targetAgent,
+          action,
+          params
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to send action via REST: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Simulate action sent
+        this.dispatchMessage({
+          type: 'action_sent',
+          messageId: data.messageId || `rest-action-${Date.now()}`,
+          targetAgent,
+          action,
+          params,
+          timestamp: Date.now()
+        });
+        
+        return data.messageId || `rest-action-${Date.now()}`;
+      } else {
+        throw new Error(data.message || 'Failed to send action');
+      }
+    } catch (error) {
+      console.error('Error sending action request via REST:', error);
+      throw error;
+    }
+  }
+  
   /**
    * Send pending messages after reconnection
    */
