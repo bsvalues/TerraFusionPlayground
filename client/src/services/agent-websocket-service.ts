@@ -107,15 +107,21 @@ export class AgentWebSocketService {
           if (this.connectionStatus !== 'connected') {
             console.log('[Agent WebSocket] Connection timeout reached for primary WebSocket path');
             if (this.socket) {
-              // Close the current connection attempt
-              this.socket.close();
+              try {
+                // Close the current connection attempt
+                this.socket.close();
+              } catch (closeError) {
+                console.error('[Agent WebSocket] Error closing socket on timeout:', closeError);
+              }
               this.socket = null;
             }
             
-            // Mark timeout as handled by setting to null - will be cleaned up in the error handler
+            // Mark timeout as handled by setting to null
             this.connectionTimeout = null;
             
-            throw new Error('Connection timeout');
+            // Update status and use reject instead of throwing
+            this.updateConnectionStatus('errored');
+            reject(new Error('Connection timeout'));
           }
         }, 5000);
         
@@ -137,6 +143,11 @@ export class AgentWebSocketService {
         
         this.socket.onerror = (error) => {
           console.error('[Agent WebSocket] Connection error:', error);
+          // Clear connection timeout if it exists
+          if (this.connectionTimeout !== null) {
+            clearTimeout(this.connectionTimeout);
+            this.connectionTimeout = null;
+          }
           this.handleSocketError(error, reject);
         };
       } catch (error) {
@@ -215,9 +226,20 @@ export class AgentWebSocketService {
     this.stopPingInterval();
     this.updateConnectionStatus('disconnected');
     
+    // Clear connection timeout if it exists
+    if (this.connectionTimeout !== null) {
+      clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = null;
+    }
+    
     // Attempt to reconnect if not a clean close
     if (event.code !== 1000 && event.code !== 1001) {
       this.attemptReconnect();
+    }
+    
+    // Use fallback mechanism for non-clean closes
+    if (event.code !== 1000 && event.code !== 1001) {
+      this.initPollingFallback();
     }
     
     reject(new Error(`WebSocket connection closed: ${event.code} - ${event.reason}`));
