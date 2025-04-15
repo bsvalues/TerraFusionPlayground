@@ -2547,9 +2547,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   collaborationWebSocketService.initialize(httpServer);
   console.log('Collaboration WebSocket service initialized');
   
-  // Initialize team collaboration WebSocket service
-  const teamCollaborationWsService = new TeamCollaborationWebSocketService(httpServer, storage);
-  console.log('Team Collaboration WebSocket service initialized');
+  // Add general WebSocket upgrade error handling
+  httpServer.on('upgrade', (request, socket, head) => {
+    const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
+    
+    // Log all WebSocket upgrade attempts for debugging
+    console.log(`[WebSocket Debug] Upgrade request for path: ${pathname}`);
+    console.log(`[WebSocket Debug] Headers:`, JSON.stringify(request.headers, null, 2));
+
+    // Let the specific WebSocket servers handle their paths
+    // This is just for global logging and debugging
+  });
+
+  // Initialize team collaboration WebSocket service with error handling
+  try {
+    const teamCollaborationWsService = new TeamCollaborationWebSocketService(httpServer, storage);
+    console.log('Team Collaboration WebSocket service initialized');
+  } catch (error) {
+    console.error('Failed to initialize Team Collaboration WebSocket Service:', error);
+  }
   
   return httpServer;
 }
