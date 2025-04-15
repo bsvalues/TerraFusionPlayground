@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { AgentMessageLog } from './agent-message-log';
 import { AgentSystemStatus } from './agent-system-status';
+import { ConnectionStatusIndicator } from './connection-status-indicator';
 import {
   RefreshCw,
   Send,
@@ -36,8 +37,10 @@ import {
   Code,
   MessagesSquare,
   PlusCircle,
-  ListPlus
+  ListPlus,
+  Info
 } from 'lucide-react';
+import { agentWebSocketService } from '@/services/agent-websocket-service';
 
 // Agent interface
 interface Agent {
@@ -304,11 +307,16 @@ export function AgentControlPanel() {
           
           {/* Agent Command Interface */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-md">Send Command</CardTitle>
-              <CardDescription>
-                Direct an agent to perform a specific action
-              </CardDescription>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-md">Send Command</CardTitle>
+                  <CardDescription>
+                    Direct an agent to perform a specific action
+                  </CardDescription>
+                </div>
+                <ConnectionStatusIndicator />
+              </div>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCommandSubmit} className="space-y-4">
@@ -489,6 +497,30 @@ export function AgentControlPanel() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {connectionStatus !== 'connected' && (
+                <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md p-4 mb-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <Info className="h-5 w-5 text-blue-400" />
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                        Connection Status: {connectionStatus === 'errored' ? 'Error' : connectionStatus}
+                      </h3>
+                      <p className="mt-2 text-sm text-blue-700 dark:text-blue-400">
+                        The agent system is currently using{' '}
+                        {connectionStatus !== 'connected' ? 
+                          'REST API polling (fallback mode)' : 
+                          'WebSocket connection'
+                        } for communication.
+                        {connectionStatus !== 'connected' && 
+                          ' This provides full functionality with slightly higher latency.'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="connection-timeout">Connection Timeout (ms)</Label>
                 <Input 

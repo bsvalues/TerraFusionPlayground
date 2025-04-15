@@ -51,6 +51,13 @@ export class AgentWebSocketService {
     }
     return AgentWebSocketService.instance;
   }
+  
+  /**
+   * Check if the service is using fallback polling instead of WebSockets
+   */
+  public isUsingFallback(): boolean {
+    return this.usingFallback;
+  }
 
   /**
    * Initialize the WebSocket connection
