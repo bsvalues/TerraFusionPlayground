@@ -66,7 +66,7 @@ export class AgentWebSocketService {
       const host = window.location.hostname;
       let baseUrl;
       
-      // Use relative path for Replit deployments
+      // Use relative path for Replit deployments - this is critical for WebSocket connections
       if (host.endsWith('.replit.dev') || host.endsWith('.repl.co')) {
         baseUrl = `${protocol}//${window.location.host}`;
       } else {
@@ -76,18 +76,39 @@ export class AgentWebSocketService {
       
       const wsUrl = `${baseUrl}/api/agents/ws`;
       
-      console.log(`Connecting to agent WebSocket at ${wsUrl}`);
+      // Enhanced debug logging for WebSocket connection
+      console.log(`[Agent WebSocket] Connecting to: ${wsUrl}`);
+      console.log(`[Agent WebSocket] Browser URL: ${window.location.href}`);
+      console.log(`[Agent WebSocket] Environment: ${host.endsWith('.replit.dev') ? 'Replit' : 'Local'}`);
       
       try {
         this.socket = new WebSocket(wsUrl);
         
+        // Add console logs for WebSocket events for debugging
+        console.log(`[Agent WebSocket] WebSocket object created`);
+        
         // Setup event handlers
-        this.socket.onopen = () => this.handleSocketOpen(resolve);
-        this.socket.onmessage = (event) => this.handleSocketMessage(event);
-        this.socket.onclose = (event) => this.handleSocketClose(event, reject);
-        this.socket.onerror = (error) => this.handleSocketError(error, reject);
+        this.socket.onopen = (event) => {
+          console.log(`[Agent WebSocket] Connection opened`, event);
+          this.handleSocketOpen(resolve);
+        };
+        
+        this.socket.onmessage = (event) => {
+          console.log(`[Agent WebSocket] Message received`, event.data?.substring?.(0, 100) || event.data);
+          this.handleSocketMessage(event);
+        };
+        
+        this.socket.onclose = (event) => {
+          console.log(`[Agent WebSocket] Connection closed: code=${event.code}, reason=${event.reason}`);
+          this.handleSocketClose(event, reject);
+        };
+        
+        this.socket.onerror = (error) => {
+          console.error('[Agent WebSocket] Connection error:', error);
+          this.handleSocketError(error, reject);
+        };
       } catch (error) {
-        console.error('Error creating WebSocket connection:', error);
+        console.error('[Agent WebSocket] Error creating connection:', error);
         this.updateConnectionStatus('error');
         reject(error);
       }

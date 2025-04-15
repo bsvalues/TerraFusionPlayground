@@ -77,7 +77,26 @@ export class AgentWebSocketService {
     // Subscribe to agent protocol broadcast messages
     this.setupAgentProtocolSubscriptions();
     
-    logger.info('Agent WebSocket service initialized');
+    // Log detailed information about initialization
+    logger.info('Agent WebSocket service initialized on path: /api/agents/ws');
+    
+    // Add listener for server errors
+    server.on('upgrade', (request, socket, head) => {
+      const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
+      
+      // Specifically log WebSocket upgrade attempts for our agent path
+      if (pathname === '/api/agents/ws') {
+        logger.info(`[Agent WebSocket] Upgrade request received for agent WebSocket`, {
+          pathname,
+          headers: {
+            origin: request.headers.origin,
+            host: request.headers.host,
+            upgrade: request.headers.upgrade,
+            connection: request.headers.connection
+          }
+        });
+      }
+    });
   }
   
   /**
