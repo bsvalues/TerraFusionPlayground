@@ -509,13 +509,28 @@ export function AgentControlPanel() {
                       </h3>
                       <p className="mt-2 text-sm text-blue-700 dark:text-blue-400">
                         The agent system is currently using{' '}
-                        {connectionStatus !== 'connected' ? 
-                          'REST API polling (fallback mode)' : 
-                          'WebSocket connection'
-                        } for communication.
-                        {connectionStatus !== 'connected' && 
-                          ' This provides full functionality with slightly higher latency.'
-                        }
+                        {(() => {
+                          switch(connectionStatus) {
+                            case 'disconnected':
+                            case 'connecting':
+                            case 'errored':
+                              return 'REST API polling (fallback mode)';
+                            case 'connected':
+                              return 'WebSocket connection';
+                            default:
+                              return 'Unknown connection method';
+                          }
+                        })()} for communication.
+                        {(() => {
+                          switch(connectionStatus) {
+                            case 'disconnected':
+                            case 'connecting':
+                            case 'errored':
+                              return ' This provides full functionality with slightly higher latency.';
+                            default:
+                              return '';
+                          }
+                        })()}
                       </p>
                     </div>
                   </div>

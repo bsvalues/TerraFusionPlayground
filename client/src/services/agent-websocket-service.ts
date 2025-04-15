@@ -853,12 +853,7 @@ export class AgentWebSocketService {
     return this.connectionStatus;
   }
   
-  /**
-   * Check if using fallback mode
-   */
-  public isUsingFallback(): boolean {
-    return this.usingFallback;
-  }
+  // isUsingFallback method is already defined above
 
   /**
    * Close the WebSocket connection
