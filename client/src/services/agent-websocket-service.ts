@@ -79,14 +79,17 @@ export class AgentWebSocketService {
       const host = window.location.hostname;
       let baseUrl;
       
-      // Use relative path for all connections - this fixes issues with port resolution
-      // Use window.location.host which already includes the port if specified
-      baseUrl = `${protocol}//${window.location.host}`;
+      // Get the current window location details
+      const hostname = window.location.hostname;
+      const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
+      
+      // Construct URL with explicit hostname and port to avoid 'undefined' issues
+      baseUrl = `${protocol}//${hostname}${port ? ':' + port : ''}`;
       
       // Add debug logging to help diagnose connection issues
       console.log(`[Agent WebSocket] Using baseUrl: ${baseUrl}`);
-      console.log(`[Agent WebSocket] window.location.host: ${window.location.host}`);
-      console.log(`[Agent WebSocket] window.location.port: ${window.location.port || 'not specified'}`);
+      console.log(`[Agent WebSocket] hostname: ${hostname}`);
+      console.log(`[Agent WebSocket] port: ${port}`);
       console.log(`[Agent WebSocket] protocol: ${protocol}`);
       
       // Primary WebSocket path

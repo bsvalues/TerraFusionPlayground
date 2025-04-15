@@ -186,11 +186,16 @@ const TeamAgentsPage = () => {
   useEffect(() => {
     const connectWebSocket = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/team-collaboration`;
+      const hostname = window.location.hostname;
+      const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
+      
+      // Construct URL with explicit hostname and port to avoid 'undefined' issues
+      const wsUrl = `${protocol}//${hostname}${port ? ':' + port : ''}/ws/team-collaboration`;
       
       // Add debug logging to help diagnose connection issues
       console.log(`[TeamAgents WebSocket] Using URL: ${wsUrl}`);
-      console.log(`[TeamAgents WebSocket] window.location.host: ${window.location.host}`);
+      console.log(`[TeamAgents WebSocket] hostname: ${hostname}`);
+      console.log(`[TeamAgents WebSocket] port: ${port}`);
       console.log(`[TeamAgents WebSocket] protocol: ${protocol}`);
       
       if (websocket.current?.readyState === WebSocket.OPEN) {

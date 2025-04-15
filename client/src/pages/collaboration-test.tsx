@@ -50,11 +50,16 @@ const CollaborationTestPage: React.FC = () => {
   const connectWebSocket = useCallback(() => {
     // Create WebSocket connection
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/collaboration`;
+    const hostname = window.location.hostname;
+    const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
+    
+    // Construct URL with explicit hostname and port to avoid 'undefined' issues
+    const wsUrl = `${protocol}//${hostname}${port ? ':' + port : ''}/ws/collaboration`;
     
     // Add debug logging to help diagnose connection issues
     console.log(`[Collaboration Test] Connecting to WebSocket at: ${wsUrl}`);
-    console.log(`[Collaboration Test] window.location.host: ${window.location.host}`);
+    console.log(`[Collaboration Test] hostname: ${hostname}`);
+    console.log(`[Collaboration Test] port: ${port}`);
     console.log(`[Collaboration Test] protocol: ${protocol}`);
     const socket = new WebSocket(wsUrl);
     

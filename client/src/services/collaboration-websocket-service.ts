@@ -62,14 +62,16 @@ export class CollaborationWebSocketService {
       
       // Determine WebSocket URL based on the current protocol (HTTP/HTTPS)
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
+      const hostname = window.location.hostname;
+      const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
       
-      // Use the same path that the server is using in server/services/collaboration-websocket-service.ts
-      const wsUrl = `${protocol}//${host}/ws/collaboration`;
+      // Construct URL with explicit hostname and port to avoid 'undefined' issues
+      const wsUrl = `${protocol}//${hostname}${port ? ':' + port : ''}/ws/collaboration`;
       
       // Add debug logging to help diagnose connection issues
-      console.log(`[Collaboration WebSocket] Using host: ${host}`);
-      console.log(`[Collaboration WebSocket] window.location.port: ${window.location.port || 'not specified'}`);
+      console.log(`[Collaboration WebSocket] Using URL: ${wsUrl}`);
+      console.log(`[Collaboration WebSocket] hostname: ${hostname}`);
+      console.log(`[Collaboration WebSocket] port: ${port}`);
       console.log(`[Collaboration WebSocket] protocol: ${protocol}`);
       
       console.log(`Connecting to collaboration WebSocket at ${wsUrl}`);
