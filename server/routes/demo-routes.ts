@@ -2,6 +2,36 @@ import express from 'express';
 import { IStorage } from '../storage';
 import { logger } from '../utils/logger';
 
+// Define types for demo data
+interface PropertyExemption {
+  type: string;
+  value: number;
+  description: string;
+}
+
+interface SpecialAssessment {
+  type: string;
+  amount: number;
+  description: string;
+}
+
+interface PropertyWithTaxInfo {
+  propertyId: string;
+  address: string;
+  propertyType: string;
+  yearBuilt: number | null;
+  landValue: number;
+  improvementValue: number;
+  assessedValue: number;
+  taxRate: number;
+  taxCode: string;
+  zone: string;
+  neighborhood: string;
+  exemptions?: PropertyExemption[];
+  specialAssessments?: SpecialAssessment[];
+  [key: string]: any; // Allow additional properties
+}
+
 /**
  * Demo endpoints for PropertyTaxAI 24-hour demo
  * These routes provide specialized demo functionality for Benton County property tax assessment
@@ -100,12 +130,13 @@ export function registerDemoRoutes(app: express.Express, storage: IStorage) {
       const baseRate = property.extraFields?.taxRate || 0.0124; // Benton County base rate
       
       // Get exemptions for this property (if any)
-      const exemptions = property.extraFields?.exemptions || [];
-      const totalExemptionValue = exemptions.reduce((sum, exemption) => sum + (exemption.value || 0), 0);
+      const extraFields = property.extraFields as Record<string, any> || {};
+      const exemptions: PropertyExemption[] = extraFields.exemptions || [];
+      const totalExemptionValue = exemptions.reduce((sum: number, exemption: PropertyExemption) => sum + (exemption.value || 0), 0);
       
       // Get special assessments for this property (if any)
-      const specialAssessments = property.extraFields?.specialAssessments || [];
-      const totalSpecialAssessments = specialAssessments.reduce((sum, assessment) => sum + (assessment.amount || 0), 0);
+      const specialAssessments: SpecialAssessment[] = extraFields.specialAssessments || [];
+      const totalSpecialAssessments = specialAssessments.reduce((sum: number, assessment: SpecialAssessment) => sum + (assessment.amount || 0), 0);
       
       // Calculate adjusted taxable value
       const taxableValue = Math.max(0, baseValue - totalExemptionValue);
@@ -204,11 +235,14 @@ export function registerDemoRoutes(app: express.Express, storage: IStorage) {
       
       // Calculate county-wide statistics
       const totalProperties = properties.length;
-      const totalAssessedValue = properties.reduce((sum, prop) => sum + (prop.assessedValue || 0), 0);
+      const totalAssessedValue = properties.reduce((sum: number, prop) => {
+        const value = parseFloat(prop.value || '0');
+        return sum + value;
+      }, 0);
       const averageAssessedValue = Math.round(totalAssessedValue / totalProperties);
       
       // Calculate property type distribution
-      const propertyTypes = {};
+      const propertyTypes: Record<string, number> = {};
       properties.forEach(prop => {
         const type = prop.propertyType || 'Unknown';
         propertyTypes[type] = (propertyTypes[type] || 0) + 1;
@@ -338,15 +372,16 @@ export function registerDemoRoutes(app: express.Express, storage: IStorage) {
       }
 
       // Generate AI-driven analysis for the property
+      const assessedValue = parseFloat(property.value || '0');
       const analysisResult = {
         propertyId,
         propertyAddress: property.address,
-        assessedValue: property.assessedValue,
+        assessedValue,
         analysisTimestamp: new Date().toISOString(),
         valuationConfidence: 0.92,
         marketTrends: {
-          direction: property.assessedValue > 300000 ? 'up' : 'stable',
-          percentChange: property.assessedValue > 300000 ? 5.3 : 1.2,
+          direction: assessedValue > 300000 ? 'up' : 'stable',
+          percentChange: assessedValue > 300000 ? 5.3 : 1.2,
           confidence: 0.87,
           factors: [
             { factor: 'Location', impact: 'high', description: 'Property is in a desirable area with good school district' },
@@ -366,9 +401,9 @@ export function registerDemoRoutes(app: express.Express, storage: IStorage) {
           { opportunity: 'Exemption Review', description: 'Property may qualify for additional exemptions based on profile' }
         ],
         predictedFutureValue: {
-          oneYear: Math.round(property.assessedValue * 1.03),
-          threeYear: Math.round(property.assessedValue * 1.09),
-          fiveYear: Math.round(property.assessedValue * 1.16),
+          oneYear: Math.round(assessedValue * 1.03),
+          threeYear: Math.round(assessedValue * 1.09),
+          fiveYear: Math.round(assessedValue * 1.16),
           confidence: 0.82
         }
       };
