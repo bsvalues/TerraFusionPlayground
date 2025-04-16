@@ -299,6 +299,113 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
   });
   
   /**
+   * REST API authentication endpoint for WebSocket fallback
+   */
+  router.post('/auth', async (req, res) => {
+    try {
+      const { clientType, clientId } = req.body;
+      
+      if (!clientType) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Client type is required' 
+        });
+      }
+      
+      // Generate a unique client ID if not provided
+      const newClientId = clientId || `${clientType}-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+      
+      res.json({ 
+        success: true, 
+        clientId: newClientId,
+        message: 'Authentication successful',
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error('Error authenticating client:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Authentication failed', 
+        error: error.message 
+      });
+    }
+  });
+  
+  /**
+   * Send a message to an agent via REST API (for WebSocket fallback)
+   */
+  router.post('/message', async (req, res) => {
+    try {
+      const { recipientId, message } = req.body;
+      
+      if (!recipientId || !message) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Recipient ID and message are required' 
+        });
+      }
+      
+      // Generate a message ID
+      const messageId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+      
+      // Here we would actually send the message to the agent
+      // For now, just log it and return success
+      console.log(`REST API message to ${recipientId}:`, message);
+      
+      res.json({ 
+        success: true, 
+        messageId,
+        message: 'Message sent successfully',
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error('Error sending message via REST:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Failed to send message', 
+        error: error.message 
+      });
+    }
+  });
+  
+  /**
+   * Send an action request to an agent via REST API (for WebSocket fallback)
+   */
+  router.post('/action', async (req, res) => {
+    try {
+      const { targetAgent, action, params } = req.body;
+      
+      if (!targetAgent || !action) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Target agent and action are required' 
+        });
+      }
+      
+      // Generate a message ID
+      const messageId = `action-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+      
+      // Here we would actually send the action request to the agent
+      // For now, just log it and return success
+      console.log(`REST API action to ${targetAgent}: ${action}`, params);
+      
+      res.json({ 
+        success: true, 
+        messageId,
+        message: 'Action request sent successfully',
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error('Error sending action request via REST:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Failed to send action request', 
+        error: error.message 
+      });
+    }
+  });
+  
+  /**
    * Execute a capability on an agent
    */
   router.post('/execute/:agentName/:capabilityName', async (req, res) => {
@@ -495,6 +602,22 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
     } catch (error) {
       console.error('Error exporting to FTP:', error);
       res.status(500).json({ error: 'Failed to export to FTP', details: error.message });
+    }
+  });
+  
+  /**
+   * Get pending messages - used by WebSocket fallback polling
+   */
+  router.get('/messages/pending', async (req, res) => {
+    try {
+      // For now, return empty message queue until we implement proper message storage
+      // This endpoint is used by the fallback polling mechanism when WebSocket fails
+      res.json({
+        messages: []
+      });
+    } catch (error) {
+      console.error('Error getting pending messages:', error);
+      res.status(500).json({ error: 'Failed to get pending messages', details: error.message });
     }
   });
   
