@@ -103,7 +103,7 @@ interface GISTemplate {
   dataRequirements: string[];
 }
 
-const CodeAssistantPanel: React.FC = () => {
+const CodeAssistantPanel: React.FC<{}> = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('assistant');
   const [activeDeveloperTab, setActiveDeveloperTab] = useState('ai-pair');
@@ -129,6 +129,15 @@ const CodeAssistantPanel: React.FC = () => {
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const [applicationParts, setApplicationParts] = useState<string[]>([]);
   const [assistantHistory, setAssistantHistory] = useState<{role: 'user'|'assistant', content: string}[]>([]);
+  
+  // Define missing variables for TypeScript errors
+  const [selectedParcel, setSelectedParcel] = useState<{
+    site_address: string;
+    zoning: string;
+    assessed_value: number;
+    acres: number;
+    tax_status: string;
+  } | null>(null);
   
   // Sample development context - in a real implementation, this would come from your application state
   const context = {
