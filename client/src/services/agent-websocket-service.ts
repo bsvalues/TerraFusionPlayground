@@ -105,15 +105,24 @@ export class AgentWebSocketService {
       console.log(`[Agent WebSocket] Environment: ${host.endsWith('.replit.dev') ? 'Replit' : 'Local'}`);
       
       try {
-        // For Replit environment specifically, try the simplest approach with a relative path
-        if (window.location.host.endsWith('.replit.dev')) {
-          // Create WebSocket with just a relative path - Replit's proxy will handle the rest
-          const relativePath = '/api/agents/ws';
-          console.log(`[Agent WebSocket] Using relative WebSocket path: ${relativePath}`);
-          this.socket = new WebSocket(`wss://${window.location.host}${relativePath}`);
-        } else {
-          // Use the fully constructed URL for non-Replit environments
-          this.socket = new WebSocket(primaryWsUrl);
+        try {
+          // For Replit environment specifically, try the simplest approach with a relative path
+          if (window.location.host.endsWith('.replit.dev')) {
+            // Create WebSocket with just a relative path - Replit's proxy will handle the rest
+            const relativePath = '/api/agents/ws';
+            console.log(`[Agent WebSocket] Using relative WebSocket path: ${relativePath}`);
+            this.socket = new WebSocket(`wss://${window.location.host}${relativePath}`);
+          } else {
+            // Use the fully constructed URL for non-Replit environments
+            this.socket = new WebSocket(primaryWsUrl);
+          }
+        } catch (wsError) {
+          console.error('[Agent WebSocket] Error creating WebSocket connection:', wsError);
+          // Immediately fall back to polling on error
+          this.initPollingFallback();
+          this.updateConnectionStatus('errored');
+          reject(wsError);
+          return;
         }
         
         // Add console logs for WebSocket events for debugging
@@ -288,6 +297,20 @@ export class AgentWebSocketService {
     console.log('Initializing polling fallback mechanism');
     this.usingFallback = true;
     
+    // Notify user that we're switching to fallback mode
+    this.dispatchMessage({
+      type: 'notification',
+      title: 'Connection changed',
+      message: 'Using polling fallback mode for agent communication',
+      level: 'info',
+      timestamp: Date.now()
+    });
+    
+    // Authenticate via REST since we're now in fallback mode
+    this.authenticateViaRest().catch(err => {
+      console.error('Failed to authenticate in fallback mode:', err);
+    });
+    
     // Start polling for messages at regular intervals
     this.startPollingInterval();
   }
@@ -322,6 +345,8 @@ export class AgentWebSocketService {
    */
   private async pollForMessages(): Promise<void> {
     try {
+      console.log('[Agent UI] Polling for data (connection: ' + this.connectionStatus + ')');
+      
       // Use the REST API to fetch any pending messages
       const response = await fetch('/api/agents/messages/pending', {
         method: 'GET',
@@ -341,9 +366,24 @@ export class AgentWebSocketService {
         data.messages.forEach((message: any) => {
           this.dispatchMessage(message);
         });
+        
+        // If we received any messages, update connection status to reflect it's working
+        if (data.messages.length > 0 && this.connectionStatus !== 'connected') {
+          this.updateConnectionStatus('connected');
+        }
+      }
+      
+      // If we get here, the API is responsive, so ensure connection status is at least 'connecting'
+      if (this.connectionStatus === 'disconnected' || this.connectionStatus === 'errored') {
+        this.updateConnectionStatus('connecting');
       }
     } catch (error) {
       console.error('Error polling for messages:', error);
+      
+      // If polling fails repeatedly, mark as errored
+      if (this.connectionStatus !== 'errored') {
+        this.updateConnectionStatus('errored');
+      }
     }
   }
   
