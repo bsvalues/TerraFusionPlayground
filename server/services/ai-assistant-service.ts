@@ -12,7 +12,7 @@ import { z } from 'zod';
 
 // Import existing services if available
 import { LLMService } from './llm-service';
-import { PerplexityService } from './perplexity';
+import { perplexityService, PerplexityService } from './perplexity-service';
 
 // Define types for context 
 export interface MessageContext {
@@ -78,7 +78,7 @@ export class AIAssistantService {
 
     // Initialize Perplexity service if API key is available
     if (process.env.PERPLEXITY_API_KEY) {
-      this.perplexityService = new PerplexityService();
+      this.perplexityService = perplexityService;
     }
 
     // Try to use the existing LLM service if available
@@ -288,8 +288,22 @@ ${context.recentQueries.map(query => `- ${query}`).join('\n')}`;
         messages: anthropicMessages,
       });
 
+      // Handle different types of content from Anthropic
+      let responseContent = 'Response content format not supported';
+      
+      if (response.content && response.content.length > 0) {
+        const firstContent = response.content[0];
+        if (typeof firstContent === 'object' && firstContent !== null) {
+          if ('text' in firstContent && typeof firstContent.text === 'string') {
+            responseContent = firstContent.text;
+          } else if ('type' in firstContent && firstContent.type === 'text' && 'text' in firstContent) {
+            responseContent = String(firstContent.text);
+          }
+        }
+      }
+      
       return {
-        message: response.content[0].text,
+        message: responseContent,
         model: response.model,
         usage: {
           // Anthropic doesn't provide detailed token usage in the same way

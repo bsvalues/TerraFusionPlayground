@@ -1,104 +1,66 @@
 /**
  * AI Assistant Routes
  * 
- * API routes for the AI Assistant feature, allowing users to interact with
- * multiple AI providers (OpenAI, Anthropic, Perplexity) through a unified interface.
+ * This module provides routes for the AI Assistant feature, allowing client-side
+ * components to query different AI providers and get context-aware responses.
  */
 
 import express from 'express';
-import { z } from 'zod';
-import { aiAssistantService } from '../services/ai-assistant-service';
+import { aiAssistantService, AIAssistantRequest } from '../services/ai-assistant-service';
 
 const router = express.Router();
 
-// Define request validation schema
-const messageRequestSchema = z.object({
-  message: z.string().min(1),
-  context: z.object({
-    recentMessages: z.array(
-      z.object({
-        id: z.string(),
-        role: z.enum(['user', 'assistant', 'system']),
-        content: z.string(),
-        timestamp: z.number(),
-      })
-    ).optional(),
-    currentPage: z.object({
-      path: z.string(),
-      title: z.string(),
-      timestamp: z.number(),
-    }).optional(),
-    pageHistory: z.array(
-      z.object({
-        path: z.string(),
-        title: z.string(),
-        timestamp: z.number(),
-      })
-    ).optional(),
-    recentQueries: z.array(z.string()).optional(),
-  }).optional(),
-  provider: z.enum(['openai', 'anthropic', 'perplexity']),
-  options: z.object({
-    temperature: z.number().min(0).max(1).optional(),
-    maxTokens: z.number().positive().optional(),
-  }).optional(),
-});
-
-// Get available AI providers
+/**
+ * Get available AI providers
+ */
 router.get('/providers', (req, res) => {
   try {
     const providers = aiAssistantService.getAvailableProviders();
-    res.json({
+    
+    return res.json({ 
       providers,
-      default: providers.length > 0 ? providers[0] : null,
+      default: providers.length > 0 ? providers[0] : null
     });
   } catch (error) {
-    console.error('Error getting AI providers:', error);
-    res.status(500).json({
-      error: 'Failed to retrieve available AI providers',
-      message: error instanceof Error ? error.message : String(error),
-    });
+    console.error('Error getting available AI providers:', error);
+    return res.status(500).json({ error: 'Failed to retrieve available AI providers' });
   }
 });
 
-// Process message and get response
-router.post('/message', async (req, res) => {
+/**
+ * Send query to AI assistant
+ */
+router.post('/query', async (req, res) => {
   try {
-    // Validate request
-    const validationResult = messageRequestSchema.safeParse(req.body);
+    const { message, provider, context, options } = req.body as AIAssistantRequest;
     
-    if (!validationResult.success) {
-      return res.status(400).json({
-        error: 'Invalid request data',
-        details: validationResult.error.format(),
-      });
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
     }
     
-    const { message, context, provider, options } = validationResult.data;
+    if (!provider) {
+      return res.status(400).json({ error: 'Provider is required' });
+    }
     
-    // Ensure provider is available
+    // Check if requested provider is available
     if (!aiAssistantService.isProviderAvailable(provider)) {
-      return res.status(400).json({
-        error: `AI provider '${provider}' is not available`,
-        availableProviders: aiAssistantService.getAvailableProviders(),
+      return res.status(400).json({ 
+        error: `Provider '${provider}' is not available. Choose from: ${aiAssistantService.getAvailableProviders().join(', ')}` 
       });
     }
     
-    // Generate response
+    // Generate response from AI assistant
     const response = await aiAssistantService.generateResponse({
       message,
-      context,
       provider,
-      options,
+      context,
+      options
     });
     
-    res.json(response);
+    return res.json(response);
   } catch (error) {
-    console.error('Error processing AI assistant message:', error);
-    res.status(500).json({
-      error: 'Failed to process message',
-      message: error instanceof Error ? error.message : String(error),
-    });
+    console.error('Error generating AI assistant response:', error);
+    return res.status(500).json({ error: 'Failed to generate AI assistant response' });
   }
 });
 

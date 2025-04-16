@@ -1,214 +1,196 @@
-import React, { useState } from 'react';
-import { X, Send, Trash2, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Bot, X, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { useAIAssistant } from '../../providers/ai-assistant-provider';
-import { 
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { useAIAssistant } from '@/providers/ai-assistant-provider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: number;
+}
 
 const AIAssistantSidebar: React.FC = () => {
-  const { 
-    isOpen, 
-    toggleSidebar, 
-    messages, 
-    sendMessage, 
-    clearMessages, 
-    isLoading,
-    activeProvider,
-    setActiveProvider
+  const {
+    messages,
+    sendMessage,
+    loading,
+    selectedProvider,
+    setSelectedProvider,
+    availableProviders
   } = useAIAssistant();
-  const [inputValue, setInputValue] = useState('');
-  const [activeTab, setActiveTab] = useState<string>('chat');
   
-  const handleSendMessage = () => {
-    if (inputValue.trim() && !isLoading) {
+  const [inputValue, setInputValue] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<string>('chat');
+
+  // Scroll to bottom of messages when new message is added
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputValue.trim() && !loading) {
       sendMessage(inputValue);
       setInputValue('');
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
+  const formatTimestamp = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const toggleSidebar = () => {
+    setIsOpen(!isOpen);
   };
 
   return (
-    <div 
-      className={`fixed right-0 top-0 h-screen z-50 flex transform transition-transform duration-300 ease-in-out ${
-        isOpen ? 'translate-x-0' : 'translate-x-full'
-      }`}
-    >
-      {/* Toggle button */}
-      <div className="absolute left-0 top-1/2 transform -translate-x-full -translate-y-1/2">
-        <Button 
-          variant="secondary" 
-          size="icon" 
-          className="h-10 w-10 rounded-l-md rounded-r-none shadow-md"
-          onClick={toggleSidebar}
-        >
-          {isOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </Button>
-      </div>
+    <div className="relative">
+      {/* Toggle Button */}
+      <Button
+        variant="outline"
+        size="icon"
+        className="fixed bottom-4 right-4 rounded-full shadow-md z-50"
+        onClick={toggleSidebar}
+      >
+        {isOpen ? <ChevronRight /> : <Bot />}
+      </Button>
 
-      {/* Main sidebar */}
-      <div className="w-80 bg-white border-l border-gray-200 shadow-lg flex flex-col h-full">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b p-3">
-          <h2 className="text-lg font-semibold">AI Assistant</h2>
-          <div className="flex space-x-1">
-            <Button variant="ghost" size="icon" onClick={() => setActiveTab('settings')}>
-              <Settings className="h-4 w-4" />
-            </Button>
+      {/* Sidebar */}
+      <div
+        className={`fixed top-0 right-0 h-screen bg-white border-l border-gray-200 shadow-lg transition-all duration-300 z-40 flex flex-col ${
+          isOpen ? 'w-80' : 'w-0 overflow-hidden'
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-gray-200 p-4">
+          <h2 className="text-lg font-medium flex items-center gap-2">
+            <Bot size={20} />
+            <span>AI Assistant</span>
+          </h2>
+          <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={toggleSidebar}>
-              <X className="h-4 w-4" />
+              <ChevronRight size={18} />
             </Button>
           </div>
         </div>
 
-        {/* Body */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs defaultValue="chat" className="flex-1 flex flex-col" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid grid-cols-3 px-4 pt-2">
             <TabsTrigger value="chat">Chat</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="help">Help</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="chat" className="flex-1 flex flex-col">
-            {/* Messages area */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-4">
-              {messages.map((message) => (
-                <div 
-                  key={message.id} 
-                  className={`p-2 rounded-lg max-w-[90%] ${
-                    message.role === 'user' 
-                      ? 'bg-primary/10 ml-auto' 
-                      : message.role === 'system'
-                      ? 'bg-muted text-center mx-auto italic'
-                      : 'bg-secondary/10'
-                  }`}
-                >
-                  <div className="text-sm">{message.content}</div>
-                  {message.model && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {message.model}
-                    </div>
-                  )}
+          <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden p-0">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.length === 0 ? (
+                <div className="text-center text-gray-500 mt-8">
+                  <Bot size={40} className="mx-auto mb-2 opacity-50" />
+                  <p>Ask me anything about property assessments!</p>
                 </div>
-              ))}
-              {isLoading && (
-                <div className="bg-secondary/10 p-2 rounded-lg">
-                  <div className="flex space-x-2 items-center">
-                    <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              ) : (
+                messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex flex-col ${
+                      message.role === 'assistant' ? 'items-start' : 'items-end'
+                    }`}
+                  >
+                    <Card
+                      className={`px-4 py-2 max-w-[90%] ${
+                        message.role === 'assistant'
+                          ? 'bg-gray-100'
+                          : 'bg-blue-100'
+                      }`}
+                    >
+                      <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                    </Card>
+                    <span className="text-xs text-gray-500 mt-1">
+                      {formatTimestamp(message.timestamp)}
+                    </span>
                   </div>
-                </div>
+                ))
               )}
+              <div ref={messagesEndRef} />
             </div>
 
-            {/* Input area */}
-            <div className="p-3 border-t">
-              <div className="flex space-x-2">
-                <Textarea
-                  placeholder="Ask me anything..."
+            <form
+              onSubmit={handleSubmit}
+              className="border-t border-gray-200 p-4 pt-2"
+            >
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Type your message..."
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="resize-none"
-                  rows={2}
+                  disabled={loading}
+                  className="flex-1"
                 />
-                <div className="flex flex-col space-y-2">
-                  <Button 
-                    size="icon" 
-                    onClick={handleSendMessage} 
-                    disabled={!inputValue.trim() || isLoading}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={clearMessages}
-                    title="Clear conversation"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={!inputValue.trim() || loading}
+                >
+                  <Send size={18} />
+                </Button>
+              </div>
+            </form>
+          </TabsContent>
+          
+          <TabsContent value="settings" className="p-4 flex-1 overflow-y-auto">
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium mb-2">AI Provider</h3>
+                <Select
+                  value={selectedProvider}
+                  onValueChange={setSelectedProvider}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableProviders.map((provider) => (
+                      <SelectItem key={provider} value={provider}>
+                        {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </TabsContent>
-
-          <TabsContent value="settings" className="p-4 space-y-4">
-            <div>
-              <h3 className="font-medium mb-2">AI Provider</h3>
-              <RadioGroup 
-                value={activeProvider} 
-                onValueChange={(value) => setActiveProvider(value as 'openai' | 'anthropic' | 'perplexity')}
-                className="space-y-2"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="openai" id="openai" />
-                  <Label htmlFor="openai">OpenAI (GPT-4o)</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="anthropic" id="anthropic" />
-                  <Label htmlFor="anthropic">Anthropic (Claude 3.7)</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="perplexity" id="perplexity" />
-                  <Label htmlFor="perplexity">Perplexity (Llama 3.1)</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div>
-              <h3 className="font-medium mb-2">Model Settings</h3>
-              <div className="space-y-2">
-                <div className="grid grid-cols-3 items-center gap-4">
-                  <Label htmlFor="temperature">Temperature</Label>
-                  <Select defaultValue="0.7">
-                    <SelectTrigger id="temperature" className="col-span-2">
-                      <SelectValue placeholder="Temperature" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0.0">0.0 - Precise</SelectItem>
-                      <SelectItem value="0.3">0.3 - Balanced</SelectItem>
-                      <SelectItem value="0.7">0.7 - Creative</SelectItem>
-                      <SelectItem value="1.0">1.0 - Very Creative</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            {/* Context Memory Settings */}
-            <div>
-              <h3 className="font-medium mb-2">Context Memory</h3>
-              <div className="space-y-2">
-                <div className="grid grid-cols-3 items-center gap-4">
-                  <Label htmlFor="contextLength">Context Length</Label>
-                  <Select defaultValue="5">
-                    <SelectTrigger id="contextLength" className="col-span-2">
-                      <SelectValue placeholder="Context Length" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="3">3 messages</SelectItem>
-                      <SelectItem value="5">5 messages</SelectItem>
-                      <SelectItem value="10">10 messages</SelectItem>
-                      <SelectItem value="20">20 messages</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+          
+          <TabsContent value="help" className="p-4 flex-1 overflow-y-auto">
+            <div className="space-y-4">
+              <h3 className="font-medium">Quick Help Guide</h3>
+              <p className="text-sm text-gray-600">
+                The AI Assistant can help you with various property assessment tasks:
+              </p>
+              <ul className="list-disc pl-5 text-sm text-gray-600 space-y-2">
+                <li>Answer questions about property assessment processes</li>
+                <li>Explain property valuation methods</li>
+                <li>Provide context about property data</li>
+                <li>Help with navigating the property assessment system</li>
+                <li>Explain tax calculations and assessment rates</li>
+              </ul>
+              <p className="text-sm text-gray-600 mt-4">
+                The assistant uses AI to generate responses based on your questions and the current context.
+              </p>
             </div>
           </TabsContent>
         </Tabs>
