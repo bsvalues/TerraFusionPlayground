@@ -1666,7 +1666,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
  * Displays property information, ownership history, and assessment details.
  */
 export const ${className}: React.FC<{ propertyId: string }> = ({ propertyId }) => {
-  const { data: property, isLoading, error } = useQuery({
+  const { data: propertyData, isLoading, error } = useQuery({
     queryKey: ['/api/properties', propertyId],
     queryFn: async () => {
       const response = await fetch(\`/api/properties/\${propertyId}\`);
@@ -1677,13 +1677,13 @@ export const ${className}: React.FC<{ propertyId: string }> = ({ propertyId }) =
 
   if (isLoading) return <div className="p-4 text-center">Loading property details...</div>;
   if (error) return <div className="p-4 text-center text-red-500">Error loading property details</div>;
-  if (!property) return <div className="p-4 text-center">Property not found</div>;
+  if (!propertyData) return <div className="p-4 text-center">Property not found</div>;
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>{property.address}</CardTitle>
+          <CardTitle>{propertyData.address}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1692,19 +1692,19 @@ export const ${className}: React.FC<{ propertyId: string }> = ({ propertyId }) =
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Property ID:</span>
-                  <span className="font-medium">{property.propertyId}</span>
+                  <span className="font-medium">{propertyData.propertyId}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Tax Lot:</span>
-                  <span className="font-medium">{property.taxLot}</span>
+                  <span className="font-medium">{propertyData.taxLot}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Zoning:</span>
-                  <span className="font-medium">{property.zoning}</span>
+                  <span className="font-medium">{propertyData.zoning}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Land Area:</span>
-                  <span className="font-medium">{property.acres} acres</span>
+                  <span className="font-medium">{propertyData.acres} acres</span>
                 </div>
               </div>
             </div>
@@ -1714,19 +1714,19 @@ export const ${className}: React.FC<{ propertyId: string }> = ({ propertyId }) =
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Assessed Value:</span>
-                  <span className="font-medium">${property.assessedValue?.toLocaleString()}</span>
+                  <span className="font-medium">${propertyData.assessedValue?.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Land Value:</span>
-                  <span className="font-medium">${property.landValue?.toLocaleString()}</span>
+                  <span className="font-medium">${propertyData.landValue?.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Improvement Value:</span>
-                  <span className="font-medium">${property.improvementValue?.toLocaleString()}</span>
+                  <span className="font-medium">${propertyData.improvementValue?.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Last Assessment:</span>
-                  <span className="font-medium">{new Date(property.lastAssessmentDate).toLocaleDateString()}</span>
+                  <span className="font-medium">{new Date(propertyData.lastAssessmentDate).toLocaleDateString()}</span>
                 </div>
               </div>
             </div>
@@ -1748,15 +1748,15 @@ export const ${className}: React.FC<{ propertyId: string }> = ({ propertyId }) =
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Name:</span>
-                      <span className="font-medium">{property.ownerName}</span>
+                      <span className="font-medium">{propertyData.ownerName}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Owner Since:</span>
-                      <span className="font-medium">{property.ownerSince}</span>
+                      <span className="font-medium">{propertyData.ownerSince}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Mailing Address:</span>
-                      <span className="font-medium">{property.mailingAddress}</span>
+                      <span className="font-medium">{propertyData.mailingAddress}</span>
                     </div>
                   </div>
                 </div>
@@ -1764,9 +1764,9 @@ export const ${className}: React.FC<{ propertyId: string }> = ({ propertyId }) =
             </TabsContent>
             
             <TabsContent value="improvements" className="pt-4">
-              {property.improvements?.length > 0 ? (
+              {propertyData.improvements?.length > 0 ? (
                 <div className="space-y-4">
-                  {property.improvements.map((improvement, index) => (
+                  {propertyData.improvements.map((improvement, index) => (
                     <Card key={index}>
                       <CardContent className="pt-4">
                         <div className="flex justify-between items-center mb-2">
@@ -1809,7 +1809,7 @@ export const ${className}: React.FC<{ propertyId: string }> = ({ propertyId }) =
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {property.assessmentHistory?.map((assessment, index) => (
+                    {propertyData.assessmentHistory?.map((assessment, index) => (
                       <tr key={index}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{assessment.year}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">${assessment.totalValue?.toLocaleString()}</td>
