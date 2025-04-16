@@ -3,7 +3,7 @@ import { Send, Bot, X, ChevronLeft, ChevronRight, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { useAIAssistant } from '@/providers/ai-assistant-provider';
+import { useAIAssistant, AIAssistantContextType } from '@/providers/ai-assistant-provider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -164,7 +164,7 @@ const AIAssistantSidebar: React.FC = () => {
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableProviders.map((provider) => (
+                    {availableProviders.map((provider: string) => (
                       <SelectItem key={provider} value={provider}>
                         {provider.charAt(0).toUpperCase() + provider.slice(1)}
                       </SelectItem>

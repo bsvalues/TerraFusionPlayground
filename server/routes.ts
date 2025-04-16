@@ -2537,6 +2537,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     llmService
   ));
   
+  // Register AI Assistant routes
+  app.use('/api/ai-assistant', aiAssistantRoutes);
+  
   // Add error handling middleware for API routes only
   // This will only catch errors for /api/* routes
   app.use('/api', errorHandler);
