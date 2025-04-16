@@ -63,52 +63,54 @@ export class AgentWebSocketService {
    * @param server HTTP server to attach to
    */
   public initialize(server: Server) {
-    // Create a dedicated handler for WebSocket upgrade requests
-    server.on('upgrade', (request, socket, head) => {
-      const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
+    try {
+      // Create WebSocket server with path prefix option
+      // This is more compatible with various hosting environments including Replit
+      this.wss = new WebSocketServer({
+        server: server,
+        path: '/api/agents/ws',
+        clientTracking: true,
+        perMessageDeflate: false
+      });
       
-      // Only handle requests for our specific WebSocket path
-      if (pathname === '/api/agents/ws' && this.wss) {
-        console.log('[Agent WebSocket] Direct upgrade handling for WebSocket connection');
-        this.wss.handleUpgrade(request, socket, head, (ws) => {
-          this.wss?.emit('connection', ws, request);
-        });
-      }
-    });
-    
-    // Create WebSocket server with noServer option to use our custom handler
-    this.wss = new WebSocketServer({
-      noServer: true,
-      clientTracking: true,
-      perMessageDeflate: false
-    });
-    
-    // Set up event handlers
-    this.setupEventHandlers();
-    
-    // Subscribe to agent protocol broadcast messages
-    this.setupAgentProtocolSubscriptions();
-    
-    // Log detailed information about initialization
-    logger.info('Agent WebSocket service initialized on path: /api/agents/ws');
-    
-    // Add listener for server errors
-    server.on('upgrade', (request, socket, head) => {
-      const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
+      // Set up event handlers
+      this.setupEventHandlers();
       
-      // Specifically log WebSocket upgrade attempts for our agent path
-      if (pathname === '/api/agents/ws') {
-        logger.info(`[Agent WebSocket] Upgrade request received for agent WebSocket`, {
-          pathname,
-          headers: {
-            origin: request.headers.origin,
-            host: request.headers.host,
-            upgrade: request.headers.upgrade,
-            connection: request.headers.connection
+      // Subscribe to agent protocol broadcast messages
+      this.setupAgentProtocolSubscriptions();
+      
+      // Log detailed information about initialization
+      logger.info('Agent WebSocket service initialized on path: /api/agents/ws');
+      
+      // Add listener for WebSocket server errors
+      this.wss.on('error', (error) => {
+        logger.error('WebSocket server error:', error);
+      });
+      
+      // Add listener for upgrade events for logging purposes
+      server.on('upgrade', (request, socket, head) => {
+        try {
+          const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
+          
+          // Specifically log WebSocket upgrade attempts for our agent path
+          if (pathname === '/api/agents/ws') {
+            logger.info(`[Agent WebSocket] Upgrade request received for agent WebSocket`, {
+              pathname,
+              headers: {
+                origin: request.headers.origin,
+                host: request.headers.host,
+                upgrade: request.headers.upgrade,
+                connection: request.headers.connection
+              }
+            });
           }
-        });
-      }
-    });
+        } catch (error) {
+          logger.error('Error handling upgrade event:', error);
+        }
+      });
+    } catch (error) {
+      logger.error('Error initializing WebSocket server:', error);
+    }
   }
   
   /**

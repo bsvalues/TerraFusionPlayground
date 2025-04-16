@@ -345,42 +345,69 @@ export class AgentWebSocketService {
    */
   private async pollForMessages(): Promise<void> {
     try {
-      console.log('[Agent UI] Polling for data (connection: ' + this.connectionStatus + ')');
+      // Only log polling attempts when debugging is needed
+      if (this.connectionStatus === 'connecting') {
+        console.log('[Agent UI] Polling for data (connection: ' + this.connectionStatus + ')');
+      }
       
       // Use the REST API to fetch any pending messages
-      const response = await fetch('/api/agents/messages/pending', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
       
-      if (!response.ok) {
-        throw new Error(`Failed to poll for messages: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.messages && Array.isArray(data.messages)) {
-        // Process each message as if it came from WebSocket
-        data.messages.forEach((message: any) => {
-          this.dispatchMessage(message);
+      try {
+        const response = await fetch('/api/agents/messages/pending', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store'
+          },
+          signal: controller.signal
         });
         
-        // If we received any messages, update connection status to reflect it's working
-        if (data.messages.length > 0 && this.connectionStatus !== 'connected') {
-          this.updateConnectionStatus('connected');
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to poll for messages: ${response.status} ${response.statusText}`);
         }
-      }
-      
-      // If we get here, the API is responsive, so ensure connection status is at least 'connecting'
-      if (this.connectionStatus === 'disconnected' || this.connectionStatus === 'errored') {
-        this.updateConnectionStatus('connecting');
+        
+        const data = await response.json();
+        
+        if (data.messages && Array.isArray(data.messages)) {
+          // Process each message as if it came from WebSocket
+          data.messages.forEach((message: any) => {
+            this.dispatchMessage(message);
+          });
+          
+          // If we received any messages, update connection status to reflect it's working
+          if (data.messages.length > 0 && this.connectionStatus !== 'connected') {
+            this.updateConnectionStatus('connected');
+          }
+        }
+        
+        // Successfully polled, so connection is at least functional at HTTP level
+        if (this.connectionStatus === 'disconnected' || this.connectionStatus === 'errored') {
+          this.updateConnectionStatus('connecting');
+          
+          // Notify the user that polling is working
+          this.dispatchMessage({
+            type: 'notification',
+            title: 'Connection status',
+            message: 'Using REST fallback for communication (WebSockets unavailable)',
+            level: 'info',
+            timestamp: Date.now()
+          });
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
       }
     } catch (error) {
-      console.error('Error polling for messages:', error);
+      // Only log errors occasionally to avoid flooding console
+      if (Math.random() < 0.1) { // Log roughly 10% of errors
+        console.error('Error polling for messages:', error);
+      }
       
-      // If polling fails repeatedly, mark as errored
+      // If polling fails repeatedly, mark as errored, but don't flood UI with notifications
       if (this.connectionStatus !== 'errored') {
         this.updateConnectionStatus('errored');
       }
