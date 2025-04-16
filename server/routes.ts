@@ -35,6 +35,7 @@ import collaborationRoutes from "./routes/collaboration-routes";
 import extensionRoutes from "./extensions/extension-routes";
 import { registerTeamAgentRoutes } from "./routes/team-agent-routes";
 import { registerDemoRoutes } from "./routes/demo-routes";
+import aiAssistantRoutes from "./routes/ai-assistant-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -168,6 +169,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Demo routes for the 24-hour PropertyTaxAI demo
   registerDemoRoutes(app, storage);
+  
+  // Register AI Assistant routes
+  app.use('/api/ai-assistant', aiAssistantRoutes);
 
   /**
    * Data Lineage Routes
