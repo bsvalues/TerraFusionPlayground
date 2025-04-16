@@ -139,6 +139,41 @@ const CodeAssistantPanel: React.FC<{}> = () => {
     tax_status: string;
   } | null>(null);
   
+  // Sample property data for code that references property
+  const [propertyData, setPropertyData] = useState<{
+    id: string;
+    propertyId: string;
+    address: string;
+    ownerName: string;
+    assessedValue: number;
+    taxLot: string;
+    landValue: number;
+    improvementDetails: Array<{
+      id: string;
+      type: string;
+      value: number;
+      yearBuilt: number;
+      squareFeet: number;
+    }>;
+  } | null>(null);
+  
+  // Sample improvement and assessment data
+  const [improvement, setImprovement] = useState<{
+    id: string;
+    type: string;
+    yearBuilt: number;
+    squareFeet: number;
+    value: number;
+  } | null>(null);
+  
+  const [assessment, setAssessment] = useState<{
+    id: string;
+    year: number;
+    value: number;
+    taxAmount: number;
+    assessmentDate: string;
+  } | null>(null);
+  
   // Sample development context - in a real implementation, this would come from your application state
   const context = {
     domain: 'property-assessment',
@@ -1501,19 +1536,19 @@ export const ${className}: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {results.map((property) => (
-                      <tr key={property.id} className="hover:bg-gray-50 cursor-pointer">
+                    {results.map((item) => (
+                      <tr key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setPropertyData(item)}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {property?.propertyId}
+                          {item?.propertyId}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {property?.address}
+                          {item?.address}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {property?.ownerName}
+                          {item?.ownerName}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          ${property?.assessedValue?.toLocaleString()}
+                          ${item?.assessedValue?.toLocaleString()}
                         </td>
                       </tr>
                     ))}
