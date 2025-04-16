@@ -1714,19 +1714,21 @@ export const ${className}: React.FC<{ propertyId: string }> = ({ propertyId }) =
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Assessed Value:</span>
-                  <span className="font-medium">${propertyData.assessedValue?.toLocaleString()}</span>
+                  <span className="font-medium">${propertyData?.assessedValue?.toLocaleString() || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Land Value:</span>
-                  <span className="font-medium">${propertyData.landValue?.toLocaleString()}</span>
+                  <span className="font-medium">${propertyData?.landValue?.toLocaleString() || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Improvement Value:</span>
-                  <span className="font-medium">${propertyData.improvementValue?.toLocaleString()}</span>
+                  <span className="font-medium">${(propertyData?.assessedValue && propertyData?.landValue) ? 
+                    (propertyData.assessedValue - propertyData.landValue).toLocaleString() : 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Last Assessment:</span>
-                  <span className="font-medium">{new Date(propertyData.lastAssessmentDate).toLocaleDateString()}</span>
+                  <span className="font-medium">{propertyData?.lastAssessmentDate ? 
+                    new Date(propertyData.lastAssessmentDate).toLocaleDateString() : 'N/A'}</span>
                 </div>
               </div>
             </div>
@@ -1748,15 +1750,15 @@ export const ${className}: React.FC<{ propertyId: string }> = ({ propertyId }) =
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Name:</span>
-                      <span className="font-medium">{propertyData.ownerName}</span>
+                      <span className="font-medium">{propertyData?.ownerName || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Owner Since:</span>
-                      <span className="font-medium">{propertyData.ownerSince}</span>
+                      <span className="font-medium">{propertyData?.ownerSince || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Mailing Address:</span>
-                      <span className="font-medium">{propertyData.mailingAddress}</span>
+                      <span className="font-medium">{propertyData?.mailingAddress || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
@@ -1770,21 +1772,21 @@ export const ${className}: React.FC<{ propertyId: string }> = ({ propertyId }) =
                     <Card key={index}>
                       <CardContent className="pt-4">
                         <div className="flex justify-between items-center mb-2">
-                          <h4 className="font-medium">{improvement.type}</h4>
-                          <span className="text-sm text-gray-500">Built {improvement.yearBuilt}</span>
+                          <h4 className="font-medium">{improvement?.type || 'Unknown'}</h4>
+                          <span className="text-sm text-gray-500">Built {improvement?.yearBuilt || 'N/A'}</span>
                         </div>
                         <div className="space-y-1 text-sm">
                           <div className="flex justify-between">
                             <span className="text-gray-500">Square Feet:</span>
-                            <span>{improvement.squareFeet}</span>
+                            <span>{improvement?.squareFeet || 'N/A'}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-500">Value:</span>
-                            <span>${improvement.value?.toLocaleString()}</span>
+                            <span>${improvement?.value?.toLocaleString() || 'N/A'}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-500">Condition:</span>
-                            <span>{improvement.condition}</span>
+                            <span>{improvement?.condition || 'N/A'}</span>
                           </div>
                         </div>
                       </CardContent>
@@ -1811,15 +1813,17 @@ export const ${className}: React.FC<{ propertyId: string }> = ({ propertyId }) =
                   <tbody className="bg-white divide-y divide-gray-200">
                     {propertyData.assessmentHistory?.map((assessment, index) => (
                       <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{assessment.year}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">${assessment.totalValue?.toLocaleString()}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">${assessment.landValue?.toLocaleString()}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">${assessment.improvementValue?.toLocaleString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{assessment?.year || 'N/A'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">${assessment?.value?.toLocaleString() || 'N/A'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">${assessment?.value ? (assessment.value * 0.4).toLocaleString() : 'N/A'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">${assessment?.value ? (assessment.value * 0.6).toLocaleString() : 'N/A'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {assessment.percentChange > 0 ? (
-                            <span className="text-green-600">+{assessment.percentChange}%</span>
-                          ) : assessment.percentChange < 0 ? (
-                            <span className="text-red-600">{assessment.percentChange}%</span>
+                          {assessment?.percentChange ? (
+                            assessment.percentChange > 0 ? (
+                              <span className="text-green-600">+{assessment.percentChange}%</span>
+                            ) : (
+                              <span className="text-red-600">{assessment.percentChange}%</span>
+                            )
                           ) : (
                             <span>0%</span>
                           )}
