@@ -83,17 +83,21 @@ export class AgentWebSocketService {
       const hostname = window.location.hostname;
       const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
       
-      // Construct URL with explicit hostname and port to avoid 'undefined' issues
-      baseUrl = `${protocol}//${hostname}${port ? ':' + port : ''}`;
+      // For WebSockets in Replit, we need to use a simple relative path approach
+      // The protocol (ws or wss) is determined by the current page protocol
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsPath = '/api/agents/ws';
+      
+      // Construct the WebSocket URL relative to the current origin
+      baseUrl = window.location.origin.replace(/^http/, 'ws');
       
       // Add debug logging to help diagnose connection issues
       console.log(`[Agent WebSocket] Using baseUrl: ${baseUrl}`);
-      console.log(`[Agent WebSocket] hostname: ${hostname}`);
-      console.log(`[Agent WebSocket] port: ${port}`);
-      console.log(`[Agent WebSocket] protocol: ${protocol}`);
+      console.log(`[Agent WebSocket] wsProtocol: ${wsProtocol}`);
+      console.log(`[Agent WebSocket] wsPath: ${wsPath}`);
       
-      // Primary WebSocket path
-      const primaryWsUrl = `${baseUrl}/api/agents/ws`;
+      // Primary WebSocket URL (relative to current page)
+      const primaryWsUrl = `${wsProtocol}//${hostname}${wsPath}`;
       
       // Enhanced debug logging for WebSocket connection
       console.log(`[Agent WebSocket] Attempting to connect to: ${primaryWsUrl}`);
