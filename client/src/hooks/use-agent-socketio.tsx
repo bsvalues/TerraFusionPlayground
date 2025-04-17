@@ -19,6 +19,7 @@ export function useAgentSocketIO() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(
     agentSocketIOService.getConnectionStatus()
   );
+  const [isPolling, setIsPolling] = useState(agentSocketIOService.isUsingFallback());
   const [lastMessage, setLastMessage] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   
@@ -79,28 +80,47 @@ export function useAgentSocketIO() {
     const removeListener = agentSocketIOService.onConnectionStatusChange((status) => {
       setConnectionStatus(status);
       setIsConnected(status === ConnectionStatus.CONNECTED);
+      
+      // Also update polling status, as it often changes with connection status
+      setIsPolling(agentSocketIOService.isUsingFallback());
     });
     
     // Handle generic message event
     const messageHandler = (message: any) => {
       setLastMessage(message);
       setMessages((prev) => [...prev, message]);
+      
+      // Check for fallback mode notifications
+      if (message.type === 'notification' && 
+          message.message && 
+          message.message.includes('fallback')) {
+        setIsPolling(agentSocketIOService.isUsingFallback());
+      }
     };
     
     agentSocketIOService.on('message', messageHandler);
+    
+    // Set up periodic polling status check
+    const pollingStatusInterval = setInterval(() => {
+      const currentPollingStatus = agentSocketIOService.isUsingFallback();
+      if (currentPollingStatus !== isPolling) {
+        setIsPolling(currentPollingStatus);
+      }
+    }, 2000);
     
     // Clean up
     return () => {
       removeListener();
       agentSocketIOService.off('message', messageHandler);
+      clearInterval(pollingStatusInterval);
     };
-  }, []);
+  }, [isPolling]);
   
   // Return values and functions
   return useMemo(() => ({
     isConnected,
     connectionStatus,
-    isPolling: agentSocketIOService.isUsingFallback(),
+    isPolling,
     clientId: agentSocketIOService.getClientId(),
     lastMessage,
     messages,
@@ -115,6 +135,7 @@ export function useAgentSocketIO() {
   }), [
     isConnected,
     connectionStatus,
+    isPolling,
     lastMessage,
     messages,
     connect,
@@ -130,7 +151,7 @@ export function useAgentSocketIO() {
  * Connection status indicator component for the agent Socket.IO service
  */
 export function ConnectionStatusIndicator({ className = '' }: { className?: string }) {
-  const { connectionStatus, connectionStatuses } = useAgentSocketIO();
+  const { connectionStatus, connectionStatuses, isPolling } = useAgentSocketIO();
   
   // Determine status color and text
   const getStatusInfo = () => {
@@ -153,7 +174,10 @@ export function ConnectionStatusIndicator({ className = '' }: { className?: stri
   return (
     <div className={`flex items-center space-x-2 ${className}`}>
       <div className={`w-3 h-3 rounded-full ${color}`} />
-      <span className="text-xs">{text}</span>
+      <span className="text-xs">
+        {text}
+        {isPolling && ' (Fallback Mode)'}
+      </span>
     </div>
   );
 }

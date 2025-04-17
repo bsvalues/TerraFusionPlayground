@@ -22,7 +22,8 @@ This platform modernizes the Benton County Assessor's Office operations by imple
 - **Backend**: Express with secure API architecture
 - **Database**: PostgreSQL with Drizzle ORM
 - **Authentication**: JWT-based with role-based access control
-- **AI Integration**: LangChain framework with multiple AI provider support
+- **AI Integration**: LangChain framework with multiple AI provider support (OpenAI, Anthropic, Perplexity)
+- **Resilient Communications**: Dual-transport system with WebSocket and REST API fallback
 - **Testing**: Comprehensive testing suite for API and UI validation
 
 ## Getting Started
