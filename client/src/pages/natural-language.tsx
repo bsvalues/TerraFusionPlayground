@@ -15,7 +15,7 @@ export default function NaturalLanguagePage() {
   const [query, setQuery] = useState('');
   const [queryMode, setQueryMode] = useState<'query' | 'summary'>('query');
   const [isSubmitted, setIsSubmitted] = useState(false);
-  
+
   // Example queries to help users get started
   const exampleQueries = [
     "Show me all residential properties in Richland",
@@ -24,7 +24,7 @@ export default function NaturalLanguagePage() {
     "Show me properties with land use code R1 in Benton City",
     "Find all properties with improvements built after 2000"
   ];
-  
+
   // Mutation for making natural language queries
   const queryMutation = useMutation({
     mutationFn: async (queryText: string) => {
@@ -40,7 +40,7 @@ export default function NaturalLanguagePage() {
       setIsSubmitted(true);
     }
   });
-  
+
   // Query to fetch results (only if a query has been submitted)
   const { data, isLoading, isError, error } = useQuery({
     queryKey: [`/api/natural-language/${queryMode}`, query],
@@ -49,30 +49,30 @@ export default function NaturalLanguagePage() {
       return queryMutation.data;
     }
   });
-  
+
   const handleQuerySubmit = () => {
     if (query.trim()) {
       queryMutation.mutate(query);
     }
   };
-  
+
   const handleExampleClick = (exampleQuery: string) => {
     setQuery(exampleQuery);
   };
-  
+
   return (
     <AppLayout>
       <div className="container mx-auto py-6">
         <h1 className="text-3xl font-bold mb-6">
           Benton County Property Tax Natural Language Search
         </h1>
-        
+
         <Tabs defaultValue="query" className="mb-6" onValueChange={(value) => setQueryMode(value as 'query' | 'summary')}>
           <TabsList className="mb-4">
             <TabsTrigger value="query">Property Search</TabsTrigger>
             <TabsTrigger value="summary">Summary Mode</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="query">
             <Card>
               <CardHeader>
@@ -90,7 +90,7 @@ export default function NaturalLanguagePage() {
                     onChange={(e) => setQuery(e.target.value)}
                   />
                 </div>
-                
+
                 <div className="mb-4">
                   <h3 className="text-sm font-medium mb-2 flex items-center">
                     <Lightbulb className="h-4 w-4 mr-2" />
@@ -128,7 +128,7 @@ export default function NaturalLanguagePage() {
               </CardFooter>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="summary">
             <Card>
               <CardHeader>
@@ -146,7 +146,7 @@ export default function NaturalLanguagePage() {
                     onChange={(e) => setQuery(e.target.value)}
                   />
                 </div>
-                
+
                 <div className="mb-4">
                   <h3 className="text-sm font-medium mb-2 flex items-center">
                     <Lightbulb className="h-4 w-4 mr-2" />
@@ -189,7 +189,7 @@ export default function NaturalLanguagePage() {
             </Card>
           </TabsContent>
         </Tabs>
-        
+
         {queryMutation.isPending && (
           <Card className="mb-6">
             <CardHeader>
@@ -205,7 +205,7 @@ export default function NaturalLanguagePage() {
             </CardContent>
           </Card>
         )}
-        
+
         {queryMutation.isError && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -215,7 +215,7 @@ export default function NaturalLanguagePage() {
             </AlertDescription>
           </Alert>
         )}
-        
+
         {data && (
           <>
             {queryMode === 'summary' && data.summary && (
@@ -231,7 +231,7 @@ export default function NaturalLanguagePage() {
                 </CardContent>
               </Card>
             )}
-            
+
             {data.results && data.results.length > 0 ? (
               <Card>
                 <CardHeader>
@@ -256,7 +256,7 @@ export default function NaturalLanguagePage() {
                           {data.results.map((result: any, index: number) => {
                             // Determine if the result is a property or has an embedded property
                             const property = result.property || result;
-                            
+
                             return (
                               <tr key={index} className="border-t">
                                 <td className="p-3 text-sm">{property.propertyId}</td>
