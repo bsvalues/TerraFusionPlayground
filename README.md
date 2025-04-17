@@ -71,6 +71,7 @@ The Model Context Protocol (MCP) architecture provides a secure, unified interfa
 - [PACS Module Integration](scripts/README.md): PACS module import tools and usage
 - [FTP Data Agent](docs/ftp-agent.md): FTP data synchronization capabilities
 - [FTP Testing Framework](docs/ftp-testing.md): Comprehensive testing suite for FTP functionality
+- [WebSocket Connectivity](docs/WEBSOCKET-CONNECTIVITY.md): Browser compatibility and fallback mechanisms
 - Additional documentation is available in the [docs](docs) directory
 
 ## Data Integration
