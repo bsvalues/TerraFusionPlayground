@@ -125,6 +125,12 @@ const ExtensionsIcon = () => (
   </svg>
 );
 
+const DevelopmentIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+  </svg>
+);
+
 interface SidebarMenuItemProps {
   href: string;
   icon: React.ReactNode;
@@ -353,7 +359,7 @@ export const Sidebar = () => {
               
               <SidebarMenuItem 
                 href="/development" 
-                icon={<Code className="h-5 w-5 mr-3" />}
+                icon={<DevelopmentIcon />}
                 isActive={location === "/development" || location.startsWith("/development/")}
               >
                 TaxI_AI Development
