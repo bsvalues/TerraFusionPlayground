@@ -191,38 +191,24 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         console.log(`[Agent SocketIO] Attempting to connect to: ${wsUrl} with path ${path}`);
 
 
-        // Determine if we're in development or production
-        const isDev = process.env.NODE_ENV === 'development';
-
-        // In development, connect to the dev server
-        let socketUrl;
-        if (isDev) {
-          socketUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:5000/api/agents/socket.io`;
-        } else {
-          // In production on Replit, use the current host
-          const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-          socketUrl = `${wsProtocol}${window.location.host}/api/agents/socket.io`;
-        }
+        // Use the current host for both dev and prod
+        const socketUrl = window.location.origin;
 
 
         // Create Socket.IO instance with robust configuration
         this.socket = io(socketUrl, {
           path: path,
-          transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
+          path: path,
+          transports: ['polling', 'websocket'], // Start with polling, upgrade to WebSocket
           reconnection: true,
-          reconnectionAttempts: 5,
+          reconnectionAttempts: this.maxReconnectAttempts,
           reconnectionDelay: 1000,
           reconnectionDelayMax: 5000,
           timeout: 20000,
           forceNew: true,
           autoConnect: true,
-          reconnectionAttempts: this.maxReconnectAttempts,
-          reconnectionDelay: this.reconnectDelay,
-          reconnectionDelayMax: 10000, // Max 10 seconds between attempts
-          timeout: 20000, // Increased timeout
-          autoConnect: true,
-          forceNew: true, // Force a new connection
-          upgrade: false // Don't attempt to upgrade to WebSocket initially
+          rejectUnauthorized: false,
+          withCredentials: true
         });
 
         // Set up event handlers
