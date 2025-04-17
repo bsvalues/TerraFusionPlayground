@@ -35,8 +35,18 @@ import {
   projectVersions, ProjectVersion, InsertProjectVersion,
   previewSettings, PreviewSetting, InsertPreviewSetting,
   aiCodeGenerations, AiCodeGeneration, InsertAiCodeGeneration,
+  // Assessment Model Workbench tables
+  assessmentModels, AssessmentModel, InsertAssessmentModel,
+  modelVariables, ModelVariable, InsertModelVariable,
+  modelComponents, ModelComponent, InsertModelComponent,
+  modelCalculations, ModelCalculation, InsertModelCalculation,
+  modelValidationRules, ModelValidationRule, InsertModelValidationRule,
+  modelTestCases, ModelTestCase, InsertModelTestCase,
+  assessmentModelVersions, AssessmentModelVersion, InsertAssessmentModelVersion,
   // TaxI_AI Development Platform enums
   ProjectType, ProjectLanguage, ProjectStatus, FileType, PreviewStatus,
+  // Assessment Model Workbench enums
+  ModelType, ModelStatus, VariableType, DataSourceType,
   teamMembers, TeamMember, InsertTeamMember,
   teamTasks, TeamTask, InsertTeamTask,
   taskComments, TaskComment, InsertTaskComment,
@@ -172,6 +182,61 @@ export interface IStorage {
   getAiCodeGeneration(id: number): Promise<AiCodeGeneration | undefined>;
   getAiCodeGenerationsByProject(projectId: number): Promise<AiCodeGeneration[]>;
   getAiCodeGenerationsByUser(userId: number): Promise<AiCodeGeneration[]>;
+  
+  // Assessment Model Workbench methods
+  // Assessment Models
+  createAssessmentModel(model: InsertAssessmentModel): Promise<AssessmentModel>;
+  getAssessmentModel(id: number): Promise<AssessmentModel | undefined>;
+  getAssessmentModelByModelId(modelId: string): Promise<AssessmentModel | undefined>;
+  getAllAssessmentModels(): Promise<AssessmentModel[]>;
+  getAssessmentModelsByType(type: ModelType): Promise<AssessmentModel[]>;
+  getAssessmentModelsByStatus(status: ModelStatus): Promise<AssessmentModel[]>;
+  getAssessmentModelTemplates(): Promise<AssessmentModel[]>;
+  updateAssessmentModel(modelId: string, updateData: Partial<AssessmentModel>): Promise<AssessmentModel | undefined>;
+  deleteAssessmentModel(modelId: string): Promise<boolean>;
+  
+  // Model Variables
+  createModelVariable(variable: InsertModelVariable): Promise<ModelVariable>;
+  getModelVariable(id: number): Promise<ModelVariable | undefined>;
+  getModelVariablesByModel(modelId: string): Promise<ModelVariable[]>;
+  updateModelVariable(id: number, updateData: Partial<ModelVariable>): Promise<ModelVariable | undefined>;
+  deleteModelVariable(id: number): Promise<boolean>;
+  
+  // Model Components
+  createModelComponent(component: InsertModelComponent): Promise<ModelComponent>;
+  getModelComponent(id: number): Promise<ModelComponent | undefined>;
+  getModelComponentsByModel(modelId: string): Promise<ModelComponent[]>;
+  getModelComponentsByType(modelId: string, componentType: string): Promise<ModelComponent[]>;
+  updateModelComponent(id: number, updateData: Partial<ModelComponent>): Promise<ModelComponent | undefined>;
+  deleteModelComponent(id: number): Promise<boolean>;
+  
+  // Model Calculations
+  createModelCalculation(calculation: InsertModelCalculation): Promise<ModelCalculation>;
+  getModelCalculation(id: number): Promise<ModelCalculation | undefined>;
+  getModelCalculationsByModel(modelId: string): Promise<ModelCalculation[]>;
+  updateModelCalculation(id: number, updateData: Partial<ModelCalculation>): Promise<ModelCalculation | undefined>;
+  deleteModelCalculation(id: number): Promise<boolean>;
+  
+  // Model Validation Rules
+  createModelValidationRule(rule: InsertModelValidationRule): Promise<ModelValidationRule>;
+  getModelValidationRule(id: number): Promise<ModelValidationRule | undefined>;
+  getModelValidationRulesByModel(modelId: string): Promise<ModelValidationRule[]>;
+  updateModelValidationRule(id: number, updateData: Partial<ModelValidationRule>): Promise<ModelValidationRule | undefined>;
+  deleteModelValidationRule(id: number): Promise<boolean>;
+  
+  // Model Test Cases
+  createModelTestCase(testCase: InsertModelTestCase): Promise<ModelTestCase>;
+  getModelTestCase(id: number): Promise<ModelTestCase | undefined>;
+  getModelTestCasesByModel(modelId: string): Promise<ModelTestCase[]>;
+  updateModelTestCase(id: number, updateData: Partial<ModelTestCase>): Promise<ModelTestCase | undefined>;
+  deleteModelTestCase(id: number): Promise<boolean>;
+  updateModelTestCaseResults(id: number, status: string, results: any): Promise<ModelTestCase | undefined>;
+  
+  // Assessment Model Versions
+  createAssessmentModelVersion(version: InsertAssessmentModelVersion): Promise<AssessmentModelVersion>;
+  getAssessmentModelVersion(id: number): Promise<AssessmentModelVersion | undefined>;
+  getAssessmentModelVersionsByModel(modelId: string): Promise<AssessmentModelVersion[]>;
+  getLatestAssessmentModelVersion(modelId: string): Promise<AssessmentModelVersion | undefined>;
   
   // Data Lineage methods
   createDataLineageRecord(record: InsertDataLineageRecord): Promise<DataLineageRecord>;
