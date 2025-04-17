@@ -132,8 +132,8 @@ router.get('/projects/:projectId/files', async (req, res) => {
 router.get('/projects/:projectId/files/*', async (req, res) => {
   try {
     const { projectId } = req.params;
-    // Safely access the wildcard path parameter
-    const filePath = req.params['0'];
+    // Access wildcard path parameter with proper TypeScript typing
+    const filePath = req.params[0] as string;
     
     const file = await fileManager.getFileByPath(projectId, filePath);
     
@@ -185,7 +185,8 @@ router.post('/projects/:projectId/files', async (req, res) => {
 router.put('/projects/:projectId/files/*', async (req, res) => {
   try {
     const { projectId } = req.params;
-    const filePath = req.params[0];
+    // Access wildcard path parameter with proper TypeScript typing
+    const filePath = req.params[0] as string;
     const { content } = req.body;
     
     if (content === undefined) {
@@ -208,7 +209,8 @@ router.put('/projects/:projectId/files/*', async (req, res) => {
 router.delete('/projects/:projectId/files/*', async (req, res) => {
   try {
     const { projectId } = req.params;
-    const filePath = req.params[0];
+    // Access wildcard path parameter with proper TypeScript typing
+    const filePath = req.params[0] as string;
     
     const result = await fileManager.deleteFile(projectId, filePath);
     
