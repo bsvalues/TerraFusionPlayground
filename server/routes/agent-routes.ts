@@ -78,9 +78,19 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
         const specialists = (bsbcmasterLead as any).getSpecialistAgents?.() || [];
         const activeServices = (bsbcmasterLead as any).getActiveServices?.() || [];
         
+        // Ensure status is an object and has valid capabilities property
+        const processedStatus = status || {};
+        
+        // Process capabilities safely
+        let safeCapabilities = [];
+        if (Array.isArray(processedStatus.capabilities)) {
+          safeCapabilities = processedStatus.capabilities;
+        }
+        
         // Add additional info about the Master Development Agent
         const enhancedStatus = {
-          ...status,
+          ...processedStatus,
+          capabilities: safeCapabilities,
           specialists,
           componentName: 'BSBCmaster',
           role: 'Component Lead',

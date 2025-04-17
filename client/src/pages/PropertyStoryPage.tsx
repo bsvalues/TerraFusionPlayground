@@ -95,7 +95,9 @@ export default function PropertyStoryPage() {
   const { data: properties, isLoading: propertiesLoading } = useQuery({
     queryKey: ['/api/properties'],
     queryFn: async () => {
-      return apiRequest('/api/properties') as Promise<Property[]>;
+      const response = await apiRequest('/api/properties');
+      // Ensure we always have an array, even if the API returns something else
+      return Array.isArray(response) ? response : [] as Property[];
     }
   });
 
@@ -335,7 +337,7 @@ export default function PropertyStoryPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto">
-                  {properties?.map((property) => (
+                  {Array.isArray(properties) && properties.map((property) => (
                     <div 
                       key={property.propertyId}
                       className={`flex items-center justify-between p-3 rounded-md cursor-pointer border hover:bg-accent hover:text-accent-foreground ${selectedPropertyId === property.propertyId ? 'bg-accent text-accent-foreground' : ''}`}
@@ -440,7 +442,7 @@ export default function PropertyStoryPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto">
-                  {properties?.map((property) => (
+                  {Array.isArray(properties) && properties.map((property) => (
                     <div 
                       key={property.propertyId}
                       className="flex items-center justify-between p-3 rounded-md border"
@@ -554,7 +556,12 @@ export default function PropertyStoryPage() {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => setBatchPropertyIds(properties?.map(p => p.propertyId) || [])}
+                      onClick={() => {
+                        // Ensure properties is an array before mapping
+                        if (Array.isArray(properties)) {
+                          setBatchPropertyIds(properties.map(p => p.propertyId));
+                        }
+                      }}
                     >
                       Select All
                     </Button>
@@ -568,7 +575,7 @@ export default function PropertyStoryPage() {
                     </Button>
                   </div>
                   
-                  {properties?.map((property) => (
+                  {Array.isArray(properties) && properties.map((property) => (
                     <div 
                       key={property.propertyId}
                       className="flex items-center justify-between p-3 rounded-md border"
