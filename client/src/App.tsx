@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ExtensionProvider } from "@/providers/extension-provider";
 import { AIAssistantProvider } from "./providers/ai-assistant-provider";
 import { ConnectionNotification } from "@/components/connection-notification";
+import { ConnectionStatusMonitor } from "@/components/connection-status-monitor";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import LandRecords from "@/pages/land-records";
@@ -25,7 +26,6 @@ import CollaborationTestPage from "@/pages/collaboration-test";
 import TeamAgentsPage from "@/pages/TeamAgentsPage";
 import MasterDevelopmentPage from "@/pages/MasterDevelopmentPage";
 import AppLayout from "@/layout/app-layout";
-import { ConnectionStatusMonitor } from './components/connection-status-monitor'; // Added import
 
 
 function Router() {

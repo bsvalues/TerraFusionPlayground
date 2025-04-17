@@ -1,61 +1,90 @@
+/**
+ * Connection Status Monitor Component
+ * 
+ * This component provides monitoring and visualization of connection status.
+ * It includes both basic status information as well as detailed metrics
+ * for monitoring connection health and fallback status.
+ */
 
-import React, { useEffect } from 'react';
-import { agentSocketIOService } from '@/services/agent-socketio-service';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { CircleSlash, WifiOff, Wifi } from 'lucide-react';
+import { useState } from 'react';
+import { useAgentSocketIO } from '@/hooks/use-agent-socketio';
+import { ConnectionHealthMetrics } from './connection-health-metrics';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { BarChart, LayoutDashboard, X } from 'lucide-react';
 
-export const ConnectionStatusMonitor: React.FC = () => {
-  const [status, setStatus] = React.useState(agentSocketIOService.getConnectionStatus());
-  const [isUsingFallback, setIsUsingFallback] = React.useState(agentSocketIOService.isUsingFallback());
-  const [retryCount, setRetryCount] = React.useState(0);
+export function ConnectionStatusMonitor() {
+  const [showMonitor, setShowMonitor] = useState(false);
+  const { connect, connectionStatus, connectionStatuses, isPolling } = useAgentSocketIO();
 
-  useEffect(() => {
-    const unsubscribe = agentSocketIOService.onConnectionStatusChange((newStatus) => {
-      setStatus(newStatus);
-      setIsUsingFallback(agentSocketIOService.isUsingFallback());
-      if (newStatus === 'errored') {
-        setRetryCount(prev => prev + 1);
-      } else if (newStatus === 'connected') {
-        setRetryCount(0);
-      }
-    });
-
-    // Initial connection attempt
-    agentSocketIOService.connect();
-
-    return () => {
-      unsubscribe();
-      agentSocketIOService.disconnect();
-    };
-  }, []);
-
-  if (status === 'connected' && !isUsingFallback) {
-    return null;
+  // Only render a button to toggle monitor when needed
+  if (!showMonitor) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50">
+        <Button 
+          onClick={() => setShowMonitor(true)} 
+          variant="outline" 
+          size="sm"
+          className="flex items-center space-x-1 bg-white shadow-md dark:bg-slate-800"
+        >
+          <BarChart className="h-4 w-4" />
+          <span className="hidden sm:inline">
+            Connection Monitor
+          </span>
+        </Button>
+      </div>
+    );
   }
 
   return (
-    <Alert variant={status === 'errored' ? 'destructive' : 'default'}>
-      <AlertTitle className="flex items-center gap-2">
-        {status === 'errored' ? <CircleSlash className="h-4 w-4" /> : 
-         isUsingFallback ? <WifiOff className="h-4 w-4" /> : 
-         <Wifi className="h-4 w-4" />}
-        Connection Status
-        <Badge variant={status === 'errored' ? 'destructive' : 'default'}>
-          {status.charAt(0).toUpperCase() + status.slice(1)}
-        </Badge>
-      </AlertTitle>
-      <AlertDescription>
-        {isUsingFallback ? 
-          'Using fallback REST API mode - functionality remains available with slightly higher latency.' :
-          status === 'errored' ? 
-          `Connection error detected - attempting to reconnect (Attempt ${retryCount})` : 
-          status === 'connecting' ?
-          'Establishing connection...' :
-          status === 'connected' ?
-          'Connected successfully' :
-          'Connection status unknown'}
-      </AlertDescription>
-    </Alert>
+    <div className="fixed bottom-4 right-4 z-50 w-80 shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <Card className="border border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-700">
+        <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-sm font-medium flex items-center">
+            <LayoutDashboard className="h-4 w-4 mr-2" />
+            Connection Monitor
+          </CardTitle>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-7 w-7 p-0"
+            onClick={() => setShowMonitor(false)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </CardHeader>
+        <CardContent className="p-3 pt-2">
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="text-xs">
+                <div className="text-muted-foreground">Status:</div>
+                <div className="font-medium">
+                  {connectionStatus}
+                </div>
+              </div>
+              <div className="text-xs">
+                <div className="text-muted-foreground">Mode:</div>
+                <div className="font-medium">
+                  {isPolling ? 'Fallback (REST)' : 'WebSocket'}
+                </div>
+              </div>
+            </div>
+            
+            {connectionStatus !== connectionStatuses.CONNECTED && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full text-xs h-7"
+                onClick={() => connect()}
+              >
+                Attempt Reconnection
+              </Button>
+            )}
+            
+            <ConnectionHealthMetrics />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
-};
+}

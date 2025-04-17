@@ -4,10 +4,13 @@
  * This hook provides access to the agent Socket.IO service for React components.
  * It allows components to connect to the agent system, send messages, and 
  * receive real-time updates.
+ * 
+ * Enhanced with connection metrics tracking and resilient connectivity features.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { agentSocketIOService, ConnectionStatus } from '../services/agent-socketio-service';
+import { connectionMetricsService, ConnectionMetrics } from '../services/connection-metrics';
 
 /**
  * Hook to use agent Socket.IO service
@@ -22,6 +25,9 @@ export function useAgentSocketIO() {
   const [isPolling, setIsPolling] = useState(agentSocketIOService.isUsingFallback());
   const [lastMessage, setLastMessage] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
+  const [connectionMetrics, setConnectionMetrics] = useState<ConnectionMetrics>(
+    connectionMetricsService.getMetrics()
+  );
   
   // Connect to agent system
   const connect = useCallback(async () => {
@@ -83,6 +89,10 @@ export function useAgentSocketIO() {
       
       // Also update polling status, as it often changes with connection status
       setIsPolling(agentSocketIOService.isUsingFallback());
+      
+      // Record status change in metrics
+      connectionMetricsService.recordStatusChange(status);
+      setConnectionMetrics(connectionMetricsService.getMetrics());
     });
     
     // Handle generic message event
@@ -95,6 +105,10 @@ export function useAgentSocketIO() {
           message.message && 
           message.message.includes('fallback')) {
         setIsPolling(agentSocketIOService.isUsingFallback());
+        
+        // Record fallback activation in metrics
+        connectionMetricsService.recordFallbackActivated();
+        setConnectionMetrics(connectionMetricsService.getMetrics());
       }
     };
     
@@ -105,14 +119,28 @@ export function useAgentSocketIO() {
       const currentPollingStatus = agentSocketIOService.isUsingFallback();
       if (currentPollingStatus !== isPolling) {
         setIsPolling(currentPollingStatus);
+        
+        // Record fallback status change in metrics
+        if (currentPollingStatus) {
+          connectionMetricsService.recordFallbackActivated();
+        } else {
+          connectionMetricsService.recordFallbackDeactivated();
+        }
+        setConnectionMetrics(connectionMetricsService.getMetrics());
       }
     }, 2000);
+    
+    // Set up periodic metrics refresh
+    const metricsRefreshInterval = setInterval(() => {
+      setConnectionMetrics(connectionMetricsService.getMetrics());
+    }, 5000);
     
     // Clean up
     return () => {
       removeListener();
       agentSocketIOService.off('message', messageHandler);
       clearInterval(pollingStatusInterval);
+      clearInterval(metricsRefreshInterval);
     };
   }, [isPolling]);
   
@@ -131,7 +159,9 @@ export function useAgentSocketIO() {
     addEventListener,
     removeEventListener,
     // Also export the connection status enum values
-    connectionStatuses: ConnectionStatus
+    connectionStatuses: ConnectionStatus,
+    // Connection metrics data for monitoring
+    connectionMetrics
   }), [
     isConnected,
     connectionStatus,
@@ -143,7 +173,8 @@ export function useAgentSocketIO() {
     sendAgentMessage,
     sendActionRequest,
     addEventListener,
-    removeEventListener
+    removeEventListener,
+    connectionMetrics
   ]);
 }
 
