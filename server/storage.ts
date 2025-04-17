@@ -28,6 +28,15 @@ import {
   learningUpdates, LearningUpdate, InsertLearningUpdate,
   dataLineageRecords, DataLineageRecord, InsertDataLineageRecord,
   codeImprovements, CodeImprovement, InsertCodeImprovement,
+  // TaxI_AI Development Platform tables
+  developmentProjects, DevelopmentProject, InsertDevelopmentProject,
+  projectFiles, ProjectFile, InsertProjectFile,
+  projectTemplates, ProjectTemplate, InsertProjectTemplate,
+  projectVersions, ProjectVersion, InsertProjectVersion,
+  previewSettings, PreviewSetting, InsertPreviewSetting,
+  aiCodeGenerations, AiCodeGeneration, InsertAiCodeGeneration,
+  // TaxI_AI Development Platform enums
+  ProjectType, ProjectLanguage, ProjectStatus, FileType, PreviewStatus,
   teamMembers, TeamMember, InsertTeamMember,
   teamTasks, TeamTask, InsertTeamTask,
   taskComments, TaskComment, InsertTaskComment,
