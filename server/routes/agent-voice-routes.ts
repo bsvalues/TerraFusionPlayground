@@ -1,128 +1,209 @@
-import { Router } from 'express';
-import { VoiceCommandContext } from '../services/agent-voice-command-service';
+/**
+ * Agent Voice Command Routes
+ * 
+ * This file defines the API routes for the agent voice command functionality.
+ */
 
-// Create a router for the voice command API
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+import { getAgentVoiceCommandService, VoiceCommandContext, VoiceCommandResult } from '../services/agent-voice-command-service';
+
+// Create a router
 const router = Router();
 
+// Schema for validating voice command requests
+const voiceCommandSchema = z.object({
+  command: z.string().min(1, 'Command is required'),
+  context: z.object({
+    agentId: z.string().optional(),
+    subject: z.string().optional(),
+    recentCommands: z.array(z.string()).optional(),
+    recentResults: z.array(z.any()).optional()
+  }).optional()
+});
+
 /**
- * Process a voice command
- * This endpoint receives voice commands from the client and processes them
- * using the appropriate agent based on the context provided.
+ * Process voice command
+ * 
+ * POST /api/agent-voice/command
  */
-router.post('/process', async (req, res) => {
+router.post('/command', async (req: Request, res: Response) => {
   try {
-    const { command, context } = req.body;
+    // Validate request body
+    const validationResult = voiceCommandSchema.safeParse(req.body);
     
-    if (!command || typeof command !== 'string') {
+    if (!validationResult.success) {
       return res.status(400).json({
-        command: '',
-        processed: false,
-        successful: false,
-        error: 'No command text provided',
-        timestamp: Date.now()
+        error: 'Invalid request',
+        details: validationResult.error.format()
       });
     }
     
-    // Use context to determine which agent to route the command to
-    const { agentId, subject } = context as VoiceCommandContext;
+    const { command, context = {} } = validationResult.data;
     
-    // For now, we'll implement a simple response generation
-    // In a real implementation, this would route to different agent services
-    const result = processCommand(command, agentId, subject);
+    // Get the voice command service
+    const voiceCommandService = getAgentVoiceCommandService();
     
-    return res.json(result);
+    // Process the command
+    const result = await voiceCommandService.processCommand(command, context);
+    
+    // Return the result
+    return res.status(200).json(result);
   } catch (error) {
     console.error('Error processing voice command:', error);
-    return res.status(500).json({
-      command: req.body.command || '',
-      processed: false,
-      successful: false,
-      error: 'Server error processing command',
-      timestamp: Date.now()
+    
+    // Return error response
+    let errorMessage = 'An error occurred while processing the voice command';
+    let statusCode = 500;
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // If this is a known error type, we could handle it differently
+      if (errorMessage.includes('not initialized')) {
+        statusCode = 503; // Service Unavailable
+      }
+    }
+    
+    return res.status(statusCode).json({
+      error: errorMessage
     });
   }
 });
 
 /**
- * Process a command with some basic responses
- * This is a placeholder for actual agent-specific processing logic
+ * Execute action from voice command
+ * 
+ * POST /api/agent-voice/execute-action
  */
-function processCommand(command: string, agentId?: string, subject?: string) {
-  const normalizedCommand = command.toLowerCase();
-  let response = '';
-  let successful = true;
-  let actions = [];
-  
-  // Very simple intent detection based on keywords
-  if (normalizedCommand.includes('hello') || 
-      normalizedCommand.includes('hi') || 
-      normalizedCommand.includes('hey')) {
-    response = `Hello! I'm your ${agentId || 'AI'} assistant. How can I help you${subject ? ' with ' + subject : ''}?`;
-  } 
-  else if (normalizedCommand.includes('help') && normalizedCommand.includes('with')) {
-    response = `I can help you with various tasks related to ${subject || 'assessment'}. Just tell me what you need.`;
-  }
-  else if (normalizedCommand.includes('what can you do') || normalizedCommand.includes('capabilities')) {
-    if (agentId === 'assistant') {
-      response = 'I can provide information about assessment models, help you create and manage models, and answer questions about the platform.';
-    } else if (agentId === 'property') {
-      response = 'I can show property details, find comparable properties, analyze value trends, and generate property stories.';
-    } else if (agentId === 'analytics') {
-      response = 'I can show dashboards, compare models, generate reports, and analyze assessment trends.';
-    } else if (agentId === 'data') {
-      response = 'I can help find properties, check data quality, identify missing data, and assist with data imports.';
-    } else {
-      response = 'I can help with various assessment and property-related tasks. Please specify what you need.';
-    }
-  }
-  else if (normalizedCommand.includes('model') && normalizedCommand.includes('create')) {
-    response = 'To create a new assessment model, you need to navigate to the Model Workbench and click on "New Model". I can guide you through the process step by step.';
-  }
-  else if (normalizedCommand.includes('property') && normalizedCommand.includes('show')) {
-    // Extract property ID if present (simplified)
-    const propertyIdMatch = normalizedCommand.match(/property (?:id )?(\d+)/);
-    const propertyId = propertyIdMatch ? propertyIdMatch[1] : '12345';
+router.post('/execute-action', async (req: Request, res: Response) => {
+  try {
+    // Schema for validating action execution
+    const actionSchema = z.object({
+      type: z.string().min(1, 'Action type is required'),
+      payload: z.any().optional()
+    });
     
-    response = `I'm retrieving details for property ID ${propertyId}. This would typically display property characteristics, valuation history, and assessment information.`;
-    actions = [
+    // Validate request body
+    const validationResult = actionSchema.safeParse(req.body);
+    
+    if (!validationResult.success) {
+      return res.status(400).json({
+        error: 'Invalid action',
+        details: validationResult.error.format()
+      });
+    }
+    
+    const { type, payload } = validationResult.data;
+    
+    // In a real implementation, we would handle different action types
+    // For this demo, we'll just acknowledge the action
+    
+    // Return a success response
+    let response = '';
+    let actions = [];
+    
+    switch (type) {
+      case 'display_property_details':
+        response = `Displaying property details for ID: ${payload.propertyId}`;
+        break;
+        
+      case 'open_modal':
+        response = `Opening ${payload.modalType} modal for: ${payload.address || 'N/A'}`;
+        break;
+        
+      case 'display_notification':
+        response = `Notification displayed: ${payload.title}`;
+        break;
+        
+      case 'navigate':
+        response = `Navigating to: ${payload.url || payload.route || 'unknown destination'}`;
+        break;
+        
+      case 'copy_to_clipboard':
+        response = `Copied text to clipboard`;
+        break;
+        
+      case 'refresh_data':
+        response = `Refreshing data for: ${payload.dataType || 'current view'}`;
+        break;
+        
+      default:
+        response = `Action '${type}' executed successfully`;
+    }
+    
+    return res.status(200).json({
+      successful: true,
+      message: response,
+      actions // Additional actions if needed
+    });
+  } catch (error) {
+    console.error('Error executing voice command action:', error);
+    
+    // Return error response
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error executing action'
+    });
+  }
+});
+
+/**
+ * Get available voice commands
+ * 
+ * GET /api/agent-voice/available-commands
+ */
+router.get('/available-commands', (req: Request, res: Response) => {
+  try {
+    // In a real implementation, this would be dynamic based on the user's context
+    // and the available functionality
+    
+    const availableCommands = [
       {
-        type: 'NAVIGATE',
-        payload: { url: `/properties/${propertyId}` }
+        name: 'Property Data',
+        examples: [
+          'Show me property data for BC001',
+          'What are the details for property ID BC002?',
+          'Give me information about property BC003'
+        ]
+      },
+      {
+        name: 'Valuation Reports',
+        examples: [
+          'Generate a valuation report for 1320 N Louis Avenue',
+          'Create an assessment report for 742 Evergreen Terrace',
+          'What\'s the valuation for 123 Main Street?'
+        ]
+      },
+      {
+        name: 'Assessment Methods',
+        examples: [
+          'How are residential properties assessed?',
+          'What\'s the assessment method for commercial properties?',
+          'Explain the assessment process for agricultural land'
+        ]
+      },
+      {
+        name: 'General Help',
+        examples: [
+          'Help',
+          'What can you do?',
+          'Show me available commands'
+        ]
       }
     ];
+    
+    // Return available commands
+    return res.status(200).json({
+      availableCommands
+    });
+  } catch (error) {
+    console.error('Error getting available commands:', error);
+    
+    // Return error response
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error getting available commands'
+    });
   }
-  else if (normalizedCommand.includes('comparable') || normalizedCommand.includes('comparables')) {
-    response = 'I can find comparable properties based on location, size, features, and recent sales. This helps ensure fair and accurate assessments.';
-  }
-  else if (normalizedCommand.includes('dashboard')) {
-    response = 'Opening the analytics dashboard where you can view key performance metrics, assessment ratios, and property trends.';
-    actions = [
-      {
-        type: 'NAVIGATE',
-        payload: { url: '/analytics/dashboard' }
-      }
-    ];
-  }
-  else if (normalizedCommand.includes('model') && normalizedCommand.includes('workbench')) {
-    response = 'The Assessment Model Workbench is a powerful tool for creating, editing, and testing valuation models. It includes formula editors, component libraries, and testing frameworks.';
-  }
-  else if (normalizedCommand.includes('thank')) {
-    response = "You're welcome! Let me know if you need anything else.";
-  }
-  else {
-    // Default response
-    response = `I'm not sure how to handle that request yet. Can you try rephrasing or ask me something about ${subject || 'assessment models'}?`;
-    successful = false;
-  }
-  
-  return {
-    command,
-    processed: true,
-    successful,
-    response,
-    actions: actions.length > 0 ? actions : undefined,
-    timestamp: Date.now()
-  };
-}
+});
 
 export default router;
