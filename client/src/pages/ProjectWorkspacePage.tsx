@@ -129,12 +129,14 @@ const ProjectWorkspacePage = () => {
   } = useQuery<PreviewStatusResponse>({
     queryKey: ['/api/development/projects', projectId, 'preview'],
     enabled: !!projectId,
-    onSuccess: (data: PreviewStatusResponse) => {
-      if (data) {
-        setPreviewStatus(data.status);
-      }
-    }
   });
+  
+  // Effect to update preview status when data changes
+  useEffect(() => {
+    if (preview) {
+      setPreviewStatus(preview.status);
+    }
+  }, [preview]);
   
   // Effect to navigate away if projectId doesn't exist
   useEffect(() => {
@@ -143,6 +145,14 @@ const ProjectWorkspacePage = () => {
     }
   }, [projectId, navigate]);
   
+  // Interface for file response
+  interface FileResponse {
+    content: string;
+    path: string;
+    name: string;
+    type: string;
+  }
+  
   // Function to open a file
   const handleOpenFile = async (path: string) => {
     try {
@@ -150,8 +160,10 @@ const ProjectWorkspacePage = () => {
         method: 'GET',
       });
       
+      const fileData: FileResponse = await response.json();
+      
       setActiveFilePath(path);
-      setFileContent(response.content || '');
+      setFileContent(fileData.content || '');
       setIsEditing(false);
     } catch (error) {
       console.error('Failed to open file:', error);
@@ -338,7 +350,7 @@ const ProjectWorkspacePage = () => {
               <div className="h-full overflow-auto p-2">
                 <div className="flex justify-between items-center mb-2 p-2 bg-gray-50 rounded">
                   <h3 className="font-medium text-gray-700">Project Files</h3>
-                  <Button variant="ghost" size="sm" onClick={() => refetchFiles()}>
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.preventDefault(); refetchFiles(); }}>
                     <RefreshCw className="h-4 w-4" />
                   </Button>
                 </div>
@@ -459,7 +471,7 @@ const ProjectWorkspacePage = () => {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={refetchPreview}
+                          onClick={(e) => { e.preventDefault(); refetchPreview(); }}
                         >
                           <RefreshCw className="h-4 w-4" />
                         </Button>
@@ -512,7 +524,7 @@ const ProjectWorkspacePage = () => {
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        onClick={refetchPreview}
+                        onClick={(e) => { e.preventDefault(); refetchPreview(); }}
                       >
                         <RefreshCw className="h-4 w-4" />
                       </Button>
