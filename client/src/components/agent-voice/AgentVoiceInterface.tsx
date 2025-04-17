@@ -95,6 +95,9 @@ export function AgentVoiceInterface({
           {/* Voice command button */}
           <AgentVoiceCommandButton 
             onStateChange={handleStateChange}
+            onResult={onResult}
+            agentId={agentId}
+            subject={subject}
             className="mx-auto"
           />
           
@@ -107,7 +110,10 @@ export function AgentVoiceInterface({
           
           {/* Results display */}
           {lastResult && (
-            <AgentVoiceCommandResults result={lastResult} />
+            <AgentVoiceCommandResults 
+              result={lastResult} 
+              onClear={() => setLastResult(null)}
+            />
           )}
         </div>
       </CardContent>
