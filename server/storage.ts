@@ -128,6 +128,51 @@ export interface IStorage {
   updateTeamKnowledgeBaseItem(id: string, updates: Partial<TeamKnowledgeBaseItem>): Promise<TeamKnowledgeBaseItem | null>;
   deleteTeamKnowledgeBaseItem(id: string): Promise<boolean>;
   
+  // TaxI_AI Development Platform methods
+  
+  // Development Project methods
+  createDevelopmentProject(project: InsertDevelopmentProject): Promise<DevelopmentProject>;
+  getDevelopmentProject(id: number): Promise<DevelopmentProject | undefined>;
+  getAllDevelopmentProjects(): Promise<DevelopmentProject[]>;
+  getDevelopmentProjectsByUser(userId: number): Promise<DevelopmentProject[]>;
+  updateDevelopmentProject(id: number, updateData: Partial<DevelopmentProject>): Promise<DevelopmentProject | undefined>;
+  deleteDevelopmentProject(id: number): Promise<boolean>;
+  
+  // Project File methods
+  createProjectFile(file: InsertProjectFile): Promise<ProjectFile>;
+  getProjectFile(id: number): Promise<ProjectFile | undefined>;
+  getProjectFilesByProject(projectId: number): Promise<ProjectFile[]>;
+  getProjectFileByPath(projectId: number, path: string): Promise<ProjectFile | undefined>;
+  updateProjectFile(id: number, updateData: Partial<ProjectFile>): Promise<ProjectFile | undefined>;
+  deleteProjectFile(id: number): Promise<boolean>;
+  
+  // Project Template methods
+  createProjectTemplate(template: InsertProjectTemplate): Promise<ProjectTemplate>;
+  getProjectTemplate(id: number): Promise<ProjectTemplate | undefined>;
+  getAllProjectTemplates(): Promise<ProjectTemplate[]>;
+  getProjectTemplatesByType(type: string): Promise<ProjectTemplate[]>;
+  getProjectTemplatesByLanguage(language: string): Promise<ProjectTemplate[]>;
+  updateProjectTemplate(id: number, updateData: Partial<ProjectTemplate>): Promise<ProjectTemplate | undefined>;
+  deleteProjectTemplate(id: number): Promise<boolean>;
+  
+  // Project Version methods
+  createProjectVersion(version: InsertProjectVersion): Promise<ProjectVersion>;
+  getProjectVersion(id: number): Promise<ProjectVersion | undefined>;
+  getProjectVersionsByProject(projectId: number): Promise<ProjectVersion[]>;
+  restoreProjectVersion(projectId: number, versionId: number): Promise<boolean>;
+  
+  // Preview Setting methods
+  createPreviewSetting(setting: InsertPreviewSetting): Promise<PreviewSetting>;
+  getPreviewSetting(id: number): Promise<PreviewSetting | undefined>;
+  getPreviewSettingByProject(projectId: number): Promise<PreviewSetting | undefined>;
+  updatePreviewSetting(id: number, updateData: Partial<PreviewSetting>): Promise<PreviewSetting | undefined>;
+  
+  // AI Code Generation methods
+  createAiCodeGeneration(generation: InsertAiCodeGeneration): Promise<AiCodeGeneration>;
+  getAiCodeGeneration(id: number): Promise<AiCodeGeneration | undefined>;
+  getAiCodeGenerationsByProject(projectId: number): Promise<AiCodeGeneration[]>;
+  getAiCodeGenerationsByUser(userId: number): Promise<AiCodeGeneration[]>;
+  
   // Data Lineage methods
   createDataLineageRecord(record: InsertDataLineageRecord): Promise<DataLineageRecord>;
   getDataLineageByField(propertyId: string, fieldName: string): Promise<DataLineageRecord[]>;
