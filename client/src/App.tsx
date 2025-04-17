@@ -28,6 +28,7 @@ import MasterDevelopmentPage from "@/pages/MasterDevelopmentPage";
 import DevelopmentPlatformPage from "@/pages/DevelopmentPlatformPage";
 import ProjectWorkspacePage from "@/pages/ProjectWorkspacePage";
 import AssessmentModelWorkbenchPage from "@/pages/AssessmentModelWorkbenchPage";
+import VoiceCommandPage from "@/pages/VoiceCommandPage";
 import AppLayout from "@/layout/app-layout";
 
 
@@ -139,6 +140,12 @@ function Router() {
       <Route path="/master-development">
         <AppLayout>
           <MasterDevelopmentPage />
+        </AppLayout>
+      </Route>
+
+      <Route path="/voice-command">
+        <AppLayout>
+          <VoiceCommandPage />
         </AppLayout>
       </Route>
 

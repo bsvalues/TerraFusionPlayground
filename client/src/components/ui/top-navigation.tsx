@@ -35,6 +35,7 @@ const TopNavigation = () => {
     { label: 'Data Lineage', path: '/data-lineage' },
     { label: 'Extensions', path: '/extensions' },
     { label: 'Agent System', path: '/agent-system' },
+    { label: 'Voice Commands', path: '/voice-command' },
     { label: 'Master Development', path: '/master-development' },
     { label: 'Development Platform', path: '/development' },
   ];
