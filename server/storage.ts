@@ -142,11 +142,11 @@ export interface IStorage {
   
   // Development Project methods
   createDevelopmentProject(project: InsertDevelopmentProject): Promise<DevelopmentProject>;
-  getDevelopmentProject(id: number): Promise<DevelopmentProject | undefined>;
+  getDevelopmentProject(projectId: string): Promise<DevelopmentProject | undefined>;
   getAllDevelopmentProjects(): Promise<DevelopmentProject[]>;
   getDevelopmentProjectsByUser(userId: number): Promise<DevelopmentProject[]>;
-  updateDevelopmentProject(id: number, updateData: Partial<DevelopmentProject>): Promise<DevelopmentProject | undefined>;
-  deleteDevelopmentProject(id: number): Promise<boolean>;
+  updateDevelopmentProject(projectId: string, updateData: Partial<DevelopmentProject>): Promise<DevelopmentProject | undefined>;
+  deleteDevelopmentProject(projectId: string): Promise<boolean>;
   
   // Project File methods
   createProjectFile(file: InsertProjectFile): Promise<ProjectFile>;
@@ -5597,32 +5597,31 @@ export class PgStorage implements IStorage {
   
   // Development Project methods implementation
   async createDevelopmentProject(project: InsertDevelopmentProject): Promise<DevelopmentProject> {
-    const id = this.currentDevelopmentProjectId++;
+    const projectId = `proj_${Date.now()}`;
     const timestamp = new Date();
     
     const newProject: DevelopmentProject = {
       ...project,
-      id,
+      project_id: projectId,
       createdAt: timestamp,
       updatedAt: timestamp,
-      projectId: `proj_${id}`,
       status: project.status || ProjectStatus.DRAFT
     };
     
-    this.developmentProjects.set(id, newProject);
+    this.developmentProjects.set(projectId, newProject);
     
     await this.createSystemActivity({
       activity_type: 'development_project_created',
       component: 'development_platform',
       status: 'success',
-      details: { projectId: newProject.projectId }
+      details: { projectId }
     });
     
     return newProject;
   }
   
-  async getDevelopmentProject(id: number): Promise<DevelopmentProject | undefined> {
-    return this.developmentProjects.get(id);
+  async getDevelopmentProject(projectId: string): Promise<DevelopmentProject | undefined> {
+    return this.developmentProjects.get(projectId);
   }
   
   async getAllDevelopmentProjects(): Promise<DevelopmentProject[]> {
@@ -5634,8 +5633,8 @@ export class PgStorage implements IStorage {
       .filter(project => project.createdBy === userId);
   }
   
-  async updateDevelopmentProject(id: number, updateData: Partial<DevelopmentProject>): Promise<DevelopmentProject | undefined> {
-    const project = this.developmentProjects.get(id);
+  async updateDevelopmentProject(projectId: string, updateData: Partial<DevelopmentProject>): Promise<DevelopmentProject | undefined> {
+    const project = this.developmentProjects.get(projectId);
     if (!project) {
       return undefined;
     }
@@ -5646,43 +5645,43 @@ export class PgStorage implements IStorage {
       updatedAt: new Date()
     };
     
-    this.developmentProjects.set(id, updatedProject);
+    this.developmentProjects.set(projectId, updatedProject);
     
     await this.createSystemActivity({
       activity_type: 'development_project_updated',
       component: 'development_platform',
       status: 'success',
-      details: { projectId: project.projectId }
+      details: { projectId }
     });
     
     return updatedProject;
   }
   
-  async deleteDevelopmentProject(id: number): Promise<boolean> {
-    const project = this.developmentProjects.get(id);
+  async deleteDevelopmentProject(projectId: string): Promise<boolean> {
+    const project = this.developmentProjects.get(projectId);
     if (!project) {
       return false;
     }
     
     // Delete all related files
-    const projectFiles = await this.getProjectFilesByProject(id);
+    const projectFiles = await this.getProjectFilesByProject(projectId);
     for (const file of projectFiles) {
       await this.deleteProjectFile(file.id);
     }
     
     // Delete any preview settings
-    const previewSetting = await this.getPreviewSettingByProject(id);
+    const previewSetting = await this.getPreviewSettingByProject(projectId);
     if (previewSetting) {
       await this.deletePreviewSetting(previewSetting.id);
     }
     
-    this.developmentProjects.delete(id);
+    this.developmentProjects.delete(projectId);
     
     await this.createSystemActivity({
       activity_type: 'development_project_deleted',
       component: 'development_platform',
       status: 'success',
-      details: { projectId: project.projectId }
+      details: { projectId }
     });
     
     return true;
@@ -5738,9 +5737,9 @@ export class PgStorage implements IStorage {
     return this.projectFiles.get(id);
   }
   
-  async getProjectFilesByProject(projectId: number): Promise<ProjectFile[]> {
+  async getProjectFilesByProject(projectId: string): Promise<ProjectFile[]> {
     return Array.from(this.projectFiles.values())
-      .filter(file => Number(file.projectId) === projectId);
+      .filter(file => file.projectId === projectId);
   }
   
   async getProjectFileByPath(projectId: number, path: string): Promise<ProjectFile | undefined> {
