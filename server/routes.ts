@@ -174,6 +174,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register AI Assistant routes
   app.use('/api/ai-assistant', aiAssistantRoutes);
+  
+  // Register Development Platform routes
+  app.use('/api/development', createDevelopmentPlatformRoutes());
 
   /**
    * Data Lineage Routes
