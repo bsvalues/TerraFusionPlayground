@@ -10,7 +10,8 @@ export function ConnectionNotification() {
   
   // Show notification when using fallback
   useEffect(() => {
-    if (isPolling && connectionStatus === ConnectionStatus.ERRORED) {
+    // Show notification when using fallback polling or when in error state
+    if (isPolling || connectionStatus === ConnectionStatus.ERRORED) {
       setShowNotification(true);
     } else if (connectionStatus === ConnectionStatus.CONNECTED && !isPolling) {
       // Hide notification when connection is restored
@@ -18,12 +19,14 @@ export function ConnectionNotification() {
     }
   }, [connectionStatus, isPolling]);
   
-  // After 10 seconds, hide the notification to avoid cluttering the UI
+  // Keep notification visible for 30 seconds
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    
     if (showNotification) {
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         setShowNotification(false);
-      }, 10000);
+      }, 30000); // 30 seconds
       
       return () => clearTimeout(timer);
     }
