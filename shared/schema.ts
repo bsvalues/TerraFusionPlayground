@@ -1273,3 +1273,251 @@ export interface PropertyAnalysisResult {
   recommendations: string[];
   marketTrends: string[];
 }
+
+// TaxI_AI Development Platform Enums
+export enum ProjectType {
+  WEB_APPLICATION = 'web_application',
+  API_SERVICE = 'api_service',
+  DATA_PIPELINE = 'data_pipeline',
+  AI_AGENT = 'ai_agent'
+}
+
+export enum ProjectLanguage {
+  PYTHON = 'python',
+  JAVASCRIPT = 'javascript',
+  TYPESCRIPT = 'typescript',
+  CSHARP = 'csharp',
+  JAVA = 'java'
+}
+
+export enum ProjectStatus {
+  DRAFT = 'draft',
+  ACTIVE = 'active',
+  ARCHIVED = 'archived'
+}
+
+export enum FileType {
+  CODE = 'code',
+  MARKDOWN = 'markdown',
+  JSON = 'json',
+  CONFIG = 'config',
+  DATA = 'data',
+  OTHER = 'other'
+}
+
+export enum PreviewStatus {
+  STOPPED = 'stopped',
+  RUNNING = 'running',
+  ERROR = 'error'
+}
+
+// TaxI_AI Development Platform Tables
+
+// Development Projects table
+export const developmentProjects = pgTable("development_projects", {
+  id: serial("id").primaryKey(),
+  projectId: text("project_id").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").notNull(), // ProjectType enum
+  language: text("language").notNull(), // ProjectLanguage enum
+  framework: text("framework"),
+  template: text("template"),
+  status: text("status").notNull().default("active"), // ProjectStatus enum
+  createdBy: integer("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  config: jsonb("config").default({}),
+  metadata: jsonb("metadata").default({}),
+  isPublic: boolean("is_public").default(false),
+});
+
+export const insertDevelopmentProjectSchema = createInsertSchema(developmentProjects).pick({
+  projectId: true,
+  name: true,
+  description: true,
+  type: true,
+  language: true,
+  framework: true,
+  template: true,
+  status: true,
+  createdBy: true,
+  config: true,
+  metadata: true,
+  isPublic: true,
+});
+
+// Project Files table
+export const projectFiles = pgTable("project_files", {
+  id: serial("id").primaryKey(),
+  fileId: text("file_id").notNull().unique(),
+  projectId: text("project_id").notNull(),
+  path: text("path").notNull(),
+  name: text("name").notNull(),
+  content: text("content").notNull(),
+  type: text("type").notNull(), // FileType enum
+  size: integer("size").notNull(),
+  isDirectory: boolean("is_directory").default(false),
+  parentPath: text("parent_path"),
+  createdBy: integer("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  metadata: jsonb("metadata").default({}),
+});
+
+export const insertProjectFileSchema = createInsertSchema(projectFiles).pick({
+  fileId: true,
+  projectId: true,
+  path: true,
+  name: true,
+  content: true,
+  type: true,
+  size: true,
+  isDirectory: true,
+  parentPath: true,
+  createdBy: true,
+  metadata: true,
+});
+
+// Project Templates table
+export const projectTemplates = pgTable("project_templates", {
+  id: serial("id").primaryKey(),
+  templateId: text("template_id").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  type: text("type").notNull(), // ProjectType enum
+  language: text("language").notNull(), // ProjectLanguage enum
+  framework: text("framework"),
+  thumbnail: text("thumbnail"),
+  files: jsonb("files").notNull(), // Template file structures
+  dependencies: jsonb("dependencies").default({}),
+  config: jsonb("config").default({}),
+  createdBy: integer("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  isOfficial: boolean("is_official").default(false),
+  category: text("category"),
+  tags: text("tags").array(),
+});
+
+export const insertProjectTemplateSchema = createInsertSchema(projectTemplates).pick({
+  templateId: true,
+  name: true,
+  description: true,
+  type: true,
+  language: true,
+  framework: true,
+  thumbnail: true,
+  files: true,
+  dependencies: true,
+  config: true,
+  createdBy: true,
+  isOfficial: true,
+  category: true,
+  tags: true,
+});
+
+// Project Versions table
+export const projectVersions = pgTable("project_versions", {
+  id: serial("id").primaryKey(),
+  versionId: text("version_id").notNull().unique(),
+  projectId: text("project_id").notNull(),
+  versionNumber: text("version_number").notNull(),
+  commitMessage: text("commit_message").notNull(),
+  snapshot: jsonb("snapshot").notNull(),
+  createdBy: integer("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  isDeployed: boolean("is_deployed").default(false),
+  deploymentInfo: jsonb("deployment_info").default({}),
+});
+
+export const insertProjectVersionSchema = createInsertSchema(projectVersions).pick({
+  versionId: true,
+  projectId: true,
+  versionNumber: true,
+  commitMessage: true,
+  snapshot: true,
+  createdBy: true,
+  isDeployed: true,
+  deploymentInfo: true,
+});
+
+// Preview Settings table
+export const previewSettings = pgTable("preview_settings", {
+  id: serial("id").primaryKey(),
+  projectId: text("project_id").notNull().unique(),
+  port: integer("port"),
+  command: text("command").notNull(),
+  env: jsonb("env").default({}),
+  autoRefresh: boolean("auto_refresh").default(true),
+  status: text("status").notNull().default("stopped"), // PreviewStatus enum
+  lastStarted: timestamp("last_started"),
+  lastStopped: timestamp("last_stopped"),
+  logs: text("logs").array().default([]),
+  pid: integer("pid"),
+  configFile: text("config_file"),
+});
+
+export const insertPreviewSettingSchema = createInsertSchema(previewSettings).pick({
+  projectId: true,
+  port: true,
+  command: true,
+  env: true,
+  autoRefresh: true,
+  status: true,
+  lastStarted: true,
+  lastStopped: true,
+  logs: true,
+  pid: true,
+  configFile: true,
+});
+
+// AI Code Generations table
+export const aiCodeGenerations = pgTable("ai_code_generations", {
+  id: serial("id").primaryKey(),
+  generationId: text("generation_id").notNull().unique(),
+  projectId: text("project_id").notNull(),
+  fileId: text("file_id"),
+  prompt: text("prompt").notNull(),
+  result: text("result").notNull(),
+  usedContext: jsonb("used_context").default({}),
+  rating: integer("rating"),
+  isApplied: boolean("is_applied").default(false),
+  createdBy: integer("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  model: text("model"),
+  parameters: jsonb("parameters").default({}),
+});
+
+export const insertAiCodeGenerationSchema = createInsertSchema(aiCodeGenerations).pick({
+  generationId: true,
+  projectId: true,
+  fileId: true,
+  prompt: true,
+  result: true,
+  usedContext: true,
+  rating: true,
+  isApplied: true,
+  createdBy: true,
+  model: true,
+  parameters: true,
+});
+
+// Export types for TaxI_AI Development Platform
+export type DevelopmentProject = typeof developmentProjects.$inferSelect;
+export type InsertDevelopmentProject = z.infer<typeof insertDevelopmentProjectSchema>;
+
+export type ProjectFile = typeof projectFiles.$inferSelect;
+export type InsertProjectFile = z.infer<typeof insertProjectFileSchema>;
+
+export type ProjectTemplate = typeof projectTemplates.$inferSelect;
+export type InsertProjectTemplate = z.infer<typeof insertProjectTemplateSchema>;
+
+export type ProjectVersion = typeof projectVersions.$inferSelect;
+export type InsertProjectVersion = z.infer<typeof insertProjectVersionSchema>;
+
+export type PreviewSetting = typeof previewSettings.$inferSelect;
+export type InsertPreviewSetting = z.infer<typeof insertPreviewSettingSchema>;
+
+export type AiCodeGeneration = typeof aiCodeGenerations.$inferSelect;
+export type InsertAiCodeGeneration = z.infer<typeof insertAiCodeGenerationSchema>;
