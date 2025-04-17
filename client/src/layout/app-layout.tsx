@@ -10,7 +10,7 @@ interface AppLayoutProps {
 }
 
 const AppLayout = ({ children }: AppLayoutProps) => {
-  const [recordingState, setRecordingState] = useState<RecordingState>('inactive');
+  const [recordingState, setRecordingState] = useState<RecordingState>(RecordingState.INACTIVE);
   const [lastResult, setLastResult] = useState<VoiceCommandResult | null>(null);
   const [showCommandResults, setShowCommandResults] = useState(false);
 
@@ -28,7 +28,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const handleStateChange = (state: RecordingState) => {
     setRecordingState(state);
     // When recording stops, show the results panel
-    if (state === 'inactive' && recordingState !== 'inactive') {
+    if (state === RecordingState.INACTIVE && recordingState !== RecordingState.INACTIVE) {
       setShowCommandResults(true);
     }
   };

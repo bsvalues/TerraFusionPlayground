@@ -131,41 +131,60 @@ export function AgentVoiceCommandButton({
   }, [recognitionService, state, onStateChange, agentId, subject, onResult]);
   
   // Button appearance based on state
-  let buttonAppearance = {
-    variant: 'default' as const,
-    children: <Mic className="h-5 w-5" />,
-    disabled: false,
-    'aria-label': 'Record voice command'
-  };
+  let buttonVariant: "default" | "destructive" | "outline" | "ghost" | "link" | "secondary" = "default";
+  let isDisabled = false;
+  let ariaLabel = 'Record voice command';
+  let iconSize = "h-5 w-5";
+  let buttonContent;
   
+  // Determine button size dimensions
+  let buttonSize = "w-12 h-12";
+  let iconClass = iconSize;
+  
+  if (size === 'sm') {
+    buttonSize = "w-8 h-8";
+    iconClass = "h-4 w-4";
+  } else if (size === 'lg') {
+    buttonSize = "w-14 h-14";
+    iconClass = "h-6 w-6";
+  } else if (size === 'large') {
+    buttonSize = "w-16 h-16";
+    iconClass = "h-7 w-7";
+  }
+  
+  // Determine button state
   if (!isSupported) {
-    buttonAppearance.disabled = true;
-    buttonAppearance.variant = 'destructive';
-    buttonAppearance['aria-label'] = 'Voice commands not supported in this browser';
+    isDisabled = true;
+    buttonVariant = "destructive";
+    ariaLabel = 'Voice commands not supported in this browser';
+    buttonContent = <Mic className={iconClass} />;
   } else if (state === RecordingState.LISTENING) {
-    buttonAppearance.variant = 'destructive';
-    buttonAppearance.children = <Mic className="h-5 w-5 animate-pulse" />;
-    buttonAppearance['aria-label'] = 'Stop recording';
+    buttonVariant = "destructive";
+    ariaLabel = 'Stop recording';
+    buttonContent = <Mic className={`${iconClass} animate-pulse`} />;
   } else if (state === RecordingState.PROCESSING) {
-    buttonAppearance.disabled = true;
-    buttonAppearance.children = <Loader2 className="h-5 w-5 animate-spin" />;
-    buttonAppearance['aria-label'] = 'Processing voice command';
+    isDisabled = true;
+    ariaLabel = 'Processing voice command';
+    buttonContent = <Loader2 className={`${iconClass} animate-spin`} />;
   } else if (state === RecordingState.ERROR) {
-    buttonAppearance.variant = 'destructive';
-    buttonAppearance['aria-label'] = 'Error recording voice command. Click to try again';
+    buttonVariant = "destructive";
+    ariaLabel = 'Error recording voice command. Click to try again';
+    buttonContent = <Mic className={iconClass} />;
+  } else {
+    buttonContent = <Mic className={iconClass} />;
   }
   
   return (
     <Button
       onClick={toggleRecording}
-      variant={buttonAppearance.variant}
+      variant={buttonVariant}
       size="icon"
-      disabled={buttonAppearance.disabled}
-      className={`rounded-full w-12 h-12 ${className}`}
-      aria-label={buttonAppearance['aria-label']}
-      title={buttonAppearance['aria-label']}
+      disabled={isDisabled}
+      className={`rounded-full ${buttonSize} ${className}`}
+      aria-label={ariaLabel}
+      title={ariaLabel}
     >
-      {buttonAppearance.children}
+      {buttonContent}
     </Button>
   );
 }

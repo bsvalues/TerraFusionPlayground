@@ -23,11 +23,13 @@ import {
 export interface AgentVoiceCommandResultsProps {
   result: VoiceCommandResult;
   onClear?: () => void;
+  onClose?: () => void;
 }
 
 export function AgentVoiceCommandResults({ 
   result,
-  onClear
+  onClear,
+  onClose
 }: AgentVoiceCommandResultsProps) {
   // Format date from timestamp
   const formattedDate = new Date(result.timestamp).toLocaleString();
@@ -128,10 +130,19 @@ export function AgentVoiceCommandResults({
         {renderActions()}
       </CardContent>
       
-      {onClear && (
+      {(onClear || onClose) && (
         <CardFooter className="flex justify-between border-t pt-3">
           <span className="text-xs text-muted-foreground">{formattedDate}</span>
-          <Button variant="ghost" size="sm" onClick={onClear}>Dismiss</Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => {
+              if (onClear) onClear();
+              if (onClose) onClose();
+            }}
+          >
+            Dismiss
+          </Button>
         </CardFooter>
       )}
     </Card>
