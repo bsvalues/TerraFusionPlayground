@@ -110,14 +110,16 @@ router.get('/project-statuses', (req, res) => {
 // Project templates endpoint - Provides template options for new projects
 router.get('/templates', (req, res) => {
   try {
-    // Default templates for different project types
+    // Templates organized by categories: basic frameworks, assessment applications, and demos
     const templates = [
+      // Basic Framework Templates
       {
         id: 'react-basic',
         name: 'React Basic App',
         description: 'A simple React application with a basic component structure',
         language: 'javascript',
         framework: 'react',
+        category: 'framework',
         files: [
           { path: 'src/App.js', type: 'FILE' },
           { path: 'src/index.js', type: 'FILE' },
@@ -131,6 +133,7 @@ router.get('/templates', (req, res) => {
         description: 'RESTful API built with Express.js',
         language: 'javascript',
         framework: 'express',
+        category: 'framework',
         files: [
           { path: 'src/index.js', type: 'FILE' },
           { path: 'src/routes.js', type: 'FILE' },
@@ -144,6 +147,7 @@ router.get('/templates', (req, res) => {
         description: 'Web application built with Flask',
         language: 'python',
         framework: 'flask',
+        category: 'framework',
         files: [
           { path: 'app.py', type: 'FILE' },
           { path: 'templates', type: 'DIRECTORY' },
@@ -151,16 +155,135 @@ router.get('/templates', (req, res) => {
           { path: 'requirements.txt', type: 'FILE' }
         ]
       },
+      
+      // Assessment-specific Templates
       {
         id: 'assessment-module',
         name: 'Property Assessment Module',
         description: 'Specialized module for property assessment calculations',
         language: 'javascript',
         framework: 'nodejs',
+        category: 'assessment',
         files: [
           { path: 'src/assessment.js', type: 'FILE' },
           { path: 'src/models', type: 'DIRECTORY' },
           { path: 'src/utils', type: 'DIRECTORY' },
+          { path: 'package.json', type: 'FILE' }
+        ]
+      },
+      {
+        id: 'cama-dashboard',
+        name: 'CAMA Dashboard',
+        description: 'Computer Assisted Mass Appraisal dashboard with visualizations',
+        language: 'javascript',
+        framework: 'react',
+        category: 'assessment',
+        files: [
+          { path: 'src/App.jsx', type: 'FILE' },
+          { path: 'src/components/Dashboard.jsx', type: 'FILE' },
+          { path: 'src/components/ValuationChart.jsx', type: 'FILE' },
+          { path: 'src/components/PropertyTable.jsx', type: 'FILE' },
+          { path: 'src/services/camaService.js', type: 'FILE' },
+          { path: 'src/utils/calculationHelpers.js', type: 'FILE' },
+          { path: 'public/index.html', type: 'FILE' },
+          { path: 'package.json', type: 'FILE' }
+        ]
+      },
+      {
+        id: 'valuation-api',
+        name: 'Property Valuation API',
+        description: 'RESTful API for property valuation calculations',
+        language: 'javascript',
+        framework: 'express',
+        category: 'assessment',
+        files: [
+          { path: 'src/index.js', type: 'FILE' },
+          { path: 'src/routes/valuation-routes.js', type: 'FILE' },
+          { path: 'src/controllers/valuationController.js', type: 'FILE' },
+          { path: 'src/services/valuationService.js', type: 'FILE' },
+          { path: 'src/models/property.js', type: 'FILE' },
+          { path: 'src/models/valuation.js', type: 'FILE' },
+          { path: 'src/utils/calculationHelpers.js', type: 'FILE' },
+          { path: 'package.json', type: 'FILE' }
+        ]
+      },
+      {
+        id: 'property-data-analyzer',
+        name: 'Property Data Analyzer',
+        description: 'Python-based property data analysis tool',
+        language: 'python',
+        framework: 'flask',
+        category: 'assessment',
+        files: [
+          { path: 'app.py', type: 'FILE' },
+          { path: 'data_analyzer.py', type: 'FILE' },
+          { path: 'property_models.py', type: 'FILE' },
+          { path: 'valuation_engine.py', type: 'FILE' },
+          { path: 'templates/index.html', type: 'FILE' },
+          { path: 'templates/analysis_results.html', type: 'FILE' },
+          { path: 'static/css/styles.css', type: 'FILE' },
+          { path: 'static/js/charts.js', type: 'FILE' },
+          { path: 'requirements.txt', type: 'FILE' }
+        ]
+      },
+      
+      // Demo Templates
+      {
+        id: 'comp-sales-demo',
+        name: 'Comparable Sales Demo',
+        description: 'Interactive demo showing comparable property sales analysis',
+        language: 'javascript',
+        framework: 'react',
+        category: 'demo',
+        files: [
+          { path: 'src/App.jsx', type: 'FILE' },
+          { path: 'src/components/CompSalesMap.jsx', type: 'FILE' },
+          { path: 'src/components/PropertyList.jsx', type: 'FILE' },
+          { path: 'src/components/AnalysisPanel.jsx', type: 'FILE' },
+          { path: 'src/data/sampleProperties.js', type: 'FILE' },
+          { path: 'src/services/mockApiService.js', type: 'FILE' },
+          { path: 'src/utils/compHelpers.js', type: 'FILE' },
+          { path: 'public/index.html', type: 'FILE' },
+          { path: 'package.json', type: 'FILE' }
+        ]
+      },
+      {
+        id: 'market-trend-analyzer',
+        name: 'Market Trend Analyzer',
+        description: 'Demo showing property value trends over time with predictive analytics',
+        language: 'javascript',
+        framework: 'react',
+        category: 'demo',
+        files: [
+          { path: 'src/App.jsx', type: 'FILE' },
+          { path: 'src/components/TrendDashboard.jsx', type: 'FILE' },
+          { path: 'src/components/TrendChart.jsx', type: 'FILE' },
+          { path: 'src/components/PredictionPanel.jsx', type: 'FILE' },
+          { path: 'src/services/marketTrendService.js', type: 'FILE' },
+          { path: 'src/data/marketData.js', type: 'FILE' },
+          { path: 'src/utils/trendCalculations.js', type: 'FILE' },
+          { path: 'src/utils/predictiveModel.js', type: 'FILE' },
+          { path: 'public/index.html', type: 'FILE' },
+          { path: 'package.json', type: 'FILE' }
+        ]
+      },
+      {
+        id: 'property-inspect-tool',
+        name: 'Property Inspection Tool',
+        description: 'Mobile-friendly app for property inspections with image capture',
+        language: 'javascript',
+        framework: 'react',
+        category: 'demo',
+        files: [
+          { path: 'src/App.jsx', type: 'FILE' },
+          { path: 'src/components/InspectionForm.jsx', type: 'FILE' },
+          { path: 'src/components/PhotoCapture.jsx', type: 'FILE' },
+          { path: 'src/components/PropertyDetails.jsx', type: 'FILE' },
+          { path: 'src/components/InspectionSummary.jsx', type: 'FILE' },
+          { path: 'src/services/inspectionService.js', type: 'FILE' },
+          { path: 'src/utils/imageProcessing.js', type: 'FILE' },
+          { path: 'src/styles/mobile.css', type: 'FILE' },
+          { path: 'public/index.html', type: 'FILE' },
           { path: 'package.json', type: 'FILE' }
         ]
       }

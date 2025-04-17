@@ -52,6 +52,7 @@ interface Template {
   description: string;
   language: string;
   framework: string;
+  category: string;
   files: {
     path: string;
     type: string;
@@ -156,6 +157,21 @@ const TemplateCard = ({ template }: { template: Template }) => {
           <Badge variant="outline" className="bg-purple-100 text-purple-800">
             {template.framework}
           </Badge>
+          {template.category === 'assessment' && (
+            <Badge variant="outline" className="bg-green-100 text-green-800">
+              Assessment
+            </Badge>
+          )}
+          {template.category === 'demo' && (
+            <Badge variant="outline" className="bg-blue-100 text-blue-800">
+              Demo
+            </Badge>
+          )}
+          {template.category === 'framework' && (
+            <Badge variant="outline" className="bg-gray-100 text-gray-800">
+              Framework
+            </Badge>
+          )}
           <Badge variant="outline" className="bg-gray-100 text-gray-800">
             {fileCount} files
           </Badge>
@@ -176,6 +192,7 @@ const TemplateCard = ({ template }: { template: Template }) => {
 // Main Development Platform page
 const DevelopmentPlatformPage = () => {
   const [activeTab, setActiveTab] = useState('projects');
+  const [activeTemplateCategory, setActiveTemplateCategory] = useState<string | null>(null);
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [newProject, setNewProject] = useState({
     name: '',
@@ -293,11 +310,66 @@ const DevelopmentPlatformPage = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {templates.map((template: Template) => (
-                <TemplateCard key={template.id} template={template} />
-              ))}
-            </div>
+            <>
+              <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-2">
+                <Button 
+                  variant={activeTemplateCategory === null ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setActiveTemplateCategory(null)}
+                  className="whitespace-nowrap"
+                >
+                  All Templates
+                </Button>
+                <Button 
+                  variant={activeTemplateCategory === 'assessment' ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setActiveTemplateCategory('assessment')}
+                  className="whitespace-nowrap"
+                >
+                  Assessment Apps
+                </Button>
+                <Button 
+                  variant={activeTemplateCategory === 'demo' ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setActiveTemplateCategory('demo')}
+                  className="whitespace-nowrap"
+                >
+                  Demo Apps
+                </Button>
+                <Button 
+                  variant={activeTemplateCategory === 'framework' ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setActiveTemplateCategory('framework')}
+                  className="whitespace-nowrap"
+                >
+                  Basic Frameworks
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {templates
+                  .filter(template => activeTemplateCategory === null || template.category === activeTemplateCategory)
+                  .map((template: Template) => (
+                    <TemplateCard key={template.id} template={template} />
+                  ))
+                }
+              </div>
+              
+              {activeTemplateCategory !== null && 
+                templates.filter(template => template.category === activeTemplateCategory).length === 0 && (
+                <div className="text-center py-8 mt-4">
+                  <p className="text-gray-500">No templates found in this category.</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setActiveTemplateCategory(null)}
+                    className="mt-2"
+                  >
+                    Show all templates
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
       </Tabs>
