@@ -89,7 +89,7 @@ export function ConnectionHealthMetrics() {
       {lastError && (
         <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-2 text-xs">
           <div className="flex text-red-700 dark:text-red-400 font-medium items-center">
-            <AlertCircleIcon className="h-3 w-3 mr-1.5" />
+            <AlertCircle className="h-3 w-3 mr-1.5" />
             Last Error
           </div>
           <pre className="mt-1 whitespace-pre-wrap break-all text-red-700 dark:text-red-400 text-[10px]">
@@ -105,17 +105,17 @@ export function ConnectionHealthMetrics() {
             {connectionEvents.slice(-10).reverse().map((event, i) => (
               <div key={i} className="text-[10px] flex items-start">
                 <span className="inline-flex mr-1.5 mt-0.5">
-                  {event.type === 'connect' && (
-                    <CheckIcon className="h-3 w-3 text-green-500" />
+                  {event.type === 'status_change' && event.details?.status === 'connected' && (
+                    <CheckCircle className="h-3 w-3 text-green-500" />
                   )}
-                  {event.type === 'disconnect' && (
-                    <AlertCircleIcon className="h-3 w-3 text-yellow-500" />
+                  {event.type === 'status_change' && event.details?.status === 'disconnected' && (
+                    <AlertCircle className="h-3 w-3 text-yellow-500" />
                   )}
                   {event.type === 'reconnect_attempt' && (
-                    <ReloadIcon className="h-3 w-3 text-blue-500" />
+                    <RefreshCw className="h-3 w-3 text-blue-500" />
                   )}
                   {event.type === 'error' && (
-                    <AlertCircleIcon className="h-3 w-3 text-red-500" />
+                    <AlertCircle className="h-3 w-3 text-red-500" />
                   )}
                   {event.type === 'fallback_activated' && (
                     <Badge 
