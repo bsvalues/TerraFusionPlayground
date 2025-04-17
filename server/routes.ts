@@ -36,6 +36,7 @@ import extensionRoutes from "./extensions/extension-routes";
 import { registerTeamAgentRoutes } from "./routes/team-agent-routes";
 import { registerDemoRoutes } from "./routes/demo-routes";
 import aiAssistantRoutes from "./routes/ai-assistant-routes";
+import { createDevelopmentPlatformRoutes } from "./routes/development-platform-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
