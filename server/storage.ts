@@ -418,6 +418,56 @@ export interface IStorage {
   createAiCodeGeneration(generation: InsertAiCodeGeneration): Promise<AiCodeGeneration>;
   findAiCodeGenerationByGenerationId(generationId: string): Promise<AiCodeGeneration | null>;
   findAiCodeGenerationsByProjectId(projectId: string): Promise<AiCodeGeneration[]>;
+  
+  // Assessment Model Workbench Methods
+  createAssessmentModel(model: InsertAssessmentModel): Promise<AssessmentModel>;
+  getAssessmentModel(id: number): Promise<AssessmentModel | undefined>;
+  getAssessmentModelByModelId(modelId: string): Promise<AssessmentModel | undefined>;
+  getAllAssessmentModels(): Promise<AssessmentModel[]>;
+  updateAssessmentModel(modelId: string, updateData: Partial<AssessmentModel>): Promise<AssessmentModel | undefined>;
+  deleteAssessmentModel(modelId: string): Promise<boolean>;
+  
+  // Model Variables
+  createModelVariable(variable: InsertModelVariable): Promise<ModelVariable>;
+  getModelVariable(id: number): Promise<ModelVariable | undefined>;
+  getModelVariablesByModel(modelId: string): Promise<ModelVariable[]>;
+  updateModelVariable(id: number, updateData: Partial<ModelVariable>): Promise<ModelVariable | undefined>;
+  deleteModelVariable(id: number): Promise<boolean>;
+  
+  // Model Components
+  createModelComponent(component: InsertModelComponent): Promise<ModelComponent>;
+  getModelComponent(id: number): Promise<ModelComponent | undefined>;
+  getModelComponentsByModel(modelId: string): Promise<ModelComponent[]>;
+  updateModelComponent(id: number, updateData: Partial<ModelComponent>): Promise<ModelComponent | undefined>;
+  deleteModelComponent(id: number): Promise<boolean>;
+  
+  // Model Calculations
+  createModelCalculation(calculation: InsertModelCalculation): Promise<ModelCalculation>;
+  getModelCalculation(id: number): Promise<ModelCalculation | undefined>;
+  getModelCalculationsByModel(modelId: string): Promise<ModelCalculation[]>;
+  updateModelCalculation(id: number, updateData: Partial<ModelCalculation>): Promise<ModelCalculation | undefined>;
+  deleteModelCalculation(id: number): Promise<boolean>;
+  
+  // Model Validation Rules
+  createModelValidationRule(rule: InsertModelValidationRule): Promise<ModelValidationRule>;
+  getModelValidationRule(id: number): Promise<ModelValidationRule | undefined>;
+  getModelValidationRulesByModel(modelId: string): Promise<ModelValidationRule[]>;
+  updateModelValidationRule(id: number, updateData: Partial<ModelValidationRule>): Promise<ModelValidationRule | undefined>;
+  deleteModelValidationRule(id: number): Promise<boolean>;
+  
+  // Model Test Cases
+  createModelTestCase(testCase: InsertModelTestCase): Promise<ModelTestCase>;
+  getModelTestCase(id: number): Promise<ModelTestCase | undefined>;
+  getModelTestCasesByModel(modelId: string): Promise<ModelTestCase[]>;
+  updateModelTestCase(id: number, updateData: Partial<ModelTestCase>): Promise<ModelTestCase | undefined>;
+  updateModelTestCaseResults(id: number, status: string, results: any): Promise<ModelTestCase | undefined>;
+  deleteModelTestCase(id: number): Promise<boolean>;
+  
+  // Assessment Model Versions
+  createAssessmentModelVersion(version: InsertAssessmentModelVersion): Promise<AssessmentModelVersion>;
+  getAssessmentModelVersion(id: number): Promise<AssessmentModelVersion | undefined>;
+  getAssessmentModelVersionsByModel(modelId: string): Promise<AssessmentModelVersion[]>;
+  getLatestAssessmentModelVersion(modelId: string): Promise<AssessmentModelVersion | undefined>;
   updateAiCodeGeneration(id: number, updates: Partial<AiCodeGeneration>): Promise<AiCodeGeneration>;
   deleteAiCodeGeneration(id: number): Promise<boolean>;
   
@@ -6145,6 +6195,382 @@ export class PgStorage implements IStorage {
     
     this.aiCodeGenerations.delete(id);
     return true;
+  }
+
+  // ========================================================================
+  // Assessment Model Workbench Methods
+  // ========================================================================
+  
+  // Assessment Models
+  async createAssessmentModel(model: InsertAssessmentModel): Promise<AssessmentModel> {
+    const timestamp = new Date();
+    const newModel: AssessmentModel = {
+      id: this.assessmentModels.length + 1,
+      modelId: crypto.randomUUID(),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...model
+    };
+    
+    this.assessmentModels.push(newModel);
+    
+    // Create system activity for tracking
+    await this.createSystemActivity({
+      activity_type: 'created',
+      component: 'assessment_model',
+      details: {
+        modelId: newModel.modelId,
+        modelName: newModel.name,
+        modelType: newModel.type
+      }
+    });
+    
+    return newModel;
+  }
+  
+  async getAssessmentModel(id: number): Promise<AssessmentModel | undefined> {
+    return this.assessmentModels.find(model => model.id === id);
+  }
+  
+  async getAssessmentModelByModelId(modelId: string): Promise<AssessmentModel | undefined> {
+    return this.assessmentModels.find(model => model.modelId === modelId);
+  }
+  
+  async getAllAssessmentModels(): Promise<AssessmentModel[]> {
+    return [...this.assessmentModels];
+  }
+  
+  async updateAssessmentModel(modelId: string, updateData: Partial<AssessmentModel>): Promise<AssessmentModel | undefined> {
+    const modelIndex = this.assessmentModels.findIndex(model => model.modelId === modelId);
+    if (modelIndex === -1) {
+      return undefined;
+    }
+    
+    const updatedModel = {
+      ...this.assessmentModels[modelIndex],
+      ...updateData,
+      updatedAt: new Date()
+    };
+    
+    this.assessmentModels[modelIndex] = updatedModel;
+    
+    // Create system activity for tracking
+    await this.createSystemActivity({
+      activity_type: 'updated',
+      component: 'assessment_model',
+      details: {
+        modelId: updatedModel.modelId,
+        modelName: updatedModel.name,
+        modelType: updatedModel.type
+      }
+    });
+    
+    return updatedModel;
+  }
+  
+  async deleteAssessmentModel(modelId: string): Promise<boolean> {
+    const originalLength = this.assessmentModels.length;
+    this.assessmentModels = this.assessmentModels.filter(model => model.modelId !== modelId);
+    
+    const deleted = originalLength > this.assessmentModels.length;
+    
+    if (deleted) {
+      // Create system activity for tracking
+      await this.createSystemActivity({
+        activity_type: 'deleted',
+        component: 'assessment_model',
+        details: {
+          modelId: modelId
+        }
+      });
+    }
+    
+    return deleted;
+  }
+  
+  // Model Variables
+  async createModelVariable(variable: InsertModelVariable): Promise<ModelVariable> {
+    const timestamp = new Date();
+    const newVariable: ModelVariable = {
+      id: this.modelVariables.length + 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...variable
+    };
+    
+    this.modelVariables.push(newVariable);
+    
+    return newVariable;
+  }
+  
+  async getModelVariable(id: number): Promise<ModelVariable | undefined> {
+    return this.modelVariables.find(variable => variable.id === id);
+  }
+  
+  async getModelVariablesByModel(modelId: string): Promise<ModelVariable[]> {
+    return this.modelVariables.filter(variable => variable.modelId === modelId);
+  }
+  
+  async updateModelVariable(id: number, updateData: Partial<ModelVariable>): Promise<ModelVariable | undefined> {
+    const variableIndex = this.modelVariables.findIndex(variable => variable.id === id);
+    if (variableIndex === -1) {
+      return undefined;
+    }
+    
+    const updatedVariable = {
+      ...this.modelVariables[variableIndex],
+      ...updateData,
+      updatedAt: new Date()
+    };
+    
+    this.modelVariables[variableIndex] = updatedVariable;
+    return updatedVariable;
+  }
+  
+  async deleteModelVariable(id: number): Promise<boolean> {
+    const originalLength = this.modelVariables.length;
+    this.modelVariables = this.modelVariables.filter(variable => variable.id !== id);
+    return originalLength > this.modelVariables.length;
+  }
+  
+  // Model Components
+  async createModelComponent(component: InsertModelComponent): Promise<ModelComponent> {
+    const timestamp = new Date();
+    const newComponent: ModelComponent = {
+      id: this.modelComponents.length + 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...component
+    };
+    
+    this.modelComponents.push(newComponent);
+    
+    return newComponent;
+  }
+  
+  async getModelComponent(id: number): Promise<ModelComponent | undefined> {
+    return this.modelComponents.find(component => component.id === id);
+  }
+  
+  async getModelComponentsByModel(modelId: string): Promise<ModelComponent[]> {
+    return this.modelComponents.filter(component => component.modelId === modelId);
+  }
+  
+  async updateModelComponent(id: number, updateData: Partial<ModelComponent>): Promise<ModelComponent | undefined> {
+    const componentIndex = this.modelComponents.findIndex(component => component.id === id);
+    if (componentIndex === -1) {
+      return undefined;
+    }
+    
+    const updatedComponent = {
+      ...this.modelComponents[componentIndex],
+      ...updateData,
+      updatedAt: new Date()
+    };
+    
+    this.modelComponents[componentIndex] = updatedComponent;
+    return updatedComponent;
+  }
+  
+  async deleteModelComponent(id: number): Promise<boolean> {
+    const originalLength = this.modelComponents.length;
+    this.modelComponents = this.modelComponents.filter(component => component.id !== id);
+    return originalLength > this.modelComponents.length;
+  }
+  
+  // Model Calculations
+  async createModelCalculation(calculation: InsertModelCalculation): Promise<ModelCalculation> {
+    const timestamp = new Date();
+    const newCalculation: ModelCalculation = {
+      id: this.modelCalculations.length + 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...calculation
+    };
+    
+    this.modelCalculations.push(newCalculation);
+    
+    return newCalculation;
+  }
+  
+  async getModelCalculation(id: number): Promise<ModelCalculation | undefined> {
+    return this.modelCalculations.find(calculation => calculation.id === id);
+  }
+  
+  async getModelCalculationsByModel(modelId: string): Promise<ModelCalculation[]> {
+    return this.modelCalculations.filter(calculation => calculation.modelId === modelId);
+  }
+  
+  async updateModelCalculation(id: number, updateData: Partial<ModelCalculation>): Promise<ModelCalculation | undefined> {
+    const calculationIndex = this.modelCalculations.findIndex(calculation => calculation.id === id);
+    if (calculationIndex === -1) {
+      return undefined;
+    }
+    
+    const updatedCalculation = {
+      ...this.modelCalculations[calculationIndex],
+      ...updateData,
+      updatedAt: new Date()
+    };
+    
+    this.modelCalculations[calculationIndex] = updatedCalculation;
+    return updatedCalculation;
+  }
+  
+  async deleteModelCalculation(id: number): Promise<boolean> {
+    const originalLength = this.modelCalculations.length;
+    this.modelCalculations = this.modelCalculations.filter(calculation => calculation.id !== id);
+    return originalLength > this.modelCalculations.length;
+  }
+  
+  // Model Validation Rules
+  async createModelValidationRule(rule: InsertModelValidationRule): Promise<ModelValidationRule> {
+    const timestamp = new Date();
+    const newRule: ModelValidationRule = {
+      id: this.modelValidationRules.length + 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...rule
+    };
+    
+    this.modelValidationRules.push(newRule);
+    
+    return newRule;
+  }
+  
+  async getModelValidationRule(id: number): Promise<ModelValidationRule | undefined> {
+    return this.modelValidationRules.find(rule => rule.id === id);
+  }
+  
+  async getModelValidationRulesByModel(modelId: string): Promise<ModelValidationRule[]> {
+    return this.modelValidationRules.filter(rule => rule.modelId === modelId);
+  }
+  
+  async updateModelValidationRule(id: number, updateData: Partial<ModelValidationRule>): Promise<ModelValidationRule | undefined> {
+    const ruleIndex = this.modelValidationRules.findIndex(rule => rule.id === id);
+    if (ruleIndex === -1) {
+      return undefined;
+    }
+    
+    const updatedRule = {
+      ...this.modelValidationRules[ruleIndex],
+      ...updateData,
+      updatedAt: new Date()
+    };
+    
+    this.modelValidationRules[ruleIndex] = updatedRule;
+    return updatedRule;
+  }
+  
+  async deleteModelValidationRule(id: number): Promise<boolean> {
+    const originalLength = this.modelValidationRules.length;
+    this.modelValidationRules = this.modelValidationRules.filter(rule => rule.id !== id);
+    return originalLength > this.modelValidationRules.length;
+  }
+  
+  // Model Test Cases
+  async createModelTestCase(testCase: InsertModelTestCase): Promise<ModelTestCase> {
+    const timestamp = new Date();
+    const newTestCase: ModelTestCase = {
+      id: this.modelTestCases.length + 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...testCase,
+      status: testCase.status || 'pending'
+    };
+    
+    this.modelTestCases.push(newTestCase);
+    
+    return newTestCase;
+  }
+  
+  async getModelTestCase(id: number): Promise<ModelTestCase | undefined> {
+    return this.modelTestCases.find(testCase => testCase.id === id);
+  }
+  
+  async getModelTestCasesByModel(modelId: string): Promise<ModelTestCase[]> {
+    return this.modelTestCases.filter(testCase => testCase.modelId === modelId);
+  }
+  
+  async updateModelTestCase(id: number, updateData: Partial<ModelTestCase>): Promise<ModelTestCase | undefined> {
+    const testCaseIndex = this.modelTestCases.findIndex(testCase => testCase.id === id);
+    if (testCaseIndex === -1) {
+      return undefined;
+    }
+    
+    const updatedTestCase = {
+      ...this.modelTestCases[testCaseIndex],
+      ...updateData,
+      updatedAt: new Date()
+    };
+    
+    this.modelTestCases[testCaseIndex] = updatedTestCase;
+    return updatedTestCase;
+  }
+  
+  async updateModelTestCaseResults(id: number, status: string, results: any): Promise<ModelTestCase | undefined> {
+    const testCaseIndex = this.modelTestCases.findIndex(testCase => testCase.id === id);
+    if (testCaseIndex === -1) {
+      return undefined;
+    }
+    
+    const updatedTestCase = {
+      ...this.modelTestCases[testCaseIndex],
+      status: status,
+      results: results,
+      lastRun: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.modelTestCases[testCaseIndex] = updatedTestCase;
+    return updatedTestCase;
+  }
+  
+  async deleteModelTestCase(id: number): Promise<boolean> {
+    const originalLength = this.modelTestCases.length;
+    this.modelTestCases = this.modelTestCases.filter(testCase => testCase.id !== id);
+    return originalLength > this.modelTestCases.length;
+  }
+  
+  // Assessment Model Versions
+  async createAssessmentModelVersion(version: InsertAssessmentModelVersion): Promise<AssessmentModelVersion> {
+    const timestamp = new Date();
+    const newVersion: AssessmentModelVersion = {
+      id: this.assessmentModelVersions.length + 1,
+      versionId: crypto.randomUUID(),
+      createdAt: timestamp,
+      ...version
+    };
+    
+    this.assessmentModelVersions.push(newVersion);
+    
+    // Create system activity for tracking
+    await this.createSystemActivity({
+      activity_type: 'created',
+      component: 'assessment_model_version',
+      details: {
+        modelId: newVersion.modelId,
+        versionNumber: newVersion.versionNumber,
+        versionId: newVersion.versionId
+      }
+    });
+    
+    return newVersion;
+  }
+  
+  async getAssessmentModelVersion(id: number): Promise<AssessmentModelVersion | undefined> {
+    return this.assessmentModelVersions.find(version => version.id === id);
+  }
+  
+  async getAssessmentModelVersionsByModel(modelId: string): Promise<AssessmentModelVersion[]> {
+    return this.assessmentModelVersions
+      .filter(version => version.modelId === modelId)
+      .sort((a, b) => parseInt(b.versionNumber) - parseInt(a.versionNumber)); // newest first
+  }
+  
+  async getLatestAssessmentModelVersion(modelId: string): Promise<AssessmentModelVersion | undefined> {
+    const versions = await this.getAssessmentModelVersionsByModel(modelId);
+    return versions.length > 0 ? versions[0] : undefined;
   }
 }
 
