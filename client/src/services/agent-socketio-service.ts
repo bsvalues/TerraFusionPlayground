@@ -17,6 +17,13 @@ import { io, Socket } from 'socket.io-client';
 class BrowserEventEmitter {
   private events: Map<string, Array<(data: any) => void>> = new Map();
   
+  /**
+   * Register an event listener
+   * 
+   * @param event Event name
+   * @param listener Function to call when event occurs
+   * @returns Function to remove the listener
+   */
   public on(event: string, listener: (data: any) => void): () => void {
     if (!this.events.has(event)) {
       this.events.set(event, []);
@@ -31,6 +38,12 @@ class BrowserEventEmitter {
     };
   }
   
+  /**
+   * Remove an event listener
+   * 
+   * @param event Event name
+   * @param listener Function to remove
+   */
   public off(event: string, listener: (data: any) => void): void {
     if (!this.events.has(event)) {
       return;
@@ -49,6 +62,12 @@ class BrowserEventEmitter {
     }
   }
   
+  /**
+   * Emit an event
+   * 
+   * @param event Event name
+   * @param data Data to pass to listeners
+   */
   public emit(event: string, data: any): void {
     if (!this.events.has(event)) {
       return;
@@ -65,6 +84,11 @@ class BrowserEventEmitter {
     }
   }
   
+  /**
+   * Remove all listeners for an event, or all events
+   * 
+   * @param event Optional event name, if not provided all listeners are removed
+   */
   public removeAllListeners(event?: string): void {
     if (event) {
       this.events.delete(event);
@@ -101,7 +125,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   private socket: Socket | null = null;
   private clientId: string;
   private connectionStatus: ConnectionStatus = ConnectionStatus.DISCONNECTED;
-  private pollingInterval: NodeJS.Timeout | null = null;
+  private pollingInterval: ReturnType<typeof setTimeout> | null = null;
   private pollingFrequency: number = 3000; // 3 seconds
   private pendingMessages: any[] = [];
   private usingFallback: boolean = false;
@@ -111,7 +135,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   private maxReconnectAttempts: number = 5;
   private reconnectAttempts: number = 0;
   private reconnectDelay: number = 1000;
-  private pingInterval: NodeJS.Timeout | null = null;
+  private pingInterval: ReturnType<typeof setTimeout> | null = null;
   
   /**
    * Create a new agent Socket.IO service
@@ -156,7 +180,6 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         
         // Determine the Socket.IO URL
         const protocol = window.location.protocol === 'https:' ? 'https://' : 'http://';
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         const host = window.location.host;
         const path = '/api/agents/socket.io';
         
@@ -190,6 +213,166 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     });
     
     return this.connectPromise;
+  }
+  
+  /**
+   * Disconnect from the Socket.IO server
+   */
+  public disconnect(): void {
+    // Stop polling
+    this.stopPolling();
+    
+    // Stop ping interval
+    this.stopPingInterval();
+    
+    // Disconnect Socket.IO
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+    
+    // Update connection status
+    this.updateConnectionStatus(ConnectionStatus.DISCONNECTED);
+  }
+  
+  /**
+   * Send message to an agent
+   * 
+   * @param recipientId ID of recipient agent
+   * @param message Message to send
+   * @returns Promise that resolves with message ID
+   */
+  public sendAgentMessage(recipientId: string, message: any): Promise<string> {
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    // If using Socket.IO, send via socket
+    if (this.socket && this.socket.connected && !this.usingFallback) {
+      return new Promise((resolve, reject) => {
+        try {
+          this.socket!.emit('agent_message', {
+            messageId,
+            recipientId,
+            message,
+            clientId: this.clientId,
+            timestamp: Date.now()
+          });
+          
+          // Resolve with message ID
+          resolve(messageId);
+        } catch (error) {
+          console.error('Error sending agent message via Socket.IO:', error);
+          
+          // Try fallback to REST
+          this.sendAgentMessageViaRest(recipientId, message, messageId)
+            .then(resolve)
+            .catch(reject);
+        }
+      });
+    }
+    
+    // If not connected, add to pending messages
+    if (this.connectionStatus !== ConnectionStatus.CONNECTED && 
+        this.connectionStatus !== ConnectionStatus.CONNECTING) {
+      this.pendingMessages.push({
+        type: 'agent_message',
+        recipientId,
+        message,
+        messageId
+      });
+      
+      // Return message ID
+      return Promise.resolve(messageId);
+    }
+    
+    // If using fallback or not connected to Socket.IO, send via REST
+    return this.sendAgentMessageViaRest(recipientId, message, messageId);
+  }
+  
+  /**
+   * Send action request to an agent
+   * 
+   * @param targetAgent ID of target agent
+   * @param action Action to request
+   * @param params Action parameters
+   * @returns Promise that resolves with action ID
+   */
+  public sendActionRequest(targetAgent: string, action: string, params: any = {}): Promise<string> {
+    const actionId = `action_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    // If using Socket.IO, send via socket
+    if (this.socket && this.socket.connected && !this.usingFallback) {
+      return new Promise((resolve, reject) => {
+        try {
+          this.socket!.emit('action', {
+            actionId,
+            targetAgent,
+            action,
+            params,
+            clientId: this.clientId,
+            timestamp: Date.now()
+          });
+          
+          // Resolve with action ID
+          resolve(actionId);
+        } catch (error) {
+          console.error('Error sending action request via Socket.IO:', error);
+          
+          // Try fallback to REST
+          this.sendActionRequestViaRest(targetAgent, action, params, actionId)
+            .then(resolve)
+            .catch(reject);
+        }
+      });
+    }
+    
+    // If not connected, add to pending messages
+    if (this.connectionStatus !== ConnectionStatus.CONNECTED && 
+        this.connectionStatus !== ConnectionStatus.CONNECTING) {
+      this.pendingMessages.push({
+        type: 'action',
+        targetAgent,
+        action,
+        params,
+        actionId
+      });
+      
+      // Return action ID
+      return Promise.resolve(actionId);
+    }
+    
+    // If using fallback or not connected to Socket.IO, send via REST
+    return this.sendActionRequestViaRest(targetAgent, action, params, actionId);
+  }
+  
+  /**
+   * Get current connection status
+   * 
+   * @returns Current connection status
+   */
+  public getConnectionStatus(): ConnectionStatus {
+    return this.connectionStatus;
+  }
+  
+  /**
+   * Register a listener for connection status changes
+   * 
+   * @param listener Function to call when connection status changes
+   * @returns Function to remove the listener
+   */
+  public onConnectionStatusChange(listener: (status: ConnectionStatus) => void): () => void {
+    // Add listener to array
+    this.statusChangeListeners.push(listener);
+    
+    // Call listener immediately with current status
+    listener(this.connectionStatus);
+    
+    // Return function to remove listener
+    return () => {
+      const index = this.statusChangeListeners.indexOf(listener);
+      if (index !== -1) {
+        this.statusChangeListeners.splice(index, 1);
+      }
+    };
   }
   
   /**
@@ -601,19 +784,15 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     try {
       console.log('Authenticating via REST API');
       
-      // Determine API endpoint - either regular or Socket.IO
-      const endpoint = this.usingFallback ? 
-        '/api/agents/socketio/auth' : 
-        '/api/agents/auth';
-      
-      const response = await fetch(endpoint, {
+      const response = await fetch('/api/agents/socketio/auth', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          clientId: this.clientId,
           clientType: ClientType.FRONTEND,
-          clientId: this.clientId
+          timestamp: Date.now()
         })
       });
       
@@ -623,28 +802,28 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       
       const data = await response.json();
       
-      if (data.success) {
-        this.clientId = data.clientId || 'rest-fallback-client';
-        console.log(`REST authentication successful, client ID: ${this.clientId}`);
-        
-        // Simulate authentication success message
-        this.dispatchMessage({
-          type: 'auth_success',
-          clientId: this.clientId,
-          timestamp: Date.now()
-        });
-        
-        return;
-      } else {
+      if (!data.success) {
         throw new Error(data.message || 'Authentication failed');
       }
-    } catch (error) {
-      console.error('Error authenticating via REST:', error);
       
-      // Simulate authentication failure message
+      // If server assigned a different client ID
+      if (data.clientId && data.clientId !== this.clientId) {
+        this.clientId = data.clientId;
+      }
+      
+      console.log('REST authentication successful, client ID:', this.clientId);
+      
+      this.dispatchMessage({
+        type: 'auth_success',
+        clientId: this.clientId,
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error('REST authentication failed:', error);
+      
       this.dispatchMessage({
         type: 'auth_failed',
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : 'Authentication failed',
         timestamp: Date.now()
       });
       
@@ -653,41 +832,47 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   }
   
   /**
-   * Send authentication message
+   * Send auth message to Socket.IO
    */
   private async sendAuthMessage(): Promise<void> {
+    if (!this.socket || !this.socket.connected) {
+      throw new Error('Socket not connected');
+    }
+    
     return new Promise((resolve, reject) => {
-      // If using fallback, authenticate via REST API
-      if (this.usingFallback) {
-        this.authenticateViaRest()
-          .then(() => resolve())
-          .catch((error: Error) => reject(error));
-        return;
-      }
-      
-      if (!this.socket || !this.socket.connected) {
-        reject(new Error('Socket.IO not connected'));
-        return;
-      }
-      
       try {
-        // Send auth event with callback
+        // Set up timeout - if we don't get a response in 5 seconds, fail
+        const timeoutId = setTimeout(() => {
+          reject(new Error('Authentication timed out'));
+        }, 5000);
+        
+        // Set up one-time auth success handler
+        const authSuccessHandler = (data: any) => {
+          clearTimeout(timeoutId);
+          this.socket?.off('auth_success', authSuccessHandler);
+          this.socket?.off('auth_failed', authFailedHandler);
+          resolve();
+        };
+        
+        // Set up one-time auth failed handler
+        const authFailedHandler = (data: any) => {
+          clearTimeout(timeoutId);
+          this.socket?.off('auth_success', authSuccessHandler);
+          this.socket?.off('auth_failed', authFailedHandler);
+          reject(new Error(data.message || 'Authentication failed'));
+        };
+        
+        // Register temporary handlers
+        this.socket.on('auth_success', authSuccessHandler);
+        this.socket.on('auth_failed', authFailedHandler);
+        
+        // Send authentication message
         this.socket.emit('auth', {
+          clientId: this.clientId,
           clientType: ClientType.FRONTEND,
-          clientId: this.clientId
-        }, (response: any) => {
-          if (response.success) {
-            // If server sent a new client ID, use it
-            if (response.clientId) {
-              this.clientId = response.clientId;
-            }
-            resolve();
-          } else {
-            reject(new Error(response.message || 'Authentication failed'));
-          }
+          timestamp: Date.now()
         });
       } catch (error) {
-        console.error('Error sending authentication message:', error);
         reject(error);
       }
     });
@@ -696,20 +881,25 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   /**
    * Start ping interval to keep connection alive
    */
-  private startPingInterval(): void {
-    this.stopPingInterval(); // Clear any existing interval
+  private startPingInterval() {
+    // Already pinging, stop first
+    this.stopPingInterval();
     
-    this.pingInterval = window.setInterval(() => {
+    // Start new ping interval - every 30 seconds
+    this.pingInterval = setInterval(() => {
       if (this.socket && this.socket.connected) {
         this.socket.emit('ping', { timestamp: Date.now() });
+      } else {
+        // If socket is no longer connected, stop ping interval
+        this.stopPingInterval();
       }
-    }, 30000) as unknown as NodeJS.Timeout; // Send ping every 30 seconds
+    }, 30000);
   }
   
   /**
-   * Stop the ping interval
+   * Stop ping interval
    */
-  private stopPingInterval(): void {
+  private stopPingInterval() {
     if (this.pingInterval !== null) {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
@@ -717,317 +907,148 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   }
   
   /**
-   * Send a message to an agent
-   * 
-   * @param recipientId Agent ID to send the message to
-   * @param message Message payload
-   * @returns Promise that resolves when the message is acknowledged
-   */
-  public sendAgentMessage(recipientId: string, message: any): Promise<string> {
-    return new Promise((resolve, reject) => {
-      // If using fallback, send via REST API instead
-      if (this.usingFallback) {
-        this.sendAgentMessageViaRest(recipientId, message)
-          .then(messageId => resolve(messageId))
-          .catch((error: Error) => reject(error));
-        return;
-      }
-      
-      if (!this.socket || !this.socket.connected) {
-        console.log('Socket.IO not connected, queueing message');
-        this.pendingMessages.push({ 
-          type: 'agent_message', 
-          payload: { 
-            message: {
-              recipientId,
-              ...message
-            }
-          }
-        });
-        reject(new Error('Socket.IO not connected'));
-        return;
-      }
-      
-      try {
-        // Send agent_message event with callback
-        this.socket.emit('agent_message', {
-          message: {
-            recipientId,
-            ...message
-          }
-        }, (response: any) => {
-          if (response.success) {
-            resolve(response.messageId);
-          } else {
-            reject(new Error(response.message || 'Failed to send message'));
-          }
-        });
-      } catch (error) {
-        console.error('Error sending agent message:', error);
-        reject(error);
-      }
-    });
-  }
-  
-  /**
-   * Send an action request to an agent
-   * 
-   * @param targetAgent Agent ID to send the action to
-   * @param action Action to perform
-   * @param params Parameters for the action
-   * @returns Promise that resolves when the action is acknowledged
-   */
-  public sendActionRequest(targetAgent: string, action: string, params: any = {}): Promise<string> {
-    return new Promise((resolve, reject) => {
-      // If using fallback, send via REST API instead
-      if (this.usingFallback) {
-        this.sendActionRequestViaRest(targetAgent, action, params)
-          .then((messageId: string) => resolve(messageId))
-          .catch((error: Error) => reject(error));
-        return;
-      }
-      
-      if (!this.socket || !this.socket.connected) {
-        console.log('Socket.IO not connected, queueing action request');
-        this.pendingMessages.push({ 
-          type: 'action', 
-          payload: { 
-            targetAgent,
-            action,
-            params
-          }
-        });
-        reject(new Error('Socket.IO not connected'));
-        return;
-      }
-      
-      try {
-        // Send action event with callback
-        this.socket.emit('action', {
-          targetAgent,
-          action,
-          params
-        }, (response: any) => {
-          if (response.success) {
-            resolve(response.messageId);
-          } else {
-            reject(new Error(response.message || 'Failed to send action'));
-          }
-        });
-      } catch (error) {
-        console.error('Error sending action request:', error);
-        reject(error);
-      }
-    });
-  }
-  
-  /**
-   * Send an agent message via REST API
-   * 
-   * @param recipientId Agent ID to send the message to
-   * @param message Message payload
-   * @returns Promise that resolves when the message is acknowledged
-   */
-  private async sendAgentMessageViaRest(recipientId: string, message: any): Promise<string> {
-    try {
-      console.log(`Sending agent message via REST API to ${recipientId}`);
-      
-      // Determine API endpoint - either regular or Socket.IO
-      const endpoint = this.usingFallback ? 
-        '/api/agents/socketio/message' : 
-        '/api/agents/message';
-      
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          recipientId,
-          message,
-          clientId: this.clientId
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to send message via REST: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        // Simulate message sent
-        this.dispatchMessage({
-          type: 'message_sent',
-          messageId: data.messageId || `rest-${Date.now()}`,
-          originalMessage: {
-            recipientId,
-            ...message
-          },
-          timestamp: Date.now()
-        });
-        
-        return data.messageId || `rest-${Date.now()}`;
-      } else {
-        throw new Error(data.message || 'Failed to send message');
-      }
-    } catch (error) {
-      console.error('Error sending agent message via REST:', error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Send an action request via REST API
-   * 
-   * @param targetAgent Agent ID to send the action to
-   * @param action Action to perform
-   * @param params Parameters for the action
-   * @returns Promise that resolves when the action is acknowledged
-   */
-  private async sendActionRequestViaRest(targetAgent: string, action: string, params: any = {}): Promise<string> {
-    try {
-      console.log(`Sending action request via REST API to ${targetAgent}: ${action}`);
-      
-      // Determine API endpoint - either regular or Socket.IO
-      const endpoint = this.usingFallback ? 
-        '/api/agents/socketio/action' : 
-        '/api/agents/action';
-      
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          targetAgent,
-          action,
-          params,
-          clientId: this.clientId
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to send action via REST: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        // Simulate action sent
-        this.dispatchMessage({
-          type: 'action_sent',
-          messageId: data.messageId || `rest-action-${Date.now()}`,
-          targetAgent,
-          action,
-          params,
-          timestamp: Date.now()
-        });
-        
-        return data.messageId || `rest-action-${Date.now()}`;
-      } else {
-        throw new Error(data.message || 'Failed to send action');
-      }
-    } catch (error) {
-      console.error('Error sending action request via REST:', error);
-      throw error;
-    }
-  }
-  
-  /**
    * Send pending messages after reconnection
    */
-  private sendPendingMessages(): void {
+  private async sendPendingMessages() {
     if (this.pendingMessages.length === 0) {
       return;
     }
     
     console.log(`Sending ${this.pendingMessages.length} pending messages`);
     
-    // Copy and clear pending messages
-    const messages = [...this.pendingMessages];
+    // Copy pending messages and clear the queue
+    const messagesToSend = [...this.pendingMessages];
     this.pendingMessages = [];
     
     // Send each message
-    messages.forEach(({ type, payload }) => {
-      if (type === 'agent_message') {
-        this.sendAgentMessage(payload.message.recipientId, payload.message)
-          .catch(error => console.error('Error sending pending agent message:', error));
-      } else if (type === 'action') {
-        this.sendActionRequest(payload.targetAgent, payload.action, payload.params)
-          .catch(error => console.error('Error sending pending action request:', error));
+    for (const payload of messagesToSend) {
+      try {
+        if (payload.type === 'agent_message') {
+          await this.sendAgentMessage(payload.message.recipientId, payload.message);
+        } else if (payload.type === 'action') {
+          await this.sendActionRequest(payload.targetAgent, payload.action, payload.params);
+        }
+      } catch (error) {
+        console.error('Error sending pending message:', error);
+        
+        // Add back to pending messages queue
+        this.pendingMessages.push(payload);
       }
-    });
-  }
-  
-  /**
-   * Add a listener for connection status changes
-   * 
-   * @param listener Function to call when status changes
-   * @returns Function to remove the listener
-   */
-  public onConnectionStatusChange(listener: (status: ConnectionStatus) => void): () => void {
-    this.statusChangeListeners.push(listener);
-    
-    // Call listener immediately with current status
-    listener(this.connectionStatus);
-    
-    // Return function to remove listener
-    return () => {
-      const index = this.statusChangeListeners.indexOf(listener);
-      if (index !== -1) {
-        this.statusChangeListeners.splice(index, 1);
-      }
-    };
-  }
-  
-  /**
-   * Get current connection status
-   * 
-   * @returns Current connection status
-   */
-  public getConnectionStatus(): ConnectionStatus {
-    return this.connectionStatus;
-  }
-  
-  /**
-   * Disconnect from the agent system
-   */
-  public disconnect(): void {
-    // Stop polling
-    this.stopPolling();
-    
-    // Stop ping interval
-    this.stopPingInterval();
-    
-    // Disconnect socket if connected
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
     }
-    
-    // Update connection status
-    this.updateConnectionStatus(ConnectionStatus.DISCONNECTED);
   }
   
   /**
-   * Check if connected to the agent system
+   * Send agent message via REST API
    * 
-   * @returns True if connected
+   * @param recipientId ID of recipient agent
+   * @param message Message to send
+   * @param messageId Optional message ID
+   * @returns Promise that resolves with message ID
    */
-  public isConnected(): boolean {
-    return this.connectionStatus === ConnectionStatus.CONNECTED;
+  private async sendAgentMessageViaRest(
+    recipientId: string, 
+    message: any, 
+    messageId: string = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+  ): Promise<string> {
+    try {
+      const response = await fetch('/api/agents/socketio/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messageId,
+          recipientId,
+          message,
+          clientId: this.clientId,
+          timestamp: Date.now()
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to send message: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to send message');
+      }
+      
+      return messageId;
+    } catch (error) {
+      console.error('Error sending message via REST:', error);
+      
+      // If REST fails, add to pending messages and try again later
+      this.pendingMessages.push({
+        type: 'agent_message',
+        recipientId,
+        message,
+        messageId
+      });
+      
+      throw error;
+    }
   }
   
   /**
-   * Get client ID
+   * Send action request via REST API
    * 
-   * @returns Client ID
+   * @param targetAgent ID of target agent
+   * @param action Action to request
+   * @param params Action parameters
+   * @param actionId Optional action ID
+   * @returns Promise that resolves with action ID
    */
-  public getClientId(): string {
-    return this.clientId;
+  private async sendActionRequestViaRest(
+    targetAgent: string, 
+    action: string, 
+    params: any = {},
+    actionId: string = `action_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+  ): Promise<string> {
+    try {
+      const response = await fetch('/api/agents/socketio/action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          actionId,
+          targetAgent,
+          action,
+          params,
+          clientId: this.clientId,
+          timestamp: Date.now()
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to send action request: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to send action request');
+      }
+      
+      return actionId;
+    } catch (error) {
+      console.error('Error sending action request via REST:', error);
+      
+      // If REST fails, add to pending messages and try again later
+      this.pendingMessages.push({
+        type: 'action',
+        targetAgent,
+        action,
+        params,
+        actionId
+      });
+      
+      throw error;
+    }
   }
 }
 
-// Export singleton instance
+// Create a singleton instance
 export const agentSocketIOService = new AgentSocketIOService();
