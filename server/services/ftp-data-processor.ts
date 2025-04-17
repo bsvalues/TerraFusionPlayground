@@ -51,7 +51,7 @@ export class FtpDataProcessor {
   private storage: IStorage;
   private downloadDir: string;
   private outputDir: string;
-  
+
   /**
    * Constructor
    * 
@@ -63,17 +63,17 @@ export class FtpDataProcessor {
     this.storage = storage;
     this.downloadDir = downloadDir || path.join(process.cwd(), 'downloads');
     this.outputDir = outputDir || path.join(process.cwd(), 'downloads', 'processed');
-    
+
     // Ensure directories exist
     if (!fs.existsSync(this.downloadDir)) {
       fs.mkdirSync(this.downloadDir, { recursive: true });
     }
-    
+
     if (!fs.existsSync(this.outputDir)) {
       fs.mkdirSync(this.outputDir, { recursive: true });
     }
   }
-  
+
   /**
    * Process a file from the downloads directory
    * 
@@ -90,61 +90,61 @@ export class FtpDataProcessor {
       errors: [],
       duration: 0
     };
-    
+
     // Verify file exists
     if (!fs.existsSync(fullPath)) {
       result.errors.push(`File not found: ${fullPath}`);
       return result;
     }
-    
+
     try {
       // Determine source format if not specified
       if (!options.sourceFormat) {
         options.sourceFormat = this.detectFileFormat(fullPath);
       }
-      
+
       // Process based on format
       let processedData: any[] = [];
-      
+
       switch (options.sourceFormat) {
         case 'csv':
           processedData = await this.processCsvFile(fullPath, options);
           break;
-          
+
         case 'fixed-width':
           processedData = await this.processFixedWidthFile(fullPath, options);
           break;
-          
+
         case 'xml':
           processedData = await this.processXmlFile(fullPath, options);
           break;
-          
+
         case 'json':
           processedData = await this.processJsonFile(fullPath, options);
           break;
-          
+
         default:
           result.errors.push(`Unsupported file format: ${options.sourceFormat}`);
           return result;
       }
-      
+
       // Apply any custom mappings
       if (options.mappings && Object.keys(options.mappings).length > 0) {
         processedData = this.applyFieldMappings(processedData, options.mappings);
       }
-      
+
       // Save or store the processed data
       const targetFormat = options.targetFormat || 'json';
       result.recordsProcessed = processedData.length;
-      
+
       if (targetFormat === 'json') {
         // Save to JSON file
         const outputFileName = `${path.basename(filePath, path.extname(filePath))}.json`;
         const outputPath = path.join(this.outputDir, outputFileName);
-        
+
         fs.writeFileSync(outputPath, JSON.stringify(processedData, null, 2));
         result.outputPath = outputPath;
-        
+
       } else if (targetFormat === 'db') {
         // Store directly in database
         if (!options.tableName) {
@@ -153,16 +153,25 @@ export class FtpDataProcessor {
           await this.storeInDatabase(processedData, options.tableName, options.batchSize || 100);
         }
       }
-      
+
     } catch (error: any) {
-      logger.error('Error processing file:', error);
-      result.errors.push(`Processing error: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('Error processing FTP data:', { error: errorMessage, context: { file: filePath, timestamp: new Date().toISOString() }});
+
+      // Emit error event for monitoring
+      //this.emit('processingError', { //this.emit is not defined in this class
+      //  error: errorMessage,
+      //  file: filePath,
+      //  timestamp: new Date().toISOString()
+      //});
+
+      throw new Error(`FTP data processing failed: ${errorMessage}`);
     }
-    
+
     result.duration = Date.now() - startTime;
     return result;
   }
-  
+
   /**
    * Detect the format of a file based on its content and extension
    * 
@@ -171,7 +180,7 @@ export class FtpDataProcessor {
    */
   private detectFileFormat(filePath: string): 'csv' | 'fixed-width' | 'xml' | 'json' {
     const ext = path.extname(filePath).toLowerCase();
-    
+
     if (ext === '.csv') {
       return 'csv';
     } else if (ext === '.xml') {
@@ -181,27 +190,27 @@ export class FtpDataProcessor {
     } else if (ext === '.txt' || ext === '.dat') {
       // Try to determine if it's a fixed-width file
       const sample = fs.readFileSync(filePath, 'utf8').split('\n').slice(0, 5).join('\n');
-      
+
       // Check if all lines have the same length (common for fixed-width)
       const lines = sample.split('\n').filter(line => line.trim().length > 0);
       const allSameLength = lines.every(line => line.length === lines[0].length);
-      
+
       // Check for delimiters common in CSV
       const hasCommas = sample.includes(',');
       const hasTabs = sample.includes('\t');
       const hasSemicolons = sample.includes(';');
-      
+
       if (allSameLength && !hasCommas && !hasTabs && !hasSemicolons) {
         return 'fixed-width';
       } else {
         return 'csv'; // Default to CSV for text files with delimiters
       }
     }
-    
+
     // Default to CSV as it's most common
     return 'csv';
   }
-  
+
   /**
    * Process a CSV file
    * 
@@ -213,7 +222,7 @@ export class FtpDataProcessor {
     const fileContent = fs.readFileSync(filePath, 'utf8');
     const delimiter = options.delimiter || ',';
     const hasHeaderRow = options.headerRow !== false; // Default to true
-    
+
     // Parse CSV
     const parseOptions = {
       delimiter,
@@ -221,11 +230,11 @@ export class FtpDataProcessor {
       skip_empty_lines: true,
       trim: true
     };
-    
+
     const records = csvParse(fileContent, parseOptions);
     return records;
   }
-  
+
   /**
    * Process a fixed-width file
    * 
@@ -237,19 +246,19 @@ export class FtpDataProcessor {
     const fileContent = fs.readFileSync(filePath, 'utf8');
     const lines = fileContent.split('\n').filter(line => line.trim().length > 0);
     const result: any[] = [];
-    
+
     // Require fixed width configuration
     if (!options.fixedWidthConfig || options.fixedWidthConfig.length === 0) {
       throw new Error('Fixed width configuration is required for fixed-width files');
     }
-    
+
     // Process each line
     for (const line of lines) {
       const record: Record<string, any> = {};
-      
+
       for (const field of options.fixedWidthConfig) {
         const value = line.substring(field.start, field.start + field.length).trim();
-        
+
         // Convert value based on type
         if (field.type === 'number') {
           record[field.field] = parseFloat(value) || 0;
@@ -261,13 +270,13 @@ export class FtpDataProcessor {
           record[field.field] = value;
         }
       }
-      
+
       result.push(record);
     }
-    
+
     return result;
   }
-  
+
   /**
    * Process an XML file
    * 
@@ -279,19 +288,19 @@ export class FtpDataProcessor {
     // Note: Using a simple approach for now
     // For production, would use a more robust XML parser
     const fileContent = fs.readFileSync(filePath, 'utf8');
-    
+
     try {
       // Basic XML parsing - in real implementation, use a proper XML parser
       const result: any[] = [];
-      
+
       // Very simplistic XML parsing that looks for elements
       const regex = /<([\w]+)>(.*?)<\/\1>/g;
       let matches;
       let currentRecord: Record<string, any> = {};
-      
+
       while ((matches = regex.exec(fileContent)) !== null) {
         const [_, tag, value] = matches;
-        
+
         // Special handling for record boundaries
         if (tag === 'record' || tag === 'item' || tag === 'property') {
           if (Object.keys(currentRecord).length > 0) {
@@ -302,19 +311,19 @@ export class FtpDataProcessor {
           currentRecord[tag] = value.trim();
         }
       }
-      
+
       // Add the last record if not empty
       if (Object.keys(currentRecord).length > 0) {
         result.push(currentRecord);
       }
-      
+
       return result;
     } catch (error) {
       logger.error('Error parsing XML:', error);
       throw new Error('Failed to parse XML file');
     }
   }
-  
+
   /**
    * Process a JSON file
    * 
@@ -324,10 +333,10 @@ export class FtpDataProcessor {
    */
   private async processJsonFile(filePath: string, options: ProcessingOptions): Promise<any[]> {
     const fileContent = fs.readFileSync(filePath, 'utf8');
-    
+
     try {
       const data = JSON.parse(fileContent);
-      
+
       // Handle both array and object formats
       if (Array.isArray(data)) {
         return data;
@@ -338,18 +347,18 @@ export class FtpDataProcessor {
             return data[key];
           }
         }
-        
+
         // If no array found, convert the object to an array
         return [data];
       }
-      
+
       return [];
     } catch (error) {
       logger.error('Error parsing JSON:', error);
       throw new Error('Failed to parse JSON file');
     }
   }
-  
+
   /**
    * Apply field mappings to transform data
    * 
@@ -360,17 +369,17 @@ export class FtpDataProcessor {
   private applyFieldMappings(data: any[], mappings: Record<string, string>): any[] {
     return data.map(record => {
       const mappedRecord: Record<string, any> = {};
-      
+
       for (const [sourceField, targetField] of Object.entries(mappings)) {
         if (record[sourceField] !== undefined) {
           mappedRecord[targetField] = record[sourceField];
         }
       }
-      
+
       return mappedRecord;
     });
   }
-  
+
   /**
    * Store processed data in the database
    * 
@@ -383,11 +392,11 @@ export class FtpDataProcessor {
       // Process in batches to avoid memory issues with large datasets
       for (let i = 0; i < data.length; i += batchSize) {
         const batch = data.slice(i, i + batchSize);
-        
+
         // This would use the appropriate storage method depending on the table
         // For simplicity, just logging the operation for now
         logger.info(`Storing batch of ${batch.length} records in table ${tableName}`);
-        
+
         // Example of how this might work - implementation would depend on the storage interface
         // await this.storage.bulkInsert(tableName, batch);
       }
@@ -396,7 +405,7 @@ export class FtpDataProcessor {
       throw new Error('Failed to store data in database');
     }
   }
-  
+
   /**
    * Process all files in a directory
    * 
@@ -407,7 +416,7 @@ export class FtpDataProcessor {
   public async processDirectory(dirPath: string, options: ProcessingOptions = {}): Promise<ProcessingResult[]> {
     const results: ProcessingResult[] = [];
     const fullDirPath = path.join(this.downloadDir, dirPath);
-    
+
     if (!fs.existsSync(fullDirPath)) {
       const result: ProcessingResult = {
         recordsProcessed: 0,
@@ -417,19 +426,19 @@ export class FtpDataProcessor {
       };
       return [result];
     }
-    
+
     const files = fs.readdirSync(fullDirPath)
       .filter(file => fs.statSync(path.join(fullDirPath, file)).isFile());
-    
+
     for (const file of files) {
       const filePath = path.join(dirPath, file);
       const result = await this.processFile(filePath, options);
       results.push(result);
     }
-    
+
     return results;
   }
-  
+
   /**
    * Get a summary of files in the downloads directory
    * 
@@ -438,11 +447,11 @@ export class FtpDataProcessor {
    */
   public async getFilesSummary(dirPath: string = ''): Promise<any> {
     const fullPath = path.join(this.downloadDir, dirPath);
-    
+
     if (!fs.existsSync(fullPath)) {
       return { error: 'Directory not found' };
     }
-    
+
     const summary = {
       totalFiles: 0,
       totalSize: 0,
@@ -456,29 +465,29 @@ export class FtpDataProcessor {
       },
       recentFiles: [] as Array<{ name: string, path: string, size: number, modified: Date }>
     };
-    
+
     const processDirectory = (dirPath: string) => {
       const items = fs.readdirSync(dirPath);
-      
+
       for (const item of items) {
         const itemPath = path.join(dirPath, item);
         const stats = fs.statSync(itemPath);
-        
+
         if (stats.isDirectory()) {
           processDirectory(itemPath);
         } else if (stats.isFile()) {
           summary.totalFiles++;
           summary.totalSize += stats.size;
-          
+
           const ext = path.extname(item).toLowerCase() || '.none';
-          
+
           if (!summary.byExtension[ext]) {
             summary.byExtension[ext] = { count: 0, size: 0 };
           }
-          
+
           summary.byExtension[ext].count++;
           summary.byExtension[ext].size += stats.size;
-          
+
           // Categorize by type
           if (['.csv', '.tsv'].includes(ext)) {
             summary.byType.csv++;
@@ -491,7 +500,7 @@ export class FtpDataProcessor {
           } else {
             summary.byType.other++;
           }
-          
+
           // Track recent files (last 10 modified)
           summary.recentFiles.push({
             name: item,
@@ -502,13 +511,13 @@ export class FtpDataProcessor {
         }
       }
     };
-    
+
     processDirectory(fullPath);
-    
+
     // Sort recent files by modification date (newest first) and limit to 10
     summary.recentFiles.sort((a, b) => b.modified.getTime() - a.modified.getTime());
     summary.recentFiles = summary.recentFiles.slice(0, 10);
-    
+
     return summary;
   }
 }

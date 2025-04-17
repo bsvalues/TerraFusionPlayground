@@ -16,7 +16,7 @@ import { io, Socket } from 'socket.io-client';
  */
 class BrowserEventEmitter {
   private events: Map<string, Array<(data: any) => void>> = new Map();
-  
+
   /**
    * Register an event listener
    * 
@@ -28,16 +28,16 @@ class BrowserEventEmitter {
     if (!this.events.has(event)) {
       this.events.set(event, []);
     }
-    
+
     const listeners = this.events.get(event)!;
     listeners.push(listener);
-    
+
     // Return unsubscribe function
     return () => {
       this.off(event, listener);
     };
   }
-  
+
   /**
    * Remove an event listener
    * 
@@ -48,20 +48,20 @@ class BrowserEventEmitter {
     if (!this.events.has(event)) {
       return;
     }
-    
+
     const listeners = this.events.get(event)!;
     const index = listeners.indexOf(listener);
-    
+
     if (index !== -1) {
       listeners.splice(index, 1);
     }
-    
+
     // If no more listeners, remove the event
     if (listeners.length === 0) {
       this.events.delete(event);
     }
   }
-  
+
   /**
    * Emit an event
    * 
@@ -72,9 +72,9 @@ class BrowserEventEmitter {
     if (!this.events.has(event)) {
       return;
     }
-    
+
     const listeners = this.events.get(event)!;
-    
+
     for (const listener of listeners) {
       try {
         listener(data);
@@ -83,7 +83,7 @@ class BrowserEventEmitter {
       }
     }
   }
-  
+
   /**
    * Remove all listeners for an event, or all events
    * 
@@ -136,7 +136,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   private reconnectAttempts: number = 0;
   private reconnectDelay: number = 1000;
   private pingInterval: ReturnType<typeof setTimeout> | null = null;
-  
+
   /**
    * Create a new agent Socket.IO service
    * 
@@ -149,16 +149,16 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   } = {}) {
     super();
     this.clientId = options.clientId || `client_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    
+
     if (options.pollingFrequency) {
       this.pollingFrequency = options.pollingFrequency;
     }
-    
+
     if (options.maxReconnectAttempts) {
       this.maxReconnectAttempts = options.maxReconnectAttempts;
     }
   }
-  
+
   /**
    * Connect to the agent system
    * 
@@ -169,23 +169,23 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     if (this.connectPromise) {
       return this.connectPromise;
     }
-    
+
     // Create a new connect promise
     this.connectPromise = new Promise((resolve) => {
       this.connectResolve = resolve;
-      
+
       try {
         // Update connection status
         this.updateConnectionStatus(ConnectionStatus.CONNECTING);
-        
+
         // Determine the Socket.IO URL
         const protocol = window.location.protocol === 'https:' ? 'https://' : 'http://';
         const host = window.location.host;
         const path = '/api/agents/socket.io';
-        
+
         // Log connection attempt
         console.log(`[Agent SocketIO] Attempting to connect to: ${protocol}${host} with path ${path}`);
-        
+
         // Create Socket.IO instance
         this.socket = io(protocol + host, {
           path: path,
@@ -199,10 +199,10 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           forceNew: true, // Force a new connection
           upgrade: false // Don't attempt to upgrade to WebSocket initially
         });
-        
+
         // Set up event handlers
         this.setupEventHandlers(this.socket);
-        
+
         // Start fallback polling mechanism
         this.startPolling();
       } catch (error) {
@@ -213,30 +213,30 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         this.connectResolve = null;
       }
     });
-    
+
     return this.connectPromise;
   }
-  
+
   /**
    * Disconnect from the Socket.IO server
    */
   public disconnect(): void {
     // Stop polling
     this.stopPolling();
-    
+
     // Stop ping interval
     this.stopPingInterval();
-    
+
     // Disconnect Socket.IO
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
     }
-    
+
     // Update connection status
     this.updateConnectionStatus(ConnectionStatus.DISCONNECTED);
   }
-  
+
   /**
    * Send message to an agent
    * 
@@ -246,7 +246,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
    */
   public sendAgentMessage(recipientId: string, message: any): Promise<string> {
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    
+
     // If using Socket.IO, send via socket
     if (this.socket && this.socket.connected && !this.usingFallback) {
       return new Promise((resolve, reject) => {
@@ -258,12 +258,12 @@ export class AgentSocketIOService extends BrowserEventEmitter {
             clientId: this.clientId,
             timestamp: Date.now()
           });
-          
+
           // Resolve with message ID
           resolve(messageId);
         } catch (error) {
           console.error('Error sending agent message via Socket.IO:', error);
-          
+
           // Try fallback to REST
           this.sendAgentMessageViaRest(recipientId, message, messageId)
             .then(resolve)
@@ -271,7 +271,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         }
       });
     }
-    
+
     // If not connected, add to pending messages
     if (this.connectionStatus !== ConnectionStatus.CONNECTED && 
         this.connectionStatus !== ConnectionStatus.CONNECTING) {
@@ -281,15 +281,15 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         message,
         messageId
       });
-      
+
       // Return message ID
       return Promise.resolve(messageId);
     }
-    
+
     // If using fallback or not connected to Socket.IO, send via REST
     return this.sendAgentMessageViaRest(recipientId, message, messageId);
   }
-  
+
   /**
    * Send action request to an agent
    * 
@@ -300,7 +300,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
    */
   public sendActionRequest(targetAgent: string, action: string, params: any = {}): Promise<string> {
     const actionId = `action_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    
+
     // If using Socket.IO, send via socket
     if (this.socket && this.socket.connected && !this.usingFallback) {
       return new Promise((resolve, reject) => {
@@ -313,12 +313,12 @@ export class AgentSocketIOService extends BrowserEventEmitter {
             clientId: this.clientId,
             timestamp: Date.now()
           });
-          
+
           // Resolve with action ID
           resolve(actionId);
         } catch (error) {
           console.error('Error sending action request via Socket.IO:', error);
-          
+
           // Try fallback to REST
           this.sendActionRequestViaRest(targetAgent, action, params, actionId)
             .then(resolve)
@@ -326,7 +326,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         }
       });
     }
-    
+
     // If not connected, add to pending messages
     if (this.connectionStatus !== ConnectionStatus.CONNECTED && 
         this.connectionStatus !== ConnectionStatus.CONNECTING) {
@@ -337,15 +337,15 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         params,
         actionId
       });
-      
+
       // Return action ID
       return Promise.resolve(actionId);
     }
-    
+
     // If using fallback or not connected to Socket.IO, send via REST
     return this.sendActionRequestViaRest(targetAgent, action, params, actionId);
   }
-  
+
   /**
    * Get current connection status
    * 
@@ -354,7 +354,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   public getConnectionStatus(): ConnectionStatus {
     return this.connectionStatus;
   }
-  
+
   /**
    * Check if currently connected
    * 
@@ -363,7 +363,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   public isConnected(): boolean {
     return this.connectionStatus === ConnectionStatus.CONNECTED;
   }
-  
+
   /**
    * Get client ID
    * 
@@ -372,14 +372,14 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   public getClientId(): string {
     return this.clientId;
   }
-  
+
   /**
    * Check if using fallback polling mechanism
    */
   public isUsingFallback(): boolean {
     return this.usingFallback;
   }
-  
+
   /**
    * Register a listener for connection status changes
    * 
@@ -389,10 +389,10 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   public onConnectionStatusChange(listener: (status: ConnectionStatus) => void): () => void {
     // Add listener to array
     this.statusChangeListeners.push(listener);
-    
+
     // Call listener immediately with current status
     listener(this.connectionStatus);
-    
+
     // Return function to remove listener
     return () => {
       const index = this.statusChangeListeners.indexOf(listener);
@@ -401,7 +401,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       }
     };
   }
-  
+
   /**
    * Set up Socket.IO event handlers
    * 
@@ -412,41 +412,41 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     socket.on('connect', () => {
       console.log('[Agent SocketIO] Connected');
       this.updateConnectionStatus(ConnectionStatus.CONNECTED);
-      
+
       // Stop fallback polling
       this.stopPolling();
-      
+
       // Stop using fallback
       this.usingFallback = false;
-      
+
       // Reset reconnect attempts
       this.reconnectAttempts = 0;
-      
+
       // Authenticate
       this.sendAuthMessage()
         .then(() => {
           // Send any pending messages
           this.sendPendingMessages();
-          
+
           // Resolve connect promise if still pending
           if (this.connectResolve) {
             this.connectResolve(true);
             this.connectPromise = null;
             this.connectResolve = null;
           }
-          
+
           // Start ping interval
           this.startPingInterval();
         })
         .catch((error) => {
           console.error('Authentication failed:', error);
-          
+
           // Mark as disconnected
           this.updateConnectionStatus(ConnectionStatus.DISCONNECTED);
-          
+
           // Using fallback
           this.initFallbackPolling();
-          
+
           // Resolve connect promise if still pending
           if (this.connectResolve) {
             this.connectResolve(false);
@@ -455,23 +455,23 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           }
         });
     });
-    
+
     // Handle connection error
     socket.on('connect_error', (error) => {
       console.error('[Agent SocketIO] Connection error:', error);
-      
+
       // Update connection status
       this.updateConnectionStatus(ConnectionStatus.ERRORED);
-      
+
       // Increment reconnect attempts
       this.reconnectAttempts++;
-      
+
       // If max reconnect attempts reached, give up and use fallback
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
         console.log('[Agent SocketIO] Maximum reconnect attempts reached, using fallback');
         this.socket?.disconnect();
         this.initFallbackPolling();
-        
+
         // Resolve connect promise if still pending
         if (this.connectResolve) {
           this.connectResolve(false);
@@ -480,56 +480,56 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         }
       }
     });
-    
+
     // Handle disconnection
     socket.on('disconnect', (reason) => {
       console.log(`[Agent SocketIO] Disconnected: ${reason}`);
-      
+
       // Update connection status
       this.updateConnectionStatus(ConnectionStatus.DISCONNECTED);
-      
+
       // Stop ping interval
       this.stopPingInterval();
-      
+
       // If not closed cleanly, try to reconnect
       if (reason === 'io server disconnect' || reason === 'transport close') {
         // Use fallback
         this.initFallbackPolling();
       }
     });
-    
+
     // Handle socket.io reconnect
     socket.io.on('reconnect', (attemptNumber) => {
       console.log(`[Agent SocketIO] Reconnected after ${attemptNumber} attempts`);
     });
-    
+
     // Handle socket.io reconnect attempt
     socket.io.on('reconnect_attempt', (attemptNumber) => {
       console.log(`[Agent SocketIO] Reconnect attempt ${attemptNumber}`);
     });
-    
+
     // Handle reconnect error
     socket.io.on('reconnect_error', (error) => {
       console.error('[Agent SocketIO] Reconnect error:', error);
     });
-    
+
     // Handle reconnect failed
     socket.io.on('reconnect_failed', () => {
       console.error('[Agent SocketIO] Failed to reconnect after max attempts');
       this.initFallbackPolling();
     });
-    
+
     // Handle connection established
     socket.on('connection_established', (data) => {
       console.log(`[Agent SocketIO] Connection established: ${data.clientId}`);
-      
+
       // If server assigned a different client ID
       if (data.clientId && data.clientId !== this.clientId) {
         this.clientId = data.clientId;
         console.log(`[Agent SocketIO] Using server-assigned client ID: ${this.clientId}`);
       }
     });
-    
+
     // Handle auth success
     socket.on('auth_success', (data) => {
       console.log('[Agent SocketIO] Authentication successful');
@@ -539,7 +539,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         timestamp: Date.now()
       });
     });
-    
+
     // Handle auth failed
     socket.on('auth_failed', (data) => {
       console.error('[Agent SocketIO] Authentication failed:', data.message);
@@ -549,7 +549,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         timestamp: Date.now()
       });
     });
-    
+
     // Handle agent coordination
     socket.on('agent_coordination', (data) => {
       this.dispatchMessage({
@@ -557,7 +557,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         message: data
       });
     });
-    
+
     // Handle agent activity
     socket.on('agent_activity', (data) => {
       this.dispatchMessage({
@@ -565,7 +565,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         message: data
       });
     });
-    
+
     // Handle agent capability
     socket.on('agent_capability', (data) => {
       this.dispatchMessage({
@@ -573,7 +573,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         message: data
       });
     });
-    
+
     // Handle message sent acknowledgment
     socket.on('message_sent', (data) => {
       this.dispatchMessage({
@@ -583,7 +583,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         timestamp: Date.now()
       });
     });
-    
+
     // Handle action sent acknowledgment
     socket.on('action_sent', (data) => {
       this.dispatchMessage({
@@ -594,7 +594,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         timestamp: Date.now()
       });
     });
-    
+
     // Handle error
     socket.on('error', (data) => {
       console.error('[Agent SocketIO] Error from server:', data);
@@ -606,18 +606,18 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         timestamp: Date.now()
       });
     });
-    
+
     // Handle notification
     socket.on('notification', (data) => {
       this.dispatchMessage(data);
     });
-    
+
     // Handle pong (response to ping)
     socket.on('pong', (data) => {
       // No need to do anything, this is just to keep the connection alive
     });
   }
-  
+
   /**
    * Update connection status and notify listeners
    * 
@@ -627,9 +627,9 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     if (this.connectionStatus === status) {
       return;
     }
-    
+
     this.connectionStatus = status;
-    
+
     // Notify status change listeners
     this.statusChangeListeners.forEach(listener => {
       try {
@@ -638,7 +638,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         console.error('Error in connection status listener:', error);
       }
     });
-    
+
     // For error status, emit a notification message
     if (status === ConnectionStatus.ERRORED) {
       this.dispatchMessage({
@@ -650,7 +650,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       });
     }
   }
-  
+
   /**
    * Dispatch a message to event listeners
    * 
@@ -660,11 +660,11 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     if (message.type) {
       this.emit(message.type, message);
     }
-    
+
     // Also emit generic message event
     this.emit('message', message);
   }
-  
+
   /**
    * Initialize fallback polling mechanism
    */
@@ -673,10 +673,10 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       console.log('Already using polling fallback, not initializing again');
       return;
     }
-    
+
     console.log('Initializing polling fallback mechanism');
     this.usingFallback = true;
-    
+
     // Try to authenticate via REST API
     this.authenticateViaRest()
       .then(() => {
@@ -685,30 +685,30 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       })
       .catch((error) => {
         console.error('Failed to authenticate via REST API:', error);
-        
+
         // Set connection status to errored
         this.updateConnectionStatus(ConnectionStatus.ERRORED);
       });
   }
-  
+
   /**
    * Start polling for messages
    */
   private startPolling() {
     // Already polling, stop first
     this.stopPolling();
-    
+
     console.log(`[Agent UI] Setting up polling with connection status: ${this.connectionStatus}`);
-    
+
     // Start new polling interval
     this.pollingInterval = setInterval(() => {
       this.pollForMessages();
     }, this.pollingFrequency);
-    
+
     // Poll immediately
     this.pollForMessages();
   }
-  
+
   /**
    * Stop polling for messages
    */
@@ -718,7 +718,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       this.pollingInterval = null;
     }
   }
-  
+
   /**
    * Poll for messages using REST API instead of Socket.IO
    */
@@ -728,16 +728,16 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       if (this.connectionStatus === ConnectionStatus.CONNECTING) {
         console.log('[Agent UI] Polling for data (connection: ' + this.connectionStatus + ')');
       }
-      
+
       // Determine API endpoint - either regular or Socket.IO
       const endpoint = this.usingFallback ? 
         `/api/agents/socketio/messages/pending?clientId=${this.clientId}` : 
         `/api/agents/messages/pending?clientId=${this.clientId}`;
-      
+
       // Use the REST API to fetch any pending messages
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-      
+
       try {
         const response = await fetch(endpoint, {
           method: 'GET',
@@ -747,15 +747,15 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           },
           signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         if (!response.ok) {
           throw new Error(`Failed to poll for messages: ${response.status} ${response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data.success && data.messages && Array.isArray(data.messages)) {
           // Process each message as if it came from Socket.IO
           data.messages.forEach((messageData: any) => {
@@ -767,17 +767,17 @@ export class AgentSocketIOService extends BrowserEventEmitter {
               this.dispatchMessage(messageData);
             }
           });
-          
+
           // If we received any messages, update connection status to reflect it's working
           if (data.messages.length > 0 && this.connectionStatus !== ConnectionStatus.CONNECTED) {
             this.updateConnectionStatus(ConnectionStatus.CONNECTED);
           }
         }
-        
+
         // Successfully polled, so connection is at least functional at HTTP level
         if (this.connectionStatus === ConnectionStatus.DISCONNECTED || this.connectionStatus === ConnectionStatus.ERRORED) {
           this.updateConnectionStatus(ConnectionStatus.CONNECTING);
-          
+
           // Notify the user that polling is working
           this.dispatchMessage({
             type: 'notification',
@@ -796,21 +796,21 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       if (Math.random() < 0.1) { // Log roughly 10% of errors
         console.error('Error polling for messages:', error);
       }
-      
+
       // If polling fails repeatedly, mark as errored, but don't flood UI with notifications
       if (this.connectionStatus !== ConnectionStatus.ERRORED) {
         this.updateConnectionStatus(ConnectionStatus.ERRORED);
       }
     }
   }
-  
+
   /**
    * Authenticate via REST API when Socket.IO is not available
    */
   private async authenticateViaRest(): Promise<void> {
     try {
       console.log('Authenticating via REST API');
-      
+
       const response = await fetch('/api/agents/socketio/auth', {
         method: 'POST',
         headers: {
@@ -822,24 +822,24 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           timestamp: Date.now()
         })
       });
-      
+
       if (!response.ok) {
         throw new Error(`Authentication failed: ${response.status} ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (!data.success) {
         throw new Error(data.message || 'Authentication failed');
       }
-      
+
       // If server assigned a different client ID
       if (data.clientId && data.clientId !== this.clientId) {
         this.clientId = data.clientId;
       }
-      
+
       console.log('REST authentication successful, client ID:', this.clientId);
-      
+
       this.dispatchMessage({
         type: 'auth_success',
         clientId: this.clientId,
@@ -847,17 +847,17 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       });
     } catch (error) {
       console.error('REST authentication failed:', error);
-      
+
       this.dispatchMessage({
         type: 'auth_failed',
         error: error instanceof Error ? error.message : 'Authentication failed',
         timestamp: Date.now()
       });
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Send auth message to Socket.IO
    */
@@ -865,14 +865,14 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     if (!this.socket || !this.socket.connected) {
       throw new Error('Socket not connected');
     }
-    
+
     return new Promise((resolve, reject) => {
       try {
         // Set up timeout - if we don't get a response in 5 seconds, fail
         const timeoutId = setTimeout(() => {
           reject(new Error('Authentication timed out'));
         }, 5000);
-        
+
         // Set up one-time auth success handler
         const authSuccessHandler = (data: any) => {
           clearTimeout(timeoutId);
@@ -882,7 +882,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           }
           resolve();
         };
-        
+
         // Set up one-time auth failed handler
         const authFailedHandler = (data: any) => {
           clearTimeout(timeoutId);
@@ -892,14 +892,14 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           }
           reject(new Error(data.message || 'Authentication failed'));
         };
-        
+
         // We already checked that socket exists and is connected at the beginning of the method,
         // but TypeScript needs reassurance
         if (this.socket) {
           // Register temporary handlers
           this.socket.on('auth_success', authSuccessHandler);
           this.socket.on('auth_failed', authFailedHandler);
-          
+
           // Send authentication message
           this.socket.emit('auth', {
             clientId: this.clientId,
@@ -914,14 +914,14 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       }
     });
   }
-  
+
   /**
    * Start ping interval to keep connection alive
    */
   private startPingInterval() {
     // Already pinging, stop first
     this.stopPingInterval();
-    
+
     // Start new ping interval - every 30 seconds
     this.pingInterval = setInterval(() => {
       if (this.socket && this.socket.connected) {
@@ -932,7 +932,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       }
     }, 30000);
   }
-  
+
   /**
    * Stop ping interval
    */
@@ -942,7 +942,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       this.pingInterval = null;
     }
   }
-  
+
   /**
    * Send pending messages after reconnection
    */
@@ -950,13 +950,13 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     if (this.pendingMessages.length === 0) {
       return;
     }
-    
+
     console.log(`Sending ${this.pendingMessages.length} pending messages`);
-    
+
     // Copy pending messages and clear the queue
     const messagesToSend = [...this.pendingMessages];
     this.pendingMessages = [];
-    
+
     // Send each message
     for (const payload of messagesToSend) {
       try {
@@ -967,13 +967,13 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         }
       } catch (error) {
         console.error('Error sending pending message:', error);
-        
+
         // Add back to pending messages queue
         this.pendingMessages.push(payload);
       }
     }
   }
-  
+
   /**
    * Send agent message via REST API
    * 
@@ -1001,21 +1001,21 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           timestamp: Date.now()
         })
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to send message: ${response.status} ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (!data.success) {
         throw new Error(data.message || 'Failed to send message');
       }
-      
+
       return messageId;
     } catch (error) {
       console.error('Error sending message via REST:', error);
-      
+
       // If REST fails, add to pending messages and try again later
       this.pendingMessages.push({
         type: 'agent_message',
@@ -1023,11 +1023,11 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         message,
         messageId
       });
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Send action request via REST API
    * 
@@ -1058,21 +1058,21 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           timestamp: Date.now()
         })
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to send action request: ${response.status} ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (!data.success) {
         throw new Error(data.message || 'Failed to send action request');
       }
-      
+
       return actionId;
     } catch (error) {
       console.error('Error sending action request via REST:', error);
-      
+
       // If REST fails, add to pending messages and try again later
       this.pendingMessages.push({
         type: 'action',
@@ -1081,7 +1081,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         params,
         actionId
       });
-      
+
       throw error;
     }
   }

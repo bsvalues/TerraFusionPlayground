@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { ReactNode } from "react";
 
@@ -8,8 +9,10 @@ interface KPICardProps {
   actionLabel?: string;
   actionUrl?: string;
   valueColor?: string;
-  trend?: number; // Added trend property
-  subtitle?: string; // Added subtitle property
+  trend?: number;
+  subtitle?: string;
+  isLoading?: boolean;
+  error?: string;
 }
 
 const KPICard: React.FC<KPICardProps> = ({ 
@@ -20,12 +23,36 @@ const KPICard: React.FC<KPICardProps> = ({
   actionUrl = "#",
   valueColor = "text-gray-900",
   trend,
-  subtitle
+  subtitle,
+  isLoading,
+  error
 }) => {
+  if (isLoading) {
+    return (
+      <Card className="bg-white overflow-hidden shadow animate-pulse">
+        <CardContent className="p-6">
+          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-8 bg-gray-200 rounded w-1/2 mt-4"></div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="bg-white overflow-hidden shadow border-red-200">
+        <CardContent className="p-6">
+          <h3 className="text-lg text-gray-600">{title}</h3>
+          <p className="text-red-500 mt-2">{error}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="bg-white overflow-hidden shadow">
       <CardContent className="p-0">
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg transition-all hover:shadow-xl"> {/* Applied new styling */}
+        <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg transition-all hover:shadow-xl">
           <div className="flex items-center justify-between">
             <h3 className="text-lg text-gray-600 dark:text-gray-300 font-medium">{title}</h3>
             {trend && (
