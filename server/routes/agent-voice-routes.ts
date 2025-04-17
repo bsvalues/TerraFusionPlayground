@@ -1,101 +1,57 @@
-/**
- * Agent Voice Command Service (Server-side)
- * 
- * This service processes voice commands on the server and routes them to the appropriate agent handlers.
- */
+import { Router } from 'express';
+import { VoiceCommandContext } from '../services/agent-voice-command-service';
 
-// Define the voice command context interface
-export interface VoiceCommandContext {
-  agentId?: string;
-  subject?: string;
-  recentCommands?: string[];
-  recentResults?: VoiceCommandResult[];
-}
-
-// Define the voice command result interface
-export interface VoiceCommandResult {
-  command: string;
-  processed: boolean;
-  successful: boolean;
-  response?: string;
-  error?: string;
-  data?: any;
-  actions?: VoiceCommandAction[];
-  timestamp: number;
-}
-
-// Command action types
-export enum VoiceCommandActionType {
-  NAVIGATE = 'navigate',
-  OPEN_MODAL = 'open_modal',
-  CLOSE_MODAL = 'close_modal',
-  REFRESH_DATA = 'refresh_data',
-  EXECUTE_FUNCTION = 'execute_function',
-  COPY_TO_CLIPBOARD = 'copy_to_clipboard',
-  TOGGLE_VIEW = 'toggle_view',
-  DISPLAY_NOTIFICATION = 'display_notification'
-}
-
-// Command action interface
-export interface VoiceCommandAction {
-  type: VoiceCommandActionType;
-  payload: any;
-}
+// Create a router for the voice command API
+const router = Router();
 
 /**
  * Process a voice command
- * @param command The text command to process
- * @param context The context in which the command was given
- * @returns A promise resolving to a command result
+ * This endpoint receives voice commands from the client and processes them
+ * using the appropriate agent based on the context provided.
  */
-export async function processVoiceCommand(
-  command: string,
-  context: VoiceCommandContext
-): Promise<VoiceCommandResult> {
+router.post('/process', async (req, res) => {
   try {
-    // Basic validation
-    if (!command || command.trim() === '') {
-      return {
-        command,
+    const { command, context } = req.body;
+    
+    if (!command || typeof command !== 'string') {
+      return res.status(400).json({
+        command: '',
         processed: false,
         successful: false,
         error: 'No command text provided',
         timestamp: Date.now()
-      };
+      });
     }
     
-    // Here we would typically:
-    // 1. Use NLP to understand the command intent
-    // 2. Route to the appropriate agent based on context
-    // 3. Get a response from the agent
-    // 4. Format and return the result
+    // Use context to determine which agent to route the command to
+    const { agentId, subject } = context as VoiceCommandContext;
     
-    // For now, implement basic responses based on keywords
-    return processBasicCommand(command, context);
+    // For now, we'll implement a simple response generation
+    // In a real implementation, this would route to different agent services
+    const result = processCommand(command, agentId, subject);
+    
+    return res.json(result);
   } catch (error) {
     console.error('Error processing voice command:', error);
-    return {
-      command,
+    return res.status(500).json({
+      command: req.body.command || '',
       processed: false,
       successful: false,
-      error: error instanceof Error ? error.message : 'Unknown error processing command',
+      error: 'Server error processing command',
       timestamp: Date.now()
-    };
+    });
   }
-}
+});
 
 /**
- * Process a basic command with keyword matching
- * This is a placeholder for more sophisticated NLP and agent routing
+ * Process a command with some basic responses
+ * This is a placeholder for actual agent-specific processing logic
  */
-function processBasicCommand(command: string, context: VoiceCommandContext): VoiceCommandResult {
+function processCommand(command: string, agentId?: string, subject?: string) {
   const normalizedCommand = command.toLowerCase();
-  const { agentId, subject } = context;
-  
   let response = '';
   let successful = true;
-  let actions: VoiceCommandAction[] = [];
-  let data = undefined;
+  let actions = [];
   
   // Very simple intent detection based on keywords
   if (normalizedCommand.includes('hello') || 
@@ -130,7 +86,7 @@ function processBasicCommand(command: string, context: VoiceCommandContext): Voi
     response = `I'm retrieving details for property ID ${propertyId}. This would typically display property characteristics, valuation history, and assessment information.`;
     actions = [
       {
-        type: VoiceCommandActionType.NAVIGATE,
+        type: 'NAVIGATE',
         payload: { url: `/properties/${propertyId}` }
       }
     ];
@@ -142,7 +98,7 @@ function processBasicCommand(command: string, context: VoiceCommandContext): Voi
     response = 'Opening the analytics dashboard where you can view key performance metrics, assessment ratios, and property trends.';
     actions = [
       {
-        type: VoiceCommandActionType.NAVIGATE,
+        type: 'NAVIGATE',
         payload: { url: '/analytics/dashboard' }
       }
     ];
@@ -165,7 +121,8 @@ function processBasicCommand(command: string, context: VoiceCommandContext): Voi
     successful,
     response,
     actions: actions.length > 0 ? actions : undefined,
-    data,
     timestamp: Date.now()
   };
 }
+
+export default router;

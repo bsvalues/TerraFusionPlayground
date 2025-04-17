@@ -1,319 +1,282 @@
 /**
- * Agent Voice Command Service
+ * Agent Voice Command Service (Client-side)
  * 
- * Client-side service for recording voice commands, sending them to the server,
- * managing command context, and handling responses.
+ * This service provides speech recognition, audio recording, and communication
+ * with the server-side voice command processing API.
  */
 
 import { apiRequest } from '@/lib/queryClient';
 
-export type RecordingState = 'idle' | 'recording' | 'processing';
-
+// Define the voice command context interface
 export interface VoiceCommandContext {
-  sessionId: string;
   agentId?: string;
-  previousCommands: any[];
-  lastCommandTime: string;
   subject?: string;
-  activeContext?: string;
+  recentCommands?: string[];
+  recentResults?: VoiceCommandResult[];
 }
 
+// Define the voice command result interface
 export interface VoiceCommandResult {
-  sessionId: string;
-  transcribedText?: string;
-  command: any;
-  response?: any;
+  command: string;
+  processed: boolean;
+  successful: boolean;
+  response?: string;
   error?: string;
-  context: VoiceCommandContext;
+  data?: any;
+  actions?: VoiceCommandAction[];
+  timestamp: number;
 }
 
-export class AgentVoiceCommandService {
-  private mediaRecorder: MediaRecorder | null = null;
-  private audioChunks: Blob[] = [];
-  private stream: MediaStream | null = null;
-  private sessionId: string | null = null;
-  private context: VoiceCommandContext | null = null;
-  
-  /**
-   * Initialize the voice command service
-   */
-  public async initialize(): Promise<boolean> {
-    try {
-      // Request microphone access
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      return true;
-    } catch (error) {
-      console.error('Error initializing microphone:', error);
-      return false;
-    }
-  }
-  
-  /**
-   * Start recording a voice command
-   */
-  public startRecording(onStateChange: (state: RecordingState) => void): void {
-    if (!this.stream) {
-      console.error('Cannot start recording: stream not initialized');
-      onStateChange('idle');
+// Command action types
+export enum VoiceCommandActionType {
+  NAVIGATE = 'navigate',
+  OPEN_MODAL = 'open_modal',
+  CLOSE_MODAL = 'close_modal',
+  REFRESH_DATA = 'refresh_data',
+  EXECUTE_FUNCTION = 'execute_function',
+  COPY_TO_CLIPBOARD = 'copy_to_clipboard',
+  TOGGLE_VIEW = 'toggle_view',
+  DISPLAY_NOTIFICATION = 'display_notification'
+}
+
+// Command action interface
+export interface VoiceCommandAction {
+  type: VoiceCommandActionType;
+  payload: any;
+}
+
+// Recording states
+export enum RecordingState {
+  INACTIVE = 'inactive',
+  LISTENING = 'listening',
+  PROCESSING = 'processing',
+  ERROR = 'error'
+}
+
+// Speech recognition options
+export interface SpeechRecognitionOptions {
+  continuous?: boolean;
+  interimResults?: boolean;
+  lang?: string;
+}
+
+/**
+ * Speech recognition class to normalize browser differences
+ */
+export class SpeechRecognitionService {
+  private recognition: any = null;
+  private isRecording: boolean = false;
+  private transcript: string = '';
+  private onResultCallback: ((transcript: string) => void) | null = null;
+  private onErrorCallback: ((error: any) => void) | null = null;
+  private onEndCallback: (() => void) | null = null;
+
+  constructor(options: SpeechRecognitionOptions = {}) {
+    // Check browser support for speech recognition
+    const SpeechRecognitionAPI = 
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognitionAPI) {
+      console.error('Speech recognition is not supported in this browser');
       return;
     }
     
-    this.audioChunks = [];
+    this.recognition = new SpeechRecognitionAPI();
     
-    try {
-      this.mediaRecorder = new MediaRecorder(this.stream);
-      
-      this.mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          this.audioChunks.push(event.data);
-        }
-      };
-      
-      this.mediaRecorder.onstop = async () => {
-        onStateChange('processing');
-        await this.processRecording();
-        onStateChange('idle');
-      };
-      
-      this.mediaRecorder.start();
-      onStateChange('recording');
-    } catch (error) {
-      console.error('Error starting recording:', error);
-      onStateChange('idle');
-    }
-  }
-  
-  /**
-   * Stop recording
-   */
-  public stopRecording(): void {
-    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-      this.mediaRecorder.stop();
-    }
-  }
-  
-  /**
-   * Process the recording and send it to the server
-   */
-  private async processRecording(): Promise<VoiceCommandResult | null> {
-    if (this.audioChunks.length === 0) {
-      console.warn('No audio recorded');
-      return null;
-    }
+    // Configure speech recognition
+    this.recognition.continuous = options.continuous ?? false;
+    this.recognition.interimResults = options.interimResults ?? true;
+    this.recognition.lang = options.lang ?? 'en-US';
     
-    try {
-      // Create audio blob
-      const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+    // Set up event handlers
+    this.setupEventListeners();
+  }
+  
+  /**
+   * Set up event listeners for the speech recognition API
+   */
+  private setupEventListeners() {
+    if (!this.recognition) return;
+    
+    this.recognition.onresult = (event: any) => {
+      const current = event.resultIndex;
+      const result = event.results[current];
+      const transcript = result[0].transcript.trim();
       
-      // Convert to base64
-      const base64Audio = await this.blobToBase64(audioBlob);
+      this.transcript = transcript;
       
-      // Send to server
-      const result = await this.processAudioCommand(base64Audio);
-      
-      if (result) {
-        // Update local session and context
-        this.sessionId = result.sessionId;
-        this.context = result.context;
-        
-        // Emit the result to any listeners
-        this.onCommandResult(result);
+      if (result.isFinal && this.onResultCallback) {
+        this.onResultCallback(this.transcript);
       }
-      
-      return result;
-    } catch (error) {
-      console.error('Error processing recording:', error);
-      return null;
-    }
-  }
-  
-  /**
-   * Convert blob to base64
-   */
-  private blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        // Remove the data URL prefix (e.g., "data:audio/webm;base64,")
-        const base64 = base64String.split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
-  
-  /**
-   * Process a voice command from audio
-   */
-  public async processAudioCommand(
-    audioBase64: string,
-    contextOverride?: Partial<VoiceCommandContext>
-  ): Promise<VoiceCommandResult | null> {
-    try {
-      const response = await apiRequest('/api/agent-voice/process-audio', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          audio: audioBase64,
-          sessionId: this.sessionId,
-          contextOverride
-        }),
-      });
-      
-      if (!response.ok) {
-        console.error('Failed to process voice command:', await response.text());
-        return null;
+    };
+    
+    this.recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      if (this.onErrorCallback) {
+        this.onErrorCallback(event.error);
       }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error processing voice command:', error);
-      return null;
-    }
-  }
-  
-  /**
-   * Process a text command directly
-   */
-  public async processTextCommand(
-    text: string,
-    contextOverride?: Partial<VoiceCommandContext>
-  ): Promise<VoiceCommandResult | null> {
-    try {
-      const response = await apiRequest('/api/agent-voice/process-text', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          sessionId: this.sessionId,
-          contextOverride
-        }),
-      });
-      
-      if (!response.ok) {
-        console.error('Failed to process text command:', await response.text());
-        return null;
+      this.stop();
+    };
+    
+    this.recognition.onend = () => {
+      this.isRecording = false;
+      if (this.onEndCallback) {
+        this.onEndCallback();
       }
-      
-      const result = await response.json();
-      
-      // Update local session and context
-      this.sessionId = result.sessionId;
-      this.context = result.context;
-      
-      // Emit the result to any listeners
-      this.onCommandResult(result);
-      
-      return result;
-    } catch (error) {
-      console.error('Error processing text command:', error);
-      return null;
-    }
+    };
   }
   
   /**
-   * Clear the current session context
+   * Start recording audio for speech recognition
    */
-  public async clearContext(): Promise<boolean> {
-    if (!this.sessionId) {
-      return true; // No session to clear
+  public start(): void {
+    if (!this.recognition) {
+      console.error('Speech recognition is not supported or not initialized');
+      if (this.onErrorCallback) {
+        this.onErrorCallback('Speech recognition not supported');
+      }
+      return;
     }
     
     try {
-      const response = await apiRequest(`/api/agent-voice/context/${this.sessionId}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        console.error('Failed to clear context:', await response.text());
-        return false;
-      }
-      
-      this.context = null;
-      return true;
+      this.recognition.start();
+      this.isRecording = true;
+      this.transcript = '';
     } catch (error) {
-      console.error('Error clearing context:', error);
-      return false;
-    }
-  }
-  
-  /**
-   * Get available commands
-   */
-  public async getAvailableCommands(): Promise<any | null> {
-    try {
-      const response = await apiRequest('/api/agent-voice/available-commands', {
-        method: 'GET',
-      });
-      
-      if (!response.ok) {
-        console.error('Failed to get available commands:', await response.text());
-        return null;
+      console.error('Failed to start speech recognition:', error);
+      if (this.onErrorCallback) {
+        this.onErrorCallback(error);
       }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error getting available commands:', error);
-      return null;
     }
   }
   
   /**
-   * Get the current context
+   * Stop recording audio
    */
-  public getCurrentContext(): VoiceCommandContext | null {
-    return this.context;
-  }
-  
-  /**
-   * Get the current session ID
-   */
-  public getSessionId(): string | null {
-    return this.sessionId;
-  }
-  
-  /**
-   * Set the session ID manually
-   */
-  public setSessionId(sessionId: string): void {
-    this.sessionId = sessionId;
-  }
-  
-  /**
-   * Set the context manually
-   */
-  public setContext(context: VoiceCommandContext): void {
-    this.context = context;
-  }
-  
-  /**
-   * Command result event handler
-   * Override this method to handle command results
-   */
-  protected onCommandResult(result: VoiceCommandResult): void {
-    // Override this method to handle command results
-  }
-  
-  /**
-   * Clean up resources
-   */
-  public cleanup(): void {
-    if (this.stream) {
-      this.stream.getTracks().forEach(track => track.stop());
-      this.stream = null;
-    }
+  public stop(): void {
+    if (!this.recognition || !this.isRecording) return;
     
-    this.mediaRecorder = null;
-    this.audioChunks = [];
+    try {
+      this.recognition.stop();
+      this.isRecording = false;
+    } catch (error) {
+      console.error('Failed to stop speech recognition:', error);
+    }
+  }
+  
+  /**
+   * Check if recording is active
+   */
+  public isActive(): boolean {
+    return this.isRecording;
+  }
+  
+  /**
+   * Get the current transcript
+   */
+  public getTranscript(): string {
+    return this.transcript;
+  }
+  
+  /**
+   * Register callback for speech recognition results
+   */
+  public onResult(callback: (transcript: string) => void): void {
+    this.onResultCallback = callback;
+  }
+  
+  /**
+   * Register callback for errors
+   */
+  public onError(callback: (error: any) => void): void {
+    this.onErrorCallback = callback;
+  }
+  
+  /**
+   * Register callback for when recognition ends
+   */
+  public onEnd(callback: () => void): void {
+    this.onEndCallback = callback;
   }
 }
 
-export const agentVoiceCommandService = new AgentVoiceCommandService();
+/**
+ * Process a voice command through the API
+ * @param commandText The text command to process
+ * @param context The context in which the command was given
+ */
+export async function processVoiceCommand(
+  commandText: string,
+  context: VoiceCommandContext = {}
+): Promise<VoiceCommandResult> {
+  try {
+    // Send command to the server for processing
+    const response = await apiRequest("POST", "/api/agent-voice/process", {
+      command: commandText,
+      context
+    });
+    
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to process command: ${error}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error processing voice command:', error);
+    return {
+      command: commandText,
+      processed: false,
+      successful: false,
+      error: error instanceof Error ? error.message : 'Unknown error processing command',
+      timestamp: Date.now()
+    };
+  }
+}
 
-export default agentVoiceCommandService;
+// For testing purposes: detect if web speech API is available
+export function isSpeechRecognitionAvailable(): boolean {
+  return !!(
+    (window as any).SpeechRecognition ||
+    (window as any).webkitSpeechRecognition
+  );
+}
+
+// For handling actions from voice command results
+export function executeVoiceCommandAction(action: VoiceCommandAction): void {
+  if (!action || !action.type) return;
+  
+  switch (action.type) {
+    case VoiceCommandActionType.NAVIGATE:
+      if (action.payload && action.payload.url) {
+        window.location.href = action.payload.url;
+      }
+      break;
+      
+    case VoiceCommandActionType.OPEN_MODAL:
+      // This would need to be connected to the app's modal system
+      console.log('Modal action:', action.payload);
+      break;
+      
+    case VoiceCommandActionType.CLOSE_MODAL:
+      // This would need to be connected to the app's modal system
+      console.log('Close modal action');
+      break;
+      
+    case VoiceCommandActionType.REFRESH_DATA:
+      // This would need to be connected to the app's data fetching system
+      console.log('Refresh data action:', action.payload);
+      break;
+      
+    case VoiceCommandActionType.COPY_TO_CLIPBOARD:
+      if (action.payload && action.payload.text) {
+        navigator.clipboard.writeText(action.payload.text)
+          .catch(err => console.error('Failed to copy to clipboard:', err));
+      }
+      break;
+      
+    default:
+      console.warn('Unknown action type:', action.type);
+  }
+}

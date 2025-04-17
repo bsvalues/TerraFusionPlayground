@@ -1,227 +1,115 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { AlertCircle, MessageSquare, Bot, RefreshCcw } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent } from "@/components/ui/card";
 import { AgentVoiceCommandButton } from './AgentVoiceCommandButton';
 import { AgentVoiceCommandResults } from './AgentVoiceCommandResults';
-import { VoiceCommandResult, agentVoiceCommandService } from '../../services/agent-voice-command-service';
+import { VoiceCommandResult, processVoiceCommand, VoiceCommandContext, RecordingState } from '../../services/agent-voice-command-service';
 
-interface AgentVoiceInterfaceProps {
-  className?: string;
-  title?: string;
-  description?: string;
+export interface AgentVoiceInterfaceProps {
+  onResult?: (result: VoiceCommandResult) => void;
   agentId?: string;
   subject?: string;
-  examples?: string[];
-  showInputField?: boolean;
-  emptyStateMessage?: string;
-  onCommandExecuted?: (result: VoiceCommandResult) => void;
+  className?: string;
 }
 
 export function AgentVoiceInterface({
-  className = '',
-  title = 'Agent Voice Interface',
-  description = 'Speak or type commands to interact with AI agents',
-  agentId,
-  subject,
-  examples = [
-    'Show me the status of all agents',
-    'Ask property intelligence agent about downtown properties',
-    'Tell the data agent to update property BC001',
-    'List all available commands',
-  ],
-  showInputField = true,
-  emptyStateMessage = 'No command results yet. Try speaking or typing a command.',
-  onCommandExecuted
+  onResult,
+  agentId = 'assistant',
+  subject = 'assessment',
+  className = ''
 }: AgentVoiceInterfaceProps) {
-  const [textCommand, setTextCommand] = useState<string>('');
+  const [recordingState, setRecordingState] = useState<RecordingState>(RecordingState.INACTIVE);
+  const [transcript, setTranscript] = useState<string>('');
   const [lastResult, setLastResult] = useState<VoiceCommandResult | null>(null);
-  const [isTextProcessing, setIsTextProcessing] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [recentCommands, setRecentCommands] = useState<string[]>([]);
+  const [recentResults, setRecentResults] = useState<VoiceCommandResult[]>([]);
   
-  // Optional context override based on props
-  const contextOverride = {
-    ...(agentId ? { agentId } : {}),
-    ...(subject ? { subject } : {})
-  };
-  
-  // Helper for handling command results
-  const handleCommandResult = (result: VoiceCommandResult) => {
-    setLastResult(result);
+  // Process the voice command
+  const processCommand = useCallback(async (command: string) => {
+    if (!command) return;
     
-    if (result.error) {
-      setError(result.error);
-    } else {
-      setError(null);
-    }
-    
-    // Call external handler if provided
-    if (onCommandExecuted) {
-      onCommandExecuted(result);
-    }
-  };
-  
-  // Process a text command
-  const processTextCommand = async () => {
-    if (!textCommand.trim()) {
-      return;
-    }
-    
-    setIsTextProcessing(true);
-    setError(null);
+    setRecordingState(RecordingState.PROCESSING);
     
     try {
-      const result = await agentVoiceCommandService.processTextCommand(textCommand, contextOverride);
+      // Prepare the context for the command
+      const context: VoiceCommandContext = {
+        agentId,
+        subject,
+        recentCommands,
+        recentResults
+      };
       
-      if (result) {
-        handleCommandResult(result);
-      } else {
-        setError('Failed to process command. Please try again.');
+      // Process the command via the API
+      const result = await processVoiceCommand(command, context);
+      
+      // Update state with results
+      setLastResult(result);
+      
+      // Add to recent commands and results (keeping last 5)
+      setRecentCommands(prev => [command, ...prev.slice(0, 4)]);
+      setRecentResults(prev => [result, ...prev.slice(0, 4)]);
+      
+      // Call the onResult callback if provided
+      if (onResult) {
+        onResult(result);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while processing your command');
+    } catch (error) {
+      console.error('Error processing command:', error);
+      // Create an error result
+      const errorResult: VoiceCommandResult = {
+        command,
+        processed: false,
+        successful: false,
+        error: error instanceof Error ? error.message : 'Unknown error processing command',
+        timestamp: Date.now()
+      };
+      
+      setLastResult(errorResult);
+      
+      // Call the onResult callback if provided
+      if (onResult) {
+        onResult(errorResult);
+      }
     } finally {
-      setIsTextProcessing(false);
-      setTextCommand('');
+      setRecordingState(RecordingState.INACTIVE);
     }
-  };
+  }, [agentId, subject, recentCommands, recentResults, onResult]);
   
-  // Retry a command with the given text
-  const retryCommand = async (text: string) => {
-    setIsTextProcessing(true);
-    setError(null);
+  // Handle recording state changes
+  const handleStateChange = useCallback((state: RecordingState, text?: string) => {
+    setRecordingState(state);
     
-    try {
-      const result = await agentVoiceCommandService.processTextCommand(text, contextOverride);
-      
-      if (result) {
-        handleCommandResult(result);
-      } else {
-        setError('Failed to process command. Please try again.');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while processing your command');
-    } finally {
-      setIsTextProcessing(false);
+    if (text) {
+      setTranscript(text);
     }
-  };
-  
-  // Clear the last result
-  const clearResult = () => {
-    setLastResult(null);
-  };
-  
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    processTextCommand();
-  };
+    
+    // If state changed to inactive and we have a transcript, process it
+    if (state === RecordingState.INACTIVE && text) {
+      processCommand(text);
+    }
+  }, [processCommand]);
   
   return (
-    <Card className={`w-full agent-voice-interface ${className}`}>
-      <CardHeader className="px-6">
-        <CardTitle className="flex items-center gap-2">
-          <Bot className="h-5 w-5" />
-          {title}
-        </CardTitle>
-        <CardDescription>
-          {description}
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent className="px-6 pb-2 space-y-4">
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        
-        {showInputField && (
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <Input
-              value={textCommand}
-              onChange={(e) => setTextCommand(e.target.value)}
-              placeholder="Type a command..."
-              disabled={isTextProcessing}
-              className="flex-1"
-            />
-            <Button 
-              type="submit" 
-              disabled={isTextProcessing || !textCommand.trim()}
-              variant="secondary"
-            >
-              {isTextProcessing ? 
-                <RefreshCcw className="h-4 w-4 animate-spin" /> : 
-                <MessageSquare className="h-4 w-4" />
-              }
-            </Button>
-            
-            <AgentVoiceCommandButton
-              onCommandResult={handleCommandResult}
-              showState={false}
-              size="default"
-            />
-          </form>
-        )}
-        
-        {!showInputField && (
-          <div className="flex justify-center">
-            <AgentVoiceCommandButton
-              onCommandResult={handleCommandResult}
-              label="Voice Command"
-              size="lg"
-            />
-          </div>
-        )}
-        
-        {!lastResult && examples && examples.length > 0 && (
-          <div className="mt-6">
-            <h4 className="text-sm font-medium mb-2">Example commands:</h4>
-            <div className="grid grid-cols-1 gap-2">
-              {examples.map((example, index) => (
-                <TooltipProvider key={index}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="justify-start text-left h-auto py-2 text-muted-foreground hover:text-foreground"
-                        onClick={() => {
-                          setTextCommand(example);
-                          // Optional: auto-submit
-                          // setTimeout(() => processTextCommand(), 100);
-                        }}
-                      >
-                        {example}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Click to use this example</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {lastResult ? (
-          <AgentVoiceCommandResults
-            result={lastResult}
-            onClear={clearResult}
-            onRetry={retryCommand}
-            className="mt-4"
+    <Card className={`voice-interface ${className}`}>
+      <CardContent className="p-4">
+        <div className="flex flex-col space-y-4">
+          {/* Voice command button */}
+          <AgentVoiceCommandButton 
+            onStateChange={handleStateChange}
+            className="mx-auto"
           />
-        ) : (
-          <div className="py-8 text-center text-muted-foreground">
-            {emptyStateMessage}
-          </div>
-        )}
+          
+          {/* Transcript display */}
+          {transcript && recordingState !== RecordingState.INACTIVE && (
+            <div className="text-center text-sm">
+              <p className="font-medium">I heard: <span className="italic">{transcript}</span></p>
+            </div>
+          )}
+          
+          {/* Results display */}
+          {lastResult && (
+            <AgentVoiceCommandResults result={lastResult} />
+          )}
+        </div>
       </CardContent>
     </Card>
   );

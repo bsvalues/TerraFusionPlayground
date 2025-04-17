@@ -23,6 +23,7 @@ import ftpRoutes from "./routes/ftp-routes";
 import ftpDataProcessorRoutes from "./routes/ftp-data-processor-routes";
 import { registerSupabaseRoutes } from "./routes/supabase-routes";
 import voiceRoutes from "./routes/voice-routes";
+import agentVoiceCommandRoutes from "./routes/agent-voice-routes";
 import { createPropertyStoryRoutes } from "./routes/property-story-routes";
 import { createPropertyRoutes } from "./routes/property-routes";
 import { createAgentRoutes } from "./routes/agent-routes";
@@ -162,6 +163,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Voice routes
   app.use('/api/voice', voiceRoutes);
+  
+  // Register Agent Voice Command routes
+  app.use('/api/agent-voice', agentVoiceCommandRoutes);
   
   // Register Validation routes
   app.use('/api/validation', createValidationRoutes(storage));

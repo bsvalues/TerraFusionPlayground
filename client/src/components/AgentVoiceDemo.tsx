@@ -1,81 +1,89 @@
-import { useState } from 'react';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import { AgentVoiceInterface } from './agent-voice';
+import { useState, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
+import { AgentVoiceInterface } from './agent-voice/AgentVoiceInterface';
 import { VoiceCommandResult } from '../services/agent-voice-command-service';
 
-export function AgentVoiceDemo() {
-  const [lastCommand, setLastCommand] = useState<VoiceCommandResult | null>(null);
+export interface AgentVoiceDemoProps {
+  agentId?: string;
+  subject?: string;
+  className?: string;
+}
+
+export function AgentVoiceDemo({
+  agentId = 'assistant',
+  subject = 'assessment',
+  className = ''
+}: AgentVoiceDemoProps) {
+  const [lastResult, setLastResult] = useState<VoiceCommandResult | null>(null);
+  const [lastCommandTimestamp, setLastCommandTimestamp] = useState<number>(0);
   
-  const handleCommandExecuted = (result: VoiceCommandResult) => {
-    console.log('Command executed:', result);
-    setLastCommand(result);
-    
-    // Here you would typically perform actions based on the command result
-    // For example, if it's a navigation command, you might change routes
-  };
+  // Handle voice command results
+  const handleVoiceResult = useCallback((result: VoiceCommandResult) => {
+    setLastResult(result);
+    setLastCommandTimestamp(Date.now());
+  }, []);
   
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Agent Voice Command Demo</CardTitle>
-          <CardDescription>
-            Try interacting with the agent system using natural language voice commands.
-            Click the microphone button to speak or type your commands directly.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-6">
-            <AgentVoiceInterface
-              title="TaxI_AI Agent Voice Control"
-              description="Control and interact with agents using voice commands"
-              examples={[
-                "What's the status of all agents?",
-                "Ask property intelligence agent about property values in downtown",
-                "Tell the data management agent to update property BC001",
-                "List all available commands",
-                "Show me help for agent commands"
-              ]}
-              onCommandExecuted={handleCommandExecuted}
+    <Card className={`agent-voice-demo max-w-3xl mx-auto ${className}`}>
+      <CardHeader>
+        <CardTitle className="text-xl font-bold">Assessment Agent Voice Interface</CardTitle>
+        <CardDescription>
+          Use your voice to interact with the assessment agent. Try commands like:
+          <ul className="mt-2 list-disc list-inside space-y-1">
+            <li>Show me property data for [property ID]</li>
+            <li>Generate a valuation report for [address]</li>
+            <li>What's the assessment method for commercial properties?</li>
+            <li>Help me understand land value calculations</li>
+          </ul>
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent className="space-y-6">
+        <Alert>
+          <InfoIcon className="h-4 w-4" />
+          <AlertTitle className="ml-2">Voice Recognition Available</AlertTitle>
+          <AlertDescription className="ml-2">
+            Click the microphone button and speak clearly to issue voice commands to the assessment agent.
+          </AlertDescription>
+        </Alert>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 className="text-lg font-medium mb-3">Voice Controls</h3>
+            <AgentVoiceInterface 
+              onResult={handleVoiceResult}
+              agentId={agentId}
+              subject={subject}
             />
           </div>
           
-          <div className="text-sm text-muted-foreground mt-8">
-            <h3 className="font-medium text-base mb-2">Voice Command Tips:</h3>
-            <ul className="list-disc pl-6 space-y-1">
-              <li>Start with an action verb (ask, tell, show, list, get)</li>
-              <li>Be specific about which agent you want to interact with</li>
-              <li>For complex tasks, break them down into multiple commands</li>
-              <li>The system maintains context between commands, so you can refer to previous subjects</li>
-              <li>Say "help" or "list commands" to see available options</li>
-            </ul>
+          <div>
+            <h3 className="text-lg font-medium mb-3">Command History</h3>
+            {!lastResult ? (
+              <div className="rounded-md border p-4 text-muted-foreground text-center">
+                <p>No commands issued yet.</p>
+                <p className="text-sm mt-2">Try saying something to the agent.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground mb-1">
+                  Last command: {new Date(lastCommandTimestamp).toLocaleTimeString()}
+                </p>
+                <div className="rounded-md border p-3">
+                  <p className="font-medium">{lastResult.command}</p>
+                  <p className="text-sm mt-1">
+                    {lastResult.successful 
+                      ? (lastResult.response || 'Command successful') 
+                      : (lastResult.error || 'Command failed')}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
-      
-      {lastCommand && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Debug: Last Command Details</CardTitle>
-            <CardDescription>
-              Technical details of the last executed command (for demonstration purposes)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-muted p-4 rounded-md overflow-auto max-h-80">
-              <pre className="text-sm whitespace-pre-wrap">
-                {JSON.stringify(lastCommand, null, 2)}
-              </pre>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
