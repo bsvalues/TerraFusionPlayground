@@ -90,6 +90,9 @@ const extensionRegistry = initializeExtensionSystem(storage);
 // Import team agent initialization script
 import { initializeTeamAgents } from "./scripts/initialize-team-agents";
 
+// Import AI Code Assistant initialization script
+import { initializeAICodeAssistant } from "./scripts/initialize-ai-code-assistant";
+
 // Initialize agent systems
 (async () => {
   try {
@@ -105,6 +108,11 @@ import { initializeTeamAgents } from "./scripts/initialize-team-agents";
     console.log("Initializing Team Agents...");
     await initializeTeamAgents();
     console.log("Team Agents initialized successfully");
+    
+    // Initialize AI Code Assistant
+    console.log("Initializing AI Code Assistant...");
+    await initializeAICodeAssistant();
+    console.log("AI Code Assistant initialized successfully");
   } catch (error) {
     console.error("Failed to initialize Agent Systems:", error);
   }
