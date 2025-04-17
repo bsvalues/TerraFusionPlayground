@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import {
   Card,
   CardContent,
@@ -29,8 +31,6 @@ import {
   Play,
   FileSymlink
 } from 'lucide-react';
-import { apiRequest, queryClient } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
 import EditComponentDialog from './EditComponentDialog';
 import EditCalculationDialog from './EditCalculationDialog';
 
@@ -167,6 +167,7 @@ const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ model, onRefresh 
   };
 
   return (
+    <>
     <Card className="w-full">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
@@ -582,6 +583,128 @@ const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ model, onRefresh 
         </Button>
       </CardFooter>
     </Card>
+
+    {/* Component Dialog */}
+    <EditComponentDialog
+      isOpen={isComponentDialogOpen}
+      onClose={() => {
+        setIsComponentDialogOpen(false);
+        setSelectedComponent(null);
+      }}
+      onSave={async (component) => {
+        try {
+          if (component.id) {
+            // Update existing component
+            await apiRequest(`/api/assessment-workbench/models/${model.modelId}/components/${component.id}`, {
+              method: 'PUT',
+              data: component
+            });
+            toast({
+              title: "Success",
+              description: "Component updated successfully",
+            });
+          } else {
+            // Create new component
+            await apiRequest(`/api/assessment-workbench/models/${model.modelId}/components`, {
+              method: 'POST',
+              data: component
+            });
+            toast({
+              title: "Success",
+              description: "Component created successfully",
+            });
+          }
+          
+          // Refresh components data
+          queryClient.invalidateQueries({ queryKey: [`/api/assessment-workbench/models/${model.modelId}/components`] });
+          setIsComponentDialogOpen(false);
+          setSelectedComponent(null);
+        } catch (error) {
+          console.error('Failed to save component:', error);
+          toast({
+            title: "Error",
+            description: "Failed to save component",
+            variant: "destructive",
+          });
+        }
+      }}
+      component={selectedComponent}
+      modelId={model.modelId}
+    />
+
+    {/* Calculation Dialog */}
+    <EditCalculationDialog
+      isOpen={isCalculationDialogOpen}
+      onClose={() => {
+        setIsCalculationDialogOpen(false);
+        setSelectedCalculation(null);
+      }}
+      onSave={async (calculation) => {
+        try {
+          if (calculation.id) {
+            // Update existing calculation
+            await apiRequest(`/api/assessment-workbench/models/${model.modelId}/calculations/${calculation.id}`, {
+              method: 'PUT',
+              data: calculation
+            });
+            toast({
+              title: "Success",
+              description: "Calculation updated successfully",
+            });
+          } else {
+            // Create new calculation
+            await apiRequest(`/api/assessment-workbench/models/${model.modelId}/calculations`, {
+              method: 'POST',
+              data: calculation
+            });
+            toast({
+              title: "Success",
+              description: "Calculation created successfully",
+            });
+          }
+          
+          // Refresh calculations data
+          queryClient.invalidateQueries({ queryKey: [`/api/assessment-workbench/models/${model.modelId}/calculations`] });
+          setIsCalculationDialogOpen(false);
+          setSelectedCalculation(null);
+        } catch (error) {
+          console.error('Failed to save calculation:', error);
+          toast({
+            title: "Error",
+            description: "Failed to save calculation",
+            variant: "destructive",
+          });
+        }
+      }}
+      onTest={async (calculation) => {
+        try {
+          // Test the calculation
+          const result = await apiRequest(`/api/assessment-workbench/models/${model.modelId}/calculations/test`, {
+            method: 'POST',
+            data: calculation
+          });
+          
+          toast({
+            title: "Test Result",
+            description: `Calculation test result: ${JSON.stringify(result)}`,
+          });
+          
+          return result;
+        } catch (error) {
+          console.error('Failed to test calculation:', error);
+          toast({
+            title: "Error",
+            description: "Failed to test calculation",
+            variant: "destructive",
+          });
+          return null;
+        }
+      }}
+      calculation={selectedCalculation}
+      modelId={model.modelId}
+      modelVariables={variables}
+    />
+  </>
   );
 };
 
