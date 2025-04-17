@@ -177,12 +177,12 @@ const DevelopmentPlatformPage = () => {
   });
 
   // Fetch projects
-  const { data: projects = [], isLoading: isLoadingProjects } = useQuery({
+  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
     queryKey: ['/api/development/projects'],
   });
 
   // Fetch templates
-  const { data: templates = [], isLoading: isLoadingTemplates } = useQuery({
+  const { data: templates = [], isLoading: isLoadingTemplates } = useQuery<Template[]>({
     queryKey: ['/api/development/templates'],
   });
 

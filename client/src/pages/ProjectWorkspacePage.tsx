@@ -99,7 +99,7 @@ const ProjectWorkspacePage = () => {
   const [previewStatus, setPreviewStatus] = useState<string>('STOPPED');
   
   // Fetch project details
-  const { data: project, isLoading: isLoadingProject } = useQuery({
+  const { data: project, isLoading: isLoadingProject } = useQuery<Project>({
     queryKey: ['/api/development/projects', projectId],
     enabled: !!projectId,
   });
@@ -109,20 +109,27 @@ const ProjectWorkspacePage = () => {
     data: files = [], 
     isLoading: isLoadingFiles,
     refetch: refetchFiles
-  } = useQuery({
+  } = useQuery<ProjectFile[]>({
     queryKey: ['/api/development/projects', projectId, 'files'],
     enabled: !!projectId,
   });
+  
+  interface PreviewStatusResponse {
+    status: string;
+    port?: number;
+    url?: string;
+    logs?: string[];
+  }
   
   // Fetch preview status
   const { 
     data: preview, 
     isLoading: isLoadingPreview,
     refetch: refetchPreview
-  } = useQuery({
+  } = useQuery<PreviewStatusResponse>({
     queryKey: ['/api/development/projects', projectId, 'preview'],
     enabled: !!projectId,
-    onSuccess: (data) => {
+    onSuccess: (data: PreviewStatusResponse) => {
       if (data) {
         setPreviewStatus(data.status);
       }

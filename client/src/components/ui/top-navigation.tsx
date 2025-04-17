@@ -36,6 +36,7 @@ const TopNavigation = () => {
     { label: 'Extensions', path: '/extensions' },
     { label: 'Agent System', path: '/agent-system' },
     { label: 'Master Development', path: '/master-development' },
+    { label: 'Development Platform', path: '/development' },
   ];
   
   return (

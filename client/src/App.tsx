@@ -25,6 +25,8 @@ import { ExtensionsPage } from "@/pages/ExtensionsPage";
 import CollaborationTestPage from "@/pages/collaboration-test";
 import TeamAgentsPage from "@/pages/TeamAgentsPage";
 import MasterDevelopmentPage from "@/pages/MasterDevelopmentPage";
+import DevelopmentPlatformPage from "@/pages/DevelopmentPlatformPage";
+import ProjectWorkspacePage from "@/pages/ProjectWorkspacePage";
 import AppLayout from "@/layout/app-layout";
 
 
@@ -137,6 +139,15 @@ function Router() {
         <AppLayout>
           <MasterDevelopmentPage />
         </AppLayout>
+      </Route>
+
+      {/* TaxI_AI Development Platform Routes */}
+      <Route path="/development">
+        <DevelopmentPlatformPage />
+      </Route>
+      
+      <Route path="/development/projects/:projectId">
+        <ProjectWorkspacePage />
       </Route>
 
       {/* Add more routes as needed */}

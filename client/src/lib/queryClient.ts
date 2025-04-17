@@ -32,15 +32,39 @@ function addAuthHeaders(url: string, options?: RequestInit): RequestInit {
 }
 
 /**
+ * Type for extended request options that include data
+ */
+export interface ExtendedRequestInit extends RequestInit {
+  data?: any;
+}
+
+/**
  * Makes an API request and returns the response object without parsing
  * Use this for more control over response handling
  */
 export async function apiRequest(
   url: string,
-  options?: RequestInit
+  options?: ExtendedRequestInit
 ): Promise<Response> {
-  const requestOptions = addAuthHeaders(url, options);
-  const res = await fetch(url, requestOptions);
+  let requestOptions = { ...options };
+  
+  // Handle data property by converting it to JSON and setting the appropriate headers
+  if (options?.data) {
+    requestOptions = {
+      ...requestOptions,
+      body: JSON.stringify(options.data),
+      headers: {
+        ...requestOptions.headers,
+        'Content-Type': 'application/json',
+      },
+    };
+    
+    // Remove data property as it's not a standard RequestInit property
+    delete requestOptions.data;
+  }
+  
+  const authRequestOptions = addAuthHeaders(url, requestOptions);
+  const res = await fetch(url, authRequestOptions);
   return res;
 }
 
@@ -49,7 +73,7 @@ export async function apiRequest(
  */
 export async function apiJsonRequest<T = any>(
   url: string,
-  options?: RequestInit
+  options?: ExtendedRequestInit
 ): Promise<T> {
   const res = await apiRequest(url, options);
   await throwIfResNotOk(res);
