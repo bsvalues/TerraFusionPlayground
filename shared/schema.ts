@@ -439,6 +439,128 @@ export const insertAgentMessageSchema = createInsertSchema(agentMessages).pick({
   correlationId: true,
 });
 
+// Development Platform - Project Types
+export enum DevProjectType {
+  WEB_APP = 'web_app',
+  API = 'api',
+  SCRIPT = 'script',
+  ASSESSMENT_MODULE = 'assessment_module',
+  INTEGRATION = 'integration',
+  VISUALIZATION = 'visualization'
+}
+
+export enum DevProjectStatus {
+  DRAFT = 'draft',
+  ACTIVE = 'active',
+  ARCHIVED = 'archived'
+}
+
+export enum DevFileType {
+  FILE = 'FILE',
+  DIRECTORY = 'DIRECTORY'
+}
+
+export enum DevPreviewStatus {
+  STOPPED = 'STOPPED',
+  RUNNING = 'RUNNING',
+  ERROR = 'ERROR'
+}
+
+// Development Platform - Projects table
+export const devProjects = pgTable("dev_projects", {
+  id: serial("id").primaryKey(),
+  projectId: uuid("project_id").notNull().unique().defaultRandom(),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").notNull(),
+  language: text("language").notNull(),
+  framework: text("framework"),
+  status: text("status").notNull().default(DevProjectStatus.DRAFT),
+  createdBy: integer("created_by").notNull(),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertDevProjectSchema = createInsertSchema(devProjects).pick({
+  name: true,
+  description: true,
+  type: true,
+  language: true,
+  framework: true,
+  createdBy: true,
+}).extend({
+  status: z.nativeEnum(DevProjectStatus).optional(),
+});
+
+// Development Platform - Project Files table
+export const devProjectFiles = pgTable("dev_project_files", {
+  id: serial("id").primaryKey(),
+  fileId: serial("file_id").notNull(),
+  projectId: uuid("project_id").notNull().references(() => devProjects.projectId),
+  path: text("path").notNull(),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  content: text("content").default(''),
+  size: integer("size").default(0),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  createdBy: integer("created_by").notNull(),
+  parentPath: text("parent_path"),
+});
+
+export const insertDevProjectFileSchema = createInsertSchema(devProjectFiles).pick({
+  projectId: true,
+  path: true,
+  name: true,
+  type: true,
+  content: true,
+  size: true,
+  createdBy: true,
+  parentPath: true,
+});
+
+// Development Platform - Project Templates table
+export const devProjectTemplates = pgTable("dev_project_templates", {
+  id: serial("id").primaryKey(),
+  templateId: uuid("template_id").notNull().unique().defaultRandom(),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").notNull(),
+  language: text("language").notNull(),
+  category: text("category"),
+  isOfficial: boolean("is_official").default(false),
+  fileStructure: jsonb("file_structure").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertDevProjectTemplateSchema = createInsertSchema(devProjectTemplates).pick({
+  name: true,
+  description: true,
+  type: true,
+  language: true,
+  category: true,
+  isOfficial: true,
+  fileStructure: true,
+});
+
+// Development Platform - Preview Settings table
+export const devPreviewSettings = pgTable("dev_preview_settings", {
+  id: serial("id").primaryKey(),
+  projectId: uuid("project_id").notNull().references(() => devProjects.projectId).unique(),
+  status: text("status").notNull().default(DevPreviewStatus.STOPPED),
+  port: integer("port"),
+  command: text("command").notNull().default('npm run dev'),
+  autoRefresh: boolean("auto_refresh").default(true),
+  lastStarted: timestamp("last_started"),
+  lastStopped: timestamp("last_stopped"),
+  logs: text("logs").array(),
+});
+
+export const insertDevPreviewSettingsSchema = createInsertSchema(devPreviewSettings).pick({
+  projectId: true,
+  command: true,
+  autoRefresh: true,
+});
+
 // Define type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -481,6 +603,19 @@ export type InsertPacsModule = z.infer<typeof insertPacsModuleSchema>;
 
 export type AgentMessage = typeof agentMessages.$inferSelect;
 export type InsertAgentMessage = z.infer<typeof insertAgentMessageSchema>;
+
+// Development Platform Types
+export type DevProject = typeof devProjects.$inferSelect;
+export type InsertDevProject = z.infer<typeof insertDevProjectSchema>;
+
+export type DevProjectFile = typeof devProjectFiles.$inferSelect;
+export type InsertDevProjectFile = z.infer<typeof insertDevProjectFileSchema>;
+
+export type DevProjectTemplate = typeof devProjectTemplates.$inferSelect;
+export type InsertDevProjectTemplate = z.infer<typeof insertDevProjectTemplateSchema>;
+
+export type DevPreviewSettings = typeof devPreviewSettings.$inferSelect;
+export type InsertDevPreviewSettings = z.infer<typeof insertDevPreviewSettingsSchema>;
 
 // Code Improvement Enums
 export enum ImprovementType {
