@@ -47,13 +47,15 @@ interface Project {
 
 // Template type
 interface Template {
-  templateId: string;
+  id: string;
   name: string;
   description: string;
-  type: string;
   language: string;
-  category: string | null;
-  isOfficial: boolean;
+  framework: string;
+  files: {
+    path: string;
+    type: string;
+  }[];
 }
 
 // Project card component
@@ -115,18 +117,27 @@ const ProjectCard = ({ project }: { project: Project }) => {
 // Template card component
 const TemplateCard = ({ template }: { template: Template }) => {
   const getIcon = () => {
-    if (template.type === 'FLASK') return <Globe className="h-10 w-10 text-blue-500" />;
-    if (template.type === 'STREAMLIT') return <SearchCheck className="h-10 w-10 text-red-500" />;
-    if (template.type === 'STATIC') return <Code className="h-10 w-10 text-green-500" />;
+    if (template.framework === 'flask') return <Globe className="h-10 w-10 text-blue-500" />;
+    if (template.framework === 'react') return <Code className="h-10 w-10 text-blue-500" />;
+    if (template.framework === 'express') return <Database className="h-10 w-10 text-green-500" />;
+    if (template.framework === 'nodejs') return <FileCode className="h-10 w-10 text-green-500" />;
     return <FileCode className="h-10 w-10 text-gray-500" />;
   };
 
   const getLanguageBadgeColor = () => {
-    if (template.language === 'PYTHON') return 'bg-blue-100 text-blue-800';
-    if (template.language === 'JAVASCRIPT') return 'bg-yellow-100 text-yellow-800';
-    if (template.language === 'TYPESCRIPT') return 'bg-blue-100 text-blue-800';
+    if (template.language === 'python') return 'bg-blue-100 text-blue-800';
+    if (template.language === 'javascript') return 'bg-yellow-100 text-yellow-800';
+    if (template.language === 'typescript') return 'bg-blue-100 text-blue-800';
     return 'bg-gray-100 text-gray-800';
   };
+
+  const getFileCount = () => {
+    const directoryCount = template.files.filter(file => file.type === 'DIRECTORY').length;
+    const fileCount = template.files.filter(file => file.type === 'FILE').length;
+    return { directoryCount, fileCount };
+  };
+
+  const { directoryCount, fileCount } = getFileCount();
 
   return (
     <Card className="overflow-hidden transition-all hover:shadow-md">
@@ -142,17 +153,15 @@ const TemplateCard = ({ template }: { template: Template }) => {
           <Badge variant="outline" className={getLanguageBadgeColor()}>
             {template.language}
           </Badge>
-          <Badge variant="outline" className="bg-green-100 text-green-800">
-            {template.type}
+          <Badge variant="outline" className="bg-purple-100 text-purple-800">
+            {template.framework}
           </Badge>
-          {template.isOfficial && (
-            <Badge variant="outline" className="bg-blue-100 text-blue-800">
-              Official
-            </Badge>
-          )}
-          {template.category && (
-            <Badge variant="outline" className="bg-purple-100 text-purple-800">
-              {template.category}
+          <Badge variant="outline" className="bg-gray-100 text-gray-800">
+            {fileCount} files
+          </Badge>
+          {directoryCount > 0 && (
+            <Badge variant="outline" className="bg-gray-100 text-gray-800">
+              {directoryCount} folders
             </Badge>
           )}
         </div>
@@ -286,7 +295,7 @@ const DevelopmentPlatformPage = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {templates.map((template: Template) => (
-                <TemplateCard key={template.templateId} template={template} />
+                <TemplateCard key={template.id} template={template} />
               ))}
             </div>
           )}
