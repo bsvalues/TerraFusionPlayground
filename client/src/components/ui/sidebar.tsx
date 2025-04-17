@@ -350,6 +350,14 @@ export const Sidebar = () => {
               >
                 Extensions
               </SidebarMenuItem>
+              
+              <SidebarMenuItem 
+                href="/development" 
+                icon={<Code className="h-5 w-5 mr-3" />}
+                isActive={location === "/development" || location.startsWith("/development/")}
+              >
+                TaxI_AI Development
+              </SidebarMenuItem>
             </SidebarSection>
           </nav>
         </div>
