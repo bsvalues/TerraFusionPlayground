@@ -10,7 +10,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
   title, 
   subtitle, 
   lastUpdate = 'Today at 3:45 PM', 
-  location = 'King County, WA',
+  location = 'Benton County, WA',
   actions 
 }) => {
   return (

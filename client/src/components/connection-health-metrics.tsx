@@ -1,171 +1,160 @@
 /**
  * Connection Health Metrics Component
  * 
- * This component displays connection health metrics for the agent system.
- * It shows information about connection status, fallback activations,
- * reconnect attempts, and errors to help with monitoring and debugging.
+ * This component displays detailed metrics about the WebSocket connection health.
+ * It shows statistics like total reconnection attempts, fallback activations,
+ * and recent connection events.
  */
 
-import React from 'react';
 import { useAgentSocketIO } from '@/hooks/use-agent-socketio';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Activity, 
-  AlertTriangle, 
-  Clock, 
-  RefreshCw, 
-  Server, 
-  ShieldAlert, 
-  Wifi, 
-  WifiOff 
-} from 'lucide-react';
+import { RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 
-export function ConnectionHealthMetrics({ className = '' }: { className?: string }) {
-  const { connectionMetrics, connectionStatus, isPolling } = useAgentSocketIO();
-  
-  // Format a timestamp to a readable date/time
-  const formatTimestamp = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString();
-  };
-  
-  // Format milliseconds to a readable duration
-  const formatDuration = (ms: number) => {
-    if (ms < 1000) {
-      return `${ms}ms`;
-    }
-    return `${(ms / 1000).toFixed(1)}s`;
-  };
-  
-  // If no metrics exist yet
+export function ConnectionHealthMetrics() {
+  const { connectionMetrics, isPolling } = useAgentSocketIO();
+
   if (!connectionMetrics) {
     return (
-      <Card className={`${className} bg-slate-50 dark:bg-slate-900`}>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Connection Monitoring</CardTitle>
-          <CardDescription>
-            Collecting metrics...
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="text-xs text-center py-2 text-muted-foreground">
+        No connection metrics available
+      </div>
     );
   }
+
+  const {
+    totalReconnectAttempts,
+    totalFallbackActivations,
+    totalErrors,
+    averageReconnectTime,
+    connectionEvents,
+    lastError
+  } = connectionMetrics;
+
+  // Calculate a simplified health score from 0-100 for visualization
+  const calculateHealthScore = (): number => {
+    if (isPolling) {
+      return 30; // In fallback mode, health is reduced
+    }
+    
+    // Base score is 100
+    let score = 100;
+    
+    // Reduce score for each reconnect attempt (max reduction: 30)
+    const reconnectPenalty = Math.min(30, totalReconnectAttempts * 5);
+    score -= reconnectPenalty;
+    
+    // Reduce score for each error (max reduction: 40)
+    const errorPenalty = Math.min(40, totalErrors * 8);
+    score -= errorPenalty;
+    
+    // Ensure score is between 0-100
+    return Math.max(0, Math.min(100, score));
+  };
+
+  const healthScore = calculateHealthScore();
   
   return (
-    <Card className={`${className} bg-slate-50 dark:bg-slate-900`}>
-      <CardHeader className="pb-2">
+    <div className="space-y-3">
+      <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium">Connection Health Metrics</CardTitle>
-          <Badge variant={isPolling ? "secondary" : "default"}>
-            {isPolling ? "Fallback Mode" : "WebSocket Mode"}
-          </Badge>
+          <p className="text-xs font-medium">Connection Health</p>
+          <p className="text-xs font-medium">{healthScore}%</p>
         </div>
-        <CardDescription>
-          Real-time connection monitoring and diagnostics
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="text-xs">
-        <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center space-x-2">
-              <RefreshCw className="h-4 w-4 text-blue-500" />
-              <span className="text-muted-foreground">Reconnect Attempts:</span>
-              <span className="font-medium">{connectionMetrics.totalReconnectAttempts}</span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <WifiOff className="h-4 w-4 text-amber-500" />
-              <span className="text-muted-foreground">Fallback Activations:</span>
-              <span className="font-medium">{connectionMetrics.totalFallbackActivations}</span>
-            </div>
+        <Progress value={healthScore} className="h-1.5" />
+      </div>
+      
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div>
+          <div className="text-muted-foreground">Reconnect Attempts:</div>
+          <div className="font-medium">{totalReconnectAttempts}</div>
+        </div>
+        <div>
+          <div className="text-muted-foreground">Fallback Activations:</div>
+          <div className="font-medium">{totalFallbackActivations}</div>
+        </div>
+        <div>
+          <div className="text-muted-foreground">Total Errors:</div>
+          <div className="font-medium">{totalErrors}</div>
+        </div>
+        <div>
+          <div className="text-muted-foreground">Avg. Reconnect Time:</div>
+          <div className="font-medium">
+            {averageReconnectTime ? `${averageReconnectTime.toFixed(0)}ms` : 'N/A'}
           </div>
-          
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-green-500" />
-              <span className="text-muted-foreground">Avg. Reconnect Time:</span>
-              <span className="font-medium">
-                {connectionMetrics.averageReconnectTime > 0
-                  ? formatDuration(connectionMetrics.averageReconnectTime)
-                  : 'N/A'}
-              </span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-muted-foreground">Error Count:</span>
-              <span className="font-medium">{connectionMetrics.totalErrors}</span>
-            </div>
+        </div>
+      </div>
+      
+      {lastError && (
+        <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-2 text-xs">
+          <div className="flex text-red-700 dark:text-red-400 font-medium items-center">
+            <AlertCircleIcon className="h-3 w-3 mr-1.5" />
+            Last Error
           </div>
-          
-          <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
-            <div className="flex items-center space-x-2">
-              <Activity className="h-4 w-4 text-indigo-500" />
-              <span className="text-muted-foreground">Last Status Change:</span>
-              <span className="font-medium">
-                {formatTimestamp(connectionMetrics.lastStatusChange)}
-              </span>
-            </div>
-          </div>
-          
-          {connectionMetrics.connectionEvents.length > 0 && (
-            <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
-              <div className="flex items-center mb-1">
-                <Server className="h-4 w-4 text-violet-500 mr-2" />
-                <span className="text-muted-foreground">Recent Events:</span>
-              </div>
-              <div className="max-h-24 overflow-y-auto text-2xs pl-6 space-y-1">
-                {connectionMetrics.connectionEvents.slice(0, 5).map((event, i) => (
-                  <div key={i} className="flex items-start">
-                    <span className="text-xs opacity-60 mr-1">•</span>
-                    <span className="opacity-70">{formatTimestamp(event.timestamp)}</span>
-                    <span className="mx-1">-</span>
-                    <span className={`font-medium ${getEventTypeColor(event.type)}`}>
-                      {formatEventType(event.type)}
+          <pre className="mt-1 whitespace-pre-wrap break-all text-red-700 dark:text-red-400 text-[10px]">
+            {lastError.message || JSON.stringify(lastError, null, 2)}
+          </pre>
+        </div>
+      )}
+      
+      <div>
+        <p className="text-xs font-medium mb-1.5">Recent Connection Events</p>
+        <ScrollArea className="h-28 rounded-md border">
+          <div className="p-2 space-y-1.5">
+            {connectionEvents.slice(-10).reverse().map((event, i) => (
+              <div key={i} className="text-[10px] flex items-start">
+                <span className="inline-flex mr-1.5 mt-0.5">
+                  {event.type === 'connect' && (
+                    <CheckIcon className="h-3 w-3 text-green-500" />
+                  )}
+                  {event.type === 'disconnect' && (
+                    <AlertCircleIcon className="h-3 w-3 text-yellow-500" />
+                  )}
+                  {event.type === 'reconnect_attempt' && (
+                    <ReloadIcon className="h-3 w-3 text-blue-500" />
+                  )}
+                  {event.type === 'error' && (
+                    <AlertCircleIcon className="h-3 w-3 text-red-500" />
+                  )}
+                  {event.type === 'fallback_activated' && (
+                    <Badge 
+                      variant="outline" 
+                      className="text-[8px] h-3 py-0 px-0.5 border-yellow-500 text-yellow-700 dark:text-yellow-400"
+                    >
+                      FB
+                    </Badge>
+                  )}
+                </span>
+                <div>
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">
+                      {event.type.replace(/_/g, ' ')}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {new Date(event.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
-                ))}
+                  {event.details && (
+                    <span className="text-muted-foreground break-all line-clamp-1">
+                      {typeof event.details === 'string' 
+                        ? event.details 
+                        : JSON.stringify(event.details)
+                      }
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            ))}
+            
+            {connectionEvents.length === 0 && (
+              <div className="text-[10px] py-2 text-center text-muted-foreground">
+                No connection events recorded
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
   );
-}
-
-// Helper to get color for event type
-function getEventTypeColor(type: string): string {
-  switch (type) {
-    case 'status_change':
-      return 'text-blue-600 dark:text-blue-400';
-    case 'fallback_activated':
-      return 'text-amber-600 dark:text-amber-400';
-    case 'fallback_deactivated':
-      return 'text-green-600 dark:text-green-400';
-    case 'reconnect_attempt':
-      return 'text-indigo-600 dark:text-indigo-400';
-    case 'error':
-      return 'text-red-600 dark:text-red-400';
-    default:
-      return 'text-gray-600 dark:text-gray-400';
-  }
-}
-
-// Helper to format event type for display
-function formatEventType(type: string): string {
-  switch (type) {
-    case 'status_change':
-      return 'Status Change';
-    case 'fallback_activated':
-      return 'Fallback Activated';
-    case 'fallback_deactivated':
-      return 'Fallback Deactivated';
-    case 'reconnect_attempt':
-      return 'Reconnect Attempt';
-    case 'error':
-      return 'Error';
-    default:
-      return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  }
 }
