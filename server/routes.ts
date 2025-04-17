@@ -36,7 +36,7 @@ import extensionRoutes from "./extensions/extension-routes";
 import { registerTeamAgentRoutes } from "./routes/team-agent-routes";
 import { registerDemoRoutes } from "./routes/demo-routes";
 import aiAssistantRoutes from "./routes/ai-assistant-routes";
-import { createDevelopmentPlatformRoutes } from "./routes/development-platform-routes";
+import developmentPlatformRoutes from "./routes/development-platform-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -176,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/ai-assistant', aiAssistantRoutes);
   
   // Register Development Platform routes
-  app.use('/api/development', createDevelopmentPlatformRoutes());
+  app.use('/api/development', developmentPlatformRoutes);
 
   /**
    * Data Lineage Routes
@@ -317,6 +317,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Analytics routes
   app.use('/api/analytics', createAnalyticsRoutes(storage));
+  
+  // Development Platform routes already registered
   
   // Health check
   app.get("/api/health", (_req, res) => {
