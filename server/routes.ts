@@ -43,6 +43,7 @@ import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmai
 import { mappingIntegration } from "./services/mapping-integration";
 import { notificationService, NotificationType } from "./services/notification-service";
 import { agentWebSocketService } from "./services/agent-websocket-service";
+import { agentSocketIOService } from "./services/agent-socketio-service";
 import { collaborationWebSocketService, initializeCollaborationWebSocketService } from "./services/collaboration-websocket-service";
 import { TeamCollaborationWebSocketService } from "./services/team-collaboration-ws-service";
 import { perplexityService } from "./services/perplexity";
@@ -2573,10 +2574,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Initialize agent WebSocket service with the HTTP server
+  // Initialize agent communication services
   console.log('Initializing Agent WebSocket service...');
   agentWebSocketService.initialize(httpServer);
   console.log('Agent WebSocket service initialized');
+  
+  // Initialize Socket.IO service (preferred method for better compatibility)
+  console.log('Initializing Agent Socket.IO service...');
+  agentSocketIOService.initialize(httpServer);
+  console.log('Agent Socket.IO service initialized');
+  
+  // Register REST API routes for the Socket.IO service
+  const socketIORoutes = agentSocketIOService.getRestRoutes();
+  app.post('/api/agents/socketio/auth', socketIORoutes.auth);
+  app.post('/api/agents/socketio/message', socketIORoutes.message);
+  app.post('/api/agents/socketio/action', socketIORoutes.action);
+  app.get('/api/agents/socketio/messages/pending', socketIORoutes.pendingMessages);
   
   // Initialize collaboration WebSocket service with the HTTP server
   console.log('Initializing Collaboration WebSocket service...');

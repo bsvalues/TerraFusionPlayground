@@ -1,16 +1,39 @@
 /**
  * Agent WebSocket Hook
  * 
- * This hook provides a React interface for the agent WebSocket service,
+ * This hook provides a React interface for the agent communication service (Socket.IO),
  * allowing components to easily connect to agents, send messages, and
  * receive real-time updates.
+ * 
+ * Note: This has been updated to use Socket.IO instead of raw WebSockets
+ * for better reliability, especially in environments like Replit where
+ * WebSockets may have connection issues.
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { agentWebSocketService } from '@/services/agent-websocket-service';
+// Use the Socket.IO service instead of WebSockets
+import { agentSocketIOService, ConnectionStatus as SocketIOConnectionStatus } from '@/services/agent-socketio-service';
 import { useToast } from '@/hooks/use-toast';
 
+// Map Socket.IO connection status to our existing connection status type for backward compatibility
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'errored';
+
+// Helper function to convert Socket.IO connection status to our ConnectionStatus type
+const mapConnectionStatus = (status: SocketIOConnectionStatus): ConnectionStatus => {
+  switch (status) {
+    case SocketIOConnectionStatus.CONNECTED:
+      return 'connected';
+    case SocketIOConnectionStatus.CONNECTING:
+      return 'connecting';
+    case SocketIOConnectionStatus.DISCONNECTED:
+      return 'disconnected';
+    case SocketIOConnectionStatus.ERRORED:
+      return 'errored';
+    default:
+      return 'disconnected';
+  }
+};
+
 type MessageHandler = (message: any) => void;
 
 interface UseAgentWebSocketProps {
@@ -36,16 +59,16 @@ export function useAgentWebSocket({
   showToasts = false,
 }: UseAgentWebSocketProps = {}): UseAgentWebSocketResult {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(
-    agentWebSocketService.getConnectionStatus()
+    mapConnectionStatus(agentSocketIOService.getConnectionStatus())
   );
   const { toast } = useToast();
 
-  // Connect to the WebSocket server
+  // Connect to the Socket.IO server
   const connect = useCallback(async (): Promise<boolean> => {
     try {
-      return await agentWebSocketService.connect();
+      return await agentSocketIOService.connect();
     } catch (error) {
-      console.error('Error connecting to agent WebSocket:', error);
+      console.error('Error connecting to agent Socket.IO:', error);
       if (showToasts) {
         toast({
           title: 'Connection Error',
@@ -57,16 +80,16 @@ export function useAgentWebSocket({
     }
   }, [showToasts, toast]);
 
-  // Disconnect from the WebSocket server
+  // Disconnect from the Socket.IO server
   const disconnect = useCallback((): void => {
-    agentWebSocketService.disconnect();
+    agentSocketIOService.disconnect();
   }, []);
 
   // Send a message to an agent
   const sendAgentMessage = useCallback(
     async (recipientId: string, message: any): Promise<string> => {
       try {
-        return await agentWebSocketService.sendAgentMessage(recipientId, message);
+        return await agentSocketIOService.sendAgentMessage(recipientId, message);
       } catch (error) {
         console.error('Error sending agent message:', error);
         if (showToasts) {
@@ -86,7 +109,7 @@ export function useAgentWebSocket({
   const sendActionRequest = useCallback(
     async (targetAgent: string, action: string, params: any = {}): Promise<string> => {
       try {
-        return await agentWebSocketService.sendActionRequest(targetAgent, action, params);
+        return await agentSocketIOService.sendActionRequest(targetAgent, action, params);
       } catch (error) {
         console.error('Error sending action request:', error);
         if (showToasts) {
@@ -105,7 +128,7 @@ export function useAgentWebSocket({
   // Register a handler for a specific message type
   const on = useCallback(
     (type: string, handler: MessageHandler): (() => void) => {
-      return agentWebSocketService.on(type, handler);
+      return agentSocketIOService.on(type, handler);
     },
     []
   );
@@ -113,15 +136,17 @@ export function useAgentWebSocket({
   // Remove a handler for a specific message type
   const off = useCallback(
     (type: string, handler: MessageHandler): void => {
-      agentWebSocketService.off(type, handler);
+      agentSocketIOService.off(type, handler);
     },
     []
   );
 
   // Set up connection status listener and auto-connect
   useEffect(() => {
-    // Listen for connection status changes
-    const unsubscribe = agentWebSocketService.onConnectionStatusChange(setConnectionStatus);
+    // Listen for connection status changes and map to our ConnectionStatus type
+    const unsubscribe = agentSocketIOService.onConnectionStatusChange((status) => {
+      setConnectionStatus(mapConnectionStatus(status));
+    });
 
     // Auto-connect if enabled
     if (autoConnect) {
@@ -134,7 +159,7 @@ export function useAgentWebSocket({
     let notificationUnsubscribe: (() => void) | null = null;
     
     if (showToasts) {
-      notificationUnsubscribe = agentWebSocketService.on('notification', (message) => {
+      notificationUnsubscribe = agentSocketIOService.on('notification', (message: any) => {
         if (message.level && message.title && message.message) {
           toast({
             title: message.title,

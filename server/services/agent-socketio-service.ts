@@ -13,6 +13,11 @@ import { Server, Socket } from 'socket.io';
 import { AgentMessage, AgentMessageType, MessagePriority, AgentProtocol } from '../extensions/agent-protocol';
 import { logger } from '../utils/logger';
 
+// Define LogOptions interface to fix TypeScript errors
+interface LogOptions {
+  [key: string]: any;
+}
+
 /**
  * Client connection type - represents different types of clients connecting to Socket.IO
  */
