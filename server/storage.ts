@@ -263,6 +263,54 @@ export interface IStorage {
   getHistoricalRegulatoryChanges(region: string): Promise<any[]>;
   getEnvironmentalRisks(propertyId: string): Promise<any>;
   
+  // TaxI_AI Development Platform - Project methods
+  createDevelopmentProject(project: InsertDevelopmentProject): Promise<DevelopmentProject>;
+  findDevelopmentProjectByProjectId(projectId: string): Promise<DevelopmentProject | null>;
+  findAllDevelopmentProjects(): Promise<DevelopmentProject[]>;
+  findDevelopmentProjectsByUser(userId: number): Promise<DevelopmentProject[]>;
+  findDevelopmentProjectsByStatus(status: ProjectStatus): Promise<DevelopmentProject[]>;
+  findDevelopmentProjectsByUserAndStatus(userId: number, status: ProjectStatus): Promise<DevelopmentProject[]>;
+  updateDevelopmentProject(id: number, updates: Partial<DevelopmentProject>): Promise<DevelopmentProject>;
+  deleteDevelopmentProject(id: number): Promise<boolean>;
+  
+  // TaxI_AI Development Platform - File methods
+  createProjectFile(file: InsertProjectFile): Promise<ProjectFile>;
+  findProjectFileById(id: number): Promise<ProjectFile | null>;
+  findProjectFileByFileId(fileId: string): Promise<ProjectFile | null>;
+  findProjectFileByPath(projectId: string, path: string): Promise<ProjectFile | null>;
+  findProjectFilesByProjectId(projectId: string): Promise<ProjectFile[]>;
+  findProjectFilesByParentPath(projectId: string, parentPath: string): Promise<ProjectFile[]>;
+  findProjectFilesByPathPrefix(projectId: string, pathPrefix: string): Promise<ProjectFile[]>;
+  updateProjectFile(id: number, updates: Partial<ProjectFile>): Promise<ProjectFile>;
+  deleteProjectFile(id: number): Promise<boolean>;
+  
+  // TaxI_AI Development Platform - Template methods
+  createProjectTemplate(template: InsertProjectTemplate): Promise<ProjectTemplate>;
+  findProjectTemplateByTemplateId(templateId: string): Promise<ProjectTemplate | null>;
+  findAllProjectTemplates(): Promise<ProjectTemplate[]>;
+  updateProjectTemplate(id: number, updates: Partial<ProjectTemplate>): Promise<ProjectTemplate>;
+  deleteProjectTemplate(id: number): Promise<boolean>;
+  
+  // TaxI_AI Development Platform - Version methods
+  createProjectVersion(version: InsertProjectVersion): Promise<ProjectVersion>;
+  findProjectVersionByVersionId(versionId: string): Promise<ProjectVersion | null>;
+  findProjectVersionsByProjectId(projectId: string): Promise<ProjectVersion[]>;
+  updateProjectVersion(id: number, updates: Partial<ProjectVersion>): Promise<ProjectVersion>;
+  deleteProjectVersion(id: number): Promise<boolean>;
+  
+  // TaxI_AI Development Platform - Preview methods
+  createPreviewSetting(setting: InsertPreviewSetting): Promise<PreviewSetting>;
+  findPreviewSettingByProjectId(projectId: string): Promise<PreviewSetting | null>;
+  updatePreviewSetting(id: number, updates: Partial<PreviewSetting>): Promise<PreviewSetting>;
+  deletePreviewSetting(id: number): Promise<boolean>;
+  
+  // TaxI_AI Development Platform - AI Code Generation methods
+  createAiCodeGeneration(generation: InsertAiCodeGeneration): Promise<AiCodeGeneration>;
+  findAiCodeGenerationByGenerationId(generationId: string): Promise<AiCodeGeneration | null>;
+  findAiCodeGenerationsByProjectId(projectId: string): Promise<AiCodeGeneration[]>;
+  updateAiCodeGeneration(id: number, updates: Partial<AiCodeGeneration>): Promise<AiCodeGeneration>;
+  deleteAiCodeGeneration(id: number): Promise<boolean>;
+  
   // Validation Rules methods
   createValidationRule(rule: InsertValidationRule): Promise<ValidationRule>;
   getValidationRuleById(ruleId: string): Promise<ValidationRule | null>;
@@ -469,6 +517,14 @@ export class MemStorage implements IStorage {
   private equalizationReports: Map<string, any>; // Washington-specific equalization ratio reports
   private revaluationCycleReports: Map<string, any>; // Washington-specific revaluation cycle reports
   private exemptionVerificationReports: Map<string, any>; // Washington-specific exemption verification reports
+  
+  // TaxI_AI Development Platform storage
+  private developmentProjects: Map<number, DevelopmentProject>;
+  private projectFiles: Map<number, ProjectFile>;
+  private projectTemplates: Map<number, ProjectTemplate>;
+  private projectVersions: Map<number, ProjectVersion>;
+  private previewSettings: Map<number, PreviewSetting>;
+  private aiCodeGenerations: Map<number, AiCodeGeneration>;
   private appealComplianceReports: Map<string, any>; // Washington-specific appeal compliance reports
   
   // Team Agent Storage
@@ -512,6 +568,14 @@ export class MemStorage implements IStorage {
   private currentTeamCollaborationSessionId: number;
   private currentTeamFeedbackId: number;
   private currentTeamKnowledgeBaseItemId: number;
+  
+  // TaxI_AI Development Platform counters
+  private currentDevelopmentProjectId: number;
+  private currentProjectFileId: number;
+  private currentProjectTemplateId: number;
+  private currentProjectVersionId: number;
+  private currentPreviewSettingId: number;
+  private currentAiCodeGenerationId: number;
 
   constructor() {
     this.users = new Map();
@@ -552,6 +616,14 @@ export class MemStorage implements IStorage {
     this.sharedWorkflowActivities = new Map<number, SharedWorkflowActivity>();
     this.workflowSessions = new Map<string, WorkflowSession>();
     
+    // Initialize TaxI_AI Development Platform maps
+    this.developmentProjects = new Map<number, DevelopmentProject>();
+    this.projectFiles = new Map<number, ProjectFile>();
+    this.projectTemplates = new Map<number, ProjectTemplate>();
+    this.projectVersions = new Map<number, ProjectVersion>();
+    this.previewSettings = new Map<number, PreviewSetting>();
+    this.aiCodeGenerations = new Map<number, AiCodeGeneration>();
+    
     // Initialize Team Agent maps
     this.teamMembers = new Map<number, TeamMember>();
     this.teamTasks = new Map<string, TeamTask>();
@@ -586,6 +658,14 @@ export class MemStorage implements IStorage {
     this.currentTeamCollaborationSessionId = 1;
     this.currentTeamFeedbackId = 1;
     this.currentTeamKnowledgeBaseItemId = 1;
+    
+    // Initialize TaxI_AI Development Platform counters
+    this.currentDevelopmentProjectId = 1;
+    this.currentProjectFileId = 1;
+    this.currentProjectTemplateId = 1;
+    this.currentProjectVersionId = 1;
+    this.currentPreviewSettingId = 1;
+    this.currentAiCodeGenerationId = 1;
     
     // Initialize with sample data
     this.seedData();
