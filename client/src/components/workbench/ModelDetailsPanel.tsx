@@ -31,6 +31,8 @@ import {
 } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import EditComponentDialog from './EditComponentDialog';
+import EditCalculationDialog from './EditCalculationDialog';
 
 // Model status badge variants
 const getStatusBadgeVariant = (status: string) => {
@@ -59,6 +61,12 @@ const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ model, onRefresh 
     description: model.description || '',
     status: model.status
   });
+  
+  // Dialog states
+  const [isComponentDialogOpen, setIsComponentDialogOpen] = useState(false);
+  const [isCalculationDialogOpen, setIsCalculationDialogOpen] = useState(false);
+  const [selectedComponent, setSelectedComponent] = useState<any>(null);
+  const [selectedCalculation, setSelectedCalculation] = useState<any>(null);
 
   // Fetch variables
   const { 
@@ -410,7 +418,7 @@ const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ model, onRefresh 
           <TabsContent value="components">
             <div className="mb-4 flex justify-between items-center">
               <h3 className="text-lg font-medium">Model Components</h3>
-              <Button size="sm">
+              <Button size="sm" onClick={() => setIsComponentDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-1" />
                 Add Component
               </Button>
@@ -436,7 +444,16 @@ const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ model, onRefresh 
                         <td className="px-6 py-4 whitespace-nowrap">{component.type}</td>
                         <td className="px-6 py-4">{component.description}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <Button variant="ghost" size="sm">Edit</Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedComponent(component);
+                              setIsComponentDialogOpen(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -446,7 +463,7 @@ const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ model, onRefresh 
             ) : (
               <div className="text-center py-12 border rounded-md bg-gray-50">
                 <p className="text-gray-500 mb-4">No components defined for this model yet</p>
-                <Button>
+                <Button onClick={() => setIsComponentDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-1" />
                   Add First Component
                 </Button>
@@ -457,7 +474,7 @@ const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ model, onRefresh 
           <TabsContent value="calculations">
             <div className="mb-4 flex justify-between items-center">
               <h3 className="text-lg font-medium">Model Calculations</h3>
-              <Button size="sm">
+              <Button size="sm" onClick={() => setIsCalculationDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-1" />
                 Add Calculation
               </Button>
@@ -483,7 +500,16 @@ const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ model, onRefresh 
                         <td className="px-6 py-4">{calculation.description}</td>
                         <td className="px-6 py-4 font-mono text-sm">{calculation.formula}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <Button variant="ghost" size="sm">Edit</Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedCalculation(calculation);
+                              setIsCalculationDialogOpen(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -493,7 +519,7 @@ const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ model, onRefresh 
             ) : (
               <div className="text-center py-12 border rounded-md bg-gray-50">
                 <p className="text-gray-500 mb-4">No calculations defined for this model yet</p>
-                <Button>
+                <Button onClick={() => setIsCalculationDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-1" />
                   Add First Calculation
                 </Button>
