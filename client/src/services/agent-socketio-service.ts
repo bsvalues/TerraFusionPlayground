@@ -186,8 +186,23 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         // Log connection attempt
         console.log(`[Agent SocketIO] Attempting to connect to: ${protocol}${host} with path ${path}`);
 
+
+        // Determine if we're in development or production
+        const isDev = process.env.NODE_ENV === 'development';
+
+        // In development, connect to the dev server
+        let socketUrl;
+        if (isDev) {
+          socketUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:5000/api/agents/socket.io`;
+        } else {
+          // In production on Replit, use the current host
+          const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+          socketUrl = `${wsProtocol}${window.location.host}/api/agents/socket.io`;
+        }
+
+
         // Create Socket.IO instance
-        this.socket = io(protocol + host, {
+        this.socket = io(socketUrl, {
           path: path,
           transports: ['polling', 'websocket'], // Try polling first, then WebSocket - more reliable in Replit
           reconnection: true,

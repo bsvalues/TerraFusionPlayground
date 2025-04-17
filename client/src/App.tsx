@@ -25,6 +25,8 @@ import CollaborationTestPage from "@/pages/collaboration-test";
 import TeamAgentsPage from "@/pages/TeamAgentsPage";
 import MasterDevelopmentPage from "@/pages/MasterDevelopmentPage";
 import AppLayout from "@/layout/app-layout";
+import { ConnectionStatusMonitor } from './components/connection-status-monitor'; // Added import
+
 
 function Router() {
   return (
@@ -34,7 +36,7 @@ function Router() {
           <Dashboard />
         </AppLayout>
       </Route>
-      
+
       <Route path="/land-records">
         <AppLayout>
           <LandRecords />
@@ -138,7 +140,7 @@ function Router() {
       </Route>
 
       {/* Add more routes as needed */}
-      
+
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
@@ -153,6 +155,7 @@ function App() {
           <Router />
           <ConnectionNotification />
           <Toaster />
+          <ConnectionStatusMonitor /> {/* Added ConnectionStatusMonitor */}
         </AIAssistantProvider>
       </ExtensionProvider>
     </QueryClientProvider>
