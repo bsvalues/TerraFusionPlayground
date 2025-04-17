@@ -1638,6 +1638,248 @@ export const insertAiCodeGenerationSchema = createInsertSchema(aiCodeGenerations
   parameters: true,
 });
 
+// Assessment Model Workbench Schemas
+export enum ModelType {
+  COST_APPROACH = 'cost_approach',
+  SALES_COMPARISON = 'sales_comparison',
+  INCOME_APPROACH = 'income_approach',
+  HYBRID = 'hybrid',
+  STATISTICAL = 'statistical',
+  SPECIALIZED = 'specialized'
+}
+
+export enum ModelStatus {
+  DRAFT = 'draft',
+  IN_REVIEW = 'in_review',
+  APPROVED = 'approved',
+  PUBLISHED = 'published',
+  ARCHIVED = 'archived',
+  DEPRECATED = 'deprecated'
+}
+
+export enum VariableType {
+  NUMBER = 'number',
+  STRING = 'string',
+  BOOLEAN = 'boolean',
+  DATE = 'date',
+  OBJECT = 'object',
+  ARRAY = 'array',
+  FORMULA = 'formula',
+  REFERENCE = 'reference'
+}
+
+export enum DataSourceType {
+  PROPERTY_DATA = 'property_data',
+  COMPARISON_DATA = 'comparison_data',
+  MARKET_DATA = 'market_data',
+  MANUAL_INPUT = 'manual_input',
+  CALCULATED = 'calculated',
+  EXTERNAL_API = 'external_api',
+  SPATIAL_DATA = 'spatial_data'
+}
+
+// Assessment Models table
+export const assessmentModels = pgTable("assessment_models", {
+  id: serial("id").primaryKey(),
+  modelId: uuid("model_id").notNull().unique().defaultRandom(),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").notNull(),
+  version: text("version").notNull().default("1.0.0"),
+  status: text("status").notNull().default(ModelStatus.DRAFT),
+  isTemplate: boolean("is_template").default(false),
+  compatiblePropertyTypes: jsonb("compatible_property_types").default([]),
+  createdById: integer("created_by_id").notNull(),
+  lastModifiedById: integer("last_modified_by_id").notNull(),
+  lastReviewedById: integer("last_reviewed_by_id"),
+  reviewNotes: text("review_notes"),
+  metadata: jsonb("metadata").default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertAssessmentModelSchema = createInsertSchema(assessmentModels).pick({
+  name: true,
+  description: true,
+  type: true,
+  version: true,
+  status: true,
+  isTemplate: true,
+  compatiblePropertyTypes: true,
+  createdById: true,
+  lastModifiedById: true,
+  lastReviewedById: true,
+  reviewNotes: true,
+  metadata: true,
+}).extend({
+  status: z.nativeEnum(ModelStatus).optional(),
+  type: z.nativeEnum(ModelType),
+});
+
+// Model Variables table
+export const modelVariables = pgTable("model_variables", {
+  id: serial("id").primaryKey(),
+  modelId: uuid("model_id").notNull().references(() => assessmentModels.modelId, { onDelete: 'cascade' }),
+  name: text("name").notNull(),
+  description: text("description"),
+  variableKey: text("variable_key").notNull(),
+  type: text("type").notNull(),
+  defaultValue: jsonb("default_value"),
+  required: boolean("required").default(false),
+  validation: jsonb("validation").default({}),
+  sourceType: text("source_type").notNull(),
+  sourceMapping: jsonb("source_mapping").default({}),
+  displayOrder: integer("display_order").default(0),
+  isAdvanced: boolean("is_advanced").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertModelVariableSchema = createInsertSchema(modelVariables).pick({
+  modelId: true,
+  name: true,
+  description: true,
+  variableKey: true,
+  type: true,
+  defaultValue: true,
+  required: true,
+  validation: true,
+  sourceType: true,
+  sourceMapping: true,
+  displayOrder: true,
+  isAdvanced: true,
+}).extend({
+  type: z.nativeEnum(VariableType),
+  sourceType: z.nativeEnum(DataSourceType),
+});
+
+// Model Components table - for reusable calculation components
+export const modelComponents = pgTable("model_components", {
+  id: serial("id").primaryKey(),
+  modelId: uuid("model_id").notNull().references(() => assessmentModels.modelId, { onDelete: 'cascade' }),
+  name: text("name").notNull(),
+  description: text("description"),
+  componentType: text("component_type").notNull(), // factor_table, calculation_block, adjustment_matrix
+  implementation: jsonb("implementation").notNull(),
+  displayOrder: integer("display_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdById: integer("created_by_id").notNull(),
+  metadata: jsonb("metadata").default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertModelComponentSchema = createInsertSchema(modelComponents).pick({
+  modelId: true,
+  name: true,
+  description: true,
+  componentType: true,
+  implementation: true,
+  displayOrder: true,
+  isActive: true,
+  createdById: true,
+  metadata: true,
+});
+
+// Model Calculations table - for defining calculation logic
+export const modelCalculations = pgTable("model_calculations", {
+  id: serial("id").primaryKey(),
+  modelId: uuid("model_id").notNull().references(() => assessmentModels.modelId, { onDelete: 'cascade' }),
+  name: text("name").notNull(),
+  description: text("description"),
+  formula: text("formula").notNull(),
+  outputVariableId: integer("output_variable_id").references(() => modelVariables.id),
+  dependsOn: jsonb("depends_on").default([]), // Array of variable keys or component IDs
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertModelCalculationSchema = createInsertSchema(modelCalculations).pick({
+  modelId: true,
+  name: true,
+  description: true,
+  formula: true,
+  outputVariableId: true,
+  dependsOn: true,
+  displayOrder: true,
+});
+
+// Model Validation Rules table
+export const modelValidationRules = pgTable("model_validation_rules", {
+  id: serial("id").primaryKey(),
+  modelId: uuid("model_id").notNull().references(() => assessmentModels.modelId, { onDelete: 'cascade' }),
+  name: text("name").notNull(),
+  description: text("description"),
+  ruleType: text("rule_type").notNull(), // range_check, comparison, threshold, pattern
+  implementation: jsonb("implementation").notNull(),
+  severity: text("severity").notNull().default("warning"), // info, warning, error
+  message: text("message").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertModelValidationRuleSchema = createInsertSchema(modelValidationRules).pick({
+  modelId: true,
+  name: true,
+  description: true,
+  ruleType: true,
+  implementation: true,
+  severity: true,
+  message: true,
+  isActive: true,
+});
+
+// Model Test Cases table
+export const modelTestCases = pgTable("model_test_cases", {
+  id: serial("id").primaryKey(),
+  modelId: uuid("model_id").notNull().references(() => assessmentModels.modelId, { onDelete: 'cascade' }),
+  name: text("name").notNull(),
+  description: text("description"),
+  inputs: jsonb("inputs").notNull(),
+  expectedOutputs: jsonb("expected_outputs").notNull(),
+  isAutomated: boolean("is_automated").default(true),
+  lastRunAt: timestamp("last_run_at"),
+  lastRunStatus: text("last_run_status"),
+  lastRunResult: jsonb("last_run_result"),
+  createdById: integer("created_by_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertModelTestCaseSchema = createInsertSchema(modelTestCases).pick({
+  modelId: true,
+  name: true,
+  description: true,
+  inputs: true,
+  expectedOutputs: true,
+  isAutomated: true,
+  createdById: true,
+});
+
+// Model Versions table for versioning
+export const assessmentModelVersions = pgTable("assessment_model_versions", {
+  id: serial("id").primaryKey(),
+  modelId: uuid("model_id").notNull().references(() => assessmentModels.modelId),
+  versionNumber: text("version_number").notNull(),
+  snapshot: jsonb("snapshot").notNull(), // Complete serialized model
+  changeLog: text("change_log"),
+  createdById: integer("created_by_id").notNull(),
+  status: text("status").notNull().default(ModelStatus.DRAFT),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAssessmentModelVersionSchema = createInsertSchema(assessmentModelVersions).pick({
+  modelId: true,
+  versionNumber: true,
+  snapshot: true,
+  changeLog: true,
+  createdById: true,
+  status: true,
+}).extend({
+  status: z.nativeEnum(ModelStatus).optional(),
+});
+
 // Export types for TaxI_AI Development Platform
 export type DevelopmentProject = typeof developmentProjects.$inferSelect;
 export type InsertDevelopmentProject = z.infer<typeof insertDevelopmentProjectSchema>;
@@ -1656,3 +1898,25 @@ export type InsertPreviewSetting = z.infer<typeof insertPreviewSettingSchema>;
 
 export type AiCodeGeneration = typeof aiCodeGenerations.$inferSelect;
 export type InsertAiCodeGeneration = z.infer<typeof insertAiCodeGenerationSchema>;
+
+// Export types for Assessment Model Workbench
+export type AssessmentModel = typeof assessmentModels.$inferSelect;
+export type InsertAssessmentModel = z.infer<typeof insertAssessmentModelSchema>;
+
+export type ModelVariable = typeof modelVariables.$inferSelect;
+export type InsertModelVariable = z.infer<typeof insertModelVariableSchema>;
+
+export type ModelComponent = typeof modelComponents.$inferSelect;
+export type InsertModelComponent = z.infer<typeof insertModelComponentSchema>;
+
+export type ModelCalculation = typeof modelCalculations.$inferSelect;
+export type InsertModelCalculation = z.infer<typeof insertModelCalculationSchema>;
+
+export type ModelValidationRule = typeof modelValidationRules.$inferSelect;
+export type InsertModelValidationRule = z.infer<typeof insertModelValidationRuleSchema>;
+
+export type ModelTestCase = typeof modelTestCases.$inferSelect;
+export type InsertModelTestCase = z.infer<typeof insertModelTestCaseSchema>;
+
+export type AssessmentModelVersion = typeof assessmentModelVersions.$inferSelect;
+export type InsertAssessmentModelVersion = z.infer<typeof insertAssessmentModelVersionSchema>;
