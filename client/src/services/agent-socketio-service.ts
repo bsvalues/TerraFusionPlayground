@@ -178,13 +178,17 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         // Update connection status
         this.updateConnectionStatus(ConnectionStatus.CONNECTING);
 
-        // Determine the Socket.IO URL
-        const protocol = window.location.protocol === 'https:' ? 'https://' : 'http://';
+        // Get the current host and protocol
         const host = window.location.host;
+        const isSecure = window.location.protocol === 'https:';
         const path = '/api/agents/socket.io';
+        
+        // Construct base URL
+        const baseUrl = isSecure ? 'https://' : 'http://';
+        const wsUrl = `${baseUrl}${host}`;
 
         // Log connection attempt
-        console.log(`[Agent SocketIO] Attempting to connect to: ${protocol}${host} with path ${path}`);
+        console.log(`[Agent SocketIO] Attempting to connect to: ${wsUrl} with path ${path}`);
 
 
         // Determine if we're in development or production

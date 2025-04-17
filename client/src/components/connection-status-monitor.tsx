@@ -8,14 +8,26 @@ import { CircleSlash, WifiOff, Wifi } from 'lucide-react';
 export const ConnectionStatusMonitor: React.FC = () => {
   const [status, setStatus] = React.useState(agentSocketIOService.getConnectionStatus());
   const [isUsingFallback, setIsUsingFallback] = React.useState(agentSocketIOService.isUsingFallback());
+  const [retryCount, setRetryCount] = React.useState(0);
 
   useEffect(() => {
     const unsubscribe = agentSocketIOService.onConnectionStatusChange((newStatus) => {
       setStatus(newStatus);
       setIsUsingFallback(agentSocketIOService.isUsingFallback());
+      if (newStatus === 'errored') {
+        setRetryCount(prev => prev + 1);
+      } else if (newStatus === 'connected') {
+        setRetryCount(0);
+      }
     });
 
-    return unsubscribe;
+    // Initial connection attempt
+    agentSocketIOService.connect();
+
+    return () => {
+      unsubscribe();
+      agentSocketIOService.disconnect();
+    };
   }, []);
 
   if (status === 'connected' && !isUsingFallback) {
@@ -37,8 +49,12 @@ export const ConnectionStatusMonitor: React.FC = () => {
         {isUsingFallback ? 
           'Using fallback REST API mode - functionality remains available with slightly higher latency.' :
           status === 'errored' ? 
-          'Connection error detected - attempting to reconnect' : 
-          'Establishing connection...'}
+          `Connection error detected - attempting to reconnect (Attempt ${retryCount})` : 
+          status === 'connecting' ?
+          'Establishing connection...' :
+          status === 'connected' ?
+          'Connected successfully' :
+          'Connection status unknown'}
       </AlertDescription>
     </Alert>
   );
