@@ -1449,9 +1449,8 @@ export enum PreviewStatus {
 // TaxI_AI Development Platform Tables
 
 // Development Projects table
-export const developmentProjects = pgTable("development_projects", {
-  id: serial("id").primaryKey(),
-  projectId: text("project_id").notNull().unique(),
+export const developmentProjects = pgTable("dev_projects", {
+  project_id: text("project_id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
   type: text("type").notNull(), // ProjectType enum
@@ -1467,8 +1466,9 @@ export const developmentProjects = pgTable("development_projects", {
   isPublic: boolean("is_public").default(false),
 });
 
-export const insertDevelopmentProjectSchema = createInsertSchema(developmentProjects).pick({
-  projectId: true,
+export const insertDevelopmentProjectSchema = createInsertSchema(developmentProjects).omit({
+  project_id: true,
+}).pick({
   name: true,
   description: true,
   type: true,
