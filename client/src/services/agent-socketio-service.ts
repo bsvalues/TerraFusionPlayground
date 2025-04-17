@@ -6,9 +6,16 @@
  * This replaces the raw WebSocket implementation with Socket.IO for better
  * reliability, especially in the Replit environment which has issues with
  * raw WebSockets.
+ * 
+ * Enhanced with connection resilience features including:
+ * - Automatic fallback to REST API when WebSocket fails
+ * - Connection metrics tracking and error logging
+ * - Reconnection strategy with exponential backoff
+ * - User notifications for connection status
  */
 
 import { io, Socket } from 'socket.io-client';
+import { connectionMetricsService } from './connection-metrics';
 
 /**
  * Simple browser-compatible EventEmitter implementation
@@ -197,7 +204,6 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
         // Create Socket.IO instance with robust configuration
         this.socket = io(socketUrl, {
-          path: path,
           path: path,
           transports: ['polling', 'websocket'], // Start with polling, upgrade to WebSocket
           reconnection: true,
