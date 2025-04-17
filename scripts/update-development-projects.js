@@ -86,6 +86,23 @@ async function updateDevelopmentProjects() {
       // Add id column if it doesn't exist
       console.log('Adding id column if it does not exist...');
       
+      // Find the constraint name first
+      const constraintCheck = await pool.query(`
+        SELECT conname
+        FROM pg_constraint
+        WHERE conrelid = 'development_projects'::regclass
+        AND contype = 'p';
+      `);
+      
+      if (constraintCheck.rows.length > 0) {
+        const constraintName = constraintCheck.rows[0].conname;
+        console.log(`Dropping primary key constraint: ${constraintName}`);
+        await pool.query(`
+          ALTER TABLE development_projects 
+          DROP CONSTRAINT "${constraintName}";
+        `);
+      }
+      
       // Check if id column exists
       const columnCheck = await pool.query(`
         SELECT EXISTS (
@@ -102,6 +119,24 @@ async function updateDevelopmentProjects() {
         `);
       } else {
         console.log('id column already exists in development_projects');
+        
+        // Make sure id is the primary key
+        const idPrimaryKeyCheck = await pool.query(`
+          SELECT a.attname
+          FROM   pg_index i
+          JOIN   pg_attribute a ON a.attrelid = i.indrelid
+                               AND a.attnum = ANY(i.indkey)
+          WHERE  i.indrelid = 'development_projects'::regclass
+          AND    i.indisprimary;
+        `);
+        
+        if (idPrimaryKeyCheck.rows.length === 0 || idPrimaryKeyCheck.rows[0].attname !== 'id') {
+          console.log('Setting id as primary key...');
+          await pool.query(`
+            ALTER TABLE development_projects 
+            ADD PRIMARY KEY (id);
+          `);
+        }
       }
       
       // Adding other columns that might be missing
@@ -145,17 +180,16 @@ async function updateDevelopmentProjects() {
   }
 }
 
-// Run the function if this script is executed directly
-if (require.main === module) {
-  updateDevelopmentProjects()
-    .then(() => {
-      console.log('Development projects table update complete');
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error('Failed to update development projects table:', error);
-      process.exit(1);
-    });
-}
+// Run the function
+updateDevelopmentProjects()
+  .then(() => {
+    console.log('Development projects table update complete');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('Failed to update development projects table:', error);
+    process.exit(1);
+  });
 
-module.exports = { updateDevelopmentProjects };
+// Export the function
+export { updateDevelopmentProjects };
