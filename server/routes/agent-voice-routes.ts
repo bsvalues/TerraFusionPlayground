@@ -101,7 +101,7 @@ router.post('/execute-action', async (req: Request, res: Response) => {
     
     // Return a success response
     let response = '';
-    let actions = [];
+    let actions: Array<{type: string, payload?: any}> = [];
     
     switch (type) {
       case 'display_property_details':

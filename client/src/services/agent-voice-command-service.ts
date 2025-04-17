@@ -212,7 +212,7 @@ export async function processVoiceCommand(
 ): Promise<VoiceCommandResult> {
   try {
     // Send command to the server for processing
-    const response = await apiRequest("POST", "/api/agent-voice/process", {
+    const response = await apiRequest("POST", "/api/agent-voice/command", {
       command: commandText,
       context
     });

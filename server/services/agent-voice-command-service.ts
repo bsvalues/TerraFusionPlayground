@@ -362,35 +362,53 @@ You can also ask specific questions about properties, valuations, or assessment 
    */
   private async logVoiceCommand(command: string, context: VoiceCommandContext): Promise<void> {
     try {
-      // Log to console since we might not have activity log functionality in storage
-      console.log('Voice Command Log:', {
+      const logData = {
         activity_type: 'voice_command',
         component: 'agent_voice_interface',
         details: {
           command,
           agentId: context.agentId || 'default',
-          subject: context.subject || 'general'
+          subject: context.subject || 'general',
+          timestamp: new Date().toISOString(),
+          source: 'agent_voice_command_service'
         },
         status: 'completed'
-      });
+      };
       
-      // Only try to use storage if the method exists
-      if (this.storage.createActivityLog) {
-        await this.storage.createActivityLog({
-          activity_type: 'voice_command',
-          component: 'agent_voice_interface',
-          details: {
-            command,
-            agentId: context.agentId || 'default',
-            subject: context.subject || 'general'
-          },
-          status: 'completed'
-        });
+      // Log to console for debugging
+      console.log('Voice Command Log:', JSON.stringify(logData, null, 2));
+      
+      // Try to use storage method if it exists
+      if (this.storage.createSystemActivity) {
+        await this.storage.createSystemActivity(logData);
+      } else if (this.storage.createActivityLog) {
+        await this.storage.createActivityLog(logData);
+      } else {
+        console.warn('No suitable storage method found for logging voice commands. Falling back to console logging only.');
       }
+      
+      // Also log to any analytics systems as needed
+      // This could include sending events to monitoring services
+      this.logToAnalytics(command, context);
     } catch (error) {
       console.error('Error logging voice command:', error);
       // Non-blocking - we'll continue even if logging fails
     }
+  }
+  
+  /**
+   * Log to analytics systems for tracking and improvement
+   * This is a placeholder method that could be implemented in the future
+   */
+  private logToAnalytics(command: string, context: VoiceCommandContext): void {
+    // This would integrate with your analytics system
+    // For now, we'll just log to console
+    console.log('Voice Analytics:', {
+      type: 'voice_interaction',
+      command: command,
+      agentId: context.agentId || 'default',
+      timestamp: Date.now()
+    });
   }
 }
 
