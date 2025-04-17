@@ -27,6 +27,7 @@ import TeamAgentsPage from "@/pages/TeamAgentsPage";
 import MasterDevelopmentPage from "@/pages/MasterDevelopmentPage";
 import DevelopmentPlatformPage from "@/pages/DevelopmentPlatformPage";
 import ProjectWorkspacePage from "@/pages/ProjectWorkspacePage";
+import AssessmentModelWorkbenchPage from "@/pages/AssessmentModelWorkbenchPage";
 import AppLayout from "@/layout/app-layout";
 
 
@@ -148,6 +149,10 @@ function Router() {
       
       <Route path="/development/projects/:projectId">
         <ProjectWorkspacePage />
+      </Route>
+      
+      <Route path="/development/assessment-workbench">
+        <AssessmentModelWorkbenchPage />
       </Route>
 
       {/* Add more routes as needed */}
