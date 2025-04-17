@@ -100,6 +100,7 @@ export function useAgentSocketIO() {
   return useMemo(() => ({
     isConnected,
     connectionStatus,
+    isPolling: agentSocketIOService.isUsingFallback(),
     clientId: agentSocketIOService.getClientId(),
     lastMessage,
     messages,
