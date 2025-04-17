@@ -189,13 +189,15 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         // Create Socket.IO instance
         this.socket = io(protocol + host, {
           path: path,
-          transports: ['websocket', 'polling'], // Try WebSocket first, then fall back to polling
+          transports: ['polling', 'websocket'], // Try polling first, then WebSocket - more reliable in Replit
           reconnection: true,
           reconnectionAttempts: this.maxReconnectAttempts,
           reconnectionDelay: this.reconnectDelay,
           reconnectionDelayMax: 10000, // Max 10 seconds between attempts
-          timeout: 10000, // Connection timeout
-          autoConnect: true
+          timeout: 20000, // Increased timeout
+          autoConnect: true,
+          forceNew: true, // Force a new connection
+          upgrade: false // Don't attempt to upgrade to WebSocket initially
         });
         
         // Set up event handlers
@@ -351,6 +353,24 @@ export class AgentSocketIOService extends BrowserEventEmitter {
    */
   public getConnectionStatus(): ConnectionStatus {
     return this.connectionStatus;
+  }
+  
+  /**
+   * Check if currently connected
+   * 
+   * @returns True if connected, false otherwise
+   */
+  public isConnected(): boolean {
+    return this.connectionStatus === ConnectionStatus.CONNECTED;
+  }
+  
+  /**
+   * Get client ID
+   * 
+   * @returns Client ID
+   */
+  public getClientId(): string {
+    return this.clientId;
   }
   
   /**
@@ -849,29 +869,39 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         // Set up one-time auth success handler
         const authSuccessHandler = (data: any) => {
           clearTimeout(timeoutId);
-          this.socket?.off('auth_success', authSuccessHandler);
-          this.socket?.off('auth_failed', authFailedHandler);
+          if (this.socket) {
+            this.socket.off('auth_success', authSuccessHandler);
+            this.socket.off('auth_failed', authFailedHandler);
+          }
           resolve();
         };
         
         // Set up one-time auth failed handler
         const authFailedHandler = (data: any) => {
           clearTimeout(timeoutId);
-          this.socket?.off('auth_success', authSuccessHandler);
-          this.socket?.off('auth_failed', authFailedHandler);
+          if (this.socket) {
+            this.socket.off('auth_success', authSuccessHandler);
+            this.socket.off('auth_failed', authFailedHandler);
+          }
           reject(new Error(data.message || 'Authentication failed'));
         };
         
-        // Register temporary handlers
-        this.socket.on('auth_success', authSuccessHandler);
-        this.socket.on('auth_failed', authFailedHandler);
-        
-        // Send authentication message
-        this.socket.emit('auth', {
-          clientId: this.clientId,
-          clientType: ClientType.FRONTEND,
-          timestamp: Date.now()
-        });
+        // We already checked that socket exists and is connected at the beginning of the method,
+        // but TypeScript needs reassurance
+        if (this.socket) {
+          // Register temporary handlers
+          this.socket.on('auth_success', authSuccessHandler);
+          this.socket.on('auth_failed', authFailedHandler);
+          
+          // Send authentication message
+          this.socket.emit('auth', {
+            clientId: this.clientId,
+            clientType: ClientType.FRONTEND,
+            timestamp: Date.now()
+          });
+        } else {
+          reject(new Error('Socket became disconnected'));
+        }
       } catch (error) {
         reject(error);
       }
