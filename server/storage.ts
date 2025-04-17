@@ -128,7 +128,7 @@ export interface IStorage {
   updateTeamKnowledgeBaseItem(id: string, updates: Partial<TeamKnowledgeBaseItem>): Promise<TeamKnowledgeBaseItem | null>;
   deleteTeamKnowledgeBaseItem(id: string): Promise<boolean>;
   
-  // TaxI_AI Development Platform methods
+  // TaxI_AI Development Platform methods - Base Interface
   
   // Development Project methods
   createDevelopmentProject(project: InsertDevelopmentProject): Promise<DevelopmentProject>;
@@ -5456,6 +5456,612 @@ export class PgStorage implements IStorage {
     }
     
     return result;
+  }
+  
+  // =========================================================================
+  // TaxI_AI Development Platform Implementation
+  // =========================================================================
+  
+  // Development Project methods implementation
+  async createDevelopmentProject(project: InsertDevelopmentProject): Promise<DevelopmentProject> {
+    const id = this.currentDevelopmentProjectId++;
+    const timestamp = new Date();
+    
+    const newProject: DevelopmentProject = {
+      ...project,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      projectId: `proj_${id}`,
+      status: project.status || ProjectStatus.DRAFT
+    };
+    
+    this.developmentProjects.set(id, newProject);
+    
+    await this.createSystemActivity({
+      activity_type: 'development_project_created',
+      component: 'development_platform',
+      status: 'success',
+      details: { projectId: newProject.projectId }
+    });
+    
+    return newProject;
+  }
+  
+  async getDevelopmentProject(id: number): Promise<DevelopmentProject | undefined> {
+    return this.developmentProjects.get(id);
+  }
+  
+  async getAllDevelopmentProjects(): Promise<DevelopmentProject[]> {
+    return Array.from(this.developmentProjects.values());
+  }
+  
+  async getDevelopmentProjectsByUser(userId: number): Promise<DevelopmentProject[]> {
+    return Array.from(this.developmentProjects.values())
+      .filter(project => project.createdBy === userId);
+  }
+  
+  async updateDevelopmentProject(id: number, updateData: Partial<DevelopmentProject>): Promise<DevelopmentProject | undefined> {
+    const project = this.developmentProjects.get(id);
+    if (!project) {
+      return undefined;
+    }
+    
+    const updatedProject: DevelopmentProject = {
+      ...project,
+      ...updateData,
+      updatedAt: new Date()
+    };
+    
+    this.developmentProjects.set(id, updatedProject);
+    
+    await this.createSystemActivity({
+      activity_type: 'development_project_updated',
+      component: 'development_platform',
+      status: 'success',
+      details: { projectId: project.projectId }
+    });
+    
+    return updatedProject;
+  }
+  
+  async deleteDevelopmentProject(id: number): Promise<boolean> {
+    const project = this.developmentProjects.get(id);
+    if (!project) {
+      return false;
+    }
+    
+    // Delete all related files
+    const projectFiles = await this.getProjectFilesByProject(id);
+    for (const file of projectFiles) {
+      await this.deleteProjectFile(file.id);
+    }
+    
+    // Delete any preview settings
+    const previewSetting = await this.getPreviewSettingByProject(id);
+    if (previewSetting) {
+      await this.deletePreviewSetting(previewSetting.id);
+    }
+    
+    this.developmentProjects.delete(id);
+    
+    await this.createSystemActivity({
+      activity_type: 'development_project_deleted',
+      component: 'development_platform',
+      status: 'success',
+      details: { projectId: project.projectId }
+    });
+    
+    return true;
+  }
+  
+  // Match the extended interface methods for backward compatibility
+  async findDevelopmentProjectByProjectId(projectId: string): Promise<DevelopmentProject | null> {
+    const project = Array.from(this.developmentProjects.values())
+      .find(p => p.projectId === projectId);
+    return project || null;
+  }
+  
+  async findAllDevelopmentProjects(): Promise<DevelopmentProject[]> {
+    return this.getAllDevelopmentProjects();
+  }
+  
+  async findDevelopmentProjectsByStatus(status: ProjectStatus): Promise<DevelopmentProject[]> {
+    return Array.from(this.developmentProjects.values())
+      .filter(project => project.status === status);
+  }
+  
+  async findDevelopmentProjectsByUserAndStatus(userId: number, status: ProjectStatus): Promise<DevelopmentProject[]> {
+    return Array.from(this.developmentProjects.values())
+      .filter(project => project.createdBy === userId && project.status === status);
+  }
+  
+  // Project File methods implementation
+  async createProjectFile(file: InsertProjectFile): Promise<ProjectFile> {
+    const id = this.currentProjectFileId++;
+    const timestamp = new Date();
+    
+    const newFile: ProjectFile = {
+      ...file,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      fileId: `file_${id}`
+    };
+    
+    this.projectFiles.set(id, newFile);
+    
+    await this.createSystemActivity({
+      activity_type: 'project_file_created',
+      component: 'development_platform',
+      status: 'success',
+      details: { fileId: newFile.fileId, projectId: file.projectId }
+    });
+    
+    return newFile;
+  }
+  
+  async getProjectFile(id: number): Promise<ProjectFile | undefined> {
+    return this.projectFiles.get(id);
+  }
+  
+  async getProjectFilesByProject(projectId: number): Promise<ProjectFile[]> {
+    return Array.from(this.projectFiles.values())
+      .filter(file => Number(file.projectId) === projectId);
+  }
+  
+  async getProjectFileByPath(projectId: number, path: string): Promise<ProjectFile | undefined> {
+    return Array.from(this.projectFiles.values())
+      .find(file => Number(file.projectId) === projectId && file.path === path);
+  }
+  
+  async updateProjectFile(id: number, updateData: Partial<ProjectFile>): Promise<ProjectFile | undefined> {
+    const file = this.projectFiles.get(id);
+    if (!file) {
+      return undefined;
+    }
+    
+    const updatedFile: ProjectFile = {
+      ...file,
+      ...updateData,
+      updatedAt: new Date()
+    };
+    
+    this.projectFiles.set(id, updatedFile);
+    
+    await this.createSystemActivity({
+      activity_type: 'project_file_updated',
+      component: 'development_platform',
+      status: 'success',
+      details: { fileId: file.fileId, projectId: file.projectId }
+    });
+    
+    return updatedFile;
+  }
+  
+  async deleteProjectFile(id: number): Promise<boolean> {
+    const file = this.projectFiles.get(id);
+    if (!file) {
+      return false;
+    }
+    
+    this.projectFiles.delete(id);
+    
+    await this.createSystemActivity({
+      activity_type: 'project_file_deleted',
+      component: 'development_platform',
+      status: 'success',
+      details: { fileId: file.fileId, projectId: file.projectId }
+    });
+    
+    return true;
+  }
+  
+  // Match the extended interface methods for backward compatibility
+  async findProjectFileById(id: number): Promise<ProjectFile | null> {
+    const file = await this.getProjectFile(id);
+    return file || null;
+  }
+  
+  async findProjectFileByFileId(fileId: string): Promise<ProjectFile | null> {
+    const file = Array.from(this.projectFiles.values())
+      .find(f => f.fileId === fileId);
+    return file || null;
+  }
+  
+  async findProjectFileByPath(projectId: string, path: string): Promise<ProjectFile | null> {
+    const file = Array.from(this.projectFiles.values())
+      .find(f => f.projectId === projectId && f.path === path);
+    return file || null;
+  }
+  
+  async findProjectFilesByProjectId(projectId: string): Promise<ProjectFile[]> {
+    return Array.from(this.projectFiles.values())
+      .filter(file => file.projectId === projectId);
+  }
+  
+  async findProjectFilesByParentPath(projectId: string, parentPath: string): Promise<ProjectFile[]> {
+    return Array.from(this.projectFiles.values())
+      .filter(file => 
+        file.projectId === projectId && 
+        file.parentPath === parentPath
+      );
+  }
+  
+  async findProjectFilesByPathPrefix(projectId: string, pathPrefix: string): Promise<ProjectFile[]> {
+    return Array.from(this.projectFiles.values())
+      .filter(file => 
+        file.projectId === projectId && 
+        file.path.startsWith(pathPrefix)
+      );
+  }
+  
+  // Project Template methods implementation
+  async createProjectTemplate(template: InsertProjectTemplate): Promise<ProjectTemplate> {
+    const id = this.currentProjectTemplateId++;
+    const timestamp = new Date();
+    
+    const newTemplate: ProjectTemplate = {
+      ...template,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      templateId: `templ_${id}`
+    };
+    
+    this.projectTemplates.set(id, newTemplate);
+    
+    await this.createSystemActivity({
+      activity_type: 'project_template_created',
+      component: 'development_platform',
+      status: 'success',
+      details: { templateId: newTemplate.templateId }
+    });
+    
+    return newTemplate;
+  }
+  
+  async getProjectTemplate(id: number): Promise<ProjectTemplate | undefined> {
+    return this.projectTemplates.get(id);
+  }
+  
+  async getAllProjectTemplates(): Promise<ProjectTemplate[]> {
+    return Array.from(this.projectTemplates.values());
+  }
+  
+  async getProjectTemplatesByType(type: string): Promise<ProjectTemplate[]> {
+    return Array.from(this.projectTemplates.values())
+      .filter(template => template.type === type);
+  }
+  
+  async getProjectTemplatesByLanguage(language: string): Promise<ProjectTemplate[]> {
+    return Array.from(this.projectTemplates.values())
+      .filter(template => template.language === language);
+  }
+  
+  async updateProjectTemplate(id: number, updateData: Partial<ProjectTemplate>): Promise<ProjectTemplate | undefined> {
+    const template = this.projectTemplates.get(id);
+    if (!template) {
+      return undefined;
+    }
+    
+    const updatedTemplate: ProjectTemplate = {
+      ...template,
+      ...updateData,
+      updatedAt: new Date()
+    };
+    
+    this.projectTemplates.set(id, updatedTemplate);
+    
+    await this.createSystemActivity({
+      activity_type: 'project_template_updated',
+      component: 'development_platform',
+      status: 'success',
+      details: { templateId: template.templateId }
+    });
+    
+    return updatedTemplate;
+  }
+  
+  async deleteProjectTemplate(id: number): Promise<boolean> {
+    const template = this.projectTemplates.get(id);
+    if (!template) {
+      return false;
+    }
+    
+    this.projectTemplates.delete(id);
+    
+    await this.createSystemActivity({
+      activity_type: 'project_template_deleted',
+      component: 'development_platform',
+      status: 'success',
+      details: { templateId: template.templateId }
+    });
+    
+    return true;
+  }
+  
+  // Match the extended interface methods for backward compatibility
+  async findProjectTemplateByTemplateId(templateId: string): Promise<ProjectTemplate | null> {
+    const template = Array.from(this.projectTemplates.values())
+      .find(t => t.templateId === templateId);
+    return template || null;
+  }
+  
+  async findAllProjectTemplates(): Promise<ProjectTemplate[]> {
+    return this.getAllProjectTemplates();
+  }
+  
+  // Project Version methods implementation
+  async createProjectVersion(version: InsertProjectVersion): Promise<ProjectVersion> {
+    const id = this.currentProjectVersionId++;
+    const timestamp = new Date();
+    
+    const newVersion: ProjectVersion = {
+      ...version,
+      id,
+      createdAt: timestamp,
+      versionId: `ver_${id}`
+    };
+    
+    this.projectVersions.set(id, newVersion);
+    
+    await this.createSystemActivity({
+      activity_type: 'project_version_created',
+      component: 'development_platform',
+      status: 'success',
+      details: { versionId: newVersion.versionId, projectId: version.projectId }
+    });
+    
+    return newVersion;
+  }
+  
+  async getProjectVersion(id: number): Promise<ProjectVersion | undefined> {
+    return this.projectVersions.get(id);
+  }
+  
+  async getProjectVersionsByProject(projectId: number): Promise<ProjectVersion[]> {
+    return Array.from(this.projectVersions.values())
+      .filter(version => Number(version.projectId) === projectId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // newest first
+  }
+  
+  async restoreProjectVersion(projectId: number, versionId: number): Promise<boolean> {
+    const project = this.developmentProjects.get(projectId);
+    if (!project) {
+      return false;
+    }
+    
+    const version = this.projectVersions.get(versionId);
+    if (!version || Number(version.projectId) !== projectId) {
+      return false;
+    }
+    
+    // Get all files for this version
+    if (!version.files) {
+      return false;
+    }
+    
+    // Clear existing files for the project
+    const currentFiles = await this.getProjectFilesByProject(projectId);
+    for (const file of currentFiles) {
+      await this.deleteProjectFile(file.id);
+    }
+    
+    // Restore files from the version
+    const versionFiles = Array.isArray(version.files) ? version.files : [];
+    for (const file of versionFiles) {
+      await this.createProjectFile({
+        projectId: project.projectId,
+        name: file.name,
+        path: file.path,
+        parentPath: file.parentPath || null,
+        content: file.content,
+        type: file.type,
+        size: file.size
+      });
+    }
+    
+    // Update project with version metadata if needed
+    await this.updateDevelopmentProject(projectId, {
+      updatedAt: new Date(),
+      restoredFromVersion: version.versionId
+    });
+    
+    await this.createSystemActivity({
+      activity_type: 'project_version_restored',
+      component: 'development_platform',
+      status: 'success',
+      details: { 
+        versionId: version.versionId, 
+        projectId: project.projectId 
+      }
+    });
+    
+    return true;
+  }
+  
+  // Match the extended interface methods for backward compatibility
+  async findProjectVersionByVersionId(versionId: string): Promise<ProjectVersion | null> {
+    const version = Array.from(this.projectVersions.values())
+      .find(v => v.versionId === versionId);
+    return version || null;
+  }
+  
+  async findProjectVersionsByProjectId(projectId: string): Promise<ProjectVersion[]> {
+    return Array.from(this.projectVersions.values())
+      .filter(version => version.projectId === projectId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  
+  // Preview Setting methods implementation
+  async createPreviewSetting(setting: InsertPreviewSetting): Promise<PreviewSetting> {
+    const id = this.currentPreviewSettingId++;
+    const timestamp = new Date();
+    
+    const newSetting: PreviewSetting = {
+      ...setting,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      logs: setting.logs || [],
+      port: setting.port || null,
+      pid: setting.pid || null,
+      lastStarted: setting.lastStarted || null,
+      lastStopped: setting.lastStopped || null,
+      autoRefresh: setting.autoRefresh || false,
+      configFile: setting.configFile || null
+    };
+    
+    this.previewSettings.set(id, newSetting);
+    
+    await this.createSystemActivity({
+      activity_type: 'preview_setting_created',
+      component: 'development_platform',
+      status: 'success',
+      details: { projectId: setting.projectId }
+    });
+    
+    return newSetting;
+  }
+  
+  async getPreviewSetting(id: number): Promise<PreviewSetting | undefined> {
+    return this.previewSettings.get(id);
+  }
+  
+  async getPreviewSettingByProject(projectId: number): Promise<PreviewSetting | undefined> {
+    return Array.from(this.previewSettings.values())
+      .find(setting => Number(setting.projectId) === projectId);
+  }
+  
+  async updatePreviewSetting(id: number, updateData: Partial<PreviewSetting>): Promise<PreviewSetting | undefined> {
+    const setting = this.previewSettings.get(id);
+    if (!setting) {
+      return undefined;
+    }
+    
+    const updatedSetting: PreviewSetting = {
+      ...setting,
+      ...updateData,
+      updatedAt: new Date()
+    };
+    
+    this.previewSettings.set(id, updatedSetting);
+    
+    await this.createSystemActivity({
+      activity_type: 'preview_setting_updated',
+      component: 'development_platform',
+      status: 'success',
+      details: { projectId: setting.projectId }
+    });
+    
+    return updatedSetting;
+  }
+  
+  async deletePreviewSetting(id: number): Promise<boolean> {
+    const setting = this.previewSettings.get(id);
+    if (!setting) {
+      return false;
+    }
+    
+    this.previewSettings.delete(id);
+    
+    await this.createSystemActivity({
+      activity_type: 'preview_setting_deleted',
+      component: 'development_platform',
+      status: 'success',
+      details: { projectId: setting.projectId }
+    });
+    
+    return true;
+  }
+  
+  // Match the extended interface methods for backward compatibility
+  async findPreviewSettingByProjectId(projectId: string): Promise<PreviewSetting | null> {
+    const setting = Array.from(this.previewSettings.values())
+      .find(s => s.projectId === projectId);
+    return setting || null;
+  }
+  
+  // AI Code Generation methods implementation
+  async createAiCodeGeneration(generation: InsertAiCodeGeneration): Promise<AiCodeGeneration> {
+    const id = this.currentAiCodeGenerationId++;
+    const timestamp = new Date();
+    
+    const newGeneration: AiCodeGeneration = {
+      ...generation,
+      id,
+      createdAt: timestamp,
+      generationId: `gen_${id}`
+    };
+    
+    this.aiCodeGenerations.set(id, newGeneration);
+    
+    await this.createSystemActivity({
+      activity_type: 'ai_code_generation_created',
+      component: 'development_platform',
+      status: 'success',
+      details: { 
+        generationId: newGeneration.generationId, 
+        projectId: generation.projectId 
+      }
+    });
+    
+    return newGeneration;
+  }
+  
+  async getAiCodeGeneration(id: number): Promise<AiCodeGeneration | undefined> {
+    return this.aiCodeGenerations.get(id);
+  }
+  
+  async getAiCodeGenerationsByProject(projectId: number): Promise<AiCodeGeneration[]> {
+    return Array.from(this.aiCodeGenerations.values())
+      .filter(generation => Number(generation.projectId) === projectId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // newest first
+  }
+  
+  async getAiCodeGenerationsByUser(userId: number): Promise<AiCodeGeneration[]> {
+    return Array.from(this.aiCodeGenerations.values())
+      .filter(generation => generation.userId === userId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // newest first
+  }
+  
+  // Match the extended interface methods for backward compatibility
+  async findAiCodeGenerationByGenerationId(generationId: string): Promise<AiCodeGeneration | null> {
+    const generation = Array.from(this.aiCodeGenerations.values())
+      .find(g => g.generationId === generationId);
+    return generation || null;
+  }
+  
+  async findAiCodeGenerationsByProjectId(projectId: string): Promise<AiCodeGeneration[]> {
+    return Array.from(this.aiCodeGenerations.values())
+      .filter(generation => generation.projectId === projectId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  
+  async updateAiCodeGeneration(id: number, updates: Partial<AiCodeGeneration>): Promise<AiCodeGeneration> {
+    const generation = this.aiCodeGenerations.get(id);
+    if (!generation) {
+      throw new Error(`AI Code Generation with id ${id} not found`);
+    }
+    
+    const updatedGeneration: AiCodeGeneration = {
+      ...generation,
+      ...updates
+    };
+    
+    this.aiCodeGenerations.set(id, updatedGeneration);
+    return updatedGeneration;
+  }
+  
+  async deleteAiCodeGeneration(id: number): Promise<boolean> {
+    const exists = this.aiCodeGenerations.has(id);
+    if (!exists) {
+      return false;
+    }
+    
+    this.aiCodeGenerations.delete(id);
+    return true;
   }
 }
 
