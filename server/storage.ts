@@ -5742,9 +5742,9 @@ export class PgStorage implements IStorage {
       .filter(file => file.projectId === projectId);
   }
   
-  async getProjectFileByPath(projectId: number, path: string): Promise<ProjectFile | undefined> {
+  async getProjectFileByPath(projectId: string, path: string): Promise<ProjectFile | undefined> {
     return Array.from(this.projectFiles.values())
-      .find(file => Number(file.projectId) === projectId && file.path === path);
+      .find(file => file.projectId === projectId && file.path === path);
   }
   
   async updateProjectFile(id: number, updateData: Partial<ProjectFile>): Promise<ProjectFile | undefined> {
@@ -5952,20 +5952,20 @@ export class PgStorage implements IStorage {
     return this.projectVersions.get(id);
   }
   
-  async getProjectVersionsByProject(projectId: number): Promise<ProjectVersion[]> {
+  async getProjectVersionsByProject(projectId: string): Promise<ProjectVersion[]> {
     return Array.from(this.projectVersions.values())
-      .filter(version => Number(version.projectId) === projectId)
+      .filter(version => version.projectId === projectId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // newest first
   }
   
-  async restoreProjectVersion(projectId: number, versionId: number): Promise<boolean> {
+  async restoreProjectVersion(projectId: string, versionId: number): Promise<boolean> {
     const project = this.developmentProjects.get(projectId);
     if (!project) {
       return false;
     }
     
     const version = this.projectVersions.get(versionId);
-    if (!version || Number(version.projectId) !== projectId) {
+    if (!version || version.projectId !== projectId) {
       return false;
     }
     
@@ -6061,9 +6061,9 @@ export class PgStorage implements IStorage {
     return this.previewSettings.get(id);
   }
   
-  async getPreviewSettingByProject(projectId: number): Promise<PreviewSetting | undefined> {
+  async getPreviewSettingByProject(projectId: string): Promise<PreviewSetting | undefined> {
     return Array.from(this.previewSettings.values())
-      .find(setting => Number(setting.projectId) === projectId);
+      .find(setting => setting.projectId === projectId);
   }
   
   async updatePreviewSetting(id: number, updateData: Partial<PreviewSetting>): Promise<PreviewSetting | undefined> {
@@ -6146,9 +6146,9 @@ export class PgStorage implements IStorage {
     return this.aiCodeGenerations.get(id);
   }
   
-  async getAiCodeGenerationsByProject(projectId: number): Promise<AiCodeGeneration[]> {
+  async getAiCodeGenerationsByProject(projectId: string): Promise<AiCodeGeneration[]> {
     return Array.from(this.aiCodeGenerations.values())
-      .filter(generation => Number(generation.projectId) === projectId)
+      .filter(generation => generation.projectId === projectId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // newest first
   }
   
