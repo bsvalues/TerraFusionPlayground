@@ -132,7 +132,8 @@ router.get('/projects/:projectId/files', async (req, res) => {
 router.get('/projects/:projectId/files/*', async (req, res) => {
   try {
     const { projectId } = req.params;
-    const filePath = req.params[0];
+    // Safely access the wildcard path parameter
+    const filePath = req.params['0'];
     
     const file = await fileManager.getFileByPath(projectId, filePath);
     
