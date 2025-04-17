@@ -6,7 +6,6 @@
  */
 
 import { IStorage } from '../../storage';
-import storage from '../../storage-instance';
 import { v4 as uuidv4 } from 'uuid';
 import {
   AssessmentModel,
@@ -245,7 +244,8 @@ class AssessmentModelWorkbench {
   }
 }
 
-// Singleton instance
+// Singleton instance - storage will be passed when imported
+import { storage } from '../../storage';
 export const assessmentModelWorkbench = new AssessmentModelWorkbench(storage);
 
 export default assessmentModelWorkbench;
