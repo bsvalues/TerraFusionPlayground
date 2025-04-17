@@ -374,6 +374,13 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   }
   
   /**
+   * Check if using fallback polling mechanism
+   */
+  public isUsingFallback(): boolean {
+    return this.usingFallback;
+  }
+  
+  /**
    * Register a listener for connection status changes
    * 
    * @param listener Function to call when connection status changes
