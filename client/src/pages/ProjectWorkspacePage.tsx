@@ -1,587 +1,367 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRoute, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { useParams, useLocation } from 'wouter';
-import DevelopmentWorkspaceLayout from '@/layout/development-workspace-layout';
 import { Button } from '@/components/ui/button';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  FileIcon,
-  FolderIcon,
-  Play,
-  PauseCircle,
-  RefreshCw,
-  Database,
-  Save,
-  Code,
-  ArrowLeftRight,
-  Clipboard,
-  ChevronsUpDown,
-  Check,
-  XCircle 
-} from 'lucide-react';
+import { Loader, Play, Square, Save, FileCode, Settings, Terminal, Code, PanelLeft, PanelRightClose } from 'lucide-react';
+import DevelopmentWorkspaceLayout from '../layout/development-workspace-layout';
 import { apiRequest } from '@/lib/queryClient';
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from '@/components/ui/badge';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-
-interface Project {
-  projectId: string;
-  name: string;
-  description: string;
-  type: string;
-  language: string;
-  framework: string | null;
-  status: string;
-  createdBy: number;
-  lastUpdated: Date;
-  createdAt: Date;
-}
-
-interface ProjectFile {
-  fileId: number;
-  projectId: string;
-  path: string;
-  name: string;
-  type: string;
-  content: string;
-  size: number;
-  lastUpdated: Date;
-  createdBy: number;
-  parentPath: string | null;
-}
-
-interface PreviewStatus {
-  id: number;
-  projectId: string;
-  status: string;
-  port: number | null;
-  command: string;
-  autoRefresh: boolean;
-  lastStarted: Date | null;
-  lastStopped: Date | null;
-  logs: string[] | null;
-  url?: string;
-}
+import FileExplorer from '../components/development/FileExplorer';
+import CodeEditor from '../components/development/CodeEditor';
+import PreviewPanel from '../components/development/PreviewPanel';
+import { useToast } from '@/hooks/use-toast';
 
 const ProjectWorkspacePage = () => {
-  const { projectId } = useParams();
+  const [, params] = useRoute<{ projectId: string }>('/development/projects/:projectId');
   const [, navigate] = useLocation();
-  
-  const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [currentTab, setCurrentTab] = useState<string>('files');
-  const [previewStatus, setPreviewStatus] = useState<string>('STOPPED');
-  
+  const [previewStatus, setPreviewStatus] = useState<'STOPPED' | 'RUNNING' | 'ERROR'>('STOPPED');
+  const [showFileExplorer, setShowFileExplorer] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<string>('editor');
+  const [unsavedChanges, setUnsavedChanges] = useState<boolean>(false);
+
   // Fetch project details
-  const { data: project, isLoading: isLoadingProject } = useQuery<Project>({
-    queryKey: ['/api/development/projects', projectId],
-    enabled: !!projectId,
+  const { data: project, isLoading: isLoadingProject } = useQuery({
+    queryKey: [`/api/development/projects/${params?.projectId}`],
+    enabled: !!params?.projectId,
   });
-  
+
   // Fetch project files
   const { 
-    data: files = [], 
+    data: fileTree, 
     isLoading: isLoadingFiles,
     refetch: refetchFiles
-  } = useQuery<ProjectFile[]>({
-    queryKey: ['/api/development/projects', projectId, 'files'],
-    enabled: !!projectId,
+  } = useQuery({
+    queryKey: [`/api/development/projects/${params?.projectId}/files`],
+    enabled: !!params?.projectId,
   });
-  
-  interface PreviewStatusResponse {
-    status: string;
-    port?: number;
-    url?: string;
-    logs?: string[];
-  }
-  
+
   // Fetch preview status
   const { 
     data: preview, 
     isLoading: isLoadingPreview,
     refetch: refetchPreview
-  } = useQuery<PreviewStatusResponse>({
-    queryKey: ['/api/development/projects', projectId, 'preview'],
-    enabled: !!projectId,
+  } = useQuery({
+    queryKey: [`/api/development/projects/${params?.projectId}/preview`],
+    enabled: !!params?.projectId,
   });
-  
-  // Effect to update preview status when data changes
+
   useEffect(() => {
     if (preview) {
       setPreviewStatus(preview.status);
     }
   }, [preview]);
-  
-  // Effect to navigate away if projectId doesn't exist
+
+  // Load file content when a file is selected
   useEffect(() => {
-    if (!projectId) {
-      navigate('/development');
+    if (selectedFile) {
+      loadFileContent(selectedFile);
     }
-  }, [projectId, navigate]);
-  
-  // Interface for file response
-  interface FileResponse {
-    content: string;
-    path: string;
-    name: string;
-    type: string;
-  }
-  
-  // Function to open a file
-  const handleOpenFile = async (path: string) => {
+  }, [selectedFile]);
+
+  const loadFileContent = async (filePath: string) => {
     try {
-      const response = await apiRequest(`/api/development/projects/${projectId}/files/${path}`, {
-        method: 'GET',
-      });
-      
-      const fileData: FileResponse = await response.json();
-      
-      setActiveFilePath(path);
-      setFileContent(fileData.content || '');
-      setIsEditing(false);
+      const response = await apiRequest(
+        `/api/development/projects/${params?.projectId}/files/${filePath}`,
+        { method: 'GET' }
+      );
+      setFileContent(response.content);
+      setUnsavedChanges(false);
     } catch (error) {
-      console.error('Failed to open file:', error);
+      console.error('Failed to load file:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load file content",
+        variant: "destructive",
+      });
     }
   };
-  
-  // Function to save file changes
+
+  const handleFileSelect = (filePath: string) => {
+    if (unsavedChanges) {
+      // In a real app, confirm before switching files
+      const confirmChange = window.confirm('You have unsaved changes. Do you want to continue?');
+      if (!confirmChange) return;
+    }
+    
+    setSelectedFile(filePath);
+  };
+
+  const handleCodeChange = (value: string) => {
+    setFileContent(value);
+    setUnsavedChanges(true);
+  };
+
   const handleSaveFile = async () => {
-    if (!activeFilePath) return;
+    if (!selectedFile) return;
     
     try {
-      await apiRequest(`/api/development/projects/${projectId}/files/${activeFilePath}`, {
-        method: 'PUT',
-        data: {
-          content: fileContent,
-        },
+      await apiRequest(
+        `/api/development/projects/${params?.projectId}/files/${selectedFile}`,
+        {
+          method: 'PUT',
+          data: { content: fileContent }
+        }
+      );
+      setUnsavedChanges(false);
+      toast({
+        title: "Success",
+        description: "File saved successfully",
       });
-      
-      setIsEditing(false);
-      refetchFiles();
     } catch (error) {
       console.error('Failed to save file:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save file",
+        variant: "destructive",
+      });
     }
   };
-  
-  // Function to toggle preview
-  const handleTogglePreview = async () => {
+
+  const togglePreview = async () => {
     try {
       if (previewStatus === 'RUNNING') {
-        await apiRequest(`/api/development/projects/${projectId}/preview/stop`, {
-          method: 'POST',
-        });
+        // Stop preview
+        await apiRequest(
+          `/api/development/projects/${params?.projectId}/preview/stop`,
+          { method: 'POST' }
+        );
       } else {
-        await apiRequest(`/api/development/projects/${projectId}/preview/start`, {
-          method: 'POST',
-        });
+        // Start preview
+        await apiRequest(
+          `/api/development/projects/${params?.projectId}/preview/start`,
+          { method: 'POST' }
+        );
       }
       
+      // Refresh preview status
       refetchPreview();
     } catch (error) {
-      console.error('Failed to toggle preview:', error);
-    }
-  };
-  
-  // Function to restart preview
-  const handleRestartPreview = async () => {
-    try {
-      await apiRequest(`/api/development/projects/${projectId}/preview/restart`, {
-        method: 'POST',
+      console.error('Preview action failed:', error);
+      toast({
+        title: "Error",
+        description: "Failed to toggle preview",
+        variant: "destructive",
       });
-      
-      refetchPreview();
-    } catch (error) {
-      console.error('Failed to restart preview:', error);
     }
   };
-  
-  // Function to generate breadcrumbs from path
-  const getBreadcrumbs = (path: string | null) => {
-    if (!path) return [{ label: 'Root', path: '' }];
-    
-    const parts = path.split('/');
-    return parts.map((part, index) => {
-      const currentPath = parts.slice(0, index + 1).join('/');
-      return {
-        label: part,
-        path: currentPath,
-      };
-    });
+
+  const toggleFileExplorer = () => {
+    setShowFileExplorer(!showFileExplorer);
   };
-  
-  // Building file tree
-  const buildFileTree = (files: ProjectFile[]) => {
-    const filesByPath: { [key: string]: ProjectFile[] } = {};
+
+  // Determine if it's a loading state
+  const isLoading = isLoadingProject || isLoadingFiles || isLoadingPreview;
+
+  // Determine file language for syntax highlighting
+  const getFileLanguage = () => {
+    if (!selectedFile) return 'javascript';
     
-    // Group files by parent path
-    files.forEach(file => {
-      const parent = file.parentPath || '';
-      if (!filesByPath[parent]) {
-        filesByPath[parent] = [];
-      }
-      filesByPath[parent].push(file);
-    });
+    const extension = selectedFile.split('.').pop()?.toLowerCase();
     
-    // Recursively render file tree
-    const renderFileTree = (path: string = '', depth: number = 0) => {
-      const filesInPath = filesByPath[path] || [];
-      
-      return (
-        <div className="pl-4">
-          {filesInPath.map(file => (
-            <div key={file.path}>
-              {file.type === 'DIRECTORY' ? (
-                <div>
-                  <div 
-                    className="flex items-center py-1 hover:bg-gray-100 rounded px-1 cursor-pointer"
-                    onClick={() => handleOpenFile(file.path)}
-                  >
-                    <FolderIcon className="h-4 w-4 mr-2 text-yellow-500" />
-                    <span className="text-sm">{file.name}</span>
-                  </div>
-                  {filesByPath[file.path] && renderFileTree(file.path, depth + 1)}
-                </div>
-              ) : (
-                <div 
-                  className={`flex items-center py-1 hover:bg-gray-100 rounded px-1 cursor-pointer ${activeFilePath === file.path ? 'bg-blue-50 text-blue-600' : ''}`}
-                  onClick={() => handleOpenFile(file.path)}
-                >
-                  <FileIcon className="h-4 w-4 mr-2 text-gray-500" />
-                  <span className="text-sm">{file.name}</span>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      );
-    };
-    
-    return renderFileTree();
+    switch (extension) {
+      case 'js': return 'javascript';
+      case 'ts': return 'typescript';
+      case 'jsx': return 'javascript';
+      case 'tsx': return 'typescript';
+      case 'html': return 'html';
+      case 'css': return 'css';
+      case 'json': return 'json';
+      case 'py': return 'python';
+      case 'java': return 'java';
+      case 'go': return 'go';
+      case 'rs': return 'rust';
+      case 'md': return 'markdown';
+      default: return 'plaintext';
+    }
   };
-  
-  if (isLoadingProject) {
+
+  if (isLoading) {
     return (
-      <DevelopmentWorkspaceLayout projectId={projectId}>
+      <DevelopmentWorkspaceLayout>
         <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-lg">Loading project workspace...</p>
-          </div>
+          <Loader className="h-8 w-8 animate-spin text-indigo-600" />
+          <span className="ml-2">Loading project...</span>
         </div>
       </DevelopmentWorkspaceLayout>
     );
   }
-  
-  const breadcrumbs = getBreadcrumbs(activeFilePath);
+
+  if (!project) {
+    return (
+      <DevelopmentWorkspaceLayout>
+        <div className="flex flex-col items-center justify-center h-full">
+          <p className="text-gray-500 mb-4">Project not found or unable to load.</p>
+          <Button onClick={() => navigate('/development')}>Back to Projects</Button>
+        </div>
+      </DevelopmentWorkspaceLayout>
+    );
+  }
 
   return (
-    <DevelopmentWorkspaceLayout projectId={projectId}>
-      <div className="flex flex-col h-full">
-        {/* Project Header */}
-        <div className="mb-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">{project?.name}</h1>
-            <p className="text-gray-500">{project?.description}</p>
-          </div>
-          <div className="flex space-x-2">
-            <Button
-              variant={previewStatus === 'RUNNING' ? 'destructive' : 'default'}
-              size="sm"
-              className="flex items-center space-x-1"
-              onClick={handleTogglePreview}
-            >
-              {previewStatus === 'RUNNING' ? (
-                <>
-                  <PauseCircle className="h-4 w-4" />
-                  <span>Stop Preview</span>
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4" />
-                  <span>Start Preview</span>
-                </>
-              )}
-            </Button>
-            {previewStatus === 'RUNNING' && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center space-x-1"
-                onClick={handleRestartPreview}
-              >
-                <RefreshCw className="h-4 w-4" />
-                <span>Restart</span>
-              </Button>
-            )}
-          </div>
+    <DevelopmentWorkspaceLayout>
+      {/* Project Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">{project.name}</h1>
+          <p className="text-gray-500">{project.description}</p>
         </div>
+        
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={toggleFileExplorer}
+          >
+            {showFileExplorer ? <PanelRightClose className="h-4 w-4 mr-1" /> : <PanelLeft className="h-4 w-4 mr-1" />}
+            {showFileExplorer ? 'Hide Explorer' : 'Show Explorer'}
+          </Button>
+          
+          <Button
+            size="sm"
+            onClick={togglePreview}
+            disabled={!selectedFile}
+            variant={previewStatus === 'RUNNING' ? "destructive" : "default"}
+          >
+            {previewStatus === 'RUNNING' ? (
+              <>
+                <Square className="h-4 w-4 mr-1" />
+                Stop Preview
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4 mr-1" />
+                Run Preview
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
 
-        {/* Main Workspace */}
-        <div className="flex-1 overflow-hidden border rounded-md">
-          <ResizablePanelGroup direction="horizontal">
-            {/* File Tree Panel */}
-            <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
-              <div className="h-full overflow-auto p-2">
-                <div className="flex justify-between items-center mb-2 p-2 bg-gray-50 rounded">
-                  <h3 className="font-medium text-gray-700">Project Files</h3>
-                  <Button variant="ghost" size="sm" onClick={(e) => { e.preventDefault(); refetchFiles(); }}>
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
-                </div>
-                {isLoadingFiles ? (
-                  <div className="flex items-center justify-center h-32">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+      {/* Main Workspace */}
+      <div className="flex h-[calc(100vh-200px)] border rounded-lg overflow-hidden">
+        {/* File Explorer */}
+        {showFileExplorer && (
+          <div className="w-64 border-r overflow-y-auto">
+            <FileExplorer 
+              files={fileTree || []} 
+              onSelectFile={handleFileSelect}
+              selectedFile={selectedFile}
+              projectId={params?.projectId || ''}
+              onRefresh={refetchFiles}
+            />
+          </div>
+        )}
+        
+        {/* Editor/Preview Area */}
+        <div className="flex-1 flex flex-col">
+          {/* Editor Tabs */}
+          <div className="border-b">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="px-4">
+                <TabsTrigger value="editor" className="flex items-center">
+                  <FileCode className="h-4 w-4 mr-1" />
+                  Editor
+                </TabsTrigger>
+                <TabsTrigger value="preview" className="flex items-center">
+                  <Code className="h-4 w-4 mr-1" />
+                  Preview
+                </TabsTrigger>
+                <TabsTrigger value="terminal" className="flex items-center">
+                  <Terminal className="h-4 w-4 mr-1" />
+                  Terminal
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="flex items-center">
+                  <Settings className="h-4 w-4 mr-1" />
+                  Settings
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          
+          {/* Editor Content */}
+          <div className="flex-1 overflow-hidden">
+            <TabsContent value="editor" className="h-full p-0 m-0">
+              {selectedFile ? (
+                <div className="h-full flex flex-col">
+                  <div className="flex items-center justify-between px-4 py-2 border-b bg-gray-50">
+                    <span className="text-sm font-medium">{selectedFile}</span>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={handleSaveFile}
+                      disabled={!unsavedChanges}
+                    >
+                      <Save className="h-4 w-4 mr-1" />
+                      Save
+                    </Button>
                   </div>
-                ) : (
-                  buildFileTree()
-                )}
+                  
+                  <div className="flex-1">
+                    <CodeEditor 
+                      value={fileContent} 
+                      onChange={handleCodeChange}
+                      language={getFileLanguage()}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  <p>Select a file to edit</p>
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="preview" className="h-full p-0 m-0">
+              <PreviewPanel 
+                projectId={params?.projectId || ''} 
+                status={previewStatus} 
+                onTogglePreview={togglePreview}
+              />
+            </TabsContent>
+            
+            <TabsContent value="terminal" className="h-full p-4 m-0 bg-gray-900 text-gray-100 font-mono text-sm overflow-auto">
+              <p>$ npm run dev</p>
+              <p className="text-green-400">Starting development server...</p>
+              <p className="text-gray-300">Project is running at http://localhost:3000</p>
+            </TabsContent>
+            
+            <TabsContent value="settings" className="h-full p-4 m-0">
+              <h3 className="text-lg font-medium mb-4">Project Settings</h3>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium mb-1">Project Name</p>
+                  <input 
+                    type="text" 
+                    className="w-full p-2 border rounded" 
+                    value={project.name} 
+                    readOnly 
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-1">Type</p>
+                  <input 
+                    type="text" 
+                    className="w-full p-2 border rounded" 
+                    value={project.type} 
+                    readOnly 
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-1">Language</p>
+                  <input 
+                    type="text" 
+                    className="w-full p-2 border rounded" 
+                    value={project.language} 
+                    readOnly 
+                  />
+                </div>
               </div>
-            </ResizablePanel>
-            
-            <ResizableHandle />
-            
-            {/* Editor/Preview Panel */}
-            <ResizablePanel defaultSize={55}>
-              <Tabs defaultValue="editor" className="h-full">
-                <div className="border-b px-4">
-                  <TabsList>
-                    <TabsTrigger value="editor" className="px-4">Editor</TabsTrigger>
-                    <TabsTrigger value="preview" className="px-4">Preview</TabsTrigger>
-                  </TabsList>
-                </div>
-                
-                <TabsContent value="editor" className="flex flex-col h-full p-0 m-0">
-                  {activeFilePath ? (
-                    <>
-                      <div className="flex justify-between items-center border-b px-4 py-2">
-                        <div className="flex items-center">
-                          <Breadcrumb>
-                            <BreadcrumbList>
-                              <BreadcrumbItem>
-                                <BreadcrumbLink href="#">Root</BreadcrumbLink>
-                              </BreadcrumbItem>
-                              <BreadcrumbSeparator />
-                              {breadcrumbs.slice(0, breadcrumbs.length - 1).map((crumb, i) => (
-                                <BreadcrumbItem key={i}>
-                                  <BreadcrumbLink href="#">{crumb.label}</BreadcrumbLink>
-                                  <BreadcrumbSeparator />
-                                </BreadcrumbItem>
-                              ))}
-                              <BreadcrumbItem>
-                                <BreadcrumbPage>{breadcrumbs[breadcrumbs.length - 1]?.label}</BreadcrumbPage>
-                              </BreadcrumbItem>
-                            </BreadcrumbList>
-                          </Breadcrumb>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {isEditing ? (
-                            <>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => setIsEditing(false)}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Cancel
-                              </Button>
-                              <Button 
-                                size="sm"
-                                onClick={handleSaveFile}
-                              >
-                                <Save className="h-4 w-4 mr-1" />
-                                Save
-                              </Button>
-                            </>
-                          ) : (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => setIsEditing(true)}
-                            >
-                              <Code className="h-4 w-4 mr-1" />
-                              Edit
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex-1 overflow-auto p-4 bg-gray-50 font-mono text-sm">
-                        {isEditing ? (
-                          <textarea
-                            className="w-full h-full p-4 font-mono text-sm rounded border resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-                            value={fileContent}
-                            onChange={(e) => setFileContent(e.target.value)}
-                          />
-                        ) : (
-                          <pre className="whitespace-pre-wrap">{fileContent}</pre>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center">
-                        <FileIcon className="h-12 w-12 text-gray-300 mx-auto" />
-                        <p className="mt-4 text-lg text-gray-500">Select a file to edit</p>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="preview" className="h-full p-0 m-0">
-                  <div className="h-full flex flex-col">
-                    <div className="border-b p-2 flex justify-between items-center bg-gray-50">
-                      <div className="flex items-center space-x-2">
-                        <Badge 
-                          variant={previewStatus === 'RUNNING' ? 'default' : 'outline'}
-                          className={previewStatus === 'RUNNING' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
-                        >
-                          {previewStatus === 'RUNNING' ? 'Running' : 'Stopped'}
-                        </Badge>
-                        {preview?.port && (
-                          <span className="text-xs text-gray-500">Port: {preview.port}</span>
-                        )}
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={(e) => { e.preventDefault(); refetchPreview(); }}
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="flex-1">
-                      {previewStatus === 'RUNNING' && preview?.url ? (
-                        <iframe 
-                          src={preview.url}
-                          className="w-full h-full"
-                          sandbox="allow-forms allow-scripts allow-same-origin"
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center">
-                            <Play className="h-12 w-12 text-gray-300 mx-auto" />
-                            <p className="mt-4 text-lg text-gray-500">Preview not running</p>
-                            <Button 
-                              className="mt-4" 
-                              onClick={handleTogglePreview}
-                            >
-                              Start Preview
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </ResizablePanel>
-            
-            <ResizableHandle />
-            
-            {/* Logs / AI Assistant Panel */}
-            <ResizablePanel defaultSize={25} minSize={20}>
-              <Tabs defaultValue="logs" className="h-full">
-                <div className="border-b px-4">
-                  <TabsList>
-                    <TabsTrigger value="logs" className="px-4">Logs</TabsTrigger>
-                    <TabsTrigger value="ai" className="px-4">AI Assistant</TabsTrigger>
-                  </TabsList>
-                </div>
-                
-                <TabsContent value="logs" className="p-0 m-0 h-full overflow-auto">
-                  <div className="h-full overflow-auto">
-                    <div className="p-2 bg-gray-50 flex justify-between items-center">
-                      <h3 className="text-sm font-medium">Preview Logs</h3>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={(e) => { e.preventDefault(); refetchPreview(); }}
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="p-4 font-mono text-xs overflow-auto max-h-[calc(100vh-12rem)]">
-                      {preview?.logs && preview.logs.length > 0 ? (
-                        preview.logs.map((log, index) => (
-                          <div key={index} className="whitespace-pre-wrap pb-1">
-                            {log}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-gray-500 italic">No logs available</div>
-                      )}
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="ai" className="p-0 m-0 h-full overflow-hidden">
-                  <div className="flex flex-col h-full">
-                    <div className="p-2 bg-gray-50">
-                      <h3 className="text-sm font-medium">AI Code Assistant</h3>
-                    </div>
-                    <div className="p-4 flex-1 flex flex-col">
-                      <p className="text-gray-500 mb-2">
-                        Get help with your code using AI assistance.
-                      </p>
-                      <div className="grid gap-2 mb-4">
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select task type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="generate">Generate Code</SelectItem>
-                            <SelectItem value="complete">Complete Code</SelectItem>
-                            <SelectItem value="document">Generate Documentation</SelectItem>
-                            <SelectItem value="explain">Explain Code</SelectItem>
-                            <SelectItem value="debug">Debug Help</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <textarea
-                        className="flex-1 p-3 border rounded-md resize-none font-mono text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="Describe what you want to do or paste code here..."
-                      ></textarea>
-                      <div className="mt-4 flex justify-end">
-                        <Button>
-                          <Code className="h-4 w-4 mr-1" />
-                          Generate
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+            </TabsContent>
+          </div>
         </div>
       </div>
     </DevelopmentWorkspaceLayout>

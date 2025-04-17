@@ -1,130 +1,144 @@
-import { ReactNode } from 'react';
+import React from 'react';
 import { Link } from 'wouter';
-import { Separator } from '@/components/ui/separator';
-import TopNavigation from '@/components/ui/top-navigation';
-import AIAssistantSidebar from '@/components/ai-assistant/AIAssistantSidebar';
-import { Button } from '@/components/ui/button';
-import { 
-  LayoutGrid, 
-  Code, 
-  Play, 
-  Database, 
-  Settings, 
-  FileCode, 
-  Folder,
-  Plus
-} from 'lucide-react';
+import { ChevronRight, Code, Database, Folder, Home, Settings } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DevelopmentWorkspaceLayoutProps {
-  children: ReactNode;
-  projectId?: string;
+  children: React.ReactNode;
+  showFileExplorer?: boolean;
 }
 
-const DevelopmentWorkspaceLayout = ({ children, projectId }: DevelopmentWorkspaceLayoutProps) => {
-  const hasProject = !!projectId;
-
+const DevelopmentWorkspaceLayout = ({ children, showFileExplorer = false }: DevelopmentWorkspaceLayoutProps) => {
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-white">
-      {/* Top Navigation Bar */}
-      <TopNavigation />
-
-      {/* Development Platform Header */}
-      <div className="flex items-center justify-between px-6 py-2 bg-gray-50 border-b">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-bold text-primary">TaxI_AI Development Platform</h1>
-          {hasProject && (
-            <>
-              <Separator orientation="vertical" className="h-6" />
-              <span className="text-lg font-medium text-gray-700">Project: {projectId}</span>
-            </>
-          )}
-        </div>
-        <div className="flex items-center space-x-2">
-          {hasProject ? (
-            <>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="flex items-center space-x-1"
-              >
-                <Play className="h-4 w-4" />
-                <span>Preview</span>
-              </Button>
-              <Button 
-                variant="default" 
-                size="sm"
-                className="flex items-center space-x-1"
-              >
-                <FileCode className="h-4 w-4" />
-                <span>Deploy</span>
-              </Button>
-            </>
-          ) : (
-            <Button 
-              variant="default" 
-              size="sm"
-              className="flex items-center space-x-1"
-              asChild
-            >
-              <Link href="/development/projects/new">
-                <Plus className="h-4 w-4" />
-                <span>New Project</span>
-              </Link>
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Workspace Container */}
-      <div className="flex flex-1 overflow-hidden">
-        {hasProject && (
-          <aside className="w-48 border-r overflow-y-auto bg-gray-50 p-2">
-            <nav className="space-y-6">
-              <div className="space-y-1">
-                <Link href={`/development/projects/${projectId}/files`}>
-                  <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-gray-100 cursor-pointer text-sm font-medium">
-                    <Folder className="h-4 w-4" />
-                    <span>Files</span>
-                  </div>
-                </Link>
-                <Link href={`/development/projects/${projectId}/database`}>
-                  <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-gray-100 cursor-pointer text-sm font-medium">
-                    <Database className="h-4 w-4" />
-                    <span>Database</span>
-                  </div>
-                </Link>
-                <Link href={`/development/projects/${projectId}/components`}>
-                  <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-gray-100 cursor-pointer text-sm font-medium">
-                    <LayoutGrid className="h-4 w-4" />
-                    <span>Components</span>
-                  </div>
-                </Link>
-                <Link href={`/development/projects/${projectId}/ai`}>
-                  <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-gray-100 cursor-pointer text-sm font-medium">
-                    <Code className="h-4 w-4" />
-                    <span>AI Assistant</span>
-                  </div>
-                </Link>
-                <Link href={`/development/projects/${projectId}/settings`}>
-                  <div className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-gray-100 cursor-pointer text-sm font-medium">
-                    <Settings className="h-4 w-4" />
-                    <span>Settings</span>
-                  </div>
-                </Link>
-              </div>
-            </nav>
-          </aside>
-        )}
-
-        {/* Main Content */}
-        <main className="flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto p-4">
-            {children}
-          </div>
-        </main>
+    <div className="flex flex-col min-h-screen">
+      {/* Top navigation */}
+      <header className="bg-white border-b h-14 flex items-center px-4 shadow-sm">
+        <Link href="/" className="text-lg font-semibold flex items-center mr-8">
+          <svg className="w-7 h-7 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#4F46E5" />
+            <path d="M2 17L12 22L22 17" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M2 12L12 17L22 12" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          TaxI_AI
+        </Link>
         
-        {/* AI Assistant Sidebar */}
-        <AIAssistantSidebar />
+        <nav className="flex space-x-4">
+          <Link href="/" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+            <Home className="h-4 w-4 mr-1" />
+            Home
+          </Link>
+          
+          <Link href="/development" className="text-indigo-600 border-b-2 border-indigo-600 px-3 py-2 text-sm font-medium flex items-center">
+            <Code className="h-4 w-4 mr-1" />
+            Development
+          </Link>
+          
+          <Link href="/data" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+            <Database className="h-4 w-4 mr-1" />
+            Data
+          </Link>
+        </nav>
+        
+        <div className="ml-auto flex items-center space-x-4">
+          <button className="text-gray-600 hover:text-gray-900">
+            <Settings className="h-5 w-5" />
+          </button>
+        </div>
+      </header>
+      
+      <div className="flex flex-1">
+        {/* Left sidebar */}
+        <aside className="w-52 border-r bg-gray-50 flex flex-col">
+          <nav className="p-4 flex-1">
+            <div className="mb-4">
+              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                Projects
+              </h2>
+              
+              <ul className="space-y-1">
+                <li>
+                  <Link 
+                    href="/development" 
+                    className="text-gray-700 hover:text-indigo-600 hover:bg-gray-100 rounded-md px-3 py-2 text-sm font-medium flex items-center"
+                  >
+                    <Folder className="h-4 w-4 mr-2" />
+                    All Projects
+                  </Link>
+                </li>
+                <li>
+                  <Link 
+                    href="/development?filter=active" 
+                    className="text-gray-700 hover:text-indigo-600 hover:bg-gray-100 rounded-md px-3 py-2 text-sm font-medium flex items-center"
+                  >
+                    Active Projects
+                  </Link>
+                </li>
+                <li>
+                  <Link 
+                    href="/development?filter=recent" 
+                    className="text-gray-700 hover:text-indigo-600 hover:bg-gray-100 rounded-md px-3 py-2 text-sm font-medium flex items-center"
+                  >
+                    Recent Projects
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            
+            <div>
+              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                Templates
+              </h2>
+              
+              <ul className="space-y-1">
+                <li>
+                  <Link 
+                    href="/development?tab=templates" 
+                    className="text-gray-700 hover:text-indigo-600 hover:bg-gray-100 rounded-md px-3 py-2 text-sm font-medium flex items-center"
+                  >
+                    Assessment Apps
+                  </Link>
+                </li>
+                <li>
+                  <Link 
+                    href="/development?tab=templates&filter=demo" 
+                    className="text-gray-700 hover:text-indigo-600 hover:bg-gray-100 rounded-md px-3 py-2 text-sm font-medium flex items-center"
+                  >
+                    Demo Apps
+                  </Link>
+                </li>
+                <li>
+                  <Link 
+                    href="/development?tab=templates&filter=framework" 
+                    className="text-gray-700 hover:text-indigo-600 hover:bg-gray-100 rounded-md px-3 py-2 text-sm font-medium flex items-center"
+                  >
+                    Framework Templates
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </nav>
+        </aside>
+        
+        {/* Main content area */}
+        <main className={cn("flex-1 p-6", showFileExplorer && "pl-0")}>
+          {showFileExplorer && (
+            <div className="flex h-full">
+              <div className="w-64 border-r h-full p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-medium">Files</h3>
+                </div>
+                <div className="project-files">
+                  {/* File explorer content will be dynamically populated */}
+                </div>
+              </div>
+              <div className="flex-1 p-6">
+                {children}
+              </div>
+            </div>
+          )}
+          
+          {!showFileExplorer && children}
+        </main>
       </div>
     </div>
   );
