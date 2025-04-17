@@ -205,11 +205,17 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         }
 
 
-        // Create Socket.IO instance
+        // Create Socket.IO instance with robust configuration
         this.socket = io(socketUrl, {
           path: path,
-          transports: ['polling', 'websocket'], // Try polling first, then WebSocket - more reliable in Replit
+          transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
           reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000,
+          timeout: 20000,
+          forceNew: true,
+          autoConnect: true,
           reconnectionAttempts: this.maxReconnectAttempts,
           reconnectionDelay: this.reconnectDelay,
           reconnectionDelayMax: 10000, // Max 10 seconds between attempts

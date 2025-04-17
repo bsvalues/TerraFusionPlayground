@@ -79,8 +79,11 @@ export class AgentSocketIOService {
         cors: {
           origin: '*',
           methods: ['GET', 'POST'],
-          credentials: true
+          credentials: true,
+          allowedHeaders: ['content-type']
         },
+        allowEIO3: true,
+        connectTimeout: 45000,
         // Add these settings for better compatibility with various proxies and improved connection stability
         transports: ['websocket', 'polling'],  // Enable polling as fallback
         allowUpgrades: true,
