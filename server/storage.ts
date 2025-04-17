@@ -635,6 +635,15 @@ export class MemStorage implements IStorage {
   private projectVersions: Map<number, ProjectVersion>;
   private previewSettings: Map<number, PreviewSetting>;
   private aiCodeGenerations: Map<number, AiCodeGeneration>;
+  
+  // Assessment Model Workbench data stores
+  private assessmentModels: AssessmentModel[];
+  private modelVariables: ModelVariable[];
+  private modelComponents: ModelComponent[];
+  private modelCalculations: ModelCalculation[];
+  private modelValidationRules: ModelValidationRule[];
+  private modelTestCases: ModelTestCase[];
+  private assessmentModelVersions: AssessmentModelVersion[];
   private appealComplianceReports: Map<string, any>; // Washington-specific appeal compliance reports
   
   // Team Agent Storage
@@ -733,6 +742,15 @@ export class MemStorage implements IStorage {
     this.projectVersions = new Map<number, ProjectVersion>();
     this.previewSettings = new Map<number, PreviewSetting>();
     this.aiCodeGenerations = new Map<number, AiCodeGeneration>();
+    
+    // Initialize Assessment Model Workbench arrays
+    this.assessmentModels = [];
+    this.modelVariables = [];
+    this.modelComponents = [];
+    this.modelCalculations = [];
+    this.modelValidationRules = [];
+    this.modelTestCases = [];
+    this.assessmentModelVersions = [];
     
     // Initialize Team Agent maps
     this.teamMembers = new Map<number, TeamMember>();
