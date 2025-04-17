@@ -3,12 +3,13 @@ import { useRoute, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader, Play, Square, Save, FileCode, Settings, Terminal, Code, PanelLeft, PanelRightClose } from 'lucide-react';
+import { Loader, Play, Square, Save, FileCode, Settings, Terminal, Code, PanelLeft, PanelRightClose, Sparkles } from 'lucide-react';
 import DevelopmentWorkspaceLayout from '../layout/development-workspace-layout';
 import { apiRequest } from '@/lib/queryClient';
 import FileExplorer from '../components/development/FileExplorer';
 import CodeEditor from '../components/development/CodeEditor';
 import PreviewPanel from '../components/development/PreviewPanel';
+import AICodeAssistant from '../components/development/AICodeAssistant';
 import { useToast } from '@/hooks/use-toast';
 
 const ProjectWorkspacePage = () => {
@@ -20,6 +21,7 @@ const ProjectWorkspacePage = () => {
   const [fileContent, setFileContent] = useState<string>('');
   const [previewStatus, setPreviewStatus] = useState<'STOPPED' | 'RUNNING' | 'ERROR'>('STOPPED');
   const [showFileExplorer, setShowFileExplorer] = useState<boolean>(true);
+  const [showAIAssistant, setShowAIAssistant] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('editor');
   const [unsavedChanges, setUnsavedChanges] = useState<boolean>(false);
 
@@ -151,6 +153,23 @@ const ProjectWorkspacePage = () => {
 
   const toggleFileExplorer = () => {
     setShowFileExplorer(!showFileExplorer);
+  };
+
+  const toggleAIAssistant = () => {
+    setShowAIAssistant(!showAIAssistant);
+  };
+
+  const handleInsertCode = (code: string) => {
+    setFileContent(prev => {
+      // Simple insertion at the end if no file content yet
+      if (!prev.trim()) {
+        return code;
+      }
+      
+      // Otherwise append with a newline separator
+      return `${prev}\n\n${code}`;
+    });
+    setUnsavedChanges(true);
   };
 
   // Determine if it's a loading state
@@ -289,23 +308,50 @@ const ProjectWorkspacePage = () => {
                 <div className="h-full flex flex-col">
                   <div className="flex items-center justify-between px-4 py-2 border-b bg-gray-50">
                     <span className="text-sm font-medium">{selectedFile}</span>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={handleSaveFile}
-                      disabled={!unsavedChanges}
-                    >
-                      <Save className="h-4 w-4 mr-1" />
-                      Save
-                    </Button>
+                    <div className="flex space-x-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={toggleAIAssistant}
+                        disabled={!selectedFile}
+                        className={showAIAssistant ? "bg-indigo-100" : ""}
+                      >
+                        <Sparkles className={`h-4 w-4 mr-1 ${showAIAssistant ? "text-indigo-600" : ""}`} />
+                        AI Assistant
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={handleSaveFile}
+                        disabled={!unsavedChanges}
+                      >
+                        <Save className="h-4 w-4 mr-1" />
+                        Save
+                      </Button>
+                    </div>
                   </div>
                   
-                  <div className="flex-1">
-                    <CodeEditor 
-                      value={fileContent} 
-                      onChange={handleCodeChange}
-                      language={getFileLanguage()}
-                    />
+                  <div className="flex-1 flex">
+                    <div className={`${showAIAssistant ? 'w-2/3' : 'w-full'} h-full`}>
+                      <CodeEditor 
+                        value={fileContent} 
+                        onChange={handleCodeChange}
+                        language={getFileLanguage()}
+                      />
+                    </div>
+                    
+                    {showAIAssistant && (
+                      <div className="w-1/3 h-full">
+                        <AICodeAssistant 
+                          projectId={params?.projectId || ''}
+                          fileContent={fileContent}
+                          filePath={selectedFile}
+                          language={getFileLanguage()}
+                          onInsertCode={handleInsertCode}
+                          onClose={toggleAIAssistant}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (

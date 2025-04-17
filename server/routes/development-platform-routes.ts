@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { projectManager } from '../services/development/project-manager';
 import { fileManager } from '../services/development/file-manager';
 import { previewEngine } from '../services/development/preview-engine';
-import { aiCodeAssistant } from '../services/development/ai-code-assistant';
+import { getAICodeAssistant } from '../services/development/ai-code-assistant';
 import { insertDevProjectSchema, DevFileType } from '@shared/schema';
 import path from 'path';
 
@@ -457,6 +457,7 @@ router.post('/ai/generate-code', async (req, res) => {
       return res.status(400).json({ error: 'Missing prompt field' });
     }
     
+    const aiCodeAssistant = getAICodeAssistant(); 
     const code = await aiCodeAssistant.generateCodeSuggestion(prompt, fileContext);
     res.json({ code });
   } catch (error) {
@@ -473,6 +474,7 @@ router.post('/ai/complete-code', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     
+    const aiCodeAssistant = getAICodeAssistant();
     const completedCode = await aiCodeAssistant.completeCode(codeSnippet, language);
     res.json({ code: completedCode });
   } catch (error) {
@@ -489,6 +491,7 @@ router.post('/ai/explain-code', async (req, res) => {
       return res.status(400).json({ error: 'Missing code field' });
     }
     
+    const aiCodeAssistant = getAICodeAssistant();
     const explanation = await aiCodeAssistant.explainCode(code);
     res.json({ explanation });
   } catch (error) {
@@ -505,6 +508,7 @@ router.post('/ai/fix-bugs', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     
+    const aiCodeAssistant = getAICodeAssistant();
     const fixedCode = await aiCodeAssistant.fixBugs(code, errorMessage);
     res.json({ code: fixedCode });
   } catch (error) {
@@ -521,6 +525,7 @@ router.post('/ai/recommend-improvement', async (req, res) => {
       return res.status(400).json({ error: 'Missing code field' });
     }
     
+    const aiCodeAssistant = getAICodeAssistant();
     const recommendations = await aiCodeAssistant.recommendImprovement(code);
     res.json({ recommendations });
   } catch (error) {

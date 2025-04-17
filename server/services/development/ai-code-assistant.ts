@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { AIAssistantService } from '../../services/ai-assistant-service';
 
 export interface CodeAssistantInterface {
   generateCodeSuggestion(prompt: string, fileContext?: string): Promise<string>;
@@ -6,174 +6,217 @@ export interface CodeAssistantInterface {
   explainCode(code: string): Promise<string>;
   fixBugs(code: string, errorMessage: string): Promise<string>;
   recommendImprovement(code: string): Promise<string>;
+  generateAssessmentModel(requirements: string): Promise<string>;
 }
 
+/**
+ * AI Code Assistant service for code generation, completion, and analysis
+ * specifically designed for assessment applications development
+ */
 class AICodeAssistant implements CodeAssistantInterface {
-  private openai: OpenAI;
+  private aiAssistantService: AIAssistantService;
   
-  constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY || 'demo', // Fallback to demo mode if no API key
-    });
+  constructor(aiAssistantService: AIAssistantService) {
+    this.aiAssistantService = aiAssistantService;
   }
-  
+
   /**
-   * Generate code suggestion based on a prompt
+   * Generate code based on a prompt and optional file context
    */
   async generateCodeSuggestion(prompt: string, fileContext?: string): Promise<string> {
+    const systemPrompt = `You are an expert programming assistant specialized in property assessment and valuation code. 
+    Your task is to generate high-quality, clean, and efficient code based on the user's requirements.
+    Focus particularly on assessment terminology and patterns appropriate for property tax administration.
+    Generate code that follows best practices and includes appropriate comments.`;
+    
+    let fullPrompt = prompt;
+    if (fileContext) {
+      fullPrompt = `Current file context:\n\`\`\`\n${fileContext}\n\`\`\`\n\nUser request: ${prompt}`;
+    }
+    
     try {
-      const promptText = `
-You are an expert developer assistant. Generate high-quality, production-ready code based on this request:
-
-${prompt}
-
-${fileContext ? `Context from existing file:\n${fileContext}` : ''}
-
-Write only the code without explanations unless specifically asked for. 
-Use best practices for the language and follow modern conventions.
-`;
-      
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: promptText }],
-        temperature: 0.2,
+      const response = await this.aiAssistantService.generateResponse({
+        systemPrompt,
+        userPrompt: fullPrompt,
+        provider: 'openai', // default, can be made configurable
+        options: {
+          temperature: 0.3, // lower temperature for more precise code
+          maxTokens: 2000
+        }
       });
       
-      return response.choices[0]?.message?.content || 'No code suggestion generated.';
+      // Extract code from response if it's wrapped in markdown code blocks
+      const codeRegex = /```(?:\w*\n)?([\s\S]*?)```/g;
+      const match = codeRegex.exec(response);
+      return match ? match[1].trim() : response;
     } catch (error) {
       console.error('Error generating code suggestion:', error);
-      return 'Error generating code. Please try again.';
+      throw new Error('Failed to generate code suggestion');
     }
   }
-  
+
   /**
-   * Complete code snippet
+   * Complete partial code snippet
    */
   async completeCode(codeSnippet: string, language: string): Promise<string> {
+    const systemPrompt = `You are an expert code completion assistant for ${language} programming, 
+    specializing in property assessment and tax administration code. 
+    Complete the provided code snippet with high-quality, efficient code that follows best practices.`;
+    
     try {
-      const promptText = `
-Complete the following ${language} code snippet with best practices:
-
-\`\`\`${language}
-${codeSnippet}
-\`\`\`
-
-Provide only the complete code including the original snippet without explanations. 
-Make sure the solution is idiomatic and follows best practices.
-`;
-      
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: promptText }],
-        temperature: 0.2,
+      const response = await this.aiAssistantService.generateResponse({
+        systemPrompt,
+        userPrompt: `Complete this ${language} code:\n\`\`\`${language}\n${codeSnippet}\n\`\`\`\nProvide only the completed code without explanations.`,
+        provider: 'openai',
+        options: {
+          temperature: 0.2,
+          maxTokens: 1500
+        }
       });
       
-      return response.choices[0]?.message?.content || 'No code completion generated.';
+      // Extract code from response
+      const codeRegex = /```(?:\w*\n)?([\s\S]*?)```/g;
+      const match = codeRegex.exec(response);
+      return match ? match[1].trim() : response;
     } catch (error) {
       console.error('Error completing code:', error);
-      return 'Error completing code. Please try again.';
+      throw new Error('Failed to complete code');
     }
   }
-  
+
   /**
-   * Explain code
+   * Explain code with assessment terminology
    */
   async explainCode(code: string): Promise<string> {
+    const systemPrompt = `You are an expert code explainer specializing in property assessment and valuation software.
+    Explain the provided code in clear, non-technical terms that assessors and appraisers would understand.
+    Focus on what the code does in the context of property assessment, not just the technical implementation.
+    Use terminology familiar to the assessment industry.`;
+    
     try {
-      const promptText = `
-Explain this code in simple terms:
-
-\`\`\`
-${code}
-\`\`\`
-
-Break down what the code does line by line, including:
-1. Overall purpose
-2. Key functions/methods
-3. Control flow
-4. Important variables and data structures
-5. Any potential issues or optimizations
-`;
-      
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: promptText }],
-        temperature: 0.2,
+      const response = await this.aiAssistantService.generateResponse({
+        systemPrompt,
+        userPrompt: `Explain this code in the context of property assessment:\n\`\`\`\n${code}\n\`\`\``,
+        provider: 'openai',
+        options: {
+          temperature: 0.7, // higher temperature for more natural language
+          maxTokens: 1000
+        }
       });
       
-      return response.choices[0]?.message?.content || 'No explanation generated.';
+      return response;
     } catch (error) {
       console.error('Error explaining code:', error);
-      return 'Error explaining code. Please try again.';
+      throw new Error('Failed to explain code');
     }
   }
-  
+
   /**
-   * Fix bugs in code
+   * Fix bugs in code based on error message
    */
   async fixBugs(code: string, errorMessage: string): Promise<string> {
+    const systemPrompt = `You are an expert debugging assistant specializing in property assessment software.
+    Analyze the provided code and error message to identify and fix the issues.
+    Provide the corrected code along with brief explanations of what was wrong and how you fixed it.
+    Ensure the fixed code maintains the original functionality and intent.`;
+    
     try {
-      const promptText = `
-Fix the bugs in this code based on the error message:
-
-Error message:
-${errorMessage}
-
-Code:
-\`\`\`
-${code}
-\`\`\`
-
-Provide only the fixed code without explanations unless the fix requires a significant architectural change.
-`;
-      
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: promptText }],
-        temperature: 0.2,
+      const response = await this.aiAssistantService.generateResponse({
+        systemPrompt,
+        userPrompt: `Fix this code that has the following error:\n\nERROR: ${errorMessage}\n\nCODE:\n\`\`\`\n${code}\n\`\`\`\n\nPlease provide the corrected code.`,
+        provider: 'openai',
+        options: {
+          temperature: 0.3,
+          maxTokens: 2000
+        }
       });
       
-      return response.choices[0]?.message?.content || 'No bug fixes generated.';
+      // Extract code from response
+      const codeRegex = /```(?:\w*\n)?([\s\S]*?)```/g;
+      const match = codeRegex.exec(response);
+      return match ? match[1].trim() : response;
     } catch (error) {
       console.error('Error fixing bugs:', error);
-      return 'Error fixing bugs. Please try again.';
+      throw new Error('Failed to fix bugs');
     }
   }
-  
+
   /**
-   * Recommend improvements to code
+   * Recommend improvements for code
    */
   async recommendImprovement(code: string): Promise<string> {
+    const systemPrompt = `You are an expert code reviewer specializing in property assessment and valuation software.
+    Analyze the provided code and suggest improvements in terms of:
+    1. Performance optimization
+    2. Readability and maintainability
+    3. Assessment industry best practices
+    4. Security considerations
+    5. Edge case handling relevant to property data
+    Provide specific, actionable recommendations with examples where appropriate.`;
+    
     try {
-      const promptText = `
-Review this code and recommend improvements:
-
-\`\`\`
-${code}
-\`\`\`
-
-Consider:
-1. Performance optimizations
-2. Coding standards and best practices
-3. Readability and maintainability
-4. Potential bugs or edge cases
-5. Modern language features that could be utilized
-
-Provide your recommendations with explanations on why they would improve the code.
-`;
-      
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: promptText }],
-        temperature: 0.2,
+      const response = await this.aiAssistantService.generateResponse({
+        systemPrompt,
+        userPrompt: `Review this code and suggest improvements specific to assessment software:\n\`\`\`\n${code}\n\`\`\``,
+        provider: 'openai',
+        options: {
+          temperature: 0.6,
+          maxTokens: 1500
+        }
       });
       
-      return response.choices[0]?.message?.content || 'No improvement recommendations generated.';
+      return response;
     } catch (error) {
       console.error('Error recommending improvements:', error);
-      return 'Error providing recommendations. Please try again.';
+      throw new Error('Failed to recommend improvements');
+    }
+  }
+
+  /**
+   * Generate assessment-specific model code
+   */
+  async generateAssessmentModel(requirements: string): Promise<string> {
+    const systemPrompt = `You are an expert in CAMA (Computer Assisted Mass Appraisal) and assessment model development.
+    Create high-quality, industry-standard code for property assessment models based on the provided requirements.
+    Include appropriate statistical methods, valuation approaches (cost, market, income), and assessment-specific validation.
+    Use assessment terminology correctly and implement industry best practices.
+    The code should be well-documented with explanations of the valuation methodology.`;
+    
+    try {
+      const response = await this.aiAssistantService.generateResponse({
+        systemPrompt,
+        userPrompt: `Generate a property assessment model based on these requirements:\n${requirements}\n\nProvide the complete code with appropriate documentation.`,
+        provider: 'openai',
+        options: {
+          temperature: 0.4,
+          maxTokens: 3000
+        }
+      });
+      
+      // Extract code from response
+      const codeRegex = /```(?:\w*\n)?([\s\S]*?)```/g;
+      const match = codeRegex.exec(response);
+      return match ? match[1].trim() : response;
+    } catch (error) {
+      console.error('Error generating assessment model:', error);
+      throw new Error('Failed to generate assessment model');
     }
   }
 }
 
-export const aiCodeAssistant = new AICodeAssistant();
+// Create and export the instance
+let aiCodeAssistant: AICodeAssistant;
+
+export function initializeAICodeAssistant(aiAssistantService: AIAssistantService): AICodeAssistant {
+  aiCodeAssistant = new AICodeAssistant(aiAssistantService);
+  return aiCodeAssistant;
+}
+
+export function getAICodeAssistant(): AICodeAssistant {
+  if (!aiCodeAssistant) {
+    throw new Error('AI Code Assistant not initialized');
+  }
+  return aiCodeAssistant;
+}
+
+export default aiCodeAssistant;
