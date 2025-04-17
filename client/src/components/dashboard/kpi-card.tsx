@@ -8,6 +8,8 @@ interface KPICardProps {
   actionLabel?: string;
   actionUrl?: string;
   valueColor?: string;
+  trend?: number; // Added trend property
+  subtitle?: string; // Added subtitle property
 }
 
 const KPICard: React.FC<KPICardProps> = ({ 
@@ -16,29 +18,28 @@ const KPICard: React.FC<KPICardProps> = ({
   icon, 
   actionLabel = "View all", 
   actionUrl = "#",
-  valueColor = "text-gray-900" 
+  valueColor = "text-gray-900",
+  trend,
+  subtitle
 }) => {
   return (
     <Card className="bg-white overflow-hidden shadow">
       <CardContent className="p-0">
-        <div className="p-5">
-          <div className="flex items-center">
-            <div className="flex-shrink-0 text-gray-400">
-              {icon}
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  {title}
-                </dt>
-                <dd>
-                  <div className={`text-lg font-medium ${valueColor}`}>
-                    {value}
-                  </div>
-                </dd>
-              </dl>
-            </div>
+        <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg transition-all hover:shadow-xl"> {/* Applied new styling */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg text-gray-600 dark:text-gray-300 font-medium">{title}</h3>
+            {trend && (
+              <span className={`text-sm ${trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
+              </span>
+            )}
           </div>
+          <p className="text-3xl font-bold mt-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            {value}
+          </p>
+          {subtitle && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{subtitle}</p>
+          )}
         </div>
         <div className="bg-gray-50 px-5 py-3">
           <div className="text-sm">

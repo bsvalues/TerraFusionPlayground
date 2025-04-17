@@ -48,11 +48,11 @@ export interface StagingResult {
 
 export class DataImportService {
   private stagingService: DataStagingService;
-  
+
   constructor(private storage: IStorage) {
     this.stagingService = new DataStagingService(storage);
   }
-  
+
   /**
    * Validate a CSV file containing property data
    * @param filePath Path to the CSV file
@@ -63,7 +63,7 @@ export class DataImportService {
       const records: any[] = [];
       const errors: string[] = [];
       let totalRecords = 0;
-      
+
       fs.createReadStream(filePath)
         .pipe(parse({
           columns: true,
@@ -82,14 +82,14 @@ export class DataImportService {
           const validationResults = records.map(record => this.validatePropertyRecord(record));
           const validRecords = validationResults.filter(result => result.isValid).length;
           const invalidRecords = totalRecords - validRecords;
-          
+
           // Collect all errors
           validationResults.forEach(result => {
             if (!result.isValid && result.errors) {
               errors.push(...result.errors);
             }
           });
-          
+
           resolve({
             totalRecords,
             validRecords,
@@ -100,7 +100,7 @@ export class DataImportService {
         });
     });
   }
-  
+
   /**
    * Import properties directly from a CSV file to the database
    * @param filePath Path to the CSV file
@@ -111,7 +111,7 @@ export class DataImportService {
       const records: any[] = [];
       const errors: string[] = [];
       let totalRecords = 0;
-      
+
       fs.createReadStream(filePath)
         .pipe(parse({
           columns: true,
@@ -128,12 +128,12 @@ export class DataImportService {
         .on('end', async () => {
           let successfulImports = 0;
           let failedImports = 0;
-          
+
           // Process each record
           for (const record of records) {
             try {
               const validationResult = this.validatePropertyRecord(record);
-              
+
               if (!validationResult.isValid) {
                 failedImports++;
                 if (validationResult.errors) {
@@ -141,7 +141,7 @@ export class DataImportService {
                 }
                 continue;
               }
-              
+
               const property = this.mapRecordToProperty(record);
               await this.storage.createProperty(property);
               successfulImports++;
@@ -151,7 +151,7 @@ export class DataImportService {
               errors.push(`Error importing record: ${errorMessage}`);
             }
           }
-          
+
           resolve({
             total: totalRecords,
             successfulImports,
@@ -161,7 +161,7 @@ export class DataImportService {
         });
     });
   }
-  
+
   /**
    * Stage properties from a CSV file for review before committing
    * @param filePath Path to the CSV file
@@ -172,7 +172,7 @@ export class DataImportService {
       const records: any[] = [];
       const errors: string[] = [];
       let totalRecords = 0;
-      
+
       fs.createReadStream(filePath)
         .pipe(parse({
           columns: true,
@@ -190,7 +190,7 @@ export class DataImportService {
           let staged = 0;
           let failed = 0;
           const stagingIds: string[] = [];
-          
+
           // Process each record
           for (const record of records) {
             try {
@@ -204,7 +204,7 @@ export class DataImportService {
               errors.push(`Error staging record: ${errorMessage}`);
             }
           }
-          
+
           resolve({
             total: totalRecords,
             staged,
@@ -215,7 +215,7 @@ export class DataImportService {
         });
     });
   }
-  
+
   /**
    * Validate a property record from a CSV file
    * 
@@ -234,7 +234,7 @@ export class DataImportService {
    */
   private validatePropertyRecord(record: any): { isValid: boolean; errors?: string[] } {
     const errors: string[] = [];
-    
+
     // Check required fields
     const requiredFields = ['propertyId', 'address', 'parcelNumber', 'propertyType'];
     for (const field of requiredFields) {
@@ -242,12 +242,12 @@ export class DataImportService {
         errors.push(`Missing required field: ${field}`);
       }
     }
-    
+
     // Validate propertyId format
     if (record.propertyId && !/^[A-Za-z0-9-_]+$/.test(record.propertyId)) {
       errors.push('Property ID must contain only alphanumeric characters, hyphens, and underscores');
     }
-    
+
     // Validate numeric fields
     const numericFields = ['acres', 'value', 'squareFeet', 'bedrooms', 'bathrooms', 'yearBuilt'];
     for (const field of numericFields) {
@@ -255,18 +255,18 @@ export class DataImportService {
         errors.push(`Field ${field} must be a number`);
       }
     }
-    
+
     // Validate status
     if (record.status && !['active', 'pending', 'sold', 'inactive'].includes(record.status.toLowerCase())) {
       errors.push('Status must be one of: active, pending, sold, inactive');
     }
-    
+
     return {
       isValid: errors.length === 0,
       errors: errors.length > 0 ? errors : undefined
     };
   }
-  
+
   /**
    * Map a CSV record to a property object
    * 
@@ -280,7 +280,7 @@ export class DataImportService {
   private mapRecordToProperty(record: any): InsertProperty {
     // Initialize extraFields to store non-schema properties
     const extraFields: Record<string, any> = {};
-    
+
     // Process extraFields if it exists in the record
     if (record.extraFields) {
       try {
@@ -293,7 +293,7 @@ export class DataImportService {
         console.error('Error parsing extraFields:', error);
       }
     }
-    
+
     // Add additional fields to extraFields
     if (record.squareFeet) extraFields.squareFeet = Number(record.squareFeet);
     if (record.bedrooms) extraFields.bedrooms = Number(record.bedrooms);
@@ -302,19 +302,19 @@ export class DataImportService {
     if (record.improvementType) extraFields.improvementType = record.improvementType;
     if (record.quality) extraFields.quality = record.quality;
     if (record.condition) extraFields.condition = record.condition;
-    
+
     // Convert numeric fields to strings as required by the InsertProperty type
     // For acres (required numeric field in the schema)
     const acres = record.acres ? String(Number(record.acres)) : "0"; // Required field, default to "0"
     // For value (optional numeric field in the schema)
     const value = record.value ? String(Number(record.value)) : null; // Optional field
-    
+
     // Store any additional fields in extraFields
     if (record.zoning) extraFields.zoning = record.zoning;
     if (record.landUseCode) extraFields.landUseCode = record.landUseCode;
     if (record.topography) extraFields.topography = record.topography;
     if (record.floodZone) extraFields.floodZone = record.floodZone;
-    
+
     // Map to property object (matching the exact InsertProperty schema)
     return {
       propertyId: record.propertyId,
@@ -326,5 +326,56 @@ export class DataImportService {
       value,
       extraFields
     };
+  }
+
+  // Added function based on the changes provided.  This assumes the existence of necessary methods in the storage object.
+  async importData(data: any) {
+    try {
+      // Validate incoming data structure
+      const validationResult = await this.validateDataStructure(data);
+      if (!validationResult.isValid) {
+        throw new Error(`Data validation failed: ${validationResult.errors.join(', ')}`);
+      }
+
+      // Transform and clean data
+      const cleanedData = this.sanitizeData(data);
+
+      // Add data lineage tracking
+      const dataWithLineage = {
+        ...cleanedData,
+        metadata: {
+          importedAt: new Date().toISOString(),
+          source: data.source || 'manual_import',
+          version: '1.0'
+        }
+      };
+
+      // Save with transaction support
+      const result = await this.storage.transaction(async (trx) => {
+        const saved = await this.storage.saveData(dataWithLineage, trx);
+        await this.storage.updateDataLineage(saved.id, dataWithLineage.metadata, trx);
+        return saved;
+      });
+
+      return {
+        success: true,
+        data: result,
+        message: 'Data imported successfully'
+      };
+    } catch (error) {
+      console.error('Data import failed:', error);
+      throw new Error(`Import failed: ${error.message}`);
+    }
+  }
+
+  // Placeholder functions -  These need to be implemented based on your specific data structure and requirements.
+  private async validateDataStructure(data: any): Promise<{ isValid: boolean; errors?: string[] }> {
+    // Implement your data structure validation logic here.  Return { isValid: true, errors: [] } if valid, otherwise { isValid: false, errors: ['error1', 'error2', ...] }
+    return { isValid: true, errors: [] };
+  }
+
+  private sanitizeData(data: any): any {
+    // Implement your data sanitization logic here
+    return data;
   }
 }

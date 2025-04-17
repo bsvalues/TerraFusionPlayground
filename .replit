@@ -40,3 +40,24 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Data Processing Pipeline"
+author = 37274620
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run validate-data"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run transform-data"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run load-data"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run verify-import"
