@@ -60,6 +60,7 @@ import { TeamAgentService } from "./services/team-agent-service";
 import { EnhancedMarketPredictionModel } from "./services/enhanced-market-prediction-model";
 import { EnhancedRiskAssessmentEngine } from "./services/enhanced-risk-assessment-engine";
 import { errorHandler, notFoundHandler } from "./middleware/error-middleware";
+import { initializeAgentVoiceCommandService } from "./services/agent-voice-command-service";
 
 import { validateApiKey, verifyToken, requireScope, TokenScope } from "./middleware/auth-middleware";
 
@@ -81,6 +82,8 @@ import { AgentCoordinator } from "./services/agent-coordinator";
 const propertyStoryGenerator = new PropertyStoryGenerator(storage);
 const propertyInsightSharingService = new PropertyInsightSharingService(storage);
 const agentSystem = new AgentSystem(storage);
+// Initialize agent voice command service
+const agentVoiceCommandService = initializeAgentVoiceCommandService(storage);
 
 // Initialize agent coordinator and factory 
 const agentCoordinator = AgentCoordinator.getInstance(storage);
