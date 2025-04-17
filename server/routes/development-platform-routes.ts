@@ -107,6 +107,72 @@ router.get('/project-statuses', (req, res) => {
   }
 });
 
+// Project templates endpoint - Provides template options for new projects
+router.get('/templates', (req, res) => {
+  try {
+    // Default templates for different project types
+    const templates = [
+      {
+        id: 'react-basic',
+        name: 'React Basic App',
+        description: 'A simple React application with a basic component structure',
+        language: 'javascript',
+        framework: 'react',
+        files: [
+          { path: 'src/App.js', type: 'FILE' },
+          { path: 'src/index.js', type: 'FILE' },
+          { path: 'public/index.html', type: 'FILE' },
+          { path: 'package.json', type: 'FILE' }
+        ]
+      },
+      {
+        id: 'api-express',
+        name: 'Express API',
+        description: 'RESTful API built with Express.js',
+        language: 'javascript',
+        framework: 'express',
+        files: [
+          { path: 'src/index.js', type: 'FILE' },
+          { path: 'src/routes.js', type: 'FILE' },
+          { path: 'src/controllers', type: 'DIRECTORY' },
+          { path: 'package.json', type: 'FILE' }
+        ]
+      },
+      {
+        id: 'flask-app',
+        name: 'Flask Web Application',
+        description: 'Web application built with Flask',
+        language: 'python',
+        framework: 'flask',
+        files: [
+          { path: 'app.py', type: 'FILE' },
+          { path: 'templates', type: 'DIRECTORY' },
+          { path: 'static', type: 'DIRECTORY' },
+          { path: 'requirements.txt', type: 'FILE' }
+        ]
+      },
+      {
+        id: 'assessment-module',
+        name: 'Property Assessment Module',
+        description: 'Specialized module for property assessment calculations',
+        language: 'javascript',
+        framework: 'nodejs',
+        files: [
+          { path: 'src/assessment.js', type: 'FILE' },
+          { path: 'src/models', type: 'DIRECTORY' },
+          { path: 'src/utils', type: 'DIRECTORY' },
+          { path: 'package.json', type: 'FILE' }
+        ]
+      }
+    ];
+    
+    res.json(templates);
+  } catch (error) {
+    console.error('Error getting templates:', error);
+    res.status(500).json({ error: 'Failed to get templates' });
+  }
+});
+
 router.get('/programming-languages', (req, res) => {
   try {
     const languages = projectManager.getProjectLanguages();
