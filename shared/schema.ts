@@ -433,6 +433,50 @@ export enum AssistantPersonalityTheme {
   CUSTOM = 'custom'
 }
 
+// Workspace Theme Types
+export enum WorkspaceTheme {
+  LIGHT = 'light',
+  DARK = 'dark',
+  SYSTEM = 'system',
+  HIGH_CONTRAST = 'high_contrast'
+}
+
+// Code Editor Theme Types
+export enum CodeEditorTheme {
+  LIGHT = 'light',
+  DARK = 'dark',
+  MONOKAI = 'monokai',
+  GITHUB = 'github',
+  DRACULA = 'dracula',
+  NORD = 'nord',
+  SOLARIZED_LIGHT = 'solarized_light',
+  SOLARIZED_DARK = 'solarized_dark',
+  CUSTOM = 'custom'
+}
+
+// Workspace Layout Types
+export enum WorkspaceLayout {
+  STANDARD = 'standard',
+  COMPACT = 'compact',
+  EXPANDED = 'expanded',
+  CUSTOM = 'custom'
+}
+
+// Developer Agent Specialization
+export enum DeveloperAgentSpecialization {
+  FULL_STACK = 'full_stack',
+  FRONTEND = 'frontend',
+  BACKEND = 'backend',
+  DATABASE = 'database',
+  DEVOPS = 'devops', 
+  UI_UX = 'ui_ux',
+  ACCESSIBILITY = 'accessibility',
+  PERFORMANCE = 'performance',
+  SECURITY = 'security',
+  TESTING = 'testing',
+  CUSTOM = 'custom'
+}
+
 // Enum definitions for validation and workflow
 export enum RuleCategory {
   CLASSIFICATION = 'classification',
@@ -2559,6 +2603,83 @@ export type InsertAssistantPersonality = z.infer<typeof insertAssistantPersonali
  * User Personality Preferences Table
  * Maps users to their preferred assistant personalities
  */
+// Workspace Preferences - User workspace customization settings
+export const workspacePreferences = pgTable("workspace_preferences", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  workspaceTheme: text("workspace_theme").default(WorkspaceTheme.SYSTEM), // light, dark, system, high_contrast
+  codeEditorTheme: text("code_editor_theme").default(CodeEditorTheme.DARK), // light, dark, monokai, etc
+  workspaceLayout: text("workspace_layout").default(WorkspaceLayout.STANDARD), // standard, compact, expanded, custom
+  fontSize: integer("font_size").default(14),
+  fontFamily: text("font_family").default("JetBrains Mono"),
+  lineHeight: numeric("line_height").default(1.5),
+  showMinimap: boolean("show_minimap").default(true),
+  tabSize: integer("tab_size").default(2),
+  wordWrap: boolean("word_wrap").default(false),
+  autoSave: boolean("auto_save").default(true),
+  liveCodeCompletion: boolean("live_code_completion").default(true),
+  preferredLanguages: text("preferred_languages").array().default(['typescript', 'javascript']),
+  favoriteTools: text("favorite_tools").array().default([]),
+  customUIColors: jsonb("custom_ui_colors").default({}),
+  dashboardLayout: jsonb("dashboard_layout").default({}),
+  sidebarConfiguration: jsonb("sidebar_configuration").default({}),
+  notificationPreferences: jsonb("notification_preferences").default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userIdx: index("workspace_preferences_user_idx").on(table.userId),
+  };
+});
+
+export type WorkspacePreference = typeof workspacePreferences.$inferSelect;
+
+export const insertWorkspacePreferenceSchema = createInsertSchema(workspacePreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertWorkspacePreference = z.infer<typeof insertWorkspacePreferenceSchema>;
+
+// Personalized Developer Agents - Agents customized by users for specific tasks
+export const personalizedDeveloperAgents = pgTable("personalized_developer_agents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  specialization: text("specialization").notNull().default(DeveloperAgentSpecialization.FULL_STACK),
+  personalityId: integer("personality_id").references(() => assistantPersonalities.id),
+  systemPrompt: text("system_prompt").notNull(),
+  exampleMessages: jsonb("example_messages").$type<string[]>().default([]),
+  supportedLanguages: text("supported_languages").array().default([]),
+  capabilities: jsonb("capabilities").default([]),
+  isActive: boolean("is_active").default(true),
+  isShared: boolean("is_shared").default(false),
+  usageCount: integer("usage_count").default(0),
+  aiProvider: text("ai_provider").default("anthropic"), // openai, anthropic, perplexity
+  aiModel: text("ai_model").default("claude-3-7-sonnet-20250219"),
+  preferredTools: jsonb("preferred_tools").default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    nameUserIdx: index("personalized_dev_agents_name_user_idx").on(table.name, table.userId),
+    specializationIdx: index("personalized_dev_agents_specialization_idx").on(table.specialization),
+  };
+});
+
+export type PersonalizedDeveloperAgent = typeof personalizedDeveloperAgents.$inferSelect;
+
+export const insertPersonalizedDeveloperAgentSchema = createInsertSchema(personalizedDeveloperAgents).omit({
+  id: true,
+  usageCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPersonalizedDeveloperAgent = z.infer<typeof insertPersonalizedDeveloperAgentSchema>;
+
 export const userPersonalityPreferences = pgTable("user_personality_preferences", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
