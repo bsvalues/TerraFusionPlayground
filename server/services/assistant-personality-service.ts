@@ -48,11 +48,7 @@ class AssistantPersonalityService {
 
       return newPersonality;
     } catch (error) {
-      logger.error({
-        component: 'AssistantPersonalityService',
-        message: 'Error creating assistant personality',
-        error
-      });
+      logger.error(`AssistantPersonalityService: Error creating assistant personality - ${error.message}`);
       throw error;
     }
   }
@@ -66,10 +62,7 @@ class AssistantPersonalityService {
     personalityData: Partial<InsertAssistantPersonality>
   ): Promise<AssistantPersonality> {
     try {
-      logger.info({
-        component: 'AssistantPersonalityService',
-        message: `Updating assistant personality ID: ${id}`
-      });
+      logger.info(`AssistantPersonalityService: Updating assistant personality ID: ${id}`);
 
       // If setting as default, unset any existing defaults for this user
       if (personalityData.isDefault) {
@@ -100,11 +93,7 @@ class AssistantPersonalityService {
 
       return updatedPersonality;
     } catch (error) {
-      logger.error({
-        component: 'AssistantPersonalityService',
-        message: `Error updating assistant personality ID: ${id}`,
-        error
-      });
+      logger.error(`AssistantPersonalityService: Error updating assistant personality ID: ${id} - ${error.message}`);
       throw error;
     }
   }
@@ -114,10 +103,7 @@ class AssistantPersonalityService {
    */
   async deletePersonality(id: number, userId: number): Promise<void> {
     try {
-      logger.info({
-        component: 'AssistantPersonalityService',
-        message: `Deleting assistant personality ID: ${id}`
-      });
+      logger.info(`AssistantPersonalityService: Deleting assistant personality ID: ${id}`);
 
       // Delete any user preferences referring to this personality
       await db
@@ -137,11 +123,7 @@ class AssistantPersonalityService {
         throw new Error('Personality not found or you do not have permission to delete it');
       }
     } catch (error) {
-      logger.error({
-        component: 'AssistantPersonalityService',
-        message: `Error deleting assistant personality ID: ${id}`,
-        error
-      });
+      logger.error(`AssistantPersonalityService: Error deleting assistant personality ID: ${id} - ${error.message}`);
       throw error;
     }
   }
@@ -393,10 +375,7 @@ class AssistantPersonalityService {
       // Check if templates already exist
       const existingTemplates = await db.select().from(personalityTemplates).limit(1);
       if (existingTemplates.length > 0) {
-        logger.info({
-          component: 'AssistantPersonalityService',
-          message: 'Default personality templates already exist, skipping initialization'
-        });
+        logger.info(`AssistantPersonalityService: Default personality templates already exist, skipping initialization`);
         return;
       }
 
@@ -536,16 +515,9 @@ class AssistantPersonalityService {
       // Insert default templates
       await db.insert(personalityTemplates).values(defaultTemplates);
 
-      logger.info({
-        component: 'AssistantPersonalityService',
-        message: `Initialized ${defaultTemplates.length} default personality templates`
-      });
+      logger.info(`AssistantPersonalityService: Initialized ${defaultTemplates.length} default personality templates`);
     } catch (error) {
-      logger.error({
-        component: 'AssistantPersonalityService',
-        message: 'Error initializing default personality templates',
-        error
-      });
+      logger.error(`AssistantPersonalityService: Error initializing default personality templates - ${error.message}`);
       throw error;
     }
   }
