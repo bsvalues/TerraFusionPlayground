@@ -6918,145 +6918,283 @@ export class PgStorage implements IStorage {
   }
 
   // Development Tools Implementation
-  // Code Snippets
+  // CODE SNIPPETS
+  
   async getCodeSnippets(filters?: { language?: string, snippetType?: string, tags?: string[] }): Promise<CodeSnippet[]> {
-    let query = this.db.select().from(codeSnippets);
+    let snippets = Array.from(this.codeSnippets.values());
     
+    // Apply filters if provided
     if (filters) {
       if (filters.language) {
-        query = query.where(eq(codeSnippets.language, filters.language));
+        snippets = snippets.filter(snippet => snippet.language === filters.language);
       }
       if (filters.snippetType) {
-        query = query.where(eq(codeSnippets.snippetType, filters.snippetType));
+        snippets = snippets.filter(snippet => snippet.snippetType === filters.snippetType);
       }
-      // Note: filtering by tags would be more complex and require custom SQL in a real implementation
+      if (filters.tags && filters.tags.length > 0) {
+        snippets = snippets.filter(snippet => {
+          if (!snippet.tags) return false;
+          return filters.tags!.some(tag => snippet.tags!.includes(tag));
+        });
+      }
     }
     
-    return await query;
+    return snippets;
   }
 
   async getCodeSnippetById(id: number): Promise<CodeSnippet | undefined> {
-    const results = await this.db.select().from(codeSnippets).where(eq(codeSnippets.id, id));
-    return results[0];
+    return this.codeSnippets.get(id);
   }
 
   async createCodeSnippet(snippet: InsertCodeSnippet): Promise<CodeSnippet> {
-    const results = await this.db.insert(codeSnippets).values(snippet).returning();
-    return results[0];
+    const id = this.currentCodeSnippetId++;
+    const timestamp = new Date();
+    
+    const newSnippet: CodeSnippet = {
+      ...snippet,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      usageCount: 0,
+      // Set default values for nullable fields
+      description: snippet.description || null,
+      tags: snippet.tags || [],
+      isPublic: snippet.isPublic !== undefined ? snippet.isPublic : true,
+      aiGenerated: snippet.aiGenerated !== undefined ? snippet.aiGenerated : false,
+      aiModel: snippet.aiModel || null
+    };
+    
+    this.codeSnippets.set(id, newSnippet);
+    
+    await this.createSystemActivity({
+      activity_type: 'code_snippet_created',
+      component: 'development_tools',
+      details: { snippetId: id, name: newSnippet.name }
+    });
+    
+    return newSnippet;
   }
 
   async updateCodeSnippet(id: number, updates: Partial<InsertCodeSnippet>): Promise<CodeSnippet | undefined> {
-    const results = await this.db.update(codeSnippets)
-      .set({
-        ...updates,
-        updatedAt: new Date()
-      })
-      .where(eq(codeSnippets.id, id))
-      .returning();
+    const existingSnippet = this.codeSnippets.get(id);
+    if (!existingSnippet) return undefined;
     
-    return results[0];
+    const updatedSnippet: CodeSnippet = {
+      ...existingSnippet,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.codeSnippets.set(id, updatedSnippet);
+    
+    await this.createSystemActivity({
+      activity_type: 'code_snippet_updated',
+      component: 'development_tools',
+      details: { snippetId: id, name: updatedSnippet.name }
+    });
+    
+    return updatedSnippet;
   }
 
   async deleteCodeSnippet(id: number): Promise<boolean> {
-    const results = await this.db.delete(codeSnippets)
-      .where(eq(codeSnippets.id, id))
-      .returning();
+    const snippet = this.codeSnippets.get(id);
+    if (!snippet) return false;
     
-    return results.length > 0;
+    const result = this.codeSnippets.delete(id);
+    
+    if (result) {
+      await this.createSystemActivity({
+        activity_type: 'code_snippet_deleted',
+        component: 'development_tools',
+        details: { snippetId: id, name: snippet.name }
+      });
+    }
+    
+    return result;
   }
 
-  // Data Visualizations
+  // DATA VISUALIZATIONS
+  
   async getDataVisualizations(filters?: { visualizationType?: string, createdBy?: number }): Promise<DataVisualization[]> {
-    let query = this.db.select().from(dataVisualizations);
+    let visualizations = Array.from(this.dataVisualizations.values());
     
+    // Apply filters if provided
     if (filters) {
       if (filters.visualizationType) {
-        query = query.where(eq(dataVisualizations.visualizationType, filters.visualizationType));
+        visualizations = visualizations.filter(viz => viz.visualizationType === filters.visualizationType);
       }
       if (filters.createdBy) {
-        query = query.where(eq(dataVisualizations.createdBy, filters.createdBy));
+        visualizations = visualizations.filter(viz => viz.createdBy === filters.createdBy);
       }
     }
     
-    return await query;
+    return visualizations;
   }
 
   async getDataVisualizationById(id: number): Promise<DataVisualization | undefined> {
-    const results = await this.db.select().from(dataVisualizations).where(eq(dataVisualizations.id, id));
-    return results[0];
+    return this.dataVisualizations.get(id);
   }
 
   async createDataVisualization(visualization: InsertDataVisualization): Promise<DataVisualization> {
-    const results = await this.db.insert(dataVisualizations).values(visualization).returning();
-    return results[0];
+    const id = this.currentDataVisualizationId++;
+    const timestamp = new Date();
+    
+    const newVisualization: DataVisualization = {
+      ...visualization,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      viewCount: 0,
+      // Set default values for nullable fields
+      description: visualization.description || null,
+      isPublic: visualization.isPublic !== undefined ? visualization.isPublic : true,
+      previewImage: visualization.previewImage || null
+    };
+    
+    this.dataVisualizations.set(id, newVisualization);
+    
+    await this.createSystemActivity({
+      activity_type: 'data_visualization_created',
+      component: 'development_tools',
+      details: { visualizationId: id, name: newVisualization.name }
+    });
+    
+    return newVisualization;
   }
 
   async updateDataVisualization(id: number, updates: Partial<InsertDataVisualization>): Promise<DataVisualization | undefined> {
-    const results = await this.db.update(dataVisualizations)
-      .set({
-        ...updates,
-        updatedAt: new Date()
-      })
-      .where(eq(dataVisualizations.id, id))
-      .returning();
+    const existingVisualization = this.dataVisualizations.get(id);
+    if (!existingVisualization) return undefined;
     
-    return results[0];
+    const updatedVisualization: DataVisualization = {
+      ...existingVisualization,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.dataVisualizations.set(id, updatedVisualization);
+    
+    await this.createSystemActivity({
+      activity_type: 'data_visualization_updated',
+      component: 'development_tools',
+      details: { visualizationId: id, name: updatedVisualization.name }
+    });
+    
+    return updatedVisualization;
   }
 
   async deleteDataVisualization(id: number): Promise<boolean> {
-    const results = await this.db.delete(dataVisualizations)
-      .where(eq(dataVisualizations.id, id))
-      .returning();
+    const visualization = this.dataVisualizations.get(id);
+    if (!visualization) return false;
     
-    return results.length > 0;
-  }
-
-  // UI Component Templates
-  async getUIComponentTemplates(filters?: { componentType?: string, framework?: string, tags?: string[] }): Promise<UIComponentTemplate[]> {
-    let query = this.db.select().from(uiComponentTemplates);
+    const result = this.dataVisualizations.delete(id);
     
-    if (filters) {
-      if (filters.componentType) {
-        query = query.where(eq(uiComponentTemplates.componentType, filters.componentType));
-      }
-      if (filters.framework) {
-        query = query.where(eq(uiComponentTemplates.framework, filters.framework));
-      }
-      // Note: filtering by tags would require a more complex query in a real implementation
+    if (result) {
+      await this.createSystemActivity({
+        activity_type: 'data_visualization_deleted',
+        component: 'development_tools',
+        details: { visualizationId: id, name: visualization.name }
+      });
     }
     
-    return await query;
+    return result;
+  }
+
+  // UI COMPONENT TEMPLATES
+  
+  async getUIComponentTemplates(filters?: { componentType?: string, framework?: string, tags?: string[] }): Promise<UIComponentTemplate[]> {
+    let templates = Array.from(this.uiComponentTemplates.values());
+    
+    // Apply filters if provided
+    if (filters) {
+      if (filters.componentType) {
+        templates = templates.filter(template => template.componentType === filters.componentType);
+      }
+      if (filters.framework) {
+        templates = templates.filter(template => template.framework === filters.framework);
+      }
+      if (filters.tags && filters.tags.length > 0) {
+        templates = templates.filter(template => {
+          if (!template.tags) return false;
+          return filters.tags!.some(tag => template.tags!.includes(tag));
+        });
+      }
+    }
+    
+    return templates;
   }
 
   async getUIComponentTemplateById(id: number): Promise<UIComponentTemplate | undefined> {
-    const results = await this.db.select().from(uiComponentTemplates).where(eq(uiComponentTemplates.id, id));
-    return results[0];
+    return this.uiComponentTemplates.get(id);
   }
 
   async createUIComponentTemplate(template: InsertUIComponentTemplate): Promise<UIComponentTemplate> {
-    const results = await this.db.insert(uiComponentTemplates).values(template).returning();
-    return results[0];
+    const id = this.currentUIComponentTemplateId++;
+    const timestamp = new Date();
+    
+    const newTemplate: UIComponentTemplate = {
+      ...template,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      usageCount: 0,
+      // Set default values for nullable fields
+      description: template.description || null,
+      tags: template.tags || [],
+      isPublic: template.isPublic !== undefined ? template.isPublic : true,
+      previewImage: template.previewImage || null
+    };
+    
+    this.uiComponentTemplates.set(id, newTemplate);
+    
+    await this.createSystemActivity({
+      activity_type: 'ui_component_template_created',
+      component: 'development_tools',
+      details: { templateId: id, name: newTemplate.name }
+    });
+    
+    return newTemplate;
   }
 
   async updateUIComponentTemplate(id: number, updates: Partial<InsertUIComponentTemplate>): Promise<UIComponentTemplate | undefined> {
-    const results = await this.db.update(uiComponentTemplates)
-      .set({
-        ...updates,
-        updatedAt: new Date()
-      })
-      .where(eq(uiComponentTemplates.id, id))
-      .returning();
+    const existingTemplate = this.uiComponentTemplates.get(id);
+    if (!existingTemplate) return undefined;
     
-    return results[0];
+    const updatedTemplate: UIComponentTemplate = {
+      ...existingTemplate,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.uiComponentTemplates.set(id, updatedTemplate);
+    
+    await this.createSystemActivity({
+      activity_type: 'ui_component_template_updated',
+      component: 'development_tools',
+      details: { templateId: id, name: updatedTemplate.name }
+    });
+    
+    return updatedTemplate;
   }
 
   async deleteUIComponentTemplate(id: number): Promise<boolean> {
-    const results = await this.db.delete(uiComponentTemplates)
-      .where(eq(uiComponentTemplates.id, id))
-      .returning();
+    const template = this.uiComponentTemplates.get(id);
+    if (!template) return false;
     
-    return results.length > 0;
+    const result = this.uiComponentTemplates.delete(id);
+    
+    if (result) {
+      await this.createSystemActivity({
+        activity_type: 'ui_component_template_deleted',
+        component: 'development_tools',
+        details: { templateId: id, name: template.name }
+      });
+    }
+    
+    return result;
   }
+
+
 }
 
 // Use database storage instead of in-memory
