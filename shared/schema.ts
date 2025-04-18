@@ -2619,3 +2619,194 @@ export const insertPersonalityTemplateSchema = createInsertSchema(personalityTem
 });
 
 export type InsertPersonalityTemplate = z.infer<typeof insertPersonalityTemplateSchema>;
+
+// ================================
+// Database Conversion Schema
+// ================================
+
+// Database Conversion Types
+export const databaseTypeEnum = pgEnum('database_type', [
+  'postgres',
+  'mysql',
+  'sqlserver',
+  'oracle',
+  'mongodb',
+  'sqlite',
+  'csv',
+  'excel',
+  'json',
+  'xml',
+]);
+
+export const connectionStatusEnum = pgEnum('connection_status', [
+  'connected',
+  'disconnected',
+  'error',
+  'testing',
+]);
+
+export const conversionStatusEnum = pgEnum('conversion_status', [
+  'pending',
+  'analyzing',
+  'analyzed',
+  'planning',
+  'planned',
+  'generating_script',
+  'script_generated',
+  'migrating',
+  'migrated',
+  'creating_compatibility',
+  'completed',
+  'error',
+]);
+
+// Database Conversion Projects
+export const databaseConversionProjects = pgTable("database_conversion_projects", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  description: text("description"),
+  sourceConfig: jsonb("source_config").notNull(), // Connection details for source database
+  targetConfig: jsonb("target_config").notNull(), // Connection details for target database
+  status: text("status").notNull().default('pending'),
+  progress: integer("progress").notNull().default(0),
+  currentStage: text("current_stage").notNull().default('created'),
+  schemaAnalysis: jsonb("schema_analysis"), // Analysis results
+  migrationPlan: jsonb("migration_plan"), // Migration plan
+  migrationScript: jsonb("migration_script"), // Generated scripts
+  migrationResult: jsonb("migration_result"), // Results of migration execution
+  compatibilityResult: jsonb("compatibility_result"), // Compatibility layer results
+  validationResult: jsonb("validation_result"), // Validation results
+  error: text("error"), // Error message if status is 'error'
+  createdBy: integer("created_by").notNull(), // User who created the project
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  metadata: jsonb("metadata").default({}), // Additional project metadata
+}, (table) => {
+  return {
+    nameIdx: index("db_conversion_projects_name_idx").on(table.name),
+    createdByIdx: index("db_conversion_projects_created_by_idx").on(table.createdBy),
+    statusIdx: index("db_conversion_projects_status_idx").on(table.status),
+  };
+});
+
+export const insertDatabaseConversionProjectSchema = createInsertSchema(databaseConversionProjects).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type DatabaseConversionProject = typeof databaseConversionProjects.$inferSelect;
+export type InsertDatabaseConversionProject = z.infer<typeof insertDatabaseConversionProjectSchema>;
+
+// Connection Templates - Reusable database connection templates
+export const connectionTemplates = pgTable("connection_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  databaseType: text("database_type").notNull(), // postgres, mysql, sqlserver, etc.
+  connectionConfig: jsonb("connection_config").notNull(), // Connection details
+  isPublic: boolean("is_public").default(false),
+  createdBy: integer("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    nameIdx: index("connection_templates_name_idx").on(table.name),
+    createdByIdx: index("connection_templates_created_by_idx").on(table.createdBy),
+    typeIdx: index("connection_templates_type_idx").on(table.databaseType),
+  };
+});
+
+export const insertConnectionTemplateSchema = createInsertSchema(connectionTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type ConnectionTemplate = typeof connectionTemplates.$inferSelect;
+export type InsertConnectionTemplate = z.infer<typeof insertConnectionTemplateSchema>;
+
+// Schema Mappings - Store mapping rules between different database schemas
+export const schemaMappings = pgTable("schema_mappings", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  sourceType: text("source_type").notNull(), // postgres, mysql, etc.
+  targetType: text("target_type").notNull(), // postgres, mysql, etc.
+  mappingRules: jsonb("mapping_rules").notNull(), // Rules for mapping types, constraints, etc.
+  customFunctions: jsonb("custom_functions"), // Custom conversion functions
+  createdBy: integer("created_by").notNull(),
+  isPublic: boolean("is_public").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    nameIdx: index("schema_mappings_name_idx").on(table.name),
+    sourceTargetIdx: index("schema_mappings_source_target_idx").on(table.sourceType, table.targetType),
+  };
+});
+
+export const insertSchemaMappingSchema = createInsertSchema(schemaMappings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type SchemaMapping = typeof schemaMappings.$inferSelect;
+export type InsertSchemaMapping = z.infer<typeof insertSchemaMappingSchema>;
+
+// Conversion Logs - Detailed logs of conversion operations
+export const conversionLogs = pgTable("conversion_logs", {
+  id: serial("id").primaryKey(),
+  projectId: uuid("project_id").notNull(), // Reference to databaseConversionProjects
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  level: text("level").notNull(), // info, warning, error
+  stage: text("stage").notNull(), // analysis, planning, migration, etc.
+  message: text("message").notNull(),
+  details: jsonb("details"), // Additional log details
+}, (table) => {
+  return {
+    projectIdIdx: index("conversion_logs_project_id_idx").on(table.projectId),
+    timestampIdx: index("conversion_logs_timestamp_idx").on(table.timestamp),
+    levelIdx: index("conversion_logs_level_idx").on(table.level),
+  };
+});
+
+export const insertConversionLogSchema = createInsertSchema(conversionLogs).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type ConversionLog = typeof conversionLogs.$inferSelect;
+export type InsertConversionLog = z.infer<typeof insertConversionLogSchema>;
+
+// Compatibility Layers - Store compatibility layer configurations for cross-database compatibility
+export const compatibilityLayers = pgTable("compatibility_layers", {
+  id: serial("id").primaryKey(),
+  projectId: uuid("project_id").notNull(), // Reference to databaseConversionProjects
+  name: text("name").notNull(),
+  description: text("description"),
+  sourceType: text("source_type").notNull(), // postgres, mysql, etc.
+  targetType: text("target_type").notNull(), // postgres, mysql, etc.
+  viewDefinitions: jsonb("view_definitions"), // Views created for compatibility
+  functionMappings: jsonb("function_mappings"), // Functions mapped between dialects
+  triggerEquivalents: jsonb("trigger_equivalents"), // Trigger equivalents
+  syntaxAdaptations: jsonb("syntax_adaptations"), // SQL syntax adaptations
+  configurationSettings: jsonb("configuration_settings"), // Configuration settings
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    projectIdIdx: index("compatibility_layers_project_id_idx").on(table.projectId),
+    nameIdx: index("compatibility_layers_name_idx").on(table.name),
+  };
+});
+
+export const insertCompatibilityLayerSchema = createInsertSchema(compatibilityLayers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type CompatibilityLayer = typeof compatibilityLayers.$inferSelect;
+export type InsertCompatibilityLayer = z.infer<typeof insertCompatibilityLayerSchema>;
