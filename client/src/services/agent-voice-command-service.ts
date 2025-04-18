@@ -13,6 +13,9 @@ export interface VoiceCommandContext {
   subject?: string;
   recentCommands?: string[];
   recentResults?: VoiceCommandResult[];
+  userId?: number;         // Added for enhanced voice command features
+  sessionId?: string;      // Added for tracking in analytics
+  contextId?: string;      // Added for contextual help
 }
 
 // Define the voice command result interface
@@ -49,6 +52,7 @@ export interface VoiceCommandAction {
 export enum RecordingState {
   INACTIVE = 'inactive',
   LISTENING = 'listening',
+  RECORDING = 'recording',  // Added for compatibility with enhanced components
   PROCESSING = 'processing',
   ERROR = 'error'
 }
@@ -241,6 +245,46 @@ export function isSpeechRecognitionAvailable(): boolean {
     (window as any).SpeechRecognition ||
     (window as any).webkitSpeechRecognition
   );
+}
+
+// Enhanced recording functions for compatibility with the new components
+// These are simple wrappers around SpeechRecognitionService to abstract the details
+let recognitionService: SpeechRecognitionService | null = null;
+
+// Initialize the speech recognition service
+function initRecognitionService() {
+  if (!recognitionService) {
+    recognitionService = new SpeechRecognitionService({
+      continuous: false,
+      interimResults: true
+    });
+  }
+  return recognitionService;
+}
+
+// Start recording audio
+export function startRecording(
+  onResult: (transcript: string) => void,
+  onError: (error: any) => void,
+  onEnd: () => void
+): void {
+  const service = initRecognitionService();
+  
+  service.onResult(onResult);
+  service.onError(onError);
+  service.onEnd(onEnd);
+  
+  service.start();
+}
+
+// Stop recording audio
+export function stopRecording(): string | null {
+  if (!recognitionService) return null;
+  
+  const transcript = recognitionService.getTranscript();
+  recognitionService.stop();
+  
+  return transcript;
 }
 
 // For handling actions from voice command results

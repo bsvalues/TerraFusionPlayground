@@ -149,6 +149,12 @@ function Router() {
           <VoiceCommandPage />
         </AppLayout>
       </Route>
+      
+      <Route path="/voice-command-settings">
+        <AppLayout>
+          <VoiceCommandSettingsPage />
+        </AppLayout>
+      </Route>
 
       {/* TaxI_AI Development Platform Routes */}
       <Route path="/development">

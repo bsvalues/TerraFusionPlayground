@@ -1,68 +1,94 @@
 /**
  * Voice Command Analytics
  * 
- * This component displays analytics data for voice commands, including:
- * - Usage statistics
+ * This component displays analytics for voice commands, including:
+ * - Usage over time
  * - Success rates
  * - Command type distribution
- * - Top commands
- * - Error triggers
+ * - Common errors
  */
 
 import { useState, useEffect } from 'react';
-import { getUserAnalytics } from '@/services/enhanced-voice-command-service';
+import { 
+  getVoiceCommandAnalytics, 
+  getVoiceCommandStats,
+  type VoiceCommandAnalyticsDetails, 
+  type VoiceCommandAnalyticsSummary,
+  type DailyVoiceCommandStats,
+  type CommandTypeDistribution
+} from '@/services/enhanced-voice-command-service';
+import { DateRange } from 'react-day-picker';
+import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  LineChart, 
+  Line, 
+  BarChart, 
+  Bar, 
+  PieChart, 
+  Pie, 
+  Cell, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, BarChart3, PieChart, CheckCircle, XCircle, Calendar } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
-import { DatePickerWithRange } from '@/components/ui/date-range-picker';
-import { format } from 'date-fns';
+import { 
+  Loader2, 
+  RefreshCw, 
+  BarChart2, 
+  PieChart as PieChartIcon,
+  AlertTriangle 
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { format, subDays } from 'date-fns';
+
+// Chart colors
+const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe', '#00C49F'];
+const SUCCESS_COLOR = '#4ade80';
+const ERROR_COLOR = '#f87171';
+const NEUTRAL_COLOR = '#94a3b8';
 
 interface VoiceCommandAnalyticsProps {
   userId: number;
-  defaultRange?: 'day' | 'week' | 'month' | 'custom';
   className?: string;
 }
 
 export function VoiceCommandAnalytics({
   userId,
-  defaultRange = 'week',
   className = ''
 }: VoiceCommandAnalyticsProps) {
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [analyticsData, setAnalyticsData] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<string>('overview');
-  const [dateRange, setDateRange] = useState<{ start: Date, end: Date }>(() => {
-    const end = new Date();
-    const start = new Date();
-    
-    // Calculate start date based on default range
-    if (defaultRange === 'day') {
-      start.setDate(end.getDate() - 1);
-    } else if (defaultRange === 'week') {
-      start.setDate(end.getDate() - 7);
-    } else if (defaultRange === 'month') {
-      start.setMonth(end.getMonth() - 1);
-    } else {
-      start.setDate(end.getDate() - 7); // Default to week
-    }
-    
-    return { start, end };
+  // Date range state
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: subDays(new Date(), 7),
+    to: new Date()
   });
+  
+  // Analytics data state
+  const [analytics, setAnalytics] = useState<VoiceCommandAnalyticsDetails | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<string>('overview');
+  const { toast } = useToast();
   
   // Load analytics data
   const loadAnalytics = async () => {
     setIsLoading(true);
     
     try {
-      const startStr = format(dateRange.start, 'yyyy-MM-dd');
-      const endStr = format(dateRange.end, 'yyyy-MM-dd');
-      
-      const data = await getUserAnalytics(userId, { start: startStr, end: endStr });
-      setAnalyticsData(data);
+      const data = await getVoiceCommandAnalytics(userId, dateRange);
+      setAnalytics(data);
     } catch (error) {
-      console.error('Error loading analytics data:', error);
+      console.error('Error loading analytics:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load analytics data',
+        variant: 'destructive'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -71,67 +97,12 @@ export function VoiceCommandAnalytics({
   // Load analytics when date range changes
   useEffect(() => {
     loadAnalytics();
-  }, [dateRange, userId]);
+  }, [userId, dateRange]);
   
-  // Helper to format numbers
-  const formatNumber = (num: number | null) => {
-    if (num === null || num === undefined) return '-';
-    return num.toLocaleString();
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    return format(new Date(dateString), 'MMM d');
   };
-  
-  // Calculate daily activity
-  const prepareDailyActivityData = () => {
-    if (!analyticsData?.dailyData) return [];
-    
-    return analyticsData.dailyData.map((day: any) => ({
-      date: format(new Date(day.date), 'MMM d'),
-      total: day.totalCommands,
-      successful: day.successfulCommands,
-      failed: day.failedCommands,
-      ambiguous: day.ambiguousCommands
-    }));
-  };
-  
-  // Prepare command type distribution data
-  const prepareCommandTypeData = () => {
-    if (!analyticsData?.aggregatedData?.commandTypeCounts) return [];
-    
-    return Object.entries(analyticsData.aggregatedData.commandTypeCounts)
-      .filter(([_, count]) => (count as number) > 0)
-      .map(([type, count]) => ({
-        name: type,
-        value: count
-      }));
-  };
-  
-  // Prepare top commands data
-  const prepareTopCommandsData = () => {
-    if (!analyticsData?.aggregatedData?.topCommands) return [];
-    
-    return analyticsData.aggregatedData.topCommands
-      .slice(0, 10)
-      .map((cmd: any) => ({
-        command: cmd.command.length > 20 ? `${cmd.command.slice(0, 20)}...` : cmd.command,
-        count: cmd.count,
-        fullCommand: cmd.command // For tooltip
-      }));
-  };
-  
-  // Prepare top error triggers data
-  const prepareErrorTriggersData = () => {
-    if (!analyticsData?.aggregatedData?.topErrorTriggers) return [];
-    
-    return analyticsData.aggregatedData.topErrorTriggers
-      .slice(0, 10)
-      .map((cmd: any) => ({
-        command: cmd.command.length > 20 ? `${cmd.command.slice(0, 20)}...` : cmd.command,
-        count: cmd.count,
-        fullCommand: cmd.command // For tooltip
-      }));
-  };
-  
-  // Colors for charts
-  const COLORS = ['#60a5fa', '#34d399', '#f97316', '#f43f5e', '#a855f7', '#ec4899'];
   
   // Render loading state
   const renderLoading = () => (
@@ -141,111 +112,61 @@ export function VoiceCommandAnalytics({
     </div>
   );
   
-  // Render overview tab
-  const renderOverviewTab = () => {
-    if (!analyticsData || !analyticsData.aggregatedData) {
-      return (
-        <div className="text-center py-8 text-muted-foreground">
-          <p>No analytics data available for the selected time period.</p>
-        </div>
-      );
-    }
+  // Render empty state
+  const renderEmpty = () => (
+    <div className="text-center py-8 text-muted-foreground">
+      <p className="mb-4">No voice command usage data available for the selected period.</p>
+      <Button onClick={loadAnalytics}>
+        <RefreshCw className="h-4 w-4 mr-2" />
+        Refresh
+      </Button>
+    </div>
+  );
+  
+  // Render overview cards
+  const renderOverviewCards = () => {
+    if (!analytics || !analytics.summary) return null;
     
-    const { aggregatedData } = analyticsData;
+    const { summary } = analytics;
     
     return (
-      <div className="space-y-6">
-        {/* Key metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center">
-                <BarChart3 className="h-5 w-5 mr-2 text-blue-500" />
-                Total Commands
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{formatNumber(aggregatedData.totalCommands)}</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center">
-                <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
-                Success Rate
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {aggregatedData.successRate !== undefined ? `${aggregatedData.successRate}%` : '-'}
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center">
-                <XCircle className="h-5 w-5 mr-2 text-red-500" />
-                Failed Commands
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{formatNumber(aggregatedData.failedCommands)}</div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        {/* Daily activity chart */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card>
-          <CardHeader>
-            <CardTitle>Daily Activity</CardTitle>
-            <CardDescription>Command usage by day</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Total Commands</CardTitle>
+            <CardDescription>
+              Voice commands issued
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={prepareDailyActivityData()} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="successful" name="Successful" fill="#34d399" />
-                  <Bar dataKey="failed" name="Failed" fill="#f43f5e" />
-                  <Bar dataKey="ambiguous" name="Ambiguous" fill="#f97316" />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="text-3xl font-bold">{summary.totalCommands}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Success Rate</CardTitle>
+            <CardDescription>
+              Percentage of successful commands
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {(summary.successRate * 100).toFixed(1)}%
             </div>
           </CardContent>
         </Card>
         
-        {/* Command type distribution */}
         <Card>
-          <CardHeader>
-            <CardTitle>Command Type Distribution</CardTitle>
-            <CardDescription>Usage by command type</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Avg. Response Time</CardTitle>
+            <CardDescription>
+              Average time to process commands
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsPieChart>
-                  <Pie
-                    data={prepareCommandTypeData()}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={true}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {prepareCommandTypeData().map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [value, 'Commands']} />
-                </RechartsPieChart>
-              </ResponsiveContainer>
+            <div className="text-3xl font-bold">
+              {summary.averageResponseTime.toFixed(2)}ms
             </div>
           </CardContent>
         </Card>
@@ -253,158 +174,265 @@ export function VoiceCommandAnalytics({
     );
   };
   
-  // Render top commands tab
-  const renderTopCommandsTab = () => {
-    const topCommands = prepareTopCommandsData();
+  // Render usage over time chart
+  const renderUsageChart = () => {
+    if (!analytics || !analytics.dailyStats || analytics.dailyStats.length === 0) return null;
     
-    if (!topCommands.length) {
-      return (
-        <div className="text-center py-8 text-muted-foreground">
-          <p>No command data available for the selected time period.</p>
-        </div>
-      );
-    }
+    // Format data for the chart
+    const data = analytics.dailyStats.map(stat => ({
+      name: formatDate(stat.date),
+      total: stat.commandCount,
+      success: stat.successCount,
+      error: stat.errorCount
+    }));
     
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Commands</CardTitle>
-            <CardDescription>Most frequently used commands</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  layout="vertical" 
-                  data={topCommands}
-                  margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
-                >
-                  <XAxis type="number" />
-                  <YAxis type="category" dataKey="command" />
-                  <Tooltip 
-                    labelFormatter={(_label, data) => {
-                      if (data && data[0]) {
-                        return data[0].payload.fullCommand;
-                      }
-                      return '';
-                    }}
-                  />
-                  <Bar dataKey="count" name="Usage Count" fill="#60a5fa" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Voice Command Usage Over Time</CardTitle>
+          <CardDescription>
+            Number of commands issued per day
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={data}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="total" 
+                  stroke={NEUTRAL_COLOR} 
+                  strokeWidth={2} 
+                  name="Total Commands" 
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="success" 
+                  stroke={SUCCESS_COLOR} 
+                  strokeWidth={2} 
+                  name="Successful Commands" 
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="error" 
+                  stroke={ERROR_COLOR} 
+                  strokeWidth={2} 
+                  name="Failed Commands" 
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
     );
   };
   
-  // Render errors tab
-  const renderErrorsTab = () => {
-    const errorTriggers = prepareErrorTriggersData();
+  // Render command type distribution chart
+  const renderCommandTypeChart = () => {
+    if (!analytics || !analytics.commandTypeDistribution || analytics.commandTypeDistribution.length === 0) return null;
     
-    if (!errorTriggers.length) {
-      return (
-        <div className="text-center py-8 text-muted-foreground">
-          <p>No error data available for the selected time period.</p>
-        </div>
-      );
-    }
+    // Format data for the chart
+    const data = analytics.commandTypeDistribution.map((item, index) => ({
+      name: item.commandType,
+      value: item.count,
+      percentage: item.percentage
+    }));
     
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Error Triggers</CardTitle>
-            <CardDescription>Commands that most frequently caused errors</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  layout="vertical" 
-                  data={errorTriggers}
-                  margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Command Type Distribution</CardTitle>
+          <CardDescription>
+            Types of voice commands used
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={true}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                  nameKey="name"
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                 >
-                  <XAxis type="number" />
-                  <YAxis type="category" dataKey="command" />
-                  <Tooltip 
-                    labelFormatter={(_label, data) => {
-                      if (data && data[0]) {
-                        return data[0].payload.fullCommand;
-                      }
-                      return '';
-                    }}
-                  />
-                  <Bar dataKey="count" name="Error Count" fill="#f43f5e" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value, name, props) => [`${value} (${(props.payload.percentage * 100).toFixed(1)}%)`, name]} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+  
+  // Render common errors chart
+  const renderErrorsChart = () => {
+    if (!analytics || !analytics.commonErrors || analytics.commonErrors.length === 0) return null;
+    
+    // Format data for the chart
+    const data = analytics.commonErrors.map(error => ({
+      name: error.error.length > 30 ? error.error.substring(0, 30) + '...' : error.error,
+      count: error.count,
+      fullError: error.error
+    }));
+    
+    return (
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Common Errors</CardTitle>
+          <CardDescription>
+            Most frequent voice command errors
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={data}
+                layout="vertical"
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="name" type="category" width={150} />
+                <Tooltip content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    return (
+                      <div className="bg-background border p-2 rounded shadow-md">
+                        <p className="font-medium">{data.fullError}</p>
+                        <p className="text-sm">{`Count: ${data.count}`}</p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }} />
+                <Legend />
+                <Bar dataKey="count" fill={ERROR_COLOR} name="Error Count" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+  
+  // Render most used commands table
+  const renderMostUsedCommandsTable = () => {
+    if (!analytics || !analytics.summary || !analytics.summary.mostUsedCommands || analytics.summary.mostUsedCommands.length === 0) return null;
+    
+    return (
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Most Used Commands</CardTitle>
+          <CardDescription>
+            Your most frequently used voice commands
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Command</TableHead>
+                <TableHead className="text-right">Count</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {analytics.summary.mostUsedCommands.map((cmd, index) => (
+                <TableRow key={index}>
+                  <TableCell className="font-medium">{cmd.commandText}</TableCell>
+                  <TableCell className="text-right">{cmd.count}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     );
   };
 
   return (
     <div className={className}>
-      <Card>
+      <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Voice Command Analytics</span>
-            <Button variant="outline" size="sm" onClick={loadAnalytics}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={loadAnalytics}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </CardTitle>
           <CardDescription>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <span>Performance metrics for voice commands</span>
-              <div className="flex items-center">
-                <Calendar className="h-4 w-4 mr-2" />
-                <div className="text-sm">
-                  {format(dateRange.start, 'MMM d, yyyy')} - {format(dateRange.end, 'MMM d, yyyy')}
-                </div>
-              </div>
-            </div>
+            Analytics and insights for your voice command usage
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Date range selector */}
           <div className="mb-6">
             <DatePickerWithRange 
-              onChange={setDateRange} 
-              value={{ 
-                from: dateRange.start, 
-                to: dateRange.end 
-              }} 
+              value={dateRange}
+              onChange={setDateRange}
             />
           </div>
           
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="topCommands">Top Commands</TabsTrigger>
-              <TabsTrigger value="errors">Errors</TabsTrigger>
-            </TabsList>
-            
-            {isLoading ? (
-              renderLoading()
-            ) : (
-              <>
-                <TabsContent value="overview">
-                  {renderOverviewTab()}
+          {isLoading ? (
+            renderLoading()
+          ) : !analytics || !analytics.dailyStats || analytics.dailyStats.length === 0 ? (
+            renderEmpty()
+          ) : (
+            <>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid grid-cols-4 mb-6">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="usage">Usage</TabsTrigger>
+                  <TabsTrigger value="commands">Commands</TabsTrigger>
+                  <TabsTrigger value="errors">Errors</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="overview" className="space-y-6">
+                  {renderOverviewCards()}
+                  {renderUsageChart()}
+                  {renderCommandTypeChart()}
                 </TabsContent>
-                <TabsContent value="topCommands">
-                  {renderTopCommandsTab()}
+                
+                <TabsContent value="usage">
+                  {renderUsageChart()}
+                  {renderMostUsedCommandsTable()}
                 </TabsContent>
+                
+                <TabsContent value="commands">
+                  {renderCommandTypeChart()}
+                  {renderMostUsedCommandsTable()}
+                </TabsContent>
+                
                 <TabsContent value="errors">
-                  {renderErrorsTab()}
+                  {renderErrorsChart()}
                 </TabsContent>
-              </>
-            )}
-          </Tabs>
+              </Tabs>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
