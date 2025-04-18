@@ -5,17 +5,11 @@
  * Plandex AI and other coding tools to provide hands-free coding support.
  */
 
-import { db } from '../../db';
-import { 
-  VoiceCommandType,
-  voiceCommandHelpContents,
-  InsertVoiceCommandHelpContent
-} from '@shared/schema';
-import { eq, and, or, sql, desc, asc } from 'drizzle-orm';
-import { getPlandexAIService } from '../plandex-ai-factory';
 import { logger } from '../../utils/logger';
+import { CommandContext, CommandResult } from './voice-command-processor';
+import { VoiceCommandStatus, VoiceCommandType } from '@shared/schema';
+import { getPlandexAIService } from '../plandex-ai-factory';
 
-// Coding command intents
 export enum CodingCommandIntent {
   // Code generation
   GENERATE_CODE = 'coding.generate',
@@ -55,134 +49,95 @@ export enum CodingCommandIntent {
   DEPLOY_CODE = 'coding.deploy'
 }
 
+// Store help content for coding commands
+const codingCommandHelpContent: Record<string, any> = {};
+
 export class VoiceCommandCodingAssistanceService {
+  private plandexAIService = getPlandexAIService();
+  
   /**
    * Determine the coding intent from a voice command
    */
   determineCodingIntent(command: string): { intent: CodingCommandIntent, parameters: Record<string, any> } {
-    // Initialize parameters object
+    const commandLower = command.toLowerCase();
     const parameters: Record<string, any> = {};
     
-    // Generate code patterns
-    if (/(?:generate|create|write)\s+(?:a|some|new)?\s+code\s+(?:for|to|that)\s+(.*)/i.test(command)) {
-      parameters.description = command.match(/(?:generate|create|write)\s+(?:a|some|new)?\s+code\s+(?:for|to|that)\s+(.*)/i)?.[1] || '';
-      return { intent: CodingCommandIntent.GENERATE_CODE, parameters };
+    // Code generation
+    if (commandLower.includes('generate') || commandLower.includes('create') || commandLower.includes('write')) {
+      if (commandLower.includes('function') || commandLower.includes('method')) {
+        return { intent: CodingCommandIntent.GENERATE_FUNCTION, parameters };
+      } else if (commandLower.includes('class')) {
+        return { intent: CodingCommandIntent.GENERATE_CLASS, parameters };
+      } else if (commandLower.includes('component') || commandLower.includes('react')) {
+        return { intent: CodingCommandIntent.GENERATE_COMPONENT, parameters };
+      } else {
+        return { intent: CodingCommandIntent.GENERATE_CODE, parameters };
+      }
     }
     
-    if (/(?:generate|create|write)\s+(?:a|some|new)?\s+(?:function|method)\s+(?:for|to|that)\s+(.*)/i.test(command)) {
-      parameters.description = command.match(/(?:generate|create|write)\s+(?:a|some|new)?\s+(?:function|method)\s+(?:for|to|that)\s+(.*)/i)?.[1] || '';
-      parameters.type = 'function';
-      return { intent: CodingCommandIntent.GENERATE_FUNCTION, parameters };
+    // Code explanation
+    else if (commandLower.includes('explain') || commandLower.includes('describe') || commandLower.includes('tell me about')) {
+      if (commandLower.includes('function') || commandLower.includes('method')) {
+        return { intent: CodingCommandIntent.EXPLAIN_FUNCTION, parameters };
+      } else if (commandLower.includes('class')) {
+        return { intent: CodingCommandIntent.EXPLAIN_CLASS, parameters };
+      } else {
+        return { intent: CodingCommandIntent.EXPLAIN_CODE, parameters };
+      }
     }
     
-    if (/(?:generate|create|write)\s+(?:a|some|new)?\s+(?:class|module)\s+(?:for|to|that)\s+(.*)/i.test(command)) {
-      parameters.description = command.match(/(?:generate|create|write)\s+(?:a|some|new)?\s+(?:class|module)\s+(?:for|to|that)\s+(.*)/i)?.[1] || '';
-      parameters.type = 'class';
-      return { intent: CodingCommandIntent.GENERATE_CLASS, parameters };
+    // Bug fixing
+    else if (commandLower.includes('fix') || commandLower.includes('debug') || commandLower.includes('resolve')) {
+      if (commandLower.includes('error') || commandLower.includes('exception')) {
+        return { intent: CodingCommandIntent.FIX_ERROR, parameters };
+      } else {
+        return { intent: CodingCommandIntent.FIX_BUG, parameters };
+      }
     }
     
-    if (/(?:generate|create|write)\s+(?:a|some|new)?\s+(?:component|react component)\s+(?:for|to|that)\s+(.*)/i.test(command)) {
-      parameters.description = command.match(/(?:generate|create|write)\s+(?:a|some|new)?\s+(?:component|react component)\s+(?:for|to|that)\s+(.*)/i)?.[1] || '';
-      parameters.type = 'component';
-      return { intent: CodingCommandIntent.GENERATE_COMPONENT, parameters };
+    // Code optimization
+    else if (commandLower.includes('optimize') || commandLower.includes('improve') || commandLower.includes('refactor')) {
+      if (commandLower.includes('function') || commandLower.includes('method')) {
+        return { intent: CodingCommandIntent.OPTIMIZE_FUNCTION, parameters };
+      } else if (commandLower.includes('query') || commandLower.includes('sql')) {
+        return { intent: CodingCommandIntent.OPTIMIZE_QUERY, parameters };
+      } else {
+        return { intent: CodingCommandIntent.OPTIMIZE_CODE, parameters };
+      }
     }
     
-    // Explain code patterns
-    if (/(?:explain|describe|tell me about)\s+(?:this|the|current|selected)?\s+(?:code|implementation)/i.test(command)) {
-      return { intent: CodingCommandIntent.EXPLAIN_CODE, parameters };
-    }
-    
-    if (/(?:explain|describe|tell me about)\s+(?:this|the|current|selected)?\s+(?:function|method)/i.test(command)) {
-      parameters.type = 'function';
-      return { intent: CodingCommandIntent.EXPLAIN_FUNCTION, parameters };
-    }
-    
-    // Bug fixing patterns
-    if (/(?:fix|resolve|correct|debug)\s+(?:the|this|current)?\s+(?:bug|issue|problem|error)/i.test(command)) {
-      return { intent: CodingCommandIntent.FIX_BUG, parameters };
-    }
-    
-    if (/(?:fix|resolve|correct|debug)\s+(?:the|this|current)?\s+(?:error|exception|warning|compiler error)/i.test(command)) {
-      return { intent: CodingCommandIntent.FIX_ERROR, parameters };
-    }
-    
-    // Optimization patterns
-    if (/(?:optimize|improve|refactor|make better|enhance)\s+(?:the|this|current|selected)?\s+(?:code|implementation)/i.test(command)) {
-      return { intent: CodingCommandIntent.OPTIMIZE_CODE, parameters };
-    }
-    
-    if (/(?:optimize|improve|refactor|make better|enhance)\s+(?:the|this|current|selected)?\s+(?:function|method)/i.test(command)) {
-      parameters.type = 'function';
-      return { intent: CodingCommandIntent.OPTIMIZE_FUNCTION, parameters };
-    }
-    
-    if (/(?:optimize|improve|refactor|make better|enhance)\s+(?:the|this|current|selected)?\s+(?:query|database query|sql)/i.test(command)) {
-      parameters.type = 'query';
-      return { intent: CodingCommandIntent.OPTIMIZE_QUERY, parameters };
-    }
-    
-    // Editor control patterns
-    if (/(?:insert|add|place|put)\s+(?:code|this)\s+(?:here|at cursor|at position)/i.test(command)) {
+    // Editor controls
+    else if (commandLower.includes('insert')) {
       return { intent: CodingCommandIntent.INSERT_CODE, parameters };
-    }
-    
-    if (/(?:delete|remove|cut)\s+(?:this|the|current|selected)?\s+(?:code|selection|text)/i.test(command)) {
+    } else if (commandLower.includes('delete') || commandLower.includes('remove')) {
       return { intent: CodingCommandIntent.DELETE_CODE, parameters };
-    }
-    
-    if (/(?:select|highlight)\s+(?:this|the|current|selected)?\s+(?:code|function|class|section)/i.test(command)) {
+    } else if (commandLower.includes('select')) {
       return { intent: CodingCommandIntent.SELECT_CODE, parameters };
-    }
-    
-    if (/(?:undo|revert|go back)/i.test(command)) {
+    } else if (commandLower.includes('undo')) {
       return { intent: CodingCommandIntent.UNDO, parameters };
-    }
-    
-    if (/(?:redo|repeat)/i.test(command)) {
+    } else if (commandLower.includes('redo')) {
       return { intent: CodingCommandIntent.REDO, parameters };
     }
     
-    // File operations patterns
-    if (/(?:create|make|add)\s+(?:a|new)?\s+(?:file|source file)/i.test(command)) {
-      // Extract file name if present
-      const fileNameMatch = command.match(/(?:named|called)\s+([a-zA-Z0-9_\-.]+)/i);
-      if (fileNameMatch) {
-        parameters.fileName = fileNameMatch[1];
-      }
+    // File operations
+    else if (commandLower.includes('create file')) {
       return { intent: CodingCommandIntent.CREATE_FILE, parameters };
-    }
-    
-    if (/(?:save|store|write)\s+(?:this|the|current)?\s+(?:file|document|code)/i.test(command)) {
+    } else if (commandLower.includes('save file') || commandLower.includes('save changes')) {
       return { intent: CodingCommandIntent.SAVE_FILE, parameters };
-    }
-    
-    if (/(?:open|load|show)\s+(?:file|document)\s+([a-zA-Z0-9_\-.]+)/i.test(command)) {
-      parameters.fileName = command.match(/(?:open|load|show)\s+(?:file|document)\s+([a-zA-Z0-9_\-.]+)/i)?.[1] || '';
+    } else if (commandLower.includes('open file')) {
       return { intent: CodingCommandIntent.OPEN_FILE, parameters };
     }
     
-    // Other coding command patterns
-    if (/(?:run|execute|start)\s+(?:the|all)?\s+(?:tests|test suite|unit tests)/i.test(command)) {
+    // Other
+    else if (commandLower.includes('run test')) {
       return { intent: CodingCommandIntent.RUN_TESTS, parameters };
-    }
-    
-    if (/(?:commit|save)\s+(?:the|my|these)?\s+(?:changes|code)\s+(?:to git|to repository)?/i.test(command)) {
-      // Extract commit message if present
-      const messageMatch = command.match(/(?:with message|with commit message|saying)\s+["'](.+)["']/i);
-      if (messageMatch) {
-        parameters.commitMessage = messageMatch[1];
-      } else {
-        parameters.commitMessage = "Update code via voice command";
-      }
+    } else if (commandLower.includes('commit')) {
       return { intent: CodingCommandIntent.COMMIT_CODE, parameters };
-    }
-    
-    if (/(?:deploy|publish|ship)\s+(?:the|my|this)?\s+(?:code|application|app|changes)/i.test(command)) {
+    } else if (commandLower.includes('deploy')) {
       return { intent: CodingCommandIntent.DEPLOY_CODE, parameters };
     }
     
-    // Default to general code generation if no specific intent is found
-    parameters.description = command;
+    // Default to code generation if no specific intent is found
     return { intent: CodingCommandIntent.GENERATE_CODE, parameters };
   }
   
@@ -191,82 +146,48 @@ export class VoiceCommandCodingAssistanceService {
    */
   async processCodingCommand(
     command: string,
-    context: any = {}
-  ): Promise<{ success: boolean; response: string; actions?: any[]; data?: any }> {
+    context: CommandContext = { userId: 1, sessionId: 'default-session' }
+  ): Promise<CommandResult> {
     try {
-      // 1. Determine the coding intent and extract parameters
+      logger.info(`Processing coding command: ${command}`);
+      
+      // Determine intent and extract parameters
       const { intent, parameters } = this.determineCodingIntent(command);
       
-      // 2. Log the intent and parameters
-      logger.info(`VoiceCommandCodingAssistance: Processing ${intent} with parameters: ${JSON.stringify(parameters)}`);
+      // Extract code from context if available
+      const selectedCode = context.selectedCode || '';
+      const currentFile = context.currentFile || '';
       
-      // 3. Get the Plandex AI service
-      const plandexAIService = getPlandexAIService();
+      // Execute appropriate handler based on intent
+      let result: CommandResult;
       
-      // 4. Process the intent using the appropriate service method
-      switch (intent) {
-        // Code generation intents
-        case CodingCommandIntent.GENERATE_CODE:
-        case CodingCommandIntent.GENERATE_FUNCTION:
-        case CodingCommandIntent.GENERATE_CLASS:
-        case CodingCommandIntent.GENERATE_COMPONENT:
-          // Handle code generation
-          return this.handleCodeGeneration(intent, parameters, plandexAIService, context);
-          
-        // Code explanation intents
-        case CodingCommandIntent.EXPLAIN_CODE:
-        case CodingCommandIntent.EXPLAIN_FUNCTION:
-        case CodingCommandIntent.EXPLAIN_CLASS:
-          // Handle code explanation
-          return this.handleCodeExplanation(intent, parameters, plandexAIService, context);
-          
-        // Bug fixing intents
-        case CodingCommandIntent.FIX_BUG:
-        case CodingCommandIntent.FIX_ERROR:
-          // Handle bug fixing
-          return this.handleBugFix(intent, parameters, plandexAIService, context);
-          
-        // Code optimization intents
-        case CodingCommandIntent.OPTIMIZE_CODE:
-        case CodingCommandIntent.OPTIMIZE_FUNCTION:
-        case CodingCommandIntent.OPTIMIZE_QUERY:
-          // Handle code optimization
-          return this.handleCodeOptimization(intent, parameters, plandexAIService, context);
-          
-        // Editor control intents
-        case CodingCommandIntent.INSERT_CODE:
-        case CodingCommandIntent.DELETE_CODE:
-        case CodingCommandIntent.SELECT_CODE:
-        case CodingCommandIntent.UNDO:
-        case CodingCommandIntent.REDO:
-          // Handle editor controls
-          return this.handleEditorControl(intent, parameters, context);
-          
-        // File operation intents
-        case CodingCommandIntent.CREATE_FILE:
-        case CodingCommandIntent.SAVE_FILE:
-        case CodingCommandIntent.OPEN_FILE:
-          // Handle file operations
-          return this.handleFileOperation(intent, parameters, context);
-          
-        // Other coding intents
-        case CodingCommandIntent.RUN_TESTS:
-        case CodingCommandIntent.COMMIT_CODE:
-        case CodingCommandIntent.DEPLOY_CODE:
-          // Handle other coding operations
-          return this.handleOtherCodingOperation(intent, parameters, context);
-          
-        default:
-          return {
-            success: false,
-            response: "I didn't understand that coding command. Try something like 'generate a function to sort an array'."
-          };
+      if (intent.startsWith('coding.generate')) {
+        result = await this.handleCodeGeneration(intent, command, parameters, context);
+      } else if (intent.startsWith('coding.explain')) {
+        result = await this.handleCodeExplanation(intent, command, parameters, context);
+      } else if (intent.startsWith('coding.fix')) {
+        result = await this.handleBugFix(intent, command, parameters, context);
+      } else if (intent.startsWith('coding.optimize')) {
+        result = await this.handleCodeOptimization(intent, command, parameters, context);
+      } else if (intent.startsWith('coding.file')) {
+        result = await this.handleFileOperation(intent, command, parameters, context);
+      } else {
+        result = await this.handleEditorControl(intent, command, parameters, context);
       }
+      
+      return {
+        ...result,
+        intent,
+        commandType: VoiceCommandType.CODING_ASSISTANCE
+      };
     } catch (error) {
-      logger.error(`VoiceCommandCodingAssistance: Error processing command - ${error.message}`);
+      logger.error(`Error processing coding command: ${error}`);
+      
       return {
         success: false,
-        response: `I encountered an error while processing your coding command: ${error.message}`
+        message: `Failed to process coding command: ${error}`,
+        status: VoiceCommandStatus.ERROR,
+        commandType: VoiceCommandType.CODING_ASSISTANCE
       };
     }
   }
@@ -276,80 +197,58 @@ export class VoiceCommandCodingAssistanceService {
    */
   private async handleCodeGeneration(
     intent: CodingCommandIntent,
+    command: string,
     parameters: Record<string, any>,
-    plandexAIService: any,
-    context: any
-  ): Promise<{ success: boolean; response: string; actions?: any[]; data?: any }> {
+    context: CommandContext
+  ): Promise<CommandResult> {
     try {
-      const { description, type = 'code' } = parameters;
+      logger.info(`Handling code generation command with intent: ${intent}`);
       
-      let prompt = description;
-      let additionalInstructions = '';
-      
-      // Customize prompt based on intent
-      switch (intent) {
-        case CodingCommandIntent.GENERATE_FUNCTION:
-          additionalInstructions = 'Write this as a function with appropriate parameters.';
-          break;
-        case CodingCommandIntent.GENERATE_CLASS:
-          additionalInstructions = 'Write this as a class with appropriate methods and properties.';
-          break;
-        case CodingCommandIntent.GENERATE_COMPONENT:
-          additionalInstructions = 'Write this as a React component with appropriate props and state.';
-          break;
-      }
-      
-      if (additionalInstructions) {
-        prompt = `${description}. ${additionalInstructions}`;
-      }
-      
-      // Get current project information from context
-      const { projectLanguage = 'javascript', currentFile } = context;
-      
-      // Call Plandex AI for code generation
-      const response = await plandexAIService.generateCode({
-        prompt,
-        language: projectLanguage,
-        currentContext: currentFile || null
-      });
-      
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to generate code');
-      }
-      
-      // Get the generated code
-      const generatedCode = response.result?.code || '';
-      
-      // Build response with actions
-      return {
-        success: true,
-        response: `I've generated ${type} based on your description. Would you like me to insert it at the cursor position?`,
-        actions: [
-          {
-            type: 'DISPLAY_GENERATED_CODE',
-            payload: {
-              code: generatedCode,
-              description: description
-            }
-          },
-          {
-            type: 'OFFER_INSERT_CODE',
-            payload: {
-              code: generatedCode
-            }
+      // If Plandex AI service is available, use it to generate code
+      if (this.plandexAIService) {
+        // Remove "generate", "create", or "write" from the command to get the actual request
+        let prompt = command.replace(/generate|create|write/i, '').trim();
+        
+        // Default language is TypeScript if not specified
+        const language = parameters.language || 'typescript';
+        
+        // Use Plandex AI to generate code
+        const generationResult = await this.plandexAIService.generateCode({
+          prompt,
+          language,
+          context: {
+            currentFile: context.currentFile,
+            projectLanguage: context.projectLanguage,
+            selectedCode: context.selectedCode
           }
-        ],
-        data: {
-          generatedCode,
-          description,
-          type
-        }
-      };
+        });
+        
+        return {
+          success: true,
+          result: generationResult,
+          message: `Generated code for: ${prompt}`,
+          status: VoiceCommandStatus.SUCCESS,
+          suggestions: [
+            "Try saying: Insert this code",
+            "Try saying: Explain this code",
+            "Try saying: Optimize this code"
+          ]
+        };
+      } else {
+        throw new Error('Plandex AI service is not available');
+      }
     } catch (error) {
-      logger.error(`VoiceCommandCodingAssistance: Error in code generation - ${error.message}`);
+      logger.error(`Error handling code generation: ${error}`);
+      
       return {
         success: false,
-        response: `I couldn't generate the ${parameters.type || 'code'} you requested. ${error.message}`
+        message: `Failed to generate code: ${error}`,
+        status: VoiceCommandStatus.ERROR,
+        suggestions: [
+          "Try saying: Generate a simpler function",
+          "Try saying: Write code with fewer dependencies",
+          "Try saying: Create a basic example"
+        ]
       };
     }
   }
@@ -359,59 +258,63 @@ export class VoiceCommandCodingAssistanceService {
    */
   private async handleCodeExplanation(
     intent: CodingCommandIntent,
+    command: string,
     parameters: Record<string, any>,
-    plandexAIService: any,
-    context: any
-  ): Promise<{ success: boolean; response: string; actions?: any[]; data?: any }> {
+    context: CommandContext
+  ): Promise<CommandResult> {
     try {
-      const { type = 'code' } = parameters;
+      logger.info(`Handling code explanation command with intent: ${intent}`);
       
-      // Get current code selection from context
-      const { selectedCode, currentFile } = context;
-      
-      if (!selectedCode) {
+      // If selected code is not available, return an error
+      if (!context.selectedCode) {
         return {
           success: false,
-          response: "I don't see any code selected. Please select the code you'd like me to explain and try again."
+          message: "No code selected to explain. Please select some code first.",
+          status: VoiceCommandStatus.ERROR,
+          suggestions: [
+            "Try selecting some code first",
+            "Try saying: Select this function",
+            "Try saying: Explain this specific part [after selecting code]"
+          ]
         };
       }
       
-      // Call Plandex AI for code explanation
-      const response = await plandexAIService.explainCode({
-        code: selectedCode,
-        currentContext: currentFile || null
-      });
-      
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to explain code');
-      }
-      
-      // Get the explanation
-      const explanation = response.result?.explanation || '';
-      
-      // Build response with actions
-      return {
-        success: true,
-        response: explanation,
-        actions: [
-          {
-            type: 'DISPLAY_CODE_EXPLANATION',
-            payload: {
-              code: selectedCode,
-              explanation
-            }
+      // If Plandex AI service is available, use it to explain code
+      if (this.plandexAIService) {
+        const explanationResult = await this.plandexAIService.explainCode({
+          code: context.selectedCode,
+          context: {
+            currentFile: context.currentFile,
+            projectLanguage: context.projectLanguage
           }
-        ],
-        data: {
-          explanation,
-          originalCode: selectedCode
-        }
-      };
+        });
+        
+        return {
+          success: true,
+          result: explanationResult,
+          message: `Explanation of selected code`,
+          status: VoiceCommandStatus.SUCCESS,
+          suggestions: [
+            "Try saying: Explain in simpler terms",
+            "Try saying: Provide a more detailed explanation",
+            "Try saying: What are the potential issues with this code?"
+          ]
+        };
+      } else {
+        throw new Error('Plandex AI service is not available');
+      }
     } catch (error) {
-      logger.error(`VoiceCommandCodingAssistance: Error in code explanation - ${error.message}`);
+      logger.error(`Error handling code explanation: ${error}`);
+      
       return {
         success: false,
-        response: `I couldn't explain the ${parameters.type || 'code'} you selected. ${error.message}`
+        message: `Failed to explain code: ${error}`,
+        status: VoiceCommandStatus.ERROR,
+        suggestions: [
+          "Try with a smaller code selection",
+          "Try saying: Explain the basic functionality",
+          "Try saying: What does this function do?"
+        ]
       };
     }
   }
@@ -421,68 +324,65 @@ export class VoiceCommandCodingAssistanceService {
    */
   private async handleBugFix(
     intent: CodingCommandIntent,
+    command: string,
     parameters: Record<string, any>,
-    plandexAIService: any,
-    context: any
-  ): Promise<{ success: boolean; response: string; actions?: any[]; data?: any }> {
+    context: CommandContext
+  ): Promise<CommandResult> {
     try {
-      // Get current code and error information from context
-      const { selectedCode, currentFile, errorMessage } = context;
+      logger.info(`Handling bug fix command with intent: ${intent}`);
       
-      if (!selectedCode) {
+      // If selected code is not available, return an error
+      if (!context.selectedCode) {
         return {
           success: false,
-          response: "I don't see any code selected. Please select the code with the bug and try again."
+          message: "No code selected to fix. Please select some code first.",
+          status: VoiceCommandStatus.ERROR,
+          suggestions: [
+            "Try selecting the code with the bug first",
+            "Try saying: Fix this specific error [after selecting code]",
+            "Try saying: What's wrong with this code? [after selecting code]"
+          ]
         };
       }
       
-      // Call Plandex AI for bug fixing
-      const response = await plandexAIService.fixBug({
-        code: selectedCode,
-        errorMessage: errorMessage || '',
-        currentContext: currentFile || null
-      });
-      
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to fix the bug');
-      }
-      
-      // Get the fixed code and explanation
-      const fixedCode = response.result?.fixedCode || '';
-      const explanation = response.result?.explanation || '';
-      
-      // Build response with actions
-      return {
-        success: true,
-        response: `I've identified and fixed the issue in your code. ${explanation}`,
-        actions: [
-          {
-            type: 'DISPLAY_CODE_FIX',
-            payload: {
-              originalCode: selectedCode,
-              fixedCode,
-              explanation
-            }
-          },
-          {
-            type: 'OFFER_REPLACE_CODE',
-            payload: {
-              originalCode: selectedCode,
-              fixedCode
-            }
+      // If Plandex AI service is available, use it to fix bugs
+      if (this.plandexAIService) {
+        // Include error message in context if available
+        const fixResult = await this.plandexAIService.fixBug({
+          code: context.selectedCode,
+          errorMessage: context.errorMessage || '',
+          context: {
+            currentFile: context.currentFile,
+            projectLanguage: context.projectLanguage
           }
-        ],
-        data: {
-          fixedCode,
-          explanation,
-          originalCode: selectedCode
-        }
-      };
+        });
+        
+        return {
+          success: true,
+          result: fixResult,
+          message: `Fixed bug in selected code`,
+          status: VoiceCommandStatus.SUCCESS,
+          suggestions: [
+            "Try saying: Explain the fix",
+            "Try saying: Insert this fix",
+            "Try saying: Are there any other potential issues?"
+          ]
+        };
+      } else {
+        throw new Error('Plandex AI service is not available');
+      }
     } catch (error) {
-      logger.error(`VoiceCommandCodingAssistance: Error in bug fixing - ${error.message}`);
+      logger.error(`Error handling bug fix: ${error}`);
+      
       return {
         success: false,
-        response: `I couldn't fix the bug in your code. ${error.message}`
+        message: `Failed to fix bug: ${error}`,
+        status: VoiceCommandStatus.ERROR,
+        suggestions: [
+          "Try with a smaller code selection",
+          "Try saying: What's causing this error?",
+          "Try saying: Show me what's wrong with this code"
+        ]
       };
     }
   }
@@ -492,70 +392,72 @@ export class VoiceCommandCodingAssistanceService {
    */
   private async handleCodeOptimization(
     intent: CodingCommandIntent,
+    command: string,
     parameters: Record<string, any>,
-    plandexAIService: any,
-    context: any
-  ): Promise<{ success: boolean; response: string; actions?: any[]; data?: any }> {
+    context: CommandContext
+  ): Promise<CommandResult> {
     try {
-      const { type = 'code' } = parameters;
+      logger.info(`Handling code optimization command with intent: ${intent}`);
       
-      // Get current code selection from context
-      const { selectedCode, currentFile } = context;
-      
-      if (!selectedCode) {
+      // If selected code is not available, return an error
+      if (!context.selectedCode) {
         return {
           success: false,
-          response: `I don't see any ${type} selected. Please select the ${type} you'd like me to optimize and try again.`
+          message: "No code selected to optimize. Please select some code first.",
+          status: VoiceCommandStatus.ERROR,
+          suggestions: [
+            "Try selecting the code to optimize first",
+            "Try saying: Optimize this function [after selecting code]",
+            "Try saying: Improve performance of this code [after selecting code]"
+          ]
         };
       }
       
-      // Call Plandex AI for code optimization
-      const response = await plandexAIService.optimizeCode({
-        code: selectedCode,
-        type,
-        currentContext: currentFile || null
-      });
-      
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to optimize code');
-      }
-      
-      // Get the optimized code and explanation
-      const optimizedCode = response.result?.optimizedCode || '';
-      const explanation = response.result?.explanation || '';
-      
-      // Build response with actions
-      return {
-        success: true,
-        response: `I've optimized your ${type}. ${explanation}`,
-        actions: [
-          {
-            type: 'DISPLAY_CODE_OPTIMIZATION',
-            payload: {
-              originalCode: selectedCode,
-              optimizedCode,
-              explanation
-            }
-          },
-          {
-            type: 'OFFER_REPLACE_CODE',
-            payload: {
-              originalCode: selectedCode,
-              optimizedCode
-            }
-          }
-        ],
-        data: {
-          optimizedCode,
-          explanation,
-          originalCode: selectedCode
+      // If Plandex AI service is available, use it to optimize code
+      if (this.plandexAIService) {
+        // Determine optimization focus based on intent
+        let optimizationFocus = 'general';
+        if (intent === CodingCommandIntent.OPTIMIZE_FUNCTION) {
+          optimizationFocus = 'performance';
+        } else if (intent === CodingCommandIntent.OPTIMIZE_QUERY) {
+          optimizationFocus = 'database';
         }
-      };
+        
+        const optimizationResult = await this.plandexAIService.optimizeCode({
+          code: context.selectedCode,
+          optimizationFocus,
+          context: {
+            currentFile: context.currentFile,
+            projectLanguage: context.projectLanguage
+          }
+        });
+        
+        return {
+          success: true,
+          result: optimizationResult,
+          message: `Optimized code with focus on ${optimizationFocus}`,
+          status: VoiceCommandStatus.SUCCESS,
+          suggestions: [
+            "Try saying: Explain the optimization",
+            "Try saying: Insert this optimized code",
+            "Try saying: Are there any other optimizations possible?"
+          ]
+        };
+      } else {
+        throw new Error('Plandex AI service is not available');
+      }
     } catch (error) {
-      logger.error(`VoiceCommandCodingAssistance: Error in code optimization - ${error.message}`);
+      logger.error(`Error handling code optimization: ${error}`);
+      
       return {
         success: false,
-        response: `I couldn't optimize your ${parameters.type || 'code'}. ${error.message}`
+        message: `Failed to optimize code: ${error}`,
+        status: VoiceCommandStatus.ERROR,
+        suggestions: [
+          "Try with a smaller code selection",
+          "Try saying: Focus on performance optimization",
+          "Try saying: Focus on readability optimization"
+        ]
       };
     }
   }
@@ -565,111 +467,75 @@ export class VoiceCommandCodingAssistanceService {
    */
   private async handleEditorControl(
     intent: CodingCommandIntent,
+    command: string,
     parameters: Record<string, any>,
-    context: any
-  ): Promise<{ success: boolean; response: string; actions?: any[]; data?: any }> {
+    context: CommandContext
+  ): Promise<CommandResult> {
     try {
-      // Different actions based on intent
+      logger.info(`Handling editor control command with intent: ${intent}`);
+      
+      // Editor control commands are handled directly by the client
+      // We just return the appropriate intent and let the client handle the action
+      
+      let message = '';
+      let actions: Record<string, any> = {};
+      
       switch (intent) {
         case CodingCommandIntent.INSERT_CODE:
-          if (!context.clipboardContent) {
-            return {
-              success: false,
-              response: "I don't see any code to insert. Try generating code first or copying some code."
-            };
-          }
-          
-          return {
-            success: true,
-            response: `Inserting the code at cursor position.`,
-            actions: [
-              {
-                type: 'INSERT_AT_CURSOR',
-                payload: {
-                  code: context.clipboardContent
-                }
-              }
-            ]
+          message = 'Ready to insert code';
+          actions = { 
+            type: 'insert',
+            code: context.clipboardContent || ''
           };
-          
+          break;
         case CodingCommandIntent.DELETE_CODE:
-          if (!context.selectedCode) {
-            return {
-              success: false,
-              response: "I don't see any code selected. Please select the code you'd like to delete."
-            };
-          }
-          
-          return {
-            success: true,
-            response: `Deleting the selected code.`,
-            actions: [
-              {
-                type: 'DELETE_SELECTION',
-                payload: {}
-              }
-            ]
-          };
-          
+          message = 'Selected code will be deleted';
+          actions = { type: 'delete' };
+          break;
         case CodingCommandIntent.SELECT_CODE:
-          // This would typically require more context about what to select
-          // For now, we'll assume simple cases
-          if (parameters.target === 'function' && context.currentFunction) {
-            return {
-              success: true,
-              response: `Selecting the current function.`,
-              actions: [
-                {
-                  type: 'SELECT_RANGE',
-                  payload: {
-                    start: context.currentFunction.start,
-                    end: context.currentFunction.end
-                  }
-                }
-              ]
-            };
-          }
-          
-          return {
-            success: false,
-            response: "I'm not sure what code to select. Try being more specific or manually select the code."
+          message = 'Trying to select code based on description';
+          actions = { 
+            type: 'select',
+            descriptor: command.replace(/select/i, '').trim()
           };
-          
+          break;
         case CodingCommandIntent.UNDO:
-          return {
-            success: true,
-            response: `Undoing the last action.`,
-            actions: [
-              {
-                type: 'EDITOR_UNDO',
-                payload: {}
-              }
-            ]
-          };
-          
+          message = 'Undoing last action';
+          actions = { type: 'undo' };
+          break;
         case CodingCommandIntent.REDO:
-          return {
-            success: true,
-            response: `Redoing the last undone action.`,
-            actions: [
-              {
-                type: 'EDITOR_REDO',
-                payload: {}
-              }
-            ]
-          };
-          
+          message = 'Redoing last undone action';
+          actions = { type: 'redo' };
+          break;
         default:
-          return {
-            success: false,
-            response: "I didn't understand that editor command."
-          };
+          message = 'Unknown editor control action';
+          actions = { type: 'unknown' };
+          break;
       }
+      
+      return {
+        success: true,
+        message,
+        result: { actions },
+        status: VoiceCommandStatus.SUCCESS,
+        suggestions: [
+          "Try saying: Generate code for [description]",
+          "Try saying: Explain this code",
+          "Try saying: Fix this bug"
+        ]
+      };
     } catch (error) {
-      logger.error(`VoiceCommandCodingAssistance: Error in editor control - ${error.message}`);
+      logger.error(`Error handling editor control: ${error}`);
+      
       return {
         success: false,
-        response: `I couldn't perform that editor action. ${error.message}`
+        message: `Failed to perform editor action: ${error}`,
+        status: VoiceCommandStatus.ERROR,
+        suggestions: [
+          "Try a different editor command",
+          "Try saying: Undo",
+          "Try saying: Select this function"
+        ]
       };
     }
   }
@@ -679,138 +545,67 @@ export class VoiceCommandCodingAssistanceService {
    */
   private async handleFileOperation(
     intent: CodingCommandIntent,
+    command: string,
     parameters: Record<string, any>,
-    context: any
-  ): Promise<{ success: boolean; response: string; actions?: any[]; data?: any }> {
+    context: CommandContext
+  ): Promise<CommandResult> {
     try {
-      // Different actions based on intent
+      logger.info(`Handling file operation command with intent: ${intent}`);
+      
+      // File operation commands are handled directly by the client
+      // We just return the appropriate intent and let the client handle the action
+      
+      let message = '';
+      let actions: Record<string, any> = {};
+      
       switch (intent) {
         case CodingCommandIntent.CREATE_FILE:
-          const fileName = parameters.fileName || 'newFile.js';
-          
-          return {
-            success: true,
-            response: `Creating a new file named ${fileName}.`,
-            actions: [
-              {
-                type: 'CREATE_FILE',
-                payload: {
-                  fileName
-                }
-              }
-            ]
+          message = 'Ready to create a new file';
+          actions = { 
+            type: 'createFile',
+            fileName: extractFileName(command)
           };
-          
+          break;
         case CodingCommandIntent.SAVE_FILE:
-          return {
-            success: true,
-            response: `Saving the current file.`,
-            actions: [
-              {
-                type: 'SAVE_FILE',
-                payload: {}
-              }
-            ]
-          };
-          
+          message = 'Saving current file';
+          actions = { type: 'saveFile' };
+          break;
         case CodingCommandIntent.OPEN_FILE:
-          if (!parameters.fileName) {
-            return {
-              success: false,
-              response: "I didn't catch the name of the file to open. Please specify the file name."
-            };
-          }
-          
-          return {
-            success: true,
-            response: `Opening file ${parameters.fileName}.`,
-            actions: [
-              {
-                type: 'OPEN_FILE',
-                payload: {
-                  fileName: parameters.fileName
-                }
-              }
-            ]
+          message = 'Opening file';
+          actions = { 
+            type: 'openFile',
+            fileName: extractFileName(command)
           };
-          
+          break;
         default:
-          return {
-            success: false,
-            response: "I didn't understand that file operation command."
-          };
+          message = 'Unknown file operation';
+          actions = { type: 'unknown' };
+          break;
       }
-    } catch (error) {
-      logger.error(`VoiceCommandCodingAssistance: Error in file operation - ${error.message}`);
+      
       return {
-        success: false,
-        response: `I couldn't perform that file operation. ${error.message}`
+        success: true,
+        message,
+        result: { actions },
+        status: VoiceCommandStatus.SUCCESS,
+        suggestions: [
+          "Try saying: Generate code for [description]",
+          "Try saying: Save file",
+          "Try saying: Create a new component file"
+        ]
       };
-    }
-  }
-  
-  /**
-   * Handle other coding operations
-   */
-  private async handleOtherCodingOperation(
-    intent: CodingCommandIntent,
-    parameters: Record<string, any>,
-    context: any
-  ): Promise<{ success: boolean; response: string; actions?: any[]; data?: any }> {
-    try {
-      // Different actions based on intent
-      switch (intent) {
-        case CodingCommandIntent.RUN_TESTS:
-          return {
-            success: true,
-            response: `Running tests for the current project.`,
-            actions: [
-              {
-                type: 'RUN_TESTS',
-                payload: {}
-              }
-            ]
-          };
-          
-        case CodingCommandIntent.COMMIT_CODE:
-          const commitMessage = parameters.commitMessage || "Update code via voice command";
-          
-          return {
-            success: true,
-            response: `Committing changes with message: "${commitMessage}"`,
-            actions: [
-              {
-                type: 'COMMIT_CODE',
-                payload: {
-                  message: commitMessage
-                }
-              }
-            ]
-          };
-          
-        case CodingCommandIntent.DEPLOY_CODE:
-          return {
-            success: true,
-            response: `Initiating deployment process for the current project.`,
-            actions: [
-              {
-                type: 'DEPLOY_CODE',
-                payload: {}
-              }
-            ]
-          };
-          
-        default:
-          return {
-            success: false,
-            response: "I didn't understand that coding operation command."
-          };
-      }
     } catch (error) {
-      logger.error(`VoiceCommandCodingAssistance: Error in other coding operation - ${error.message}`);
+      logger.error(`Error handling file operation: ${error}`);
+      
       return {
         success: false,
-        response: `I couldn't perform that operation. ${error.message}`
+        message: `Failed to perform file operation: ${error}`,
+        status: VoiceCommandStatus.ERROR,
+        suggestions: [
+          "Try a different file command",
+          "Try saying: Save current file",
+          "Try saying: Create a new file named example.ts"
+        ]
       };
     }
   }
@@ -820,195 +615,126 @@ export class VoiceCommandCodingAssistanceService {
    */
   async initializeHelpContent(): Promise<void> {
     try {
-      // Define the help content for coding assistance commands
-      const helpContents: InsertVoiceCommandHelpContent[] = [
-        // General coding help
-        {
-          commandType: VoiceCommandType.CODING_ASSISTANCE,
-          contextId: 'global',
-          title: "Coding Assistance Commands",
-          examplePhrases: [
-            "generate code to sort an array",
-            "explain this function",
-            "fix this bug",
-            "optimize this code"
-          ],
-          description: "Voice commands for hands-free coding assistance, including code generation, explanation, bug fixing, and optimization.",
-          parameters: {},
-          priority: 8
-        },
-        
-        // Code generation commands
-        {
-          commandType: VoiceCommandType.CODING_ASSISTANCE,
-          contextId: 'editor',
-          title: "Code Generation Commands",
-          examplePhrases: [
-            "generate a function to calculate fibonacci numbers",
-            "create a class for user authentication",
-            "write a component for a login form",
-            "generate code to parse JSON data"
-          ],
-          description: "Commands for generating different types of code, including functions, classes, and components.",
-          parameters: {
-            "description": "Description of the code to generate",
-            "type": "Type of code to generate (function, class, component)"
-          },
-          priority: 9
-        },
-        
-        // Code explanation commands
-        {
-          commandType: VoiceCommandType.CODING_ASSISTANCE,
-          contextId: 'editor',
-          title: "Code Explanation Commands",
-          examplePhrases: [
-            "explain this code",
-            "explain this function",
-            "describe what this does",
-            "tell me about this implementation"
-          ],
-          description: "Commands for getting explanations of selected code, functions, or classes.",
-          parameters: {
-            "type": "Type of code to explain (function, class, code)"
-          },
-          priority: 7
-        },
-        
-        // Bug fixing commands
-        {
-          commandType: VoiceCommandType.CODING_ASSISTANCE,
-          contextId: 'editor',
-          title: "Bug Fixing Commands",
-          examplePhrases: [
-            "fix this bug",
-            "correct this error",
-            "debug this issue",
-            "resolve this problem"
-          ],
-          description: "Commands for fixing bugs, errors, and issues in your code.",
-          parameters: {
-            "type": "Type of bug or error to fix"
-          },
-          priority: 8
-        },
-        
-        // Code optimization commands
-        {
-          commandType: VoiceCommandType.CODING_ASSISTANCE,
-          contextId: 'editor',
-          title: "Code Optimization Commands",
-          examplePhrases: [
-            "optimize this code",
-            "optimize this function",
-            "improve this query",
-            "refactor this implementation"
-          ],
-          description: "Commands for optimizing and improving your code for better performance or readability.",
-          parameters: {
-            "type": "Type of code to optimize (function, query, code)"
-          },
-          priority: 7
-        },
-        
-        // Editor control commands
-        {
-          commandType: VoiceCommandType.CODING_ASSISTANCE,
-          contextId: 'editor',
-          title: "Editor Control Commands",
-          examplePhrases: [
-            "insert code here",
-            "delete this code",
-            "select this function",
-            "undo",
-            "redo"
-          ],
-          description: "Commands for controlling the code editor, including inserting, deleting, and selecting code.",
-          parameters: {},
-          priority: 6
-        },
-        
-        // File operation commands
-        {
-          commandType: VoiceCommandType.CODING_ASSISTANCE,
-          contextId: 'global',
-          title: "File Operation Commands",
-          examplePhrases: [
-            "create a new file named app.js",
-            "save this file",
-            "open file config.json"
-          ],
-          description: "Commands for file operations, including creating, saving, and opening files.",
-          parameters: {
-            "fileName": "Name of the file to create, save, or open"
-          },
-          priority: 5
-        },
-        
-        // Other coding commands
-        {
-          commandType: VoiceCommandType.CODING_ASSISTANCE,
-          contextId: 'global',
-          title: "Other Coding Commands",
-          examplePhrases: [
-            "run tests",
-            "commit code with message 'fix bug'",
-            "deploy code"
-          ],
-          description: "Other useful coding commands for testing, version control, and deployment.",
-          parameters: {
-            "commitMessage": "Message for code commits"
-          },
-          priority: 4
-        }
-      ];
+      logger.info('Initializing help content for coding commands');
       
-      // Insert all help content
-      for (const helpContent of helpContents) {
-        // Check if the help content already exists
-        const existingContent = await db.select({ count: sql`count(*)` })
-          .from(voiceCommandHelpContents)
-          .where(
-            and(
-              eq(voiceCommandHelpContents.commandType, helpContent.commandType),
-              eq(voiceCommandHelpContents.contextId, helpContent.contextId || 'global'),
-              eq(voiceCommandHelpContents.title, helpContent.title)
-            )
-          );
-          
-        // Only insert if it doesn't exist
-        if (existingContent[0].count === 0) {
-          await db.insert(voiceCommandHelpContents)
-            .values({
-              ...helpContent,
-              contextId: helpContent.contextId || 'global'
-            });
-            
-          logger.info(`VoiceCommandCodingAssistance: Added help content for "${helpContent.title}"`);
-        }
-      }
+      // Populate help content for different coding command categories
+      codingCommandHelpContent['generate'] = {
+        title: 'Code Generation Commands',
+        description: 'These commands help you generate code without typing.',
+        examples: [
+          'Generate a function to calculate fibonacci numbers',
+          'Create a React component for login form',
+          'Write a class for user authentication',
+          'Generate code to connect to a database'
+        ]
+      };
       
-      logger.info('VoiceCommandCodingAssistance: Successfully initialized help content');
+      codingCommandHelpContent['explain'] = {
+        title: 'Code Explanation Commands',
+        description: 'These commands help you understand code.',
+        examples: [
+          'Explain this code',
+          'Describe how this function works',
+          'Tell me about this implementation',
+          'What does this class do?'
+        ]
+      };
+      
+      codingCommandHelpContent['fix'] = {
+        title: 'Bug Fixing Commands',
+        description: 'These commands help you identify and fix bugs in your code.',
+        examples: [
+          'Fix this bug',
+          'Debug this issue',
+          'What\'s wrong with this code?',
+          'Resolve this error'
+        ]
+      };
+      
+      codingCommandHelpContent['optimize'] = {
+        title: 'Code Optimization Commands',
+        description: 'These commands help you improve the performance and quality of your code.',
+        examples: [
+          'Optimize this code',
+          'Improve the performance of this function',
+          'Refactor this implementation',
+          'Make this code more efficient'
+        ]
+      };
+      
+      codingCommandHelpContent['editor'] = {
+        title: 'Editor Control Commands',
+        description: 'These commands help you control the code editor.',
+        examples: [
+          'Insert this code',
+          'Delete selected code',
+          'Select the main function',
+          'Undo last change',
+          'Redo'
+        ]
+      };
+      
+      codingCommandHelpContent['file'] = {
+        title: 'File Operation Commands',
+        description: 'These commands help you work with files.',
+        examples: [
+          'Create a new file called user-service.ts',
+          'Save current file',
+          'Open the main component file',
+          'Close this file'
+        ]
+      };
+      
+      logger.info('Help content for coding commands initialized successfully');
     } catch (error) {
-      logger.error(`VoiceCommandCodingAssistance: Error initializing help content - ${error.message}`);
+      logger.error(`Error initializing help content for coding commands: ${error}`);
       throw error;
     }
   }
 }
 
+/**
+ * Helper function to extract a file name from a command
+ */
+function extractFileName(command: string): string {
+  // Look for patterns like "called X", "named X", "file X"
+  const fileNameMatches = command.match(/(?:called|named|file|called|named)\s+([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+)/i);
+  
+  if (fileNameMatches && fileNameMatches[1]) {
+    return fileNameMatches[1];
+  }
+  
+  // If no specific pattern, try to find anything that looks like a filename with extension
+  const extensionMatches = command.match(/([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+)/i);
+  
+  if (extensionMatches && extensionMatches[1]) {
+    return extensionMatches[1];
+  }
+  
+  // Default to a generic filename if nothing is found
+  return 'new-file.txt';
+}
+
 // Singleton instance
 let voiceCommandCodingAssistanceService: VoiceCommandCodingAssistanceService;
 
+/**
+ * Initialize the voice command coding assistance service
+ */
 export function initializeVoiceCommandCodingAssistanceService(): VoiceCommandCodingAssistanceService {
   if (!voiceCommandCodingAssistanceService) {
     voiceCommandCodingAssistanceService = new VoiceCommandCodingAssistanceService();
+    logger.info('Voice Command Coding Assistance Service initialized');
   }
   return voiceCommandCodingAssistanceService;
 }
 
+/**
+ * Get the voice command coding assistance service instance
+ */
 export function getVoiceCommandCodingAssistanceService(): VoiceCommandCodingAssistanceService {
   if (!voiceCommandCodingAssistanceService) {
-    throw new Error('Voice Command Coding Assistance Service has not been initialized');
+    return initializeVoiceCommandCodingAssistanceService();
   }
   return voiceCommandCodingAssistanceService;
 }

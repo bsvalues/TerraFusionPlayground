@@ -9,6 +9,7 @@ import voiceCommandAnalyticsRoutes from './voice-command-analytics-routes';
 import voiceCommandShortcutRoutes from './voice-command-shortcut-routes';
 import voiceCommandHelpRoutes from './voice-command-help-routes';
 import voiceCommandEnhancedRoutes from './voice-command-enhanced-routes';
+import voiceCommandCodingAssistanceRoutes from './voice-command-coding-assistance-routes';
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.use('/analytics', voiceCommandAnalyticsRoutes);
 router.use('/shortcuts', voiceCommandShortcutRoutes);
 router.use('/help', voiceCommandHelpRoutes);
 router.use('/enhanced', voiceCommandEnhancedRoutes);
+router.use('/coding', voiceCommandCodingAssistanceRoutes);
 
 export default router;
