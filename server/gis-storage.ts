@@ -260,11 +260,24 @@ export async function implementGISStorage(storage: IStorage): Promise<void> {
   // Agent Message methods
   storage.createAgentMessage = async (message: any): Promise<AgentMessage> => {
     // Check which schema format the message is in
-    if ('senderAgentId' in message) {
+    if ('senderAgentId' in message || 'messageType' in message) {
       // Convert from main schema format to GIS schema format
-      // Ensure agent_id is not null by providing a default if senderAgentId is null
+      // Enhanced logic to ensure agent_id is never null
+      const agentId = message.senderAgentId || message.agentId || message.agent_id || 'system';
+      
+      // Log the message and agent ID to help with debugging
+      console.log(`Creating agent message with agent ID: ${agentId}`, 
+                  `Message has senderAgentId: ${'senderAgentId' in message}`,
+                  `Message has agentId: ${'agentId' in message}`);
+      
+      if (!agentId || agentId === 'null' || agentId === 'undefined') {
+        console.error('Warning: Attempting to create agent message with null/undefined agent ID', message);
+        // Fall back to a guaranteed agent ID to prevent null constraint violations
+        throw new Error('Agent ID cannot be null or undefined');
+      }
+      
       const adaptedMessage = {
-        agent_id: message.senderAgentId || message.agentId || 'system',
+        agent_id: agentId,
         type: message.messageType || 'INFO',
         content: typeof message.content === 'object' ? 
           JSON.stringify(message.content) : 

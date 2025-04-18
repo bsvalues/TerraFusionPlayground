@@ -72,8 +72,16 @@ export abstract class SpecialistAgent extends BaseAgent {
     });
     
     // Register with component lead
+    const agentId = this.id || this.agentId; // Make sure we have a valid ID
+    console.log(`Specialist agent ${this.specialization} registering with component lead. Agent ID: ${agentId}`);
+    
+    if (!agentId) {
+      console.error(`ERROR: Specialist agent ${this.specialization} has no valid ID!`);
+      throw new Error(`Specialist agent ${this.specialization} has no valid ID!`);
+    }
+    
     await this.storage.createAgentMessage({
-      senderAgentId: this.agentId,
+      senderAgentId: agentId,
       receiverAgentId: this.componentLeadId,
       messageType: MessageEventType.STATUS_UPDATE,
       priority: MessagePriority.NORMAL,
@@ -113,8 +121,14 @@ export abstract class SpecialistAgent extends BaseAgent {
     `;
     
     // Report result to component lead
+    const agentId = this.id || this.agentId; // Make sure we have a valid ID
+    if (!agentId) {
+      console.error(`ERROR: Specialist agent ${this.specialization} has no valid ID when reporting task results!`);
+      throw new Error(`Specialist agent ${this.specialization} has no valid ID!`);
+    }
+    
     await this.storage.createAgentMessage({
-      senderAgentId: this.agentId,
+      senderAgentId: agentId,
       receiverAgentId: this.componentLeadId,
       messageType: MessageEventType.STATUS_UPDATE,
       priority: MessagePriority.NORMAL,
@@ -149,8 +163,14 @@ export abstract class SpecialistAgent extends BaseAgent {
     });
     
     // Request help from component lead
+    const agentId = this.id || this.agentId; // Make sure we have a valid ID
+    if (!agentId) {
+      console.error(`ERROR: Specialist agent ${this.specialization} has no valid ID when requesting assistance!`);
+      throw new Error(`Specialist agent ${this.specialization} has no valid ID!`);
+    }
+    
     await this.storage.createAgentMessage({
-      senderAgentId: this.agentId,
+      senderAgentId: agentId,
       receiverAgentId: this.componentLeadId,
       messageType: MessageEventType.ASSISTANCE_REQUESTED,
       priority: MessagePriority.HIGH,
@@ -189,8 +209,14 @@ export abstract class SpecialistAgent extends BaseAgent {
     };
     
     // Send status to component lead
+    const agentId = this.id || this.agentId; // Make sure we have a valid ID
+    if (!agentId) {
+      console.error(`ERROR: Specialist agent ${this.specialization} has no valid ID when reporting status!`);
+      throw new Error(`Specialist agent ${this.specialization} has no valid ID!`);
+    }
+    
     await this.storage.createAgentMessage({
-      senderAgentId: this.agentId,
+      senderAgentId: agentId,
       receiverAgentId: this.componentLeadId,
       messageType: MessageEventType.STATUS_UPDATE,
       priority: MessagePriority.NORMAL,
