@@ -1,20 +1,31 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { personalizedAgentService } from "../services/personalized-agents/personalized-agent-service";
 import { z } from "zod";
 import { insertPersonalizedDeveloperAgentSchema } from "@shared/schema";
+
+// Define extended Request type to include user information
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: number;  // We'll use id instead of userId for consistency with our service
+    username: string;
+    role: string;
+    scope?: string[];
+  };
+  isAuthenticated(): boolean;
+}
 
 const router = Router();
 
 /**
  * Get all personalized agents for the current user
  */
-router.get("/api/personalized-agents", async (req, res) => {
+router.get("/api/personalized-agents", async (req: AuthenticatedRequest, res: Response) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   try {
-    const agents = await personalizedAgentService.getUserAgents(req.user.id);
+    const agents = await personalizedAgentService.getUserAgents(req.user!.id);
     res.json(agents);
   } catch (error) {
     console.error("Error fetching personalized agents:", error);
@@ -25,7 +36,7 @@ router.get("/api/personalized-agents", async (req, res) => {
 /**
  * Get shared personalized agents
  */
-router.get("/api/personalized-agents/shared", async (req, res) => {
+router.get("/api/personalized-agents/shared", async (req: AuthenticatedRequest, res: Response) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Unauthorized" });
   }

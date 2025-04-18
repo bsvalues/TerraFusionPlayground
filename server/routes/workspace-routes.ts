@@ -1,20 +1,31 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { workspacePreferencesService } from "../services/workspace-customization/workspace-preferences-service";
 import { z } from "zod";
 import { insertWorkspacePreferenceSchema } from "@shared/schema";
+
+// Define extended Request type to include user information
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: number;  // We'll use id instead of userId for consistency with our service
+    username: string;
+    role: string;
+    scope?: string[];
+  };
+  isAuthenticated(): boolean;
+}
 
 const router = Router();
 
 /**
  * Get workspace preferences for the current user
  */
-router.get("/api/workspace/preferences", async (req, res) => {
+router.get("/api/workspace/preferences", async (req: AuthenticatedRequest, res: Response) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   try {
-    const preferences = await workspacePreferencesService.getOrCreatePreferences(req.user.id);
+    const preferences = await workspacePreferencesService.getOrCreatePreferences(req.user!.id);
     res.json(preferences);
   } catch (error) {
     console.error("Error fetching workspace preferences:", error);
@@ -25,7 +36,7 @@ router.get("/api/workspace/preferences", async (req, res) => {
 /**
  * Update workspace preferences for the current user
  */
-router.post("/api/workspace/preferences", async (req, res) => {
+router.post("/api/workspace/preferences", async (req: AuthenticatedRequest, res: Response) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -35,16 +46,16 @@ router.post("/api/workspace/preferences", async (req, res) => {
     const validationSchema = insertWorkspacePreferenceSchema.partial();
     const validatedData = validationSchema.parse(req.body);
     
-    const existing = await workspacePreferencesService.getUserPreferences(req.user.id);
+    const existing = await workspacePreferencesService.getUserPreferences(req.user!.id);
     
     let result;
     if (existing) {
       // Update existing preferences
-      result = await workspacePreferencesService.updatePreferences(req.user.id, validatedData);
+      result = await workspacePreferencesService.updatePreferences(req.user!.id, validatedData);
     } else {
       // Create new preferences with provided values and defaults
       result = await workspacePreferencesService.createPreferences({
-        userId: req.user.id,
+        userId: req.user!.id,
         ...validatedData,
       });
     }
@@ -62,13 +73,13 @@ router.post("/api/workspace/preferences", async (req, res) => {
 /**
  * Reset workspace preferences to defaults
  */
-router.post("/api/workspace/preferences/reset", async (req, res) => {
+router.post("/api/workspace/preferences/reset", async (req: AuthenticatedRequest, res: Response) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   try {
-    const result = await workspacePreferencesService.resetToDefaults(req.user.id);
+    const result = await workspacePreferencesService.resetToDefaults(req.user!.id);
     res.status(200).json(result);
   } catch (error) {
     console.error("Error resetting workspace preferences:", error);

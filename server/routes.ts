@@ -42,6 +42,8 @@ import databaseConversionRoutes from "./routes/database-conversion-routes";
 import developmentPlatformRoutes from "./routes/development-platform-routes";
 import assessmentModelWorkbenchRoutes from "./routes/assessment-model-workbench-routes";
 import assistantPersonalityRoutes from "./routes/assistant-personality-routes";
+import workspaceRoutes from "./routes/workspace-routes";
+import personalizedAgentRoutes from "./routes/personalized-agent-routes";
 import { registerDatabaseConversionRoutes } from "./routes/database-conversion-routes";
 import { DatabaseConversionService } from "./services/database-conversion";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
@@ -210,6 +212,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Assistant Personality routes
   app.use('/api/assistant-personalities', assistantPersonalityRoutes);
+  
+  // Register Workspace Customization routes
+  app.use(workspaceRoutes);
+  
+  // Register Personalized Developer Agent routes
+  app.use(personalizedAgentRoutes);
   
   // Register Database Conversion routes
   registerDatabaseConversionRoutes(app, databaseConversionService);
