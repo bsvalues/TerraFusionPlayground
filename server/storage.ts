@@ -129,6 +129,38 @@ export interface IStorage {
   createUIComponentTemplate(template: InsertUIComponentTemplate): Promise<UIComponentTemplate>;
   updateUIComponentTemplate(id: number, updates: Partial<InsertUIComponentTemplate>): Promise<UIComponentTemplate | undefined>;
   deleteUIComponentTemplate(id: number): Promise<boolean>;
+  
+  // Database Conversion methods
+  // Conversion Project methods
+  createConversionProject(project: InsertDatabaseConversionProject): Promise<DatabaseConversionProject>;
+  getConversionProjects(): Promise<DatabaseConversionProject[]>;
+  getConversionProject(id: string): Promise<DatabaseConversionProject | undefined>;
+  updateConversionProject(id: string, updates: Partial<DatabaseConversionProject>): Promise<DatabaseConversionProject | undefined>;
+  deleteConversionProject(id: string): Promise<boolean>;
+  
+  // Connection Template methods
+  createConnectionTemplate(template: InsertConnectionTemplate): Promise<ConnectionTemplate>;
+  getConnectionTemplates(isPublic?: boolean): Promise<ConnectionTemplate[]>;
+  getConnectionTemplate(id: number): Promise<ConnectionTemplate | undefined>;
+  updateConnectionTemplate(id: number, updates: Partial<InsertConnectionTemplate>): Promise<ConnectionTemplate | undefined>;
+  deleteConnectionTemplate(id: number): Promise<boolean>;
+  
+  // Schema Mapping methods
+  createSchemaMapping(mapping: InsertSchemaMapping): Promise<SchemaMapping>;
+  getSchemaMappings(sourceType?: string, targetType?: string): Promise<SchemaMapping[]>;
+  getSchemaMapping(id: number): Promise<SchemaMapping | undefined>;
+  updateSchemaMapping(id: number, updates: Partial<InsertSchemaMapping>): Promise<SchemaMapping | undefined>;
+  deleteSchemaMapping(id: number): Promise<boolean>;
+  
+  // Conversion Log methods
+  createConversionLog(log: InsertConversionLog): Promise<ConversionLog>;
+  getConversionLogs(projectId: string): Promise<ConversionLog[]>;
+  
+  // Compatibility Layer methods
+  createCompatibilityLayer(layer: InsertCompatibilityLayer): Promise<CompatibilityLayer>;
+  getCompatibilityLayersByProject(projectId: string): Promise<CompatibilityLayer[]>;
+  getCompatibilityLayer(id: number): Promise<CompatibilityLayer | undefined>;
+  updateCompatibilityLayer(id: number, updates: Partial<InsertCompatibilityLayer>): Promise<CompatibilityLayer | undefined>;
 
   // Team Agent methods
   getAllTeamMembers(): Promise<TeamMember[]>;
@@ -3535,6 +3567,241 @@ export class MemStorage implements IStorage {
       
       this.systemActivities.set(id, systemActivity);
     });
+  }
+
+  // Database Conversion methods implementation
+  async createConversionProject(project: InsertDatabaseConversionProject): Promise<DatabaseConversionProject> {
+    const timestamp = new Date();
+    const newProject: DatabaseConversionProject = {
+      ...project,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      status: project.status || conversionStatusEnum.enum.pending
+    };
+    
+    this.databaseConversionProjects.set(project.projectId, newProject);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      activity_type: 'database_conversion_project_created',
+      component: 'Database Conversion',
+      details: {
+        projectId: project.projectId,
+        name: project.name,
+        sourceType: project.sourceType
+      }
+    });
+    
+    return newProject;
+  }
+  
+  async getConversionProjects(): Promise<DatabaseConversionProject[]> {
+    return Array.from(this.databaseConversionProjects.values());
+  }
+  
+  async getConversionProject(id: string): Promise<DatabaseConversionProject | undefined> {
+    return this.databaseConversionProjects.get(id);
+  }
+  
+  async updateConversionProject(id: string, updates: Partial<DatabaseConversionProject>): Promise<DatabaseConversionProject | undefined> {
+    const project = this.databaseConversionProjects.get(id);
+    if (!project) return undefined;
+    
+    const updatedProject = {
+      ...project,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.databaseConversionProjects.set(id, updatedProject);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      activity_type: 'database_conversion_project_updated',
+      component: 'Database Conversion',
+      details: {
+        projectId: id,
+        updates: Object.keys(updates)
+      }
+    });
+    
+    return updatedProject;
+  }
+  
+  async deleteConversionProject(id: string): Promise<boolean> {
+    const project = this.databaseConversionProjects.get(id);
+    if (!project) return false;
+    
+    const success = this.databaseConversionProjects.delete(id);
+    
+    if (success) {
+      // Create system activity
+      await this.createSystemActivity({
+        activity_type: 'database_conversion_project_deleted',
+        component: 'Database Conversion',
+        details: {
+          projectId: id,
+          name: project.name
+        }
+      });
+    }
+    
+    return success;
+  }
+  
+  // Connection Template methods
+  async createConnectionTemplate(template: InsertConnectionTemplate): Promise<ConnectionTemplate> {
+    const id = this.currentConnectionTemplateId++;
+    const timestamp = new Date();
+    const newTemplate: ConnectionTemplate = {
+      ...template,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+    
+    this.connectionTemplates.set(id, newTemplate);
+    
+    return newTemplate;
+  }
+  
+  async getConnectionTemplates(isPublic?: boolean): Promise<ConnectionTemplate[]> {
+    const templates = Array.from(this.connectionTemplates.values());
+    if (isPublic !== undefined) {
+      return templates.filter(template => template.isPublic === isPublic);
+    }
+    return templates;
+  }
+  
+  async getConnectionTemplate(id: number): Promise<ConnectionTemplate | undefined> {
+    return this.connectionTemplates.get(id);
+  }
+  
+  async updateConnectionTemplate(id: number, updates: Partial<InsertConnectionTemplate>): Promise<ConnectionTemplate | undefined> {
+    const template = this.connectionTemplates.get(id);
+    if (!template) return undefined;
+    
+    const updatedTemplate = {
+      ...template,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.connectionTemplates.set(id, updatedTemplate);
+    return updatedTemplate;
+  }
+  
+  async deleteConnectionTemplate(id: number): Promise<boolean> {
+    return this.connectionTemplates.delete(id);
+  }
+  
+  // Schema Mapping methods
+  async createSchemaMapping(mapping: InsertSchemaMapping): Promise<SchemaMapping> {
+    const id = this.currentSchemaMappingId++;
+    const timestamp = new Date();
+    const newMapping: SchemaMapping = {
+      ...mapping,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+    
+    this.schemaMappings.set(id, newMapping);
+    return newMapping;
+  }
+  
+  async getSchemaMappings(sourceType?: string, targetType?: string): Promise<SchemaMapping[]> {
+    let mappings = Array.from(this.schemaMappings.values());
+    
+    if (sourceType) {
+      mappings = mappings.filter(mapping => mapping.sourceType === sourceType);
+    }
+    
+    if (targetType) {
+      mappings = mappings.filter(mapping => mapping.targetType === targetType);
+    }
+    
+    return mappings;
+  }
+  
+  async getSchemaMapping(id: number): Promise<SchemaMapping | undefined> {
+    return this.schemaMappings.get(id);
+  }
+  
+  async updateSchemaMapping(id: number, updates: Partial<InsertSchemaMapping>): Promise<SchemaMapping | undefined> {
+    const mapping = this.schemaMappings.get(id);
+    if (!mapping) return undefined;
+    
+    const updatedMapping = {
+      ...mapping,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.schemaMappings.set(id, updatedMapping);
+    return updatedMapping;
+  }
+  
+  async deleteSchemaMapping(id: number): Promise<boolean> {
+    return this.schemaMappings.delete(id);
+  }
+  
+  // Conversion Log methods
+  async createConversionLog(log: InsertConversionLog): Promise<ConversionLog> {
+    const id = this.currentConversionLogId++;
+    const timestamp = new Date();
+    const newLog: ConversionLog = {
+      ...log,
+      id,
+      createdAt: timestamp
+    };
+    
+    this.conversionLogs.set(id, newLog);
+    return newLog;
+  }
+  
+  async getConversionLogs(projectId: string): Promise<ConversionLog[]> {
+    return Array.from(this.conversionLogs.values())
+      .filter(log => log.projectId === projectId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  
+  // Compatibility Layer methods
+  async createCompatibilityLayer(layer: InsertCompatibilityLayer): Promise<CompatibilityLayer> {
+    const id = this.currentCompatibilityLayerId++;
+    const timestamp = new Date();
+    const newLayer: CompatibilityLayer = {
+      ...layer,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+    
+    this.compatibilityLayers.set(id, newLayer);
+    return newLayer;
+  }
+  
+  async getCompatibilityLayersByProject(projectId: string): Promise<CompatibilityLayer[]> {
+    return Array.from(this.compatibilityLayers.values())
+      .filter(layer => layer.projectId === projectId);
+  }
+  
+  async getCompatibilityLayer(id: number): Promise<CompatibilityLayer | undefined> {
+    return this.compatibilityLayers.get(id);
+  }
+  
+  async updateCompatibilityLayer(id: number, updates: Partial<InsertCompatibilityLayer>): Promise<CompatibilityLayer | undefined> {
+    const layer = this.compatibilityLayers.get(id);
+    if (!layer) return undefined;
+    
+    const updatedLayer = {
+      ...layer,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.compatibilityLayers.set(id, updatedLayer);
+    return updatedLayer;
   }
 
   // Team Agent methods implementation
