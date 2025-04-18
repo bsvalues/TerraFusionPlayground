@@ -4,8 +4,24 @@ import { projectManager } from '../services/development/project-manager';
 import { fileManager } from '../services/development/file-manager';
 import { previewEngine } from '../services/development/preview-engine';
 import { getAICodeAssistant } from '../services/development/ai-code-assistant';
-import { insertDevProjectSchema, DevFileType } from '@shared/schema';
+import { 
+  insertDevProjectSchema, 
+  DevFileType, 
+  insertCodeSnippetSchema, 
+  insertDataVisualizationSchema, 
+  insertUIComponentTemplateSchema,
+  CodeSnippetType,
+  VisualizationType,
+  ComponentType
+} from '@shared/schema';
+import { storage } from '../storage';
 import path from 'path';
+
+// Initialize development tool services
+import { CodeSnippetService, DataVisualizationService, ComponentPlaygroundService } from '../services/development';
+const codeSnippetService = new CodeSnippetService(storage);
+const dataVisualizationService = new DataVisualizationService(storage);
+const componentPlaygroundService = new ComponentPlaygroundService(storage);
 
 const router = express.Router();
 
@@ -531,6 +547,474 @@ router.post('/ai/recommend-improvement', async (req, res) => {
   } catch (error) {
     console.error('Error recommending improvements:', error);
     res.status(500).json({ error: 'Failed to recommend improvements' });
+  }
+});
+
+// ==================================================================
+// DEVELOPMENT TOOLS ROUTES
+// ==================================================================
+
+// ======================= CODE SNIPPETS ============================
+
+// Get all code snippets with optional filtering
+router.get('/code-snippets', async (req, res) => {
+  try {
+    const { 
+      language, 
+      type, 
+      search, 
+      tags, 
+      createdBy, 
+      isPublic,
+      limit,
+      offset
+    } = req.query;
+    
+    // Build filter object from query parameters
+    const filter: any = {};
+    if (language) filter.language = language as string;
+    if (type) filter.snippetType = type as string;
+    if (search) filter.search = search as string;
+    if (tags) filter.tags = (tags as string).split(',');
+    if (createdBy) filter.createdBy = parseInt(createdBy as string);
+    if (isPublic) filter.isPublic = isPublic === 'true';
+    
+    // Parse pagination parameters
+    const pagination = {
+      limit: limit ? parseInt(limit as string) : 20,
+      offset: offset ? parseInt(offset as string) : 0
+    };
+    
+    const snippets = await codeSnippetService.getCodeSnippets(filter, pagination);
+    res.json(snippets);
+  } catch (error) {
+    console.error('Error getting code snippets:', error);
+    res.status(500).json({ error: 'Failed to retrieve code snippets' });
+  }
+});
+
+// Get a single code snippet by ID
+router.get('/code-snippets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const snippet = await codeSnippetService.getCodeSnippetById(parseInt(id));
+    
+    if (!snippet) {
+      return res.status(404).json({ error: 'Code snippet not found' });
+    }
+    
+    res.json(snippet);
+  } catch (error) {
+    console.error('Error getting code snippet:', error);
+    res.status(500).json({ error: 'Failed to retrieve code snippet' });
+  }
+});
+
+// Create a new code snippet
+router.post('/code-snippets', async (req, res) => {
+  try {
+    const validationResult = insertCodeSnippetSchema.safeParse(req.body);
+    
+    if (!validationResult.success) {
+      return res.status(400).json({ error: validationResult.error });
+    }
+    
+    const snippet = await codeSnippetService.createCodeSnippet(validationResult.data);
+    res.status(201).json(snippet);
+  } catch (error) {
+    console.error('Error creating code snippet:', error);
+    res.status(500).json({ error: 'Failed to create code snippet' });
+  }
+});
+
+// Update a code snippet
+router.put('/code-snippets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const validatedData = insertCodeSnippetSchema.partial().parse(req.body);
+    
+    const snippet = await codeSnippetService.updateCodeSnippet(
+      parseInt(id), 
+      validatedData
+    );
+    
+    if (!snippet) {
+      return res.status(404).json({ error: 'Code snippet not found' });
+    }
+    
+    res.json(snippet);
+  } catch (error) {
+    console.error('Error updating code snippet:', error);
+    res.status(500).json({ error: 'Failed to update code snippet' });
+  }
+});
+
+// Delete a code snippet
+router.delete('/code-snippets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await codeSnippetService.deleteCodeSnippet(parseInt(id));
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Code snippet not found' });
+    }
+    
+    res.status(204).end();
+  } catch (error) {
+    console.error('Error deleting code snippet:', error);
+    res.status(500).json({ error: 'Failed to delete code snippet' });
+  }
+});
+
+// Generate a code snippet with AI
+router.post('/code-snippets/generate', async (req, res) => {
+  try {
+    const { prompt, language, snippetType } = req.body;
+    
+    if (!prompt || !language) {
+      return res.status(400).json({ error: 'Prompt and language are required' });
+    }
+    
+    const generatedSnippet = await codeSnippetService.generateCodeSnippet(
+      prompt, 
+      language, 
+      snippetType || CodeSnippetType.UTILITY
+    );
+    
+    res.json(generatedSnippet);
+  } catch (error) {
+    console.error('Error generating code snippet:', error);
+    res.status(500).json({ error: 'Failed to generate code snippet' });
+  }
+});
+
+// Get code snippet metadata (available languages, types, etc.)
+router.get('/code-snippets/metadata', async (req, res) => {
+  try {
+    const metadata = {
+      languages: [
+        'javascript', 'typescript', 'python', 'java', 'csharp', 'go',
+        'ruby', 'php', 'swift', 'kotlin', 'rust', 'sql'
+      ],
+      types: Object.values(CodeSnippetType),
+      frameworks: [
+        'react', 'angular', 'vue', 'express', 'django', 'flask',
+        'spring', 'laravel', 'aspnet', 'rails'
+      ]
+    };
+    
+    res.json(metadata);
+  } catch (error) {
+    console.error('Error getting code snippet metadata:', error);
+    res.status(500).json({ error: 'Failed to retrieve code snippet metadata' });
+  }
+});
+
+// ======================= DATA VISUALIZATIONS ============================
+
+// Get all data visualizations with optional filtering
+router.get('/data-visualizations', async (req, res) => {
+  try {
+    const { 
+      type, 
+      search, 
+      createdBy, 
+      isPublic,
+      limit,
+      offset
+    } = req.query;
+    
+    // Build filter object from query parameters
+    const filter: any = {};
+    if (type) filter.visualizationType = type as string;
+    if (search) filter.search = search as string;
+    if (createdBy) filter.createdBy = parseInt(createdBy as string);
+    if (isPublic) filter.isPublic = isPublic === 'true';
+    
+    // Parse pagination parameters
+    const pagination = {
+      limit: limit ? parseInt(limit as string) : 20,
+      offset: offset ? parseInt(offset as string) : 0
+    };
+    
+    const visualizations = await dataVisualizationService.getDataVisualizations(filter, pagination);
+    res.json(visualizations);
+  } catch (error) {
+    console.error('Error getting data visualizations:', error);
+    res.status(500).json({ error: 'Failed to retrieve data visualizations' });
+  }
+});
+
+// Get a single data visualization by ID
+router.get('/data-visualizations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const visualization = await dataVisualizationService.getDataVisualizationById(parseInt(id));
+    
+    if (!visualization) {
+      return res.status(404).json({ error: 'Data visualization not found' });
+    }
+    
+    res.json(visualization);
+  } catch (error) {
+    console.error('Error getting data visualization:', error);
+    res.status(500).json({ error: 'Failed to retrieve data visualization' });
+  }
+});
+
+// Create a new data visualization
+router.post('/data-visualizations', async (req, res) => {
+  try {
+    const validationResult = insertDataVisualizationSchema.safeParse(req.body);
+    
+    if (!validationResult.success) {
+      return res.status(400).json({ error: validationResult.error });
+    }
+    
+    const visualization = await dataVisualizationService.createDataVisualization(validationResult.data);
+    res.status(201).json(visualization);
+  } catch (error) {
+    console.error('Error creating data visualization:', error);
+    res.status(500).json({ error: 'Failed to create data visualization' });
+  }
+});
+
+// Update a data visualization
+router.put('/data-visualizations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const validatedData = insertDataVisualizationSchema.partial().parse(req.body);
+    
+    const visualization = await dataVisualizationService.updateDataVisualization(
+      parseInt(id), 
+      validatedData
+    );
+    
+    if (!visualization) {
+      return res.status(404).json({ error: 'Data visualization not found' });
+    }
+    
+    res.json(visualization);
+  } catch (error) {
+    console.error('Error updating data visualization:', error);
+    res.status(500).json({ error: 'Failed to update data visualization' });
+  }
+});
+
+// Delete a data visualization
+router.delete('/data-visualizations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await dataVisualizationService.deleteDataVisualization(parseInt(id));
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Data visualization not found' });
+    }
+    
+    res.status(204).end();
+  } catch (error) {
+    console.error('Error deleting data visualization:', error);
+    res.status(500).json({ error: 'Failed to delete data visualization' });
+  }
+});
+
+// Generate a data visualization chart config with AI
+router.post('/data-visualizations/generate-config', async (req, res) => {
+  try {
+    const { dataSource, visualizationType, description } = req.body;
+    
+    if (!dataSource || !visualizationType) {
+      return res.status(400).json({ error: 'Data source and visualization type are required' });
+    }
+    
+    const generatedConfig = await dataVisualizationService.generateVisualizationConfig(
+      dataSource, 
+      visualizationType as VisualizationType,
+      description
+    );
+    
+    res.json(generatedConfig);
+  } catch (error) {
+    console.error('Error generating visualization config:', error);
+    res.status(500).json({ error: 'Failed to generate visualization configuration' });
+  }
+});
+
+// Get data visualization metadata (available types, chart libraries, etc.)
+router.get('/data-visualizations/metadata', async (req, res) => {
+  try {
+    const metadata = {
+      types: Object.values(VisualizationType),
+      libraries: [
+        'recharts', 'chart.js', 'd3', 'highcharts', 'plotly', 
+        'visx', 'nivo', 'victory', 'echarts'
+      ],
+      colorSchemes: [
+        'sequential', 'diverging', 'categorical', 'monochrome',
+        'assessment-blues', 'assessment-greens', 'assessment-yellows'
+      ]
+    };
+    
+    res.json(metadata);
+  } catch (error) {
+    console.error('Error getting data visualization metadata:', error);
+    res.status(500).json({ error: 'Failed to retrieve data visualization metadata' });
+  }
+});
+
+// ======================= UI COMPONENT TEMPLATES ============================
+
+// Get all UI component templates with optional filtering
+router.get('/ui-components', async (req, res) => {
+  try {
+    const { 
+      type, 
+      framework,
+      search, 
+      tags,
+      createdBy, 
+      isPublic,
+      limit,
+      offset
+    } = req.query;
+    
+    // Build filter object from query parameters
+    const filter: any = {};
+    if (type) filter.componentType = type as string;
+    if (framework) filter.framework = framework as string;
+    if (search) filter.search = search as string;
+    if (tags) filter.tags = (tags as string).split(',');
+    if (createdBy) filter.createdBy = parseInt(createdBy as string);
+    if (isPublic) filter.isPublic = isPublic === 'true';
+    
+    // Parse pagination parameters
+    const pagination = {
+      limit: limit ? parseInt(limit as string) : 20,
+      offset: offset ? parseInt(offset as string) : 0
+    };
+    
+    const components = await componentPlaygroundService.getUIComponentTemplates(filter, pagination);
+    res.json(components);
+  } catch (error) {
+    console.error('Error getting UI component templates:', error);
+    res.status(500).json({ error: 'Failed to retrieve UI component templates' });
+  }
+});
+
+// Get a single UI component template by ID
+router.get('/ui-components/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const component = await componentPlaygroundService.getUIComponentTemplateById(parseInt(id));
+    
+    if (!component) {
+      return res.status(404).json({ error: 'UI component template not found' });
+    }
+    
+    res.json(component);
+  } catch (error) {
+    console.error('Error getting UI component template:', error);
+    res.status(500).json({ error: 'Failed to retrieve UI component template' });
+  }
+});
+
+// Create a new UI component template
+router.post('/ui-components', async (req, res) => {
+  try {
+    const validationResult = insertUIComponentTemplateSchema.safeParse(req.body);
+    
+    if (!validationResult.success) {
+      return res.status(400).json({ error: validationResult.error });
+    }
+    
+    const component = await componentPlaygroundService.createUIComponentTemplate(validationResult.data);
+    res.status(201).json(component);
+  } catch (error) {
+    console.error('Error creating UI component template:', error);
+    res.status(500).json({ error: 'Failed to create UI component template' });
+  }
+});
+
+// Update a UI component template
+router.put('/ui-components/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const validatedData = insertUIComponentTemplateSchema.partial().parse(req.body);
+    
+    const component = await componentPlaygroundService.updateUIComponentTemplate(
+      parseInt(id), 
+      validatedData
+    );
+    
+    if (!component) {
+      return res.status(404).json({ error: 'UI component template not found' });
+    }
+    
+    res.json(component);
+  } catch (error) {
+    console.error('Error updating UI component template:', error);
+    res.status(500).json({ error: 'Failed to update UI component template' });
+  }
+});
+
+// Delete a UI component template
+router.delete('/ui-components/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await componentPlaygroundService.deleteUIComponentTemplate(parseInt(id));
+    
+    if (!result) {
+      return res.status(404).json({ error: 'UI component template not found' });
+    }
+    
+    res.status(204).end();
+  } catch (error) {
+    console.error('Error deleting UI component template:', error);
+    res.status(500).json({ error: 'Failed to delete UI component template' });
+  }
+});
+
+// Generate a UI component with AI
+router.post('/ui-components/generate', async (req, res) => {
+  try {
+    const { prompt, framework, componentType } = req.body;
+    
+    if (!prompt || !framework) {
+      return res.status(400).json({ error: 'Prompt and framework are required' });
+    }
+    
+    const generatedComponent = await componentPlaygroundService.generateUIComponent(
+      prompt, 
+      framework, 
+      componentType || ComponentType.FORM
+    );
+    
+    res.json(generatedComponent);
+  } catch (error) {
+    console.error('Error generating UI component:', error);
+    res.status(500).json({ error: 'Failed to generate UI component' });
+  }
+});
+
+// Get UI component metadata (available component types, frameworks, etc.)
+router.get('/ui-components/metadata', async (req, res) => {
+  try {
+    const metadata = {
+      types: Object.values(ComponentType),
+      frameworks: [
+        'react', 'angular', 'vue', 'svelte', 'solid', 'preact',
+        'lit', 'stencil', 'web-components'
+      ],
+      styling: [
+        'css', 'scss', 'styled-components', 'emotion', 'tailwind',
+        'bootstrap', 'material-ui', 'chakra-ui', 'shadcn'
+      ]
+    };
+    
+    res.json(metadata);
+  } catch (error) {
+    console.error('Error getting UI component metadata:', error);
+    res.status(500).json({ error: 'Failed to retrieve UI component metadata' });
   }
 });
 

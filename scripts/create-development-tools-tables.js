@@ -51,7 +51,58 @@ async function createDevelopmentToolsTables() {
     // Data Integration & Processing tables
     await db.execute(schema.dataPipelines.createIfNotExists);
     
-    console.log('Development tools tables created successfully');
+    // Create indexes for improved performance
+    
+    // Code Snippets indexes
+    await db.execute(`
+      CREATE INDEX IF NOT EXISTS idx_code_snippets_language ON code_snippets (language);
+      CREATE INDEX IF NOT EXISTS idx_code_snippets_type ON code_snippets (snippet_type);
+      CREATE INDEX IF NOT EXISTS idx_code_snippets_created_by ON code_snippets (created_by);
+    `);
+    
+    // Data Visualizations indexes
+    await db.execute(`
+      CREATE INDEX IF NOT EXISTS idx_data_visualizations_type ON data_visualizations (visualization_type);
+      CREATE INDEX IF NOT EXISTS idx_data_visualizations_created_by ON data_visualizations (created_by);
+    `);
+    
+    // UI Component Templates indexes
+    await db.execute(`
+      CREATE INDEX IF NOT EXISTS idx_ui_component_templates_type ON ui_component_templates (component_type);
+      CREATE INDEX IF NOT EXISTS idx_ui_component_templates_framework ON ui_component_templates (framework);
+      CREATE INDEX IF NOT EXISTS idx_ui_component_templates_created_by ON ui_component_templates (created_by);
+    `);
+    
+    // Add custom triggers for automated timestamp updates
+    await db.execute(`
+      CREATE OR REPLACE FUNCTION update_updated_at_column()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        NEW.updated_at = NOW();
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+      
+      DROP TRIGGER IF EXISTS update_code_snippets_updated_at ON code_snippets;
+      CREATE TRIGGER update_code_snippets_updated_at
+      BEFORE UPDATE ON code_snippets
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+      
+      DROP TRIGGER IF EXISTS update_data_visualizations_updated_at ON data_visualizations;
+      CREATE TRIGGER update_data_visualizations_updated_at
+      BEFORE UPDATE ON data_visualizations
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+      
+      DROP TRIGGER IF EXISTS update_ui_component_templates_updated_at ON ui_component_templates;
+      CREATE TRIGGER update_ui_component_templates_updated_at
+      BEFORE UPDATE ON ui_component_templates
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+    `);
+    
+    console.log('Development tools tables and indexes created successfully');
   } catch (error) {
     console.error('Error creating development tools tables:', error);
     process.exit(1);

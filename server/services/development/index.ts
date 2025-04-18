@@ -5,33 +5,25 @@
  * creating, managing, and previewing assessment agency applications.
  */
 
-import { FileManager } from './file-manager';
-import { ProjectManager } from './project-manager';
-import { PreviewEngine } from './preview-engine';
-import { AICodeAssistant } from './ai-code-assistant';
+import { fileManager } from './file-manager';
+import { projectManager } from './project-manager';
+import { previewEngine } from './preview-engine';
+import { getAICodeAssistant } from './ai-code-assistant';
+import { CodeSnippetService } from './code-snippet-service';
+import { DataVisualizationService } from './data-visualization-service';
+import { ComponentPlaygroundService } from './component-playground-service';
 
 export {
-  FileManager,
-  ProjectManager,
-  PreviewEngine,
-  AICodeAssistant
+  fileManager,
+  projectManager,
+  previewEngine,
+  getAICodeAssistant,
+  CodeSnippetService,
+  DataVisualizationService,
+  ComponentPlaygroundService
 };
 
-// Export service types
-export type { 
-  FileOperationResult 
-} from './file-manager';
-
-export type { 
-  ProjectOperationResult 
-} from './project-manager';
-
-export type { 
-  PreviewOperationResult 
-} from './preview-engine';
-
-export type { 
-  CodeGenerationResult,
-  CodeCompletionResult,
-  CodeDocumentationResult
-} from './ai-code-assistant';
+// Export service types for consistency
+export { CodeSnippetType } from '@shared/schema';
+export { VisualizationType } from '@shared/schema';
+export { ComponentType } from '@shared/schema';
