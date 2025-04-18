@@ -15,7 +15,7 @@ router.get("/api/personalized-agents", async (req: AuthenticatedRequest, res: Re
   }
 
   try {
-    const agents = await personalizedAgentService.getUserAgents(req.user!.id);
+    const agents = await personalizedAgentService.getUserAgents(req.user!.userId);
     res.json(agents);
   } catch (error) {
     console.error("Error fetching personalized agents:", error);
@@ -61,7 +61,7 @@ router.get("/api/personalized-agents/:id", async (req: AuthenticatedRequest, res
     }
     
     // Check if user is authorized to access this agent
-    if (agent.userId !== req.user!.id && !agent.isShared) {
+    if (agent.userId !== req.user!.userId && !agent.isShared) {
       return res.status(403).json({ error: "Forbidden" });
     }
     
@@ -84,11 +84,11 @@ router.post("/api/personalized-agents", async (req: AuthenticatedRequest, res: R
     // Validate the request body
     const validatedData = insertPersonalizedDeveloperAgentSchema.parse({
       ...req.body,
-      userId: req.user!.id,
+      userId: req.user!.userId,
     });
     
     // Check if agent with this name already exists for this user
-    const existing = await personalizedAgentService.getAgentByName(validatedData.name, req.user!.id);
+    const existing = await personalizedAgentService.getAgentByName(validatedData.name, req.user!.userId);
     if (existing) {
       return res.status(400).json({ error: "An agent with this name already exists" });
     }
@@ -124,7 +124,7 @@ router.put("/api/personalized-agents/:id", async (req: AuthenticatedRequest, res
       return res.status(404).json({ error: "Agent not found" });
     }
     
-    if (existing.userId !== req.user!.id) {
+    if (existing.userId !== req.user!.userId) {
       return res.status(403).json({ error: "Forbidden" });
     }
     
@@ -133,7 +133,7 @@ router.put("/api/personalized-agents/:id", async (req: AuthenticatedRequest, res
     const validatedData = validationSchema.parse(req.body);
     
     // Update the agent
-    const result = await personalizedAgentService.updateAgent(id, req.user!.id, validatedData);
+    const result = await personalizedAgentService.updateAgent(id, req.user!.userId, validatedData);
     res.json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -158,7 +158,7 @@ router.delete("/api/personalized-agents/:id", async (req: AuthenticatedRequest, 
       return res.status(400).json({ error: "Invalid agent ID" });
     }
     
-    const success = await personalizedAgentService.deleteAgent(id, req.user!.id);
+    const success = await personalizedAgentService.deleteAgent(id, req.user!.userId);
     
     if (!success) {
       return res.status(404).json({ error: "Agent not found or you don't have permission to delete it" });
@@ -192,7 +192,7 @@ router.post("/api/personalized-agents/:id/use", async (req: AuthenticatedRequest
     }
     
     // Check if user is authorized to use this agent
-    if (agent.userId !== req.user!.id && !agent.isShared) {
+    if (agent.userId !== req.user!.userId && !agent.isShared) {
       return res.status(403).json({ error: "Forbidden" });
     }
     

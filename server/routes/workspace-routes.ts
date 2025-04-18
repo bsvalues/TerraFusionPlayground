@@ -15,7 +15,7 @@ router.get("/api/workspace/preferences", async (req: AuthenticatedRequest, res: 
   }
 
   try {
-    const preferences = await workspacePreferencesService.getOrCreatePreferences(req.user!.id);
+    const preferences = await workspacePreferencesService.getOrCreatePreferences(req.user!.userId);
     res.json(preferences);
   } catch (error) {
     console.error("Error fetching workspace preferences:", error);
@@ -36,16 +36,16 @@ router.post("/api/workspace/preferences", async (req: AuthenticatedRequest, res:
     const validationSchema = insertWorkspacePreferenceSchema.partial();
     const validatedData = validationSchema.parse(req.body);
     
-    const existing = await workspacePreferencesService.getUserPreferences(req.user!.id);
+    const existing = await workspacePreferencesService.getUserPreferences(req.user!.userId);
     
     let result;
     if (existing) {
       // Update existing preferences
-      result = await workspacePreferencesService.updatePreferences(req.user!.id, validatedData);
+      result = await workspacePreferencesService.updatePreferences(req.user!.userId, validatedData);
     } else {
       // Create new preferences with provided values and defaults
       result = await workspacePreferencesService.createPreferences({
-        userId: req.user!.id,
+        userId: req.user!.userId,
         ...validatedData,
       });
     }
@@ -69,7 +69,7 @@ router.post("/api/workspace/preferences/reset", async (req: AuthenticatedRequest
   }
 
   try {
-    const result = await workspacePreferencesService.resetToDefaults(req.user!.id);
+    const result = await workspacePreferencesService.resetToDefaults(req.user!.userId);
     res.status(200).json(result);
   } catch (error) {
     console.error("Error resetting workspace preferences:", error);

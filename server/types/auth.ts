@@ -1,12 +1,12 @@
 import { Request } from "express";
 
-// Define consistent type for authenticated requests
+// Define consistent type for authenticated requests that aligns with Express.Request from auth-middleware
 export interface AuthenticatedRequest extends Request {
   user?: {
-    id: number;  // Using id for consistency with our service implementation
+    userId: number;  // Match the global Express.Request interface from auth-middleware
     username: string;
     role: string;
-    scope?: string[];
+    scope: string[];
   };
   isAuthenticated(): boolean;
 }
