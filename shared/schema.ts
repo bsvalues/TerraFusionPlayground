@@ -1938,7 +1938,8 @@ export enum VoiceCommandStatus {
   SUCCESS = 'success',
   PARTIAL_SUCCESS = 'partial_success',
   FAILED = 'failed',
-  AMBIGUOUS = 'ambiguous'
+  AMBIGUOUS = 'ambiguous',
+  ERROR = 'error'
 }
 
 // Enum for voice command types to categorize commands

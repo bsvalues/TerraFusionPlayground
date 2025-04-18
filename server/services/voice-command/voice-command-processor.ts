@@ -441,11 +441,11 @@ export class VoiceCommandProcessor {
           return {
             success: result.success,
             intent,
-            result: result.data || result.response,
-            message: result.response,
-            status: result.success ? VoiceCommandStatus.SUCCESS : VoiceCommandStatus.FAILED,
+            result: result.result,
+            message: result.message,
+            status: result.status,
             commandType,
-            actions: result.actions
+            suggestions: result.suggestions
           };
         } catch (error) {
           console.error('Error processing coding assistance command:', error);
