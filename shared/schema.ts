@@ -8,6 +8,16 @@ import {
   TaskStatus
 } from "./team-agent-types";
 
+// Assistant Personality Theme Types
+export enum AssistantPersonalityTheme {
+  PROFESSIONAL = 'professional',
+  FRIENDLY = 'friendly',
+  TECHNICAL = 'technical',
+  CREATIVE = 'creative',
+  CONCISE = 'concise',
+  CUSTOM = 'custom'
+}
+
 // Enum definitions for validation and workflow
 export enum RuleCategory {
   CLASSIFICATION = 'classification',
@@ -2058,3 +2068,137 @@ export const insertVoiceCommandHelpContentSchema = createInsertSchema(voiceComma
 
 export type VoiceCommandHelpContent = typeof voiceCommandHelpContents.$inferSelect;
 export type InsertVoiceCommandHelpContent = z.infer<typeof insertVoiceCommandHelpContentSchema>;
+
+/**
+ * AI Assistant Personality Traits Schema
+ */
+export const personalityTraitsSchema = z.object({
+  formality: z.number().min(1).max(10).default(5),
+  friendliness: z.number().min(1).max(10).default(5),
+  technicality: z.number().min(1).max(10).default(5),
+  creativity: z.number().min(1).max(10).default(5),
+  conciseness: z.number().min(1).max(10).default(5),
+});
+
+export type PersonalityTraits = z.infer<typeof personalityTraitsSchema>;
+
+/**
+ * AI Assistant Visual Theme Schema
+ */
+export const visualThemeSchema = z.object({
+  primaryColor: z.string().default("#0284c7"),
+  secondaryColor: z.string().default("#f59e0b"),
+  accentColor: z.string().default("#10b981"),
+  avatar: z.string().optional(),
+  iconSet: z.enum(["default", "minimal", "detailed", "playful"]).default("default"),
+  themeName: z.string().default("Default"),
+});
+
+export type VisualTheme = z.infer<typeof visualThemeSchema>;
+
+/**
+ * AI Assistant Personality Table
+ */
+export const assistantPersonalities = pgTable("assistant_personalities", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  traits: jsonb("traits").$type<PersonalityTraits>().notNull(),
+  visualTheme: jsonb("visual_theme").$type<VisualTheme>().notNull(),
+  systemPrompt: text("system_prompt").notNull(),
+  exampleMessages: jsonb("example_messages").$type<string[]>().default([]),
+  isDefault: boolean("is_default").default(false),
+  userId: integer("user_id").notNull(), // Owner of the personality
+  isPublic: boolean("is_public").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    nameIdx: index("assistant_personality_name_idx").on(table.name),
+    userIdx: index("assistant_personality_user_idx").on(table.userId),
+  };
+});
+
+/**
+ * AI Assistant Personality Type
+ */
+export type AssistantPersonality = typeof assistantPersonalities.$inferSelect;
+
+/**
+ * AI Assistant Personality Insert Schema
+ */
+export const insertAssistantPersonalitySchema = createInsertSchema(assistantPersonalities, {
+  traits: personalityTraitsSchema,
+  visualTheme: visualThemeSchema,
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAssistantPersonality = z.infer<typeof insertAssistantPersonalitySchema>;
+
+/**
+ * User Personality Preferences Table
+ * Maps users to their preferred assistant personalities
+ */
+export const userPersonalityPreferences = pgTable("user_personality_preferences", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  personalityId: integer("personality_id").notNull().references(() => assistantPersonalities.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userPersonalityIdx: index("user_personality_pref_idx").on(table.userId, table.personalityId),
+  };
+});
+
+/**
+ * User Personality Preference Type
+ */
+export type UserPersonalityPreference = typeof userPersonalityPreferences.$inferSelect;
+
+/**
+ * User Personality Preference Insert Schema
+ */
+export const insertUserPersonalityPreferenceSchema = createInsertSchema(userPersonalityPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUserPersonalityPreference = z.infer<typeof insertUserPersonalityPreferenceSchema>;
+
+/**
+ * AI Interaction Style Templates
+ * Pre-defined templates for personalities that users can start with
+ */
+export const personalityTemplates = pgTable("personality_templates", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 50 }).notNull(),
+  traits: jsonb("traits").$type<PersonalityTraits>().notNull(),
+  visualTheme: jsonb("visual_theme").$type<VisualTheme>().notNull(),
+  systemPrompt: text("system_prompt").notNull(),
+  exampleMessages: jsonb("example_messages").$type<string[]>().default([]),
+  isOfficial: boolean("is_official").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    categoryIdx: index("personality_template_category_idx").on(table.category),
+  };
+});
+
+export type PersonalityTemplate = typeof personalityTemplates.$inferSelect;
+
+export const insertPersonalityTemplateSchema = createInsertSchema(personalityTemplates, {
+  traits: personalityTraitsSchema,
+  visualTheme: visualThemeSchema,
+}).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPersonalityTemplate = z.infer<typeof insertPersonalityTemplateSchema>;
