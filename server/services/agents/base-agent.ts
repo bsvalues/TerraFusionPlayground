@@ -33,6 +33,7 @@ export interface AgentConfig {
  */
 export abstract class BaseAgent {
   protected id: any; // Can be string or number based on implementation
+  protected agentId: any; // Alias for id to maintain compatibility with subclasses
   protected name: string;
   protected description: string;
   protected capabilities: Map<string, AgentCapability>;
@@ -55,6 +56,7 @@ export abstract class BaseAgent {
     this.mcpService = mcpService;
     this.config = config;
     this.id = config.id;
+    this.agentId = config.id; // Set agentId as an alias for id
     this.name = config.name;
     this.description = config.description;
     this.permissions = config.permissions || [];
@@ -194,14 +196,14 @@ export abstract class BaseAgent {
     const request: MCPRequest = {
       tool,
       parameters,
-      agentId: this.id
+      agentId: this.agentId
     };
     
     const context: MCPExecutionContext = {
-      agentId: this.id,
+      agentId: this.agentId,
       isAuthenticated: true,
       permissions: this.permissions,
-      requestId: `agent-${this.id}-${Date.now()}`,
+      requestId: `agent-${this.agentId}-${Date.now()}`,
       startTime: new Date()
     };
     
@@ -231,7 +233,7 @@ export abstract class BaseAgent {
       this.performanceScore = performance;
       // Check if the method exists before calling it
       if (typeof this.storage.updateAiAgentStatus === 'function') {
-        await this.storage.updateAiAgentStatus(this.id, status, performance);
+        await this.storage.updateAiAgentStatus(this.agentId, status, performance);
       } else {
         // Fallback: just log to console if the method doesn't exist
         console.log(`Agent ${this.name} status update: status=${status}, performance=${performance}`);
@@ -255,7 +257,7 @@ export abstract class BaseAgent {
         component: `agent:${this.name}`,
         status: 'info',
         details: {
-          agentId: this.id,
+          agentId: this.agentId,
           agentName: this.name,
           message,
           ...details
@@ -300,7 +302,7 @@ export abstract class BaseAgent {
     performanceScore: number;
   } {
     return {
-      id: this.id,
+      id: this.agentId,
       name: this.name,
       isActive: this.isActive,
       lastActivity: this.lastActivity,
@@ -336,8 +338,8 @@ export abstract class BaseAgent {
 
     try {
       const experience: AgentExperience = {
-        experienceId: `exp-${this.id}-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
-        agentId: this.id,
+        experienceId: `exp-${this.agentId}-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
+        agentId: this.agentId,
         agentName: this.name,
         timestamp: new Date(),
         action,
