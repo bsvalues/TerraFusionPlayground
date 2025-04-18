@@ -1948,7 +1948,8 @@ export enum VoiceCommandType {
   PROPERTY_ASSESSMENT = 'property_assessment',
   WORKFLOW = 'workflow',
   SYSTEM = 'system',
-  CUSTOM = 'custom'
+  CUSTOM = 'custom',
+  CODING_ASSISTANCE = 'coding_assistance'
 }
 
 // Voice Command Logs table

@@ -99,11 +99,7 @@ router.get('/personalities/:id', async (req: Request, res: Response) => {
     
     res.json(personality);
   } catch (error) {
-    logger.error({
-      component: 'AssistantPersonalityRoutes',
-      message: `Error retrieving personality ID: ${req.params.id}`,
-      error
-    });
+    logger.error(`AssistantPersonalityRoutes: Error retrieving personality ID: ${req.params.id} - ${error.message}`);
     res.status(500).json({ error: 'Failed to retrieve personality' });
   }
 });
@@ -132,11 +128,7 @@ router.post('/personalities', async (req: Request, res: Response) => {
     
     res.status(201).json(newPersonality);
   } catch (error) {
-    logger.error({
-      component: 'AssistantPersonalityRoutes',
-      message: 'Error creating personality',
-      error
-    });
+    logger.error(`AssistantPersonalityRoutes: Error creating personality - ${error.message}`);
     res.status(500).json({ error: 'Failed to create personality' });
   }
 });
@@ -167,11 +159,7 @@ router.post('/personalities/from-template/:templateId', async (req: Request, res
     
     res.status(201).json(newPersonality);
   } catch (error) {
-    logger.error({
-      component: 'AssistantPersonalityRoutes',
-      message: `Error creating personality from template ID: ${req.params.templateId}`,
-      error
-    });
+    logger.error(`AssistantPersonalityRoutes: Error creating personality from template ID: ${req.params.templateId} - ${error.message}`);
     res.status(500).json({ error: 'Failed to create personality from template' });
   }
 });
@@ -200,11 +188,7 @@ router.put('/personalities/:id', async (req: Request, res: Response) => {
     
     res.json(updatedPersonality);
   } catch (error) {
-    logger.error({
-      component: 'AssistantPersonalityRoutes',
-      message: `Error updating personality ID: ${req.params.id}`,
-      error
-    });
+    logger.error(`AssistantPersonalityRoutes: Error updating personality ID: ${req.params.id} - ${error.message}`);
     
     if (error.message?.includes('not found') || error.message?.includes('permission')) {
       return res.status(403).json({ error: error.message });
@@ -234,11 +218,7 @@ router.delete('/personalities/:id', async (req: Request, res: Response) => {
     
     res.status(204).send();
   } catch (error) {
-    logger.error({
-      component: 'AssistantPersonalityRoutes',
-      message: `Error deleting personality ID: ${req.params.id}`,
-      error
-    });
+    logger.error(`AssistantPersonalityRoutes: Error deleting personality ID: ${req.params.id} - ${error.message}`);
     
     if (error.message?.includes('not found') || error.message?.includes('permission')) {
       return res.status(403).json({ error: error.message });
@@ -268,11 +248,7 @@ router.post('/personalities/:id/set-default', async (req: Request, res: Response
     
     res.status(200).json({ success: true });
   } catch (error) {
-    logger.error({
-      component: 'AssistantPersonalityRoutes',
-      message: `Error setting default personality ID: ${req.params.id}`,
-      error
-    });
+    logger.error(`AssistantPersonalityRoutes: Error setting default personality ID: ${req.params.id} - ${error.message}`);
     
     if (error.message?.includes('not found') || error.message?.includes('permission')) {
       return res.status(403).json({ error: error.message });
