@@ -140,11 +140,7 @@ class AssistantPersonalityService {
 
       return personality || null;
     } catch (error) {
-      logger.error({
-        component: 'AssistantPersonalityService',
-        message: `Error retrieving assistant personality ID: ${id}`,
-        error
-      });
+      logger.error(`AssistantPersonalityService: Error retrieving assistant personality ID: ${id} - ${error.message}`);
       throw error;
     }
   }
@@ -165,11 +161,7 @@ class AssistantPersonalityService {
 
       return personalities;
     } catch (error) {
-      logger.error({
-        component: 'AssistantPersonalityService',
-        message: `Error retrieving personalities for user ID: ${userId}`,
-        error
-      });
+      logger.error(`AssistantPersonalityService: Error retrieving personalities for user ID: ${userId} - ${error.message}`);
       throw error;
     }
   }
@@ -214,11 +206,7 @@ class AssistantPersonalityService {
 
       return defaultPersonality;
     } catch (error) {
-      logger.error({
-        component: 'AssistantPersonalityService',
-        message: `Error retrieving default personality for user ID: ${userId}`,
-        error
-      });
+      logger.error(`AssistantPersonalityService: Error retrieving default personality for user ID: ${userId} - ${error.message}`);
       throw error;
     }
   }
@@ -251,11 +239,7 @@ class AssistantPersonalityService {
         throw new Error('Personality not found or you do not have permission to update it');
       }
     } catch (error) {
-      logger.error({
-        component: 'AssistantPersonalityService',
-        message: `Error setting default personality ID: ${personalityId} for user ID: ${userId}`,
-        error
-      });
+      logger.error(`AssistantPersonalityService: Error setting default personality ID: ${personalityId} for user ID: ${userId} - ${error.message}`);
       throw error;
     }
   }
@@ -272,11 +256,7 @@ class AssistantPersonalityService {
 
       return templates;
     } catch (error) {
-      logger.error({
-        component: 'AssistantPersonalityService',
-        message: 'Error retrieving personality templates',
-        error
-      });
+      logger.error(`AssistantPersonalityService: Error retrieving personality templates - ${error.message}`);
       throw error;
     }
   }
@@ -315,11 +295,7 @@ class AssistantPersonalityService {
 
       return this.createPersonality(personalityData);
     } catch (error) {
-      logger.error({
-        component: 'AssistantPersonalityService',
-        message: `Error creating personality from template ID: ${templateId}`,
-        error
-      });
+      logger.error(`AssistantPersonalityService: Error creating personality from template ID: ${templateId} - ${error.message}`);
       throw error;
     }
   }

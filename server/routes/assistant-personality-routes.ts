@@ -24,11 +24,7 @@ router.get('/templates', async (req: Request, res: Response) => {
     const templates = await assistantPersonalityService.getPersonalityTemplates();
     res.json(templates);
   } catch (error) {
-    logger.error({
-      component: 'AssistantPersonalityRoutes',
-      message: 'Error retrieving personality templates',
-      error
-    });
+    logger.error(`AssistantPersonalityRoutes: Error retrieving personality templates - ${error.message}`);
     res.status(500).json({ error: 'Failed to retrieve personality templates' });
   }
 });
@@ -46,11 +42,7 @@ router.get('/personalities', async (req: Request, res: Response) => {
     const personalities = await assistantPersonalityService.getPersonalitiesForUser(userId);
     res.json(personalities);
   } catch (error) {
-    logger.error({
-      component: 'AssistantPersonalityRoutes',
-      message: 'Error retrieving personalities',
-      error
-    });
+    logger.error(`AssistantPersonalityRoutes: Error retrieving personalities - ${error.message}`);
     res.status(500).json({ error: 'Failed to retrieve personalities' });
   }
 });
@@ -73,11 +65,7 @@ router.get('/personalities/default', async (req: Request, res: Response) => {
     
     res.json(defaultPersonality);
   } catch (error) {
-    logger.error({
-      component: 'AssistantPersonalityRoutes',
-      message: 'Error retrieving default personality',
-      error
-    });
+    logger.error(`AssistantPersonalityRoutes: Error retrieving default personality - ${error.message}`);
     res.status(500).json({ error: 'Failed to retrieve default personality' });
   }
 });
