@@ -1,7 +1,12 @@
-"use client";
+/**
+ * Date Range Picker Component
+ * 
+ * This component allows selecting a date range with a calendar interface.
+ * Used for filtering analytics and other date-based data.
+ */
 
 import * as React from "react";
-import { addDays, format } from "date-fns";
+import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
@@ -15,15 +20,15 @@ import {
 } from "@/components/ui/popover";
 
 interface DatePickerWithRangeProps {
-  className?: string;
   value: DateRange;
   onChange: (date: DateRange) => void;
+  className?: string;
 }
 
 export function DatePickerWithRange({
-  className,
   value,
   onChange,
+  className,
 }: DatePickerWithRangeProps) {
   return (
     <div className={cn("grid gap-2", className)}>
@@ -52,53 +57,18 @@ export function DatePickerWithRange({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="center">
+        <PopoverContent className="w-auto p-0" align="start">
           <Calendar
             initialFocus
             mode="range"
             defaultMonth={value?.from}
             selected={value}
-            onSelect={onChange}
+            onSelect={(range) => {
+              // Handle null or undefined value by providing a default
+              onChange(range || { from: undefined, to: undefined });
+            }}
             numberOfMonths={2}
           />
-          <div className="flex justify-between p-3 border-t border-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => 
-                onChange({
-                  from: new Date(),
-                  to: new Date()
-                })
-              }
-            >
-              Today
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => 
-                onChange({
-                  from: addDays(new Date(), -7),
-                  to: new Date()
-                })
-              }
-            >
-              Last 7 days
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => 
-                onChange({
-                  from: addDays(new Date(), -30),
-                  to: new Date()
-                })
-              }
-            >
-              Last 30 days
-            </Button>
-          </div>
         </PopoverContent>
       </Popover>
     </div>

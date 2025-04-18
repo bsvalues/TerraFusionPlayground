@@ -1,33 +1,38 @@
 /**
- * Enhanced Voice Command Service (Client-side)
+ * Enhanced Voice Command Service
  * 
- * This service extends the base voice command service with advanced features:
- * - Voice command shortcuts
- * - Voice command analytics
- * - Contextual help for voice commands
- * - Error handling and correction
+ * This service provides enhanced features for voice commands:
+ * - Analytics and usage statistics
+ * - Shortcut management
+ * - Command suggestions and corrections
+ * - Contextual help
  */
 
-import { apiRequest } from '@/lib/queryClient';
 import { DateRange } from 'react-day-picker';
+import { apiRequest } from '@/lib/queryClient';
 
-// ========== Shortcut Types ==========
+// Interfaces =================================================================
 
+/**
+ * Voice Command Shortcut
+ */
 export interface VoiceCommandShortcut {
   id: number;
   userId: number;
   shortcutPhrase: string;
   expandedCommand: string;
   commandType: string;
-  description?: string;
+  description: string | null;
   priority: number;
   isEnabled: boolean;
   isGlobal: boolean;
-  lastUsed?: string;
   createdAt: string;
   updatedAt: string;
 }
 
+/**
+ * Create Voice Command Shortcut
+ */
 export interface CreateVoiceCommandShortcut {
   userId: number;
   shortcutPhrase: string;
@@ -39,347 +44,198 @@ export interface CreateVoiceCommandShortcut {
   isGlobal: boolean;
 }
 
-// ========== Analytics Types ==========
-
-export interface VoiceCommandAnalyticsSummary {
-  totalCommands: number;
-  successRate: number;
-  averageResponseTime: number;
-  mostUsedCommands: Array<{commandText: string, count: number}>;
-  commandCounts: {
-    [key: string]: number;
-  };
-  errorRates: {
-    [key: string]: number;
-  };
+/**
+ * Voice Command Help Content
+ */
+export interface VoiceCommandHelpContent {
+  id: number;
+  contextId: string;
+  title: string;
+  description: string;
+  commandType: string;
+  examplePhrases: string[];
+  parameters: Record<string, string>;
+  responseExample: string | null;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface VoiceCommandAnalyticsTimeframe {
-  startDate: string;
-  endDate: string;
-  userId?: number;
-}
-
-export interface VoiceCommandAnalyticsFilters {
-  timeframe: VoiceCommandAnalyticsTimeframe;
-  commandTypes?: string[];
-  successful?: boolean;
-}
-
-export interface DailyVoiceCommandStats {
-  date: string;
-  commandCount: number;
-  successCount: number;
-  errorCount: number;
-  averageResponseTime: number;
-}
-
+/**
+ * Command Type Distribution
+ */
 export interface CommandTypeDistribution {
   commandType: string;
   count: number;
   percentage: number;
 }
 
+/**
+ * Daily Voice Command Stats
+ */
+export interface DailyVoiceCommandStats {
+  date: string;
+  commandCount: number;
+  successCount: number;
+  errorCount: number;
+  successRate: number;
+}
+
+/**
+ * Common Error
+ */
+export interface CommonError {
+  error: string;
+  count: number;
+  percentage: number;
+}
+
+/**
+ * Most Used Command
+ */
+export interface MostUsedCommand {
+  commandText: string;
+  count: number;
+  successRate: number;
+}
+
+/**
+ * Voice Command Analytics Summary
+ */
+export interface VoiceCommandAnalyticsSummary {
+  totalCommands: number;
+  successCount: number;
+  errorCount: number;
+  successRate: number;
+  averageResponseTime: number;
+  mostUsedCommands: MostUsedCommand[];
+}
+
+/**
+ * Voice Command Analytics Details
+ */
 export interface VoiceCommandAnalyticsDetails {
   summary: VoiceCommandAnalyticsSummary;
   dailyStats: DailyVoiceCommandStats[];
   commandTypeDistribution: CommandTypeDistribution[];
-  commonErrors: Array<{
-    error: string;
-    count: number;
-    percentage: number;
-  }>;
+  commonErrors: CommonError[];
 }
 
-// ========== Help Content Types ==========
-
-export interface VoiceCommandHelpContent {
-  id: number;
-  title: string;
-  description: string;
-  commandType: string;
-  context: string;
-  examplePhrases: string[];
-  parameters?: Record<string, string>;
-  responseExample?: string;
-  isHidden: boolean;
-  priority: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// ========== Shortcut Functions ==========
+// Shortcut functions =========================================================
 
 /**
- * Get all shortcuts for a user
+ * Get user shortcuts
  */
 export async function getUserShortcuts(userId: number): Promise<VoiceCommandShortcut[]> {
-  try {
-    const response = await apiRequest('GET', `/api/voice-command/shortcuts?userId=${userId}`);
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to get shortcuts: ${error}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting shortcuts:', error);
-    throw error;
-  }
+  const response = await apiRequest('GET', `/api/voice-command/shortcuts?userId=${userId}`);
+  return await response.json();
 }
 
 /**
  * Create a new shortcut
  */
 export async function createShortcut(shortcut: CreateVoiceCommandShortcut): Promise<VoiceCommandShortcut> {
-  try {
-    const response = await apiRequest('POST', '/api/voice-command/shortcuts', shortcut);
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to create shortcut: ${error}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error creating shortcut:', error);
-    throw error;
-  }
+  const response = await apiRequest('POST', '/api/voice-command/shortcuts', shortcut);
+  return await response.json();
 }
 
 /**
  * Update an existing shortcut
  */
 export async function updateShortcut(id: number, shortcut: Partial<CreateVoiceCommandShortcut>): Promise<VoiceCommandShortcut> {
-  try {
-    const response = await apiRequest('PUT', `/api/voice-command/shortcuts/${id}`, shortcut);
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to update shortcut: ${error}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error updating shortcut:', error);
-    throw error;
-  }
+  const response = await apiRequest('PATCH', `/api/voice-command/shortcuts/${id}`, shortcut);
+  return await response.json();
 }
 
 /**
  * Delete a shortcut
  */
 export async function deleteShortcut(id: number): Promise<void> {
-  try {
-    const response = await apiRequest('DELETE', `/api/voice-command/shortcuts/${id}`);
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to delete shortcut: ${error}`);
-    }
-  } catch (error) {
-    console.error('Error deleting shortcut:', error);
-    throw error;
-  }
+  await apiRequest('DELETE', `/api/voice-command/shortcuts/${id}`);
 }
 
 /**
- * Create default shortcuts for a new user
+ * Create default shortcuts for a user
  */
 export async function createDefaultShortcuts(userId: number): Promise<VoiceCommandShortcut[]> {
-  try {
-    const response = await apiRequest('POST', `/api/voice-command/shortcuts/defaults?userId=${userId}`);
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to create default shortcuts: ${error}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error creating default shortcuts:', error);
-    throw error;
-  }
+  const response = await apiRequest('POST', `/api/voice-command/shortcuts/defaults?userId=${userId}`);
+  return await response.json();
 }
 
 /**
- * Apply shortcuts to a command text
- * Expands any shortcut phrases found in the command
+ * Expand shortcuts in a command
  */
 export async function expandShortcuts(command: string, userId: number): Promise<string> {
-  try {
-    const response = await apiRequest('POST', '/api/voice-command/shortcuts/expand', {
-      command,
-      userId
-    });
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to expand shortcuts: ${error}`);
-    }
-    
-    const result = await response.json();
-    return result.expandedCommand;
-  } catch (error) {
-    console.error('Error expanding shortcuts:', error);
-    // Return original command if expansion fails
-    return command;
-  }
+  const response = await apiRequest('POST', '/api/voice-command/shortcuts/expand', {
+    command,
+    userId
+  });
+  const result = await response.json();
+  return result.expandedCommand;
 }
 
-// ========== Analytics Functions ==========
+// Analytics functions ========================================================
 
 /**
- * Get voice command analytics for a time period
+ * Get voice command analytics
  */
 export async function getVoiceCommandAnalytics(
-  userId: number,
-  dateRange: DateRange
+  userId: number, 
+  dateRange?: DateRange
 ): Promise<VoiceCommandAnalyticsDetails> {
-  try {
-    const startDate = dateRange.from?.toISOString() || new Date().toISOString();
-    const endDate = dateRange.to?.toISOString() || new Date().toISOString();
-    
-    const response = await apiRequest('GET', 
-      `/api/voice-command/analytics?userId=${userId}&startDate=${startDate}&endDate=${endDate}`
-    );
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to get analytics: ${error}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting analytics:', error);
-    throw error;
+  let url = `/api/voice-command/analytics?userId=${userId}`;
+  
+  if (dateRange?.from) {
+    url += `&from=${dateRange.from.toISOString()}`;
   }
+  
+  if (dateRange?.to) {
+    url += `&to=${dateRange.to.toISOString()}`;
+  }
+  
+  const response = await apiRequest('GET', url);
+  return await response.json();
 }
 
 /**
- * Get voice command statistics 
+ * Get voice command statistics
  */
 export async function getVoiceCommandStats(userId: number): Promise<VoiceCommandAnalyticsSummary> {
-  try {
-    const response = await apiRequest('GET', `/api/voice-command/analytics/summary?userId=${userId}`);
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to get command stats: ${error}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting command stats:', error);
-    throw error;
-  }
+  const response = await apiRequest('GET', `/api/voice-command/analytics/stats?userId=${userId}`);
+  return await response.json();
 }
 
-// ========== Help Functions ==========
+// Help functions =============================================================
 
 /**
- * Get contextual help for voice commands
+ * Get contextual help
  */
-export async function getContextualHelp(contextId: string = 'global'): Promise<VoiceCommandHelpContent[]> {
-  try {
-    const response = await apiRequest('GET', `/api/voice-command/help?context=${contextId}`);
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to get help content: ${error}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting help content:', error);
-    throw error;
-  }
+export async function getContextualHelp(contextId: string): Promise<VoiceCommandHelpContent[]> {
+  const response = await apiRequest('GET', `/api/voice-command/help?contextId=${contextId}`);
+  return await response.json();
 }
 
 /**
- * Get specific help content by ID
+ * Get suggested help based on query
  */
-export async function getHelpContentById(id: number): Promise<VoiceCommandHelpContent> {
-  try {
-    const response = await apiRequest('GET', `/api/voice-command/help/${id}`);
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to get help content: ${error}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting help content:', error);
-    throw error;
-  }
+export async function getSuggestedHelp(query: string, contextId: string): Promise<VoiceCommandHelpContent[]> {
+  const response = await apiRequest('POST', '/api/voice-command/help/suggest', {
+    query,
+    contextId
+  });
+  return await response.json();
 }
 
-/**
- * Initialize default help content
- */
-export async function initializeHelpContent(): Promise<VoiceCommandHelpContent[]> {
-  try {
-    const response = await apiRequest('POST', '/api/voice-command/help/initialize');
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to initialize help content: ${error}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error initializing help content:', error);
-    throw error;
-  }
-}
+// Correction and suggestion functions ========================================
 
 /**
- * Get relevant help topics based on partial command
+ * Get command corrections
  */
-export async function getSuggestedHelp(partialCommand: string, contextId: string = 'global'): Promise<VoiceCommandHelpContent[]> {
-  try {
-    const response = await apiRequest('GET', 
-      `/api/voice-command/help/suggest?command=${encodeURIComponent(partialCommand)}&context=${contextId}`
-    );
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to get suggested help: ${error}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting suggested help:', error);
-    throw error;
-  }
-}
-
-// ========== Error Correction Functions ==========
-
-/**
- * Get suggestions for correcting a command
- */
-export async function getCommandCorrections(
-  command: string, 
-  contextId: string = 'global'
-): Promise<string[]> {
-  try {
-    const response = await apiRequest('POST', '/api/voice-command/correction', {
-      command,
-      contextId
-    });
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to get command corrections: ${error}`);
-    }
-    
-    const result = await response.json();
-    return result.suggestions || [];
-  } catch (error) {
-    console.error('Error getting command corrections:', error);
-    return [];
-  }
+export async function getCommandCorrections(command: string, contextId: string): Promise<string[]> {
+  const response = await apiRequest('POST', '/api/voice-command/corrections', {
+    command,
+    contextId
+  });
+  const result = await response.json();
+  return result.corrections;
 }

@@ -1,255 +1,215 @@
 /**
  * Enhanced Voice Command Button
  * 
- * This component extends the original voice command button with:
- * - Better error handling
- * - Confidence scoring visualization
- * - Shortcut support
- * - Contextual help
+ * This component handles voice recording and processing for the enhanced voice command system.
+ * It provides visual feedback about the recording state and sends the captured audio for processing.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Button } from "@/components/ui/button";
-import { Mic, MicOff, AlertTriangle, Loader2 } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Mic, MicOff, Loader2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
-  Tooltip, 
-  TooltipTrigger, 
-  TooltipContent 
-} from "@/components/ui/tooltip";
-import { 
-  startRecording, 
-  stopRecording, 
-  RecordingState 
+  RecordingState, 
+  VoiceCommandResult,
+  startRecording,
+  stopRecording
 } from '@/services/agent-voice-command-service';
-import { 
-  processEnhancedAudioCommand, 
-  EnhancedVoiceCommandContext 
-} from '@/services/enhanced-voice-command-service';
 import { useToast } from '@/hooks/use-toast';
 
-export interface EnhancedVoiceCommandButtonProps {
-  userId?: number;
-  onRecordingStateChange?: (state: RecordingState) => void;
-  onTranscriptChange?: (transcript: string) => void;
-  onResult?: (result: any) => void;
+interface EnhancedVoiceCommandButtonProps {
+  recordingState: RecordingState;
+  setRecordingState: React.Dispatch<React.SetStateAction<RecordingState>>;
+  onCommand: (command: string) => Promise<VoiceCommandResult>;
+  isProcessing: boolean;
+  userId: number;
   contextId?: string;
   className?: string;
-  showTooltip?: boolean;
-  variant?: 'default' | 'ghost' | 'outline' | 'secondary' | 'link' | 'destructive';
-  size?: 'icon' | 'default' | 'sm' | 'lg';
-  pulseAnimation?: boolean;
-  disabled?: boolean;
-  sessionId?: string;
 }
 
 export function EnhancedVoiceCommandButton({
-  userId = 1,
-  onRecordingStateChange,
-  onTranscriptChange,
-  onResult,
-  contextId,
-  className = '',
-  showTooltip = true,
-  variant = 'outline',
-  size = 'icon',
-  pulseAnimation = true,
-  disabled = false,
-  sessionId
+  recordingState,
+  setRecordingState,
+  onCommand,
+  isProcessing,
+  userId,
+  contextId = 'global',
+  className = ''
 }: EnhancedVoiceCommandButtonProps) {
-  const [recordingState, setRecordingState] = useState<RecordingState>(RecordingState.INACTIVE);
-  const [errorState, setErrorState] = useState<boolean>(false);
-  const [confidenceScore, setConfidenceScore] = useState<number | null>(null);
+  const [transcript, setTranscript] = useState<string>('');
+  const [isMicAvailable, setIsMicAvailable] = useState<boolean>(true);
   const { toast } = useToast();
-  const sessionIdRef = useRef<string>(sessionId || crypto.randomUUID());
   
-  // Effect to pass recording state changes up
+  // Check for microphone availability
   useEffect(() => {
-    if (onRecordingStateChange) {
-      onRecordingStateChange(recordingState);
-    }
-  }, [recordingState, onRecordingStateChange]);
-  
-  // Effect to reset confidence score when inactive
-  useEffect(() => {
-    if (recordingState === RecordingState.INACTIVE) {
-      setConfidenceScore(null);
-    }
-  }, [recordingState]);
-  
-  // Toggle recording
-  const toggleRecording = useCallback(async () => {
-    if (disabled) return;
-    
-    try {
-      if (recordingState === RecordingState.INACTIVE) {
-        setRecordingState(RecordingState.RECORDING);
-        setErrorState(false);
+    const checkMicrophone = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasMicrophone = devices.some(device => device.kind === 'audioinput');
+        setIsMicAvailable(hasMicrophone);
         
-        const stream = await startRecording();
-        if (!stream) {
-          throw new Error('Failed to start recording');
-        }
-      } else if (recordingState === RecordingState.RECORDING) {
-        setRecordingState(RecordingState.PROCESSING);
-        
-        // Get audio data
-        const audioData = await stopRecording();
-        if (!audioData) {
-          throw new Error('No audio data received');
-        }
-        
-        // Process the audio command with the enhanced API
-        const context: EnhancedVoiceCommandContext = {
-          userId,
-          sessionId: sessionIdRef.current,
-          contextId,
-          deviceInfo: {
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-            language: navigator.language
-          }
-        };
-        
-        const result = await processEnhancedAudioCommand(audioData, context);
-        
-        // Update transcript if a handler is provided
-        if (onTranscriptChange && result.command) {
-          onTranscriptChange(result.command);
-        }
-        
-        // Update confidence score if available
-        if (result.confidenceScore !== undefined) {
-          setConfidenceScore(result.confidenceScore);
-        }
-        
-        // Call onResult handler if provided
-        if (onResult) {
-          onResult(result);
-        }
-        
-        // Show toast message for errors
-        if (!result.successful) {
-          setErrorState(true);
+        if (!hasMicrophone) {
           toast({
-            title: "Command Failed",
-            description: result.error || "Failed to process voice command",
-            variant: "destructive"
+            title: 'No microphone detected',
+            description: 'Please connect a microphone to use voice commands',
+            variant: 'destructive'
           });
         }
-        
-        // Return to inactive state
-        setRecordingState(RecordingState.INACTIVE);
+      } catch (error) {
+        console.error('Error checking for microphone:', error);
+        setIsMicAvailable(false);
+        toast({
+          title: 'Microphone access error',
+          description: 'Could not access your microphone. Please check permissions.',
+          variant: 'destructive'
+        });
       }
-    } catch (error) {
-      console.error('Error in voice command:', error);
-      setErrorState(true);
-      setRecordingState(RecordingState.INACTIVE);
-      
+    };
+    
+    checkMicrophone();
+  }, []);
+  
+  // Handle start recording
+  const handleStartRecording = () => {
+    if (!isMicAvailable) {
       toast({
-        title: "Voice Command Error",
-        description: error.message || "An error occurred with voice commands",
-        variant: "destructive"
+        title: 'No microphone detected',
+        description: 'Please connect a microphone to use voice commands',
+        variant: 'destructive'
       });
+      return;
     }
-  }, [recordingState, userId, contextId, onTranscriptChange, onResult, disabled, toast]);
-  
-  // Calculate button styles based on state
-  const getButtonVariant = () => {
-    if (errorState) return 'destructive';
-    if (recordingState === RecordingState.RECORDING) return 'default';
-    return variant;
-  };
-  
-  // Get button icon based on state
-  const getButtonIcon = () => {
-    if (recordingState === RecordingState.RECORDING) {
-      return <MicOff className="h-5 w-5" />;
-    }
-    if (recordingState === RecordingState.PROCESSING) {
-      return <Loader2 className="h-5 w-5 animate-spin" />;
-    }
-    if (errorState) {
-      return <AlertTriangle className="h-5 w-5" />;
-    }
-    return <Mic className="h-5 w-5" />;
-  };
-  
-  // Get tooltip text based on state
-  const getTooltipText = () => {
-    if (recordingState === RecordingState.RECORDING) {
-      return "Click to stop recording";
-    }
-    if (recordingState === RecordingState.PROCESSING) {
-      return "Processing voice command...";
-    }
-    if (errorState) {
-      return "Error processing voice command";
-    }
-    return "Click to speak a voice command";
-  };
-  
-  // Get animation class based on state and settings
-  const getAnimationClass = () => {
-    if (!pulseAnimation) return '';
-    if (recordingState === RecordingState.RECORDING) {
-      return 'animate-pulse';
-    }
-    return '';
-  };
-  
-  // Get confidence score indicator
-  const getConfidenceIndicator = () => {
-    if (confidenceScore === null) return null;
     
-    // Determine color based on confidence score
-    let color = 'bg-red-500';
-    if (confidenceScore >= 0.7) color = 'bg-green-500';
-    else if (confidenceScore >= 0.4) color = 'bg-yellow-500';
+    if (recordingState !== RecordingState.INACTIVE) return;
     
-    return (
-      <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full ring-1 ring-white" 
-           style={{ background: color }} />
+    setRecordingState(RecordingState.RECORDING);
+    setTranscript('');
+    
+    // Start the recording process
+    startRecording(
+      // On result callback
+      (text) => {
+        setTranscript(text);
+      },
+      // On error callback
+      (error) => {
+        console.error('Speech recognition error:', error);
+        setRecordingState(RecordingState.ERROR);
+        toast({
+          title: 'Recording Error',
+          description: 'An error occurred while recording your voice',
+          variant: 'destructive'
+        });
+      },
+      // On end callback
+      () => {
+        // Only process if we have a transcript and we're still in recording state
+        // (to prevent processing after an error)
+        if (transcript && recordingState === RecordingState.RECORDING) {
+          setRecordingState(RecordingState.PROCESSING);
+          handleCommandProcessing(transcript);
+        } else if (recordingState === RecordingState.RECORDING) {
+          setRecordingState(RecordingState.INACTIVE);
+        }
+      }
     );
   };
-
+  
+  // Handle stop recording
+  const handleStopRecording = () => {
+    if (recordingState !== RecordingState.RECORDING) return;
+    
+    const currentTranscript = stopRecording();
+    
+    if (currentTranscript) {
+      setTranscript(currentTranscript);
+      setRecordingState(RecordingState.PROCESSING);
+      handleCommandProcessing(currentTranscript);
+    } else {
+      setRecordingState(RecordingState.INACTIVE);
+    }
+  };
+  
+  // Process the command
+  const handleCommandProcessing = async (text: string) => {
+    try {
+      await onCommand(text);
+    } catch (error) {
+      console.error('Error processing command:', error);
+      toast({
+        title: 'Processing Error',
+        description: 'An error occurred while processing your command',
+        variant: 'destructive'
+      });
+    } finally {
+      // The parent component will set the recording state to INACTIVE
+      // after processing is complete
+    }
+  };
+  
+  // Button states
+  const getButtonAppearance = () => {
+    switch (recordingState) {
+      case RecordingState.RECORDING:
+        return {
+          variant: 'destructive' as const,
+          icon: <MicOff className="h-5 w-5" />,
+          text: 'Stop',
+          tooltip: 'Stop recording',
+          action: handleStopRecording,
+          className: 'animate-pulse'
+        };
+      case RecordingState.PROCESSING:
+        return {
+          variant: 'outline' as const,
+          icon: <Loader2 className="h-5 w-5 animate-spin" />,
+          text: 'Processing...',
+          tooltip: 'Processing your command',
+          action: () => {},
+          className: ''
+        };
+      case RecordingState.ERROR:
+        return {
+          variant: 'destructive' as const,
+          icon: <MicOff className="h-5 w-5" />,
+          text: 'Error',
+          tooltip: 'An error occurred. Click to try again',
+          action: () => setRecordingState(RecordingState.INACTIVE),
+          className: ''
+        };
+      default:
+        return {
+          variant: 'default' as const,
+          icon: <Mic className="h-5 w-5" />,
+          text: 'Speak',
+          tooltip: 'Start voice command',
+          action: handleStartRecording,
+          className: isMicAvailable ? '' : 'opacity-50 cursor-not-allowed'
+        };
+    }
+  };
+  
+  const buttonAppearance = getButtonAppearance();
+  
   return (
-    <div className={`relative ${className}`}>
-      {showTooltip ? (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <Button
-              variant={getButtonVariant()}
-              size={size}
-              onClick={toggleRecording}
-              disabled={recordingState === RecordingState.PROCESSING || disabled}
-              aria-label="Voice Command"
-              className={getAnimationClass()}
-              data-recording={recordingState === RecordingState.RECORDING}
-              data-error={errorState}
-            >
-              {getButtonIcon()}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="left">
-            <p>{getTooltipText()}</p>
-          </TooltipContent>
-        </Tooltip>
-      ) : (
-        <Button
-          variant={getButtonVariant()}
-          size={size}
-          onClick={toggleRecording}
-          disabled={recordingState === RecordingState.PROCESSING || disabled}
-          aria-label="Voice Command"
-          className={getAnimationClass()}
-          data-recording={recordingState === RecordingState.RECORDING}
-          data-error={errorState}
-        >
-          {getButtonIcon()}
-        </Button>
-      )}
-      
-      {getConfidenceIndicator()}
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={buttonAppearance.variant}
+            onClick={buttonAppearance.action}
+            disabled={!isMicAvailable || isProcessing}
+            className={`${className} ${buttonAppearance.className}`}
+            aria-label={buttonAppearance.tooltip}
+          >
+            {buttonAppearance.icon}
+            <span className="ml-2">{buttonAppearance.text}</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{buttonAppearance.tooltip}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

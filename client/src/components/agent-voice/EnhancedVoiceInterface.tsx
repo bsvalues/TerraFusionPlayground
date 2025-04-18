@@ -1,185 +1,171 @@
 /**
  * Enhanced Voice Interface
  * 
- * This component serves as an improved version of the AgentVoiceInterface component.
- * It coordinates:
- * - The voice command button for recording audio
- * - The results display for showing voice command responses
- * - Optional shortcut expansion
- * - Optional analytics tracking
- * - Optional contextual help
+ * This component coordinates all voice command features:
+ * - Voice recording and recognition
+ * - Command processing and display
+ * - Shortcuts expansion
+ * - Contextual help
+ * - Results presentation
  */
 
-import { useState, useEffect } from 'react';
-import { 
-  RecordingState, 
-  VoiceCommandContext,
-  VoiceCommandResult,
-  processVoiceCommand
-} from '@/services/agent-voice-command-service';
+import { useState, useEffect, useCallback } from 'react';
 import { EnhancedVoiceCommandButton } from './EnhancedVoiceCommandButton';
 import { EnhancedVoiceCommandResults } from './EnhancedVoiceCommandResults';
-import { expandShortcuts } from '@/services/enhanced-voice-command-service';
+import { RecordingState, VoiceCommandResult, processVoiceCommand } from '@/services/agent-voice-command-service';
+import { expandShortcuts, getCommandCorrections } from '@/services/enhanced-voice-command-service';
 import { useToast } from '@/hooks/use-toast';
-import { v4 as uuidv4 } from 'uuid';
 
 interface EnhancedVoiceInterfaceProps {
   userId: number;
-  agentId?: string;
   contextId?: string;
-  includeShortcuts?: boolean;
-  includeAnalytics?: boolean;
-  includeContextualHelp?: boolean;
+  showHelp?: boolean;
   className?: string;
 }
 
 export function EnhancedVoiceInterface({
   userId,
-  agentId,
   contextId = 'global',
-  includeShortcuts = false,
-  includeAnalytics = false,
-  includeContextualHelp = false,
+  showHelp = false,
   className = ''
 }: EnhancedVoiceInterfaceProps) {
-  // Recording state
+  // State
   const [recordingState, setRecordingState] = useState<RecordingState>(RecordingState.INACTIVE);
-  const [transcript, setTranscript] = useState<string>('');
-  
-  // Results state
-  const [results, setResults] = useState<VoiceCommandResult[]>([]);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [sessionId, setSessionId] = useState<string>(uuidv4());
-  
-  // Command suggestions
-  const [commandSuggestions, setCommandSuggestions] = useState<string[]>([]);
+  const [results, setResults] = useState<VoiceCommandResult[]>([]);
+  const [currentTranscript, setCurrentTranscript] = useState<string>('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   
   const { toast } = useToast();
   
-  // Reset session ID when context changes
+  // Load stored results when component mounts
   useEffect(() => {
-    setSessionId(uuidv4());
+    // In a real app, this would load from local storage or a database
+    // For now, we'll just init with empty results
+    setResults([]);
+  }, [userId]);
+  
+  // Reset when context changes
+  useEffect(() => {
+    setRecordingState(RecordingState.INACTIVE);
+    setCurrentTranscript('');
+    setSuggestions([]);
   }, [contextId]);
   
+  // Clear results
+  const handleClearResults = () => {
+    setResults([]);
+    setSuggestions([]);
+  };
+  
   // Process voice command
-  const processCommand = async (command: string) => {
-    if (!command.trim()) {
-      setRecordingState(RecordingState.INACTIVE);
-      return;
-    }
-    
+  const handleCommand = async (command: string): Promise<VoiceCommandResult> => {
     setIsProcessing(true);
+    setCurrentTranscript(command);
+    let expandedCommand = command;
     
     try {
-      // Expand shortcuts if enabled
-      let processedCommand = command;
-      if (includeShortcuts) {
-        try {
-          processedCommand = await expandShortcuts(command, userId);
-        } catch (error) {
-          console.error('Error expanding shortcuts:', error);
-          // Continue with original command if expansion fails
+      // First expand any shortcuts in the command
+      expandedCommand = await expandShortcuts(command, userId);
+      
+      // Process the command with the server
+      const result = await processVoiceCommand(expandedCommand, userId, contextId);
+      
+      // Update the results
+      if (result) {
+        setResults(prev => [...prev, result]);
+        
+        // If successful, clear suggestions
+        if (result.successful) {
+          setSuggestions([]);
+        } else {
+          // If failed, try to get correction suggestions
+          try {
+            const corrections = await getCommandCorrections(command, contextId);
+            setSuggestions(corrections);
+          } catch (error) {
+            console.error("Error getting corrections:", error);
+          }
         }
+        
+        return result;
       }
-      
-      // Create context with enhanced features
-      const context: VoiceCommandContext = {
-        agentId,
-        userId,
-        sessionId,
-        contextId,
-        recentCommands: results.map(r => r.command).slice(-5),
-        recentResults: results.slice(-5)
-      };
-      
-      // Process the command
-      const result = await processVoiceCommand(processedCommand, context);
-      
-      // Add to results
-      setResults(prev => [...prev, result]);
-      
-      // Clear suggestions
-      setCommandSuggestions([]);
-      
-      // Display toast for unsuccessful commands
-      if (!result.successful) {
-        toast({
-          title: 'Command Error',
-          description: result.error || 'Command could not be processed',
-          variant: 'destructive'
-        });
-      }
-      
-      return result;
     } catch (error) {
-      console.error('Error processing command:', error);
+      console.error("Error processing command:", error);
+      
+      // Create an error result
       const errorResult: VoiceCommandResult = {
+        id: Date.now().toString(),
+        userId,
         command,
-        processed: false,
         successful: false,
-        error: error instanceof Error ? error.message : 'Unknown error processing command',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        error: error instanceof Error ? error.message : "An unknown error occurred",
+        contextId,
+        actions: []
       };
       
       setResults(prev => [...prev, errorResult]);
-      
-      toast({
-        title: 'Processing Error',
-        description: 'Failed to process voice command',
-        variant: 'destructive'
-      });
-      
       return errorResult;
     } finally {
       setIsProcessing(false);
       setRecordingState(RecordingState.INACTIVE);
     }
+    
+    // Fallback error result if we get here
+    const fallbackResult: VoiceCommandResult = {
+      id: Date.now().toString(),
+      userId,
+      command,
+      successful: false,
+      timestamp: Date.now(),
+      error: "Processing failed",
+      contextId,
+      actions: []
+    };
+    
+    setResults(prev => [...prev, fallbackResult]);
+    return fallbackResult;
   };
   
-  // Handle command from button
-  const handleCommand = async (command: string) => {
-    setTranscript(command);
-    return processCommand(command);
-  };
+  // Handle manual command submission
+  const handleCommandSubmit = useCallback((command: string) => {
+    if (isProcessing || recordingState !== RecordingState.INACTIVE) return;
+    
+    setCurrentTranscript(command);
+    handleCommand(command);
+  }, [isProcessing, recordingState, contextId, userId]);
   
-  // Handle suggested command selection
-  const handleSuggestionSelected = (suggestion: string) => {
-    processCommand(suggestion);
-  };
-  
-  // Handle manual command submission (from results component)
-  const handleManualCommand = (command: string) => {
-    setTranscript(command);
-    processCommand(command);
-  };
-  
-  // Clear results history
-  const clearResults = () => {
-    setResults([]);
-    setSessionId(uuidv4());
-  };
+  // Handle suggestion selection
+  const handleSuggestionSelected = useCallback((suggestion: string) => {
+    if (isProcessing || recordingState !== RecordingState.INACTIVE) return;
+    
+    handleCommandSubmit(suggestion);
+  }, [handleCommandSubmit, isProcessing, recordingState]);
   
   return (
-    <div className={className}>
-      <EnhancedVoiceCommandButton
-        recordingState={recordingState}
-        setRecordingState={setRecordingState}
-        onCommand={handleCommand}
-        isProcessing={isProcessing}
-        userId={userId}
-        contextId={contextId}
-      />
+    <div className={`space-y-4 ${className}`}>
+      <div className="flex items-center gap-2">
+        <EnhancedVoiceCommandButton
+          recordingState={recordingState}
+          setRecordingState={setRecordingState}
+          onCommand={handleCommand}
+          isProcessing={isProcessing}
+          userId={userId}
+          contextId={contextId}
+        />
+      </div>
       
       <EnhancedVoiceCommandResults
         results={results}
-        onClear={clearResults}
+        onClear={handleClearResults}
         isProcessing={isProcessing}
         recordingState={recordingState}
-        currentTranscript={transcript}
-        suggestions={commandSuggestions}
+        currentTranscript={currentTranscript}
+        suggestions={suggestions}
         onSuggestionSelected={handleSuggestionSelected}
-        onCommandSubmit={handleManualCommand}
-        showHelp={includeContextualHelp}
+        onCommandSubmit={handleCommandSubmit}
+        showHelp={showHelp}
         contextId={contextId}
       />
     </div>
