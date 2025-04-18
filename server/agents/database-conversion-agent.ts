@@ -1,796 +1,836 @@
 /**
  * Database Conversion Agent
  * 
- * This agent specializes in database schema analysis, conversion, and compatibility generation.
- * It coordinates various specialized sub-agents to perform complex database conversion tasks.
+ * This agent specializes in database conversion operations, including:
+ * - Schema analysis and discovery
+ * - Data migration planning and execution
+ * - Compatibility layer generation
+ * - Schema optimization recommendations
  */
 
-import { BaseAgent, AgentConfig, AgentMessage, AgentTask } from './base-agent';
+import { BaseAgent } from './base-agent';
 import { IStorage } from '../storage';
 import { MCPService } from '../services/mcp-service';
-import { LLMService } from '../services/llm-service';
-import { SchemaAnalyzerService } from '../services/database-conversion/schema-analyzer-service';
-import { DataMigrationService } from '../services/database-conversion/data-migration-service';
-import { DataTransformationService } from '../services/database-conversion/data-transformation-service';
-import { CompatibilityService } from '../services/database-conversion/compatibility-service';
+import { DatabaseConversionService } from '../services/database-conversion';
 import { 
-  ConnectionTestResult, 
   SchemaAnalysisResult, 
+  DatabaseType, 
+  ConnectionStatus, 
   ConversionResult,
-  DatabaseType,
-  ConversionStatus,
   CompatibilityLayerOptions
 } from '../services/database-conversion/types';
-import { v4 as uuidv4 } from 'uuid';
+import { EventEmitter } from 'events';
 
-// List of specialized sub-agents
-export enum DatabaseConversionSubAgentType {
-  SchemaDesigner = 'schema_designer',
-  QueryOptimizer = 'query_optimizer',
-  DataIntegration = 'data_integration',
-  DatabaseAdmin = 'database_admin'
+interface DatabaseConversionAgentConfig {
+  agentName: string;
+  userId: string;
+  maxConcurrentConversions?: number;
+  defaultTargetDatabase?: DatabaseType;
+  enableAIRecommendations?: boolean;
+  logLevel?: 'debug' | 'info' | 'warn' | 'error';
 }
 
-interface DatabaseConversionAgentConfig extends AgentConfig {
-  enabledSubAgents?: DatabaseConversionSubAgentType[];
-  defaultOptions?: {
-    analysisDepth?: 'basic' | 'standard' | 'deep';
-    batchSize?: number;
-    useAIAssistance?: boolean;
-    compatibilityTargets?: string[];
-  };
-}
+type DatabaseConversionTask = {
+  id: string;
+  projectId: string;
+  sourceConnectionString: string;
+  sourceType: DatabaseType;
+  targetConnectionString: string;
+  targetType: DatabaseType;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  progress: number;
+  startedAt: Date;
+  completedAt?: Date;
+  error?: string;
+  schemaAnalysisId?: string;
+  compatibilityLayerId?: string;
+  result?: ConversionResult;
+};
+
+type MessageHandlerFunction = (message: any, sender: string) => Promise<any>;
 
 export class DatabaseConversionAgent extends BaseAgent {
-  private schemaAnalyzerService: SchemaAnalyzerService;
-  private dataMigrationService: DataMigrationService;
-  private dataTransformationService: DataTransformationService;
-  private compatibilityService: CompatibilityService;
-  private llmService: LLMService | null = null;
-  private subAgents: Map<DatabaseConversionSubAgentType, any> = new Map();
-  private activeConversions: Map<string, ConversionResult> = new Map();
+  private storage: IStorage;
+  private mcpService: MCPService;
+  private dbConversionService: DatabaseConversionService;
+  private activeTasks: Map<string, DatabaseConversionTask>;
+  private messageHandlers: Map<string, MessageHandlerFunction>;
+  private eventEmitter: EventEmitter;
   private config: DatabaseConversionAgentConfig;
-
+  
   constructor(
-    storage: IStorage,
-    mcpService: MCPService,
-    schemaAnalyzerService: SchemaAnalyzerService,
-    dataMigrationService: DataMigrationService,
-    dataTransformationService: DataTransformationService,
-    compatibilityService: CompatibilityService,
-    llmService?: LLMService,
-    config?: Partial<DatabaseConversionAgentConfig>
+    storage: IStorage, 
+    mcpService: MCPService, 
+    config: DatabaseConversionAgentConfig
   ) {
-    // Default configuration for the database conversion agent
-    const defaultConfig: DatabaseConversionAgentConfig = {
+    super(storage, {
       agentId: 'database-conversion-agent',
-      displayName: 'Database Conversion Agent',
-      description: 'Specialized agent for database schema analysis, conversion, and compatibility generation',
+      agentName: config.agentName || 'Database Conversion Agent',
       capabilities: [
-        'database_connection_testing',
-        'schema_analysis',
-        'data_migration',
-        'data_transformation',
-        'compatibility_layer_generation',
-        'conversion_monitoring'
+        'databaseSchemaAnalysis',
+        'databaseConversion',
+        'databaseCompatibilityGeneration',
+        'databaseOptimizationRecommendations'
       ],
-      enabledSubAgents: Object.values(DatabaseConversionSubAgentType),
-      defaultOptions: {
-        analysisDepth: 'standard',
-        batchSize: 1000,
-        useAIAssistance: true,
-        compatibilityTargets: ['drizzle', 'typeorm', 'prisma', 'sequelize', 'mongoose']
-      }
-    };
-
-    // Merge default config with provided config
-    const mergedConfig = { ...defaultConfig, ...config };
-    super(storage, mcpService, mergedConfig);
+      userId: config.userId
+    });
     
-    this.config = mergedConfig;
-    this.schemaAnalyzerService = schemaAnalyzerService;
-    this.dataMigrationService = dataMigrationService;
-    this.dataTransformationService = dataTransformationService;
-    this.compatibilityService = compatibilityService;
-    this.llmService = llmService || null;
-
-    // Initialize enabled sub-agents
-    this.initializeSubAgents();
+    this.storage = storage;
+    this.mcpService = mcpService;
+    this.dbConversionService = new DatabaseConversionService(storage, mcpService);
+    this.config = {
+      ...config,
+      maxConcurrentConversions: config.maxConcurrentConversions || 3,
+      logLevel: config.logLevel || 'info'
+    };
+    
+    this.activeTasks = new Map();
+    this.messageHandlers = new Map();
+    this.eventEmitter = new EventEmitter();
+    
+    // Initialize the agent
+    this.initialize();
   }
-
+  
   /**
    * Initialize the agent
    */
   public async initialize(): Promise<void> {
-    await super.initialize();
-    console.log(`Database Conversion Agent initialized with ${this.subAgents.size} sub-agents`);
-    
     // Register message handlers
-    this.registerMessageHandler('test_connection', this.handleTestConnection.bind(this));
-    this.registerMessageHandler('analyze_schema', this.handleAnalyzeSchema.bind(this));
-    this.registerMessageHandler('start_conversion', this.handleStartConversion.bind(this));
-    this.registerMessageHandler('get_conversion_status', this.handleGetConversionStatus.bind(this));
-    this.registerMessageHandler('generate_compatibility_layer', this.handleGenerateCompatibilityLayer.bind(this));
+    this.registerMessageHandler('analyzeSchema', this.handleAnalyzeSchema.bind(this));
+    this.registerMessageHandler('testConnection', this.handleTestConnection.bind(this));
+    this.registerMessageHandler('startConversion', this.handleStartConversion.bind(this));
+    this.registerMessageHandler('getConversionStatus', this.handleGetConversionStatus.bind(this));
+    this.registerMessageHandler('generateCompatibilityLayer', this.handleGenerateCompatibilityLayer.bind(this));
     
     // Log initialization
-    await this.log('info', 'Database Conversion Agent initialized successfully');
+    this.log('info', 'Database Conversion Agent initialized');
   }
-
+  
   /**
-   * Initialize sub-agents based on configuration
+   * Register a message handler
    */
-  private initializeSubAgents(): void {
-    if (!this.config.enabledSubAgents) return;
-
-    for (const subAgentType of this.config.enabledSubAgents) {
-      switch (subAgentType) {
-        case DatabaseConversionSubAgentType.SchemaDesigner:
-          this.subAgents.set(subAgentType, this.createSchemaDesignerAgent());
-          break;
-        case DatabaseConversionSubAgentType.QueryOptimizer:
-          this.subAgents.set(subAgentType, this.createQueryOptimizerAgent());
-          break;
-        case DatabaseConversionSubAgentType.DataIntegration:
-          this.subAgents.set(subAgentType, this.createDataIntegrationAgent());
-          break;
-        case DatabaseConversionSubAgentType.DatabaseAdmin:
-          this.subAgents.set(subAgentType, this.createDatabaseAdminAgent());
-          break;
-      }
-    }
+  private registerMessageHandler(messageType: string, handler: MessageHandlerFunction): void {
+    this.messageHandlers.set(messageType, handler);
   }
-
+  
   /**
-   * Create Schema Designer Agent
+   * Handle incoming messages
    */
-  private createSchemaDesignerAgent(): any {
-    // This would be a more complex implementation in a real system
-    return {
-      id: `schema-designer-${uuidv4()}`,
-      type: DatabaseConversionSubAgentType.SchemaDesigner,
-      analyze: async (schema: SchemaAnalysisResult) => {
-        // Enhanced schema analysis with AI
-        if (this.llmService) {
-          // Use AI to analyze schema design patterns
-          return {
-            optimizationSuggestions: [
-              { type: 'index', table: 'users', columns: ['email'], reason: 'Frequently queried field' },
-              { type: 'normalization', tables: ['orders', 'products'], suggestion: 'Consider many-to-many relationship table' }
-            ],
-            dataModelImprovements: [
-              'Consider adding timestamps to all tables for better auditing',
-              'User preferences could be normalized into a separate table'
-            ]
-          };
-        }
-        return { optimizationSuggestions: [], dataModelImprovements: [] };
-      },
-      generateMapping: async (sourceSchema: SchemaAnalysisResult, targetType: DatabaseType) => {
-        // Generate smart schema mapping suggestions
-        return {
-          tableMappings: sourceSchema.tables.map(table => ({
-            sourceTable: table.name,
-            targetTable: table.name.toLowerCase(),
-            columnMappings: table.columns.map(col => ({
-              sourceColumn: col.name,
-              targetColumn: col.name.toLowerCase(),
-              transformations: []
-            }))
-          }))
-        };
-      }
-    };
-  }
-
-  /**
-   * Create Query Optimizer Agent
-   */
-  private createQueryOptimizerAgent(): any {
-    return {
-      id: `query-optimizer-${uuidv4()}`,
-      type: DatabaseConversionSubAgentType.QueryOptimizer,
-      optimizeQueries: async (sourceQueries: any[], targetType: DatabaseType) => {
-        // Optimize queries for the target database type
-        return sourceQueries.map(query => ({
-          original: query,
-          optimized: query, // Would contain optimized version
-          performance: { estimated_improvement: '15%' }
-        }));
-      },
-      analyzePerformance: async (schema: SchemaAnalysisResult) => {
-        // Analyze potential performance hotspots
-        return {
-          potentialIssues: [
-            { table: 'transactions', issue: 'Missing index on frequently filtered column', severity: 'high' },
-            { table: 'users', issue: 'Inefficient data type for UUID storage', severity: 'medium' }
-          ]
-        };
-      }
-    };
-  }
-
-  /**
-   * Create Data Integration Agent
-   */
-  private createDataIntegrationAgent(): any {
-    return {
-      id: `data-integration-${uuidv4()}`,
-      type: DatabaseConversionSubAgentType.DataIntegration,
-      suggestDataSources: async (schema: SchemaAnalysisResult) => {
-        // Suggest additional data sources that could be integrated
-        return {
-          suggestions: [
-            { source: 'CRM system', matchTable: 'customers', benefits: 'Enhanced customer data' },
-            { source: 'Product inventory API', matchTable: 'products', benefits: 'Real-time stock data' }
-          ]
-        };
-      },
-      designIntegrationPipeline: async (sourceSchema: SchemaAnalysisResult, targetSchema: SchemaAnalysisResult) => {
-        // Design data integration pipeline
-        return {
-          etlSteps: [
-            { name: 'Extract from source', estimatedTime: '10 minutes' },
-            { name: 'Transform key structures', estimatedTime: '15 minutes' },
-            { name: 'Load to target', estimatedTime: '20 minutes' },
-            { name: 'Validate data integrity', estimatedTime: '10 minutes' }
-          ],
-          recommendations: [
-            'Consider incremental loading for large tables',
-            'Set up change data capture for real-time syncing'
-          ]
-        };
-      }
-    };
-  }
-
-  /**
-   * Create Database Admin Assistant Agent
-   */
-  private createDatabaseAdminAgent(): any {
-    return {
-      id: `database-admin-${uuidv4()}`,
-      type: DatabaseConversionSubAgentType.DatabaseAdmin,
-      generateMigrationScript: async (
-        sourceSchema: SchemaAnalysisResult, 
-        targetType: DatabaseType
-      ) => {
-        // Generate migration scripts
-        return {
-          scripts: [
-            { 
-              name: 'create_tables.sql', 
-              content: '-- Example migration script\nCREATE TABLE users (id INT PRIMARY KEY, email VARCHAR(255));' 
-            },
-            { 
-              name: 'create_indexes.sql', 
-              content: '-- Example index creation\nCREATE INDEX idx_users_email ON users(email);' 
-            }
-          ]
-        };
-      },
-      suggestBackupStrategy: async (schema: SchemaAnalysisResult) => {
-        // Suggest backup strategy
-        return {
-          strategy: [
-            { type: 'Full backup', frequency: 'Daily', timing: '1:00 AM', retention: '30 days' },
-            { type: 'Incremental backup', frequency: 'Hourly', timing: 'Every hour', retention: '7 days' },
-            { type: 'Transaction log backup', frequency: 'Every 15 minutes', timing: '24/7', retention: '3 days' }
-          ],
-          estimatedStorage: '25GB per month',
-          recommendations: [
-            'Configure point-in-time recovery',
-            'Test restores monthly to verify backup integrity'
-          ]
-        };
-      }
-    };
-  }
-
-  /**
-   * Test database connection
-   */
-  public async testConnection(
-    connectionString: string, 
-    databaseType: DatabaseType
-  ): Promise<ConnectionTestResult> {
+  public async processMessage(message: any, sender: string): Promise<any> {
     try {
-      // Log the connection test start
-      await this.log('info', `Testing connection to ${databaseType} database`);
+      // Log incoming message
+      this.log('debug', `Received message from ${sender}`, { messageType: message.type });
       
-      // Use the schema analyzer service to test the connection
-      const result = await this.schemaAnalyzerService.testConnection(connectionString, databaseType);
+      // Validate message structure
+      if (!message || !message.type) {
+        throw new Error('Invalid message: missing type');
+      }
       
-      // Log the connection test result
-      await this.log('info', `Connection test result: ${result.status}`, { details: result });
+      // Get appropriate handler
+      const handler = this.messageHandlers.get(message.type);
       
-      return result;
+      // If no handler found, return error
+      if (!handler) {
+        throw new Error(`Unknown message type: ${message.type}`);
+      }
+      
+      // Execute handler and return result
+      return await handler(message, sender);
     } catch (error) {
-      // Log the error
-      await this.log('error', `Connection test failed: ${error.message}`);
+      // Log error
+      this.log('error', `Error processing message: ${error.message}`, { error });
       
-      // Return a failed connection result
+      // Return error response
       return {
-        status: 'failed',
-        message: error.message,
-        timestamp: new Date(),
-        details: error
+        success: false,
+        error: error.message
       };
     }
   }
-
+  
   /**
-   * Analyze database schema
+   * Handle analyze schema message
    */
-  public async analyzeSchema(
-    connectionString: string, 
-    databaseType: DatabaseType,
-    options?: { depth?: 'basic' | 'standard' | 'deep' }
-  ): Promise<SchemaAnalysisResult> {
+  private async handleAnalyzeSchema(message: any, sender: string): Promise<any> {
     try {
-      // Determine analysis depth
-      const depth = options?.depth || this.config.defaultOptions?.analysisDepth || 'standard';
-      
-      // Log the schema analysis start
-      await this.log('info', `Analyzing schema of ${databaseType} database with depth: ${depth}`);
-      
-      // Use the schema analyzer service to analyze the schema
-      const result = await this.schemaAnalyzerService.analyzeSchema(connectionString, databaseType, { depth });
-      
-      // Log the schema analysis result
-      await this.log('info', `Schema analysis completed with ${result.tables.length} tables`, { details: { tableCount: result.tables.length } });
-      
-      // If AI assistance is enabled and the schema designer agent is available, get optimization suggestions
-      if (this.config.defaultOptions?.useAIAssistance && this.subAgents.has(DatabaseConversionSubAgentType.SchemaDesigner)) {
-        const schemaDesigner = this.subAgents.get(DatabaseConversionSubAgentType.SchemaDesigner);
-        const optimizationResult = await schemaDesigner.analyze(result);
-        
-        // Log the optimization suggestions
-        await this.log('info', `Generated ${optimizationResult.optimizationSuggestions.length} schema optimization suggestions`);
-        
-        // Attach the optimization suggestions to the result
-        result['optimizationSuggestions'] = optimizationResult.optimizationSuggestions;
-        result['dataModelImprovements'] = optimizationResult.dataModelImprovements;
+      // Validate message parameters
+      if (!message.connectionString) {
+        throw new Error('Missing required parameter: connectionString');
       }
       
-      return result;
-    } catch (error) {
-      // Log the error
-      await this.log('error', `Schema analysis failed: ${error.message}`);
+      if (!message.databaseType) {
+        throw new Error('Missing required parameter: databaseType');
+      }
       
-      // Rethrow the error
-      throw error;
+      // Log the analyze schema request
+      this.log('info', `Analyzing schema for ${message.databaseType} database`);
+      
+      // Call the service
+      const result = await this.dbConversionService.analyzeSchema(
+        message.connectionString,
+        message.databaseType,
+        {
+          useAI: this.config.enableAIRecommendations,
+          ...message.options
+        }
+      );
+      
+      // Log success
+      this.log('info', `Successfully analyzed schema with ${result.tables.length} tables`);
+      
+      // Return success response
+      return {
+        success: true,
+        result
+      };
+    } catch (error) {
+      // Log error
+      this.log('error', `Error analyzing schema: ${error.message}`, { error });
+      
+      // Return error response
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
-
+  
+  /**
+   * Handle test connection message
+   */
+  private async handleTestConnection(message: any, sender: string): Promise<any> {
+    try {
+      // Validate message parameters
+      if (!message.connectionString) {
+        throw new Error('Missing required parameter: connectionString');
+      }
+      
+      if (!message.databaseType) {
+        throw new Error('Missing required parameter: databaseType');
+      }
+      
+      // Log the test connection request
+      this.log('info', `Testing connection to ${message.databaseType} database`);
+      
+      // Call the service
+      const result = await this.dbConversionService.testConnection(
+        message.connectionString,
+        message.databaseType
+      );
+      
+      // Log result
+      if (result.status === ConnectionStatus.Success) {
+        this.log('info', `Successfully connected to ${message.databaseType} database`);
+      } else {
+        this.log('info', `Failed to connect to ${message.databaseType} database: ${result.error}`);
+      }
+      
+      // Return result
+      return {
+        success: true,
+        result
+      };
+    } catch (error) {
+      // Log error
+      this.log('error', `Error testing connection: ${error.message}`, { error });
+      
+      // Return error response
+      return {
+        success: false,
+        error: error.message,
+        result: {
+          status: "failed",
+          error: error.message,
+          timestamp: new Date().toISOString()
+        }
+      };
+    }
+  }
+  
+  /**
+   * Handle analyze schema results message
+   */
+  private async handleAnalyzeSchemaResults(message: any, sender: string): Promise<any> {
+    try {
+      // Validate message parameters
+      if (!message.schemaAnalysisId) {
+        throw new Error('Missing required parameter: schemaAnalysisId');
+      }
+      
+      // Log the request
+      this.log('info', `Retrieving schema analysis results for ${message.schemaAnalysisId}`);
+      
+      // Get the schema analysis results
+      const analysis = await this.storage.getSchemaAnalysis(message.schemaAnalysisId);
+      
+      if (!analysis) {
+        throw new Error(`Schema analysis not found: ${message.schemaAnalysisId}`);
+      }
+      
+      // Log success
+      this.log('info', `Retrieved schema analysis results`);
+      
+      // Return success response with specific parts of the analysis if requested
+      if (message.includeOnly && Array.isArray(message.includeOnly)) {
+        const result: any = {};
+        
+        for (const key of message.includeOnly) {
+          if (analysis[key]) {
+            result[key] = analysis[key];
+          }
+        }
+        
+        return {
+          success: true,
+          result
+        };
+      }
+      
+      return {
+        success: true,
+        result: analysis
+      };
+    } catch (error) {
+      // Log error
+      this.log('error', `Error retrieving schema analysis: ${error.message}`, { error });
+      
+      // Return error response
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+  
+  /**
+   * Handle get schema recommendations message
+   */
+  private async handleGetSchemaRecommendations(message: any, sender: string): Promise<any> {
+    try {
+      // Validate message parameters
+      if (!message.schemaAnalysisId) {
+        throw new Error('Missing required parameter: schemaAnalysisId');
+      }
+      
+      // Log the request
+      this.log('info', `Retrieving schema recommendations for ${message.schemaAnalysisId}`);
+      
+      // Get the schema analysis results
+      const analysis = await this.storage.getSchemaAnalysis(message.schemaAnalysisId);
+      
+      if (!analysis) {
+        throw new Error(`Schema analysis not found: ${message.schemaAnalysisId}`);
+      }
+      
+      // Extract recommendations
+      const recommendations = {
+        optimizationSuggestions: analysis.optimizationSuggestions,
+        dataModelImprovements: analysis.dataModelImprovements,
+        schemaIssues: analysis.schemaIssues,
+        performanceIssues: analysis.performanceIssues
+      };
+      
+      // Log success
+      this.log('info', `Retrieved schema recommendations`);
+      
+      return {
+        success: true,
+        result: recommendations
+      };
+    } catch (error) {
+      // Log error
+      this.log('error', `Error retrieving schema recommendations: ${error.message}`, { error });
+      
+      // Return error response
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+  
   /**
    * Start a database conversion process
    */
-  public async startConversion(
+  private async startConversionProcess(
     projectId: string,
     sourceConnectionString: string,
     sourceType: DatabaseType,
     targetConnectionString: string,
     targetType: DatabaseType,
-    options?: {
-      batchSize?: number;
-      includeTables?: string[];
-      excludeTables?: string[];
-      skipDataMigration?: boolean;
-      customMappings?: any;
-    }
-  ): Promise<ConversionResult> {
+    options: any = {}
+  ): Promise<DatabaseConversionTask> {
     try {
-      // Check if project ID is valid
-      if (!projectId) {
-        throw new Error('Project ID is required');
+      // Check if we already have this task
+      const existingTask = this.activeTasks.get(projectId);
+      if (existingTask) {
+        return existingTask;
       }
       
-      // Merge options with defaults
-      const batchSize = options?.batchSize || this.config.defaultOptions?.batchSize || 1000;
-      
-      // Log the conversion start
-      await this.log('info', `Starting conversion for project ${projectId} from ${sourceType} to ${targetType}`);
-      
-      // Initialize the conversion result
-      const conversionResult: ConversionResult = {
-        projectId,
-        status: ConversionStatus.InProgress,
-        progress: 0,
-        startTime: new Date(),
-        lastUpdated: new Date(),
-        currentStage: 'Analyzing source schema',
-        summary: {
-          tablesConverted: 0,
-          totalTables: 0,
-          recordsProcessed: 0,
-          estimatedTotalRecords: 0,
-          errors: 0,
-          warnings: 0
-        }
-      };
-      
-      // Store the conversion result
-      this.activeConversions.set(projectId, conversionResult);
-      
-      // Start the conversion process asynchronously
-      this.runConversion(
+      // Create new task
+      const taskId = `conversion-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const task: DatabaseConversionTask = {
+        id: taskId,
         projectId,
         sourceConnectionString,
         sourceType,
         targetConnectionString,
         targetType,
-        {
-          batchSize,
-          includeTables: options?.includeTables,
-          excludeTables: options?.excludeTables,
-          skipDataMigration: options?.skipDataMigration,
-          customMappings: options?.customMappings
-        }
-      );
-      
-      return conversionResult;
-    } catch (error) {
-      // Log the error
-      await this.log('error', `Failed to start conversion: ${error.message}`);
-      
-      // Return a failed conversion result
-      return {
-        projectId,
-        status: ConversionStatus.Failed,
+        status: 'pending',
         progress: 0,
-        startTime: new Date(),
-        endTime: new Date(),
-        lastUpdated: new Date(),
-        errorMessage: error.message
+        startedAt: new Date()
       };
-    }
-  }
-
-  /**
-   * Run the conversion process asynchronously
-   */
-  private async runConversion(
-    projectId: string,
-    sourceConnectionString: string,
-    sourceType: DatabaseType,
-    targetConnectionString: string,
-    targetType: DatabaseType,
-    options: {
-      batchSize: number;
-      includeTables?: string[];
-      excludeTables?: string[];
-      skipDataMigration?: boolean;
-      customMappings?: any;
-    }
-  ): Promise<void> {
-    try {
-      // Get the current conversion result
-      const conversionResult = this.activeConversions.get(projectId);
-      if (!conversionResult) {
-        throw new Error(`Conversion result not found for project ${projectId}`);
-      }
       
-      // 1. Analyze source schema
-      await this.updateConversionStatus(projectId, { currentStage: 'Analyzing source schema', progress: 5 });
-      const sourceSchema = await this.schemaAnalyzerService.analyzeSchema(sourceConnectionString, sourceType);
+      // Store the task
+      this.activeTasks.set(projectId, task);
       
-      // Update total tables in summary
-      const totalTables = sourceSchema.tables.length;
-      await this.updateConversionStatus(projectId, { 
-        progress: 10,
-        summary: { ...conversionResult.summary, totalTables }
+      // Log the task creation
+      this.log('info', `Created conversion task ${taskId} for project ${projectId}`);
+      
+      // Start the conversion in the background
+      this.executeConversionTask(task, options).catch(error => {
+        this.log('error', `Error in conversion task ${taskId}: ${error.message}`, { error });
       });
       
-      // 2. Generate schema mapping
-      await this.updateConversionStatus(projectId, { currentStage: 'Generating schema mapping', progress: 15 });
+      return task;
+    } catch (error) {
+      // Log error
+      this.log('error', `Error starting conversion process: ${error.message}`, { error });
       
-      // Use AI-powered schema designer agent if available
-      let schemaMappings;
-      if (this.subAgents.has(DatabaseConversionSubAgentType.SchemaDesigner)) {
-        const schemaDesigner = this.subAgents.get(DatabaseConversionSubAgentType.SchemaDesigner);
-        schemaMappings = await schemaDesigner.generateMapping(sourceSchema, targetType);
-      } else {
-        // Default mapping generation logic
-        schemaMappings = {
-          tableMappings: sourceSchema.tables.map(table => ({
-            sourceTable: table.name,
-            targetTable: table.name,
-            columnMappings: table.columns.map(col => ({
-              sourceColumn: col.name,
-              targetColumn: col.name,
-              transformations: []
-            }))
-          }))
+      throw error;
+    }
+  }
+  
+  /**
+   * Execute a conversion task
+   */
+  private async executeConversionTask(task: DatabaseConversionTask, options: any = {}): Promise<void> {
+    try {
+      // Update task status
+      task.status = 'running';
+      task.progress = 0;
+      
+      // Log the task start
+      this.log('info', `Started conversion task ${task.id} for project ${task.projectId}`);
+      
+      // Emit task started event
+      this.emitEvent('conversionTaskStarted', {
+        taskId: task.id,
+        projectId: task.projectId,
+        sourceType: task.sourceType,
+        targetType: task.targetType
+      });
+      
+      // Step 1: Analyze source schema
+      this.updateTaskProgress(task, 5, 'Analyzing source schema');
+      const schemaAnalysis = await this.dbConversionService.analyzeSchema(
+        task.sourceConnectionString,
+        task.sourceType,
+        {
+          useAI: this.config.enableAIRecommendations,
+          ...options.analysisOptions
+        }
+      );
+      
+      // Store schema analysis ID
+      task.schemaAnalysisId = schemaAnalysis.id;
+      
+      // Step 2: Estimate conversion stats
+      this.updateTaskProgress(task, 10, 'Estimating conversion requirements');
+      
+      const estimatedStats = {
+        totalTables: schemaAnalysis.tables.length,
+        tablesConverted: 0,
+        recordsProcessed: 0,
+        estimatedTotalRecords: 0,
+        errors: 0,
+        warnings: 0
+      };
+      
+      // Estimate total records and time
+      let estimatedTotalRecords = 0;
+      for (const table of schemaAnalysis.tables) {
+        estimatedTotalRecords += table.rowCount || 0;
+      }
+      
+      estimatedStats.estimatedTotalRecords = estimatedTotalRecords;
+      
+      const estimatedTimeSeconds = this.dbConversionService.estimateConversionTime(
+        schemaAnalysis.tables.length,
+        estimatedTotalRecords,
+        task.sourceType,
+        task.targetType
+      );
+      
+      // Step 3: Start the conversion
+      this.updateTaskProgress(task, 15, 'Starting conversion process');
+      
+      // Call the service to start the conversion
+      const conversionResult = await this.dbConversionService.startConversion(task.projectId);
+      task.result = conversionResult;
+      
+      // Step 4: Monitor the conversion progress
+      this.updateTaskProgress(task, 20, 'Converting schema and data');
+      
+      let isComplete = false;
+      let lastProgress = 20;
+      
+      while (!isComplete) {
+        // Wait a bit before checking again
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Get current status
+        const status = await this.dbConversionService.getConversionStatus(task.projectId);
+        task.result = status;
+        
+        // Calculate progress
+        const tableProgress = (status.progress.tablesConverted / status.progress.totalTables) * 60;
+        const newProgress = Math.min(20 + tableProgress, 80);
+        
+        // Only update if progress has changed significantly
+        if (newProgress > lastProgress + 1) {
+          this.updateTaskProgress(
+            task, 
+            newProgress, 
+            `Converting table ${status.progress.tablesConverted} of ${status.progress.totalTables}`
+          );
+          lastProgress = newProgress;
+        }
+        
+        // Check if complete
+        isComplete = status.status === 'completed' || status.status === 'failed';
+        
+        if (status.status === 'failed') {
+          throw new Error(status.error || 'Conversion failed');
+        }
+      }
+      
+      // Step 5: Generate compatibility layer if requested
+      if (options.generateCompatibilityLayer) {
+        this.updateTaskProgress(task, 85, 'Generating compatibility layer');
+        
+        const compatibilityOptions: CompatibilityLayerOptions = {
+          ormType: options.ormType || 'drizzle',
+          includeExamples: options.includeExamples !== false,
+          generateMigrations: options.generateMigrations !== false
         };
+        
+        const compatibilityResult = await this.dbConversionService.generateCompatibilityLayer(
+          task.projectId,
+          compatibilityOptions
+        );
+        
+        task.compatibilityLayerId = compatibilityResult.id;
       }
       
-      // Apply custom mappings if provided
-      if (options.customMappings) {
-        // Logic to merge custom mappings with generated mappings
-        // ...
-      }
+      // Step 6: Complete the task
+      this.updateTaskProgress(task, 100, 'Conversion completed');
+      task.status = 'completed';
+      task.completedAt = new Date();
       
-      // 3. Create target schema
-      await this.updateConversionStatus(projectId, { currentStage: 'Creating target schema', progress: 20 });
-      await this.dataMigrationService.createTargetSchema(
-        targetConnectionString,
-        targetType,
-        sourceSchema,
-        schemaMappings
-      );
-      
-      // Skip data migration if requested
-      if (options.skipDataMigration) {
-        await this.updateConversionStatus(projectId, { 
-          currentStage: 'Data migration skipped',
-          progress: 90,
-          summary: { ...conversionResult.summary, tablesConverted: totalTables }
-        });
-      } else {
-        // 4. Migrate data
-        await this.updateConversionStatus(projectId, { currentStage: 'Migrating data', progress: 30 });
-        
-        // Filter tables if needed
-        let tablesToMigrate = sourceSchema.tables;
-        if (options.includeTables && options.includeTables.length > 0) {
-          tablesToMigrate = tablesToMigrate.filter(table => options.includeTables!.includes(table.name));
-        }
-        if (options.excludeTables && options.excludeTables.length > 0) {
-          tablesToMigrate = tablesToMigrate.filter(table => !options.excludeTables!.includes(table.name));
-        }
-        
-        // Estimate total records
-        let estimatedTotalRecords = 0;
-        for (const table of tablesToMigrate) {
-          estimatedTotalRecords += table.estimatedRowCount || 0;
-        }
-        
-        await this.updateConversionStatus(projectId, { 
-          summary: { ...conversionResult.summary, estimatedTotalRecords }
-        });
-        
-        // Migrate data for each table
-        let tablesConverted = 0;
-        let recordsProcessed = 0;
-        
-        for (let i = 0; i < tablesToMigrate.length; i++) {
-          const table = tablesToMigrate[i];
-          const tableMapping = schemaMappings.tableMappings.find(
-            (mapping: any) => mapping.sourceTable === table.name
-          );
-          
-          if (!tableMapping) {
-            await this.log('warning', `No mapping found for table ${table.name}, skipping`);
-            continue;
-          }
-          
-          await this.updateConversionStatus(projectId, { 
-            currentStage: `Migrating data: ${table.name} (${i + 1}/${tablesToMigrate.length})`,
-            progress: 30 + Math.floor((i / tablesToMigrate.length) * 60)
-          });
-          
-          const migrationResult = await this.dataMigrationService.migrateTableData(
-            sourceConnectionString,
-            sourceType,
-            targetConnectionString,
-            targetType,
-            table.name,
-            tableMapping,
-            { batchSize: options.batchSize }
-          );
-          
-          tablesConverted++;
-          recordsProcessed += migrationResult.recordsProcessed;
-          
-          await this.updateConversionStatus(projectId, { 
-            summary: { 
-              ...conversionResult.summary, 
-              tablesConverted,
-              recordsProcessed,
-              errors: (conversionResult.summary?.errors || 0) + migrationResult.errors.length,
-              warnings: (conversionResult.summary?.warnings || 0) + migrationResult.warnings.length
-            }
-          });
-        }
-      }
-      
-      // 5. Create indexes and constraints
-      await this.updateConversionStatus(projectId, { currentStage: 'Creating indexes and constraints', progress: 90 });
-      await this.dataMigrationService.createIndexesAndConstraints(
-        targetConnectionString,
-        targetType,
-        sourceSchema,
-        schemaMappings
-      );
-      
-      // 6. Finalize conversion
-      await this.updateConversionStatus(projectId, { 
-        currentStage: 'Finalizing conversion',
-        progress: 95
+      // Emit completion event
+      this.emitEvent('conversionTaskCompleted', {
+        taskId: task.id,
+        projectId: task.projectId,
+        sourceType: task.sourceType,
+        targetType: task.targetType,
+        result: task.result
       });
       
-      // Generate statistics and final report
-      const finalReport = await this.dataMigrationService.generateConversionReport(
-        projectId,
-        sourceSchema,
-        targetType
-      );
+      // Log completion
+      this.log('info', `Completed conversion task ${task.id} for project ${task.projectId}`);
       
-      // Mark conversion as completed
-      await this.updateConversionStatus(projectId, { 
-        status: ConversionStatus.Completed,
-        progress: 100,
-        endTime: new Date(),
-        currentStage: 'Conversion completed'
-      });
-      
-      await this.log('info', `Conversion completed for project ${projectId}`, { details: finalReport });
     } catch (error) {
-      // Update the conversion status with the error
-      await this.updateConversionStatus(projectId, { 
-        status: ConversionStatus.Failed,
-        endTime: new Date(),
-        errorMessage: error.message
+      // Update task with error
+      task.status = 'failed';
+      task.error = error.message;
+      task.completedAt = new Date();
+      
+      // Emit error event
+      this.emitEvent('conversionTaskFailed', {
+        taskId: task.id,
+        projectId: task.projectId,
+        error: error.message
       });
       
-      await this.log('error', `Conversion failed for project ${projectId}: ${error.message}`);
-    }
-  }
-
-  /**
-   * Update the status of an active conversion
-   */
-  private async updateConversionStatus(
-    projectId: string,
-    updates: Partial<ConversionResult>
-  ): Promise<void> {
-    // Get the current conversion result
-    const currentResult = this.activeConversions.get(projectId);
-    if (!currentResult) {
-      throw new Error(`Conversion result not found for project ${projectId}`);
-    }
-    
-    // Update the conversion result
-    const updatedResult: ConversionResult = {
-      ...currentResult,
-      ...updates,
-      lastUpdated: new Date(),
-      summary: {
-        ...currentResult.summary,
-        ...updates.summary
-      }
-    };
-    
-    // Store the updated result
-    this.activeConversions.set(projectId, updatedResult);
-    
-    // Log the update
-    await this.log('info', `Updated conversion status for project ${projectId}: ${updatedResult.status}, progress: ${updatedResult.progress}%`);
-    
-    // Emit an event for the status update
-    this.emit('conversion_status_updated', { projectId, status: updatedResult });
-  }
-
-  /**
-   * Get the status of a conversion
-   */
-  public async getConversionStatus(projectId: string): Promise<ConversionResult | null> {
-    // Get the conversion result
-    const conversionResult = this.activeConversions.get(projectId);
-    
-    // Update estimated time remaining if in progress
-    if (conversionResult && conversionResult.status === ConversionStatus.InProgress) {
-      // Calculate time elapsed since start
-      const timeElapsed = Date.now() - conversionResult.startTime!.getTime();
-      
-      // Only calculate remaining time if we have some progress
-      if (conversionResult.progress > 0) {
-        // Calculate estimated total time based on current progress
-        const estimatedTotalTime = (timeElapsed / conversionResult.progress) * 100;
-        
-        // Calculate remaining time in seconds
-        const estimatedTimeRemaining = Math.max(0, Math.round((estimatedTotalTime - timeElapsed) / 1000));
-        
-        // Update the conversion result with estimated time remaining
-        this.activeConversions.set(projectId, {
-          ...conversionResult,
-          estimatedTimeRemaining
-        });
-      }
-    }
-    
-    return conversionResult || null;
-  }
-
-  /**
-   * Generate compatibility layer code
-   */
-  public async generateCompatibilityLayer(
-    projectId: string,
-    options: CompatibilityLayerOptions
-  ): Promise<any> {
-    try {
-      // Log the generation start
-      await this.log('info', `Generating compatibility layer for project ${projectId}`, { details: options });
-      
-      // Check if the conversion is completed
-      const conversionResult = this.activeConversions.get(projectId);
-      if (!conversionResult) {
-        throw new Error(`Conversion result not found for project ${projectId}`);
-      }
-      
-      if (conversionResult.status !== ConversionStatus.Completed) {
-        throw new Error(`Cannot generate compatibility layer: conversion is not completed (status: ${conversionResult.status})`);
-      }
-      
-      // Generate the compatibility layer
-      const result = await this.compatibilityService.generateCompatibilityLayer(projectId, options);
-      
-      // Log the generation completion
-      await this.log('info', `Generated compatibility layer for project ${projectId}`, { details: result });
-      
-      return result;
-    } catch (error) {
-      // Log the error
-      await this.log('error', `Failed to generate compatibility layer: ${error.message}`);
+      // Log error
+      this.log('error', `Conversion task ${task.id} failed: ${error.message}`, { error });
       
       // Rethrow the error
       throw error;
     }
   }
-
+  
   /**
-   * Handle test connection message
+   * Update task progress
    */
-  private async handleTestConnection(message: AgentMessage): Promise<any> {
-    const { connectionString, databaseType } = message.data;
-    return await this.testConnection(connectionString, databaseType as DatabaseType);
+  private updateTaskProgress(task: DatabaseConversionTask, progress: number, statusMessage: string): void {
+    // Update task
+    task.progress = progress;
+    
+    // Update result if it exists
+    if (task.result) {
+      task.result.statusMessage = statusMessage;
+      task.result.progress = {
+        ...task.result.progress,
+        overallProgress: progress
+      };
+    }
+    
+    // Emit progress event
+    this.emitEvent('conversionTaskProgress', {
+      taskId: task.id,
+      projectId: task.projectId,
+      progress,
+      statusMessage
+    });
+    
+    // Log progress
+    this.log('debug', `Conversion task ${task.id} progress: ${progress}% - ${statusMessage}`);
   }
-
-  /**
-   * Handle analyze schema message
-   */
-  private async handleAnalyzeSchema(message: AgentMessage): Promise<any> {
-    const { connectionString, databaseType, options } = message.data;
-    return await this.analyzeSchema(connectionString, databaseType as DatabaseType, options);
-  }
-
+  
   /**
    * Handle start conversion message
    */
-  private async handleStartConversion(message: AgentMessage): Promise<any> {
-    const { 
-      projectId,
-      sourceConnectionString,
-      sourceType,
-      targetConnectionString,
-      targetType,
-      options
-    } = message.data;
-    
-    return await this.startConversion(
-      projectId,
-      sourceConnectionString,
-      sourceType as DatabaseType,
-      targetConnectionString,
-      targetType as DatabaseType,
-      options
-    );
+  private async handleStartConversion(message: any, sender: string): Promise<any> {
+    try {
+      // Validate message parameters
+      if (!message.projectId) {
+        throw new Error('Missing required parameter: projectId');
+      }
+      
+      if (!message.sourceConnectionString) {
+        throw new Error('Missing required parameter: sourceConnectionString');
+      }
+      
+      if (!message.sourceType) {
+        throw new Error('Missing required parameter: sourceType');
+      }
+      
+      if (!message.targetConnectionString) {
+        throw new Error('Missing required parameter: targetConnectionString');
+      }
+      
+      if (!message.targetType) {
+        message.targetType = this.config.defaultTargetDatabase || DatabaseType.PostgreSQL;
+      }
+      
+      // Check if we're within the concurrent limit
+      const runningTasks = Array.from(this.activeTasks.values())
+        .filter(t => t.status === 'running').length;
+      
+      if (runningTasks >= this.config.maxConcurrentConversions) {
+        throw new Error(`Maximum concurrent conversions limit reached (${this.config.maxConcurrentConversions})`);
+      }
+      
+      // Log the request
+      this.log('info', `Starting conversion for project ${message.projectId}`);
+      
+      // Start the conversion
+      const task = await this.startConversionProcess(
+        message.projectId,
+        message.sourceConnectionString,
+        message.sourceType,
+        message.targetConnectionString,
+        message.targetType,
+        message.options
+      );
+      
+      // Return the initial status
+      return {
+        success: true,
+        result: {
+          taskId: task.id,
+          projectId: task.projectId,
+          status: task.status,
+          progress: task.progress,
+          startedAt: task.startedAt.toISOString()
+        }
+      };
+    } catch (error) {
+      // Log error
+      this.log('error', `Error starting conversion: ${error.message}`, { error });
+      
+      // Return error response
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   }
-
+  
   /**
    * Handle get conversion status message
    */
-  private async handleGetConversionStatus(message: AgentMessage): Promise<any> {
-    const { projectId } = message.data;
-    return await this.getConversionStatus(projectId);
+  private async handleGetConversionStatus(message: any, sender: string): Promise<any> {
+    try {
+      // Validate message parameters
+      if (!message.projectId) {
+        throw new Error('Missing required parameter: projectId');
+      }
+      
+      // Log the request
+      this.log('debug', `Getting conversion status for project ${message.projectId}`);
+      
+      // Check if we have this task in memory
+      const task = this.activeTasks.get(message.projectId);
+      
+      if (task) {
+        // Return task from memory
+        return {
+          success: true,
+          result: {
+            taskId: task.id,
+            projectId: task.projectId,
+            status: task.status,
+            progress: task.progress,
+            startedAt: task.startedAt.toISOString(),
+            completedAt: task.completedAt?.toISOString(),
+            error: task.error,
+            conversionResult: task.result
+          }
+        };
+      }
+      
+      // Not in memory, check database
+      const status = await this.dbConversionService.getConversionStatus(message.projectId);
+      
+      // Log the result
+      this.log('debug', `Retrieved conversion status for project ${message.projectId}`);
+      
+      // Return the status
+      return {
+        success: true,
+        result: status
+      };
+    } catch (error) {
+      // Log error
+      this.log('error', `Error getting conversion status: ${error.message}`, { error });
+      
+      // Return error response
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   }
-
+  
   /**
    * Handle generate compatibility layer message
    */
-  private async handleGenerateCompatibilityLayer(message: AgentMessage): Promise<any> {
-    const { projectId, options } = message.data;
-    return await this.generateCompatibilityLayer(projectId, options);
+  private async handleGenerateCompatibilityLayer(message: any, sender: string): Promise<any> {
+    try {
+      // Validate message parameters
+      if (!message.projectId) {
+        throw new Error('Missing required parameter: projectId');
+      }
+      
+      // Log the request
+      this.log('info', `Generating compatibility layer for project ${message.projectId}`);
+      
+      // Prepare options
+      const options: CompatibilityLayerOptions = {
+        ormType: message.ormType || 'drizzle',
+        includeExamples: message.includeExamples !== false,
+        generateMigrations: message.generateMigrations !== false,
+        targetDirectory: message.targetDirectory
+      };
+      
+      // Call the service
+      const result = await this.dbConversionService.generateCompatibilityLayer(
+        message.projectId,
+        options
+      );
+      
+      // Log success
+      this.log('info', `Generated compatibility layer for project ${message.projectId}`);
+      
+      // Return success response
+      return {
+        success: true,
+        result
+      };
+    } catch (error) {
+      // Log error
+      this.log('error', `Error generating compatibility layer: ${error.message}`, { error });
+      
+      // Return error response
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+  
+  /**
+   * Get database type information
+   */
+  public getDatabaseTypeInfo(databaseType: DatabaseType): any {
+    return this.dbConversionService.getDatabaseTypeInfo(databaseType);
+  }
+  
+  /**
+   * Get supported database types
+   */
+  public getSupportedDatabaseTypes(): any[] {
+    return this.dbConversionService.getSupportedDatabaseTypes();
+  }
+  
+  /**
+   * Emit an event
+   */
+  private emitEvent(event: string, data: any): void {
+    this.eventEmitter.emit(event, data);
+    // Also emit to MCP if available
+    if (this.mcpService) {
+      this.mcpService.emit(`databaseConversion.${event}`, data);
+    }
+  }
+  
+  /**
+   * Subscribe to events
+   */
+  public on(event: string, listener: (...args: any[]) => void): void {
+    this.eventEmitter.on(event, listener);
+  }
+  
+  /**
+   * Unsubscribe from events
+   */
+  public off(event: string, listener: (...args: any[]) => void): void {
+    this.eventEmitter.off(event, listener);
+  }
+  
+  /**
+   * Log a message
+   */
+  private log(level: string, message: string, details?: any): void {
+    // Only log if level is appropriate
+    const logLevels = {
+      debug: 0,
+      info: 1,
+      warn: 2,
+      error: 3
+    };
+    
+    if (logLevels[level] >= logLevels[this.config.logLevel]) {
+      console.log(`[DatabaseConversionAgent] [${level.toUpperCase()}] ${message}`);
+      
+      // Also log to storage if available
+      try {
+        this.storage.createAgentLog({
+          agentId: 'database-conversion-agent',
+          level,
+          message,
+          details: details ? JSON.stringify(details) : undefined,
+          timestamp: new Date()
+        }).catch(err => {
+          console.error('Error logging to storage:', err);
+        });
+      } catch (error) {
+        console.error('Error logging to storage:', error);
+      }
+    }
   }
 }

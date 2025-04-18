@@ -1,1279 +1,1120 @@
 /**
  * Schema Analyzer Service
  * 
- * This service is responsible for analyzing database schemas and providing
- * insights into the structure of databases. It's used by the Database Conversion
- * Agent to understand the source and target databases.
+ * This service analyzes database schemas and provides AI-powered insights
+ * for optimization, data modeling improvements, and migration recommendations.
  */
 
-import { 
-  ConnectionTestResult, 
-  SchemaAnalysisResult, 
-  DatabaseType, 
-  TableSchema,
-  ColumnSchema,
-  ConnectionStatus
-} from './types';
 import { IStorage } from '../../storage';
 import { LLMService } from '../llm-service';
+import { 
+  DatabaseType, 
+  SchemaAnalysisResult,
+  TableSchema,
+  ColumnSchema,
+  IndexSchema,
+  ForeignKeySchema,
+  ConnectionTestResult,
+  ConnectionStatus
+} from './types';
 import { queryDatabaseSchema } from './db-adapters';
-
-export interface SchemaAnalyzerOptions {
-  depth?: 'basic' | 'standard' | 'deep';
-  includeTables?: string[];
-  excludeTables?: string[];
-  includeViews?: boolean;
-  includeProcedures?: boolean;
-  includeFunctions?: boolean;
-  includeTriggers?: boolean;
-  includeConstraints?: boolean;
-  useAI?: boolean;
-}
 
 export class SchemaAnalyzerService {
   private storage: IStorage;
   private llmService?: LLMService;
-
+  
   constructor(storage: IStorage, llmService?: LLMService) {
     this.storage = storage;
     this.llmService = llmService;
   }
-
-  /**
-   * Test connection to a database
-   */
-  public async testConnection(
-    connectionString: string,
-    databaseType: DatabaseType
-  ): Promise<ConnectionTestResult> {
-    try {
-      // Use the appropriate database adapter to test the connection
-      const result = await queryDatabaseSchema(connectionString, databaseType, {
-        testConnectionOnly: true
-      });
-
-      return {
-        status: ConnectionStatus.Success,
-        message: 'Connection successful',
-        timestamp: new Date(),
-        databaseInfo: result.databaseInfo
-      };
-    } catch (error) {
-      return {
-        status: ConnectionStatus.Failed,
-        message: error.message,
-        timestamp: new Date(),
-        details: error
-      };
-    }
-  }
-
+  
   /**
    * Analyze a database schema
    */
   public async analyzeSchema(
     connectionString: string,
     databaseType: DatabaseType,
-    options: SchemaAnalyzerOptions = {}
+    options: any = {}
   ): Promise<SchemaAnalysisResult> {
-    // Determine analysis depth
-    const depth = options.depth || 'standard';
-    
-    // Query the database schema using the appropriate adapter
-    const schemaData = await queryDatabaseSchema(connectionString, databaseType, {
-      includeViews: options.includeViews !== false,
-      includeProcedures: depth === 'deep' && options.includeProcedures !== false,
-      includeFunctions: depth === 'deep' && options.includeFunctions !== false,
-      includeTriggers: depth === 'deep' && options.includeTriggers !== false,
-      includeConstraints: options.includeConstraints !== false,
-      tableFilter: options.includeTables || []
-    });
-    
-    // Filter tables if needed
-    let tables = schemaData.tables;
-    if (options.includeTables && options.includeTables.length > 0) {
-      tables = tables.filter(table => options.includeTables!.includes(table.name));
-    }
-    if (options.excludeTables && options.excludeTables.length > 0) {
-      tables = tables.filter(table => !options.excludeTables!.includes(table.name));
-    }
-    
-    // Prepare statistics
-    const statistics = {
-      totalTables: tables.length,
-      totalViews: schemaData.views.length,
-      totalProcedures: schemaData.procedures.length,
-      totalFunctions: schemaData.functions.length,
-      totalTriggers: schemaData.triggers.length,
-      totalConstraints: schemaData.constraints.length,
-      estimatedSizeMb: schemaData.estimatedSizeMb
-    };
-    
-    // Use AI to enhance schema analysis if requested and available
-    if (options.useAI && this.llmService && depth === 'deep') {
-      await this.enhanceSchemaWithAI(tables, databaseType);
-    }
-    
-    // Return the schema analysis result
-    return {
-      databaseType,
-      timestamp: new Date(),
-      tables,
-      views: schemaData.views,
-      procedures: schemaData.procedures,
-      functions: schemaData.functions,
-      triggers: schemaData.triggers,
-      constraints: schemaData.constraints,
-      statistics
-    };
-  }
-
-  /**
-   * Enhance schema analysis with AI
-   */
-  private async enhanceSchemaWithAI(tables: TableSchema[], databaseType: DatabaseType): Promise<void> {
-    if (!this.llmService) return;
-    
-    // We could process tables in parallel for better performance
-    for (const table of tables) {
-      // Skip tables with few columns
-      if (table.columns.length <= 2) continue;
-      
-      try {
-        // Generate a prompt for the LLM to analyze the table schema
-        const prompt = this.generateTableAnalysisPrompt(table, databaseType);
-        
-        // Get analysis from LLM
-        const analysis = await this.llmService.generateContent(prompt, {
-          temperature: 0.2, // Lower temperature for more focused, deterministic responses
-          model: 'gpt-4o' // Use the latest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        });
-        
-        // Parse the analysis and enhance the table schema
-        this.applySchemaEnhancements(table, analysis);
-      } catch (error) {
-        console.error(`Error enhancing schema with AI for table ${table.name}:`, error);
-        // Continue with other tables even if one fails
-      }
-    }
-  }
-
-  /**
-   * Generate a prompt for table schema analysis
-   */
-  private generateTableAnalysisPrompt(table: TableSchema, databaseType: DatabaseType): string {
-    // Format the table schema as JSON for the prompt
-    const tableJson = JSON.stringify({
-      name: table.name,
-      columns: table.columns.map(col => ({
-        name: col.name,
-        type: col.type,
-        nullable: col.nullable,
-        isPrimaryKey: col.isPrimaryKey,
-        isForeignKey: col.isForeignKey,
-        isUnique: col.isUnique
-      }))
-    }, null, 2);
-    
-    return `
-You are a database schema expert. Analyze this ${databaseType} table schema and provide insights:
-
-${tableJson}
-
-Please provide the following in JSON format:
-1. Potential indexes that would improve performance
-2. Suggested data types that might be more appropriate
-3. Normalization suggestions if you detect any potential issues
-4. Any missing columns that are typically included in this type of table
-5. Potential foreign key relationships that might be missing
-
-Format your response as valid JSON with these keys: "indexes", "dataTypes", "normalization", "missingColumns", "relationships"
-`;
-  }
-
-  /**
-   * Apply schema enhancements from AI analysis
-   */
-  private applySchemaEnhancements(table: TableSchema, analysis: string): void {
     try {
-      // Try to parse the response as JSON
-      const enhancements = JSON.parse(analysis);
+      // Log the analysis start
+      await this.log('schema_analysis', 'info', 
+        `Starting schema analysis for ${databaseType} database`);
       
-      // Apply enhancements to the table schema
-      if (enhancements.indexes && Array.isArray(enhancements.indexes)) {
-        table['aiSuggestedIndexes'] = enhancements.indexes;
+      // Query database schema using the appropriate adapter
+      const rawSchema = await queryDatabaseSchema(connectionString, databaseType, {
+        includeViews: options.includeViews !== false,
+        includeProcedures: options.includeProcedures,
+        includeFunctions: options.includeFunctions,
+        includeTriggers: options.includeTriggers,
+        includeConstraints: options.includeConstraints !== false,
+        tableFilter: options.includeTables
+      });
+      
+      // Create the base analysis result
+      const result: SchemaAnalysisResult = {
+        databaseType,
+        tables: rawSchema.tables,
+        views: rawSchema.views || [],
+        procedures: rawSchema.procedures || [],
+        functions: rawSchema.functions || [],
+        triggers: rawSchema.triggers || [],
+        estimatedSizeMb: rawSchema.estimatedSizeMb,
+        dbInfo: rawSchema.databaseInfo,
+        analysisTimestamp: new Date().toISOString()
+      };
+      
+      // Calculate high-level statistics for each table
+      await this.calculateTableStatistics(result);
+      
+      // Identify potential schema issues
+      await this.identifySchemaIssues(result);
+      
+      // Identify potential performance bottlenecks
+      await this.identifyPerformanceIssues(result);
+      
+      // Generate AI-powered recommendations if requested and LLM service is available
+      if (options.useAI && this.llmService) {
+        await this.generateAIRecommendations(result);
       }
       
-      if (enhancements.dataTypes && typeof enhancements.dataTypes === 'object') {
-        table['aiSuggestedDataTypes'] = enhancements.dataTypes;
-      }
+      // Log the completion of analysis
+      await this.log('schema_analysis', 'info', 
+        `Completed schema analysis for ${databaseType} database with ${result.tables.length} tables`);
       
-      if (enhancements.normalization && Array.isArray(enhancements.normalization)) {
-        table['aiNormalizationSuggestions'] = enhancements.normalization;
-      }
-      
-      if (enhancements.missingColumns && Array.isArray(enhancements.missingColumns)) {
-        table['aiSuggestedColumns'] = enhancements.missingColumns;
-      }
-      
-      if (enhancements.relationships && Array.isArray(enhancements.relationships)) {
-        table['aiSuggestedRelationships'] = enhancements.relationships;
-      }
+      return result;
     } catch (error) {
-      console.error(`Error parsing AI analysis for table ${table.name}:`, error);
+      // Log the error
+      await this.log('schema_analysis', 'error', 
+        `Error analyzing schema: ${error.message}`, { error: error.stack });
+      
+      throw error;
     }
   }
-
+  
   /**
-   * Compare two database schemas and identify differences
+   * Calculate statistics for tables
    */
-  public async compareSchemas(
-    sourceSchema: SchemaAnalysisResult,
-    targetSchema: SchemaAnalysisResult
-  ): Promise<any> {
-    // Analyze table differences
-    const tableDifferences = this.compareTableStructures(sourceSchema.tables, targetSchema.tables);
-    
-    // Analyze view differences if included in both schemas
-    const viewDifferences = this.compareViews(sourceSchema.views, targetSchema.views);
-    
-    // Analyze other schema objects if in deep mode
-    const procedureDifferences = this.compareSchemaObjects(
-      sourceSchema.procedures, 
-      targetSchema.procedures, 
-      'name'
-    );
-    
-    const functionDifferences = this.compareSchemaObjects(
-      sourceSchema.functions, 
-      targetSchema.functions, 
-      'name'
-    );
-    
-    const triggerDifferences = this.compareSchemaObjects(
-      sourceSchema.triggers, 
-      targetSchema.triggers, 
-      'name'
-    );
-    
-    return {
-      tables: tableDifferences,
-      views: viewDifferences,
-      procedures: procedureDifferences,
-      functions: functionDifferences,
-      triggers: triggerDifferences,
-      summary: {
-        tablesOnlyInSource: tableDifferences.onlyInSource.length,
-        tablesOnlyInTarget: tableDifferences.onlyInTarget.length,
-        tablesWithDifferences: tableDifferences.different.length,
-        viewsOnlyInSource: viewDifferences.onlyInSource.length,
-        viewsOnlyInTarget: viewDifferences.onlyInTarget.length,
-        viewsWithDifferences: viewDifferences.different.length,
-        proceduresOnlyInSource: procedureDifferences.onlyInSource.length,
-        proceduresOnlyInTarget: procedureDifferences.onlyInTarget.length,
-        functionsOnlyInSource: functionDifferences.onlyInSource.length,
-        functionsOnlyInTarget: functionDifferences.onlyInTarget.length,
-        triggersOnlyInSource: triggerDifferences.onlyInSource.length,
-        triggersOnlyInTarget: triggerDifferences.onlyInTarget.length
+  private async calculateTableStatistics(result: SchemaAnalysisResult): Promise<void> {
+    // For each table, calculate some basic statistics
+    for (const table of result.tables) {
+      // Count different column types
+      const columnTypes: Record<string, number> = {};
+      let nullableColumns = 0;
+      let primaryKeyColumns = 0;
+      let uniqueColumns = 0;
+      let indexedColumns = 0;
+      let autoIncrementColumns = 0;
+      
+      // Process each column
+      for (const column of table.columns) {
+        // Count by type
+        const normalizedType = column.type.toLowerCase().replace(/\(.*\)/, '');
+        columnTypes[normalizedType] = (columnTypes[normalizedType] || 0) + 1;
+        
+        // Count nullable
+        if (column.nullable) {
+          nullableColumns++;
+        }
+        
+        // Count primary keys
+        if (column.isPrimaryKey) {
+          primaryKeyColumns++;
+        }
+        
+        // Count unique
+        if (column.isUnique) {
+          uniqueColumns++;
+        }
+        
+        // Count auto increment
+        if (column.autoIncrement) {
+          autoIncrementColumns++;
+        }
       }
+      
+      // Count indexed columns
+      if (table.indexes) {
+        for (const index of table.indexes) {
+          indexedColumns += index.columnNames.length;
+        }
+      }
+      
+      // Set the statistics
+      table.statistics = {
+        totalColumns: table.columns.length,
+        columnTypeDistribution: columnTypes,
+        nullableColumns,
+        primaryKeyColumns,
+        uniqueColumns,
+        indexedColumns,
+        autoIncrementColumns,
+        hasForeignKeys: table.foreignKeys?.length > 0,
+        foreignKeyCount: table.foreignKeys?.length || 0,
+        indexCount: table.indexes?.length || 0
+      };
+    }
+  }
+  
+  /**
+   * Identify potential schema issues
+   */
+  private async identifySchemaIssues(result: SchemaAnalysisResult): Promise<void> {
+    // Initialize the schema issues property if it doesn't exist
+    result.schemaIssues = {
+      tablesWithoutPrimaryKey: [],
+      columnsWithoutType: [],
+      inconsistentNaming: [],
+      redundantIndexes: [],
+      missingIndexes: [],
+      circularDependencies: []
     };
-  }
-
-  /**
-   * Compare table structures between schemas
-   */
-  private compareTableStructures(sourceTables: TableSchema[], targetTables: TableSchema[]): any {
-    // Create maps for faster lookups
-    const sourceTablesMap = new Map(sourceTables.map(table => [table.name, table]));
-    const targetTablesMap = new Map(targetTables.map(table => [table.name, table]));
     
-    // Find tables only in source
-    const onlyInSource = sourceTables.filter(table => !targetTablesMap.has(table.name));
-    
-    // Find tables only in target
-    const onlyInTarget = targetTables.filter(table => !sourceTablesMap.has(table.name));
-    
-    // Find tables in both, but with differences
-    const different = [];
-    for (const sourceTable of sourceTables) {
-      const targetTable = targetTablesMap.get(sourceTable.name);
-      if (targetTable) {
-        // Compare table structure
-        const differences = this.compareTableColumns(sourceTable, targetTable);
-        if (Object.keys(differences).length > 0) {
-          different.push({
-            tableName: sourceTable.name,
-            differences
+    // Process each table
+    for (const table of result.tables) {
+      // Check for tables without primary key
+      const hasPrimaryKey = table.columns.some(c => c.isPrimaryKey) || 
+                           (table.primaryKey && table.primaryKey.length > 0);
+      
+      if (!hasPrimaryKey) {
+        result.schemaIssues.tablesWithoutPrimaryKey.push({
+          tableName: table.name,
+          issue: 'No primary key defined',
+          recommendation: 'Add a primary key to ensure data integrity and improve query performance'
+        });
+      }
+      
+      // Check for columns without type
+      for (const column of table.columns) {
+        if (!column.type || column.type.trim() === '') {
+          result.schemaIssues.columnsWithoutType.push({
+            tableName: table.name,
+            columnName: column.name,
+            issue: 'Column has no type defined',
+            recommendation: 'Define a data type for this column'
           });
         }
       }
+      
+      // Check for inconsistent naming patterns
+      this.checkInconsistentNaming(table, result.schemaIssues.inconsistentNaming);
+      
+      // Check for redundant indexes
+      this.checkRedundantIndexes(table, result.schemaIssues.redundantIndexes);
+      
+      // Check for missing indexes on foreign keys
+      this.checkMissingIndexes(table, result.schemaIssues.missingIndexes);
     }
     
-    return {
-      onlyInSource,
-      onlyInTarget,
-      different
+    // Check for circular dependencies
+    this.checkCircularDependencies(result.tables, result.schemaIssues.circularDependencies);
+  }
+  
+  /**
+   * Check for inconsistent naming patterns
+   */
+  private checkInconsistentNaming(
+    table: TableSchema, 
+    inconsistentNaming: Array<{tableName: string; issue: string; recommendation: string}>
+  ): void {
+    // Different naming conventions
+    const namingStyles = {
+      snakeCase: /^[a-z]+(_[a-z]+)*$/,
+      camelCase: /^[a-z]+([A-Z][a-z]*)*$/,
+      pascalCase: /^[A-Z][a-z]*([A-Z][a-z]*)*$/,
+      kebabCase: /^[a-z]+(-[a-z]+)*$/
     };
-  }
-
-  /**
-   * Compare columns of two tables
-   */
-  private compareTableColumns(sourceTable: TableSchema, targetTable: TableSchema): any {
-    // Create maps for faster lookups
-    const sourceColumnsMap = new Map(sourceTable.columns.map(col => [col.name, col]));
-    const targetColumnsMap = new Map(targetTable.columns.map(col => [col.name, col]));
     
-    // Find columns only in source
-    const columnsOnlyInSource = sourceTable.columns
-      .filter(col => !targetColumnsMap.has(col.name))
-      .map(col => col.name);
+    // Check table name
+    let tableStyle = '';
+    for (const [style, pattern] of Object.entries(namingStyles)) {
+      if (pattern.test(table.name)) {
+        tableStyle = style;
+        break;
+      }
+    }
     
-    // Find columns only in target
-    const columnsOnlyInTarget = targetTable.columns
-      .filter(col => !sourceColumnsMap.has(col.name))
-      .map(col => col.name);
-    
-    // Find columns in both, but with differences
-    const columnDifferences = [];
-    for (const sourceColumn of sourceTable.columns) {
-      const targetColumn = targetColumnsMap.get(sourceColumn.name);
-      if (targetColumn) {
-        const differences = this.compareColumnProperties(sourceColumn, targetColumn);
-        if (Object.keys(differences).length > 0) {
-          columnDifferences.push({
-            columnName: sourceColumn.name,
-            differences
-          });
+    // Check column names
+    const columnStyles: Record<string, number> = {};
+    for (const column of table.columns) {
+      for (const [style, pattern] of Object.entries(namingStyles)) {
+        if (pattern.test(column.name)) {
+          columnStyles[style] = (columnStyles[style] || 0) + 1;
+          break;
         }
       }
     }
     
-    // Construct the result
-    const result: any = {};
-    if (columnsOnlyInSource.length > 0) {
-      result.columnsOnlyInSource = columnsOnlyInSource;
-    }
-    if (columnsOnlyInTarget.length > 0) {
-      result.columnsOnlyInTarget = columnsOnlyInTarget;
-    }
-    if (columnDifferences.length > 0) {
-      result.columnDifferences = columnDifferences;
+    // If there's more than one style, report it
+    const styles = Object.keys(columnStyles);
+    if (styles.length > 1) {
+      inconsistentNaming.push({
+        tableName: table.name,
+        issue: `Inconsistent column naming conventions: ${styles.join(', ')}`,
+        recommendation: 'Standardize naming conventions across all columns'
+      });
     }
     
-    // Compare primary key differences
-    if (!this.areArraysEqual(sourceTable.primaryKey || [], targetTable.primaryKey || [])) {
-      result.primaryKeyDifference = {
-        source: sourceTable.primaryKey,
-        target: targetTable.primaryKey
-      };
-    }
-    
-    // Compare foreign key differences
-    const foreignKeyDifferences = this.compareForeignKeys(
-      sourceTable.foreignKeys || [],
-      targetTable.foreignKeys || []
-    );
-    if (Object.keys(foreignKeyDifferences).length > 0) {
-      result.foreignKeyDifferences = foreignKeyDifferences;
-    }
-    
-    // Compare index differences
-    const indexDifferences = this.compareIndexes(
-      sourceTable.indexes || [],
-      targetTable.indexes || []
-    );
-    if (Object.keys(indexDifferences).length > 0) {
-      result.indexDifferences = indexDifferences;
-    }
-    
-    return result;
-  }
-
-  /**
-   * Compare properties of two columns
-   */
-  private compareColumnProperties(sourceColumn: ColumnSchema, targetColumn: ColumnSchema): any {
-    const differences: any = {};
-    
-    // Compare type
-    if (sourceColumn.type !== targetColumn.type) {
-      differences.type = {
-        source: sourceColumn.type,
-        target: targetColumn.type
-      };
-    }
-    
-    // Compare nullability
-    if (sourceColumn.nullable !== targetColumn.nullable) {
-      differences.nullable = {
-        source: sourceColumn.nullable,
-        target: targetColumn.nullable
-      };
-    }
-    
-    // Compare default value
-    if (sourceColumn.defaultValue !== targetColumn.defaultValue) {
-      differences.defaultValue = {
-        source: sourceColumn.defaultValue,
-        target: targetColumn.defaultValue
-      };
-    }
-    
-    // Compare auto increment
-    if (sourceColumn.autoIncrement !== targetColumn.autoIncrement) {
-      differences.autoIncrement = {
-        source: sourceColumn.autoIncrement,
-        target: targetColumn.autoIncrement
-      };
-    }
-    
-    // Compare primary key
-    if (sourceColumn.isPrimaryKey !== targetColumn.isPrimaryKey) {
-      differences.isPrimaryKey = {
-        source: sourceColumn.isPrimaryKey,
-        target: targetColumn.isPrimaryKey
-      };
-    }
-    
-    // Compare foreign key
-    if (sourceColumn.isForeignKey !== targetColumn.isForeignKey) {
-      differences.isForeignKey = {
-        source: sourceColumn.isForeignKey,
-        target: targetColumn.isForeignKey
-      };
-    }
-    
-    // Compare unique constraint
-    if (sourceColumn.isUnique !== targetColumn.isUnique) {
-      differences.isUnique = {
-        source: sourceColumn.isUnique,
-        target: targetColumn.isUnique
-      };
-    }
-    
-    return differences;
-  }
-
-  /**
-   * Compare foreign keys between tables
-   */
-  private compareForeignKeys(sourceForeignKeys: any[], targetForeignKeys: any[]): any {
-    // Create maps for faster lookups
-    const sourceForeignKeysMap = new Map(sourceForeignKeys.map(fk => [fk.name, fk]));
-    const targetForeignKeysMap = new Map(targetForeignKeys.map(fk => [fk.name, fk]));
-    
-    // Find foreign keys only in source
-    const onlyInSource = sourceForeignKeys.filter(fk => !targetForeignKeysMap.has(fk.name));
-    
-    // Find foreign keys only in target
-    const onlyInTarget = targetForeignKeys.filter(fk => !sourceForeignKeysMap.has(fk.name));
-    
-    // Find foreign keys in both, but with differences
-    const different = [];
-    for (const sourceFk of sourceForeignKeys) {
-      const targetFk = targetForeignKeysMap.get(sourceFk.name);
-      if (targetFk) {
-        // Compare foreign key properties
-        const differences = this.compareForeignKeyProperties(sourceFk, targetFk);
-        if (Object.keys(differences).length > 0) {
-          different.push({
-            foreignKeyName: sourceFk.name,
-            differences
-          });
-        }
-      }
-    }
-    
-    // Construct the result
-    const result: any = {};
-    if (onlyInSource.length > 0) {
-      result.onlyInSource = onlyInSource;
-    }
-    if (onlyInTarget.length > 0) {
-      result.onlyInTarget = onlyInTarget;
-    }
-    if (different.length > 0) {
-      result.different = different;
-    }
-    
-    return result;
-  }
-
-  /**
-   * Compare properties of two foreign keys
-   */
-  private compareForeignKeyProperties(sourceFk: any, targetFk: any): any {
-    const differences: any = {};
-    
-    // Compare column names
-    if (!this.areArraysEqual(sourceFk.columnNames, targetFk.columnNames)) {
-      differences.columnNames = {
-        source: sourceFk.columnNames,
-        target: targetFk.columnNames
-      };
-    }
-    
-    // Compare referenced table name
-    if (sourceFk.referencedTableName !== targetFk.referencedTableName) {
-      differences.referencedTableName = {
-        source: sourceFk.referencedTableName,
-        target: targetFk.referencedTableName
-      };
-    }
-    
-    // Compare referenced column names
-    if (!this.areArraysEqual(sourceFk.referencedColumnNames, targetFk.referencedColumnNames)) {
-      differences.referencedColumnNames = {
-        source: sourceFk.referencedColumnNames,
-        target: targetFk.referencedColumnNames
-      };
-    }
-    
-    // Compare update rule
-    if (sourceFk.updateRule !== targetFk.updateRule) {
-      differences.updateRule = {
-        source: sourceFk.updateRule,
-        target: targetFk.updateRule
-      };
-    }
-    
-    // Compare delete rule
-    if (sourceFk.deleteRule !== targetFk.deleteRule) {
-      differences.deleteRule = {
-        source: sourceFk.deleteRule,
-        target: targetFk.deleteRule
-      };
-    }
-    
-    return differences;
-  }
-
-  /**
-   * Compare indexes between tables
-   */
-  private compareIndexes(sourceIndexes: any[], targetIndexes: any[]): any {
-    // Create maps for faster lookups
-    const sourceIndexesMap = new Map(sourceIndexes.map(idx => [idx.name, idx]));
-    const targetIndexesMap = new Map(targetIndexes.map(idx => [idx.name, idx]));
-    
-    // Find indexes only in source
-    const onlyInSource = sourceIndexes.filter(idx => !targetIndexesMap.has(idx.name));
-    
-    // Find indexes only in target
-    const onlyInTarget = targetIndexes.filter(idx => !sourceIndexesMap.has(idx.name));
-    
-    // Find indexes in both, but with differences
-    const different = [];
-    for (const sourceIdx of sourceIndexes) {
-      const targetIdx = targetIndexesMap.get(sourceIdx.name);
-      if (targetIdx) {
-        // Compare index properties
-        const differences = this.compareIndexProperties(sourceIdx, targetIdx);
-        if (Object.keys(differences).length > 0) {
-          different.push({
-            indexName: sourceIdx.name,
-            differences
-          });
-        }
-      }
-    }
-    
-    // Construct the result
-    const result: any = {};
-    if (onlyInSource.length > 0) {
-      result.onlyInSource = onlyInSource;
-    }
-    if (onlyInTarget.length > 0) {
-      result.onlyInTarget = onlyInTarget;
-    }
-    if (different.length > 0) {
-      result.different = different;
-    }
-    
-    return result;
-  }
-
-  /**
-   * Compare properties of two indexes
-   */
-  private compareIndexProperties(sourceIdx: any, targetIdx: any): any {
-    const differences: any = {};
-    
-    // Compare column names
-    if (!this.areArraysEqual(sourceIdx.columnNames, targetIdx.columnNames)) {
-      differences.columnNames = {
-        source: sourceIdx.columnNames,
-        target: targetIdx.columnNames
-      };
-    }
-    
-    // Compare uniqueness
-    if (sourceIdx.isUnique !== targetIdx.isUnique) {
-      differences.isUnique = {
-        source: sourceIdx.isUnique,
-        target: targetIdx.isUnique
-      };
-    }
-    
-    // Compare primary key flag
-    if (sourceIdx.isPrimaryKey !== targetIdx.isPrimaryKey) {
-      differences.isPrimaryKey = {
-        source: sourceIdx.isPrimaryKey,
-        target: targetIdx.isPrimaryKey
-      };
-    }
-    
-    // Compare type
-    if (sourceIdx.type !== targetIdx.type) {
-      differences.type = {
-        source: sourceIdx.type,
-        target: targetIdx.type
-      };
-    }
-    
-    // Compare method
-    if (sourceIdx.method !== targetIdx.method) {
-      differences.method = {
-        source: sourceIdx.method,
-        target: targetIdx.method
-      };
-    }
-    
-    return differences;
-  }
-
-  /**
-   * Compare views between schemas
-   */
-  private compareViews(sourceViews: any[], targetViews: any[]): any {
-    // Create maps for faster lookups
-    const sourceViewsMap = new Map(sourceViews.map(view => [view.name, view]));
-    const targetViewsMap = new Map(targetViews.map(view => [view.name, view]));
-    
-    // Find views only in source
-    const onlyInSource = sourceViews.filter(view => !targetViewsMap.has(view.name));
-    
-    // Find views only in target
-    const onlyInTarget = targetViews.filter(view => !sourceViewsMap.has(view.name));
-    
-    // Find views in both, but with differences
-    const different = [];
-    for (const sourceView of sourceViews) {
-      const targetView = targetViewsMap.get(sourceView.name);
-      if (targetView) {
-        // Compare view definition and columns
-        const differences = this.compareViewDefinitions(sourceView, targetView);
-        if (Object.keys(differences).length > 0) {
-          different.push({
-            viewName: sourceView.name,
-            differences
-          });
-        }
-      }
-    }
-    
-    return {
-      onlyInSource,
-      onlyInTarget,
-      different
-    };
-  }
-
-  /**
-   * Compare definitions of two views
-   */
-  private compareViewDefinitions(sourceView: any, targetView: any): any {
-    const differences: any = {};
-    
-    // Compare schema
-    if (sourceView.schema !== targetView.schema) {
-      differences.schema = {
-        source: sourceView.schema,
-        target: targetView.schema
-      };
-    }
-    
-    // Compare definition
-    if (sourceView.definition !== targetView.definition) {
-      differences.definition = {
-        source: sourceView.definition,
-        target: targetView.definition
-      };
-    }
-    
-    // Compare column differences
-    if (!this.areColumnArraysEqual(sourceView.columns, targetView.columns)) {
-      differences.columns = this.compareColumns(sourceView.columns, targetView.columns);
-    }
-    
-    // Compare materialized flag
-    if (sourceView.isMaterialized !== targetView.isMaterialized) {
-      differences.isMaterialized = {
-        source: sourceView.isMaterialized,
-        target: targetView.isMaterialized
-      };
-    }
-    
-    return differences;
-  }
-
-  /**
-   * Compare generic schema objects (procedures, functions, triggers, etc.)
-   */
-  private compareSchemaObjects(sourceObjects: any[], targetObjects: any[], keyProperty: string): any {
-    if (!sourceObjects || !targetObjects) {
-      return {
-        onlyInSource: [],
-        onlyInTarget: [],
-        different: []
-      };
-    }
-    
-    // Create maps for faster lookups
-    const sourceObjectsMap = new Map(sourceObjects.map(obj => [obj[keyProperty], obj]));
-    const targetObjectsMap = new Map(targetObjects.map(obj => [obj[keyProperty], obj]));
-    
-    // Find objects only in source
-    const onlyInSource = sourceObjects.filter(obj => !targetObjectsMap.has(obj[keyProperty]));
-    
-    // Find objects only in target
-    const onlyInTarget = targetObjects.filter(obj => !sourceObjectsMap.has(obj[keyProperty]));
-    
-    // For simplicity, we'll just check if definitions are different
-    // A more detailed comparison could be implemented for specific object types
-    const different = [];
-    for (const sourceObj of sourceObjects) {
-      const targetObj = targetObjectsMap.get(sourceObj[keyProperty]);
-      if (targetObj && sourceObj.definition !== targetObj.definition) {
-        different.push({
-          name: sourceObj[keyProperty],
-          sourceDefinition: sourceObj.definition,
-          targetDefinition: targetObj.definition
+    // If table style doesn't match dominant column style
+    if (tableStyle && styles.length > 0) {
+      const dominantStyle = Object.entries(columnStyles)
+        .sort(([, a], [, b]) => b - a)[0][0];
+      
+      if (tableStyle !== dominantStyle) {
+        inconsistentNaming.push({
+          tableName: table.name,
+          issue: `Table name uses ${tableStyle}, but columns predominantly use ${dominantStyle}`,
+          recommendation: 'Use consistent naming style for tables and columns'
         });
       }
     }
-    
-    return {
-      onlyInSource,
-      onlyInTarget,
-      different
-    };
   }
-
+  
   /**
-   * Compare two arrays of columns
+   * Check for redundant indexes
    */
-  private compareColumns(sourceColumns: ColumnSchema[], targetColumns: ColumnSchema[]): any {
-    // Create maps for faster lookups
-    const sourceColumnsMap = new Map(sourceColumns.map(col => [col.name, col]));
-    const targetColumnsMap = new Map(targetColumns.map(col => [col.name, col]));
+  private checkRedundantIndexes(
+    table: TableSchema, 
+    redundantIndexes: Array<{tableName: string; indexName: string; issue: string; recommendation: string}>
+  ): void {
+    // If the table has no indexes, nothing to check
+    if (!table.indexes || table.indexes.length <= 1) {
+      return;
+    }
     
-    // Find columns only in source
-    const onlyInSource = sourceColumns
-      .filter(col => !targetColumnsMap.has(col.name))
-      .map(col => col.name);
-    
-    // Find columns only in target
-    const onlyInTarget = targetColumns
-      .filter(col => !sourceColumnsMap.has(col.name))
-      .map(col => col.name);
-    
-    // Find columns in both, but with differences
-    const different = [];
-    for (const sourceCol of sourceColumns) {
-      const targetCol = targetColumnsMap.get(sourceCol.name);
-      if (targetCol) {
-        const differences = this.compareColumnProperties(sourceCol, targetCol);
-        if (Object.keys(differences).length > 0) {
-          different.push({
-            columnName: sourceCol.name,
-            differences
+    // Check each index against others
+    for (let i = 0; i < table.indexes.length; i++) {
+      const index = table.indexes[i];
+      
+      for (let j = i + 1; j < table.indexes.length; j++) {
+        const otherIndex = table.indexes[j];
+        
+        // Skip if one index is unique and the other is not
+        if (index.isUnique !== otherIndex.isUnique) {
+          continue;
+        }
+        
+        // Case 1: This index's columns are a prefix of the other index
+        if (isPrefix(index.columnNames, otherIndex.columnNames)) {
+          redundantIndexes.push({
+            tableName: table.name,
+            indexName: index.name,
+            issue: `Index ${index.name} is redundant because its columns are a prefix of index ${otherIndex.name}`,
+            recommendation: `Consider removing index ${index.name}`
+          });
+        }
+        // Case 2: Other index's columns are a prefix of this index
+        else if (isPrefix(otherIndex.columnNames, index.columnNames)) {
+          redundantIndexes.push({
+            tableName: table.name,
+            indexName: otherIndex.name,
+            issue: `Index ${otherIndex.name} is redundant because its columns are a prefix of index ${index.name}`,
+            recommendation: `Consider removing index ${otherIndex.name}`
           });
         }
       }
     }
     
-    return {
-      onlyInSource,
-      onlyInTarget,
-      different
-    };
-  }
-
-  /**
-   * Check if two arrays are equal
-   */
-  private areArraysEqual(arr1: any[], arr2: any[]): boolean {
-    if (!arr1 && !arr2) return true;
-    if (!arr1 || !arr2) return false;
-    if (arr1.length !== arr2.length) return false;
-    
-    // Sort the arrays for comparison
-    const sorted1 = [...arr1].sort();
-    const sorted2 = [...arr2].sort();
-    
-    // Compare elements
-    for (let i = 0; i < sorted1.length; i++) {
-      if (sorted1[i] !== sorted2[i]) return false;
-    }
-    
-    return true;
-  }
-
-  /**
-   * Check if two arrays of columns are equal
-   */
-  private areColumnArraysEqual(cols1: ColumnSchema[], cols2: ColumnSchema[]): boolean {
-    if (cols1.length !== cols2.length) return false;
-    
-    // Create maps for faster lookups
-    const cols1Map = new Map(cols1.map(col => [col.name, col]));
-    const cols2Map = new Map(cols2.map(col => [col.name, col]));
-    
-    // Check if columns match
-    for (const col1 of cols1) {
-      const col2 = cols2Map.get(col1.name);
-      if (!col2) return false;
-      
-      // Compare basic properties
-      if (
-        col1.type !== col2.type ||
-        col1.nullable !== col2.nullable ||
-        col1.isPrimaryKey !== col2.isPrimaryKey ||
-        col1.isUnique !== col2.isUnique
-      ) {
+    // Helper function to check if array a is a prefix of array b
+    function isPrefix(a: string[], b: string[]): boolean {
+      if (a.length > b.length) {
         return false;
       }
+      
+      for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) {
+          return false;
+        }
+      }
+      
+      return true;
+    }
+  }
+  
+  /**
+   * Check for missing indexes on foreign keys
+   */
+  private checkMissingIndexes(
+    table: TableSchema, 
+    missingIndexes: Array<{tableName: string; columnNames: string[]; issue: string; recommendation: string}>
+  ): void {
+    // If the table has no foreign keys, nothing to check
+    if (!table.foreignKeys || table.foreignKeys.length === 0) {
+      return;
     }
     
-    return true;
-  }
-}
-
-/**
- * Temporary implementation of the queryDatabaseSchema function until we create adapters for each database type
- */
-async function queryDatabaseSchema(
-  connectionString: string,
-  databaseType: DatabaseType,
-  options: any = {}
-): Promise<any> {
-  // This is a mock implementation
-  // In a real application, this would connect to the actual database and query its schema
-  
-  // For testing purposes, return a mock schema
-  if (options.testConnectionOnly) {
-    return {
-      databaseInfo: {
-        name: 'test_database',
-        version: '14.5',
-        type: databaseType
+    // Get all indexed columns
+    const indexedColumns = new Set<string>();
+    if (table.indexes) {
+      for (const index of table.indexes) {
+        for (const column of index.columnNames) {
+          indexedColumns.add(column);
+        }
       }
+    }
+    
+    // Check each foreign key
+    for (const fk of table.foreignKeys) {
+      // Check if all FK columns are covered by an index
+      const missingIndexColumns = fk.columnNames.filter(col => !indexedColumns.has(col));
+      
+      if (missingIndexColumns.length > 0) {
+        missingIndexes.push({
+          tableName: table.name,
+          columnNames: missingIndexColumns,
+          issue: `Foreign key columns ${missingIndexColumns.join(', ')} have no index`,
+          recommendation: `Create an index on columns ${missingIndexColumns.join(', ')} to improve join performance`
+        });
+      }
+    }
+  }
+  
+  /**
+   * Check for circular dependencies between tables
+   */
+  private checkCircularDependencies(
+    tables: TableSchema[], 
+    circularDependencies: Array<{tablesInvolved: string[]; issue: string; recommendation: string}>
+  ): void {
+    // Build a graph of table dependencies
+    const graph: Record<string, string[]> = {};
+    
+    // Initialize the graph with empty adjacency lists
+    for (const table of tables) {
+      graph[table.name] = [];
+    }
+    
+    // Add edges based on foreign keys
+    for (const table of tables) {
+      if (table.foreignKeys) {
+        for (const fk of table.foreignKeys) {
+          graph[table.name].push(fk.referencedTableName);
+        }
+      }
+    }
+    
+    // Check for cycles using DFS
+    const visited: Record<string, boolean> = {};
+    const recursionStack: Record<string, boolean> = {};
+    
+    const detectCycle = (node: string, path: string[]): string[] | null => {
+      visited[node] = true;
+      recursionStack[node] = true;
+      path.push(node);
+      
+      for (const neighbor of graph[node] || []) {
+        if (!visited[neighbor]) {
+          const cyclePath = detectCycle(neighbor, [...path]);
+          if (cyclePath) {
+            return cyclePath;
+          }
+        } else if (recursionStack[neighbor]) {
+          return [...path, neighbor];
+        }
+      }
+      
+      recursionStack[node] = false;
+      return null;
+    };
+    
+    // Check each unvisited node
+    for (const table of tables) {
+      if (!visited[table.name]) {
+        const cyclePath = detectCycle(table.name, []);
+        if (cyclePath) {
+          // Find the start of the cycle
+          const cycleStart = cyclePath.indexOf(cyclePath[cyclePath.length - 1]);
+          const cycle = cyclePath.slice(cycleStart);
+          
+          circularDependencies.push({
+            tablesInvolved: cycle,
+            issue: `Circular dependency detected between tables: ${cycle.join(' -> ')}`,
+            recommendation: 'Consider breaking the circular dependency or ensuring proper deletion order'
+          });
+          
+          // No need to check more cycles for this starting node
+          break;
+        }
+      }
+    }
+  }
+  
+  /**
+   * Identify potential performance issues
+   */
+  private async identifyPerformanceIssues(result: SchemaAnalysisResult): Promise<void> {
+    // Initialize the performance issues property if it doesn't exist
+    result.performanceIssues = {
+      tablesWithoutIndexes: [],
+      wideIndexes: [],
+      largeTextColumnsWithoutIndexes: [],
+      tablesWithoutPrimaryKey: [],
+      inefficientDataTypes: [],
+      highCardinalityTextColumns: []
+    };
+    
+    // Process each table
+    for (const table of result.tables) {
+      // Check for tables without indexes
+      if (!table.indexes || table.indexes.length === 0) {
+        result.performanceIssues.tablesWithoutIndexes.push({
+          tableName: table.name,
+          issue: 'Table has no indexes',
+          recommendation: 'Add appropriate indexes based on query patterns'
+        });
+      }
+      
+      // Check for wide indexes (indexes with many columns)
+      if (table.indexes) {
+        for (const index of table.indexes) {
+          if (index.columnNames.length > 3) { // Arbitrary threshold, could be configurable
+            result.performanceIssues.wideIndexes.push({
+              tableName: table.name,
+              indexName: index.name,
+              issue: `Wide index with ${index.columnNames.length} columns`,
+              recommendation: 'Consider reducing the number of columns in the index'
+            });
+          }
+        }
+      }
+      
+      // Check for inefficient data types
+      for (const column of table.columns) {
+        // Check for large text columns without indexes
+        if (isTextType(column.type) && isLargeTextType(column.type)) {
+          const isIndexed = table.indexes?.some(idx => 
+            idx.columnNames.includes(column.name)
+          );
+          
+          if (!isIndexed) {
+            result.performanceIssues.largeTextColumnsWithoutIndexes.push({
+              tableName: table.name,
+              columnName: column.name,
+              issue: `Large text column without an index`,
+              recommendation: 'Consider adding a functional or partial index if this column is used in search conditions'
+            });
+          }
+        }
+        
+        // Check for inefficient data types
+        if (isInefficient(column.type, column.name)) {
+          result.performanceIssues.inefficientDataTypes.push({
+            tableName: table.name,
+            columnName: column.name,
+            issue: `Potentially inefficient data type: ${column.type}`,
+            recommendation: getRecommendationType(column.type, column.name)
+          });
+        }
+        
+        // Check for high cardinality text columns (this is an approximation)
+        if (isTextType(column.type) && 
+            !isLargeTextType(column.type) && 
+            (column.isUnique || isProbablyHighCardinality(column.name))) {
+          result.performanceIssues.highCardinalityTextColumns.push({
+            tableName: table.name,
+            columnName: column.name,
+            issue: `High cardinality text column, potential for inefficient string comparisons`,
+            recommendation: 'Consider using hash indexes or materialized views for frequent queries on this column'
+          });
+        }
+      }
+    }
+    
+    // Helper functions
+    function isTextType(type: string): boolean {
+      const t = type.toLowerCase();
+      return t.includes('text') || t.includes('char') || t.includes('varchar') || t.includes('string');
+    }
+    
+    function isLargeTextType(type: string): boolean {
+      const t = type.toLowerCase();
+      return t === 'text' || t === 'longtext' || t === 'mediumtext' || 
+             t === 'clob' || t.includes('varchar(max)') || t.includes('nvarchar(max)');
+    }
+    
+    function isInefficient(type: string, columnName: string): boolean {
+      const t = type.toLowerCase();
+      
+      // Inefficient numeric types
+      if ((t === 'float' || t === 'real' || t === 'double') && 
+          (columnName.toLowerCase().includes('price') || 
+           columnName.toLowerCase().includes('amount') || 
+           columnName.toLowerCase().includes('cost'))) {
+        return true;
+      }
+      
+      // Inefficient character types
+      if (t.includes('varchar') && !t.includes('(') && !t.includes('max')) {
+        return true;
+      }
+      
+      // Inefficient date types
+      if (t === 'datetime' && 
+          (columnName.toLowerCase().includes('date') && !columnName.toLowerCase().includes('time'))) {
+        return true;
+      }
+      
+      return false;
+    }
+    
+    function getRecommendationType(type: string, columnName: string): string {
+      const t = type.toLowerCase();
+      
+      // Recommendations for numeric types
+      if ((t === 'float' || t === 'real' || t === 'double') && 
+          (columnName.toLowerCase().includes('price') || 
+           columnName.toLowerCase().includes('amount') || 
+           columnName.toLowerCase().includes('cost'))) {
+        return 'For monetary values, consider using a fixed-point type like DECIMAL/NUMERIC to avoid rounding errors';
+      }
+      
+      // Recommendations for character types
+      if (t.includes('varchar') && !t.includes('(') && !t.includes('max')) {
+        return 'Specify a maximum length for the VARCHAR column to optimize storage';
+      }
+      
+      // Recommendations for date types
+      if (t === 'datetime' && 
+          (columnName.toLowerCase().includes('date') && !columnName.toLowerCase().includes('time'))) {
+        return 'If only date precision is needed, consider using DATE type instead of DATETIME';
+      }
+      
+      return 'Consider reviewing this data type for efficiency';
+    }
+    
+    function isProbablyHighCardinality(columnName: string): boolean {
+      const name = columnName.toLowerCase();
+      return name.includes('name') || 
+             name.includes('title') || 
+             name.includes('email') || 
+             name.includes('address') || 
+             name.includes('key') || 
+             name.includes('token') || 
+             name.includes('url') || 
+             name.includes('path');
+    }
+  }
+  
+  /**
+   * Generate AI-powered recommendations for schema optimization
+   */
+  private async generateAIRecommendations(result: SchemaAnalysisResult): Promise<void> {
+    if (!this.llmService) {
+      return;
+    }
+    
+    try {
+      // Log that we're generating AI recommendations
+      await this.log('schema_analysis', 'info', 
+        'Generating AI-powered schema recommendations');
+      
+      // Prepare a simplified version of the schema for the AI
+      const simplifiedSchema = {
+        databaseType: result.databaseType,
+        tables: result.tables.map(table => ({
+          name: table.name,
+          columns: table.columns.map(col => ({
+            name: col.name,
+            type: col.type,
+            nullable: col.nullable,
+            isPrimaryKey: col.isPrimaryKey,
+            isUnique: col.isUnique
+          })),
+          foreignKeys: table.foreignKeys,
+          primaryKey: table.primaryKey
+        })),
+        views: result.views.map(view => ({
+          name: view.name,
+          definition: view.definition
+        }))
+      };
+      
+      // Create prompts for different AI analysis tasks
+      const indexOptimizationPrompt = `
+        Analyze this database schema and suggest optimizations for indexes:
+        ${JSON.stringify(simplifiedSchema, null, 2)}
+        
+        Focus on:
+        1. Suggesting new indexes that could improve performance
+        2. Identifying indexes that could be removed
+        3. Recommending covering indexes for common query patterns
+        
+        Format your response as JSON with the following structure:
+        {
+          "suggestedIndexes": [
+            {
+              "tableName": "table_name",
+              "columns": ["column1", "column2"],
+              "reason": "Reason for suggesting this index"
+            }
+          ],
+          "indexesToRemove": [
+            {
+              "tableName": "table_name",
+              "indexName": "index_name",
+              "reason": "Reason for removing this index"
+            }
+          ],
+          "coveringIndexes": [
+            {
+              "tableName": "table_name",
+              "columns": ["column1", "column2", "column3"],
+              "queryPattern": "Description of query pattern",
+              "benefit": "Performance benefit description"
+            }
+          ]
+        }
+      `;
+      
+      const dataModelImprovementsPrompt = `
+        Analyze this database schema and suggest improvements to the data model:
+        ${JSON.stringify(simplifiedSchema, null, 2)}
+        
+        Focus on:
+        1. Identifying potential normalization issues
+        2. Suggesting new tables to better organize data
+        3. Identifying redundant columns or tables
+        4. Recommending better data types
+        
+        Format your response as JSON with the following structure:
+        {
+          "normalizationIssues": [
+            {
+              "tableName": "table_name",
+              "issue": "Description of the normalization issue",
+              "recommendation": "How to fix the issue"
+            }
+          ],
+          "suggestedTables": [
+            {
+              "tableName": "new_table_name",
+              "columns": [
+                {"name": "column1", "type": "type1", "purpose": "description"}
+              ],
+              "reason": "Reason for suggesting this table"
+            }
+          ],
+          "redundancies": [
+            {
+              "tableName": "table_name",
+              "columnName": "column_name",
+              "issue": "Why this is redundant",
+              "recommendation": "What to do about it"
+            }
+          ],
+          "dataTypeImprovements": [
+            {
+              "tableName": "table_name",
+              "columnName": "column_name",
+              "currentType": "current_type",
+              "suggestedType": "suggested_type",
+              "reason": "Reason for the suggestion"
+            }
+          ]
+        }
+      `;
+      
+      // Make parallel API calls to the LLM service
+      const [indexOptimizationResponse, dataModelResponse] = await Promise.all([
+        this.llmService.generateContent(indexOptimizationPrompt),
+        this.llmService.generateContent(dataModelImprovementsPrompt)
+      ]);
+      
+      // Parse the responses
+      try {
+        const indexOptimizations = JSON.parse(indexOptimizationResponse);
+        result.aiSuggestedIndexes = indexOptimizations.suggestedIndexes || [];
+        result.aiIndexesToRemove = indexOptimizations.indexesToRemove || [];
+        result.aiCoveringIndexes = indexOptimizations.coveringIndexes || [];
+      } catch (parseError) {
+        console.error('Error parsing index optimization response:', parseError);
+      }
+      
+      try {
+        const dataModelImprovements = JSON.parse(dataModelResponse);
+        result.aiNormalizationIssues = dataModelImprovements.normalizationIssues || [];
+        result.aiSuggestedTables = dataModelImprovements.suggestedTables || [];
+        result.aiRedundancies = dataModelImprovements.redundancies || [];
+        result.aiDataTypeImprovements = dataModelImprovements.dataTypeImprovements || [];
+      } catch (parseError) {
+        console.error('Error parsing data model improvements response:', parseError);
+      }
+      
+      // Add AI recommendations to individual tables
+      for (const table of result.tables) {
+        // Add suggested indexes for this table
+        table.aiSuggestedIndexes = result.aiSuggestedIndexes?.filter(idx => 
+          idx.tableName === table.name
+        ) || [];
+        
+        // Add suggested data type improvements for this table
+        table.aiSuggestedDataTypes = result.aiDataTypeImprovements?.filter(imp => 
+          imp.tableName === table.name
+        ) || [];
+        
+        // Add normalization suggestions for this table
+        table.aiNormalizationSuggestions = result.aiNormalizationIssues?.filter(issue => 
+          issue.tableName === table.name
+        ) || [];
+        
+        // Add suggested columns (from suggested tables that might relate to this one)
+        table.aiSuggestedColumns = [];
+        
+        // Add suggested relationships
+        table.aiSuggestedRelationships = [];
+      }
+      
+      // Log completion of AI recommendations
+      await this.log('schema_analysis', 'info', 
+        'Completed generating AI-powered schema recommendations');
+      
+    } catch (error) {
+      // Log the error but don't halt the process
+      await this.log('schema_analysis', 'warning', 
+        `Error generating AI recommendations: ${error.message}`, { error: error.stack });
+    }
+  }
+  
+  /**
+   * Test a database connection
+   */
+  public async testConnection(
+    connectionString: string,
+    databaseType: DatabaseType
+  ): Promise<ConnectionTestResult> {
+    try {
+      // Log the connection test start
+      await this.log('connection_test', 'info', 
+        `Testing connection to ${databaseType} database`);
+      
+      // Query database info using the appropriate adapter with testConnectionOnly flag
+      const result = await queryDatabaseSchema(connectionString, databaseType, {
+        testConnectionOnly: true
+      });
+      
+      // Log the connection test completion
+      await this.log('connection_test', 'info', 
+        `Successfully connected to ${databaseType} database: ${result.databaseInfo.name}`);
+      
+      return {
+        status: ConnectionStatus.Success,
+        databaseName: result.databaseInfo.name,
+        databaseVersion: result.databaseInfo.version,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      // Log the connection error
+      await this.log('connection_test', 'error', 
+        `Connection test failed: ${error.message}`, { error: error.stack });
+      
+      return {
+        status: ConnectionStatus.Failed,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+  
+  /**
+   * Get information about a database type
+   */
+  public getDatabaseTypeInfo(databaseType: DatabaseType): any {
+    const databaseTypeInfo = {
+      [DatabaseType.PostgreSQL]: {
+        name: 'PostgreSQL',
+        description: 'An advanced open-source relational database management system',
+        features: [
+          'ACID compliance',
+          'JSON support',
+          'Full-text search',
+          'Geospatial data support',
+          'Advanced indexing options'
+        ],
+        connectionStringTemplate: 'postgresql://username:password@host:port/database',
+        commonDrivers: ['pg', 'node-postgres', 'sequelize-pg', 'prisma-postgresql'],
+        datatypes: {
+          text: ['varchar', 'text', 'char'],
+          numeric: ['integer', 'smallint', 'bigint', 'decimal', 'numeric', 'real', 'double precision'],
+          boolean: ['boolean'],
+          datetime: ['date', 'time', 'timestamp', 'timestamptz', 'interval'],
+          json: ['json', 'jsonb'],
+          binary: ['bytea'],
+          special: ['uuid', 'inet', 'cidr', 'macaddr', 'point', 'line', 'circle']
+        }
+      },
+      [DatabaseType.MySQL]: {
+        name: 'MySQL',
+        description: 'A popular open-source relational database management system',
+        features: [
+          'ACID compliance',
+          'JSON support',
+          'Full-text search',
+          'Replication',
+          'Partitioning'
+        ],
+        connectionStringTemplate: 'mysql://username:password@host:port/database',
+        commonDrivers: ['mysql2', 'sequelize-mysql', 'prisma-mysql'],
+        datatypes: {
+          text: ['VARCHAR', 'TEXT', 'CHAR', 'ENUM'],
+          numeric: ['INT', 'SMALLINT', 'BIGINT', 'DECIMAL', 'FLOAT', 'DOUBLE'],
+          boolean: ['BOOLEAN', 'TINYINT(1)'],
+          datetime: ['DATE', 'TIME', 'DATETIME', 'TIMESTAMP', 'YEAR'],
+          json: ['JSON'],
+          binary: ['BLOB', 'BINARY'],
+          special: ['GEOMETRY', 'POINT', 'LINESTRING', 'POLYGON']
+        }
+      },
+      [DatabaseType.SQLite]: {
+        name: 'SQLite',
+        description: 'A lightweight, file-based relational database',
+        features: [
+          'Serverless',
+          'Zero configuration',
+          'Single file database',
+          'Cross-platform',
+          'Self-contained'
+        ],
+        connectionStringTemplate: 'file:path/to/database.sqlite',
+        commonDrivers: ['sqlite3', 'sequelize-sqlite', 'prisma-sqlite'],
+        datatypes: {
+          text: ['TEXT'],
+          numeric: ['INTEGER', 'REAL'],
+          boolean: ['INTEGER'],
+          datetime: ['TEXT', 'INTEGER'],
+          json: ['TEXT'],
+          binary: ['BLOB'],
+          special: []
+        }
+      },
+      [DatabaseType.SQLServer]: {
+        name: 'SQL Server',
+        description: 'Microsoft\'s enterprise relational database management system',
+        features: [
+          'ACID compliance',
+          'JSON support',
+          'Full-text search',
+          'In-memory OLTP',
+          'Columnstore indexes'
+        ],
+        connectionStringTemplate: 'Server=host,port;Database=database;User Id=username;Password=password;',
+        commonDrivers: ['mssql', 'tedious', 'sequelize-mssql', 'prisma-sqlserver'],
+        datatypes: {
+          text: ['VARCHAR', 'NVARCHAR', 'CHAR', 'NCHAR', 'TEXT', 'NTEXT'],
+          numeric: ['INT', 'SMALLINT', 'BIGINT', 'DECIMAL', 'NUMERIC', 'FLOAT', 'REAL', 'MONEY'],
+          boolean: ['BIT'],
+          datetime: ['DATE', 'TIME', 'DATETIME', 'DATETIME2', 'DATETIMEOFFSET', 'SMALLDATETIME'],
+          json: ['NVARCHAR(MAX)'],
+          binary: ['BINARY', 'VARBINARY', 'IMAGE'],
+          special: ['UNIQUEIDENTIFIER', 'XML', 'HIERARCHYID', 'GEOGRAPHY', 'GEOMETRY']
+        }
+      },
+      [DatabaseType.MongoDB]: {
+        name: 'MongoDB',
+        description: 'A document-oriented NoSQL database',
+        features: [
+          'Document-based',
+          'Schemaless',
+          'High availability',
+          'Horizontal scaling',
+          'Aggregation framework'
+        ],
+        connectionStringTemplate: 'mongodb://username:password@host:port/database',
+        commonDrivers: ['mongodb', 'mongoose', 'prisma-mongodb'],
+        datatypes: {
+          text: ['String'],
+          numeric: ['Number', 'Decimal128', 'Int32', 'Int64'],
+          boolean: ['Boolean'],
+          datetime: ['Date'],
+          json: ['Object', 'Array'],
+          binary: ['Buffer', 'Binary'],
+          special: ['ObjectId', 'RegExp', 'Symbol']
+        }
+      },
+      [DatabaseType.Oracle]: {
+        name: 'Oracle',
+        description: 'Oracle\'s enterprise relational database management system',
+        features: [
+          'ACID compliance',
+          'High availability',
+          'Partitioning',
+          'Parallel processing',
+          'Advanced security features'
+        ],
+        connectionStringTemplate: 'oracle://username:password@host:port/service',
+        commonDrivers: ['oracledb', 'node-oracledb', 'sequelize-oracle'],
+        datatypes: {
+          text: ['VARCHAR2', 'CHAR', 'NVARCHAR2', 'NCHAR', 'CLOB', 'NCLOB'],
+          numeric: ['NUMBER', 'FLOAT', 'BINARY_FLOAT', 'BINARY_DOUBLE'],
+          boolean: ['NUMBER(1)'],
+          datetime: ['DATE', 'TIMESTAMP', 'INTERVAL YEAR TO MONTH', 'INTERVAL DAY TO SECOND'],
+          json: ['CLOB'],
+          binary: ['BLOB', 'BFILE', 'RAW', 'LONG RAW'],
+          special: ['XMLTYPE', 'ROWID', 'UROWID']
+        }
+      },
+      [DatabaseType.DynamoDB]: {
+        name: 'DynamoDB',
+        description: 'Amazon\'s fully managed NoSQL database service',
+        features: [
+          'Fully managed',
+          'Serverless',
+          'Auto scaling',
+          'Global tables',
+          'Point-in-time recovery'
+        ],
+        connectionStringTemplate: 'AWS configuration required',
+        commonDrivers: ['aws-sdk', 'dynamodb-doc', 'dynamoose'],
+        datatypes: {
+          text: ['String'],
+          numeric: ['Number'],
+          boolean: ['Boolean'],
+          datetime: ['String'],
+          json: ['Map', 'List'],
+          binary: ['Binary'],
+          special: ['Set']
+        }
+      },
+      [DatabaseType.Cassandra]: {
+        name: 'Cassandra',
+        description: 'A distributed NoSQL database designed for scalability and high availability',
+        features: [
+          'Distributed',
+          'Linear scalability',
+          'Fault-tolerant',
+          'Tunable consistency',
+          'CQL query language'
+        ],
+        connectionStringTemplate: 'cassandra-contact-points=host1,host2;cassandra-port=port;cassandra-keyspace=keyspace',
+        commonDrivers: ['cassandra-driver', 'datastax-driver'],
+        datatypes: {
+          text: ['text', 'varchar', 'ascii'],
+          numeric: ['int', 'bigint', 'float', 'double', 'decimal', 'varint'],
+          boolean: ['boolean'],
+          datetime: ['timestamp', 'date', 'time'],
+          json: ['map', 'list', 'set'],
+          binary: ['blob'],
+          special: ['uuid', 'timeuuid', 'inet', 'counter']
+        }
+      }
+    };
+    
+    return databaseTypeInfo[databaseType] || {
+      name: databaseType,
+      description: 'Database type information not available',
+      features: [],
+      connectionStringTemplate: '',
+      commonDrivers: [],
+      datatypes: {}
     };
   }
   
-  // Mock tables
-  const tables = [
-    {
-      name: 'users',
-      schema: 'public',
-      description: 'User accounts',
-      columns: [
-        {
-          name: 'id',
-          type: 'integer',
-          nullable: false,
-          isPrimaryKey: true,
-          position: 1,
-          autoIncrement: true
-        },
-        {
-          name: 'email',
-          type: 'varchar',
-          nullable: false,
-          isUnique: true,
-          position: 2,
-          length: 255
-        },
-        {
-          name: 'password_hash',
-          type: 'varchar',
-          nullable: false,
-          position: 3,
-          length: 60
-        },
-        {
-          name: 'created_at',
-          type: 'timestamp',
-          nullable: false,
-          defaultValue: 'CURRENT_TIMESTAMP',
-          position: 4
-        },
-        {
-          name: 'updated_at',
-          type: 'timestamp',
-          nullable: true,
-          position: 5
-        }
-      ],
-      primaryKey: ['id'],
-      indexes: [
-        {
-          name: 'users_email_idx',
-          columnNames: ['email'],
-          isUnique: true,
-          isPrimaryKey: false
-        }
-      ],
-      estimatedRowCount: 1000,
-      estimatedSizeMb: 0.5
-    },
-    {
-      name: 'posts',
-      schema: 'public',
-      description: 'Blog posts',
-      columns: [
-        {
-          name: 'id',
-          type: 'integer',
-          nullable: false,
-          isPrimaryKey: true,
-          position: 1,
-          autoIncrement: true
-        },
-        {
-          name: 'user_id',
-          type: 'integer',
-          nullable: false,
-          isForeignKey: true,
-          position: 2
-        },
-        {
-          name: 'title',
-          type: 'varchar',
-          nullable: false,
-          position: 3,
-          length: 200
-        },
-        {
-          name: 'content',
-          type: 'text',
-          nullable: false,
-          position: 4
-        },
-        {
-          name: 'published',
-          type: 'boolean',
-          nullable: false,
-          defaultValue: false,
-          position: 5
-        },
-        {
-          name: 'created_at',
-          type: 'timestamp',
-          nullable: false,
-          defaultValue: 'CURRENT_TIMESTAMP',
-          position: 6
-        },
-        {
-          name: 'updated_at',
-          type: 'timestamp',
-          nullable: true,
-          position: 7
-        }
-      ],
-      primaryKey: ['id'],
-      foreignKeys: [
-        {
-          name: 'posts_user_id_fkey',
-          columnNames: ['user_id'],
-          referencedTableName: 'users',
-          referencedColumnNames: ['id'],
-          updateRule: 'CASCADE',
-          deleteRule: 'CASCADE'
-        }
-      ],
-      indexes: [
-        {
-          name: 'posts_user_id_idx',
-          columnNames: ['user_id'],
-          isUnique: false,
-          isPrimaryKey: false
-        }
-      ],
-      estimatedRowCount: 5000,
-      estimatedSizeMb: 2.5
-    },
-    {
-      name: 'comments',
-      schema: 'public',
-      description: 'Post comments',
-      columns: [
-        {
-          name: 'id',
-          type: 'integer',
-          nullable: false,
-          isPrimaryKey: true,
-          position: 1,
-          autoIncrement: true
-        },
-        {
-          name: 'post_id',
-          type: 'integer',
-          nullable: false,
-          isForeignKey: true,
-          position: 2
-        },
-        {
-          name: 'user_id',
-          type: 'integer',
-          nullable: false,
-          isForeignKey: true,
-          position: 3
-        },
-        {
-          name: 'content',
-          type: 'text',
-          nullable: false,
-          position: 4
-        },
-        {
-          name: 'created_at',
-          type: 'timestamp',
-          nullable: false,
-          defaultValue: 'CURRENT_TIMESTAMP',
-          position: 5
-        }
-      ],
-      primaryKey: ['id'],
-      foreignKeys: [
-        {
-          name: 'comments_post_id_fkey',
-          columnNames: ['post_id'],
-          referencedTableName: 'posts',
-          referencedColumnNames: ['id'],
-          updateRule: 'CASCADE',
-          deleteRule: 'CASCADE'
-        },
-        {
-          name: 'comments_user_id_fkey',
-          columnNames: ['user_id'],
-          referencedTableName: 'users',
-          referencedColumnNames: ['id'],
-          updateRule: 'CASCADE',
-          deleteRule: 'CASCADE'
-        }
-      ],
-      indexes: [
-        {
-          name: 'comments_post_id_idx',
-          columnNames: ['post_id'],
-          isUnique: false,
-          isPrimaryKey: false
-        },
-        {
-          name: 'comments_user_id_idx',
-          columnNames: ['user_id'],
-          isUnique: false,
-          isPrimaryKey: false
-        }
-      ],
-      estimatedRowCount: 25000,
-      estimatedSizeMb: 10
-    }
-  ];
-  
-  // Mock views
-  const views = [
-    {
-      name: 'active_users',
-      schema: 'public',
-      description: 'Users with at least one post',
-      definition: `
-        SELECT u.*
-        FROM users u
-        JOIN posts p ON u.id = p.user_id
-        GROUP BY u.id
-      `,
-      columns: [
-        {
-          name: 'id',
-          type: 'integer',
-          nullable: false,
-          position: 1
-        },
-        {
-          name: 'email',
-          type: 'varchar',
-          nullable: false,
-          position: 2
-        },
-        {
-          name: 'created_at',
-          type: 'timestamp',
-          nullable: false,
-          position: 3
-        },
-        {
-          name: 'updated_at',
-          type: 'timestamp',
-          nullable: true,
-          position: 4
-        }
-      ],
-      isMaterialized: false
-    },
-    {
-      name: 'post_stats',
-      schema: 'public',
-      description: 'Post statistics with comment counts',
-      definition: `
-        SELECT p.id, p.title, p.user_id, u.email as author_email, 
-               p.created_at, COUNT(c.id) as comment_count
-        FROM posts p
-        JOIN users u ON p.user_id = u.id
-        LEFT JOIN comments c ON p.id = c.post_id
-        GROUP BY p.id, u.email
-      `,
-      columns: [
-        {
-          name: 'id',
-          type: 'integer',
-          nullable: false,
-          position: 1
-        },
-        {
-          name: 'title',
-          type: 'varchar',
-          nullable: false,
-          position: 2
-        },
-        {
-          name: 'user_id',
-          type: 'integer',
-          nullable: false,
-          position: 3
-        },
-        {
-          name: 'author_email',
-          type: 'varchar',
-          nullable: false,
-          position: 4
-        },
-        {
-          name: 'created_at',
-          type: 'timestamp',
-          nullable: false,
-          position: 5
-        },
-        {
-          name: 'comment_count',
-          type: 'bigint',
-          nullable: false,
-          position: 6
-        }
-      ],
-      isMaterialized: false
-    }
-  ];
-  
-  // Mock procedures (only for certain database types)
-  let procedures = [];
-  let functions = [];
-  let triggers = [];
-  if (databaseType === DatabaseType.PostgreSQL || databaseType === DatabaseType.SQLServer) {
-    procedures = [
+  /**
+   * Get supported database types
+   */
+  public getSupportedDatabaseTypes(): any[] {
+    return [
       {
-        name: 'create_user',
-        schema: 'public',
-        parameters: [
-          {
-            name: 'p_email',
-            type: 'varchar',
-            position: 1
-          },
-          {
-            name: 'p_password_hash',
-            type: 'varchar',
-            position: 2
-          }
-        ],
-        returnType: 'integer',
-        definition: `
-          INSERT INTO users (email, password_hash, created_at)
-          VALUES (p_email, p_password_hash, CURRENT_TIMESTAMP)
-          RETURNING id;
-        `,
-        language: 'sql'
-      }
-    ];
-    
-    functions = [
+        id: DatabaseType.PostgreSQL,
+        name: 'PostgreSQL',
+        description: 'An advanced open-source relational database management system',
+        supportLevel: 'Full'
+      },
       {
-        name: 'get_user_post_count',
-        schema: 'public',
-        parameters: [
-          {
-            name: 'p_user_id',
-            type: 'integer',
-            position: 1
-          }
-        ],
-        returnType: 'integer',
-        definition: `
-          SELECT COUNT(*)
-          FROM posts
-          WHERE user_id = p_user_id;
-        `,
-        language: 'sql',
-        deterministic: true
-      }
-    ];
-    
-    triggers = [
+        id: DatabaseType.MySQL,
+        name: 'MySQL',
+        description: 'A popular open-source relational database management system',
+        supportLevel: 'Full'
+      },
       {
-        name: 'update_post_timestamp',
-        schema: 'public',
-        tableName: 'posts',
-        event: 'UPDATE',
-        timing: 'BEFORE',
-        definition: `
-          NEW.updated_at = CURRENT_TIMESTAMP;
-          RETURN NEW;
-        `,
-        enabled: true
+        id: DatabaseType.SQLite,
+        name: 'SQLite',
+        description: 'A lightweight, file-based relational database',
+        supportLevel: 'Full'
+      },
+      {
+        id: DatabaseType.SQLServer,
+        name: 'SQL Server',
+        description: 'Microsoft\'s enterprise relational database management system',
+        supportLevel: 'Full'
+      },
+      {
+        id: DatabaseType.MongoDB,
+        name: 'MongoDB',
+        description: 'A document-oriented NoSQL database',
+        supportLevel: 'Full'
+      },
+      {
+        id: DatabaseType.Oracle,
+        name: 'Oracle',
+        description: 'Oracle\'s enterprise relational database management system',
+        supportLevel: 'Partial'
+      },
+      {
+        id: DatabaseType.DynamoDB,
+        name: 'DynamoDB',
+        description: 'Amazon\'s fully managed NoSQL database service',
+        supportLevel: 'Partial'
+      },
+      {
+        id: DatabaseType.Cassandra,
+        name: 'Cassandra',
+        description: 'A distributed NoSQL database designed for scalability and high availability',
+        supportLevel: 'Partial'
+      },
+      {
+        id: DatabaseType.Redis,
+        name: 'Redis',
+        description: 'An in-memory data structure store',
+        supportLevel: 'Basic'
+      },
+      {
+        id: DatabaseType.ElasticSearch,
+        name: 'Elasticsearch',
+        description: 'A distributed search and analytics engine',
+        supportLevel: 'Basic'
+      },
+      {
+        id: DatabaseType.Neo4j,
+        name: 'Neo4j',
+        description: 'A graph database management system',
+        supportLevel: 'Basic'
+      },
+      {
+        id: DatabaseType.Firestore,
+        name: 'Firestore',
+        description: 'Google\'s flexible, scalable database for mobile, web, and server development',
+        supportLevel: 'Basic'
+      },
+      {
+        id: DatabaseType.CosmosDB,
+        name: 'Cosmos DB',
+        description: 'Microsoft\'s globally distributed, multi-model database service',
+        supportLevel: 'Basic'
       }
     ];
   }
   
-  // Mock constraints
-  const constraints = [
-    {
-      name: 'users_email_unique',
-      schema: 'public',
-      type: 'UNIQUE',
-      tableName: 'users',
-      columnNames: ['email']
-    },
-    {
-      name: 'posts_title_not_empty',
-      schema: 'public',
-      type: 'CHECK',
-      tableName: 'posts',
-      columnNames: ['title'],
-      checkExpression: "title <> ''"
+  /**
+   * Log a message
+   */
+  private async log(
+    stage: string,
+    level: string,
+    message: string,
+    details?: any
+  ): Promise<void> {
+    try {
+      await this.storage.createDatabaseConversionLog({
+        projectId: 'system',
+        level,
+        stage,
+        message,
+        details,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error('Error logging to database conversion logs:', error);
+      // Continue execution even if logging fails
     }
-  ];
-  
-  // Return mock schema data
-  return {
-    tables,
-    views,
-    procedures,
-    functions,
-    triggers,
-    constraints,
-    estimatedSizeMb: 13 // sum of table sizes
-  };
+  }
 }
