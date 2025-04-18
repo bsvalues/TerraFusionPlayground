@@ -4,6 +4,7 @@ import AIAssistantSidebar from '@/components/ai-assistant/AIAssistantSidebar';
 import { AgentVoiceCommandButton } from '@/components/agent-voice/AgentVoiceCommandButton';
 import { AgentVoiceCommandResults } from '@/components/agent-voice/AgentVoiceCommandResults';
 import { VoiceCommandResult, RecordingState } from '@/services/agent-voice-command-service';
+import QuickAccessMenu from '@/components/quick-access-menu';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -67,6 +68,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       
       {/* AI Assistant Sidebar */}
       <AIAssistantSidebar />
+      
+      {/* Quick Access Menu */}
+      <QuickAccessMenu />
     </div>
   );
 };
