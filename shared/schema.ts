@@ -1920,3 +1920,141 @@ export type InsertModelTestCase = z.infer<typeof insertModelTestCaseSchema>;
 
 export type AssessmentModelVersion = typeof assessmentModelVersions.$inferSelect;
 export type InsertAssessmentModelVersion = z.infer<typeof insertAssessmentModelVersionSchema>;
+
+// ----------------- Voice Command Analytics -----------------
+
+// Enum for voice command status
+export enum VoiceCommandStatus {
+  SUCCESS = 'success',
+  PARTIAL_SUCCESS = 'partial_success',
+  FAILED = 'failed',
+  AMBIGUOUS = 'ambiguous'
+}
+
+// Enum for voice command types to categorize commands
+export enum VoiceCommandType {
+  NAVIGATION = 'navigation',
+  DATA_QUERY = 'data_query',
+  PROPERTY_ASSESSMENT = 'property_assessment',
+  WORKFLOW = 'workflow',
+  SYSTEM = 'system',
+  CUSTOM = 'custom'
+}
+
+// Voice Command Logs table
+export const voiceCommandLogs = pgTable("voice_command_logs", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id").notNull(), // To group related commands
+  userId: integer("user_id").notNull(), // User who issued the command
+  rawCommand: text("raw_command").notNull(), // The actual text transcribed from speech
+  processedCommand: text("processed_command"), // Command after normalization/preprocessing
+  commandType: text("command_type").notNull(), // Type of command based on VoiceCommandType enum
+  intentRecognized: text("intent_recognized"), // Identified intent
+  parameters: jsonb("parameters"), // Extracted parameters from the command
+  status: text("status").notNull(), // Success, failed, etc.
+  responseTime: integer("response_time"), // Processing time in milliseconds
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  contextData: jsonb("context_data"), // Context in which command was issued (page, state)
+  confidenceScore: real("confidence_score"), // Confidence level of recognition (0.0-1.0)
+  errorMessage: text("error_message"), // If command failed
+  agentResponses: jsonb("agent_responses"), // Responses from AI agents
+  deviceInfo: jsonb("device_info"), // Device/browser information
+  speedFactor: real("speed_factor"), // Relative speed of speech
+});
+
+export const insertVoiceCommandLogSchema = createInsertSchema(voiceCommandLogs).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type VoiceCommandLog = typeof voiceCommandLogs.$inferSelect;
+export type InsertVoiceCommandLog = z.infer<typeof insertVoiceCommandLogSchema>;
+
+// Voice Command Shortcuts table for customizable shortcuts
+export const voiceCommandShortcuts = pgTable("voice_command_shortcuts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // User who created this shortcut
+  shortcutPhrase: text("shortcut_phrase").notNull(), // The phrase to trigger the shortcut
+  expandedCommand: text("expanded_command").notNull(), // What the shortcut expands to
+  commandType: text("command_type").notNull(), // Type of command
+  description: text("description"), // User-provided description
+  priority: integer("priority").default(0), // Higher priority shortcuts take precedence
+  isEnabled: boolean("is_enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastUsed: timestamp("last_used"), // When shortcut was last used
+  usageCount: integer("usage_count").default(0), // Number of times used
+  isGlobal: boolean("is_global").default(false), // Whether this is a system-wide shortcut
+}, (table) => {
+  return {
+    userShortcutIdx: index("voice_command_shortcuts_user_shortcut_idx").on(table.userId, table.shortcutPhrase),
+  };
+});
+
+export const insertVoiceCommandShortcutSchema = createInsertSchema(voiceCommandShortcuts).omit({
+  id: true,
+  createdAt: true,
+  lastUsed: true,
+  usageCount: true,
+});
+
+export type VoiceCommandShortcut = typeof voiceCommandShortcuts.$inferSelect;
+export type InsertVoiceCommandShortcut = z.infer<typeof insertVoiceCommandShortcutSchema>;
+
+// Voice Command Analytics data for dashboard displays
+export const voiceCommandAnalytics = pgTable("voice_command_analytics", {
+  id: serial("id").primaryKey(),
+  date: date("date").notNull(), // Date of analytics
+  userId: integer("user_id"), // Specific user or null for global stats
+  totalCommands: integer("total_commands").notNull().default(0),
+  successfulCommands: integer("successful_commands").notNull().default(0),
+  failedCommands: integer("failed_commands").notNull().default(0),
+  ambiguousCommands: integer("ambiguous_commands").notNull().default(0),
+  avgResponseTime: integer("avg_response_time"), // Average response time in ms
+  commandTypeCounts: jsonb("command_type_counts"), // Count by command type
+  topCommands: jsonb("top_commands"), // Most used commands
+  topErrorTriggers: jsonb("top_error_triggers"), // Commands that cause errors
+  avgConfidenceScore: real("avg_confidence_score"), // Average confidence score
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userDateIdx: index("voice_command_analytics_user_date_idx").on(table.userId, table.date),
+    dateIdx: index("voice_command_analytics_date_idx").on(table.date),
+  };
+});
+
+export const insertVoiceCommandAnalyticSchema = createInsertSchema(voiceCommandAnalytics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type VoiceCommandAnalytic = typeof voiceCommandAnalytics.$inferSelect;
+export type InsertVoiceCommandAnalytic = z.infer<typeof insertVoiceCommandAnalyticSchema>;
+
+// Voice Command Help Content table
+export const voiceCommandHelpContents = pgTable("voice_command_help_contents", {
+  id: serial("id").primaryKey(),
+  commandType: text("command_type").notNull(), // Type of command
+  contextId: text("context_id"), // Specific page/context or null for global
+  title: text("title").notNull(), // Short title of the help content
+  examplePhrases: text("example_phrases").array().notNull(), // Example phrases
+  description: text("description").notNull(), // Detailed description of what this command does
+  parameters: jsonb("parameters"), // Parameters this command accepts
+  responseExample: text("response_example"), // Example of how system responds
+  priority: integer("priority").default(0), // Display priority
+  isHidden: boolean("is_hidden").default(false), // Whether to hide from help listings
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    contextTypeIdx: index("voice_command_help_context_type_idx").on(table.contextId, table.commandType),
+  };
+});
+
+export const insertVoiceCommandHelpContentSchema = createInsertSchema(voiceCommandHelpContents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type VoiceCommandHelpContent = typeof voiceCommandHelpContents.$inferSelect;
+export type InsertVoiceCommandHelpContent = z.infer<typeof insertVoiceCommandHelpContentSchema>;
