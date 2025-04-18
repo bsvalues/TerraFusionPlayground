@@ -51,13 +51,16 @@ export class VoiceCommandAnalyticsService {
     today.setHours(0, 0, 0, 0);
     
     try {
+      // Format the date for SQL comparison (ISO format)
+      const todayIso = today.toISOString();
+      
       // Get today's logs for this user
       const logs = await db.select()
         .from(voiceCommandLogs)
         .where(
           and(
             eq(voiceCommandLogs.userId, userId),
-            gte(voiceCommandLogs.timestamp, today)
+            sql`${voiceCommandLogs.timestamp}::date = ${todayIso}::date`
           )
         );
       
@@ -94,18 +97,21 @@ export class VoiceCommandAnalyticsService {
       // Generate top error triggers
       const topErrorTriggers = this.calculateTopErrorTriggers(logs);
       
+      // Convert today's date to ISO format string for database
+      const todayStr = today.toISOString().split('T')[0];
+      
       // Check if analytics record exists for today
       const [existingRecord] = await db.select()
         .from(voiceCommandAnalytics)
         .where(
           and(
             eq(voiceCommandAnalytics.userId, userId),
-            eq(voiceCommandAnalytics.date, today)
+            sql`${voiceCommandAnalytics.date}::text = ${todayStr}`
           )
         );
       
       const analyticsData: InsertVoiceCommandAnalytic = {
-        date: today,
+        date: todayStr as any, // Type coercion to work with Drizzle's date type
         userId,
         totalCommands,
         successfulCommands,
