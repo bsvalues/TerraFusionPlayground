@@ -54,9 +54,8 @@ export class DataNormalizationAgent implements IGISAgent {
     try {
       console.log(`Initializing ${this.name} (${this.id})...`);
 
-      // Log agent initialization
+      // Log agent initialization - let database generate the ID
       await this.storage.createAgentMessage({
-        id: uuidv4(),
         agentId: this.id,
         type: 'INFO',
         content: `Agent ${this.name} (${this.id}) initialized`,
@@ -683,7 +682,6 @@ export class DataNormalizationAgent implements IGISAgent {
   private async logMessage(type: 'INFO' | 'WARNING' | 'ERROR', content: string): Promise<void> {
     try {
       const message: InsertAgentMessage = {
-        id: uuidv4(),
         agentId: this.id,
         type,
         content,
