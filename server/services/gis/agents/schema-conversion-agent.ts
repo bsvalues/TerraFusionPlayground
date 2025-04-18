@@ -14,6 +14,7 @@ import {
   IGISAgent 
 } from '../agent-orchestration-service';
 import { GISAgentTask, InsertAgentMessage } from '@shared/gis-schema';
+import { ErrorTrackingService, ErrorSeverity, ErrorCategory, ErrorSource } from '../../error-tracking-service';
 
 export class SchemaConversionAgent implements IGISAgent {
   public id: string;
@@ -24,6 +25,7 @@ export class SchemaConversionAgent implements IGISAgent {
   public status: 'AVAILABLE' | 'BUSY' | 'OFFLINE';
   
   private storage: IStorage;
+  private errorTrackingService: ErrorTrackingService;
   private isInitialized: boolean = false;
   
   // Supported source formats
@@ -63,6 +65,7 @@ export class SchemaConversionAgent implements IGISAgent {
     ];
     this.status = 'OFFLINE';
     this.storage = storage;
+    this.errorTrackingService = new ErrorTrackingService(storage);
   }
   
   /**
@@ -87,9 +90,18 @@ export class SchemaConversionAgent implements IGISAgent {
       this.status = 'AVAILABLE';
       this.isInitialized = true;
       console.log(`${this.name} (${this.id}) initialized successfully`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to initialize ${this.name} (${this.id}):`, error);
       this.status = 'OFFLINE';
+      
+      // Track the error
+      this.errorTrackingService.trackGisError(error, {
+        component: 'SchemaConversionAgent',
+        method: 'initialize',
+        agentId: this.id,
+        severity: ErrorSeverity.HIGH
+      });
+      
       throw error;
     }
   }
@@ -129,9 +141,21 @@ export class SchemaConversionAgent implements IGISAgent {
       await this.logMessage('INFO', `Task ${task.id} completed successfully`);
       
       return result;
-    } catch (error) {
+    } catch (error: any) {
       // Log task failure
       await this.logMessage('ERROR', `Task ${task.id} failed: ${error.message}`);
+      
+      // Track the error
+      this.errorTrackingService.trackGisError(error, {
+        component: 'SchemaConversionAgent',
+        method: 'processTask',
+        agentId: this.id,
+        taskId: task.id, 
+        taskType: task.taskType,
+        severity: ErrorSeverity.MEDIUM,
+        category: ErrorCategory.TASK_PROCESSING
+      });
+      
       throw error;
     }
   }
