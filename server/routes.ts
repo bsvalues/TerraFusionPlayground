@@ -41,6 +41,8 @@ import aiAssistantRoutes from "./routes/ai-assistant-routes";
 import developmentPlatformRoutes from "./routes/development-platform-routes";
 import assessmentModelWorkbenchRoutes from "./routes/assessment-model-workbench-routes";
 import assistantPersonalityRoutes from "./routes/assistant-personality-routes";
+import { registerDatabaseConversionRoutes } from "./routes/database-conversion-routes";
+import { DatabaseConversionService } from "./services/database-conversion";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -86,6 +88,9 @@ const propertyInsightSharingService = new PropertyInsightSharingService(storage)
 const agentSystem = new AgentSystem(storage);
 // Initialize agent voice command service
 const agentVoiceCommandService = initializeAgentVoiceCommandService(storage);
+
+// Initialize database conversion service
+const databaseConversionService = new DatabaseConversionService(storage, mcpService);
 
 // Initialize agent coordinator and factory 
 const agentCoordinator = AgentCoordinator.getInstance(storage);
@@ -204,6 +209,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Assistant Personality routes
   app.use('/api/assistant-personalities', assistantPersonalityRoutes);
+  
+  // Register Database Conversion routes
+  registerDatabaseConversionRoutes(app, databaseConversionService);
 
   /**
    * Data Lineage Routes

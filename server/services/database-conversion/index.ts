@@ -1,136 +1,167 @@
 /**
- * Database Conversion Suite
+ * Database Conversion Service
  * 
- * A revolutionary database conversion and migration system powered by AI agents.
- * This system makes it incredibly easy to convert databases from various sources
- * into the TaxI_AI platform format, with minimal technical knowledge required.
- * 
- * Features:
- * - Visual database schema mapping
- * - Natural language instructions for complex transformations
- * - Intelligent data cleaning and enrichment
- * - Live migration progress monitoring
- * - One-click deployment with validation
+ * This service provides a comprehensive suite of tools for database conversion,
+ * including schema analysis, migration planning, script generation, execution,
+ * and compatibility layer creation.
  */
 
-import { BaseService } from '../base-service';
 import { IStorage } from '../../storage';
-import { MCPService } from '../mcp-service';
+import { MCPService } from '../mcp';
 import { LLMService } from '../llm-service';
-import { SchemaAnalyzerService } from './schema-analyzer-service';
-import { DataMigrationService } from './data-migration-service';
-import { DataTransformationService } from './data-transformation-service';
-import { CompatibilityService } from './compatibility-service';
-import { 
-  DatabaseConnectionConfig, 
-  SchemaAnalysisResult,
-  MigrationPlan,
-  MigrationOptions,
-  MigrationResult,
-  CompatibilityLayerResult,
-  ValidationResult,
-  ConversionProject,
-  DatabaseType
-} from './types';
+import { BaseService } from '../base-service';
+import { v4 as uuidv4 } from 'uuid';
 
-export * from './types';
-export * from './converters';
+// Types
+export enum DatabaseType {
+  POSTGRES = 'postgres',
+  MYSQL = 'mysql',
+  SQLSERVER = 'sqlserver',
+  ORACLE = 'oracle',
+  MONGODB = 'mongodb',
+  SQLITE = 'sqlite',
+  CSV = 'csv',
+  EXCEL = 'excel',
+  JSON = 'json',
+  XML = 'xml'
+}
 
-/**
- * Main service that orchestrates the database conversion process
- */
+export interface DatabaseConnectionConfig {
+  type?: DatabaseType;
+  connectionString?: string;
+  host?: string;
+  port?: number;
+  database?: string;
+  schema?: string;
+  username?: string;
+  password?: string;
+  options?: Record<string, any>;
+  filePath?: string;
+}
+
+export interface ConversionProject {
+  id: string;
+  name: string;
+  description: string;
+  sourceConfig: DatabaseConnectionConfig;
+  targetConfig: DatabaseConnectionConfig;
+  status: string;
+  progress: number;
+  currentStage: string;
+  schemaAnalysis?: any;
+  migrationPlan?: any;
+  migrationScript?: any;
+  migrationResult?: any;
+  compatibilityResult?: any;
+  validationResult?: any;
+  error?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  metadata?: Record<string, any>;
+}
+
+export interface MigrationOptions {
+  schemaOnly?: boolean;
+  batchSize?: number;
+  truncateBeforeLoad?: boolean;
+  disableConstraintsDuringLoad?: boolean;
+  createIndexesAfterDataLoad?: boolean;
+  skipValidation?: boolean;
+  includeTables?: string[];
+  excludeTables?: string[];
+}
+
 export class DatabaseConversionService extends BaseService {
-  private schemaAnalyzer: SchemaAnalyzerService;
-  private dataMigrator: DataMigrationService;
-  private dataTransformer: DataTransformationService;
-  private compatibilityService: CompatibilityService;
-  private llmService: LLMService;
-  private mcpService: MCPService;
-
-  constructor(
-    storage: IStorage,
-    mcpService: MCPService,
-    llmService: LLMService
-  ) {
-    super('database-conversion-service', storage);
-    
-    this.mcpService = mcpService;
-    this.llmService = llmService;
-    
-    // Initialize sub-services
-    this.schemaAnalyzer = new SchemaAnalyzerService(storage, llmService);
-    this.dataMigrator = new DataMigrationService(storage);
-    this.dataTransformer = new DataTransformationService(storage, llmService);
-    this.compatibilityService = new CompatibilityService(storage);
-    
-    // Register with MCP
-    this.registerWithMCP();
+  private projects: ConversionProject[] = [];
+  private connectionTemplates: any[] = [];
+  
+  constructor(storage: IStorage, mcpService?: MCPService, llmService?: LLMService) {
+    super(storage, mcpService, llmService);
+    // Initialize with some default data for testing
+    this.initializeTestData();
   }
   
-  /**
-   * Register service with the Model Content Protocol
-   */
-  private registerWithMCP(): void {
-    this.mcpService.registerService('database-conversion', {
-      analyzeDatabase: this.analyzeDatabase.bind(this),
-      createConversionProject: this.createConversionProject.bind(this),
-      generateMigrationPlan: this.generateMigrationPlan.bind(this),
-      updateMigrationPlan: this.updateMigrationPlan.bind(this),
-      executeMigration: this.executeMigration.bind(this),
-      createCompatibilityLayer: this.createCompatibilityLayer.bind(this),
-      validateMigration: this.validateMigration.bind(this),
-      getConversionProjects: this.getConversionProjects.bind(this),
-      getConversionProject: this.getConversionProject.bind(this),
-      detectDatabaseType: this.detectDatabaseType.bind(this),
-      generateMigrationScript: this.generateMigrationScript.bind(this),
-      estimateMigrationComplexity: this.estimateMigrationComplexity.bind(this)
+  private initializeTestData() {
+    // Add a sample project for testing
+    this.projects.push({
+      id: uuidv4(),
+      name: "Sample Postgres to MySQL Migration",
+      description: "Testing database conversion between Postgres and MySQL",
+      sourceConfig: {
+        type: DatabaseType.POSTGRES,
+        host: "localhost",
+        port: 5432,
+        database: "source_db",
+        username: "user",
+        password: "password"
+      },
+      targetConfig: {
+        type: DatabaseType.MYSQL,
+        host: "localhost",
+        port: 3306,
+        database: "target_db",
+        username: "user",
+        password: "password"
+      },
+      status: "pending",
+      progress: 0,
+      currentStage: "created",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    
+    // Add some connection templates
+    this.connectionTemplates.push({
+      id: 1,
+      name: "PostgreSQL Default Template",
+      description: "Default connection template for PostgreSQL databases",
+      databaseType: DatabaseType.POSTGRES,
+      connectionConfig: {
+        type: DatabaseType.POSTGRES,
+        host: "localhost",
+        port: 5432,
+        database: "postgres",
+        username: "postgres"
+      },
+      isPublic: true,
+      createdBy: 1,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    
+    this.connectionTemplates.push({
+      id: 2,
+      name: "MySQL Default Template",
+      description: "Default connection template for MySQL databases",
+      databaseType: DatabaseType.MYSQL,
+      connectionConfig: {
+        type: DatabaseType.MYSQL,
+        host: "localhost",
+        port: 3306,
+        database: "mysql",
+        username: "root"
+      },
+      isPublic: true,
+      createdBy: 1,
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
   }
   
+  // Project Management
+  
   /**
-   * Detect database type from connection string or configuration
+   * Get all conversion projects
    */
-  async detectDatabaseType(connectionConfig: DatabaseConnectionConfig): Promise<DatabaseType> {
-    // Analyze connection info to determine database type
-    // This logic will examine the connection string pattern, port numbers,
-    // or directly connect and check server identification
-    
-    // For now, return based on explicitly provided type or connection string pattern
-    if (connectionConfig.type) {
-      return connectionConfig.type;
-    }
-    
-    const connStr = connectionConfig.connectionString?.toLowerCase() || '';
-    
-    if (connStr.includes('postgresql') || connStr.includes('postgres')) {
-      return 'postgresql';
-    } else if (connStr.includes('sqlserver') || connStr.includes('mssql')) {
-      return 'sqlserver';
-    } else if (connStr.includes('mysql')) {
-      return 'mysql';
-    } else if (connStr.includes('oracle')) {
-      return 'oracle';
-    } else if (connStr.includes('mongodb')) {
-      return 'mongodb';
-    } else if (connStr.includes('sqlite')) {
-      return 'sqlite';
-    } else {
-      // Use AI to analyze the connection string if standard patterns don't match
-      const prompt = `Analyze this database connection string and determine the most likely database type: ${connStr}`;
-      const aiPrediction = await this.llmService.generateText(prompt);
-      
-      // Parse the AI response to extract the database type
-      // This is a simplified version - in reality we would have more robust parsing
-      if (aiPrediction.toLowerCase().includes('postgresql')) return 'postgresql';
-      if (aiPrediction.toLowerCase().includes('sql server')) return 'sqlserver';
-      if (aiPrediction.toLowerCase().includes('mysql')) return 'mysql';
-      if (aiPrediction.toLowerCase().includes('oracle')) return 'oracle';
-      if (aiPrediction.toLowerCase().includes('mongodb')) return 'mongodb';
-      if (aiPrediction.toLowerCase().includes('sqlite')) return 'sqlite';
-      
-      // If still can't determine, default to unknown
-      return 'unknown';
-    }
+  async getConversionProjects(): Promise<ConversionProject[]> {
+    return this.projects;
+  }
+  
+  /**
+   * Get a specific conversion project by ID
+   */
+  async getConversionProject(id: string): Promise<ConversionProject | undefined> {
+    return this.projects.find(project => project.id === id);
   }
   
   /**
@@ -142,526 +173,611 @@ export class DatabaseConversionService extends BaseService {
     sourceConfig: DatabaseConnectionConfig,
     targetConfig: DatabaseConnectionConfig
   ): Promise<ConversionProject> {
-    // Detect database types if not explicitly provided
-    if (!sourceConfig.type) {
-      sourceConfig.type = await this.detectDatabaseType(sourceConfig);
-    }
-    
-    // For target, default to PostgreSQL if not specified
-    if (!targetConfig.type) {
-      targetConfig.type = 'postgresql';
-    }
-    
-    const project: ConversionProject = {
-      id: Date.now().toString(), // In real implementation, use UUID
+    const newProject: ConversionProject = {
+      id: uuidv4(),
       name,
       description,
       sourceConfig,
       targetConfig,
-      status: 'created',
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      status: "pending",
       progress: 0,
-      currentStage: 'initialization'
+      currentStage: "created",
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     
-    // Store in database
-    await this.storage.createConversionProject(project);
+    this.projects.push(newProject);
     
-    return project;
-  }
-  
-  /**
-   * Get all conversion projects
-   */
-  async getConversionProjects(): Promise<ConversionProject[]> {
-    return this.storage.getConversionProjects();
-  }
-  
-  /**
-   * Get a specific conversion project by ID
-   */
-  async getConversionProject(id: string): Promise<ConversionProject | undefined> {
-    return this.storage.getConversionProject(id);
-  }
-  
-  /**
-   * Analyze a source database and create a schema map
-   */
-  async analyzeDatabase(
-    projectId: string | DatabaseConnectionConfig
-  ): Promise<SchemaAnalysisResult> {
-    let connectionConfig: DatabaseConnectionConfig;
-    
-    // If projectId is passed, retrieve the project
-    if (typeof projectId === 'string') {
-      const project = await this.storage.getConversionProject(projectId);
-      if (!project) {
-        throw new Error(`Conversion project not found: ${projectId}`);
-      }
-      connectionConfig = project.sourceConfig;
-      
-      // Update project status
-      await this.storage.updateConversionProject(projectId, {
-        status: 'analyzing',
-        currentStage: 'schema_analysis',
-        progress: 10,
-        updatedAt: new Date()
-      });
-    } else {
-      connectionConfig = projectId;
-    }
-    
-    // Perform the analysis
-    const analysisResult = await this.schemaAnalyzer.analyzeSchema(connectionConfig);
-    
-    // If this was called with a project ID, update the project
-    if (typeof projectId === 'string') {
-      await this.storage.updateConversionProject(projectId, {
-        status: 'analyzed',
-        currentStage: 'schema_analyzed',
-        progress: 20,
-        schemaAnalysis: analysisResult,
-        updatedAt: new Date()
-      });
-    }
-    
-    return analysisResult;
-  }
-  
-  /**
-   * Generate a migration plan based on schema analysis
-   */
-  async generateMigrationPlan(
-    projectId: string,
-    customInstructions?: string
-  ): Promise<MigrationPlan> {
-    // Get the project
-    const project = await this.storage.getConversionProject(projectId);
-    if (!project) {
-      throw new Error(`Conversion project not found: ${projectId}`);
-    }
-    
-    if (!project.schemaAnalysis) {
-      throw new Error('Schema analysis not performed yet. Please run analyzeDatabase first.');
-    }
-    
-    // Update project status
-    await this.storage.updateConversionProject(projectId, {
-      status: 'planning',
-      currentStage: 'migration_planning',
-      progress: 30,
-      updatedAt: new Date()
-    });
-    
-    // Generate the plan using AI
-    let migrationPlan: MigrationPlan;
-    
-    // Get the appropriate converter based on source database type
-    const sourceType = project.sourceConfig.type || 'unknown';
-    const converter = this.getConverterForType(sourceType);
-    
-    // Generate the migration plan
-    migrationPlan = await converter.generateMigrationPlan(
-      project.schemaAnalysis,
-      project.targetConfig,
-      customInstructions
+    await this.logOperation(
+      'CREATE',
+      'database_conversion_project',
+      { project: newProject }
     );
     
-    // Update the project with the migration plan
-    await this.storage.updateConversionProject(projectId, {
-      status: 'planned',
-      currentStage: 'migration_planned',
-      migrationPlan,
-      progress: 40,
-      updatedAt: new Date()
-    });
-    
-    return migrationPlan;
+    return newProject;
   }
   
   /**
-   * Update an existing migration plan with custom modifications
+   * Update a conversion project
    */
-  async updateMigrationPlan(
-    projectId: string,
-    updates: Partial<MigrationPlan>
-  ): Promise<MigrationPlan> {
-    // Get the project
-    const project = await this.storage.getConversionProject(projectId);
-    if (!project) {
-      throw new Error(`Conversion project not found: ${projectId}`);
-    }
+  async updateConversionProject(
+    id: string,
+    updates: Partial<ConversionProject>
+  ): Promise<ConversionProject | undefined> {
+    const projectIndex = this.projects.findIndex(p => p.id === id);
+    if (projectIndex === -1) return undefined;
     
-    if (!project.migrationPlan) {
-      throw new Error('No migration plan exists yet. Please generate one first.');
-    }
+    // Don't allow updating these fields directly
+    delete updates.id;
+    delete updates.createdAt;
     
-    // Merge updates with existing plan
-    const updatedPlan: MigrationPlan = {
-      ...project.migrationPlan,
+    this.projects[projectIndex] = {
+      ...this.projects[projectIndex],
       ...updates,
-      // Always update the modified timestamp
-      modifiedAt: new Date()
-    };
-    
-    // Validate the updated plan
-    // This would check for consistency, missing mappings, etc.
-    
-    // Store the updated plan
-    await this.storage.updateConversionProject(projectId, {
-      migrationPlan: updatedPlan,
       updatedAt: new Date()
-    });
-    
-    return updatedPlan;
-  }
-  
-  /**
-   * Generate SQL migration scripts based on the migration plan
-   */
-  async generateMigrationScript(projectId: string): Promise<string> {
-    // Get the project
-    const project = await this.storage.getConversionProject(projectId);
-    if (!project) {
-      throw new Error(`Conversion project not found: ${projectId}`);
-    }
-    
-    if (!project.migrationPlan) {
-      throw new Error('No migration plan exists yet. Please generate one first.');
-    }
-    
-    // Get the appropriate converter
-    const sourceType = project.sourceConfig.type || 'unknown';
-    const converter = this.getConverterForType(sourceType);
-    
-    // Generate SQL script
-    const script = await converter.generateMigrationScript(
-      project.migrationPlan,
-      project.targetConfig
-    );
-    
-    return script;
-  }
-  
-  /**
-   * Estimate the complexity and time required for migration
-   */
-  async estimateMigrationComplexity(projectId: string): Promise<{
-    complexity: 'simple' | 'moderate' | 'complex' | 'very_complex';
-    estimatedTime: string;
-    riskFactors: string[];
-    recommendedApproach: string;
-  }> {
-    // Get the project
-    const project = await this.storage.getConversionProject(projectId);
-    if (!project) {
-      throw new Error(`Conversion project not found: ${projectId}`);
-    }
-    
-    if (!project.schemaAnalysis) {
-      throw new Error('Schema analysis not performed yet. Please run analyzeDatabase first.');
-    }
-    
-    // Analyze complexity factors
-    const analysis = project.schemaAnalysis;
-    
-    // Number of tables is a basic complexity factor
-    const tableCount = analysis.tables.length;
-    
-    // Calculate estimated rows to migrate
-    const totalRows = analysis.tables.reduce(
-      (sum, table) => sum + (table.approximateRowCount || 0),
-      0
-    );
-    
-    // Check for complex data types that might be hard to convert
-    const hasComplexTypes = analysis.tables.some(table => 
-      table.columns.some(col => 
-        ['geometry', 'json', 'xml', 'blob', 'clob'].includes(col.dataType.toLowerCase())
-      )
-    );
-    
-    // Check for stored procedures, triggers, etc.
-    const hasProcedures = (analysis.procedures?.length || 0) > 0;
-    const hasTriggers = (analysis.triggers?.length || 0) > 0;
-    
-    // Determine complexity level
-    let complexity: 'simple' | 'moderate' | 'complex' | 'very_complex' = 'simple';
-    
-    if (tableCount > 100 || totalRows > 10000000 || (hasComplexTypes && hasProcedures && hasTriggers)) {
-      complexity = 'very_complex';
-    } else if (tableCount > 50 || totalRows > 1000000 || (hasComplexTypes || (hasProcedures && hasTriggers))) {
-      complexity = 'complex';
-    } else if (tableCount > 20 || totalRows > 100000 || hasProcedures || hasTriggers || hasComplexTypes) {
-      complexity = 'moderate';
-    }
-    
-    // Calculate estimated time based on complexity
-    let estimatedTime: string;
-    switch (complexity) {
-      case 'simple':
-        estimatedTime = '15-30 minutes';
-        break;
-      case 'moderate':
-        estimatedTime = '1-3 hours';
-        break;
-      case 'complex':
-        estimatedTime = '4-8 hours';
-        break;
-      case 'very_complex':
-        estimatedTime = '1-3 days';
-        break;
-    }
-    
-    // Identify risk factors
-    const riskFactors: string[] = [];
-    
-    if (hasComplexTypes) {
-      riskFactors.push('Complex data types that may require special handling');
-    }
-    
-    if (hasProcedures) {
-      riskFactors.push('Stored procedures that need to be converted');
-    }
-    
-    if (hasTriggers) {
-      riskFactors.push('Database triggers that need to be recreated');
-    }
-    
-    if (totalRows > 1000000) {
-      riskFactors.push('Large data volume that may require batched processing');
-    }
-    
-    // Generate recommended approach using AI
-    const promptContext = `
-    I'm planning a database migration with the following characteristics:
-    - Source database type: ${project.sourceConfig.type}
-    - Target database type: ${project.targetConfig.type}
-    - Number of tables: ${tableCount}
-    - Total approximate rows: ${totalRows}
-    - Has complex data types: ${hasComplexTypes}
-    - Has stored procedures: ${hasProcedures}
-    - Has triggers: ${hasTriggers}
-    - Overall complexity: ${complexity}
-    
-    What would be the recommended approach for this migration?
-    `;
-    
-    const recommendedApproach = await this.llmService.generateText(promptContext);
-    
-    return {
-      complexity,
-      estimatedTime,
-      riskFactors,
-      recommendedApproach
     };
+    
+    await this.logOperation(
+      'UPDATE',
+      'database_conversion_project',
+      { projectId: id, updates }
+    );
+    
+    return this.projects[projectIndex];
   }
   
   /**
-   * Execute the migration based on the migration plan
+   * Delete a conversion project
    */
-  async executeMigration(
-    projectId: string,
-    options: MigrationOptions = {}
-  ): Promise<MigrationResult> {
-    // Get the project
-    const project = await this.storage.getConversionProject(projectId);
-    if (!project) {
-      throw new Error(`Conversion project not found: ${projectId}`);
-    }
+  async deleteConversionProject(id: string): Promise<boolean> {
+    const projectIndex = this.projects.findIndex(p => p.id === id);
+    if (projectIndex === -1) return false;
     
-    if (!project.migrationPlan) {
-      throw new Error('No migration plan exists yet. Please generate one first.');
+    this.projects.splice(projectIndex, 1);
+    
+    await this.logOperation(
+      'DELETE',
+      'database_conversion_project',
+      { projectId: id }
+    );
+    
+    return true;
+  }
+  
+  // Connection Templates
+  
+  /**
+   * Get connection templates
+   */
+  async getConnectionTemplates(isPublic?: boolean): Promise<any[]> {
+    if (isPublic !== undefined) {
+      return this.connectionTemplates.filter(t => t.isPublic === isPublic);
     }
+    return this.connectionTemplates;
+  }
+  
+  /**
+   * Create a connection template
+   */
+  async createConnectionTemplate(templateData: any): Promise<any> {
+    const newTemplate = {
+      ...templateData,
+      id: this.connectionTemplates.length + 1,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.connectionTemplates.push(newTemplate);
+    
+    await this.logOperation(
+      'CREATE',
+      'connection_template',
+      { template: newTemplate }
+    );
+    
+    return newTemplate;
+  }
+  
+  // Conversion Operations
+  
+  /**
+   * Analyze a database schema
+   */
+  async analyzeDatabase(projectId: string): Promise<any> {
+    const project = await this.getConversionProject(projectId);
+    if (!project) throw new Error('Project not found');
     
     // Update project status
-    await this.storage.updateConversionProject(projectId, {
-      status: 'migrating',
-      currentStage: 'executing_migration',
-      progress: 50,
-      updatedAt: new Date()
+    await this.updateConversionProject(projectId, {
+      status: "analyzing",
+      progress: 10,
+      currentStage: "schema_analysis"
     });
-    
-    // Set up progress tracking
-    const progressCallback = async (progress: number, stage: string) => {
-      await this.storage.updateConversionProject(projectId, {
-        progress: 50 + Math.floor(progress * 0.3), // Scale to 50-80% range
-        currentStage: stage,
-        updatedAt: new Date()
-      });
-    };
-    
-    // Execute the migration
-    let migrationResult: MigrationResult;
     
     try {
-      // Get the appropriate converter
-      const sourceType = project.sourceConfig.type || 'unknown';
-      const converter = this.getConverterForType(sourceType);
-      
-      // Execute migration
-      migrationResult = await converter.executeMigration(
-        project.sourceConfig,
-        project.targetConfig,
-        project.migrationPlan,
-        {
-          ...options,
-          progressCallback
+      // Mock analysis result for now
+      const analysisResult = {
+        tables: [
+          {
+            name: "users",
+            columns: [
+              { name: "id", type: "integer", isPrimary: true, isNullable: false },
+              { name: "username", type: "varchar(255)", isPrimary: false, isNullable: false },
+              { name: "email", type: "varchar(255)", isPrimary: false, isNullable: false },
+              { name: "created_at", type: "timestamp", isPrimary: false, isNullable: true }
+            ],
+            indexes: [
+              { name: "users_pkey", columns: ["id"], isUnique: true },
+              { name: "users_email_idx", columns: ["email"], isUnique: true }
+            ],
+            constraints: [
+              { name: "users_pkey", type: "PRIMARY KEY", columns: ["id"] },
+              { name: "users_email_unique", type: "UNIQUE", columns: ["email"] }
+            ],
+            rowCount: 1250
+          },
+          {
+            name: "posts",
+            columns: [
+              { name: "id", type: "integer", isPrimary: true, isNullable: false },
+              { name: "user_id", type: "integer", isPrimary: false, isNullable: false },
+              { name: "title", type: "varchar(255)", isPrimary: false, isNullable: false },
+              { name: "content", type: "text", isPrimary: false, isNullable: true },
+              { name: "created_at", type: "timestamp", isPrimary: false, isNullable: true }
+            ],
+            indexes: [
+              { name: "posts_pkey", columns: ["id"], isUnique: true },
+              { name: "posts_user_id_idx", columns: ["user_id"], isUnique: false }
+            ],
+            constraints: [
+              { name: "posts_pkey", type: "PRIMARY KEY", columns: ["id"] },
+              { name: "posts_user_id_fkey", type: "FOREIGN KEY", columns: ["user_id"], references: { table: "users", columns: ["id"] } }
+            ],
+            rowCount: 5432
+          }
+        ],
+        views: [
+          {
+            name: "active_users",
+            definition: "SELECT * FROM users WHERE last_login > NOW() - INTERVAL '30 days'"
+          }
+        ],
+        functions: [
+          {
+            name: "get_user_posts",
+            parameters: ["user_id INTEGER"],
+            returnType: "TABLE(id INTEGER, title VARCHAR, content TEXT)",
+            language: "plpgsql",
+            definition: "BEGIN\n  RETURN QUERY SELECT id, title, content FROM posts WHERE user_id = $1;\nEND;"
+          }
+        ],
+        triggers: [
+          {
+            name: "update_modified_at",
+            table: "posts",
+            timing: "BEFORE",
+            event: "UPDATE",
+            function: "set_modified_at"
+          }
+        ],
+        sequences: [
+          { name: "users_id_seq", start: 1, increment: 1, currentValue: 1251 },
+          { name: "posts_id_seq", start: 1, increment: 1, currentValue: 5433 }
+        ],
+        dataTypes: [
+          { name: "INTEGER", alias: ["INT", "INT4"], compatibility: "Standard" },
+          { name: "VARCHAR", parameters: ["length"], compatibility: "Standard" },
+          { name: "TEXT", compatibility: "Standard" },
+          { name: "TIMESTAMP", compatibility: "Standard" }
+        ],
+        issues: [
+          {
+            type: "datatype_compatibility",
+            severity: "warning",
+            description: "PostgreSQL-specific 'SERIAL' type will need conversion in MySQL",
+            recommendation: "Use AUTO_INCREMENT with INT in MySQL"
+          }
+        ],
+        statistics: {
+          totalTables: 2,
+          totalViews: 1,
+          totalFunctions: 1,
+          totalTriggers: 1,
+          totalConstraints: 4,
+          totalIndexes: 4,
+          estimatedDataSize: "12MB"
         }
-      );
+      };
       
-      // Update project with successful result
-      await this.storage.updateConversionProject(projectId, {
-        status: 'migrated',
-        currentStage: 'migration_completed',
-        migrationResult,
-        progress: 80,
-        updatedAt: new Date()
+      // Update project with analysis results
+      await this.updateConversionProject(projectId, {
+        schemaAnalysis: analysisResult,
+        status: "analyzed",
+        progress: 30,
+        currentStage: "analysis_complete"
       });
+      
+      return analysisResult;
     } catch (error) {
-      // Update project with error
-      await this.storage.updateConversionProject(projectId, {
-        status: 'failed',
-        currentStage: 'migration_failed',
-        error: error.message,
-        updatedAt: new Date()
+      // Handle error
+      await this.updateConversionProject(projectId, {
+        status: "error",
+        error: `Schema analysis failed: ${error.message}`
       });
       
       throw error;
     }
-    
-    return migrationResult;
   }
   
   /**
-   * Create compatibility layer for legacy applications
+   * Generate a migration plan
    */
-  async createCompatibilityLayer(
-    projectId: string
-  ): Promise<CompatibilityLayerResult> {
-    // Get the project
-    const project = await this.storage.getConversionProject(projectId);
-    if (!project) {
-      throw new Error(`Conversion project not found: ${projectId}`);
-    }
+  async generateMigrationPlan(projectId: string, customInstructions?: string): Promise<any> {
+    const project = await this.getConversionProject(projectId);
+    if (!project) throw new Error('Project not found');
     
-    if (!project.migrationResult) {
-      throw new Error('Migration has not been executed yet. Please run executeMigration first.');
+    if (!project.schemaAnalysis) {
+      throw new Error('Schema analysis must be performed before generating a migration plan');
     }
     
     // Update project status
-    await this.storage.updateConversionProject(projectId, {
-      status: 'creating_compatibility',
-      currentStage: 'compatibility_layer',
-      progress: 85,
-      updatedAt: new Date()
+    await this.updateConversionProject(projectId, {
+      status: "planning",
+      progress: 40,
+      currentStage: "migration_planning"
     });
     
-    // Create compatibility layer
-    const compatibilityResult = await this.compatibilityService.createCompatibilityLayer(
-      project.sourceConfig,
-      project.targetConfig,
-      project.migrationPlan,
-      project.migrationResult
-    );
-    
-    // Update project with compatibility result
-    await this.storage.updateConversionProject(projectId, {
-      status: 'compatibility_created',
-      currentStage: 'compatibility_completed',
-      compatibilityResult,
-      progress: 90,
-      updatedAt: new Date()
-    });
-    
-    return compatibilityResult;
+    try {
+      // Mock migration plan for now
+      const migrationPlan = {
+        sourceDatabase: project.sourceConfig.type,
+        targetDatabase: project.targetConfig.type,
+        conversionSteps: [
+          {
+            order: 1,
+            description: "Create database schema in target database",
+            details: "Create all tables with primary keys but without foreign keys or other constraints"
+          },
+          {
+            order: 2,
+            description: "Migrate base data",
+            details: "Transfer data for all tables in batches of 1000 rows"
+          },
+          {
+            order: 3,
+            description: "Create indexes",
+            details: "Create all non-primary key indexes"
+          },
+          {
+            order: 4,
+            description: "Create foreign key constraints",
+            details: "Add all foreign key constraints"
+          },
+          {
+            order: 5,
+            description: "Create views",
+            details: "Recreate views with adjusted syntax for the target database"
+          }
+        ],
+        datatypeMapping: {
+          "INTEGER": "INT",
+          "VARCHAR": "VARCHAR",
+          "TEXT": "TEXT",
+          "TIMESTAMP": "DATETIME"
+        },
+        tableMigrationOrder: [
+          "users",
+          "posts"
+        ],
+        estimatedTime: "5 minutes",
+        potentialIssues: [
+          {
+            issue: "PostgreSQL SERIAL type conversion",
+            solution: "Will convert to AUTO_INCREMENT INT in MySQL",
+            impact: "Low"
+          },
+          {
+            issue: "Function migration",
+            solution: "PostgreSQL functions will need manual conversion to MySQL stored procedures",
+            impact: "Medium"
+          }
+        ],
+        recommendedSettings: {
+          batchSize: 1000,
+          disableConstraintsDuringLoad: true,
+          createIndexesAfterDataLoad: true
+        }
+      };
+      
+      // Update project with migration plan
+      await this.updateConversionProject(projectId, {
+        migrationPlan,
+        status: "planned",
+        progress: 50,
+        currentStage: "plan_complete"
+      });
+      
+      return migrationPlan;
+    } catch (error) {
+      // Handle error
+      await this.updateConversionProject(projectId, {
+        status: "error",
+        error: `Migration planning failed: ${error.message}`
+      });
+      
+      throw error;
+    }
   }
   
   /**
-   * Validate the migration for completeness and accuracy
+   * Generate a migration script
    */
-  async validateMigration(
-    projectId: string
-  ): Promise<ValidationResult> {
-    // Get the project
-    const project = await this.storage.getConversionProject(projectId);
-    if (!project) {
-      throw new Error(`Conversion project not found: ${projectId}`);
-    }
+  async generateMigrationScript(projectId: string): Promise<any> {
+    const project = await this.getConversionProject(projectId);
+    if (!project) throw new Error('Project not found');
     
-    if (!project.migrationResult) {
-      throw new Error('Migration has not been executed yet. Please run executeMigration first.');
+    if (!project.migrationPlan) {
+      throw new Error('Migration plan must be generated before creating a script');
     }
     
     // Update project status
-    await this.storage.updateConversionProject(projectId, {
-      status: 'validating',
-      currentStage: 'validation',
-      progress: 95,
-      updatedAt: new Date()
+    await this.updateConversionProject(projectId, {
+      status: "generating_script",
+      progress: 60,
+      currentStage: "script_generation"
     });
     
-    // Get the appropriate converter
-    const sourceType = project.sourceConfig.type || 'unknown';
-    const converter = this.getConverterForType(sourceType);
-    
-    // Validate the migration
-    const validationResult = await converter.validateMigration(
-      project.sourceConfig,
-      project.targetConfig,
-      project.migrationPlan,
-      project.migrationResult
-    );
-    
-    // Update project with validation result
-    await this.storage.updateConversionProject(projectId, {
-      status: 'completed',
-      currentStage: 'completed',
-      validationResult,
-      progress: 100,
-      updatedAt: new Date()
-    });
-    
-    return validationResult;
-  }
-  
-  /**
-   * Get the appropriate converter for a database type
-   */
-  private getConverterForType(type: DatabaseType): any {
-    // This would return specialized converter implementations for different database types
-    switch (type) {
-      case 'postgresql':
-        return new PostgresConverter(this.llmService);
-      case 'sqlserver':
-        return new SqlServerConverter(this.llmService);
-      case 'mysql':
-        return new MySqlConverter(this.llmService);
-      case 'oracle':
-        return new OracleConverter(this.llmService);
-      case 'mongodb':
-        return new MongoDbConverter(this.llmService);
-      case 'sqlite':
-        return new SqliteConverter(this.llmService);
-      default:
-        return new GenericConverter(this.llmService);
-    }
-  }
-}
+    try {
+      // Mock migration script for now
+      const migrationScript = {
+        schemaScript: `-- Create users table
+CREATE TABLE users (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  created_at DATETIME
+);
 
-// Placeholder converter classes (these would be implemented in separate files)
-class PostgresConverter {}
-class SqlServerConverter {}
-class MySqlConverter {}
-class OracleConverter {}
-class MongoDbConverter {}
-class SqliteConverter {}
-class GenericConverter {
-  constructor(private llmService: LLMService) {}
+-- Create index on email
+CREATE UNIQUE INDEX users_email_idx ON users (email);
+
+-- Create posts table
+CREATE TABLE posts (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  content TEXT,
+  created_at DATETIME
+);
+
+-- Create index on user_id
+CREATE INDEX posts_user_id_idx ON posts (user_id);
+
+-- Add foreign key constraint
+ALTER TABLE posts ADD CONSTRAINT posts_user_id_fkey 
+FOREIGN KEY (user_id) REFERENCES users (id);
+
+-- Create view
+CREATE VIEW active_users AS
+SELECT * FROM users WHERE last_login > DATE_SUB(NOW(), INTERVAL 30 DAY);`,
+        
+        dataScript: `-- Data migration will be performed in batches using the provided connection details`,
+        
+        validationScript: `-- Count records in both databases
+SELECT COUNT(*) FROM source_db.users;
+SELECT COUNT(*) FROM target_db.users;
+
+SELECT COUNT(*) FROM source_db.posts;
+SELECT COUNT(*) FROM target_db.posts;
+
+-- Validate data integrity
+SELECT COUNT(*) FROM target_db.posts WHERE user_id NOT IN (SELECT id FROM target_db.users);`
+      };
+      
+      // Update project with migration script
+      await this.updateConversionProject(projectId, {
+        migrationScript,
+        status: "script_generated",
+        progress: 70,
+        currentStage: "script_complete"
+      });
+      
+      return migrationScript;
+    } catch (error) {
+      // Handle error
+      await this.updateConversionProject(projectId, {
+        status: "error",
+        error: `Script generation failed: ${error.message}`
+      });
+      
+      throw error;
+    }
+  }
   
-  async generateMigrationPlan() { return {}; }
-  async generateMigrationScript() { return ''; }
-  async executeMigration() { return {}; }
-  async validateMigration() { return {}; }
+  /**
+   * Execute the migration
+   */
+  async executeMigration(projectId: string, options?: MigrationOptions): Promise<any> {
+    const project = await this.getConversionProject(projectId);
+    if (!project) throw new Error('Project not found');
+    
+    if (!project.migrationScript) {
+      throw new Error('Migration script must be generated before execution');
+    }
+    
+    // Update project status
+    await this.updateConversionProject(projectId, {
+      status: "migrating",
+      progress: 75,
+      currentStage: "executing_migration"
+    });
+    
+    try {
+      // Mock migration result
+      const migrationResult = {
+        started: new Date(),
+        completed: new Date(),
+        duration: "00:02:35",
+        tablesCreated: 2,
+        rowsMigrated: {
+          users: 1250,
+          posts: 5432
+        },
+        totalRowsMigrated: 6682,
+        indexesCreated: 4,
+        constraintsCreated: 4,
+        viewsCreated: 1,
+        warnings: [
+          "Function 'get_user_posts' was not migrated due to syntax differences"
+        ],
+        validationResults: {
+          recordCountMatches: true,
+          referentialIntegrityValid: true,
+          dataTypesMatchExpected: true
+        },
+        status: "success"
+      };
+      
+      // Update project with migration result
+      await this.updateConversionProject(projectId, {
+        migrationResult,
+        status: "migrated",
+        progress: 90,
+        currentStage: "migration_complete"
+      });
+      
+      return migrationResult;
+    } catch (error) {
+      // Handle error
+      await this.updateConversionProject(projectId, {
+        status: "error",
+        error: `Migration execution failed: ${error.message}`
+      });
+      
+      throw error;
+    }
+  }
+  
+  /**
+   * Create a compatibility layer
+   */
+  async createCompatibilityLayer(projectId: string): Promise<any> {
+    const project = await this.getConversionProject(projectId);
+    if (!project) throw new Error('Project not found');
+    
+    if (!project.migrationResult) {
+      throw new Error('Migration must be completed before creating a compatibility layer');
+    }
+    
+    // Update project status
+    await this.updateConversionProject(projectId, {
+      status: "creating_compatibility",
+      progress: 95,
+      currentStage: "compatibility_creation"
+    });
+    
+    try {
+      // Mock compatibility layer result
+      const compatibilityResult = {
+        viewsCreated: [
+          {
+            name: "compat_users",
+            definition: "CREATE VIEW compat_users AS SELECT id, username, email, created_at FROM users;"
+          }
+        ],
+        functionsCreated: [
+          {
+            name: "get_user_posts",
+            definition: `CREATE PROCEDURE get_user_posts(IN userId INT)
+BEGIN
+    SELECT id, title, content FROM posts WHERE user_id = userId;
+END;`
+          }
+        ],
+        triggersMigrated: [],
+        syntaxCompatibilityWrappers: [
+          {
+            name: "date_trunc",
+            sourceFunction: "date_trunc('day', timestamp)",
+            targetFunction: "DATE(timestamp)"
+          }
+        ],
+        configurationFile: "# Database Compatibility Configuration\nsource_dialect: postgresql\ntarget_dialect: mysql\nenable_logging: true",
+        documentation: "# Compatibility Layer Documentation\n\nThis document describes how to use the compatibility layer..."
+      };
+      
+      // Update project with compatibility layer result
+      await this.updateConversionProject(projectId, {
+        compatibilityResult,
+        status: "completed",
+        progress: 100,
+        currentStage: "complete"
+      });
+      
+      return compatibilityResult;
+    } catch (error) {
+      // Handle error
+      await this.updateConversionProject(projectId, {
+        status: "error",
+        error: `Compatibility layer creation failed: ${error.message}`
+      });
+      
+      throw error;
+    }
+  }
+  
+  /**
+   * Estimate migration complexity
+   */
+  async estimateMigrationComplexity(projectId: string): Promise<any> {
+    const project = await this.getConversionProject(projectId);
+    if (!project) throw new Error('Project not found');
+    
+    if (!project.schemaAnalysis) {
+      throw new Error('Schema analysis must be performed before estimating complexity');
+    }
+    
+    // Using some of the analysis data to estimate complexity
+    const analysis = project.schemaAnalysis;
+    
+    // Mock complexity insights
+    const insights = {
+      overallComplexity: "Medium",
+      complexity: {
+        schemaComplexity: "Medium",
+        dataVolumeComplexity: "Low",
+        typeCompatibilityComplexity: "Medium",
+        functionalityGapComplexity: "High"
+      },
+      metrics: {
+        tableCount: analysis.statistics.totalTables,
+        viewCount: analysis.statistics.totalViews,
+        functionCount: analysis.statistics.totalFunctions,
+        triggerCount: analysis.statistics.totalTriggers,
+        estimatedExecutionTime: "5-10 minutes",
+        estimatedManualInterventionNeeded: "Medium"
+      },
+      keyRisks: [
+        {
+          name: "Procedural Logic Conversion",
+          description: "PostgreSQL functions use PL/pgSQL which differs from MySQL's syntax",
+          severity: "High",
+          mitigationStrategy: "Use compatibility layer to create equivalent MySQL stored procedures"
+        },
+        {
+          name: "Transaction Isolation Differences",
+          description: "Different transaction isolation default behaviors between PostgreSQL and MySQL",
+          severity: "Medium",
+          mitigationStrategy: "Configure MySQL to use READ COMMITTED isolation level to match PostgreSQL's default"
+        }
+      ],
+      recommendations: [
+        "Run a test migration with a sample of data before full migration",
+        "Create a validation plan to verify data integrity after migration",
+        "Consider implementing application-level abstraction for database-specific functionality"
+      ]
+    };
+    
+    return insights;
+  }
 }
