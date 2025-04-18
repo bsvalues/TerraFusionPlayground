@@ -20,7 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "../lib/queryClient";
-import { Loader2, CheckCircle2, AlertCircle, BellRing, Laptop, Database, ArrowRightCircle, Share2, Code2, GitBranch, History, LineChart, Terminal, Check, X, ChevronRight, Copy, Sparkles } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, BellRing, Laptop, Database, ArrowRightCircle, Share2, Code2, GitBranch, History, LineChart, Terminal, Check, X, ChevronRight, Copy, Sparkles, Eye, EyeOff } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 // Enum Types
@@ -1148,9 +1148,25 @@ const DatabaseConversionPage = () => {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Target Connection String</FormLabel>
-                              <FormControl>
-                                <Input placeholder="e.g. postgresql://user:password@localhost:5432/target_db" {...field} />
-                              </FormControl>
+                              <div className="flex items-center space-x-2">
+                                <FormControl>
+                                  <Input 
+                                    placeholder="e.g. postgresql://user:password@localhost:5432/target_db"
+                                    {...field} 
+                                    type={showConnectionStrings ? "text" : "password"}
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setShowConnectionStrings(!showConnectionStrings)}
+                                >
+                                  {showConnectionStrings ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                              </div>
                               <FormDescription>
                                 Connection string for the target database
                               </FormDescription>
