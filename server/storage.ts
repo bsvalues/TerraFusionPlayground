@@ -115,6 +115,16 @@ interface PacsModuleRow {
 }
 
 // Define the storage interface
+import { 
+  GISLayer, InsertGISLayer, 
+  GISFeatureCollection, InsertGISFeatureCollection,
+  GISMapProject, InsertGISMapProject,
+  ETLJob, InsertETLJob, 
+  GISAgentTask, InsertGISAgentTask,
+  AgentMessage, InsertAgentMessage,
+  SpatialEvent, InsertSpatialEvent
+} from '@shared/gis-schema';
+
 export interface IStorage {
   // Development Tools methods
   // Code Snippets
@@ -216,6 +226,51 @@ export interface IStorage {
   updateTeamKnowledgeBaseItem(id: string, updates: Partial<TeamKnowledgeBaseItem>): Promise<TeamKnowledgeBaseItem | null>;
   deleteTeamKnowledgeBaseItem(id: string): Promise<boolean>;
   
+  // GIS Methods
+  // GIS Layer methods
+  createGISLayer(layer: InsertGISLayer): Promise<GISLayer>;
+  getGISLayer(id: number): Promise<GISLayer | undefined>;
+  getGISLayers(filters?: { type?: string, userId?: number }): Promise<GISLayer[]>;
+  updateGISLayer(id: number, updates: Partial<InsertGISLayer>): Promise<GISLayer | undefined>;
+  deleteGISLayer(id: number): Promise<boolean>;
+  
+  // GIS Feature Collection methods
+  createGISFeatureCollection(collection: InsertGISFeatureCollection): Promise<GISFeatureCollection>;
+  getGISFeatureCollection(id: number): Promise<GISFeatureCollection | undefined>;
+  getGISFeatureCollectionsByLayer(layerId: number): Promise<GISFeatureCollection[]>;
+  updateGISFeatureCollection(id: number, updates: Partial<InsertGISFeatureCollection>): Promise<GISFeatureCollection | undefined>;
+  deleteGISFeatureCollection(id: number): Promise<boolean>;
+  
+  // GIS Map Project methods
+  createGISMapProject(project: InsertGISMapProject): Promise<GISMapProject>;
+  getGISMapProject(id: number): Promise<GISMapProject | undefined>;
+  getGISMapProjects(userId?: number): Promise<GISMapProject[]>;
+  getPublicGISMapProjects(): Promise<GISMapProject[]>;
+  updateGISMapProject(id: number, updates: Partial<InsertGISMapProject>): Promise<GISMapProject | undefined>;
+  deleteGISMapProject(id: number): Promise<boolean>;
+  
+  // ETL Job methods
+  createETLJob(job: InsertETLJob): Promise<ETLJob>;
+  getETLJob(id: number): Promise<ETLJob | undefined>;
+  getETLJobs(userId?: number): Promise<ETLJob[]>;
+  updateETLJob(id: number, updates: Partial<ETLJob>): Promise<ETLJob | undefined>;
+  
+  // GIS Agent Task methods
+  createGISAgentTask(task: InsertGISAgentTask): Promise<GISAgentTask>;
+  getGISAgentTask(id: number): Promise<GISAgentTask | undefined>;
+  getGISAgentTasks(agentId?: string, status?: string): Promise<GISAgentTask[]>;
+  updateGISAgentTask(id: number, updates: Partial<GISAgentTask>): Promise<GISAgentTask | undefined>;
+  
+  // Agent Message methods
+  createAgentMessage(message: InsertAgentMessage): Promise<AgentMessage>;
+  getAgentMessage(id: number): Promise<AgentMessage | undefined>;
+  getAgentMessagesByParent(parentId: number): Promise<AgentMessage[]>;
+  getAgentMessagesByAgent(agentId: string): Promise<AgentMessage[]>;
+  
+  // Spatial Event methods
+  createSpatialEvent(event: InsertSpatialEvent): Promise<SpatialEvent>;
+  getSpatialEvents(layerId?: number, type?: string, userId?: number): Promise<SpatialEvent[]>;
+
   // TaxI_AI Development Platform methods - Base Interface
   
   // Development Project methods

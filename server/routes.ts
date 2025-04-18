@@ -28,6 +28,8 @@ import voiceCommandRoutes from "./routes/voice-command-routes";
 import { createPropertyStoryRoutes } from "./routes/property-story-routes";
 import { createPropertyRoutes } from "./routes/property-routes";
 import { createAgentRoutes } from "./routes/agent-routes";
+import { createGisRoutes } from "./routes/gis-routes";
+import { implementGISStorage } from "./gis-storage";
 import { createAuthRoutes } from "./routes/auth-routes";
 import { createMarketRoutes } from "./routes/market-routes";
 import { createRiskRoutes } from "./routes/risk-routes";
@@ -221,6 +223,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Database Conversion routes
   registerDatabaseConversionRoutes(app, databaseConversionService);
+  
+  // Initialize GIS Storage implementation with database
+  await implementGISStorage(storage);
+  
+  // Register GIS routes
+  app.use('/api/gis', createGisRoutes());
 
   /**
    * Data Lineage Routes

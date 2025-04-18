@@ -14,3 +14,12 @@ const mergedSchema = { ...schema, ...gisSchema };
 
 // Initialize Drizzle with the pool
 export const db = drizzle(pool, { schema: mergedSchema });
+
+// Export specific schemas for type safety and autocomplete
+export const gisLayersTable = gisSchema.gisLayers;
+export const gisFeatureCollectionsTable = gisSchema.gisFeatureCollections;
+export const gisMapProjectsTable = gisSchema.gisMapProjects;
+export const etlJobsTable = gisSchema.etlJobs;
+export const gisAgentTasksTable = gisSchema.gisAgentTasks;
+export const agentMessagesTable = gisSchema.agentMessages;
+export const spatialEventsTable = gisSchema.spatialEvents;
