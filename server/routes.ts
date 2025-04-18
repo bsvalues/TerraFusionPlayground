@@ -40,6 +40,7 @@ import { registerDemoRoutes } from "./routes/demo-routes";
 import aiAssistantRoutes from "./routes/ai-assistant-routes";
 import developmentPlatformRoutes from "./routes/development-platform-routes";
 import assessmentModelWorkbenchRoutes from "./routes/assessment-model-workbench-routes";
+import assistantPersonalityRoutes from "./routes/assistant-personality-routes";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -200,6 +201,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Assessment Model Workbench routes
   app.use('/api/assessment-workbench', assessmentModelWorkbenchRoutes);
+  
+  // Register Assistant Personality routes
+  app.use('/api/assistant-personalities', assistantPersonalityRoutes);
 
   /**
    * Data Lineage Routes
