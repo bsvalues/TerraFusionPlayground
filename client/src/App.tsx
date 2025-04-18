@@ -29,6 +29,7 @@ import DevelopmentPlatformPage from "@/pages/DevelopmentPlatformPage";
 import ProjectWorkspacePage from "@/pages/ProjectWorkspacePage";
 import AssessmentModelWorkbenchPage from "@/pages/AssessmentModelWorkbenchPage";
 import VoiceCommandPage from "@/pages/VoiceCommandPage";
+import VoiceCommandSettingsPage from "@/pages/voice-command-settings-page";
 import AppLayout from "@/layout/app-layout";
 
 
