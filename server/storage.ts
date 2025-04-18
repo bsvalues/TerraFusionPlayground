@@ -1070,6 +1070,12 @@ export class MemStorage implements IStorage {
     this.currentConversionLogId = 1;
     this.currentCompatibilityLayerId = 1;
     
+    // Initialize GIS counters
+    this.currentGISLayerId = 1;
+    this.currentGISFeatureCollectionId = 1; 
+    this.currentGISMapProjectId = 1;
+    this.currentSpatialAnalysisResultId = 1;
+    
     // Initialize with sample data
     this.seedData();
   }
@@ -4443,6 +4449,466 @@ export class MemStorage implements IStorage {
     });
     
     return true;
+  }
+  
+  // GIS Layer methods implementation
+  async createGISLayer(layer: InsertGISLayer): Promise<GISLayer> {
+    const id = this.currentGISLayerId++;
+    const timestamp = new Date();
+    const gisLayer: GISLayer = {
+      ...layer,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      visible: layer.visible ?? true,
+      opacity: layer.opacity ?? "1.0",
+      zIndex: layer.zIndex ?? 0
+    };
+    this.gisLayers.set(id, gisLayer);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Created GIS Layer: ${gisLayer.name}`,
+      entityType: 'gis_layer',
+      entityId: `${gisLayer.id}`
+    });
+    
+    return gisLayer;
+  }
+  
+  async getGISLayer(id: number): Promise<GISLayer | undefined> {
+    return this.gisLayers.get(id);
+  }
+  
+  async getGISLayers(filters?: { type?: string, userId?: number }): Promise<GISLayer[]> {
+    let layers = Array.from(this.gisLayers.values());
+    
+    if (filters) {
+      if (filters.type) {
+        layers = layers.filter(layer => layer.type === filters.type);
+      }
+      
+      if (filters.userId) {
+        layers = layers.filter(layer => layer.userId === filters.userId);
+      }
+    }
+    
+    return layers.sort((a, b) => a.zIndex - b.zIndex);
+  }
+  
+  async updateGISLayer(id: number, updates: Partial<InsertGISLayer>): Promise<GISLayer | undefined> {
+    const layer = this.gisLayers.get(id);
+    if (!layer) return undefined;
+    
+    const timestamp = new Date();
+    const updatedLayer: GISLayer = {
+      ...layer,
+      ...updates,
+      updatedAt: timestamp
+    };
+    
+    this.gisLayers.set(id, updatedLayer);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Updated GIS Layer: ${layer.name}`,
+      entityType: 'gis_layer',
+      entityId: `${layer.id}`
+    });
+    
+    return updatedLayer;
+  }
+  
+  async deleteGISLayer(id: number): Promise<boolean> {
+    const layer = this.gisLayers.get(id);
+    if (!layer) return false;
+    
+    // Delete all feature collections associated with this layer
+    const featureCollections = await this.getGISFeatureCollectionsByLayer(id);
+    for (const collection of featureCollections) {
+      await this.deleteGISFeatureCollection(collection.id);
+    }
+    
+    const success = this.gisLayers.delete(id);
+    
+    if (success) {
+      // Create system activity
+      await this.createSystemActivity({
+        agentId: 1, // Data Management Agent
+        activity: `Deleted GIS Layer: ${layer.name}`,
+        entityType: 'gis_layer',
+        entityId: `${layer.id}`
+      });
+    }
+    
+    return success;
+  }
+  
+  // GIS Feature Collection methods implementation
+  async createGISFeatureCollection(collection: InsertGISFeatureCollection): Promise<GISFeatureCollection> {
+    const id = this.currentGISFeatureCollectionId++;
+    const timestamp = new Date();
+    const featureCollection: GISFeatureCollection = {
+      ...collection,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+    this.gisFeatureCollections.set(id, featureCollection);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Created GIS Feature Collection: ${featureCollection.name}`,
+      entityType: 'gis_feature_collection',
+      entityId: `${featureCollection.id}`
+    });
+    
+    return featureCollection;
+  }
+  
+  async getGISFeatureCollection(id: number): Promise<GISFeatureCollection | undefined> {
+    return this.gisFeatureCollections.get(id);
+  }
+  
+  async getGISFeatureCollectionsByLayer(layerId: number): Promise<GISFeatureCollection[]> {
+    return Array.from(this.gisFeatureCollections.values())
+      .filter(collection => collection.layerId === layerId);
+  }
+  
+  async updateGISFeatureCollection(id: number, updates: Partial<InsertGISFeatureCollection>): Promise<GISFeatureCollection | undefined> {
+    const collection = this.gisFeatureCollections.get(id);
+    if (!collection) return undefined;
+    
+    const timestamp = new Date();
+    const updatedCollection: GISFeatureCollection = {
+      ...collection,
+      ...updates,
+      updatedAt: timestamp
+    };
+    
+    this.gisFeatureCollections.set(id, updatedCollection);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Updated GIS Feature Collection: ${collection.name}`,
+      entityType: 'gis_feature_collection',
+      entityId: `${collection.id}`
+    });
+    
+    return updatedCollection;
+  }
+  
+  async deleteGISFeatureCollection(id: number): Promise<boolean> {
+    const collection = this.gisFeatureCollections.get(id);
+    if (!collection) return false;
+    
+    const success = this.gisFeatureCollections.delete(id);
+    
+    if (success) {
+      // Create system activity
+      await this.createSystemActivity({
+        agentId: 1, // Data Management Agent
+        activity: `Deleted GIS Feature Collection: ${collection.name}`,
+        entityType: 'gis_feature_collection',
+        entityId: `${collection.id}`
+      });
+    }
+    
+    return success;
+  }
+  
+  // GIS Map Project methods implementation
+  async createGISMapProject(project: InsertGISMapProject): Promise<GISMapProject> {
+    const id = this.currentGISMapProjectId++;
+    const timestamp = new Date();
+    const mapProject: GISMapProject = {
+      ...project,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      isPublic: project.isPublic ?? false,
+      layers: project.layers ?? []
+    };
+    this.gisMapProjects.set(id, mapProject);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Created GIS Map Project: ${mapProject.name}`,
+      entityType: 'gis_map_project',
+      entityId: `${mapProject.id}`
+    });
+    
+    return mapProject;
+  }
+  
+  async getGISMapProject(id: number): Promise<GISMapProject | undefined> {
+    return this.gisMapProjects.get(id);
+  }
+  
+  async getGISMapProjects(userId?: number): Promise<GISMapProject[]> {
+    let projects = Array.from(this.gisMapProjects.values());
+    
+    if (userId) {
+      projects = projects.filter(project => project.userId === userId);
+    }
+    
+    return projects.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  
+  async getPublicGISMapProjects(): Promise<GISMapProject[]> {
+    return Array.from(this.gisMapProjects.values())
+      .filter(project => project.isPublic)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  
+  async updateGISMapProject(id: number, updates: Partial<InsertGISMapProject>): Promise<GISMapProject | undefined> {
+    const project = this.gisMapProjects.get(id);
+    if (!project) return undefined;
+    
+    const timestamp = new Date();
+    const updatedProject: GISMapProject = {
+      ...project,
+      ...updates,
+      updatedAt: timestamp
+    };
+    
+    this.gisMapProjects.set(id, updatedProject);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Updated GIS Map Project: ${project.name}`,
+      entityType: 'gis_map_project',
+      entityId: `${project.id}`
+    });
+    
+    return updatedProject;
+  }
+  
+  async deleteGISMapProject(id: number): Promise<boolean> {
+    const project = this.gisMapProjects.get(id);
+    if (!project) return false;
+    
+    const success = this.gisMapProjects.delete(id);
+    
+    if (success) {
+      // Create system activity
+      await this.createSystemActivity({
+        agentId: 1, // Data Management Agent
+        activity: `Deleted GIS Map Project: ${project.name}`,
+        entityType: 'gis_map_project',
+        entityId: `${project.id}`
+      });
+    }
+    
+    return success;
+  }
+  
+  // ETL Job methods implementation
+  async createETLJob(job: { id: string, config: any, status: string, createdAt: Date, updatedAt: Date }): Promise<ETLJob> {
+    const etlJob: ETLJob = {
+      ...job,
+      result: null,
+      completedAt: null
+    };
+    this.etlJobs.set(job.id, etlJob);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Created ETL Job: ${job.id}`,
+      entityType: 'etl_job',
+      entityId: job.id
+    });
+    
+    return etlJob;
+  }
+  
+  async getETLJob(id: string): Promise<ETLJob | undefined> {
+    return this.etlJobs.get(id);
+  }
+  
+  async getETLJobs(userId?: number): Promise<ETLJob[]> {
+    let jobs = Array.from(this.etlJobs.values());
+    
+    if (userId) {
+      jobs = jobs.filter(job => job.userId === userId);
+    }
+    
+    return jobs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  
+  async updateETLJob(id: string, updates: Partial<ETLJob>): Promise<ETLJob | undefined> {
+    const job = this.etlJobs.get(id);
+    if (!job) return undefined;
+    
+    const updatedJob: ETLJob = {
+      ...job,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.etlJobs.set(id, updatedJob);
+    
+    // If job is completed, add timestamp
+    if (updates.status === 'completed' && !updatedJob.completedAt) {
+      updatedJob.completedAt = new Date();
+      this.etlJobs.set(id, updatedJob);
+    }
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Updated ETL Job: ${job.id} (Status: ${updatedJob.status})`,
+      entityType: 'etl_job',
+      entityId: job.id
+    });
+    
+    return updatedJob;
+  }
+  
+  // GIS Agent Task methods implementation
+  async createAgentTask(task: GISAgentTask): Promise<GISAgentTask> {
+    this.gisAgentTasks.set(task.id, task);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Created GIS Agent Task: ${task.taskType}`,
+      entityType: 'gis_agent_task',
+      entityId: task.id
+    });
+    
+    return task;
+  }
+  
+  async getAgentTask(id: string): Promise<GISAgentTask | null> {
+    return this.gisAgentTasks.get(id) || null;
+  }
+  
+  async getAgentTasks(agentId?: string, status?: string): Promise<GISAgentTask[]> {
+    let tasks = Array.from(this.gisAgentTasks.values());
+    
+    if (agentId) {
+      tasks = tasks.filter(task => task.agentId === agentId);
+    }
+    
+    if (status) {
+      tasks = tasks.filter(task => task.status === status);
+    }
+    
+    return tasks.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  
+  async updateAgentTask(id: string, updates: Partial<GISAgentTask>): Promise<GISAgentTask | undefined> {
+    const task = this.gisAgentTasks.get(id);
+    if (!task) return undefined;
+    
+    const updatedTask: GISAgentTask = {
+      ...task,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.gisAgentTasks.set(id, updatedTask);
+    
+    // If task is completed, add timestamp
+    if (updates.status === 'completed' && !updatedTask.completedAt) {
+      updatedTask.completedAt = new Date();
+      this.gisAgentTasks.set(id, updatedTask);
+    }
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Updated GIS Agent Task: ${task.taskType} (Status: ${updatedTask.status})`,
+      entityType: 'gis_agent_task',
+      entityId: task.id
+    });
+    
+    return updatedTask;
+  }
+  
+  // Agent Message methods implementation
+  async createAgentMessage(message: InsertAgentMessage): Promise<AgentMessage> {
+    const id = this.currentAgentMessageId++;
+    const agentMessage: AgentMessage = {
+      ...message,
+      id,
+      processed: false,
+      timestamp: new Date()
+    };
+    this.agentMessages.set(id, agentMessage);
+    return agentMessage;
+  }
+  
+  async getAgentMessage(id: number): Promise<AgentMessage | undefined> {
+    return this.agentMessages.get(id);
+  }
+  
+  async getUnprocessedAgentMessages(topic: string): Promise<AgentMessage[]> {
+    return Array.from(this.agentMessages.values())
+      .filter(message => message.topic === topic && !message.processed);
+  }
+  
+  async updateAgentMessage(id: string, updates: Partial<AgentMessage>): Promise<AgentMessage | undefined> {
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) return undefined;
+    
+    const message = this.agentMessages.get(numericId);
+    if (!message) return undefined;
+    
+    const updatedMessage: AgentMessage = {
+      ...message,
+      ...updates
+    };
+    
+    this.agentMessages.set(numericId, updatedMessage);
+    return updatedMessage;
+  }
+  
+  // Spatial Analysis methods implementation
+  async createSpatialAnalysis(analysis: { name: string, analysisType: string, inputData: any, resultData: any, parameters?: any, metadata?: any, userId?: number }): Promise<SpatialAnalysisResult> {
+    const id = this.currentSpatialAnalysisResultId++;
+    const result: SpatialAnalysisResult = {
+      ...analysis,
+      id,
+      parameters: analysis.parameters || {},
+      metadata: analysis.metadata || {},
+      createdAt: new Date()
+    };
+    this.spatialAnalysisResults.set(id, result);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agentId: 1, // Data Management Agent
+      activity: `Created Spatial Analysis: ${result.name} (Type: ${result.analysisType})`,
+      entityType: 'spatial_analysis',
+      entityId: `${result.id}`
+    });
+    
+    return result;
+  }
+  
+  async getSpatialAnalysis(id: number): Promise<SpatialAnalysisResult | undefined> {
+    return this.spatialAnalysisResults.get(id);
+  }
+  
+  async getSpatialAnalysesByUser(userId: number): Promise<SpatialAnalysisResult[]> {
+    return Array.from(this.spatialAnalysisResults.values())
+      .filter(analysis => analysis.userId === userId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  
+  async getSpatialAnalysesByType(analysisType: string): Promise<SpatialAnalysisResult[]> {
+    return Array.from(this.spatialAnalysisResults.values())
+      .filter(analysis => analysis.analysisType === analysisType)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 }
 
