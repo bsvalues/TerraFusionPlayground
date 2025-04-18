@@ -130,7 +130,7 @@ export class PersonalizedAgentService {
         )
       );
 
-    return result.rowCount > 0;
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   /**
@@ -148,7 +148,7 @@ export class PersonalizedAgentService {
     const [result] = await db
       .update(personalizedDeveloperAgents)
       .set({
-        usageCount: agent.usageCount + 1,
+        usageCount: (agent.usageCount || 0) + 1,
       })
       .where(eq(personalizedDeveloperAgents.id, id))
       .returning();
