@@ -10,7 +10,7 @@ import { MCPService } from '../mcp';
 import { SchemaAnalyzerService } from './schema-analyzer-service';
 import { DataMigrationService } from './data-migration-service';
 import { DataTransformationService } from './data-transformation-service';
-import { CompatibilityLayerService } from './compatibility-service';
+import { CompatibilityService } from './compatibility-service';
 import {
   DatabaseType,
   SchemaAnalysisResult,
@@ -25,7 +25,7 @@ export class DatabaseConversionService {
   private schemaAnalyzer: SchemaAnalyzerService;
   private dataMigration: DataMigrationService;
   private dataTransformation: DataTransformationService;
-  private compatibilityLayer: CompatibilityLayerService;
+  private compatibilityLayer: CompatibilityService;
 
   constructor(storage: IStorage, mcpService: MCPService) {
     this.storage = storage;
@@ -35,7 +35,7 @@ export class DatabaseConversionService {
     this.schemaAnalyzer = new SchemaAnalyzerService(storage, mcpService);
     this.dataMigration = new DataMigrationService(storage, mcpService);
     this.dataTransformation = new DataTransformationService(storage, mcpService);
-    this.compatibilityLayer = new CompatibilityLayerService(storage, mcpService);
+    this.compatibilityLayer = new CompatibilityService(storage, mcpService);
     
     console.log('Database Conversion Service initialized');
   }
