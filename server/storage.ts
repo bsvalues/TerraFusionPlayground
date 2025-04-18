@@ -47,12 +47,20 @@ import {
   codeSnippets, CodeSnippet, InsertCodeSnippet,
   dataVisualizations, DataVisualization, InsertDataVisualization,
   uiComponentTemplates, UIComponentTemplate, InsertUIComponentTemplate,
+  // Database Conversion System
+  databaseConversionProjects, DatabaseConversionProject, InsertDatabaseConversionProject,
+  connectionTemplates, ConnectionTemplate, InsertConnectionTemplate,
+  schemaMappings, SchemaMapping, InsertSchemaMapping,
+  conversionLogs, ConversionLog, InsertConversionLog,
+  compatibilityLayers, CompatibilityLayer, InsertCompatibilityLayer,
   // TaxI_AI Development Platform enums
   ProjectType, ProjectLanguage, ProjectStatus, FileType, PreviewStatus,
   // Assessment Model Workbench enums
   ModelType, ModelStatus, VariableType, DataSourceType,
   // Development Tools enums
   CodeSnippetType, VisualizationType, ComponentType,
+  // Database Conversion System enums
+  databaseTypeEnum, connectionStatusEnum, conversionStatusEnum,
   // Team collaboration
   teamMembers, TeamMember, InsertTeamMember,
   teamTasks, TeamTask, InsertTeamTask,
@@ -275,6 +283,38 @@ export interface IStorage {
   getDataLineageByUser(userId: number, limit?: number): Promise<DataLineageRecord[]>;
   getDataLineageByDateRange(startDate: Date, endDate: Date, limit?: number): Promise<DataLineageRecord[]>;
   getDataLineageBySource(source: string, limit?: number): Promise<DataLineageRecord[]>;
+  
+  // Database Conversion methods
+  // Conversion Project methods
+  createConversionProject(project: InsertDatabaseConversionProject): Promise<DatabaseConversionProject>;
+  getConversionProjects(): Promise<DatabaseConversionProject[]>;
+  getConversionProject(id: string): Promise<DatabaseConversionProject | undefined>;
+  updateConversionProject(id: string, updates: Partial<DatabaseConversionProject>): Promise<DatabaseConversionProject | undefined>;
+  deleteConversionProject(id: string): Promise<boolean>;
+  
+  // Connection Template methods
+  createConnectionTemplate(template: InsertConnectionTemplate): Promise<ConnectionTemplate>;
+  getConnectionTemplates(isPublic?: boolean): Promise<ConnectionTemplate[]>;
+  getConnectionTemplate(id: number): Promise<ConnectionTemplate | undefined>;
+  updateConnectionTemplate(id: number, updates: Partial<InsertConnectionTemplate>): Promise<ConnectionTemplate | undefined>;
+  deleteConnectionTemplate(id: number): Promise<boolean>;
+  
+  // Schema Mapping methods
+  createSchemaMapping(mapping: InsertSchemaMapping): Promise<SchemaMapping>;
+  getSchemaMappings(sourceType?: string, targetType?: string): Promise<SchemaMapping[]>;
+  getSchemaMapping(id: number): Promise<SchemaMapping | undefined>;
+  updateSchemaMapping(id: number, updates: Partial<InsertSchemaMapping>): Promise<SchemaMapping | undefined>;
+  deleteSchemaMapping(id: number): Promise<boolean>;
+  
+  // Conversion Log methods
+  createConversionLog(log: InsertConversionLog): Promise<ConversionLog>;
+  getConversionLogs(projectId: string): Promise<ConversionLog[]>;
+  
+  // Compatibility Layer methods
+  createCompatibilityLayer(layer: InsertCompatibilityLayer): Promise<CompatibilityLayer>;
+  getCompatibilityLayersByProject(projectId: string): Promise<CompatibilityLayer[]>;
+  getCompatibilityLayer(id: number): Promise<CompatibilityLayer | undefined>;
+  updateCompatibilityLayer(id: number, updates: Partial<InsertCompatibilityLayer>): Promise<CompatibilityLayer | undefined>;
   
   // User methods
   getUser(id: number): Promise<User | undefined>;
