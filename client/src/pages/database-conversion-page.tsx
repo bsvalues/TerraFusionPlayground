@@ -272,6 +272,49 @@ const DatabaseCard = ({ database, selected, onClick }: {
 };
 
 // Main component
+// Helper function to mask connection strings for display
+const maskConnectionString = (connectionString: string): string => {
+  try {
+    // For typical database connection strings with username and password
+    if (connectionString.includes('@') && connectionString.includes(':')) {
+      const parts = connectionString.split('@');
+      const credentialsPart = parts[0];
+      const hostPart = parts[1];
+      
+      // Find username and password
+      const userPassRegex = /^(.*?):(.*)$/;
+      const matches = credentialsPart.match(userPassRegex);
+      
+      if (matches && matches.length >= 3) {
+        const protocol = matches[1].split('://')[0];
+        const username = matches[1].split('://')[1] || matches[1];
+        const password = matches[2];
+        
+        // Mask the password
+        const maskedPassword = '*'.repeat(Math.min(password.length, 8));
+        
+        return `${protocol}://${username}:${maskedPassword}@${hostPart}`;
+      }
+    }
+    
+    // For MongoDB or other special formats
+    if (connectionString.includes('mongodb+srv://')) {
+      return connectionString.replace(/(mongodb\+srv:\/\/[^:]+:)([^@]+)(@.*)/, '$1********$3');
+    }
+    
+    // For other formats or if parsing fails, mask the middle part
+    const len = connectionString.length;
+    if (len > 12) {
+      return `${connectionString.substring(0, 6)}...${connectionString.substring(len - 6)}`;
+    }
+    
+    return '********'; // Fallback
+  } catch (e) {
+    console.error('Error masking connection string:', e);
+    return '********';
+  }
+};
+
 const DatabaseConversionPage = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('connect');
@@ -284,6 +327,7 @@ const DatabaseConversionPage = () => {
   const [databaseTypes, setDatabaseTypes] = useState<DatabaseInfo[]>([]);
   const [compatibilityResult, setCompatibilityResult] = useState<CompatibilityLayerResult | null>(null);
   const [showFinalReport, setShowFinalReport] = useState(false);
+  const [showConnectionStrings, setShowConnectionStrings] = useState(false);
 
   // Forms
   const connectionForm = useForm<z.infer<typeof connectionFormSchema>>({
@@ -1037,9 +1081,24 @@ const DatabaseConversionPage = () => {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Source Connection String</FormLabel>
-                              <FormControl>
-                                <Input {...field} disabled />
-                              </FormControl>
+                              <div className="flex items-center space-x-2">
+                                <FormControl>
+                                  <Input 
+                                    {...field} 
+                                    disabled 
+                                    type={showConnectionStrings ? "text" : "password"}
+                                    value={showConnectionStrings ? field.value : maskConnectionString(field.value)}
+                                  />
+                                </FormControl>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setShowConnectionStrings(!showConnectionStrings)}
+                                >
+                                  {showConnectionStrings ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                              </div>
                               <FormDescription>
                                 Connection string for the source database (auto-filled from analysis)
                               </FormDescription>
