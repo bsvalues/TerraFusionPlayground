@@ -114,6 +114,12 @@ export class GISAgentOrchestrationService {
       console.log('GIS Agent Orchestration Service initialized successfully');
     } catch (error) {
       console.error('Failed to initialize GIS Agent Orchestration Service:', error);
+      this.errorTrackingService.trackError(error, {
+        category: ErrorCategory.GIS,
+        severity: ErrorSeverity.HIGH,
+        source: ErrorSource.GIS_SYSTEM,
+        details: { component: 'GISAgentOrchestrationService', method: 'initialize' }
+      });
       throw error;
     }
   }
@@ -133,6 +139,12 @@ export class GISAgentOrchestrationService {
     // Initialize the agent
     agent.initialize().catch(error => {
       console.error(`Failed to initialize agent ${agent.id}:`, error);
+      this.errorTrackingService.trackAgentError(error, agent.id, {
+        component: 'GISAgentOrchestrationService',
+        method: 'registerAgent',
+        agentType: agent.type,
+        agentName: agent.name
+      });
       this.agents.delete(agent.id);
     });
 
@@ -162,6 +174,12 @@ export class GISAgentOrchestrationService {
       this.eventEmitter.emit('agent:unregistered', agentId);
     } catch (error) {
       console.error(`Failed to unregister agent ${agentId}:`, error);
+      this.errorTrackingService.trackAgentError(error, agentId, {
+        component: 'GISAgentOrchestrationService',
+        method: 'unregisterAgent',
+        agentName: agent.name,
+        agentType: agent.type
+      });
       throw error;
     }
   }
@@ -222,6 +240,11 @@ export class GISAgentOrchestrationService {
       return task;
     } catch (error) {
       console.error('Failed to create task:', error);
+      this.errorTrackingService.trackGisError(error, {
+        component: 'GISAgentOrchestrationService',
+        method: 'createTask',
+        taskData
+      });
       throw error;
     }
   }
@@ -274,12 +297,21 @@ export class GISAgentOrchestrationService {
     } catch (error) {
       console.error(`Failed to assign task ${task.id}:`, error);
       
+      // Track the error
+      this.errorTrackingService.trackGisError(error, {
+        component: 'GISAgentOrchestrationService',
+        method: 'assignTask',
+        taskId: task.id,
+        taskType: task.taskType,
+        agentType: task.agentType
+      });
+      
       // Update task status to failed
       await this.storage.updateGISAgentTask(
         typeof task.id === 'number' ? task.id : parseInt(task.id as string),
         { 
           status: TaskStatus.FAILED,
-          error: error.message || 'Failed to assign task'
+          error: error instanceof Error ? error.message : 'Failed to assign task'
         }
       );
     }
@@ -324,12 +356,22 @@ export class GISAgentOrchestrationService {
     } catch (error) {
       console.error(`Failed to process task ${task.id}:`, error);
       
+      // Track the error
+      this.errorTrackingService.trackAgentError(error, agent.id, {
+        component: 'GISAgentOrchestrationService',
+        method: 'processTaskAsync',
+        taskId: task.id,
+        taskType: task.taskType,
+        agentType: agent.type,
+        agentName: agent.name
+      });
+      
       // Update task status to failed
       await this.storage.updateGISAgentTask(
         typeof task.id === 'number' ? task.id : parseInt(task.id as string), 
         { 
           status: TaskStatus.FAILED,
-          error: error.message || 'Failed to process task',
+          error: error instanceof Error ? error.message : 'Failed to process task',
           endTime: new Date()
         }
       );
@@ -344,7 +386,7 @@ export class GISAgentOrchestrationService {
       this.eventEmitter.emit('task:failed', {
         taskId: task.id,
         agentId: agent.id,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
@@ -354,42 +396,68 @@ export class GISAgentOrchestrationService {
    * @param taskId The ID of the task to cancel
    */
   public async cancelTask(taskId: string): Promise<void> {
-    const numericTaskId = typeof taskId === 'number' ? taskId : parseInt(taskId);
-    const task = this.activeTasks.get(numericTaskId);
-    
-    if (!task) {
-      throw new Error(`Task with ID ${taskId} is not active`);
-    }
-    
-    // Update task status
-    const updatedTask = await this.storage.updateGISAgentTask(
-      numericTaskId,
-      { 
-        status: TaskStatus.CANCELLED,
-        endTime: new Date()
+    try {
+      const numericTaskId = typeof taskId === 'number' ? taskId : parseInt(taskId);
+      const task = this.activeTasks.get(numericTaskId);
+      
+      if (!task) {
+        const error = new Error(`Task with ID ${taskId} is not active`);
+        this.errorTrackingService.trackGisError(error, {
+          component: 'GISAgentOrchestrationService',
+          method: 'cancelTask',
+          taskId
+        });
+        throw error;
       }
-    );
-    
-    if (!updatedTask) {
-      throw new Error(`Failed to update task ${taskId}`);
-    }
-    
-    // Remove from active tasks
-    this.activeTasks.delete(numericTaskId);
-    
-    // Set agent status back to available if there is an agent assigned
-    if (task.agentId) {
-      const agent = this.agents.get(task.agentId);
-      if (agent) {
-        agent.status = 'AVAILABLE';
+      
+      // Update task status
+      const updatedTask = await this.storage.updateGISAgentTask(
+        numericTaskId,
+        { 
+          status: TaskStatus.CANCELLED,
+          endTime: new Date()
+        }
+      );
+      
+      if (!updatedTask) {
+        const error = new Error(`Failed to update task ${taskId}`);
+        this.errorTrackingService.trackGisError(error, {
+          component: 'GISAgentOrchestrationService',
+          method: 'cancelTask',
+          taskId,
+          taskType: task.taskType,
+          agentId: task.agentId
+        });
+        throw error;
       }
+      
+      // Remove from active tasks
+      this.activeTasks.delete(numericTaskId);
+      
+      // Set agent status back to available if there is an agent assigned
+      if (task.agentId) {
+        const agent = this.agents.get(task.agentId);
+        if (agent) {
+          agent.status = 'AVAILABLE';
+        }
+      }
+      
+      // Emit task cancelled event
+      this.eventEmitter.emit('task:cancelled', {
+        taskId: task.id,
+        agentId: task.agentId
+      });
+    } catch (error) {
+      if (!(error instanceof Error && error.message.includes('is not active') || error.message.includes('Failed to update task'))) {
+        console.error(`Unexpected error cancelling task ${taskId}:`, error);
+        this.errorTrackingService.trackGisError(error, {
+          component: 'GISAgentOrchestrationService',
+          method: 'cancelTask',
+          taskId
+        });
+      }
+      throw error;
     }
-    
-    // Emit task cancelled event
-    this.eventEmitter.emit('task:cancelled', {
-      taskId: task.id,
-      agentId: task.agentId
-    });
   }
 
   /**
@@ -535,6 +603,11 @@ export class GISAgentOrchestrationService {
       console.log(`Loaded ${runningTasks.length} active tasks`);
     } catch (error) {
       console.error('Failed to load active tasks:', error);
+      this.errorTrackingService.trackGisError(error, {
+        component: 'GISAgentOrchestrationService',
+        method: 'loadActiveTasks',
+        severity: ErrorSeverity.HIGH
+      });
     }
   }
 }
