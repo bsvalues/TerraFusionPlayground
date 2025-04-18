@@ -1,29 +1,23 @@
 /**
  * Enhanced Voice Command Button
  * 
- * This component handles voice recording and processing for the enhanced voice command system.
- * It provides visual feedback about the recording state and sends the captured audio for processing.
+ * This component handles the recording of voice commands.
+ * It provides a button to start/stop recording and displays the current state.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { RecordingState, VoiceCommandResult } from '@/services/agent-voice-command-service';
 import { Mic, MicOff, Loader2 } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { 
-  RecordingState, 
-  VoiceCommandResult,
-  startRecording,
-  stopRecording
-} from '@/services/agent-voice-command-service';
 import { useToast } from '@/hooks/use-toast';
 
 interface EnhancedVoiceCommandButtonProps {
   recordingState: RecordingState;
-  setRecordingState: React.Dispatch<React.SetStateAction<RecordingState>>;
+  setRecordingState: (state: RecordingState) => void;
   onCommand: (command: string) => Promise<VoiceCommandResult>;
   isProcessing: boolean;
   userId: number;
-  contextId?: string;
+  contextId: string;
   className?: string;
 }
 
@@ -33,183 +27,255 @@ export function EnhancedVoiceCommandButton({
   onCommand,
   isProcessing,
   userId,
-  contextId = 'global',
+  contextId,
   className = ''
 }: EnhancedVoiceCommandButtonProps) {
+  // State
   const [transcript, setTranscript] = useState<string>('');
-  const [isMicAvailable, setIsMicAvailable] = useState<boolean>(true);
+  const [isListening, setIsListening] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Refs
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  
   const { toast } = useToast();
   
-  // Check for microphone availability
+  // Initialize speech recognition when component mounts
   useEffect(() => {
-    const checkMicrophone = async () => {
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const hasMicrophone = devices.some(device => device.kind === 'audioinput');
-        setIsMicAvailable(hasMicrophone);
-        
-        if (!hasMicrophone) {
-          toast({
-            title: 'No microphone detected',
-            description: 'Please connect a microphone to use voice commands',
-            variant: 'destructive'
-          });
-        }
-      } catch (error) {
-        console.error('Error checking for microphone:', error);
-        setIsMicAvailable(false);
-        toast({
-          title: 'Microphone access error',
-          description: 'Could not access your microphone. Please check permissions.',
-          variant: 'destructive'
-        });
-      }
-    };
-    
-    checkMicrophone();
-  }, []);
-  
-  // Handle start recording
-  const handleStartRecording = () => {
-    if (!isMicAvailable) {
-      toast({
-        title: 'No microphone detected',
-        description: 'Please connect a microphone to use voice commands',
-        variant: 'destructive'
-      });
+    // Check if speech recognition is supported
+    if (!('SpeechRecognition' in window) && !('webkitSpeechRecognition' in window)) {
+      setError('Speech recognition is not supported in your browser.');
       return;
     }
     
-    if (recordingState !== RecordingState.INACTIVE) return;
+    // Create speech recognition object
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognition();
     
-    setRecordingState(RecordingState.RECORDING);
-    setTranscript('');
-    
-    // Start the recording process
-    startRecording(
-      // On result callback
-      (text) => {
-        setTranscript(text);
-      },
-      // On error callback
-      (error) => {
-        console.error('Speech recognition error:', error);
-        setRecordingState(RecordingState.ERROR);
-        toast({
-          title: 'Recording Error',
-          description: 'An error occurred while recording your voice',
-          variant: 'destructive'
-        });
-      },
-      // On end callback
-      () => {
-        // Only process if we have a transcript and we're still in recording state
-        // (to prevent processing after an error)
+    // Configure speech recognition
+    if (recognitionRef.current) {
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+      
+      // Set up event handlers
+      recognitionRef.current.onstart = () => {
+        setIsListening(true);
+        setRecordingState(RecordingState.RECORDING);
+        setTranscript('');
+        setError(null);
+      };
+      
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+        
+        // Only process if we have a transcript and we're not already processing
         if (transcript && recordingState === RecordingState.RECORDING) {
           setRecordingState(RecordingState.PROCESSING);
-          handleCommandProcessing(transcript);
-        } else if (recordingState === RecordingState.RECORDING) {
+          processTranscript(transcript);
+        } else {
           setRecordingState(RecordingState.INACTIVE);
         }
-      }
-    );
-  };
-  
-  // Handle stop recording
-  const handleStopRecording = () => {
-    if (recordingState !== RecordingState.RECORDING) return;
-    
-    const currentTranscript = stopRecording();
-    
-    if (currentTranscript) {
-      setTranscript(currentTranscript);
-      setRecordingState(RecordingState.PROCESSING);
-      handleCommandProcessing(currentTranscript);
-    } else {
-      setRecordingState(RecordingState.INACTIVE);
+      };
+      
+      recognitionRef.current.onerror = (event) => {
+        const speechError = event as SpeechRecognitionErrorEvent;
+        console.error('Speech recognition error:', speechError.error);
+        
+        if (speechError.error !== 'aborted' && speechError.error !== 'no-speech') {
+          setError(`Speech recognition error: ${speechError.error}`);
+          toast({
+            title: 'Recognition Error',
+            description: `Speech recognition error: ${speechError.error}`,
+            variant: 'destructive'
+          });
+        }
+        
+        setIsListening(false);
+        setRecordingState(RecordingState.INACTIVE);
+      };
+      
+      recognitionRef.current.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        
+        // Update transcript
+        if (finalTranscript) {
+          setTranscript(finalTranscript);
+        } else if (interimTranscript) {
+          setTranscript(interimTranscript);
+        }
+      };
     }
-  };
-  
-  // Process the command
-  const handleCommandProcessing = async (text: string) => {
+    
+    // Initialize audio context for visualization
     try {
-      await onCommand(text);
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.fftSize = 256;
+    } catch (error) {
+      console.error('Error initializing audio context:', error);
+      // Audio visualization is optional, so we don't need to show an error
+    }
+    
+    // Clean up when component unmounts
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // Ignore errors when stopping
+        }
+      }
+      
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close();
+      }
+    };
+  }, []);
+  
+  // Process transcript when recording stops
+  const processTranscript = async (text: string) => {
+    if (!text.trim()) {
+      setRecordingState(RecordingState.INACTIVE);
+      return;
+    }
+    
+    try {
+      await onCommand(text.trim());
     } catch (error) {
       console.error('Error processing command:', error);
       toast({
-        title: 'Processing Error',
-        description: 'An error occurred while processing your command',
+        title: 'Error',
+        description: 'Failed to process voice command',
         variant: 'destructive'
       });
-    } finally {
-      // The parent component will set the recording state to INACTIVE
-      // after processing is complete
     }
   };
   
-  // Button states
-  const getButtonAppearance = () => {
+  // Toggle recording
+  const toggleRecording = () => {
+    if (!recognitionRef.current) {
+      setError('Speech recognition is not supported in your browser.');
+      return;
+    }
+    
+    if (isProcessing) return;
+    
+    if (recordingState === RecordingState.INACTIVE) {
+      // Start recording
+      try {
+        recognitionRef.current.start();
+        
+        // Set up audio input if available
+        if (audioContextRef.current && analyserRef.current) {
+          navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+              const source = audioContextRef.current!.createMediaStreamSource(stream);
+              source.connect(analyserRef.current!);
+              // Note: we don't connect to audioContext.destination to avoid feedback
+            })
+            .catch(err => {
+              console.error('Error accessing microphone:', err);
+              // Audio visualization is optional, so we don't need to show an error
+            });
+        }
+      } catch (error) {
+        console.error('Error starting speech recognition:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to start voice recognition',
+          variant: 'destructive'
+        });
+      }
+    } else if (recordingState === RecordingState.RECORDING) {
+      // Stop recording
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        console.error('Error stopping speech recognition:', error);
+        setRecordingState(RecordingState.INACTIVE);
+      }
+    }
+  };
+  
+  // Button text based on state
+  const getButtonText = () => {
     switch (recordingState) {
+      case RecordingState.INACTIVE:
+        return 'Record Command';
       case RecordingState.RECORDING:
-        return {
-          variant: 'destructive' as const,
-          icon: <MicOff className="h-5 w-5" />,
-          text: 'Stop',
-          tooltip: 'Stop recording',
-          action: handleStopRecording,
-          className: 'animate-pulse'
-        };
+        return 'Stop Recording';
       case RecordingState.PROCESSING:
-        return {
-          variant: 'outline' as const,
-          icon: <Loader2 className="h-5 w-5 animate-spin" />,
-          text: 'Processing...',
-          tooltip: 'Processing your command',
-          action: () => {},
-          className: ''
-        };
-      case RecordingState.ERROR:
-        return {
-          variant: 'destructive' as const,
-          icon: <MicOff className="h-5 w-5" />,
-          text: 'Error',
-          tooltip: 'An error occurred. Click to try again',
-          action: () => setRecordingState(RecordingState.INACTIVE),
-          className: ''
-        };
+        return 'Processing...';
       default:
-        return {
-          variant: 'default' as const,
-          icon: <Mic className="h-5 w-5" />,
-          text: 'Speak',
-          tooltip: 'Start voice command',
-          action: handleStartRecording,
-          className: isMicAvailable ? '' : 'opacity-50 cursor-not-allowed'
-        };
+        return 'Record Command';
     }
   };
   
-  const buttonAppearance = getButtonAppearance();
+  // Button variant based on state
+  const getButtonVariant = () => {
+    switch (recordingState) {
+      case RecordingState.INACTIVE:
+        return 'outline';
+      case RecordingState.RECORDING:
+        return 'destructive';
+      case RecordingState.PROCESSING:
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  };
+  
+  // Button icon based on state
+  const getButtonIcon = () => {
+    switch (recordingState) {
+      case RecordingState.INACTIVE:
+        return <Mic className="h-4 w-4 mr-2" />;
+      case RecordingState.RECORDING:
+        return <MicOff className="h-4 w-4 mr-2" />;
+      case RecordingState.PROCESSING:
+        return <Loader2 className="h-4 w-4 mr-2 animate-spin" />;
+      default:
+        return <Mic className="h-4 w-4 mr-2" />;
+    }
+  };
   
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant={buttonAppearance.variant}
-            onClick={buttonAppearance.action}
-            disabled={!isMicAvailable || isProcessing}
-            className={`${className} ${buttonAppearance.className}`}
-            aria-label={buttonAppearance.tooltip}
-          >
-            {buttonAppearance.icon}
-            <span className="ml-2">{buttonAppearance.text}</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{buttonAppearance.tooltip}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div className={className}>
+      <Button
+        onClick={toggleRecording}
+        variant={getButtonVariant() as any}
+        disabled={isProcessing || recordingState === RecordingState.PROCESSING || !!error}
+        className="relative"
+      >
+        {getButtonIcon()}
+        {getButtonText()}
+        
+        {recordingState === RecordingState.RECORDING && (
+          <span className="absolute -right-1 -top-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+          </span>
+        )}
+      </Button>
+      
+      {error && (
+        <div className="text-xs text-destructive mt-1">
+          {error}
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,8 +1,8 @@
 /**
- * Date Range Picker Component
+ * Date Range Picker
  * 
- * This component allows selecting a date range with a calendar interface.
- * Used for filtering analytics and other date-based data.
+ * A date range picker component using DayPicker and Popover.
+ * Allows selection of a date range.
  */
 
 import * as React from "react";
@@ -19,10 +19,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-interface DatePickerWithRangeProps {
-  value: DateRange;
-  onChange: (date: DateRange) => void;
-  className?: string;
+interface DatePickerWithRangeProps extends React.HTMLAttributes<HTMLDivElement> {
+  value: DateRange | undefined;
+  onChange: (range: DateRange | undefined) => void;
 }
 
 export function DatePickerWithRange({
@@ -30,6 +29,31 @@ export function DatePickerWithRange({
   onChange,
   className,
 }: DatePickerWithRangeProps) {
+  const [date, setDate] = React.useState<DateRange | undefined>(value);
+
+  // Update date when value changes
+  React.useEffect(() => {
+    setDate(value);
+  }, [value]);
+
+  // Update value when date changes
+  React.useEffect(() => {
+    if (date?.from && (!value?.from || date.from !== value.from || date.to !== value.to)) {
+      onChange(date);
+    }
+  }, [date, onChange, value]);
+
+  // Format the date range as a string
+  const formatDateRange = () => {
+    if (!date?.from) return "Select date range";
+    
+    if (date.to) {
+      return `${format(date.from, "MMM d, yyyy")} - ${format(date.to, "MMM d, yyyy")}`;
+    }
+
+    return format(date.from, "MMM d, yyyy");
+  };
+
   return (
     <div className={cn("grid gap-2", className)}>
       <Popover>
@@ -39,34 +63,20 @@ export function DatePickerWithRange({
             variant={"outline"}
             className={cn(
               "w-full justify-start text-left font-normal",
-              !value && "text-muted-foreground"
+              !date && "text-muted-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {value?.from ? (
-              value.to ? (
-                <>
-                  {format(value.from, "LLL dd, y")} -{" "}
-                  {format(value.to, "LLL dd, y")}
-                </>
-              ) : (
-                format(value.from, "LLL dd, y")
-              )
-            ) : (
-              <span>Pick a date range</span>
-            )}
+            {formatDateRange()}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
           <Calendar
             initialFocus
             mode="range"
-            defaultMonth={value?.from}
-            selected={value}
-            onSelect={(range) => {
-              // Handle null or undefined value by providing a default
-              onChange(range || { from: undefined, to: undefined });
-            }}
+            defaultMonth={date?.from}
+            selected={date}
+            onSelect={setDate}
             numberOfMonths={2}
           />
         </PopoverContent>

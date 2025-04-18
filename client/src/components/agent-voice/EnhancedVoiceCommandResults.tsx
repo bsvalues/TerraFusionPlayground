@@ -1,67 +1,49 @@
 /**
  * Enhanced Voice Command Results
  * 
- * This component displays voice command results with enhanced features:
- * - Command history
- * - Error handling with suggestions
- * - Command corrections
- * - Contextual help
+ * This component displays the results of voice commands, including:
+ * - Command transcripts
+ * - Processing status
+ * - Command results
+ * - Suggestions for failed commands
  */
 
-import { useState, useEffect, useMemo } from 'react';
-import { 
-  RecordingState, 
-  VoiceCommandResult,
-  executeVoiceCommandAction
-} from '@/services/agent-voice-command-service';
-import { 
-  getCommandCorrections,
-  getContextualHelp,
-  type VoiceCommandHelpContent
-} from '@/services/enhanced-voice-command-service';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { useState, useRef, useEffect } from 'react';
+import { VoiceCommandResult, RecordingState } from '@/services/agent-voice-command-service';
+import { VoiceCommandHelp } from './VoiceCommandHelp';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Check,
+  XCircle,
+  Loader2,
+  Trash2,
+  Send,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  Mic,
+  MessageSquare,
+  Clock,
+  AlertCircle,
+  Sparkles,
+  HelpCircle
+} from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Mic, 
-  Trash2, 
-  ChevronRight, 
-  CheckCircle, 
-  XCircle, 
-  Loader2, 
-  Send, 
-  Clock, 
-  Info, 
-  Command, 
-  ChevronDown, 
-  ChevronUp, 
-  Copy,
-  Sparkles
-} from 'lucide-react';
+} from "@/components/ui/tooltip";
 import { format } from 'date-fns';
-import { useToast } from '@/hooks/use-toast';
 
 interface EnhancedVoiceCommandResultsProps {
   results: VoiceCommandResult[];
@@ -72,9 +54,8 @@ interface EnhancedVoiceCommandResultsProps {
   suggestions: string[];
   onSuggestionSelected: (suggestion: string) => void;
   onCommandSubmit: (command: string) => void;
-  showHelp?: boolean;
-  contextId?: string;
-  className?: string;
+  showHelp: boolean;
+  contextId: string;
 }
 
 export function EnhancedVoiceCommandResults({
@@ -86,146 +67,102 @@ export function EnhancedVoiceCommandResults({
   suggestions,
   onSuggestionSelected,
   onCommandSubmit,
-  showHelp = false,
-  contextId = 'global',
-  className = ''
+  showHelp,
+  contextId
 }: EnhancedVoiceCommandResultsProps) {
   // State
-  const [activeTab, setActiveTab] = useState<string>('results');
-  const [manualCommand, setManualCommand] = useState<string>('');
-  const [correction, setCorrection] = useState<string[]>([]);
-  const [helpContent, setHelpContent] = useState<VoiceCommandHelpContent[]>([]);
-  const [isHelpLoading, setIsHelpLoading] = useState<boolean>(false);
-  const [showHistory, setShowHistory] = useState<boolean>(true);
+  const [command, setCommand] = useState<string>('');
+  const [isHelpOpen, setIsHelpOpen] = useState<boolean>(showHelp);
+  const [expandedResults, setExpandedResults] = useState<Record<string, boolean>>({});
   
-  const { toast } = useToast();
+  // Refs
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const resultAreaRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   
-  // Filter results to show only last 10
-  const displayResults = useMemo(() => 
-    results.slice(-10).reverse(), 
-    [results]
-  );
-  
-  // Load corrections when a command fails
+  // Scroll to bottom when results change
   useEffect(() => {
-    const loadCorrections = async () => {
-      if (results.length === 0) return;
-      
-      const lastResult = results[results.length - 1];
-      
-      if (!lastResult.successful && lastResult.command) {
-        try {
-          const corrections = await getCommandCorrections(lastResult.command, contextId);
-          setCorrection(corrections);
-        } catch (error) {
-          console.error('Error getting corrections:', error);
-          // Silently fail, corrections are optional
-        }
-      } else {
-        // Clear corrections if last command was successful
-        setCorrection([]);
-      }
-    };
-    
-    loadCorrections();
-  }, [results, contextId]);
-  
-  // Load help content if enabled
-  useEffect(() => {
-    const loadHelp = async () => {
-      if (!showHelp) return;
-      
-      setIsHelpLoading(true);
-      
-      try {
-        const help = await getContextualHelp(contextId);
-        setHelpContent(help);
-      } catch (error) {
-        console.error('Error loading help content:', error);
-        // Silently fail, help is optional
-      } finally {
-        setIsHelpLoading(false);
-      }
-    };
-    
-    loadHelp();
-  }, [showHelp, contextId]);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [results, isProcessing, recordingState, currentTranscript]);
   
   // Handle manual command submission
-  const handleManualSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!command.trim() || isProcessing) return;
     
-    if (!manualCommand.trim()) return;
-    
-    onCommandSubmit(manualCommand);
-    setManualCommand('');
+    onCommandSubmit(command);
+    setCommand('');
   };
   
-  // Copy command to clipboard
-  const copyCommand = (text: string) => {
-    navigator.clipboard.writeText(text)
-      .then(() => {
-        toast({
-          title: 'Copied',
-          description: 'Command copied to clipboard'
-        });
-      })
-      .catch(() => {
-        toast({
-          title: 'Error',
-          description: 'Failed to copy to clipboard',
-          variant: 'destructive'
-        });
-      });
-  };
-  
-  // Execute action from result
-  const handleExecuteAction = (result: VoiceCommandResult, actionIndex: number) => {
-    if (!result.actions || actionIndex >= result.actions.length) return;
-    
-    executeVoiceCommandAction(result.actions[actionIndex]);
+  // Toggle result expansion
+  const toggleResultExpanded = (id: string) => {
+    setExpandedResults(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
   };
   
   // Format timestamp
   const formatTimestamp = (timestamp: number) => {
-    return format(new Date(timestamp), 'hh:mm:ss a');
+    return format(new Date(timestamp), 'MM/dd/yyyy HH:mm:ss');
   };
   
-  // Render suggestion buttons
-  const renderSuggestions = () => {
-    if (suggestions.length === 0 && correction.length === 0) return null;
-    
-    const allSuggestions = [...suggestions, ...correction];
-    
-    return (
-      <div className="flex flex-wrap gap-2 mt-2">
-        <p className="w-full text-sm font-medium text-muted-foreground mb-1">
-          {correction.length > 0 
-            ? 'Did you mean:' 
-            : 'Suggested commands:'}
-        </p>
-        {allSuggestions.map((suggestion, i) => (
-          <Button 
-            key={i}
-            variant="outline" 
-            size="sm" 
-            onClick={() => onSuggestionSelected(suggestion)}
-            className="flex items-center text-xs"
-          >
-            <Sparkles className="h-3 w-3 mr-1" />
-            {suggestion}
-          </Button>
-        ))}
-      </div>
-    );
+  // Determine text color based on successful state
+  const getResultTextColor = (successful: boolean) => {
+    return successful ? 'text-green-500' : 'text-red-500';
   };
   
-  // Render loading state
-  const renderLoading = () => {
+  // Render help toggle button
+  const renderHelpToggle = () => (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setIsHelpOpen(!isHelpOpen)}
+      className="gap-1"
+    >
+      {isHelpOpen ? (
+        <>
+          <ChevronUp className="h-4 w-4" />
+          Hide Help
+        </>
+      ) : (
+        <>
+          <HelpCircle className="h-4 w-4" />
+          Show Help
+        </>
+      )}
+    </Button>
+  );
+  
+  // Render command form
+  const renderCommandForm = () => (
+    <form onSubmit={handleSubmit} className="flex gap-2">
+      <Input
+        value={command}
+        onChange={(e) => setCommand(e.target.value)}
+        placeholder="Type a command..."
+        disabled={isProcessing || recordingState === RecordingState.RECORDING}
+        ref={inputRef}
+        className="flex-1"
+      />
+      <Button
+        type="submit"
+        disabled={!command.trim() || isProcessing || recordingState === RecordingState.RECORDING}
+      >
+        <Send className="h-4 w-4 mr-2" />
+        Send
+      </Button>
+    </form>
+  );
+  
+  // Render current status
+  const renderCurrentStatus = () => {
     if (isProcessing || recordingState === RecordingState.PROCESSING) {
       return (
-        <div className="flex items-center p-4 text-muted-foreground animate-pulse">
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        <div className="flex items-center gap-2 text-sm p-2 bg-muted rounded-md animate-pulse mb-4">
+          <Loader2 className="h-4 w-4 animate-spin" />
           <span>Processing command...</span>
         </div>
       );
@@ -233,9 +170,9 @@ export function EnhancedVoiceCommandResults({
     
     if (recordingState === RecordingState.RECORDING) {
       return (
-        <div className="flex items-center p-4 text-primary animate-pulse">
-          <Mic className="h-4 w-4 mr-2" />
-          <span>Listening: {currentTranscript}</span>
+        <div className="flex items-center gap-2 text-sm p-2 bg-muted rounded-md mb-4">
+          <Mic className="h-4 w-4 text-red-500" />
+          <span>Recording: {currentTranscript || "Waiting for speech..."}</span>
         </div>
       );
     }
@@ -243,266 +180,208 @@ export function EnhancedVoiceCommandResults({
     return null;
   };
   
-  // Render transcript input
-  const renderTranscriptInput = () => (
-    <form onSubmit={handleManualSubmit} className="flex items-center gap-2">
-      <Input
-        placeholder="Type a command manually..."
-        value={manualCommand}
-        onChange={(e) => setManualCommand(e.target.value)}
-        className="flex-1"
-        disabled={isProcessing || recordingState !== RecordingState.INACTIVE}
-      />
-      <Button 
-        type="submit" 
-        size="icon"
-        disabled={isProcessing || recordingState !== RecordingState.INACTIVE || !manualCommand.trim()}
+  // Render suggestions
+  const renderSuggestions = () => {
+    if (suggestions.length === 0) return null;
+    
+    return (
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles className="h-4 w-4 text-blue-500" />
+          <span className="text-sm font-medium">Did you mean:</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {suggestions.map((suggestion, index) => (
+            <Button
+              key={index}
+              variant="outline"
+              size="sm"
+              onClick={() => onSuggestionSelected(suggestion)}
+              className="text-xs"
+            >
+              {suggestion}
+            </Button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+  
+  // Render action buttons for a result
+  const renderResultActions = (result: VoiceCommandResult) => {
+    if (!result.actions || result.actions.length === 0) return null;
+    
+    return (
+      <div className="mt-3 flex flex-wrap gap-2">
+        {result.actions.map((action, index) => (
+          <Button
+            key={index}
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (action.command) {
+                onCommandSubmit(action.command);
+              }
+            }}
+          >
+            {action.label}
+          </Button>
+        ))}
+      </div>
+    );
+  };
+  
+  // Render a single result
+  const renderResult = (result: VoiceCommandResult, index: number) => {
+    const isExpanded = expandedResults[result.id] || false;
+    
+    return (
+      <Collapsible
+        key={result.id}
+        open={isExpanded}
+        onOpenChange={() => toggleResultExpanded(result.id)}
+        className="border rounded-md overflow-hidden mb-2"
       >
-        <Send className="h-4 w-4" />
-      </Button>
-    </form>
-  );
-  
-  // Render command history
-  const renderHistory = () => {
-    if (displayResults.length === 0) {
-      return (
-        <div className="text-center py-6 text-muted-foreground">
-          <p>No commands yet. Try saying something!</p>
-        </div>
-      );
-    }
-    
-    return (
-      <ScrollArea className="max-h-[400px]">
-        <div className="space-y-3 p-1">
-          {displayResults.map((result, index) => (
-            <Card key={index} className={`shadow-sm ${!result.successful ? 'border-destructive' : ''}`}>
-              <CardHeader className="p-3 pb-0">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center">
-                    {result.successful ? (
-                      <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-destructive mr-2" />
-                    )}
-                    <div>
-                      <p className="text-sm font-medium leading-none">{result.command}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        <Clock className="h-3 w-3 inline mr-1" />
-                        {formatTimestamp(result.timestamp)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => copyCommand(result.command)}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Copy command</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-3">
-                {result.error ? (
-                  <div className="bg-destructive/10 p-2 rounded-md text-sm">
-                    <span className="font-medium">Error: </span>
-                    {result.error}
-                  </div>
-                ) : result.response ? (
-                  <div className="text-sm">{result.response}</div>
-                ) : null}
-                
-                {result.actions && result.actions.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {result.actions.map((action, i) => (
-                      <Button
-                        key={i}
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleExecuteAction(result, i)}
-                        className="text-xs"
-                      >
-                        <Command className="h-3 w-3 mr-1" />
-                        {action.type}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </ScrollArea>
-    );
-  };
-  
-  // Render help content
-  const renderHelp = () => {
-    if (isHelpLoading) {
-      return (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" />
-          <span>Loading help content...</span>
-        </div>
-      );
-    }
-    
-    if (!showHelp || helpContent.length === 0) {
-      return (
-        <div className="text-center py-8 text-muted-foreground">
-          <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p>No help content available for this context.</p>
-        </div>
-      );
-    }
-    
-    return (
-      <ScrollArea className="max-h-[400px]">
-        <div className="space-y-4 p-1">
-          {helpContent.map((help) => (
-            <Collapsible key={help.id} className="border rounded-md">
-              <CollapsibleTrigger className="flex w-full items-center justify-between p-3 font-medium">
-                <div className="flex items-center">
-                  <Badge variant="outline" className="mr-2">
-                    {help.commandType}
+        <CollapsibleTrigger className="flex w-full items-center justify-between p-3 hover:bg-muted/50 text-left">
+          <div className="flex items-center gap-2 truncate">
+            {result.successful ? (
+              <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+            ) : (
+              <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            )}
+            <div className="truncate">
+              <span className="font-medium">{result.command}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="text-xs">
+                    {new Date(result.timestamp).toLocaleTimeString()}
                   </Badge>
-                  <span>{help.title}</span>
-                </div>
-                <ChevronDown className="h-4 w-4" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="p-3 pt-0 text-sm space-y-2">
-                <p>{help.description}</p>
-                
-                {help.examplePhrases.length > 0 && (
-                  <div>
-                    <p className="font-medium mb-1">Example phrases:</p>
-                    <ul className="list-disc list-inside">
-                      {help.examplePhrases.map((phrase, i) => (
-                        <li key={i}>
-                          "{phrase}"
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 ml-1"
-                            onClick={() => onCommandSubmit(phrase)}
-                          >
-                            <Send className="h-3 w-3" />
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {help.parameters && Object.keys(help.parameters).length > 0 && (
-                  <div>
-                    <p className="font-medium mb-1">Parameters:</p>
-                    <ul className="list-disc list-inside">
-                      {Object.entries(help.parameters).map(([key, desc], i) => (
-                        <li key={i}>
-                          <span className="font-semibold">{key}</span> - {desc}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {help.responseExample && (
-                  <div>
-                    <p className="font-medium mb-1">Response example:</p>
-                    <div className="bg-muted p-2 rounded-md">
-                      {help.responseExample}
-                    </div>
-                  </div>
-                )}
-              </CollapsibleContent>
-            </Collapsible>
-          ))}
-        </div>
-      </ScrollArea>
-    );
-  };
-  
-  return (
-    <Card className={className}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <CardTitle className="text-lg">Voice Commands</CardTitle>
-            {displayResults.length > 0 && (
-              <Badge variant="outline" className="ml-2">
-                {displayResults.length} {displayResults.length === 1 ? 'command' : 'commands'}
-              </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {formatTimestamp(result.timestamp)}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {isExpanded ? (
+              <ChevronUp className="h-4 w-4 flex-shrink-0" />
+            ) : (
+              <ChevronDown className="h-4 w-4 flex-shrink-0" />
             )}
           </div>
-          
-          <div className="flex items-center gap-2">
-            {displayResults.length > 0 && (
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => setShowHistory(!showHistory)}
-                aria-label={showHistory ? 'Hide history' : 'Show history'}
-              >
-                {showHistory ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="px-4 pb-4 border-t">
+          <div className="mt-4 space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={result.successful ? "success" : "destructive"}>
+                {result.successful ? "Success" : "Failed"}
+              </Badge>
+              {result.contextId && (
+                <Badge variant="outline">{result.contextId}</Badge>
+              )}
+            </div>
+            
+            <div className="text-sm">
+              <div className="font-medium mb-1">Command:</div>
+              <div className="bg-muted p-2 rounded-md">{result.command}</div>
+            </div>
+            
+            {result.processedCommand && result.processedCommand !== result.command && (
+              <div className="text-sm">
+                <div className="font-medium mb-1">Processed Command:</div>
+                <div className="bg-muted p-2 rounded-md">{result.processedCommand}</div>
+              </div>
             )}
             
-            {displayResults.length > 0 && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
+            {result.response && (
+              <div className="text-sm">
+                <div className="font-medium mb-1">Response:</div>
+                <div className="bg-muted p-2 rounded-md whitespace-pre-wrap">{result.response}</div>
+              </div>
+            )}
+            
+            {result.error && (
+              <div className="text-sm">
+                <div className="font-medium mb-1 text-red-500">Error:</div>
+                <div className="bg-red-50 p-2 rounded-md text-red-500">{result.error}</div>
+              </div>
+            )}
+            
+            {renderResultActions(result)}
+            
+            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-3">
+              <Clock className="h-3 w-3" />
+              {formatTimestamp(result.timestamp)}
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
+  
+  // Render empty state
+  const renderEmpty = () => (
+    <div className="text-center py-12 text-muted-foreground">
+      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-20" />
+      <p className="text-lg font-medium">No Commands Yet</p>
+      <p className="mt-1 mb-4">Use the voice button or type a command to get started.</p>
+    </div>
+  );
+  
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-center">
+          <CardTitle>Voice Command Results</CardTitle>
+          <div className="flex gap-2">
+            {renderHelpToggle()}
+            {results.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={onClear}
-                className="text-destructive"
-                aria-label="Clear history"
+                disabled={isProcessing}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear
               </Button>
             )}
           </div>
         </div>
-        <CardDescription>
-          Ask questions or give commands using your voice
-        </CardDescription>
       </CardHeader>
       
-      <CardContent className="space-y-4">
-        {renderLoading()}
+      {isHelpOpen && (
+        <CardContent className="p-0">
+          <div className="mx-6 mb-6">
+            <VoiceCommandHelp 
+              contextId={contextId} 
+              onCommandSelected={onCommandSubmit}
+              className="w-full"
+            />
+          </div>
+        </CardContent>
+      )}
+      
+      <CardContent className="pb-3" ref={resultAreaRef}>
+        {renderCurrentStatus()}
         {renderSuggestions()}
         
-        {showHelp && (
-          <Tabs defaultValue="results" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-2">
-              <TabsTrigger value="results">Results</TabsTrigger>
-              <TabsTrigger value="help">Help</TabsTrigger>
-            </TabsList>
-            <TabsContent value="results">
-              {showHistory && renderHistory()}
-            </TabsContent>
-            <TabsContent value="help">
-              {renderHelp()}
-            </TabsContent>
-          </Tabs>
-        )}
-        
-        {!showHelp && showHistory && renderHistory()}
+        <div ref={scrollRef} className="results-container">
+          {results.length === 0 ? (
+            renderEmpty()
+          ) : (
+            <ScrollArea className="h-[350px]">
+              {results.map(renderResult)}
+            </ScrollArea>
+          )}
+        </div>
       </CardContent>
       
       <CardFooter>
-        {renderTranscriptInput()}
+        {renderCommandForm()}
       </CardFooter>
     </Card>
   );
