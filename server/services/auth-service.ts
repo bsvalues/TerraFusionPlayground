@@ -125,7 +125,7 @@ export class AuthService implements IAuthService {
     
     // Create token payload
     const payload = {
-      userId: user.id,
+      userId: user.userId,
       username: user.username,
       roles: user.roles || ['taxpayer'],
       permissions
@@ -209,7 +209,7 @@ export class AuthService implements IAuthService {
         this.securityService.logSecurityEvent({
           eventType: 'authentication',
           component: 'auth-service',
-          userId: user.id,
+          userId: user.userId,
           details: {
             action: 'login_attempt',
             username,
@@ -228,7 +228,7 @@ export class AuthService implements IAuthService {
       this.securityService.logSecurityEvent({
         eventType: 'authentication',
         component: 'auth-service',
-        userId: user.id,
+        userId: user.userId,
         details: {
           action: 'login_success',
           username

@@ -119,7 +119,7 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
       function generateToken(user, expiresIn = ${this.authConfig.tokenExpirationTime}) {
         return jwt.sign(
           { 
-            userId: user.id,
+            userId: user.userId,
             roles: user.roles,
             permissions: user.permissions
           },
@@ -149,7 +149,7 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
       // Refresh Token Generation
       function generateRefreshToken(user) {
         return jwt.sign(
-          { userId: user.id },
+          { userId: user.userId },
           REFRESH_TOKEN_SECRET,
           { expiresIn: '7d' }
         );
