@@ -78,6 +78,14 @@ import {
   CollaborationStatus, CollaborationRole
 } from "@shared/schema";
 import { MarketTrend, PropertyHistoryDataPoint, PropertyAnalysisResult } from "@shared/schema";
+import { 
+  GISLayer, InsertGISLayer, 
+  GISFeatureCollection, InsertGISFeatureCollection,
+  GISMapProject, InsertGISMapProject,
+  ETLJob, GISAgentTask, AgentMessage, InsertAgentMessage,
+  SpatialAnalysisResult,
+  LayerType, ETLJobStatus, AgentTaskStatus, SpatialEventType
+} from "@shared/gis-schema";
 import { RegulatoryFramework } from "./services/risk-assessment-engine";
 import pg from 'pg';
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -746,6 +754,52 @@ export interface IStorage {
   getLearningUpdateById(updateId: string): Promise<LearningUpdate | null>;
   getRecentLearningUpdates(limit?: number): Promise<LearningUpdate[]>;
   getLearningUpdatesByType(updateType: string): Promise<LearningUpdate[]>;
+  
+  // GIS Layer methods
+  createGISLayer(layer: InsertGISLayer): Promise<GISLayer>;
+  getGISLayer(id: number): Promise<GISLayer | undefined>;
+  getGISLayers(filters?: { type?: string, userId?: number }): Promise<GISLayer[]>;
+  updateGISLayer(id: number, updates: Partial<InsertGISLayer>): Promise<GISLayer | undefined>;
+  deleteGISLayer(id: number): Promise<boolean>;
+  
+  // GIS Feature Collection methods
+  createGISFeatureCollection(collection: InsertGISFeatureCollection): Promise<GISFeatureCollection>;
+  getGISFeatureCollection(id: number): Promise<GISFeatureCollection | undefined>;
+  getGISFeatureCollectionsByLayer(layerId: number): Promise<GISFeatureCollection[]>;
+  updateGISFeatureCollection(id: number, updates: Partial<InsertGISFeatureCollection>): Promise<GISFeatureCollection | undefined>;
+  deleteGISFeatureCollection(id: number): Promise<boolean>;
+  
+  // GIS Map Project methods
+  createGISMapProject(project: InsertGISMapProject): Promise<GISMapProject>;
+  getGISMapProject(id: number): Promise<GISMapProject | undefined>;
+  getGISMapProjects(userId?: number): Promise<GISMapProject[]>;
+  getPublicGISMapProjects(): Promise<GISMapProject[]>;
+  updateGISMapProject(id: number, updates: Partial<InsertGISMapProject>): Promise<GISMapProject | undefined>;
+  deleteGISMapProject(id: number): Promise<boolean>;
+  
+  // ETL Job methods
+  createETLJob(job: { id: string, config: any, status: string, createdAt: Date, updatedAt: Date }): Promise<ETLJob>;
+  getETLJob(id: string): Promise<ETLJob | undefined>;
+  getETLJobs(userId?: number): Promise<ETLJob[]>;
+  updateETLJob(id: string, updates: Partial<ETLJob>): Promise<ETLJob | undefined>;
+  
+  // GIS Agent Task methods
+  createAgentTask(task: GISAgentTask): Promise<GISAgentTask>;
+  getAgentTask(id: string): Promise<GISAgentTask | null>;
+  getAgentTasks(agentId?: string, status?: string): Promise<GISAgentTask[]>;
+  updateAgentTask(id: string, updates: Partial<GISAgentTask>): Promise<GISAgentTask | undefined>;
+  
+  // Agent Message methods
+  createAgentMessage(message: InsertAgentMessage): Promise<AgentMessage>;
+  getAgentMessage(id: number): Promise<AgentMessage | undefined>;
+  getUnprocessedAgentMessages(topic: string): Promise<AgentMessage[]>;
+  updateAgentMessage(id: string, updates: Partial<AgentMessage>): Promise<AgentMessage | undefined>;
+  
+  // Spatial Analysis methods
+  createSpatialAnalysis(analysis: { name: string, analysisType: string, inputData: any, resultData: any, parameters?: any, metadata?: any, userId?: number }): Promise<SpatialAnalysisResult>;
+  getSpatialAnalysis(id: number): Promise<SpatialAnalysisResult | undefined>;
+  getSpatialAnalysesByUser(userId: number): Promise<SpatialAnalysisResult[]>;
+  getSpatialAnalysesByType(analysisType: string): Promise<SpatialAnalysisResult[]>;
 }
 
 // Implement the in-memory storage
@@ -825,6 +879,15 @@ export class MemStorage implements IStorage {
   private sharedWorkflowActivities: Map<number, SharedWorkflowActivity>; // Activities within shared workflows
   private workflowSessions: Map<string, WorkflowSession>; // Real-time sessions for collaborative work
   
+  // GIS Storage
+  private gisLayers: Map<number, GISLayer>; // GIS layers
+  private gisFeatureCollections: Map<number, GISFeatureCollection>; // GIS feature collections
+  private gisMapProjects: Map<number, GISMapProject>; // GIS map projects
+  private etlJobs: Map<string, ETLJob>; // ETL jobs
+  private gisAgentTasks: Map<string, GISAgentTask>; // GIS agent tasks
+  private agentMessages: Map<number, AgentMessage>; // Agent messages
+  private spatialAnalysisResults: Map<number, SpatialAnalysisResult>; // Spatial analysis results
+  
   private currentUserId: number;
   private currentPropertyId: number;
   private currentLandRecordId: number;
@@ -870,6 +933,12 @@ export class MemStorage implements IStorage {
   private currentSchemaMappingId: number;
   private currentConversionLogId: number;
   private currentCompatibilityLayerId: number;
+  
+  // GIS counters
+  private currentGISLayerId: number;
+  private currentGISFeatureCollectionId: number;
+  private currentGISMapProjectId: number;
+  private currentSpatialAnalysisResultId: number;
 
   constructor() {
     this.users = new Map();
@@ -946,6 +1015,14 @@ export class MemStorage implements IStorage {
     this.teamCollaborationSessions = new Map<string, TeamCollaborationSession>();
     this.teamFeedback = new Map<string, TeamFeedback>();
     this.teamKnowledgeBaseItems = new Map<string, TeamKnowledgeBaseItem>();
+    
+    // Initialize GIS maps
+    this.gisLayers = new Map<number, GISLayer>();
+    this.gisFeatureCollections = new Map<number, GISFeatureCollection>();
+    this.gisMapProjects = new Map<number, GISMapProject>();
+    this.etlJobs = new Map<string, ETLJob>();
+    this.gisAgentTasks = new Map<string, GISAgentTask>();
+    this.spatialAnalysisResults = new Map<number, SpatialAnalysisResult>();
     
     this.currentUserId = 1;
     this.currentPropertyId = 1;
