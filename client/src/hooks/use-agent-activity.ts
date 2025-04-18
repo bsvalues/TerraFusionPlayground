@@ -35,6 +35,7 @@ interface UITask {
   message?: string;
   startTime: Date;
   endTime?: Date;
+  notified?: boolean; // Track if notification has been shown
 }
 
 /**

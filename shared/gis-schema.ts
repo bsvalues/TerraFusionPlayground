@@ -1,203 +1,194 @@
 /**
  * GIS Schema Definitions
  * 
- * This file contains the database schema definitions for the GIS module.
- * It includes tables for:
- * - GIS layers (vector and raster)
- * - ETL jobs for data conversion
- * - Agent messages for GIS coordination
- * - Agent tasks for GIS operations
- * - Spatial events for system notifications
+ * This file contains the schema definitions for GIS data in the application.
+ * It defines the structure of GIS layers, feature collections, and map projects.
  */
 
-import { relations, sql } from 'drizzle-orm';
-import { 
-  pgTable, 
-  serial, 
-  text, 
-  timestamp, 
-  integer, 
-  boolean, 
-  json, 
-  varchar 
-} from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+import { integer, pgTable, serial, text, timestamp, json, boolean, real } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
-import { users } from './schema';
 
-/**
- * GIS Layers Table
- * Stores vector and raster GIS layers
- */
+// Layer type enum
+export enum LayerType {
+  VECTOR = 'vector',
+  RASTER = 'raster',
+  TILE = 'tile',
+  WMS = 'wms',
+  GEOJSON = 'geojson'
+}
+
+// ETL Job Status enum
+export enum ETLJobStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELED = 'canceled'
+}
+
+// Agent Task Status enum
+export enum AgentTaskStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELED = 'canceled'
+}
+
+// Spatial Event Type enum
+export enum SpatialEventType {
+  CREATED = 'created',
+  UPDATED = 'updated',
+  DELETED = 'deleted',
+  ANALYZED = 'analyzed',
+  REPAIRED = 'repaired',
+  CONVERTED = 'converted'
+}
+
+// GIS Layer table
 export const gisLayers = pgTable('gis_layers', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
-  type: text('type').notNull(), // 'vector', 'raster', etc.
   description: text('description'),
-  source: json('source'), // Source data or reference
-  style: json('style'), // Styling information
-  metadata: json('metadata'), // Additional metadata
-  visible: boolean('visible').default(true),
-  opacity: varchar('opacity', { length: 10 }).default('1.0'),
-  zIndex: integer('z_index').default(0),
-  userId: integer('user_id').references(() => users.id),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow()
+  type: text('type').notNull().$type<LayerType>(),
+  source: text('source'),
+  url: text('url'),
+  attribution: text('attribution'),
+  metadata: json('metadata'),
+  visible: boolean('visible').notNull().default(true),
+  opacity: real('opacity').notNull().default(1.0),
+  zIndex: integer('z_index').notNull().default(0),
+  userId: integer('user_id').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
-// Relations for GIS layers
-export const gisLayersRelations = relations(gisLayers, ({ one }) => ({
-  user: one(users, {
-    fields: [gisLayers.userId],
-    references: [users.id],
-  }),
+// GIS Feature Collection table
+export const gisFeatureCollections = pgTable('gis_feature_collections', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  layerId: integer('layer_id').notNull().references(() => gisLayers.id, { onDelete: 'cascade' }),
+  data: json('data').notNull(),
+  metadata: json('metadata'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+// GIS Map Project table
+export const gisMapProjects = pgTable('gis_map_projects', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  center: json('center').notNull(), // [longitude, latitude]
+  zoom: real('zoom').notNull().default(3.0),
+  layers: json('layers').notNull(), // Array of layer configurations
+  metadata: json('metadata'),
+  userId: integer('user_id').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+// ETL Job table
+export const etlJobs = pgTable('etl_jobs', {
+  id: text('id').primaryKey(), // UUID
+  name: text('name').notNull(),
+  description: text('description'),
+  sourceType: text('source_type').notNull(),
+  targetType: text('target_type').notNull(),
+  config: json('config').notNull(),
+  status: text('status').notNull().$type<ETLJobStatus>(),
+  progress: real('progress'),
+  result: json('result'),
+  error: text('error'),
+  userId: integer('user_id').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at')
+});
+
+// GIS Agent Task table
+export const gisAgentTasks = pgTable('gis_agent_tasks', {
+  id: text('id').primaryKey(), // UUID
+  agentId: text('agent_id').notNull(),
+  agentType: text('agent_type').notNull(),
+  taskType: text('task_type').notNull(),
+  status: text('status').notNull().$type<AgentTaskStatus>(),
+  data: json('data').notNull(),
+  result: json('result'),
+  progress: real('progress'),
+  message: text('message'),
+  error: text('error'),
+  userId: integer('user_id').notNull(),
+  startTime: timestamp('start_time').notNull().defaultNow(),
+  endTime: timestamp('end_time')
+});
+
+// Agent Message table
+export const agentMessages = pgTable('agent_messages', {
+  id: serial('id').primaryKey(),
+  agentId: text('agent_id').notNull(),
+  parentId: integer('parent_id').references(() => agentMessages.id),
+  content: text('content').notNull(),
+  type: text('type').notNull(),
+  metadata: json('metadata'),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
+// Spatial Event table
+export const spatialEvents = pgTable('spatial_events', {
+  id: serial('id').primaryKey(),
+  type: text('type').notNull().$type<SpatialEventType>(),
+  layerId: integer('layer_id').references(() => gisLayers.id),
+  featureId: text('feature_id'),
+  data: json('data'),
+  metadata: json('metadata'),
+  userId: integer('user_id'),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
+// Define relations
+export const gisLayersRelations = relations(gisLayers, ({ many }) => ({
+  featureCollections: many(gisFeatureCollections)
 }));
 
-// Insert schema for GIS layers
-export const insertGISLayerSchema = createInsertSchema(gisLayers)
-  .omit({ id: true, createdAt: true, updatedAt: true });
+export const gisFeatureCollectionsRelations = relations(gisFeatureCollections, ({ one }) => ({
+  layer: one(gisLayers, {
+    fields: [gisFeatureCollections.layerId],
+    references: [gisLayers.id]
+  })
+}));
 
-// Types for GIS layers
+// Generate Zod schemas
+export const insertGISLayerSchema = createInsertSchema(gisLayers).omit({ id: true });
+export const insertGISFeatureCollectionSchema = createInsertSchema(gisFeatureCollections).omit({ id: true });
+export const insertGISMapProjectSchema = createInsertSchema(gisMapProjects).omit({ id: true });
+export const insertETLJobSchema = createInsertSchema(etlJobs);
+export const insertGISAgentTaskSchema = createInsertSchema(gisAgentTasks);
+export const insertAgentMessageSchema = createInsertSchema(agentMessages).omit({ id: true });
+export const insertSpatialEventSchema = createInsertSchema(spatialEvents).omit({ id: true });
+
+// Export types
 export type GISLayer = typeof gisLayers.$inferSelect;
 export type InsertGISLayer = z.infer<typeof insertGISLayerSchema>;
 
-/**
- * ETL Jobs Table
- * Stores data conversion job definitions and results
- */
-export const etlJobs = pgTable('etl_jobs', {
-  id: text('id').primaryKey(),
-  config: json('config').notNull(), // Job configuration
-  status: text('status').notNull(), // 'pending', 'running', 'completed', 'failed', 'canceled'
-  result: json('result'), // Job result
-  progress: integer('progress'), // Progress percentage (0-100)
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-  startedAt: timestamp('started_at'),
-  completedAt: timestamp('completed_at'),
-  userId: integer('user_id').references(() => users.id)
-});
+export type GISFeatureCollection = typeof gisFeatureCollections.$inferSelect;
+export type InsertGISFeatureCollection = z.infer<typeof insertGISFeatureCollectionSchema>;
 
-// Relations for ETL jobs
-export const etlJobsRelations = relations(etlJobs, ({ one }) => ({
-  user: one(users, {
-    fields: [etlJobs.userId],
-    references: [users.id],
-  }),
-}));
+export type GISMapProject = typeof gisMapProjects.$inferSelect;
+export type InsertGISMapProject = z.infer<typeof insertGISMapProjectSchema>;
 
-// Insert schema for ETL jobs
-export const insertETLJobSchema = createInsertSchema(etlJobs)
-  .omit({ result: true, progress: true, startedAt: true, completedAt: true });
-
-// Types for ETL jobs
 export type ETLJob = typeof etlJobs.$inferSelect;
 export type InsertETLJob = z.infer<typeof insertETLJobSchema>;
 
-/**
- * Agent Messages Table
- * Stores messages for agent communication
- */
-export const agentMessages = pgTable('agent_messages', {
-  id: serial('id').primaryKey(),
-  messageId: text('message_id').notNull().unique(),
-  conversationId: text('conversation_id'),
-  senderAgentId: text('sender_agent_id').notNull(),
-  receiverAgentId: text('receiver_agent_id'),
-  messageType: text('message_type').notNull(),
-  subject: text('subject').notNull(),
-  content: json('content').notNull(),
-  priority: text('priority').default('normal'),
-  status: text('status').default('sent'),
-  timestamp: timestamp('timestamp').defaultNow(),
-  processedAt: timestamp('processed_at'),
-  expiresAt: timestamp('expires_at'),
-  correlationId: text('correlation_id'),
-  contextData: json('context_data'),
-  isAcknowledged: boolean('is_acknowledged')
-});
+export type GISAgentTask = typeof gisAgentTasks.$inferSelect;
+export type InsertGISAgentTask = z.infer<typeof insertGISAgentTaskSchema>;
 
-// Insert schema for agent messages
-export const insertAgentMessageSchema = createInsertSchema(agentMessages)
-  .omit({ id: true, processedAt: true, isAcknowledged: true });
-
-// Types for agent messages
 export type AgentMessage = typeof agentMessages.$inferSelect;
 export type InsertAgentMessage = z.infer<typeof insertAgentMessageSchema>;
 
-/**
- * Agent Tasks Table
- * Stores tasks assigned to agents
- */
-export const agentTasks = pgTable('agent_tasks', {
-  id: text('id').primaryKey(),
-  agentId: text('agent_id').notNull(),
-  taskType: text('task_type').notNull(),
-  status: text('status').notNull(), // 'pending', 'processing', 'completed', 'failed', 'canceled'
-  data: json('data').notNull(),
-  result: json('result'),
-  error: text('error'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-  completedAt: timestamp('completed_at'),
-  userId: integer('user_id').references(() => users.id)
-});
-
-// Relations for agent tasks
-export const agentTasksRelations = relations(agentTasks, ({ one }) => ({
-  user: one(users, {
-    fields: [agentTasks.userId],
-    references: [users.id],
-  }),
-}));
-
-// Insert schema for agent tasks
-export const insertAgentTaskSchema = createInsertSchema(agentTasks)
-  .omit({ result: true, error: true, completedAt: true });
-
-// Types for agent tasks
-export type AgentTask = typeof agentTasks.$inferSelect;
-export type InsertAgentTask = z.infer<typeof insertAgentTaskSchema>;
-
-/**
- * Spatial Events Table
- * Stores events related to spatial data changes
- */
-export const spatialEvents = pgTable('spatial_events', {
-  id: text('id').primaryKey(),
-  type: text('type').notNull(),
-  data: json('data').notNull(),
-  metadata: json('metadata'),
-  timestamp: timestamp('timestamp').defaultNow(),
-  processed: boolean('processed').default(false),
-  processedAt: timestamp('processed_at')
-});
-
-// Insert schema for spatial events
-export const insertSpatialEventSchema = createInsertSchema(spatialEvents)
-  .omit({ processed: true, processedAt: true });
-
-// Types for spatial events
 export type SpatialEvent = typeof spatialEvents.$inferSelect;
 export type InsertSpatialEvent = z.infer<typeof insertSpatialEventSchema>;
-
-/**
- * System Activities Table
- * Stores system activity logs
- */
-export const systemActivities = pgTable('system_activities', {
-  id: serial('id').primaryKey(),
-  activity_type: text('activity_type').notNull(),
-  component: text('component').notNull(),
-  status: text('status'),
-  created_at: timestamp('created_at').defaultNow(),
-  details: json('details')
-});
-
-// Insert schema for system activities
-export const insertSystemActivitySchema = createInsertSchema(systemActivities)
-  .omit({ id: true, created_at: true });
-
-// Types for system activities
-export type SystemActivity = typeof systemActivities.$inferSelect;
-export type InsertSystemActivity = z.infer<typeof insertSystemActivitySchema>;

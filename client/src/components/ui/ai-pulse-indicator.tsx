@@ -69,7 +69,7 @@ export function AIPulseIndicator({
   // Process new notifications
   useEffect(() => {
     // Look for new active tasks that haven't been notified
-    const newTasks = activeTasks.filter(task => !task.notified);
+    const newTasks = activeTasks.filter(task => task.notified !== true);
     
     if (newTasks.length > 0) {
       // Mark tasks as notified
@@ -87,7 +87,7 @@ export function AIPulseIndicator({
     }
     
     // Process completed tasks that haven't been notified
-    const newCompletedTasks = completedTasks.filter(task => !task.notified);
+    const newCompletedTasks = completedTasks.filter(task => task.notified !== true);
     
     if (newCompletedTasks.length > 0) {
       // Update notifications with completed status
