@@ -92,7 +92,7 @@ router.get('/personalities/:id', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     
-    const userId = req.user.id;
+    const userId = req.user.userId;
     if (personality.userId !== userId && !personality.isPublic) {
       return res.status(403).json({ error: 'You do not have permission to access this personality' });
     }
@@ -113,7 +113,7 @@ router.post('/personalities', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const result = insertAssistantPersonalitySchema.safeParse({
       ...req.body,
       userId
@@ -142,7 +142,7 @@ router.post('/personalities/from-template/:templateId', async (req: Request, res
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const templateId = parseInt(req.params.templateId);
     
     if (isNaN(templateId)) {
@@ -173,7 +173,7 @@ router.put('/personalities/:id', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const personalityId = parseInt(req.params.id);
     
     if (isNaN(personalityId)) {
@@ -207,7 +207,7 @@ router.delete('/personalities/:id', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const personalityId = parseInt(req.params.id);
     
     if (isNaN(personalityId)) {
@@ -237,7 +237,7 @@ router.post('/personalities/:id/set-default', async (req: Request, res: Response
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const personalityId = parseInt(req.params.id);
     
     if (isNaN(personalityId)) {
