@@ -467,7 +467,19 @@ export class GISAgentOrchestrationService {
    * @returns A list of tasks matching the specified filters
    */
   public async getTasks(agentId?: string, status?: string): Promise<GISAgentTask[]> {
-    return await this.storage.getGISAgentTasks(agentId, status);
+    try {
+      return await this.storage.getGISAgentTasks(agentId, status);
+    } catch (error) {
+      console.error('Failed to get tasks:', error);
+      this.errorTrackingService.trackGisError(error, {
+        component: 'GISAgentOrchestrationService',
+        method: 'getTasks',
+        agentId,
+        status,
+        severity: ErrorSeverity.MEDIUM
+      });
+      throw error;
+    }
   }
 
   /**
@@ -476,7 +488,18 @@ export class GISAgentOrchestrationService {
    * @returns The task with the specified ID, or undefined if not found
    */
   public async getTask(taskId: string): Promise<GISAgentTask | undefined> {
-    return await this.storage.getGISAgentTask(taskId as unknown as number);
+    try {
+      return await this.storage.getGISAgentTask(taskId as unknown as number);
+    } catch (error) {
+      console.error(`Failed to get task ${taskId}:`, error);
+      this.errorTrackingService.trackGisError(error, {
+        component: 'GISAgentOrchestrationService',
+        method: 'getTask',
+        taskId,
+        severity: ErrorSeverity.MEDIUM
+      });
+      throw error;
+    }
   }
 
   /**
@@ -485,7 +508,19 @@ export class GISAgentOrchestrationService {
    * @returns The created message
    */
   public async createMessage(message: InsertAgentMessage): Promise<AgentMessage> {
-    return await this.storage.createAgentMessage(message);
+    try {
+      return await this.storage.createAgentMessage(message);
+    } catch (error) {
+      console.error('Failed to create agent message:', error);
+      this.errorTrackingService.trackGisError(error, {
+        component: 'GISAgentOrchestrationService',
+        method: 'createMessage',
+        messageType: message.messageType,
+        senderAgentId: message.senderAgentId,
+        severity: ErrorSeverity.MEDIUM
+      });
+      throw error;
+    }
   }
 
   /**
@@ -494,7 +529,17 @@ export class GISAgentOrchestrationService {
    * @returns A list of messages for the specified agent
    */
   public async getMessages(agentId: string): Promise<AgentMessage[]> {
-    return await this.storage.getAgentMessagesByAgent(agentId);
+    try {
+      return await this.storage.getAgentMessagesByAgent(agentId);
+    } catch (error) {
+      console.error(`Failed to get messages for agent ${agentId}:`, error);
+      this.errorTrackingService.trackAgentError(error, agentId, {
+        component: 'GISAgentOrchestrationService',
+        method: 'getMessages',
+        severity: ErrorSeverity.MEDIUM
+      });
+      throw error;
+    }
   }
 
   /**
@@ -503,12 +548,24 @@ export class GISAgentOrchestrationService {
    * @returns The created event
    */
   public async createSpatialEvent(event: InsertSpatialEvent): Promise<SpatialEvent> {
-    const newEvent = await this.storage.createSpatialEvent(event);
-    
-    // Emit spatial event created
-    this.eventEmitter.emit('spatial:event', newEvent);
-    
-    return newEvent;
+    try {
+      const newEvent = await this.storage.createSpatialEvent(event);
+      
+      // Emit spatial event created
+      this.eventEmitter.emit('spatial:event', newEvent);
+      
+      return newEvent;
+    } catch (error) {
+      console.error('Failed to create spatial event:', error);
+      this.errorTrackingService.trackGisError(error, {
+        component: 'GISAgentOrchestrationService',
+        method: 'createSpatialEvent',
+        eventType: event.type,
+        layerId: event.layerId,
+        severity: ErrorSeverity.MEDIUM
+      });
+      throw error;
+    }
   }
 
   /**
@@ -523,7 +580,20 @@ export class GISAgentOrchestrationService {
     type?: string, 
     userId?: number
   ): Promise<SpatialEvent[]> {
-    return await this.storage.getSpatialEvents(layerId, type, userId);
+    try {
+      return await this.storage.getSpatialEvents(layerId, type, userId);
+    } catch (error) {
+      console.error('Failed to get spatial events:', error);
+      this.errorTrackingService.trackGisError(error, {
+        component: 'GISAgentOrchestrationService',
+        method: 'getSpatialEvents',
+        layerId,
+        type,
+        userId,
+        severity: ErrorSeverity.MEDIUM
+      });
+      throw error;
+    }
   }
 
   /**
