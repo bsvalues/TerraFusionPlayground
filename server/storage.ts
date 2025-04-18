@@ -6896,6 +6896,147 @@ export class PgStorage implements IStorage {
     const versions = await this.getAssessmentModelVersionsByModel(modelId);
     return versions.length > 0 ? versions[0] : undefined;
   }
+
+  // Development Tools Implementation
+  // Code Snippets
+  async getCodeSnippets(filters?: { language?: string, snippetType?: string, tags?: string[] }): Promise<CodeSnippet[]> {
+    let query = this.db.select().from(codeSnippets);
+    
+    if (filters) {
+      if (filters.language) {
+        query = query.where(eq(codeSnippets.language, filters.language));
+      }
+      if (filters.snippetType) {
+        query = query.where(eq(codeSnippets.snippetType, filters.snippetType));
+      }
+      // Note: filtering by tags would be more complex and require custom SQL in a real implementation
+    }
+    
+    return await query;
+  }
+
+  async getCodeSnippetById(id: number): Promise<CodeSnippet | undefined> {
+    const results = await this.db.select().from(codeSnippets).where(eq(codeSnippets.id, id));
+    return results[0];
+  }
+
+  async createCodeSnippet(snippet: InsertCodeSnippet): Promise<CodeSnippet> {
+    const results = await this.db.insert(codeSnippets).values(snippet).returning();
+    return results[0];
+  }
+
+  async updateCodeSnippet(id: number, updates: Partial<InsertCodeSnippet>): Promise<CodeSnippet | undefined> {
+    const results = await this.db.update(codeSnippets)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(codeSnippets.id, id))
+      .returning();
+    
+    return results[0];
+  }
+
+  async deleteCodeSnippet(id: number): Promise<boolean> {
+    const results = await this.db.delete(codeSnippets)
+      .where(eq(codeSnippets.id, id))
+      .returning();
+    
+    return results.length > 0;
+  }
+
+  // Data Visualizations
+  async getDataVisualizations(filters?: { visualizationType?: string, createdBy?: number }): Promise<DataVisualization[]> {
+    let query = this.db.select().from(dataVisualizations);
+    
+    if (filters) {
+      if (filters.visualizationType) {
+        query = query.where(eq(dataVisualizations.visualizationType, filters.visualizationType));
+      }
+      if (filters.createdBy) {
+        query = query.where(eq(dataVisualizations.createdBy, filters.createdBy));
+      }
+    }
+    
+    return await query;
+  }
+
+  async getDataVisualizationById(id: number): Promise<DataVisualization | undefined> {
+    const results = await this.db.select().from(dataVisualizations).where(eq(dataVisualizations.id, id));
+    return results[0];
+  }
+
+  async createDataVisualization(visualization: InsertDataVisualization): Promise<DataVisualization> {
+    const results = await this.db.insert(dataVisualizations).values(visualization).returning();
+    return results[0];
+  }
+
+  async updateDataVisualization(id: number, updates: Partial<InsertDataVisualization>): Promise<DataVisualization | undefined> {
+    const results = await this.db.update(dataVisualizations)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(dataVisualizations.id, id))
+      .returning();
+    
+    return results[0];
+  }
+
+  async deleteDataVisualization(id: number): Promise<boolean> {
+    const results = await this.db.delete(dataVisualizations)
+      .where(eq(dataVisualizations.id, id))
+      .returning();
+    
+    return results.length > 0;
+  }
+
+  // UI Component Templates
+  async getUIComponentTemplates(filters?: { componentType?: string, framework?: string, tags?: string[] }): Promise<UIComponentTemplate[]> {
+    let query = this.db.select().from(uiComponentTemplates);
+    
+    if (filters) {
+      if (filters.componentType) {
+        query = query.where(eq(uiComponentTemplates.componentType, filters.componentType));
+      }
+      if (filters.framework) {
+        query = query.where(eq(uiComponentTemplates.framework, filters.framework));
+      }
+      // Note: filtering by tags would require a more complex query in a real implementation
+    }
+    
+    return await query;
+  }
+
+  async getUIComponentTemplateById(id: number): Promise<UIComponentTemplate | undefined> {
+    const results = await this.db.select().from(uiComponentTemplates).where(eq(uiComponentTemplates.id, id));
+    return results[0];
+  }
+
+  async createUIComponentTemplate(template: InsertUIComponentTemplate): Promise<UIComponentTemplate> {
+    const results = await this.db.insert(uiComponentTemplates).values(template).returning();
+    return results[0];
+  }
+
+  async updateUIComponentTemplate(id: number, updates: Partial<InsertUIComponentTemplate>): Promise<UIComponentTemplate | undefined> {
+    const results = await this.db.update(uiComponentTemplates)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(uiComponentTemplates.id, id))
+      .returning();
+    
+    return results[0];
+  }
+
+  async deleteUIComponentTemplate(id: number): Promise<boolean> {
+    const results = await this.db.delete(uiComponentTemplates)
+      .where(eq(uiComponentTemplates.id, id))
+      .returning();
+    
+    return results.length > 0;
+  }
 }
 
 // Use database storage instead of in-memory
