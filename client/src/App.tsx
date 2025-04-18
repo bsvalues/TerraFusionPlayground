@@ -30,6 +30,7 @@ import ProjectWorkspacePage from "@/pages/ProjectWorkspacePage";
 import AssessmentModelWorkbenchPage from "@/pages/AssessmentModelWorkbenchPage";
 import VoiceCommandPage from "@/pages/VoiceCommandPage";
 import VoiceCommandSettingsPage from "@/pages/voice-command-settings-page";
+import DatabaseConversionPage from "@/pages/database-conversion-page";
 import AppLayout from "@/layout/app-layout";
 
 
@@ -167,6 +168,12 @@ function Router() {
       
       <Route path="/development/assessment-workbench">
         <AssessmentModelWorkbenchPage />
+      </Route>
+      
+      <Route path="/database-conversion">
+        <AppLayout>
+          <DatabaseConversionPage />
+        </AppLayout>
       </Route>
 
       {/* Add more routes as needed */}
