@@ -698,6 +698,11 @@ export class MemStorage implements IStorage {
   private comparableSalesAnalyses: Map<string, ComparableSalesAnalysis>;
   private comparableAnalysisEntries: Map<number, ComparableAnalysisEntry>;
   private stagedProperties: Map<string, StagedProperty>;
+  
+  // Development Tools Maps
+  private codeSnippets: Map<number, CodeSnippet>;
+  private dataVisualizations: Map<number, DataVisualization>;
+  private uiComponentTemplates: Map<number, UIComponentTemplate>;
   private validationRules: Map<string, ValidationRule>;
   private validationIssues: Map<string, ValidationIssue>;
   private workflowDefinitions: Map<string, WorkflowDefinition>;
@@ -775,6 +780,11 @@ export class MemStorage implements IStorage {
   private currentProjectVersionId: number;
   private currentPreviewSettingId: number;
   private currentAiCodeGenerationId: number;
+  
+  // Development Tools counters
+  private currentCodeSnippetId: number;
+  private currentDataVisualizationId: number;
+  private currentUIComponentTemplateId: number;
 
   constructor() {
     this.users = new Map();
@@ -822,6 +832,11 @@ export class MemStorage implements IStorage {
     this.projectVersions = new Map<number, ProjectVersion>();
     this.previewSettings = new Map<number, PreviewSetting>();
     this.aiCodeGenerations = new Map<number, AiCodeGeneration>();
+    
+    // Initialize Development Tools maps
+    this.codeSnippets = new Map<number, CodeSnippet>();
+    this.dataVisualizations = new Map<number, DataVisualization>();
+    this.uiComponentTemplates = new Map<number, UIComponentTemplate>();
     
     // Initialize Assessment Model Workbench arrays
     this.assessmentModels = [];
@@ -874,6 +889,11 @@ export class MemStorage implements IStorage {
     this.currentProjectVersionId = 1;
     this.currentPreviewSettingId = 1;
     this.currentAiCodeGenerationId = 1;
+    
+    // Initialize Development Tools counters
+    this.currentCodeSnippetId = 1;
+    this.currentDataVisualizationId = 1;
+    this.currentUIComponentTemplateId = 1;
     
     // Initialize with sample data
     this.seedData();
