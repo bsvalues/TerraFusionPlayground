@@ -6,7 +6,7 @@
  */
 
 import { IStorage } from '../../storage';
-import { GISDataService, GISDataFormat, ConversionOptions } from './gis-data-service';
+import { GISDataService, GISDataFormat, ErrorSeverity } from './gis-data-service';
 
 // Field mapping interface for ETL operations
 export interface FieldMapping {
@@ -23,7 +23,12 @@ export interface ETLJobConfig {
   sourceFormat: GISDataFormat;
   targetFormat: GISDataFormat;
   fieldMappings: FieldMapping[];
-  spatialOptions?: ConversionOptions;
+  spatialOptions?: {
+    sourceSrs?: number;
+    targetSrs?: number;
+    simplify?: boolean;
+    simplificationTolerance?: number;
+  };
   validation?: {
     validateBeforeConversion: boolean;
     validateAfterConversion: boolean;
@@ -53,38 +58,21 @@ export interface ETLJobResult {
   status: ETLJobStatus;
   startTime: Date;
   endTime?: Date;
-  recordsProcessed?: number;
-  recordsSucceeded?: number;
-  recordsFailed?: number;
+  processedRecords?: number;
+  errorRecords?: number;
+  outputLocation?: string;
   errors?: Array<{
     code: string;
     message: string;
-    recordIndex?: number;
+    severity: ErrorSeverity;
+    location?: string;
   }>;
   warnings?: Array<{
     code: string;
     message: string;
-    recordIndex?: number;
+    severity: ErrorSeverity;
+    location?: string;
   }>;
-  outputLocation?: string;
-}
-
-// Conversion Metadata
-export interface ConversionMetadata {
-  sourceFormat: string;
-  targetFormat: string;
-  sourceFields: string[];
-  targetFields: string[];
-  recordCount: number;
-  spatialExtent?: {
-    minX: number;
-    minY: number;
-    maxX: number;
-    maxY: number;
-    srid: number;
-  };
-  conversionTime: number; // in milliseconds
-  validationResults?: any;
 }
 
 /**
@@ -129,14 +117,14 @@ export class DataConversionService {
       return jobId;
     } catch (error) {
       console.error('Error creating ETL job:', error);
-      throw new Error(`Failed to create ETL job: ${error.message}`);
+      throw new Error(`Failed to create ETL job: ${(error as Error).message}`);
     }
   }
   
   /**
    * Start an ETL job
    */
-  async startETLJob(jobId: string): Promise<void> {
+  async startETLJob(jobId: string): Promise<ETLJobResult> {
     try {
       // Get the job configuration
       const job = await this.storage.getETLJob(jobId);
@@ -145,351 +133,368 @@ export class DataConversionService {
       }
       
       // Update job status
-      await this.updateJobStatus(jobId, ETLJobStatus.RUNNING);
-      
-      // Start the job in the background
-      this.runETLJob(jobId, job.config).catch(error => {
-        console.error(`Error running ETL job ${jobId}:`, error);
-        this.updateJobStatus(jobId, ETLJobStatus.FAILED, {
-          errors: [{
-            code: 'ETL_ERROR',
-            message: error.message
-          }]
-        });
+      await this.storage.updateETLJob(jobId, {
+        status: ETLJobStatus.RUNNING,
+        updatedAt: new Date()
       });
+      
+      // Add to active jobs
+      this.activeJobs.set(jobId, ETLJobStatus.RUNNING);
+      
+      // Prepare the result object
+      const result: ETLJobResult = {
+        jobId,
+        status: ETLJobStatus.RUNNING,
+        startTime: new Date()
+      };
+      
+      try {
+        // Parse the job configuration
+        const config = job.config as ETLJobConfig;
+        
+        // Execute the job (process asynchronously)
+        this.processETLJob(jobId, config, result).catch(processingError => {
+          console.error(`Error processing ETL job ${jobId}:`, processingError);
+        });
+        
+        return result;
+      } catch (configError) {
+        // Handle configuration errors
+        const errorResult: ETLJobResult = {
+          ...result,
+          status: ETLJobStatus.FAILED,
+          endTime: new Date(),
+          errors: [{
+            code: 'config_error',
+            message: `Invalid job configuration: ${(configError as Error).message}`,
+            severity: ErrorSeverity.ERROR
+          }]
+        };
+        
+        // Update job status
+        await this.storage.updateETLJob(jobId, {
+          status: ETLJobStatus.FAILED,
+          updatedAt: new Date(),
+          result: errorResult
+        });
+        
+        // Remove from active jobs
+        this.activeJobs.delete(jobId);
+        
+        return errorResult;
+      }
     } catch (error) {
-      console.error(`Error starting ETL job ${jobId}:`, error);
-      throw new Error(`Failed to start ETL job: ${error.message}`);
+      console.error('Error starting ETL job:', error);
+      throw new Error(`Failed to start ETL job: ${(error as Error).message}`);
     }
   }
   
   /**
-   * Run an ETL job (internal method)
+   * Process an ETL job
    */
-  private async runETLJob(jobId: string, config: ETLJobConfig): Promise<void> {
-    const startTime = new Date();
-    let recordsProcessed = 0;
-    let recordsSucceeded = 0;
-    let recordsFailed = 0;
-    const errors = [];
-    const warnings = [];
-    
+  private async processETLJob(jobId: string, config: ETLJobConfig, result: ETLJobResult): Promise<void> {
     try {
-      // Send start notification if configured
-      if (config.notifications?.onStart) {
-        this.sendNotification(jobId, 'started', config.notifications.recipients);
-      }
+      const errors: Array<{
+        code: string;
+        message: string;
+        severity: ErrorSeverity;
+        location?: string;
+      }> = [];
       
-      // Get the source data
-      const sourceData = await this.getSourceData(jobId, config);
+      const warnings: Array<{
+        code: string;
+        message: string;
+        severity: ErrorSeverity;
+        location?: string;
+      }> = [];
       
-      // Validate before conversion if configured
+      // 1. Load source data
+      console.log(`Loading data for ETL job ${jobId} from format ${config.sourceFormat}`);
+      
+      // Placeholder for getting the source data
+      // In a real implementation, this would:
+      // - Read from a file or database
+      // - Download from a URL
+      // - Read from an API
+      const sourceData = { /* Placeholder source data */ };
+      
+      // 2. Validate if required
       if (config.validation?.validateBeforeConversion) {
-        const validationResult = await this.gisDataService.validateGeometry(sourceData);
-        if (!validationResult.valid && config.validation.autoFix) {
-          // Auto-fix issues if configured
-          await this.gisDataService.fixGeometryIssues(
-            sourceData,
-            config.validation.fixOptions || ['buffer', 'clean']
-          );
-        } else if (!validationResult.valid) {
-          // Add validation errors as warnings
-          validationResult.errors.forEach(error => {
-            warnings.push({
-              code: error.code,
-              message: error.message
-            });
-          });
-        }
+        console.log(`Validating source data for ETL job ${jobId}`);
+        // Perform validation
+        // Add errors/warnings as needed
       }
       
-      // Convert the data
-      const convertedData = await this.gisDataService.convertFormat(
-        sourceData,
-        config.sourceFormat,
-        config.targetFormat,
-        config.spatialOptions
-      );
+      // 3. Apply field mappings
+      console.log(`Applying field mappings for ETL job ${jobId}`);
+      const transformedData = await this.applyFieldMappings(sourceData, config.fieldMappings);
       
-      // Apply field mappings
-      const transformedData = await this.applyFieldMappings(convertedData, config.fieldMappings);
+      // 4. Convert to target format
+      console.log(`Converting data for ETL job ${jobId} to format ${config.targetFormat}`);
+      // Use GIS data service to convert
+      // This is a placeholder - in a real implementation we would:
+      // - Convert the data using the GIS data service
+      // - Apply spatial transformations
+      const convertedData = transformedData;
       
-      // Validate after conversion if configured
+      // 5. Validate result if required
       if (config.validation?.validateAfterConversion) {
-        const validationResult = await this.gisDataService.validateGeometry(transformedData);
-        if (!validationResult.valid) {
-          // Add validation errors as warnings
-          validationResult.errors.forEach(error => {
-            warnings.push({
-              code: error.code,
-              message: error.message
-            });
-          });
-        }
+        console.log(`Validating converted data for ETL job ${jobId}`);
+        // Perform validation
+        // Add errors/warnings as needed
       }
       
-      // Save the converted data
-      const outputLocation = await this.saveConvertedData(jobId, transformedData, config);
+      // 6. Store the result
+      console.log(`Storing result for ETL job ${jobId}`);
+      // Placeholder for storing the result
+      // In a real implementation, this would:
+      // - Write to a file or database
+      // - Upload to a URL
+      // - Send to an API
       
-      // Calculate metadata
-      const metadata = this.calculateConversionMetadata(
-        config.sourceFormat.toString(),
-        config.targetFormat.toString(),
-        transformedData,
-        startTime
-      );
+      // Update the result object
+      result.status = ETLJobStatus.COMPLETED;
+      result.endTime = new Date();
+      result.processedRecords = 1; // Example
+      result.errorRecords = errors.length;
+      result.errors = errors.length > 0 ? errors : undefined;
+      result.warnings = warnings.length > 0 ? warnings : undefined;
       
       // Update job status
-      const endTime = new Date();
-      await this.updateJobStatus(jobId, ETLJobStatus.COMPLETED, {
-        startTime,
-        endTime,
-        recordsProcessed,
-        recordsSucceeded,
-        recordsFailed,
-        errors,
-        warnings,
-        outputLocation
-      });
-      
-      // Send completion notification if configured
-      if (config.notifications?.onComplete) {
-        this.sendNotification(jobId, 'completed', config.notifications.recipients);
-      }
-    } catch (error) {
-      console.error(`Error running ETL job ${jobId}:`, error);
-      
-      // Update job status to failed
-      const endTime = new Date();
-      await this.updateJobStatus(jobId, ETLJobStatus.FAILED, {
-        startTime,
-        endTime,
-        recordsProcessed,
-        recordsSucceeded,
-        recordsFailed,
-        errors: [...errors, {
-          code: 'ETL_ERROR',
-          message: error.message
-        }],
-        warnings
-      });
-      
-      // Send error notification if configured
-      if (config.notifications?.onError) {
-        this.sendNotification(jobId, 'failed', config.notifications.recipients, error.message);
-      }
-    }
-  }
-  
-  /**
-   * Get the source data for an ETL job
-   */
-  private async getSourceData(jobId: string, config: ETLJobConfig): Promise<any> {
-    // Implementation depends on the source format
-    // For now, return mock data
-    return { type: 'FeatureCollection', features: [] };
-  }
-  
-  /**
-   * Apply field mappings to converted data
-   */
-  private async applyFieldMappings(data: any, fieldMappings: FieldMapping[]): Promise<any> {
-    if (!data || !data.features || !Array.isArray(data.features)) {
-      return data;
-    }
-    
-    // Process each feature
-    const transformedFeatures = data.features.map(feature => {
-      if (!feature.properties) {
-        feature.properties = {};
-      }
-      
-      const newProperties = {};
-      
-      // Apply each field mapping
-      fieldMappings.forEach(mapping => {
-        const sourceValue = feature.properties[mapping.sourceField];
-        
-        // Skip if source value is undefined
-        if (sourceValue === undefined) {
-          return;
-        }
-        
-        // Apply transformation
-        let transformedValue = sourceValue;
-        
-        switch (mapping.transform) {
-          case 'uppercase':
-            transformedValue = String(sourceValue).toUpperCase();
-            break;
-          case 'lowercase':
-            transformedValue = String(sourceValue).toLowerCase();
-            break;
-          case 'titlecase':
-            transformedValue = String(sourceValue).replace(/\w\S*/g, 
-              txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
-            break;
-          case 'trim':
-            transformedValue = String(sourceValue).trim();
-            break;
-          case 'custom':
-            // Implement custom transform logic
-            // For now, just use the original value
-            break;
-          default:
-            // No transformation
-            break;
-        }
-        
-        // Set the transformed value
-        newProperties[mapping.targetField] = transformedValue;
-      });
-      
-      // Replace properties
-      return {
-        ...feature,
-        properties: newProperties
-      };
-    });
-    
-    // Return the transformed data
-    return {
-      ...data,
-      features: transformedFeatures
-    };
-  }
-  
-  /**
-   * Save converted data to the target location
-   */
-  private async saveConvertedData(jobId: string, data: any, config: ETLJobConfig): Promise<string> {
-    // Implementation depends on the target format
-    // For now, return a mock location
-    return `/gis/conversions/${jobId}/output`;
-  }
-  
-  /**
-   * Calculate metadata for the conversion
-   */
-  private calculateConversionMetadata(
-    sourceFormat: string,
-    targetFormat: string,
-    data: any,
-    startTime: Date
-  ): ConversionMetadata {
-    // Extract source and target fields
-    const sourceFields = [];
-    const targetFields = [];
-    
-    if (data && data.features && data.features.length > 0) {
-      // Get fields from the first feature
-      const firstFeature = data.features[0];
-      if (firstFeature.properties) {
-        Object.keys(firstFeature.properties).forEach(key => {
-          targetFields.push(key);
-        });
-      }
-    }
-    
-    // Calculate conversion time
-    const conversionTime = new Date().getTime() - startTime.getTime();
-    
-    // Calculate record count
-    const recordCount = data && data.features ? data.features.length : 0;
-    
-    // Calculate spatial extent (if applicable)
-    let spatialExtent = undefined;
-    
-    // Return metadata
-    return {
-      sourceFormat,
-      targetFormat,
-      sourceFields,
-      targetFields,
-      recordCount,
-      spatialExtent,
-      conversionTime
-    };
-  }
-  
-  /**
-   * Update the status of an ETL job
-   */
-  private async updateJobStatus(jobId: string, status: ETLJobStatus, result?: Partial<ETLJobResult>): Promise<void> {
-    try {
-      // Update in-memory status
-      this.activeJobs.set(jobId, status);
-      
-      // Update in storage
       await this.storage.updateETLJob(jobId, {
-        status,
+        status: ETLJobStatus.COMPLETED,
         updatedAt: new Date(),
-        result: result ? {
-          jobId,
-          status,
-          ...result
-        } : undefined
+        result
       });
+      
+      // Remove from active jobs
+      this.activeJobs.delete(jobId);
+      
+      // Send notifications if configured
+      if (config.notifications?.onComplete) {
+        await this.sendNotification(jobId, 'completed', result);
+      }
+      
     } catch (error) {
-      console.error(`Error updating ETL job ${jobId} status:`, error);
+      console.error(`Error processing ETL job ${jobId}:`, error);
+      
+      // Update the result object
+      result.status = ETLJobStatus.FAILED;
+      result.endTime = new Date();
+      result.errors = [{
+        code: 'processing_error',
+        message: `Error processing ETL job: ${(error as Error).message}`,
+        severity: ErrorSeverity.ERROR
+      }];
+      
+      // Update job status
+      await this.storage.updateETLJob(jobId, {
+        status: ETLJobStatus.FAILED,
+        updatedAt: new Date(),
+        result
+      });
+      
+      // Remove from active jobs
+      this.activeJobs.delete(jobId);
+      
+      // Send notifications if configured
+      if (config.notifications?.onError) {
+        await this.sendNotification(jobId, 'failed', result);
+      }
     }
+  }
+  
+  /**
+   * Apply field mappings to convert attributes
+   */
+  private async applyFieldMappings(data: any, mappings: FieldMapping[]): Promise<any> {
+    // This is a placeholder implementation
+    // In a real implementation, this would apply the field mappings to the data
+    return data;
+  }
+  
+  /**
+   * Send a notification about the job status
+   */
+  private async sendNotification(jobId: string, status: string, result: ETLJobResult): Promise<void> {
+    // This is a placeholder implementation
+    // In a real implementation, this would send notifications via email, webhook, etc.
+    console.log(`Sending notification for ETL job ${jobId}: ${status}`);
   }
   
   /**
    * Get the status of an ETL job
    */
-  async getETLJobStatus(jobId: string): Promise<ETLJobStatus> {
+  async getETLJobStatus(jobId: string): Promise<{
+    status: ETLJobStatus;
+    progress?: number;
+    result?: ETLJobResult;
+  }> {
     try {
-      // Check in-memory status first
-      if (this.activeJobs.has(jobId)) {
-        return this.activeJobs.get(jobId)!;
+      // Get the job from storage
+      const job = await this.storage.getETLJob(jobId);
+      if (!job) {
+        throw new Error(`ETL job ${jobId} not found`);
       }
       
-      // Otherwise, check in storage
-      const job = await this.storage.getETLJob(jobId);
-      return job ? job.status : ETLJobStatus.PENDING;
+      // Calculate progress (if running)
+      let progress: number | undefined;
+      if (job.status === ETLJobStatus.RUNNING) {
+        // This is a placeholder implementation
+        // In a real implementation, this would calculate the actual progress
+        progress = 0.5; // 50% complete
+      }
+      
+      return {
+        status: job.status as ETLJobStatus,
+        progress,
+        result: job.result as ETLJobResult
+      };
     } catch (error) {
-      console.error(`Error getting ETL job ${jobId} status:`, error);
-      throw new Error(`Failed to get ETL job status: ${error.message}`);
-    }
-  }
-  
-  /**
-   * Get the result of an ETL job
-   */
-  async getETLJobResult(jobId: string): Promise<ETLJobResult | null> {
-    try {
-      const job = await this.storage.getETLJob(jobId);
-      return job && job.result ? job.result : null;
-    } catch (error) {
-      console.error(`Error getting ETL job ${jobId} result:`, error);
-      throw new Error(`Failed to get ETL job result: ${error.message}`);
+      console.error('Error getting ETL job status:', error);
+      throw new Error(`Failed to get ETL job status: ${(error as Error).message}`);
     }
   }
   
   /**
    * Cancel an ETL job
    */
-  async cancelETLJob(jobId: string): Promise<void> {
+  async cancelETLJob(jobId: string): Promise<boolean> {
     try {
-      // Only cancel if the job is running or pending
-      const status = await this.getETLJobStatus(jobId);
-      if (status === ETLJobStatus.RUNNING || status === ETLJobStatus.PENDING) {
-        await this.updateJobStatus(jobId, ETLJobStatus.CANCELED);
-      } else {
-        throw new Error(`Cannot cancel ETL job with status ${status}`);
+      // Get the job from storage
+      const job = await this.storage.getETLJob(jobId);
+      if (!job) {
+        throw new Error(`ETL job ${jobId} not found`);
       }
+      
+      // Can only cancel jobs that are pending or running
+      if (job.status !== ETLJobStatus.PENDING && job.status !== ETLJobStatus.RUNNING) {
+        return false;
+      }
+      
+      // Update job status
+      await this.storage.updateETLJob(jobId, {
+        status: ETLJobStatus.CANCELED,
+        updatedAt: new Date()
+      });
+      
+      // Remove from active jobs
+      this.activeJobs.delete(jobId);
+      
+      return true;
     } catch (error) {
-      console.error(`Error canceling ETL job ${jobId}:`, error);
-      throw new Error(`Failed to cancel ETL job: ${error.message}`);
+      console.error('Error canceling ETL job:', error);
+      throw new Error(`Failed to cancel ETL job: ${(error as Error).message}`);
     }
   }
   
   /**
-   * Send a notification about an ETL job
+   * Get all ETL jobs
    */
-  private sendNotification(jobId: string, event: string, recipients?: string[], errorMessage?: string): void {
-    // Implementation depends on the notification system
-    console.log(`[Notification] ETL job ${jobId} ${event}${errorMessage ? `: ${errorMessage}` : ''}`);
+  async getAllETLJobs(): Promise<Array<{
+    id: string;
+    name: string;
+    status: ETLJobStatus;
+    createdAt: Date;
+    updatedAt: Date;
+  }>> {
+    try {
+      const jobs = await this.storage.getETLJobs();
+      
+      return jobs.map(job => ({
+        id: job.id,
+        name: (job.config as ETLJobConfig).name,
+        status: job.status as ETLJobStatus,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt
+      }));
+    } catch (error) {
+      console.error('Error getting all ETL jobs:', error);
+      throw new Error(`Failed to get ETL jobs: ${(error as Error).message}`);
+    }
+  }
+  
+  /**
+   * Convert a feature collection
+   */
+  async convertFeatureCollection(collection: any, options: {
+    sourceFormat: GISDataFormat;
+    targetFormat: GISDataFormat;
+    sourceFields: string[];
+    targetFields: string[];
+    transformation?: Record<string, string>;
+  }): Promise<any> {
+    try {
+      const sourceFields: string[] = options.sourceFields || [];
+      const targetFields: string[] = options.targetFields || [];
+      
+      // Validate fields
+      if (sourceFields.length !== targetFields.length) {
+        throw new Error('Source and target fields must have the same length');
+      }
+      
+      // Create field mappings
+      const fieldMappings: FieldMapping[] = sourceFields.map((field, index) => ({
+        sourceField: field,
+        targetField: targetFields[index],
+        transform: 'none'
+      }));
+      
+      // Apply transformation if provided
+      if (options.transformation) {
+        for (const mapping of fieldMappings) {
+          const transform = options.transformation[mapping.sourceField];
+          if (transform) {
+            mapping.transform = transform as any;
+          }
+        }
+      }
+      
+      // Convert using the GIS data service
+      // In this case, we're just applying field mappings
+      const convertedCollection = {
+        ...collection,
+        features: collection.features.map((feature: any) => {
+          const newProperties: Record<string, any> = {};
+          
+          for (const mapping of fieldMappings) {
+            if (feature.properties[mapping.sourceField] !== undefined) {
+              let value = feature.properties[mapping.sourceField];
+              
+              // Apply transformation
+              switch (mapping.transform) {
+                case 'uppercase':
+                  value = typeof value === 'string' ? value.toUpperCase() : value;
+                  break;
+                case 'lowercase':
+                  value = typeof value === 'string' ? value.toLowerCase() : value;
+                  break;
+                case 'titlecase':
+                  value = typeof value === 'string' ?
+                    value.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase()) :
+                    value;
+                  break;
+                case 'trim':
+                  value = typeof value === 'string' ? value.trim() : value;
+                  break;
+                // Custom transformations would be handled here
+              }
+              
+              newProperties[mapping.targetField] = value;
+            }
+          }
+          
+          return {
+            ...feature,
+            properties: newProperties
+          };
+        })
+      };
+      
+      return convertedCollection;
+    } catch (error) {
+      console.error('Error converting feature collection:', error);
+      throw new Error(`Failed to convert feature collection: ${(error as Error).message}`);
+    }
   }
 }

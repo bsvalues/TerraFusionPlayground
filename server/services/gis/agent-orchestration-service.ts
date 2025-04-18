@@ -10,6 +10,7 @@ import { MCPService } from '../mcp-service/mcp-service';
 import { IStorage } from '../../storage';
 import { GISSpecialistAgent } from '../agents/gis-specialist-agent';
 import { EventEmitter } from 'events';
+import { v4 as uuidv4 } from 'uuid';
 
 // Spatial Event types
 export enum SpatialEventType {
@@ -48,6 +49,22 @@ export interface AgentTask {
   completedAt?: Date;
   result?: any;
   error?: string;
+  userId?: number;
+}
+
+// Message type for agent communication
+export interface AgentMessage {
+  id: string;
+  messageType: string;
+  subject: string;
+  content: any;
+  senderAgentId: string;
+  receiverAgentId?: string;
+  conversationId?: string;
+  timestamp: Date;
+  status?: string;
+  processedAt?: Date;
+  processed?: boolean;
 }
 
 /**
@@ -71,13 +88,18 @@ class MessageQueue {
    * Publish a message to a topic
    */
   async publish(topic: string, message: any): Promise<void> {
+    // Generate a unique message ID
+    const messageId = uuidv4();
+    
     // Store the message for persistence
     try {
       await this.storage.createAgentMessage({
-        topic,
+        messageId,
+        messageType: topic,
+        subject: topic,
         content: message,
-        timestamp: new Date(),
-        processed: false
+        senderAgentId: 'system',
+        timestamp: new Date()
       });
     } catch (error) {
       console.error(`Error storing message for topic ${topic}:`, error);
@@ -106,36 +128,34 @@ class MessageQueue {
       queuedMessages.forEach(message => {
         callback(message);
       });
+      // Clear the queue after processing
       this.queuedMessages.set(topic, []);
     }
     
     // Return unsubscribe function
     return () => {
-      this.eventEmitter.removeListener(topic, callback);
+      this.eventEmitter.off(topic, callback);
     };
   }
   
   /**
-   * Get unprocessed messages for a topic
+   * Process any pending messages from storage
    */
-  async getUnprocessedMessages(topic: string): Promise<any[]> {
+  async processPendingMessages(topic: string): Promise<void> {
     try {
       const messages = await this.storage.getUnprocessedAgentMessages(topic);
-      return messages;
+      
+      for (const message of messages) {
+        // Emit the event
+        this.eventEmitter.emit(topic, message.content);
+        
+        // Mark as processed
+        await this.storage.updateAgentMessage(message.id.toString(), {
+          processedAt: new Date()
+        });
+      }
     } catch (error) {
-      console.error(`Error getting unprocessed messages for topic ${topic}:`, error);
-      return [];
-    }
-  }
-  
-  /**
-   * Mark a message as processed
-   */
-  async markAsProcessed(messageId: string): Promise<void> {
-    try {
-      await this.storage.updateAgentMessage(messageId, { processed: true });
-    } catch (error) {
-      console.error(`Error marking message ${messageId} as processed:`, error);
+      console.error(`Error processing pending messages for topic ${topic}:`, error);
     }
   }
 }
@@ -184,13 +204,14 @@ export class GISAgentOrchestrationService {
   private async initializeAgents(): Promise<void> {
     try {
       // Register GIS Specialist Agent
-      // Note: the actual implementations of these dependencies would be provided
+      // For now, we'll use a placeholder for the GIS data service
       const gisDataService = {} as any; // Placeholder
       const gisSpecialistAgent = new GISSpecialistAgent(
         this.storage,
         this.mcpService,
         gisDataService
       );
+      
       await gisSpecialistAgent.initialize();
       this.registerAgent(gisSpecialistAgent);
       
@@ -205,7 +226,7 @@ export class GISAgentOrchestrationService {
       console.log(`Registered ${this.agentRegistry.size} GIS agents`);
     } catch (error) {
       console.error('Error initializing agents:', error);
-      throw new Error(`Failed to initialize agents: ${error.message}`);
+      throw new Error(`Failed to initialize agents: ${(error as Error).message}`);
     }
   }
   
@@ -239,200 +260,268 @@ export class GISAgentOrchestrationService {
    * Process any pending messages from previous sessions
    */
   private async processPendingMessages(): Promise<void> {
-    try {
-      // Process geometry created messages
-      const geometryCreatedMessages = await this.messageQueue.getUnprocessedMessages(
-        SpatialEventType.GEOMETRY_CREATED
-      );
-      for (const message of geometryCreatedMessages) {
-        await this.handleGeometryCreated(message);
-        await this.messageQueue.markAsProcessed(message.id);
-      }
-      
-      // Process topology error messages
-      const topologyErrorMessages = await this.messageQueue.getUnprocessedMessages(
-        SpatialEventType.TOPOLOGY_ERROR
-      );
-      for (const message of topologyErrorMessages) {
-        await this.handleTopologyError(message);
-        await this.messageQueue.markAsProcessed(message.id);
-      }
-      
-      // Process data imported messages
-      const dataImportedMessages = await this.messageQueue.getUnprocessedMessages(
-        SpatialEventType.DATA_IMPORTED
-      );
-      for (const message of dataImportedMessages) {
-        await this.handleDataImported(message);
-        await this.messageQueue.markAsProcessed(message.id);
-      }
-      
-      console.log('Processed pending messages');
-    } catch (error) {
-      console.error('Error processing pending messages:', error);
+    // Process pending messages for each event type
+    for (const eventType of Object.values(SpatialEventType)) {
+      await this.messageQueue.processPendingMessages(eventType);
     }
   }
   
   /**
-   * Publish a spatial event
+   * Handle geometry created event
    */
-  async publishEvent(event: SpatialEvent): Promise<void> {
+  private async handleGeometryCreated(event: SpatialEvent): Promise<void> {
     try {
-      await this.messageQueue.publish(event.type, event);
-      console.log(`Published event: ${event.type} (${event.id})`);
-    } catch (error) {
-      console.error(`Error publishing event ${event.type}:`, error);
-      throw new Error(`Failed to publish event: ${error.message}`);
-    }
-  }
-  
-  /**
-   * Create a new agent task
-   */
-  async createTask(agentId: string, taskType: string, data: any): Promise<string> {
-    try {
-      // Check if agent exists
-      if (!this.agentRegistry.has(agentId)) {
-        throw new Error(`Agent ${agentId} not found`);
-      }
+      console.log(`Handling geometry created event: ${event.id}`);
       
-      // Generate a task ID
-      const taskId = `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-      
-      // Create the task
-      const task: AgentTask = {
-        id: taskId,
-        agentId,
-        taskType,
-        status: 'pending',
-        data,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      // Store the task
-      await this.storage.createAgentTask(task);
-      
-      // Add to active tasks
-      this.activeTasks.set(taskId, task);
-      
-      // Queue the task for processing
-      this.processTask(task).catch(error => {
-        console.error(`Error processing task ${taskId}:`, error);
-        this.updateTaskStatus(taskId, 'failed', { error: error.message });
+      // Create activity
+      await this.storage.createSystemActivity({
+        activity_type: 'spatial_event',
+        component: 'GIS Orchestration',
+        status: 'success',
+        details: { 
+          eventType: event.type, 
+          geometryId: event.data.geometryId 
+        }
       });
       
-      return taskId;
+      // Additional handling logic
+      // - Assign to appropriate agent based on geometry type
+      // - Create follow-up tasks
+      
     } catch (error) {
-      console.error('Error creating task:', error);
-      throw new Error(`Failed to create task: ${error.message}`);
+      console.error('Error handling geometry created event:', error);
+      
+      // Log error
+      await this.storage.createSystemActivity({
+        activity_type: 'spatial_event_error',
+        component: 'GIS Orchestration',
+        status: 'error',
+        details: { 
+          eventType: SpatialEventType.GEOMETRY_CREATED, 
+          error: (error as Error).message 
+        }
+      });
     }
   }
   
   /**
-   * Process an agent task
+   * Handle topology error event
    */
-  private async processTask(task: AgentTask): Promise<void> {
+  private async handleTopologyError(event: SpatialEvent): Promise<void> {
     try {
-      // Update task status
-      await this.updateTaskStatus(task.id, 'processing');
+      console.log(`Handling topology error event: ${event.id}`);
+      
+      // Find an available topology repair agent
+      const topologyAgent = this.findAvailableAgentByType('topology_repair');
+      
+      if (topologyAgent) {
+        // Create a repair task
+        const task: AgentTask = {
+          id: uuidv4(),
+          agentId: topologyAgent.getId(),
+          taskType: 'topology_repair',
+          status: 'pending',
+          data: event.data,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: event.metadata?.userId
+        };
+        
+        // Submit the task
+        await this.submitAgentTask(task);
+      } else {
+        console.warn('No available topology repair agent found');
+        
+        // Queue the task for later processing
+        // This would involve storing the task and attempting again later
+      }
+      
+    } catch (error) {
+      console.error('Error handling topology error event:', error);
+      
+      // Log error
+      await this.storage.createSystemActivity({
+        activity_type: 'spatial_event_error',
+        component: 'GIS Orchestration',
+        status: 'error',
+        details: { 
+          eventType: SpatialEventType.TOPOLOGY_ERROR, 
+          error: (error as Error).message 
+        }
+      });
+    }
+  }
+  
+  /**
+   * Handle data imported event
+   */
+  private async handleDataImported(event: SpatialEvent): Promise<void> {
+    try {
+      console.log(`Handling data imported event: ${event.id}`);
+      
+      // Create activity
+      await this.storage.createSystemActivity({
+        activity_type: 'spatial_event',
+        component: 'GIS Orchestration',
+        status: 'success',
+        details: { 
+          eventType: event.type, 
+          importId: event.data.importId 
+        }
+      });
+      
+      // Additional handling logic
+      // - Trigger data quality checks
+      // - Trigger spatial indexing
+      // - Notify interested agents
+      
+    } catch (error) {
+      console.error('Error handling data imported event:', error);
+      
+      // Log error
+      await this.storage.createSystemActivity({
+        activity_type: 'spatial_event_error',
+        component: 'GIS Orchestration',
+        status: 'error',
+        details: { 
+          eventType: SpatialEventType.DATA_IMPORTED, 
+          error: (error as Error).message 
+        }
+      });
+    }
+  }
+  
+  /**
+   * Find an available agent by type
+   */
+  private findAvailableAgentByType(agentType: string): BaseAgent | undefined {
+    for (const [id, agent] of this.agentRegistry.entries()) {
+      if (agent.getType() === agentType && agent.getStatus() === 'ready') {
+        return agent;
+      }
+    }
+    return undefined;
+  }
+  
+  /**
+   * Submit a task to an agent
+   */
+  private async submitAgentTask(task: AgentTask): Promise<AgentTask> {
+    try {
+      // Store the task
+      const storedTask = await this.storage.createAgentTask({
+        ...task,
+        // Add userId if not present
+        userId: task.userId || 1 // Default to admin user if not specified
+      });
+      
+      // Add to active tasks
+      this.activeTasks.set(task.id, storedTask);
       
       // Get the agent
       const agent = this.agentRegistry.get(task.agentId);
       if (!agent) {
-        throw new Error(`Agent ${task.agentId} not found`);
+        throw new Error(`Agent not found: ${task.agentId}`);
       }
       
-      // Process the task
-      const result = await agent.processTask(task.taskType, task.data);
-      
-      // Update task status
-      await this.updateTaskStatus(task.id, 'completed', { result });
-    } catch (error) {
-      console.error(`Error processing task ${task.id}:`, error);
-      await this.updateTaskStatus(task.id, 'failed', { error: error.message });
-    }
-  }
-  
-  /**
-   * Update task status
-   */
-  private async updateTaskStatus(
-    taskId: string,
-    status: AgentTask['status'],
-    updates: Partial<AgentTask> = {}
-  ): Promise<void> {
-    try {
-      // Update in-memory task
-      if (this.activeTasks.has(taskId)) {
-        const task = this.activeTasks.get(taskId)!;
-        task.status = status;
-        task.updatedAt = new Date();
-        
-        if (status === 'completed' || status === 'failed') {
-          task.completedAt = new Date();
-        }
-        
-        if (updates.result) {
-          task.result = updates.result;
-        }
-        
-        if (updates.error) {
-          task.error = updates.error;
-        }
-        
-        this.activeTasks.set(taskId, task);
-      }
-      
-      // Update in storage
-      await this.storage.updateAgentTask(taskId, {
-        status,
-        updatedAt: new Date(),
-        completedAt: (status === 'completed' || status === 'failed') ? new Date() : undefined,
-        ...updates
+      // Execute the task asynchronously
+      this.executeAgentTask(task).catch(error => {
+        console.error(`Error executing task ${task.id}:`, error);
       });
+      
+      return storedTask;
     } catch (error) {
-      console.error(`Error updating task ${taskId} status:`, error);
+      console.error('Error submitting agent task:', error);
+      throw new Error(`Failed to submit agent task: ${(error as Error).message}`);
     }
   }
   
   /**
-   * Get the status of a task
+   * Execute a task on an agent
    */
-  async getTaskStatus(taskId: string): Promise<AgentTask | null> {
+  private async executeAgentTask(task: AgentTask): Promise<void> {
     try {
-      // Check in-memory first
+      // Update task status
+      await this.storage.updateAgentTask(task.id, {
+        status: 'processing',
+        updatedAt: new Date()
+      });
+      
+      // Get the agent
+      const agent = this.agentRegistry.get(task.agentId);
+      if (!agent) {
+        throw new Error(`Agent not found: ${task.agentId}`);
+      }
+      
+      // Execute the task
+      const result = await agent.executeCapability(task.taskType, task.data);
+      
+      // Update task with result
+      await this.storage.updateAgentTask(task.id, {
+        status: 'completed',
+        result,
+        completedAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      // Remove from active tasks
+      this.activeTasks.delete(task.id);
+      
+      // Log completion
+      await this.storage.createSystemActivity({
+        activity_type: 'agent_task_completed',
+        component: 'GIS Orchestration',
+        status: 'success',
+        details: { 
+          taskId: task.id, 
+          agentId: task.agentId,
+          taskType: task.taskType 
+        }
+      });
+      
+    } catch (error) {
+      console.error(`Error executing task ${task.id}:`, error);
+      
+      // Update task with error
+      await this.storage.updateAgentTask(task.id, {
+        status: 'failed',
+        error: (error as Error).message,
+        updatedAt: new Date()
+      });
+      
+      // Remove from active tasks
+      this.activeTasks.delete(task.id);
+      
+      // Log failure
+      await this.storage.createSystemActivity({
+        activity_type: 'agent_task_failed',
+        component: 'GIS Orchestration',
+        status: 'error',
+        details: { 
+          taskId: task.id, 
+          agentId: task.agentId,
+          taskType: task.taskType,
+          error: (error as Error).message 
+        }
+      });
+    }
+  }
+  
+  /**
+   * Get a task by ID
+   */
+  async getTask(taskId: string): Promise<AgentTask | null> {
+    try {
+      // Check active tasks first
       if (this.activeTasks.has(taskId)) {
         return this.activeTasks.get(taskId)!;
       }
       
-      // Otherwise, check in storage
+      // Retrieve from storage
       return await this.storage.getAgentTask(taskId);
     } catch (error) {
-      console.error(`Error getting task ${taskId} status:`, error);
-      throw new Error(`Failed to get task status: ${error.message}`);
-    }
-  }
-  
-  /**
-   * Cancel a task
-   */
-  async cancelTask(taskId: string): Promise<void> {
-    try {
-      // Only cancel if the task is pending or processing
-      const task = await this.getTaskStatus(taskId);
-      if (!task) {
-        throw new Error(`Task ${taskId} not found`);
-      }
-      
-      if (task.status === 'pending' || task.status === 'processing') {
-        await this.updateTaskStatus(taskId, 'canceled');
-      } else {
-        throw new Error(`Cannot cancel task with status ${task.status}`);
-      }
-    } catch (error) {
-      console.error(`Error canceling task ${taskId}:`, error);
-      throw new Error(`Failed to cancel task: ${error.message}`);
+      console.error(`Error getting task ${taskId}:`, error);
+      throw new Error(`Failed to get task: ${(error as Error).message}`);
     }
   }
   
@@ -444,91 +533,75 @@ export class GISAgentOrchestrationService {
   }
   
   /**
-   * Get agent details
-   */
-  getAgentDetails(agentId: string): any {
-    if (!this.agentRegistry.has(agentId)) {
-      throw new Error(`Agent ${agentId} not found`);
-    }
-    
-    const agent = this.agentRegistry.get(agentId)!;
-    return {
-      id: agent.getId(),
-      name: agent.getName(),
-      type: agent.getType(),
-      capabilities: agent.getCapabilities(),
-      status: this.activeAgents.has(agentId) ? 'active' : 'inactive'
-    };
-  }
-  
-  /**
    * Get all active tasks
    */
   getActiveTasks(): AgentTask[] {
     return Array.from(this.activeTasks.values());
   }
   
-  /* Event Handlers */
+  /**
+   * Get active tasks for a specific agent
+   */
+  getActiveTasksForAgent(agentId: string): AgentTask[] {
+    return Array.from(this.activeTasks.values())
+      .filter(task => task.agentId === agentId);
+  }
   
   /**
-   * Handle geometry created event
+   * Cancel a task
    */
-  private async handleGeometryCreated(event: SpatialEvent): Promise<void> {
+  async cancelTask(taskId: string): Promise<boolean> {
     try {
-      console.log(`Handling geometry created event: ${event.id}`);
-      
-      // This would typically dispatch to a feature detection agent
-      // For now, just log the event
-      
-      // In a real implementation, we would:
-      // 1. Check what type of geometry was created
-      // 2. Determine which agents should process it
-      // 3. Create tasks for those agents
-      
-      // Example: Create a task for the feature detection agent
-      if (this.agentRegistry.has('feature-detect')) {
-        await this.createTask('feature-detect', 'analyze_geometry', event.data);
+      const task = await this.getTask(taskId);
+      if (!task) {
+        throw new Error(`Task not found: ${taskId}`);
       }
+      
+      // Can only cancel pending or processing tasks
+      if (task.status !== 'pending' && task.status !== 'processing') {
+        return false;
+      }
+      
+      // Update task status
+      await this.storage.updateAgentTask(taskId, {
+        status: 'canceled',
+        updatedAt: new Date()
+      });
+      
+      // Remove from active tasks
+      this.activeTasks.delete(taskId);
+      
+      // Log cancellation
+      await this.storage.createSystemActivity({
+        activity_type: 'agent_task_canceled',
+        component: 'GIS Orchestration',
+        status: 'success',
+        details: { 
+          taskId,
+          agentId: task.agentId,
+          taskType: task.taskType 
+        }
+      });
+      
+      return true;
     } catch (error) {
-      console.error(`Error handling geometry created event ${event.id}:`, error);
+      console.error(`Error canceling task ${taskId}:`, error);
+      throw new Error(`Failed to cancel task: ${(error as Error).message}`);
     }
   }
   
   /**
-   * Handle topology error event
+   * Broadcast an event to all agents
    */
-  private async handleTopologyError(event: SpatialEvent): Promise<void> {
-    try {
-      console.log(`Handling topology error event: ${event.id}`);
-      
-      // This would typically dispatch to a topology repair agent
-      // For now, just log the event
-      
-      // Example: Create a task for the topology repair agent
-      if (this.agentRegistry.has('topology-repair')) {
-        await this.createTask('topology-repair', 'fix_topology', event.data);
-      }
-    } catch (error) {
-      console.error(`Error handling topology error event ${event.id}:`, error);
-    }
-  }
-  
-  /**
-   * Handle data imported event
-   */
-  private async handleDataImported(event: SpatialEvent): Promise<void> {
-    try {
-      console.log(`Handling data imported event: ${event.id}`);
-      
-      // This would typically dispatch to a data normalization agent
-      // For now, just log the event
-      
-      // Example: Create a task for the data normalization agent
-      if (this.agentRegistry.has('data-normalization')) {
-        await this.createTask('data-normalization', 'normalize_data', event.data);
-      }
-    } catch (error) {
-      console.error(`Error handling data imported event ${event.id}:`, error);
-    }
+  async broadcastEvent(eventType: SpatialEventType, data: any, metadata?: any): Promise<void> {
+    const event: SpatialEvent = {
+      id: uuidv4(),
+      type: eventType,
+      timestamp: new Date(),
+      data,
+      metadata
+    };
+    
+    await this.messageQueue.publish(eventType, event);
   }
 }
