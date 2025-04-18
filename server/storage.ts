@@ -748,6 +748,13 @@ export class MemStorage implements IStorage {
   private workflowDefinitions: Map<string, WorkflowDefinition>;
   private workflowInstances: Map<string, WorkflowInstance>;
   private workflowStepHistory: Map<number, WorkflowStepHistory>;
+  
+  // Database Conversion Maps
+  private databaseConversionProjects: Map<string, DatabaseConversionProject>;
+  private connectionTemplates: Map<number, ConnectionTemplate>;
+  private schemaMappings: Map<number, SchemaMapping>;
+  private conversionLogs: Map<number, ConversionLog>;
+  private compatibilityLayers: Map<number, CompatibilityLayer>;
   private complianceReports: Map<string, ComplianceReport>;
   private equalizationReports: Map<string, any>; // Washington-specific equalization ratio reports
   private revaluationCycleReports: Map<string, any>; // Washington-specific revaluation cycle reports
@@ -825,6 +832,12 @@ export class MemStorage implements IStorage {
   private currentCodeSnippetId: number;
   private currentDataVisualizationId: number;
   private currentUIComponentTemplateId: number;
+  
+  // Database Conversion counters
+  private currentConnectionTemplateId: number;
+  private currentSchemaMappingId: number;
+  private currentConversionLogId: number;
+  private currentCompatibilityLayerId: number;
 
   constructor() {
     this.users = new Map();
@@ -877,6 +890,13 @@ export class MemStorage implements IStorage {
     this.codeSnippets = new Map<number, CodeSnippet>();
     this.dataVisualizations = new Map<number, DataVisualization>();
     this.uiComponentTemplates = new Map<number, UIComponentTemplate>();
+    
+    // Initialize Database Conversion maps
+    this.databaseConversionProjects = new Map<string, DatabaseConversionProject>();
+    this.connectionTemplates = new Map<number, ConnectionTemplate>();
+    this.schemaMappings = new Map<number, SchemaMapping>();
+    this.conversionLogs = new Map<number, ConversionLog>();
+    this.compatibilityLayers = new Map<number, CompatibilityLayer>();
     
     // Initialize Assessment Model Workbench arrays
     this.assessmentModels = [];
@@ -934,6 +954,12 @@ export class MemStorage implements IStorage {
     this.currentCodeSnippetId = 1;
     this.currentDataVisualizationId = 1;
     this.currentUIComponentTemplateId = 1;
+    
+    // Initialize Database Conversion counters
+    this.currentConnectionTemplateId = 1;
+    this.currentSchemaMappingId = 1;
+    this.currentConversionLogId = 1;
+    this.currentCompatibilityLayerId = 1;
     
     // Initialize with sample data
     this.seedData();
