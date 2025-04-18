@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import PageHeader from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import KPICard from '@/components/dashboard/kpi-card';
 import GISMap from '@/components/dashboard/gis-map';
 import PropertyList from '@/components/dashboard/property-list';
 import AIAgentOverview from '@/components/dashboard/ai-agent-overview';
 import SystemActivityFeed from '@/components/dashboard/system-activity';
-import { Home, TrendingUp, FileText, CheckSquare } from 'lucide-react';
+import { Link } from 'wouter';
+import { Home, TrendingUp, FileText, CheckSquare, Database, Code2, Laptop, Share2, Settings, ArrowRightCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { DashboardKPI } from '@/lib/types';
 
@@ -100,6 +102,125 @@ const Dashboard = () => {
         <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
           <AIAgentOverview />
           <SystemActivityFeed />
+        </div>
+
+        {/* TaxI_AI Developer Tools Section */}
+        <div className="mt-12">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium text-gray-900">TaxI_AI Developer Tools</h2>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/development">
+                View All Tools <ArrowRightCircle className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+          
+          <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Development Platform Card */}
+            <Card className="hover:border-primary/50 hover:shadow-md transition-all duration-300">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="rounded-full bg-primary/10 p-2">
+                    <Code2 className="h-5 w-5 text-primary"/>
+                  </div>
+                </div>
+                <CardTitle className="mt-2">Development Platform</CardTitle>
+                <CardDescription>
+                  Build custom assessment applications with AI-powered tools
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pb-2">
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  <li className="flex items-center">
+                    <span className="mr-2">•</span> AI-assisted coding environment
+                  </li>
+                  <li className="flex items-center">
+                    <span className="mr-2">•</span> Component library & templates
+                  </li>
+                  <li className="flex items-center">
+                    <span className="mr-2">•</span> Collaborative development
+                  </li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button className="w-full" asChild>
+                  <Link href="/development">
+                    Open Development Platform
+                  </Link>
+                </Button>
+              </CardFooter>
+            </Card>
+
+            {/* Database Conversion Card */}
+            <Card className="hover:border-primary/50 hover:shadow-md transition-all duration-300">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="rounded-full bg-primary/10 p-2">
+                    <Database className="h-5 w-5 text-primary"/>
+                  </div>
+                </div>
+                <CardTitle className="mt-2">Database Conversion</CardTitle>
+                <CardDescription>
+                  Convert and migrate your existing database to TaxI_AI platform
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pb-2">
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  <li className="flex items-center">
+                    <span className="mr-2">•</span> AI-powered schema analysis
+                  </li>
+                  <li className="flex items-center">
+                    <span className="mr-2">•</span> Secure data transformation
+                  </li>
+                  <li className="flex items-center">
+                    <span className="mr-2">•</span> Multiple database support
+                  </li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button className="w-full" asChild>
+                  <Link href="/database-conversion">
+                    Open Database Conversion
+                  </Link>
+                </Button>
+              </CardFooter>
+            </Card>
+
+            {/* Assessment Workbench Card */}
+            <Card className="hover:border-primary/50 hover:shadow-md transition-all duration-300">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="rounded-full bg-primary/10 p-2">
+                    <Laptop className="h-5 w-5 text-primary"/>
+                  </div>
+                </div>
+                <CardTitle className="mt-2">Assessment Workbench</CardTitle>
+                <CardDescription>
+                  Design and test assessment models with AI assistance
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pb-2">
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  <li className="flex items-center">
+                    <span className="mr-2">•</span> Model builder interface
+                  </li>
+                  <li className="flex items-center">
+                    <span className="mr-2">•</span> Validation & testing tools
+                  </li>
+                  <li className="flex items-center">
+                    <span className="mr-2">•</span> Performance analysis
+                  </li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button className="w-full" asChild>
+                  <Link href="/development/assessment-workbench">
+                    Open Assessment Workbench
+                  </Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
         </div>
       </div>
     </>
