@@ -16,6 +16,12 @@ import {
 } from '@shared/gis-schema';
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
+import { 
+  ErrorTrackingService, 
+  ErrorCategory, 
+  ErrorSeverity, 
+  ErrorSource 
+} from '../error-tracking-service';
 
 // Agent types for GIS operations
 export enum GISAgentType {
@@ -64,6 +70,7 @@ export interface IGISAgent {
 export class GISAgentOrchestrationService {
   private static instance: GISAgentOrchestrationService;
   private storage: IStorage;
+  private errorTrackingService: ErrorTrackingService;
   private agents: Map<string, IGISAgent> = new Map();
   private eventEmitter: EventEmitter = new EventEmitter();
   private activeTasks: Map<number, GISAgentTask> = new Map();
@@ -71,6 +78,7 @@ export class GISAgentOrchestrationService {
 
   private constructor(storage: IStorage) {
     this.storage = storage;
+    this.errorTrackingService = new ErrorTrackingService(storage);
   }
 
   /**
