@@ -43,14 +43,22 @@ import {
   modelValidationRules, ModelValidationRule, InsertModelValidationRule,
   modelTestCases, ModelTestCase, InsertModelTestCase,
   assessmentModelVersions, AssessmentModelVersion, InsertAssessmentModelVersion,
+  // Development Tools
+  codeSnippets, CodeSnippet, InsertCodeSnippet,
+  dataVisualizations, DataVisualization, InsertDataVisualization,
+  uiComponentTemplates, UIComponentTemplate, InsertUIComponentTemplate,
   // TaxI_AI Development Platform enums
   ProjectType, ProjectLanguage, ProjectStatus, FileType, PreviewStatus,
   // Assessment Model Workbench enums
   ModelType, ModelStatus, VariableType, DataSourceType,
+  // Development Tools enums
+  CodeSnippetType, VisualizationType, ComponentType,
+  // Team collaboration
   teamMembers, TeamMember, InsertTeamMember,
   teamTasks, TeamTask, InsertTeamTask,
   taskComments, TaskComment, InsertTaskComment,
-  teamCollaborationSessions, TeamCollaborationSession, InsertTeamCollaborationSession,
+  basicTeamCollaborationSessions as teamCollaborationSessions, 
+  TeamCollaborationSession, InsertTeamCollaborationSession,
   teamFeedbacks, TeamFeedback, InsertTeamFeedback,
   teamKnowledgeBaseItems, TeamKnowledgeBaseItem, InsertTeamKnowledgeBaseItem,
   sharedWorkflows, SharedWorkflow, InsertSharedWorkflow,
@@ -92,6 +100,28 @@ interface PacsModuleRow {
 
 // Define the storage interface
 export interface IStorage {
+  // Development Tools methods
+  // Code Snippets
+  getCodeSnippets(filters?: { language?: string, snippetType?: string, tags?: string[] }): Promise<CodeSnippet[]>;
+  getCodeSnippetById(id: number): Promise<CodeSnippet | undefined>;
+  createCodeSnippet(snippet: InsertCodeSnippet): Promise<CodeSnippet>;
+  updateCodeSnippet(id: number, updates: Partial<InsertCodeSnippet>): Promise<CodeSnippet | undefined>;
+  deleteCodeSnippet(id: number): Promise<boolean>;
+
+  // Data Visualizations
+  getDataVisualizations(filters?: { visualizationType?: string, createdBy?: number }): Promise<DataVisualization[]>;
+  getDataVisualizationById(id: number): Promise<DataVisualization | undefined>;
+  createDataVisualization(visualization: InsertDataVisualization): Promise<DataVisualization>;
+  updateDataVisualization(id: number, updates: Partial<InsertDataVisualization>): Promise<DataVisualization | undefined>;
+  deleteDataVisualization(id: number): Promise<boolean>;
+
+  // UI Component Templates
+  getUIComponentTemplates(filters?: { componentType?: string, framework?: string, tags?: string[] }): Promise<UIComponentTemplate[]>;
+  getUIComponentTemplateById(id: number): Promise<UIComponentTemplate | undefined>;
+  createUIComponentTemplate(template: InsertUIComponentTemplate): Promise<UIComponentTemplate>;
+  updateUIComponentTemplate(id: number, updates: Partial<InsertUIComponentTemplate>): Promise<UIComponentTemplate | undefined>;
+  deleteUIComponentTemplate(id: number): Promise<boolean>;
+
   // Team Agent methods
   getAllTeamMembers(): Promise<TeamMember[]>;
   getTeamMemberById(id: number): Promise<TeamMember | null>;
@@ -4003,7 +4033,9 @@ export class PgStorage implements IStorage {
       appeals, appealComments, appealEvidence, auditLogs,
       aiAgents, systemActivities, mcpToolExecutionLogs, pacsModules, propertyInsightShares,
       comparableSales, comparableSalesAnalyses, comparableAnalysisEntries,
-      importStaging
+      importStaging,
+      // Development Tools
+      codeSnippets, dataVisualizations, uiComponentTemplates
     }});
     
     // Initialize in-memory maps for PACS methods
