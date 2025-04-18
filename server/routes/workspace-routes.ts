@@ -1,18 +1,8 @@
-import { Router, Request, Response, NextFunction } from "express";
+import { Router, Response, NextFunction } from "express";
 import { workspacePreferencesService } from "../services/workspace-customization/workspace-preferences-service";
 import { z } from "zod";
 import { insertWorkspacePreferenceSchema } from "@shared/schema";
-
-// Define extended Request type to include user information
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: number;  // We'll use id instead of userId for consistency with our service
-    username: string;
-    role: string;
-    scope?: string[];
-  };
-  isAuthenticated(): boolean;
-}
+import { AuthenticatedRequest } from "../types/auth";
 
 const router = Router();
 

@@ -1,18 +1,8 @@
-import { Router, Request, Response, NextFunction } from "express";
+import { Router, Response, NextFunction } from "express";
 import { personalizedAgentService } from "../services/personalized-agents/personalized-agent-service";
 import { z } from "zod";
 import { insertPersonalizedDeveloperAgentSchema } from "@shared/schema";
-
-// Define extended Request type to include user information
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: number;  // We'll use id instead of userId for consistency with our service
-    username: string;
-    role: string;
-    scope?: string[];
-  };
-  isAuthenticated(): boolean;
-}
+import { AuthenticatedRequest } from "../types/auth";
 
 const router = Router();
 
