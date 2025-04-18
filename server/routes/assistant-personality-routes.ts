@@ -38,7 +38,7 @@ router.get('/personalities', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const personalities = await assistantPersonalityService.getPersonalitiesForUser(userId);
     res.json(personalities);
   } catch (error) {
@@ -56,7 +56,7 @@ router.get('/personalities/default', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const defaultPersonality = await assistantPersonalityService.getDefaultPersonalityForUser(userId);
     
     if (!defaultPersonality) {
