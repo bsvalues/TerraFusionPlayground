@@ -1,1419 +1,871 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
-import { SelectBox } from '@/components/ui/select-box';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { queryClient, apiRequest } from '@/lib/queryClient';
-import { 
-  ArrowRightCircle, 
-  Database, 
-  ArrowDown, 
-  Check, 
-  CircleAlert,
-  RefreshCw,
-  DownloadCloud,
-  Info,
-  Edit,
-  Play,
-  AlertCircle,
-  Copy,
-  FileCode,
-  Layout,
-  Table2,
-  BarChart,
-  Lock,
-  Lightbulb
-} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
+import { Loader2, Database, ArrowRight, Check, AlertCircle } from 'lucide-react';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 
-// Type definitions for conversion-related data structures
-interface DatabaseConnectionConfig {
-  type?: string;
-  connectionString?: string;
-  host?: string;
-  port?: number;
-  database?: string;
-  schema?: string;
-  username?: string;
-  password?: string;
-  options?: Record<string, any>;
-  filePath?: string;
-}
+// Validation schemas
+const connectionFormSchema = z.object({
+  connectionString: z.string().min(1, 'Connection string is required'),
+  databaseType: z.string().min(1, 'Database type is required')
+});
 
-interface ConversionProject {
-  id: string;
-  name: string;
-  description: string;
-  sourceConfig: DatabaseConnectionConfig;
-  targetConfig: DatabaseConnectionConfig;
-  status: string;
-  progress: number;
-  currentStage: string;
-  schemaAnalysis?: any;
-  migrationPlan?: any;
-  migrationResult?: any;
-  compatibilityResult?: any;
-  validationResult?: any;
-  error?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  metadata?: Record<string, any>;
-}
+const conversionProjectFormSchema = z.object({
+  projectName: z.string().min(1, 'Project name is required'),
+  description: z.string().optional(),
+  sourceConnectionString: z.string().min(1, 'Source connection string is required'),
+  sourceType: z.string().min(1, 'Source database type is required'),
+  targetConnectionString: z.string().min(1, 'Target connection string is required'),
+  targetType: z.string().min(1, 'Target database type is required')
+});
 
-interface ConnectionTemplate {
-  id: number;
-  name: string;
-  description: string;
-  databaseType: string;
-  connectionConfig: DatabaseConnectionConfig;
-  isPublic: boolean;
-  createdBy: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
+type ConnectionFormValues = z.infer<typeof connectionFormSchema>;
+type ConversionProjectFormValues = z.infer<typeof conversionProjectFormSchema>;
 
-// Main component
-const DatabaseConversionPage: React.FC = () => {
-  const { toast } = useToast();
-  const [tab, setTab] = useState('projects');
+export default function DatabaseConversionPage() {
+  const [activeTab, setActiveTab] = useState('test-connection');
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
-  const [newConnectionConfig, setNewConnectionConfig] = useState<DatabaseConnectionConfig>({
-    type: 'postgresql',
-    host: 'localhost',
-    port: 5432,
-    username: '',
-    password: '',
-    database: ''
-  });
-  const [newProject, setNewProject] = useState({
-    name: '',
-    description: '',
-    sourceConfig: { ...newConnectionConfig },
-    targetConfig: { 
-      type: 'postgresql',
-      host: 'localhost',
-      port: 5432,
-      username: '',
-      password: '',
-      database: ''
+  const { toast } = useToast();
+
+  // Connection test form
+  const connectionForm = useForm<ConnectionFormValues>({
+    resolver: zodResolver(connectionFormSchema),
+    defaultValues: {
+      connectionString: '',
+      databaseType: 'postgresql'
     }
   });
-  const [customInstructions, setCustomInstructions] = useState('');
-  const [sqlScript, setSqlScript] = useState('');
-  const [activeDetailsTab, setActiveDetailsTab] = useState('overview');
 
-  // Fetch projects
+  // Project creation form
+  const projectForm = useForm<ConversionProjectFormValues>({
+    resolver: zodResolver(conversionProjectFormSchema),
+    defaultValues: {
+      projectName: '',
+      description: '',
+      sourceConnectionString: '',
+      sourceType: 'postgresql',
+      targetConnectionString: '',
+      targetType: 'postgresql'
+    }
+  });
+
+  // Fetch database types
+  const { data: databaseTypes, isLoading: isLoadingDatabaseTypes } = useQuery({
+    queryKey: ['/api/database-conversion/database-types'],
+    enabled: true
+  });
+
+  // Fetch conversion projects
   const { data: projects, isLoading: isLoadingProjects } = useQuery({
     queryKey: ['/api/database-conversion/projects'],
-    queryFn: async () => {
-      const { data } = await apiRequest('GET', '/api/database-conversion/projects');
-      return data as ConversionProject[];
-    }
+    enabled: true
   });
 
-  // Fetch connection templates
-  const { data: templates, isLoading: isLoadingTemplates } = useQuery({
-    queryKey: ['/api/database-conversion/templates'],
-    queryFn: async () => {
-      const { data } = await apiRequest('GET', '/api/database-conversion/templates');
-      return data as ConnectionTemplate[];
-    }
-  });
-
-  // Fetch selected project
-  const { data: selectedProjectData, isLoading: isLoadingSelectedProject } = useQuery({
-    queryKey: ['/api/database-conversion/projects', selectedProject],
-    queryFn: async () => {
-      if (!selectedProject) return null;
-      const { data } = await apiRequest('GET', `/api/database-conversion/projects/${selectedProject}`);
-      return data as ConversionProject;
+  // Test connection mutation
+  const testConnectionMutation = useMutation({
+    mutationFn: async (data: ConnectionFormValues) => {
+      const res = await apiRequest('POST', '/api/database-conversion/test-connection', data);
+      return await res.json();
     },
-    enabled: !!selectedProject
+    onSuccess: (data) => {
+      toast({
+        title: 'Connection Test',
+        description: data.status === 'success' ? 'Connection successful!' : `Connection failed: ${data.message}`,
+        variant: data.status === 'success' ? 'default' : 'destructive'
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Connection Test Failed',
+        description: error.message || 'An error occurred while testing the connection',
+        variant: 'destructive'
+      });
+    }
+  });
+
+  // Analyze schema mutation
+  const analyzeSchemasMutation = useMutation({
+    mutationFn: async (data: ConnectionFormValues) => {
+      const res = await apiRequest('POST', '/api/database-conversion/analyze-schema', data);
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Schema Analysis',
+        description: `Successfully analyzed schema with ${data.tables.length} tables`,
+        variant: 'default'
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Schema Analysis Failed',
+        description: error.message || 'An error occurred while analyzing the schema',
+        variant: 'destructive'
+      });
+    }
   });
 
   // Create project mutation
   const createProjectMutation = useMutation({
-    mutationFn: async (project: any) => {
-      const response = await apiRequest('POST', '/api/database-conversion/projects', project);
-      return response.data;
+    mutationFn: async (data: ConversionProjectFormValues) => {
+      const projectId = crypto.randomUUID();
+      const res = await apiRequest('POST', '/api/database-conversion/projects', {
+        projectId,
+        name: data.projectName,
+        description: data.description,
+        sourceConnectionString: data.sourceConnectionString,
+        sourceType: data.sourceType,
+        targetConnectionString: data.targetConnectionString,
+        targetType: data.targetType,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      return await res.json();
     },
     onSuccess: (data) => {
+      toast({
+        title: 'Project Created',
+        description: `Successfully created project: ${data.name}`,
+        variant: 'default'
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/database-conversion/projects'] });
-      setSelectedProject(data.id);
-      setTab('details');
-      toast({
-        title: 'Project created',
-        description: 'Your database conversion project has been created successfully.',
-      });
+      projectForm.reset();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
-        title: 'Failed to create project',
-        description: error.message,
-        variant: 'destructive',
+        title: 'Project Creation Failed',
+        description: error.message || 'An error occurred while creating the project',
+        variant: 'destructive'
       });
     }
   });
 
-  // Analyze database mutation
-  const analyzeDatabaseMutation = useMutation({
+  // Start conversion mutation
+  const startConversionMutation = useMutation({
     mutationFn: async (projectId: string) => {
-      const response = await apiRequest('POST', `/api/database-conversion/projects/${projectId}/analyze`);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/database-conversion/projects', selectedProject] });
-      toast({
-        title: 'Analysis complete',
-        description: 'Database schema analysis has been completed successfully.',
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Analysis failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  });
-
-  // Generate migration plan mutation
-  const generatePlanMutation = useMutation({
-    mutationFn: async ({ projectId, instructions }: { projectId: string, instructions: string }) => {
-      const response = await apiRequest(
-        'POST', 
-        `/api/database-conversion/projects/${projectId}/generate-plan`,
-        { customInstructions: instructions }
-      );
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/database-conversion/projects', selectedProject] });
-      toast({
-        title: 'Plan generated',
-        description: 'Migration plan has been generated successfully.',
-      });
-      setActiveDetailsTab('plan');
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Plan generation failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  });
-
-  // Generate SQL script mutation
-  const generateScriptMutation = useMutation({
-    mutationFn: async (projectId: string) => {
-      const response = await apiRequest('POST', `/api/database-conversion/projects/${projectId}/generate-script`);
-      return response.data;
+      const res = await apiRequest('POST', '/api/database-conversion/start', { projectId });
+      return await res.json();
     },
     onSuccess: (data) => {
-      setSqlScript(data.script);
       toast({
-        title: 'Script generated',
-        description: 'SQL migration script has been generated successfully.',
+        title: 'Conversion Started',
+        description: `Conversion process started for project: ${data.projectId}`,
+        variant: 'default'
       });
-      setActiveDetailsTab('script');
+      queryClient.invalidateQueries({ queryKey: ['/api/database-conversion/status', selectedProject] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
-        title: 'Script generation failed',
-        description: error.message,
-        variant: 'destructive',
+        title: 'Start Conversion Failed',
+        description: error.message || 'An error occurred while starting the conversion',
+        variant: 'destructive'
       });
     }
   });
 
-  // Execute migration mutation
-  const executeMigrationMutation = useMutation({
-    mutationFn: async (projectId: string) => {
-      const response = await apiRequest('POST', `/api/database-conversion/projects/${projectId}/execute`);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/database-conversion/projects', selectedProject] });
-      toast({
-        title: 'Migration executed',
-        description: 'Database migration has been executed successfully.',
-      });
-      setActiveDetailsTab('results');
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Migration failed',
-        description: error.message,
-        variant: 'destructive',
-      });
+  // Get conversion status for selected project
+  const { data: conversionStatus, isLoading: isLoadingStatus } = useQuery({
+    queryKey: ['/api/database-conversion/status', selectedProject],
+    enabled: !!selectedProject,
+    refetchInterval: (data) => {
+      // Refetch more frequently when conversion is in progress
+      if (data?.status === 'in_progress') return 2000;
+      return false;
     }
   });
 
-  // Create compatibility layer mutation
-  const createCompatibilityLayerMutation = useMutation({
-    mutationFn: async (projectId: string) => {
-      const response = await apiRequest('POST', `/api/database-conversion/projects/${projectId}/compatibility`);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/database-conversion/projects', selectedProject] });
-      toast({
-        title: 'Compatibility layer created',
-        description: 'Compatibility layer has been created successfully.',
+  // Generate compatibility layer mutation
+  const generateCompatibilityLayerMutation = useMutation({
+    mutationFn: async ({ projectId, options }: { projectId: string, options: any }) => {
+      const res = await apiRequest('POST', '/api/database-conversion/generate-compatibility', {
+        projectId,
+        options
       });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Compatibility layer creation failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  });
-
-  // Get schema insights mutation
-  const getSchemaInsightsMutation = useMutation({
-    mutationFn: async (projectId: string) => {
-      const response = await apiRequest('GET', `/api/database-conversion/projects/${projectId}/schema-insights`);
-      return response.data;
+      return await res.json();
     },
     onSuccess: (data) => {
-      // Display insights in a modal or a new tab
-      console.log('Schema insights:', data);
       toast({
-        title: 'Schema insights',
-        description: 'Schema insights have been generated successfully.',
+        title: 'Compatibility Layer Generated',
+        description: `Successfully generated compatibility layer for project`,
+        variant: 'default'
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
-        title: 'Failed to generate schema insights',
-        description: error.message,
-        variant: 'destructive',
+        title: 'Compatibility Layer Generation Failed',
+        description: error.message || 'An error occurred while generating the compatibility layer',
+        variant: 'destructive'
       });
     }
   });
 
-  // Helper functions
-  const handleCreateProject = () => {
-    createProjectMutation.mutate(newProject);
+  // Handle connection test form submission
+  const onConnectionTestSubmit = (values: ConnectionFormValues) => {
+    testConnectionMutation.mutate(values);
   };
 
-  const handleSelectProject = (projectId: string) => {
-    setSelectedProject(projectId);
-    setTab('details');
+  // Handle schema analysis form submission
+  const onSchemaAnalysisSubmit = (values: ConnectionFormValues) => {
+    analyzeSchemasMutation.mutate(values);
   };
 
-  const handleAnalyzeDatabase = () => {
-    if (selectedProject) {
-      analyzeDatabaseMutation.mutate(selectedProject);
-    }
+  // Handle project creation form submission
+  const onProjectCreateSubmit = (values: ConversionProjectFormValues) => {
+    createProjectMutation.mutate(values);
   };
 
-  const handleGeneratePlan = () => {
-    if (selectedProject) {
-      generatePlanMutation.mutate({ 
-        projectId: selectedProject, 
-        instructions: customInstructions 
-      });
-    }
-  };
-
-  const handleGenerateScript = () => {
-    if (selectedProject) {
-      generateScriptMutation.mutate(selectedProject);
-    }
-  };
-
-  const handleExecuteMigration = () => {
-    if (selectedProject) {
-      executeMigrationMutation.mutate(selectedProject);
-    }
-  };
-
-  const handleCreateCompatibilityLayer = () => {
-    if (selectedProject) {
-      createCompatibilityLayerMutation.mutate(selectedProject);
-    }
-  };
-
-  const handleGetSchemaInsights = () => {
-    if (selectedProject) {
-      getSchemaInsightsMutation.mutate(selectedProject);
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
+  // Status badge component
+  const StatusBadge = ({ status }: { status: string }) => {
     switch (status) {
-      case 'created':
-        return <Badge variant="outline">Created</Badge>;
-      case 'analyzing':
-      case 'planning':
-      case 'migrating':
-        return <Badge variant="secondary" className="bg-amber-100 text-amber-800">In Progress</Badge>;
-      case 'analyzed':
-      case 'planned':
-      case 'migrated':
+      case 'pending':
+        return <Badge variant="outline">Pending</Badge>;
+      case 'in_progress':
+        return <Badge variant="secondary">In Progress</Badge>;
       case 'completed':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800">Completed</Badge>;
+        return <Badge variant="success">Completed</Badge>;
       case 'failed':
         return <Badge variant="destructive">Failed</Badge>;
+      case 'cancelled':
+        return <Badge variant="outline">Cancelled</Badge>;
+      case 'paused':
+        return <Badge variant="outline">Paused</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const canAnalyze = (project: ConversionProject) => {
-    return ['created'].includes(project.status);
-  };
+  return (
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-6">Database Conversion System</h1>
+      <p className="text-muted-foreground mb-8">
+        Convert databases between different systems and generate compatibility layers
+      </p>
 
-  const canGeneratePlan = (project: ConversionProject) => {
-    return ['analyzed'].includes(project.status) || project.schemaAnalysis;
-  };
+      <Tabs defaultValue="test-connection" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="test-connection">Test Connection</TabsTrigger>
+          <TabsTrigger value="analyze-schema">Analyze Schema</TabsTrigger>
+          <TabsTrigger value="create-project">Create Project</TabsTrigger>
+          <TabsTrigger value="projects">Projects</TabsTrigger>
+        </TabsList>
 
-  const canGenerateScript = (project: ConversionProject) => {
-    return ['planned'].includes(project.status) || project.migrationPlan;
-  };
-
-  const canExecuteMigration = (project: ConversionProject) => {
-    return ['planned'].includes(project.status) || project.migrationPlan;
-  };
-
-  const canCreateCompatibilityLayer = (project: ConversionProject) => {
-    return ['migrated'].includes(project.status) || project.migrationResult;
-  };
-
-  // Render projects list
-  const renderProjectsList = () => {
-    if (isLoadingProjects) {
-      return <div className="flex justify-center p-4">Loading projects...</div>;
-    }
-
-    if (!projects || projects.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center p-8">
-          <Database className="w-12 h-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium">No projects found</h3>
-          <p className="text-sm text-muted-foreground mb-4">Create a new database conversion project to get started.</p>
-          <Button onClick={() => setTab('new')}>Create New Project</Button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-        {projects.map((project) => (
-          <Card key={project.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleSelectProject(project.id)}>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <CardTitle className="text-lg">{project.name}</CardTitle>
-                {getStatusBadge(project.status)}
-              </div>
-              <CardDescription>{project.description}</CardDescription>
+        {/* Test Connection Tab */}
+        <TabsContent value="test-connection">
+          <Card>
+            <CardHeader>
+              <CardTitle>Test Database Connection</CardTitle>
+              <CardDescription>
+                Verify your database connection before creating conversion projects
+              </CardDescription>
             </CardHeader>
-            <CardContent className="pb-2">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Source:</span>{' '}
-                  <span className="font-medium">{project.sourceConfig.type}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Target:</span>{' '}
-                  <span className="font-medium">{project.targetConfig.type}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Created:</span>{' '}
-                  <span>{new Date(project.createdAt).toLocaleDateString()}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Updated:</span>{' '}
-                  <span>{new Date(project.updatedAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-              {project.progress > 0 && (
-                <div className="mt-4">
-                  <Progress value={project.progress} className="h-2" />
-                  <p className="text-xs text-right mt-1 text-muted-foreground">{project.progress}% complete</p>
-                </div>
-              )}
+            <CardContent>
+              <Form {...connectionForm}>
+                <form id="connection-form" onSubmit={connectionForm.handleSubmit(onConnectionTestSubmit)} className="space-y-4">
+                  <FormField
+                    control={connectionForm.control}
+                    name="connectionString"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Connection String</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., postgresql://user:password@localhost:5432/database" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          The connection string to your database (credentials are never stored)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={connectionForm.control}
+                    name="databaseType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Database Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a database type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {isLoadingDatabaseTypes ? (
+                              <SelectItem value="loading">Loading...</SelectItem>
+                            ) : (
+                              <>
+                                <SelectItem value="postgresql">PostgreSQL</SelectItem>
+                                <SelectItem value="mysql">MySQL</SelectItem>
+                                <SelectItem value="sqlite">SQLite</SelectItem>
+                                <SelectItem value="sqlserver">SQL Server</SelectItem>
+                                <SelectItem value="oracle">Oracle</SelectItem>
+                                <SelectItem value="mongodb">MongoDB</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          The type of database you're connecting to
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </form>
+              </Form>
             </CardContent>
-            <CardFooter>
-              <Button variant="secondary" className="w-full" onClick={(e) => {
-                e.stopPropagation();
-                handleSelectProject(project.id);
-              }}>
-                View Details
+            <CardFooter className="flex justify-end">
+              <Button type="submit" form="connection-form" disabled={testConnectionMutation.isPending}>
+                {testConnectionMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Testing...
+                  </>
+                ) : (
+                  <>
+                    Test Connection
+                  </>
+                )}
               </Button>
             </CardFooter>
           </Card>
-        ))}
-      </div>
-    );
-  };
+        </TabsContent>
 
-  // Render new project form
-  const renderNewProjectForm = () => {
-    return (
-      <div className="p-4 max-w-4xl mx-auto">
-        <h2 className="text-2xl font-bold mb-6">Create New Database Conversion Project</h2>
-        
-        <div className="grid gap-6">
-          <div className="grid gap-3">
-            <Label htmlFor="name">Project Name</Label>
-            <Input 
-              id="name" 
-              placeholder="Enter project name" 
-              value={newProject.name}
-              onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-            />
-          </div>
-          
-          <div className="grid gap-3">
-            <Label htmlFor="description">Description</Label>
-            <Textarea 
-              id="description" 
-              placeholder="Describe the purpose of this conversion project" 
-              value={newProject.description}
-              onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
-            />
-          </div>
-          
-          <Separator />
-          
-          <div className="grid gap-6">
-            <h3 className="text-lg font-semibold">Source Database Configuration</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-3">
-                <Label htmlFor="sourceType">Database Type</Label>
-                <Select 
-                  value={newProject.sourceConfig.type} 
-                  onValueChange={(value) => setNewProject({
-                    ...newProject,
-                    sourceConfig: { ...newProject.sourceConfig, type: value }
-                  })}
-                >
-                  <SelectTrigger id="sourceType">
-                    <SelectValue placeholder="Select database type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="postgresql">PostgreSQL</SelectItem>
-                    <SelectItem value="sqlserver">SQL Server</SelectItem>
-                    <SelectItem value="mysql">MySQL</SelectItem>
-                    <SelectItem value="oracle">Oracle</SelectItem>
-                    <SelectItem value="mongodb">MongoDB</SelectItem>
-                    <SelectItem value="sqlite">SQLite</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="grid gap-3">
-                <Label htmlFor="sourceHost">Host</Label>
-                <Input 
-                  id="sourceHost" 
-                  placeholder="Enter host" 
-                  value={newProject.sourceConfig.host || ''}
-                  onChange={(e) => setNewProject({
-                    ...newProject,
-                    sourceConfig: { ...newProject.sourceConfig, host: e.target.value }
-                  })}
-                />
-              </div>
-              
-              <div className="grid gap-3">
-                <Label htmlFor="sourcePort">Port</Label>
-                <Input 
-                  id="sourcePort" 
-                  type="number"
-                  placeholder="Enter port" 
-                  value={newProject.sourceConfig.port || ''}
-                  onChange={(e) => setNewProject({
-                    ...newProject,
-                    sourceConfig: { ...newProject.sourceConfig, port: parseInt(e.target.value) }
-                  })}
-                />
-              </div>
-              
-              <div className="grid gap-3">
-                <Label htmlFor="sourceDatabase">Database Name</Label>
-                <Input 
-                  id="sourceDatabase" 
-                  placeholder="Enter database name" 
-                  value={newProject.sourceConfig.database || ''}
-                  onChange={(e) => setNewProject({
-                    ...newProject,
-                    sourceConfig: { ...newProject.sourceConfig, database: e.target.value }
-                  })}
-                />
-              </div>
-              
-              <div className="grid gap-3">
-                <Label htmlFor="sourceUsername">Username</Label>
-                <Input 
-                  id="sourceUsername" 
-                  placeholder="Enter username" 
-                  value={newProject.sourceConfig.username || ''}
-                  onChange={(e) => setNewProject({
-                    ...newProject,
-                    sourceConfig: { ...newProject.sourceConfig, username: e.target.value }
-                  })}
-                />
-              </div>
-              
-              <div className="grid gap-3">
-                <Label htmlFor="sourcePassword">Password</Label>
-                <Input 
-                  id="sourcePassword" 
-                  type="password"
-                  placeholder="Enter password" 
-                  value={newProject.sourceConfig.password || ''}
-                  onChange={(e) => setNewProject({
-                    ...newProject,
-                    sourceConfig: { ...newProject.sourceConfig, password: e.target.value }
-                  })}
-                />
-              </div>
-            </div>
-          </div>
-          
-          <Separator />
-          
-          <div className="grid gap-6">
-            <h3 className="text-lg font-semibold">Target Database Configuration</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-3">
-                <Label htmlFor="targetType">Database Type</Label>
-                <Select 
-                  value={newProject.targetConfig.type} 
-                  onValueChange={(value) => setNewProject({
-                    ...newProject,
-                    targetConfig: { ...newProject.targetConfig, type: value }
-                  })}
-                >
-                  <SelectTrigger id="targetType">
-                    <SelectValue placeholder="Select database type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="postgresql">PostgreSQL</SelectItem>
-                    <SelectItem value="sqlserver">SQL Server</SelectItem>
-                    <SelectItem value="mysql">MySQL</SelectItem>
-                    <SelectItem value="oracle">Oracle</SelectItem>
-                    <SelectItem value="mongodb">MongoDB</SelectItem>
-                    <SelectItem value="sqlite">SQLite</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="grid gap-3">
-                <Label htmlFor="targetHost">Host</Label>
-                <Input 
-                  id="targetHost" 
-                  placeholder="Enter host" 
-                  value={newProject.targetConfig.host || ''}
-                  onChange={(e) => setNewProject({
-                    ...newProject,
-                    targetConfig: { ...newProject.targetConfig, host: e.target.value }
-                  })}
-                />
-              </div>
-              
-              <div className="grid gap-3">
-                <Label htmlFor="targetPort">Port</Label>
-                <Input 
-                  id="targetPort" 
-                  type="number"
-                  placeholder="Enter port" 
-                  value={newProject.targetConfig.port || ''}
-                  onChange={(e) => setNewProject({
-                    ...newProject,
-                    targetConfig: { ...newProject.targetConfig, port: parseInt(e.target.value) }
-                  })}
-                />
-              </div>
-              
-              <div className="grid gap-3">
-                <Label htmlFor="targetDatabase">Database Name</Label>
-                <Input 
-                  id="targetDatabase" 
-                  placeholder="Enter database name" 
-                  value={newProject.targetConfig.database || ''}
-                  onChange={(e) => setNewProject({
-                    ...newProject,
-                    targetConfig: { ...newProject.targetConfig, database: e.target.value }
-                  })}
-                />
-              </div>
-              
-              <div className="grid gap-3">
-                <Label htmlFor="targetUsername">Username</Label>
-                <Input 
-                  id="targetUsername" 
-                  placeholder="Enter username" 
-                  value={newProject.targetConfig.username || ''}
-                  onChange={(e) => setNewProject({
-                    ...newProject,
-                    targetConfig: { ...newProject.targetConfig, username: e.target.value }
-                  })}
-                />
-              </div>
-              
-              <div className="grid gap-3">
-                <Label htmlFor="targetPassword">Password</Label>
-                <Input 
-                  id="targetPassword" 
-                  type="password"
-                  placeholder="Enter password" 
-                  value={newProject.targetConfig.password || ''}
-                  onChange={(e) => setNewProject({
-                    ...newProject,
-                    targetConfig: { ...newProject.targetConfig, password: e.target.value }
-                  })}
-                />
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setTab('projects')}>Cancel</Button>
-            <Button onClick={handleCreateProject} disabled={createProjectMutation.isPending}>
-              {createProjectMutation.isPending ? 'Creating...' : 'Create Project'}
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  };
+        {/* Analyze Schema Tab */}
+        <TabsContent value="analyze-schema">
+          <Card>
+            <CardHeader>
+              <CardTitle>Analyze Database Schema</CardTitle>
+              <CardDescription>
+                Analyze database structure to prepare for conversion
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...connectionForm}>
+                <form id="schema-form" onSubmit={connectionForm.handleSubmit(onSchemaAnalysisSubmit)} className="space-y-4">
+                  <FormField
+                    control={connectionForm.control}
+                    name="connectionString"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Connection String</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., postgresql://user:password@localhost:5432/database" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          The connection string to your database (credentials are never stored)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-  // Render project details
-  const renderProjectDetails = () => {
-    if (isLoadingSelectedProject || !selectedProjectData) {
-      return <div className="flex justify-center p-4">Loading project details...</div>;
-    }
+                  <FormField
+                    control={connectionForm.control}
+                    name="databaseType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Database Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a database type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {isLoadingDatabaseTypes ? (
+                              <SelectItem value="loading">Loading...</SelectItem>
+                            ) : (
+                              <>
+                                <SelectItem value="postgresql">PostgreSQL</SelectItem>
+                                <SelectItem value="mysql">MySQL</SelectItem>
+                                <SelectItem value="sqlite">SQLite</SelectItem>
+                                <SelectItem value="sqlserver">SQL Server</SelectItem>
+                                <SelectItem value="oracle">Oracle</SelectItem>
+                                <SelectItem value="mongodb">MongoDB</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          The type of database you're connecting to
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </form>
+              </Form>
 
-    const project = selectedProjectData;
-
-    return (
-      <div className="p-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <div>
-            <h2 className="text-2xl font-bold">{project.name}</h2>
-            <p className="text-muted-foreground">{project.description}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {getStatusBadge(project.status)}
-            <Badge variant="outline" className="bg-blue-50 text-blue-700">
-              {project.sourceConfig.type} → {project.targetConfig.type}
-            </Badge>
-          </div>
-        </div>
-
-        {project.error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{project.error}</AlertDescription>
-          </Alert>
-        )}
-
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-2">
-            <Badge className="bg-blue-100 text-blue-800">Source: {project.sourceConfig.database}@{project.sourceConfig.host}</Badge>
-            <ArrowRightCircle className="w-4 h-4 text-gray-400" />
-            <Badge className="bg-green-100 text-green-800">Target: {project.targetConfig.database}@{project.targetConfig.host}</Badge>
-          </div>
-          
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setTab('projects')}>
-              Back to Projects
-            </Button>
-          </div>
-        </div>
-
-        {project.progress > 0 && (
-          <div className="mb-6">
-            <div className="flex justify-between text-sm mb-1">
-              <span>{project.currentStage}</span>
-              <span>{project.progress}%</span>
-            </div>
-            <Progress value={project.progress} className="h-2" />
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Conversion Steps</CardTitle>
-                <CardDescription>Follow these steps to complete your database conversion</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="flex flex-col">
-                  <div className={`flex items-center p-4 border-b ${project.schemaAnalysis ? 'text-green-700 bg-green-50' : ''}`}>
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center mr-3 border">
-                      {project.schemaAnalysis ? <Check className="w-4 h-4" /> : '1'}
+              {analyzeSchemasMutation.data && (
+                <div className="mt-6 space-y-4">
+                  <h3 className="text-lg font-semibold">Schema Analysis Results</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="border rounded p-4">
+                      <p className="text-muted-foreground text-sm">Tables</p>
+                      <p className="text-2xl font-bold">{analyzeSchemasMutation.data.statistics.totalTables}</p>
                     </div>
-                    <div className="flex-grow">Analyze Database Schema</div>
-                    <Button 
-                      size="sm" 
-                      variant={project.schemaAnalysis ? "outline" : "default"} 
-                      onClick={handleAnalyzeDatabase}
-                      disabled={!canAnalyze(project) || analyzeDatabaseMutation.isPending}
-                    >
-                      {analyzeDatabaseMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
-                      {project.schemaAnalysis ? 'Re-analyze' : 'Analyze'}
-                    </Button>
+                    <div className="border rounded p-4">
+                      <p className="text-muted-foreground text-sm">Views</p>
+                      <p className="text-2xl font-bold">{analyzeSchemasMutation.data.statistics.totalViews}</p>
+                    </div>
+                    <div className="border rounded p-4">
+                      <p className="text-muted-foreground text-sm">Procedures/Functions</p>
+                      <p className="text-2xl font-bold">
+                        {analyzeSchemasMutation.data.statistics.totalProcedures + analyzeSchemasMutation.data.statistics.totalFunctions}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className={`flex items-center p-4 border-b ${project.migrationPlan ? 'text-green-700 bg-green-50' : ''}`}>
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center mr-3 border">
-                      {project.migrationPlan ? <Check className="w-4 h-4" /> : '2'}
+                  <div className="mt-4">
+                    <h4 className="font-medium mb-2">Tables</h4>
+                    <div className="border rounded max-h-60 overflow-y-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted">
+                          <tr>
+                            <th className="py-2 px-4 text-left text-sm font-medium">Name</th>
+                            <th className="py-2 px-4 text-left text-sm font-medium">Columns</th>
+                            <th className="py-2 px-4 text-left text-sm font-medium">Est. Rows</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {analyzeSchemasMutation.data.tables.map((table: any, i: number) => (
+                            <tr key={i} className="hover:bg-muted/50">
+                              <td className="py-2 px-4 text-sm">{table.name}</td>
+                              <td className="py-2 px-4 text-sm">{table.columns.length}</td>
+                              <td className="py-2 px-4 text-sm">{table.estimatedRowCount || 'Unknown'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                    <div className="flex-grow">Generate Migration Plan</div>
-                    <Button 
-                      size="sm" 
-                      variant={project.migrationPlan ? "outline" : "default"} 
-                      onClick={handleGeneratePlan}
-                      disabled={!canGeneratePlan(project) || generatePlanMutation.isPending}
-                    >
-                      {generatePlanMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
-                      {project.migrationPlan ? 'Regenerate' : 'Generate'}
-                    </Button>
-                  </div>
-
-                  <div className={`flex items-center p-4 border-b ${sqlScript ? 'text-green-700 bg-green-50' : ''}`}>
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center mr-3 border">
-                      {sqlScript ? <Check className="w-4 h-4" /> : '3'}
-                    </div>
-                    <div className="flex-grow">Generate SQL Script</div>
-                    <Button 
-                      size="sm" 
-                      variant={sqlScript ? "outline" : "default"} 
-                      onClick={handleGenerateScript}
-                      disabled={!canGenerateScript(project) || generateScriptMutation.isPending}
-                    >
-                      {generateScriptMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
-                      {sqlScript ? 'Regenerate' : 'Generate'}
-                    </Button>
-                  </div>
-
-                  <div className={`flex items-center p-4 border-b ${project.migrationResult ? 'text-green-700 bg-green-50' : ''}`}>
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center mr-3 border">
-                      {project.migrationResult ? <Check className="w-4 h-4" /> : '4'}
-                    </div>
-                    <div className="flex-grow">Execute Migration</div>
-                    <Button 
-                      size="sm" 
-                      variant={project.migrationResult ? "outline" : "default"} 
-                      onClick={handleExecuteMigration}
-                      disabled={!canExecuteMigration(project) || executeMigrationMutation.isPending}
-                    >
-                      {executeMigrationMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
-                      {project.migrationResult ? 'Re-run' : 'Execute'}
-                    </Button>
-                  </div>
-
-                  <div className={`flex items-center p-4 ${project.compatibilityResult ? 'text-green-700 bg-green-50' : ''}`}>
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center mr-3 border">
-                      {project.compatibilityResult ? <Check className="w-4 h-4" /> : '5'}
-                    </div>
-                    <div className="flex-grow">Create Compatibility Layer</div>
-                    <Button 
-                      size="sm" 
-                      variant={project.compatibilityResult ? "outline" : "default"} 
-                      onClick={handleCreateCompatibilityLayer}
-                      disabled={!canCreateCompatibilityLayer(project) || createCompatibilityLayerMutation.isPending}
-                    >
-                      {createCompatibilityLayerMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
-                      {project.compatibilityResult ? 'Recreate' : 'Create'}
-                    </Button>
                   </div>
                 </div>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-2">
-                <Button 
-                  variant="outline" 
-                  className="w-full flex items-center gap-2"
-                  onClick={handleGetSchemaInsights}
-                  disabled={!project.schemaAnalysis || getSchemaInsightsMutation.isPending}
-                >
-                  <Lightbulb className="w-4 h-4" />
-                  {getSchemaInsightsMutation.isPending ? 'Analyzing...' : 'Get AI Schema Insights'}
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
+              )}
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button type="submit" form="schema-form" disabled={analyzeSchemasMutation.isPending}>
+                {analyzeSchemasMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    Analyze Schema
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
 
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <Tabs value={activeDetailsTab} onValueChange={setActiveDetailsTab}>
-                  <TabsList className="grid grid-cols-5">
-                    <TabsTrigger value="overview">Overview</TabsTrigger>
-                    <TabsTrigger value="schema" disabled={!project.schemaAnalysis}>Schema</TabsTrigger>
-                    <TabsTrigger value="plan" disabled={!project.migrationPlan}>Plan</TabsTrigger>
-                    <TabsTrigger value="script" disabled={!sqlScript}>Script</TabsTrigger>
-                    <TabsTrigger value="results" disabled={!project.migrationResult}>Results</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </CardHeader>
-              <CardContent>
-                <TabsContent value="overview" className="mt-0">
-                  <div className="grid gap-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="text-md font-semibold mb-2">Source Database</h3>
-                        <div className="p-4 rounded-md bg-slate-50">
-                          <div className="grid grid-cols-3 gap-2 text-sm">
-                            <div className="text-muted-foreground">Type:</div>
-                            <div className="col-span-2 font-medium">{project.sourceConfig.type}</div>
-                            
-                            <div className="text-muted-foreground">Host:</div>
-                            <div className="col-span-2">{project.sourceConfig.host}</div>
-                            
-                            <div className="text-muted-foreground">Port:</div>
-                            <div className="col-span-2">{project.sourceConfig.port}</div>
-                            
-                            <div className="text-muted-foreground">Database:</div>
-                            <div className="col-span-2">{project.sourceConfig.database}</div>
-                            
-                            <div className="text-muted-foreground">Schema:</div>
-                            <div className="col-span-2">{project.sourceConfig.schema || 'default'}</div>
+        {/* Create Project Tab */}
+        <TabsContent value="create-project">
+          <Card>
+            <CardHeader>
+              <CardTitle>Create Conversion Project</CardTitle>
+              <CardDescription>
+                Set up a new database conversion project
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...projectForm}>
+                <form id="project-form" onSubmit={projectForm.handleSubmit(onProjectCreateSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={projectForm.control}
+                      name="projectName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Project Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="My DB Conversion" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={projectForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description (Optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Project description..." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <Separator className="my-4" />
+                  <h3 className="text-lg font-medium mb-4">Source Database</h3>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={projectForm.control}
+                      name="sourceType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Source Database Type</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select source database type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="postgresql">PostgreSQL</SelectItem>
+                              <SelectItem value="mysql">MySQL</SelectItem>
+                              <SelectItem value="sqlite">SQLite</SelectItem>
+                              <SelectItem value="sqlserver">SQL Server</SelectItem>
+                              <SelectItem value="oracle">Oracle</SelectItem>
+                              <SelectItem value="mongodb">MongoDB</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={projectForm.control}
+                      name="sourceConnectionString"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Source Connection String</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Source database connection string" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <Separator className="my-4" />
+                  <h3 className="text-lg font-medium mb-4">Target Database</h3>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={projectForm.control}
+                      name="targetType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Target Database Type</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select target database type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="postgresql">PostgreSQL</SelectItem>
+                              <SelectItem value="mysql">MySQL</SelectItem>
+                              <SelectItem value="sqlite">SQLite</SelectItem>
+                              <SelectItem value="sqlserver">SQL Server</SelectItem>
+                              <SelectItem value="oracle">Oracle</SelectItem>
+                              <SelectItem value="mongodb">MongoDB</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={projectForm.control}
+                      name="targetConnectionString"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Target Connection String</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Target database connection string" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button type="submit" form="project-form" disabled={createProjectMutation.isPending}>
+                {createProjectMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    Create Project
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+
+        {/* Projects Tab */}
+        <TabsContent value="projects">
+          <Card>
+            <CardHeader>
+              <CardTitle>Conversion Projects</CardTitle>
+              <CardDescription>
+                Manage your database conversion projects
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingProjects ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : !projects || projects.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Database className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                  <p>No conversion projects found</p>
+                  <p className="text-sm">Create a new project to get started</p>
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => setActiveTab('create-project')}
+                  >
+                    Create Project
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Projects List */}
+                  <div className="border rounded-md">
+                    <div className="grid grid-cols-5 bg-muted py-2 px-4 text-sm font-medium">
+                      <div>Project Name</div>
+                      <div>Source</div>
+                      <div>Target</div>
+                      <div>Status</div>
+                      <div>Actions</div>
+                    </div>
+                    <div className="divide-y">
+                      {projects.map((project: any) => (
+                        <div
+                          key={project.projectId}
+                          className={`grid grid-cols-5 py-3 px-4 items-center ${
+                            selectedProject === project.projectId ? 'bg-muted/50' : ''
+                          }`}
+                        >
+                          <div className="font-medium">{project.name}</div>
+                          <div className="text-sm">{project.sourceType}</div>
+                          <div className="text-sm">{project.targetType}</div>
+                          <div>
+                            <StatusBadge status={project.status} />
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedProject(project.projectId)}
+                            >
+                              Details
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              disabled={project.status === 'in_progress' || project.status === 'completed'}
+                              onClick={() => startConversionMutation.mutate(project.projectId)}
+                            >
+                              Start
+                            </Button>
                           </div>
                         </div>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-md font-semibold mb-2">Target Database</h3>
-                        <div className="p-4 rounded-md bg-slate-50">
-                          <div className="grid grid-cols-3 gap-2 text-sm">
-                            <div className="text-muted-foreground">Type:</div>
-                            <div className="col-span-2 font-medium">{project.targetConfig.type}</div>
-                            
-                            <div className="text-muted-foreground">Host:</div>
-                            <div className="col-span-2">{project.targetConfig.host}</div>
-                            
-                            <div className="text-muted-foreground">Port:</div>
-                            <div className="col-span-2">{project.targetConfig.port}</div>
-                            
-                            <div className="text-muted-foreground">Database:</div>
-                            <div className="col-span-2">{project.targetConfig.database}</div>
-                            
-                            <div className="text-muted-foreground">Schema:</div>
-                            <div className="col-span-2">{project.targetConfig.schema || 'default'}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4">
-                      <h3 className="text-md font-semibold mb-2">Custom Migration Instructions</h3>
-                      <Textarea 
-                        placeholder="Enter any special instructions for the migration plan (e.g., 'Combine customer_address and customer_phone tables into a single customers table')"
-                        value={customInstructions}
-                        onChange={(e) => setCustomInstructions(e.target.value)}
-                        rows={4}
-                      />
-                      <div className="text-xs text-muted-foreground mt-1">
-                        These instructions will be used when generating the migration plan to customize how tables, columns, and data are converted.
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4">
-                      <h3 className="text-md font-semibold mb-2">Project Timeline</h3>
-                      <div className="p-4 rounded-md bg-slate-50">
-                        <div className="grid grid-cols-3 gap-2 text-sm">
-                          <div className="text-muted-foreground">Created:</div>
-                          <div className="col-span-2">{new Date(project.createdAt).toLocaleString()}</div>
-                          
-                          <div className="text-muted-foreground">Last Updated:</div>
-                          <div className="col-span-2">{new Date(project.updatedAt).toLocaleString()}</div>
-                          
-                          <div className="text-muted-foreground">Current Status:</div>
-                          <div className="col-span-2">{getStatusBadge(project.status)}</div>
-                          
-                          <div className="text-muted-foreground">Current Stage:</div>
-                          <div className="col-span-2">{project.currentStage}</div>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
-                </TabsContent>
-                
-                <TabsContent value="schema" className="mt-0">
-                  {project.schemaAnalysis && (
-                    <div className="grid gap-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center">
-                              <Table2 className="w-4 h-4 mr-2" />
-                              Tables
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-3xl font-bold">{project.schemaAnalysis.tables.length}</div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center">
-                              <Layout className="w-4 h-4 mr-2" />
-                              Views
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-3xl font-bold">{project.schemaAnalysis.views.length}</div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center">
-                              <FileCode className="w-4 h-4 mr-2" />
-                              Procedures
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-3xl font-bold">{project.schemaAnalysis.procedures?.length || 0}</div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                      
-                      <div className="mt-4">
-                        <h3 className="text-md font-semibold mb-2">Database Details</h3>
-                        <div className="p-4 rounded-md bg-slate-50">
-                          <div className="grid grid-cols-3 gap-2 text-sm">
-                            <div className="text-muted-foreground">Database Type:</div>
-                            <div className="col-span-2 font-medium">{project.schemaAnalysis.databaseType}</div>
-                            
-                            <div className="text-muted-foreground">Database Name:</div>
-                            <div className="col-span-2">{project.schemaAnalysis.databaseName}</div>
-                            
-                            <div className="text-muted-foreground">Database Version:</div>
-                            <div className="col-span-2">{project.schemaAnalysis.databaseVersion || 'Unknown'}</div>
+
+                  {/* Selected Project Details */}
+                  {selectedProject && (
+                    <div className="border rounded-md p-4">
+                      <h3 className="text-lg font-medium mb-4">Project Details</h3>
+
+                      {isLoadingStatus ? (
+                        <div className="flex justify-center items-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        </div>
+                      ) : (
+                        <>
+                          {/* Progress Bar */}
+                          <div className="space-y-2 mb-6">
+                            <div className="flex justify-between text-sm">
+                              <span>Conversion Progress</span>
+                              <span>{conversionStatus?.progress || 0}%</span>
+                            </div>
+                            <Progress value={conversionStatus?.progress || 0} className="h-2" />
                           </div>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-4">
-                        <h3 className="text-md font-semibold mb-2">Tables</h3>
-                        <div className="border rounded-md overflow-hidden">
-                          <table className="w-full text-sm">
-                            <thead className="bg-slate-50">
-                              <tr>
-                                <th className="text-left p-2 border-b">Name</th>
-                                <th className="text-left p-2 border-b">Columns</th>
-                                <th className="text-left p-2 border-b">Row Count</th>
-                                <th className="text-left p-2 border-b">Size</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {project.schemaAnalysis.tables.slice(0, 10).map((table, index) => (
-                                <tr key={index} className="border-b">
-                                  <td className="p-2">{table.name}</td>
-                                  <td className="p-2">{table.columns.length}</td>
-                                  <td className="p-2">{table.approximateRowCount?.toLocaleString() || 'Unknown'}</td>
-                                  <td className="p-2">
-                                    {table.approximateSize ? 
-                                      `${Math.round(table.approximateSize / 1024 / 1024 * 100) / 100} MB` : 
-                                      'Unknown'}
-                                  </td>
-                                </tr>
-                              ))}
-                              {project.schemaAnalysis.tables.length > 10 && (
-                                <tr>
-                                  <td colSpan={4} className="p-2 text-center text-muted-foreground">
-                                    + {project.schemaAnalysis.tables.length - 10} more tables
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                      
-                      {project.schemaAnalysis.issues && project.schemaAnalysis.issues.length > 0 && (
-                        <div className="mt-4">
-                          <h3 className="text-md font-semibold mb-2">Issues</h3>
-                          <div className="border rounded-md overflow-hidden">
-                            <table className="w-full text-sm">
-                              <thead className="bg-slate-50">
-                                <tr>
-                                  <th className="text-left p-2 border-b">Severity</th>
-                                  <th className="text-left p-2 border-b">Object</th>
-                                  <th className="text-left p-2 border-b">Message</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {project.schemaAnalysis.issues.map((issue, index) => (
-                                  <tr key={index} className="border-b">
-                                    <td className="p-2">
-                                      <Badge 
-                                        variant={issue.severity === 'ERROR' ? 'destructive' : 'outline'}
-                                      >
-                                        {issue.severity}
-                                      </Badge>
-                                    </td>
-                                    <td className="p-2">{issue.objectName || 'N/A'}</td>
-                                    <td className="p-2">{issue.message}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+
+                          {/* Status Details */}
+                          <div className="grid grid-cols-3 gap-4 mb-6">
+                            <div className="border rounded p-3">
+                              <p className="text-xs text-muted-foreground">Status</p>
+                              <p className="font-medium">
+                                <StatusBadge status={conversionStatus?.status || 'pending'} />
+                              </p>
+                            </div>
+                            <div className="border rounded p-3">
+                              <p className="text-xs text-muted-foreground">Current Stage</p>
+                              <p className="font-medium">{conversionStatus?.currentStage || 'Not started'}</p>
+                            </div>
+                            <div className="border rounded p-3">
+                              <p className="text-xs text-muted-foreground">Time Remaining</p>
+                              <p className="font-medium">
+                                {conversionStatus?.estimatedTimeRemaining
+                                  ? `${Math.round(conversionStatus.estimatedTimeRemaining / 60)} minutes`
+                                  : 'N/A'}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="plan" className="mt-0">
-                  {project.migrationPlan && (
-                    <div className="grid gap-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center">
-                              <Table2 className="w-4 h-4 mr-2" />
-                              Tables
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-3xl font-bold">{project.migrationPlan.tableMappings.length}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {project.migrationPlan.tableMappings.filter(t => t.skip).length} skipped
-                            </div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center">
-                              <Layout className="w-4 h-4 mr-2" />
-                              Views
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-3xl font-bold">{project.migrationPlan.viewMappings?.length || 0}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {project.migrationPlan.viewMappings?.filter(v => v.skip).length || 0} skipped
-                            </div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center">
-                              <FileCode className="w-4 h-4 mr-2" />
-                              Procedures
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-3xl font-bold">{project.migrationPlan.procedureMappings?.length || 0}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {project.migrationPlan.procedureMappings?.filter(p => p.skip).length || 0} skipped
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                      
-                      <div className="mt-4">
-                        <h3 className="text-md font-semibold mb-2">Table Mappings</h3>
-                        <div className="border rounded-md overflow-hidden">
-                          <table className="w-full text-sm">
-                            <thead className="bg-slate-50">
-                              <tr>
-                                <th className="text-left p-2 border-b">Source Table</th>
-                                <th className="text-left p-2 border-b">Target Table</th>
-                                <th className="text-left p-2 border-b">Columns</th>
-                                <th className="text-left p-2 border-b">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {project.migrationPlan.tableMappings.slice(0, 10).map((mapping, index) => (
-                                <tr key={index} className="border-b">
-                                  <td className="p-2">{mapping.sourceTable}</td>
-                                  <td className="p-2">{mapping.targetTable}</td>
-                                  <td className="p-2">{mapping.columnMappings.length}</td>
-                                  <td className="p-2">
-                                    {mapping.skip ? 
-                                      <Badge variant="outline">Skipped</Badge> : 
-                                      <Badge className="bg-green-100 text-green-800">Include</Badge>}
-                                  </td>
-                                </tr>
-                              ))}
-                              {project.migrationPlan.tableMappings.length > 10 && (
-                                <tr>
-                                  <td colSpan={4} className="p-2 text-center text-muted-foreground">
-                                    + {project.migrationPlan.tableMappings.length - 10} more tables
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                      
-                      {project.migrationPlan.notes && (
-                        <div className="mt-4">
-                          <h3 className="text-md font-semibold mb-2">AI Notes</h3>
-                          <div className="p-4 rounded-md bg-blue-50 border border-blue-200">
-                            <div className="flex items-start">
-                              <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-                              <div className="text-sm">
-                                {project.migrationPlan.notes}
+
+                          {/* Summary */}
+                          {conversionStatus?.summary && (
+                            <div className="border rounded-md p-4 mb-6">
+                              <h4 className="font-medium mb-3">Conversion Summary</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Tables Converted</p>
+                                  <p className="font-medium">
+                                    {conversionStatus.summary.tablesConverted} / {conversionStatus.summary.totalTables}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Records Processed</p>
+                                  <p className="font-medium">
+                                    {conversionStatus.summary.recordsProcessed.toLocaleString()}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Errors</p>
+                                  <p className="font-medium">
+                                    {conversionStatus.summary.errors}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Warnings</p>
+                                  <p className="font-medium">
+                                    {conversionStatus.summary.warnings}
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="script" className="mt-0">
-                  {sqlScript && (
-                    <div className="grid gap-4">
-                      <div className="flex justify-between">
-                        <h3 className="text-md font-semibold">Migration SQL Script</h3>
-                        <Button variant="outline" size="sm" className="flex items-center gap-2">
-                          <Copy className="w-4 h-4" />
-                          Copy
-                        </Button>
-                      </div>
-                      <div className="bg-slate-900 text-slate-50 p-4 rounded-md overflow-x-auto">
-                        <pre className="text-sm whitespace-pre-wrap">{sqlScript}</pre>
-                      </div>
-                      <div className="flex justify-end mt-2">
-                        <Button variant="outline" size="sm" className="flex items-center gap-2">
-                          <DownloadCloud className="w-4 h-4" />
-                          Download Script
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="results" className="mt-0">
-                  {project.migrationResult && (
-                    <div className="grid gap-4">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">Status</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-xl font-bold">
-                              {project.migrationResult.success ? (
-                                <span className="text-green-600">Success</span>
-                              ) : (
-                                <span className="text-red-600">Failed</span>
-                              )}
+                          )}
+
+                          {/* Compatibility Layer Generation */}
+                          {conversionStatus?.status === 'completed' && (
+                            <div className="border rounded-md p-4">
+                              <h4 className="font-medium mb-3">Generate Compatibility Layer</h4>
+                              <p className="text-sm text-muted-foreground mb-4">
+                                Generate code to work with your converted database
+                              </p>
+
+                              <div className="grid grid-cols-2 gap-4 mb-4">
+                                <Select
+                                  defaultValue="drizzle"
+                                  onValueChange={(value) => console.log(value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select ORM type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="drizzle">Drizzle ORM</SelectItem>
+                                    <SelectItem value="prisma">Prisma</SelectItem>
+                                    <SelectItem value="typeorm">TypeORM</SelectItem>
+                                    <SelectItem value="sequelize">Sequelize</SelectItem>
+                                    <SelectItem value="mongoose">Mongoose</SelectItem>
+                                  </SelectContent>
+                                </Select>
+
+                                <Select
+                                  defaultValue="typescript"
+                                  onValueChange={(value) => console.log(value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select language" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="typescript">TypeScript</SelectItem>
+                                    <SelectItem value="javascript">JavaScript</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <Button
+                                className="w-full"
+                                onClick={() =>
+                                  generateCompatibilityLayerMutation.mutate({
+                                    projectId: selectedProject,
+                                    options: {
+                                      ormType: 'drizzle',
+                                      language: 'typescript',
+                                      includeModels: true,
+                                      includeMigrations: true,
+                                      includeQueryHelpers: true,
+                                      includeCRUDOperations: true
+                                    }
+                                  })
+                                }
+                                disabled={generateCompatibilityLayerMutation.isPending}
+                              >
+                                {generateCompatibilityLayerMutation.isPending ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Generating...
+                                  </>
+                                ) : (
+                                  <>
+                                    Generate Compatibility Layer
+                                  </>
+                                )}
+                              </Button>
                             </div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">Rows Processed</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-xl font-bold">
-                              {project.migrationResult.totalRowsProcessed.toLocaleString()}
-                            </div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">Start Time</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-sm">
-                              {new Date(project.migrationResult.startTime).toLocaleString()}
-                            </div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">End Time</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-sm">
-                              {new Date(project.migrationResult.endTime).toLocaleString()}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                      
-                      <div className="mt-4">
-                        <h3 className="text-md font-semibold mb-2">Table Results</h3>
-                        <div className="border rounded-md overflow-hidden">
-                          <table className="w-full text-sm">
-                            <thead className="bg-slate-50">
-                              <tr>
-                                <th className="text-left p-2 border-b">Table</th>
-                                <th className="text-right p-2 border-b">Rows Processed</th>
-                                <th className="text-left p-2 border-b">Status</th>
-                                <th className="text-left p-2 border-b">Error</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {project.migrationResult.tableResults.map((result, index) => (
-                                <tr key={index} className="border-b">
-                                  <td className="p-2">{result.tableName}</td>
-                                  <td className="p-2 text-right">{result.rowsProcessed.toLocaleString()}</td>
-                                  <td className="p-2">
-                                    {result.success ? (
-                                      <Badge className="bg-green-100 text-green-800">Success</Badge>
-                                    ) : (
-                                      <Badge variant="destructive">Failed</Badge>
-                                    )}
-                                  </td>
-                                  <td className="p-2 text-red-600">
-                                    {result.error || ''}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                      
-                      {project.migrationResult.warnings && project.migrationResult.warnings.length > 0 && (
-                        <div className="mt-4">
-                          <h3 className="text-md font-semibold mb-2">Warnings</h3>
-                          <div className="p-4 rounded-md bg-amber-50 border border-amber-200">
-                            <ul className="list-disc pl-5 space-y-1">
-                              {project.migrationResult.warnings.map((warning, index) => (
-                                <li key={index} className="text-sm">{warning}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="mt-4">
-                        <h3 className="text-md font-semibold mb-2">Migration Log</h3>
-                        <div className="bg-slate-50 p-4 rounded-md overflow-x-auto h-48 overflow-y-auto text-sm">
-                          {project.migrationResult.log.map((line, index) => (
-                            <div key={index} className="whitespace-pre-wrap">{line}</div>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      {project.compatibilityResult && (
-                        <div className="mt-4">
-                          <h3 className="text-md font-semibold mb-2">Compatibility Layer</h3>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Card>
-                              <CardHeader className="pb-2">
-                                <CardTitle className="flex items-center">
-                                  <Layout className="w-4 h-4 mr-2" />
-                                  Views Created
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-3xl font-bold">
-                                  {project.compatibilityResult.createdViews.length}
+                          )}
+
+                          {/* Error Message */}
+                          {conversionStatus?.errorMessage && (
+                            <div className="bg-destructive/10 border border-destructive rounded-md p-4 mt-4">
+                              <div className="flex items-start">
+                                <AlertCircle className="h-5 w-5 text-destructive mr-2 mt-0.5" />
+                                <div>
+                                  <h4 className="font-medium text-destructive">Error</h4>
+                                  <p className="text-sm">{conversionStatus.errorMessage}</p>
                                 </div>
-                              </CardContent>
-                            </Card>
-                            
-                            <Card>
-                              <CardHeader className="pb-2">
-                                <CardTitle className="flex items-center">
-                                  <FileCode className="w-4 h-4 mr-2" />
-                                  Functions Created
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-3xl font-bold">
-                                  {project.compatibilityResult.createdFunctions.length}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </div>
-                          
-                          <div className="p-4 rounded-md bg-green-50 border border-green-200 mt-4">
-                            <div className="flex items-start">
-                              <Info className="w-5 h-5 text-green-600 mr-2 mt-0.5" />
-                              <div className="text-sm">
-                                A compatibility layer has been created to allow legacy applications to continue working with the new database structure. 
-                                This layer includes views and functions that map between the old and new schema.
                               </div>
                             </div>
-                          </div>
-                        </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
-                </TabsContent>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="container mx-auto py-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Database Conversion</h1>
-        {tab === 'projects' && (
-          <Button onClick={() => setTab('new')}>New Conversion Project</Button>
-        )}
-      </div>
-
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="projects">Projects</TabsTrigger>
-          <TabsTrigger value="new">New Project</TabsTrigger>
-          <TabsTrigger value="details" disabled={!selectedProject}>Project Details</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="projects">
-          {renderProjectsList()}
-        </TabsContent>
-
-        <TabsContent value="new">
-          {renderNewProjectForm()}
-        </TabsContent>
-
-        <TabsContent value="details">
-          {renderProjectDetails()}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
   );
-};
-
-export default DatabaseConversionPage;
+}

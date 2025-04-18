@@ -1,723 +1,523 @@
 /**
  * Data Transformation Service
  * 
- * This service handles intelligent data transformations during migration,
- * using AI to enhance and clean data as it's being migrated.
+ * This service is responsible for transforming data formats during the migration process.
  */
 
-import { BaseService } from '../base-service';
 import { IStorage } from '../../storage';
-import { LLMService } from '../llm-service';
-import {
-  DatabaseConnectionConfig,
-  TableDefinition,
-  ColumnDefinition,
-  TableMapping
-} from './types';
+import { MCPService } from '../mcp';
+import { FieldType } from './types';
 
-/**
- * Types of data transformations
- */
-export enum TransformationType {
-  NORMALIZE = 'normalize',
-  CLEAN = 'clean',
-  FORMAT = 'format',
-  SPLIT = 'split',
-  MERGE = 'merge',
-  EXTRACT = 'extract',
-  CALCULATE = 'calculate',
-  REMAP = 'remap',
-  FILTER = 'filter',
-  ENRICH = 'enrich'
-}
+export class DataTransformationService {
+  private storage: IStorage;
+  private mcpService: MCPService;
 
-/**
- * A data transformation rule
- */
-export interface TransformationRule {
-  /**
-   * Type of transformation
-   */
-  type: TransformationType;
-  
-  /**
-   * Source column(s)
-   */
-  sourceColumns: string[];
-  
-  /**
-   * Target column(s)
-   */
-  targetColumns: string[];
-  
-  /**
-   * SQL or other transformation expression
-   */
-  expression?: string;
-  
-  /**
-   * Natural language description of the transformation
-   */
-  description: string;
-  
-  /**
-   * Additional parameters for the transformation
-   */
-  parameters?: Record<string, any>;
-  
-  /**
-   * Should this transformation be applied for all rows or only matching ones
-   */
-  condition?: string;
-}
-
-/**
- * Data cleanup configuration
- */
-export interface DataCleanupConfig {
-  /**
-   * Replace NULL values
-   */
-  replaceNulls?: {
-    /**
-     * Columns to apply to
-     */
-    columns: string[];
-    
-    /**
-     * Default value to use
-     */
-    defaultValue: any;
-  }[];
-  
-  /**
-   * Trim whitespace
-   */
-  trimWhitespace?: {
-    /**
-     * Columns to apply to
-     */
-    columns: string[];
-  };
-  
-  /**
-   * Remove duplicate rows
-   */
-  removeDuplicates?: {
-    /**
-     * Columns to consider for uniqueness
-     */
-    uniqueColumns: string[];
-  };
-  
-  /**
-   * Standardize case
-   */
-  standardizeCase?: {
-    /**
-     * Columns to apply to
-     */
-    columns: string[];
-    
-    /**
-     * Case to convert to ('upper', 'lower', 'title')
-     */
-    targetCase: 'upper' | 'lower' | 'title';
-  }[];
-  
-  /**
-   * Fix data type issues
-   */
-  fixDataTypes?: {
-    /**
-     * Column to apply to
-     */
-    column: string;
-    
-    /**
-     * Target data type
-     */
-    targetType: string;
-    
-    /**
-     * Conversion expression
-     */
-    conversionExpression: string;
-  }[];
-}
-
-/**
- * Service for transforming data during migration
- */
-export class DataTransformationService extends BaseService {
-  private llmService: LLMService;
-  
-  constructor(
-    storage: IStorage,
-    llmService: LLMService
-  ) {
-    super('data-transformation-service', storage);
-    this.llmService = llmService;
+  constructor(storage: IStorage, mcpService: MCPService) {
+    this.storage = storage;
+    this.mcpService = mcpService;
   }
-  
+
   /**
-   * Generate transformation rules for a table mapping
+   * Transform a data value from one type to another
+   * @param value The value to transform
+   * @param sourceType Source field type
+   * @param targetType Target field type
+   * @param options Optional transformation options
    */
-  async generateTransformationRules(
-    sourceTable: TableDefinition,
-    targetTable: TableDefinition,
-    naturalLanguageInstructions?: string
-  ): Promise<TransformationRule[]> {
-    console.log(`Generating transformation rules for ${sourceTable.name} to ${targetTable.name}...`);
-    
-    // If natural language instructions are provided, use AI to generate transformations
-    if (naturalLanguageInstructions) {
-      return this.generateAITransformations(sourceTable, targetTable, naturalLanguageInstructions);
+  public transformValue(
+    value: any, 
+    sourceType: FieldType, 
+    targetType: FieldType, 
+    options?: TransformationOptions
+  ): any {
+    if (value === null || value === undefined) {
+      return null;
     }
-    
-    // Otherwise, generate basic transformations based on schema differences
-    return this.generateBasicTransformations(sourceTable, targetTable);
-  }
-  
-  /**
-   * Generate data cleanup configuration
-   */
-  async generateDataCleanupConfig(
-    tableDefinition: TableDefinition,
-    sampleData?: any[],
-    naturalLanguageInstructions?: string
-  ): Promise<DataCleanupConfig> {
-    console.log(`Generating data cleanup config for ${tableDefinition.name}...`);
-    
-    // If natural language instructions are provided, use AI to generate cleanup config
-    if (naturalLanguageInstructions) {
-      return this.generateAICleanupConfig(tableDefinition, sampleData, naturalLanguageInstructions);
-    }
-    
-    // Otherwise, generate basic cleanup config based on schema
-    return this.generateBasicCleanupConfig(tableDefinition, sampleData);
-  }
-  
-  /**
-   * Convert transformation rules to SQL expressions for a table mapping
-   */
-  async transformRulesToMapping(
-    sourceTable: TableDefinition,
-    targetTable: TableDefinition,
-    rules: TransformationRule[]
-  ): Promise<TableMapping> {
-    console.log('Converting transformation rules to SQL expressions...');
-    
-    // Create a map of source to target columns for easier lookup
-    const columnMap = new Map<string, string>();
-    const expressions = new Map<string, string>();
-    
-    // Start with direct mappings for columns with same name in both tables
-    const sourceColumnNames = new Set(sourceTable.columns.map(c => c.name));
-    const targetColumnNames = new Set(targetTable.columns.map(c => c.name));
-    
-    // Find common column names
-    const commonColumns = [...sourceColumnNames].filter(col => targetColumnNames.has(col));
-    
-    // Create direct mappings for common columns
-    for (const col of commonColumns) {
-      columnMap.set(col, col);
-    }
-    
-    // Apply transformation rules
-    for (const rule of rules) {
-      switch (rule.type) {
-        case TransformationType.NORMALIZE:
-        case TransformationType.CLEAN:
-        case TransformationType.FORMAT:
-          // These are simple transformations that typically affect one column
-          if (rule.sourceColumns.length === 1 && rule.targetColumns.length === 1) {
-            columnMap.set(rule.sourceColumns[0], rule.targetColumns[0]);
-            if (rule.expression) {
-              expressions.set(rule.sourceColumns[0], rule.expression);
-            }
-          }
-          break;
-          
-        case TransformationType.SPLIT:
-          // Splitting one source column into multiple target columns
-          if (rule.sourceColumns.length === 1 && rule.targetColumns.length > 1 && rule.expression) {
-            // The expression should produce multiple columns
-            expressions.set(rule.sourceColumns[0], rule.expression);
-            // We don't set columnMap here because it's handled by the expression
-          }
-          break;
-          
-        case TransformationType.MERGE:
-          // Merging multiple source columns into one target column
-          if (rule.sourceColumns.length > 1 && rule.targetColumns.length === 1 && rule.expression) {
-            // The expression should merge multiple columns
-            for (const sourceCol of rule.sourceColumns) {
-              // We map each source column to the target, but the expression handles the merge
-              columnMap.set(sourceCol, rule.targetColumns[0]);
-            }
-            expressions.set(rule.targetColumns[0], rule.expression);
-          }
-          break;
-          
-        case TransformationType.EXTRACT:
-        case TransformationType.CALCULATE:
-          // These typically create a new target column based on source column(s)
-          if (rule.targetColumns.length === 1 && rule.expression) {
-            // The expression extracts or calculates a value
-            expressions.set(rule.targetColumns[0], rule.expression);
-          }
-          break;
-          
-        case TransformationType.REMAP:
-          // Remapping values from one set to another
-          if (rule.sourceColumns.length === 1 && rule.targetColumns.length === 1 && rule.expression) {
-            columnMap.set(rule.sourceColumns[0], rule.targetColumns[0]);
-            expressions.set(rule.sourceColumns[0], rule.expression);
-          }
-          break;
-          
-        case TransformationType.FILTER:
-          // Filtering rows
-          // This doesn't affect column mapping, but adds a condition to the mapping
-          break;
-          
-        case TransformationType.ENRICH:
-          // Adding additional data from external sources
-          if (rule.targetColumns.length === 1 && rule.expression) {
-            expressions.set(rule.targetColumns[0], rule.expression);
-          }
-          break;
+
+    try {
+      // Handle type conversions
+      switch (targetType) {
+        case FieldType.String:
+          return this.toStringType(value, sourceType, options);
+        case FieldType.Number:
+        case FieldType.Float:
+        case FieldType.Double:
+          return this.toNumberType(value, sourceType, options);
+        case FieldType.Integer:
+        case FieldType.BigInteger:
+          return this.toIntegerType(value, sourceType, options);
+        case FieldType.Boolean:
+          return this.toBooleanType(value, sourceType, options);
+        case FieldType.Date:
+        case FieldType.DateTime:
+        case FieldType.Timestamp:
+          return this.toDateType(value, sourceType, options);
+        case FieldType.JSON:
+        case FieldType.JSONB:
+          return this.toJsonType(value, sourceType, options);
+        case FieldType.UUID:
+          return this.toUuidType(value, sourceType, options);
+        case FieldType.Array:
+          return this.toArrayType(value, sourceType, options);
+        default:
+          // For types we don't explicitly handle, attempt a basic conversion or return as-is
+          return value;
       }
+    } catch (error) {
+      console.error(`Error transforming value from ${sourceType} to ${targetType}:`, error);
+      
+      // Return a default value based on the target type
+      return this.getDefaultValueForType(targetType);
     }
-    
-    // Create column mappings
-    const columnMappings = [];
-    
-    // Add mappings from the map
-    for (const [sourceCol, targetCol] of columnMap.entries()) {
-      columnMappings.push({
-        sourceColumn: sourceCol,
-        targetColumn: targetCol,
-        transformation: expressions.get(sourceCol)
-      });
-    }
-    
-    // Add any target-only expressions (like calculated columns)
-    for (const [targetCol, expr] of expressions.entries()) {
-      if (!columnMappings.some(m => m.targetColumn === targetCol)) {
-        // This is a target-only expression
-        columnMappings.push({
-          sourceColumn: '', // No direct source column
-          targetColumn: targetCol,
-          transformation: expr
-        });
+  }
+
+  /**
+   * Apply a transformation expression to a value
+   * @param value The value to transform
+   * @param expression The transformation expression
+   */
+  public applyTransformationExpression(value: any, expression: string): any {
+    try {
+      // Simple expressions like "value.toUpperCase()" or "value * 2"
+      if (expression.includes('value')) {
+        // Replace the 'value' token with the actual value
+        // WARNING: This is a simplified approach for demo purposes
+        // In a production environment, you would use a proper expression parser or sandbox
+        
+        // For now, we'll handle a few common transformations
+        if (expression === 'value.toUpperCase()' && typeof value === 'string') {
+          return value.toUpperCase();
+        } else if (expression === 'value.toLowerCase()' && typeof value === 'string') {
+          return value.toLowerCase();
+        } else if (expression === 'value.trim()' && typeof value === 'string') {
+          return value.trim();
+        } else if (expression.match(/value \* \d+/) && typeof value === 'number') {
+          const multiplier = parseInt(expression.split('*')[1].trim(), 10);
+          return value * multiplier;
+        } else if (expression.match(/value \/ \d+/) && typeof value === 'number') {
+          const divisor = parseInt(expression.split('/')[1].trim(), 10);
+          return value / divisor;
+        } else if (expression.match(/value \+ \d+/) && typeof value === 'number') {
+          const addend = parseInt(expression.split('+')[1].trim(), 10);
+          return value + addend;
+        } else if (expression.match(/value - \d+/) && typeof value === 'number') {
+          const subtrahend = parseInt(expression.split('-')[1].trim(), 10);
+          return value - subtrahend;
+        } else {
+          // Fallback
+          return value;
+        }
+      } else if (expression.startsWith('CONCAT(') && expression.endsWith(')')) {
+        // Handle CONCAT operation
+        const args = expression.substring(7, expression.length - 1).split(',');
+        return args.map(arg => {
+          const trimmed = arg.trim();
+          if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
+            return trimmed.substring(1, trimmed.length - 1);
+          } else if (trimmed === 'value') {
+            return value;
+          }
+          return trimmed;
+        }).join('');
+      } else if (expression.startsWith('REPLACE(') && expression.endsWith(')')) {
+        // Handle REPLACE operation
+        const args = expression.substring(8, expression.length - 1).split(',');
+        if (args.length === 3 && typeof value === 'string') {
+          const searchStr = args[1].trim().replace(/^'|'$/g, '');
+          const replaceStr = args[2].trim().replace(/^'|'$/g, '');
+          return value.replace(new RegExp(searchStr, 'g'), replaceStr);
+        }
+      } else if (expression === 'CURRENT_TIMESTAMP') {
+        return new Date();
+      } else if (expression === 'UUID()' || expression === 'GENERATE_UUID()') {
+        return this.generateUuid();
       }
+      
+      // If no transformation matched, return the original value
+      return value;
+    } catch (error) {
+      console.error(`Error applying transformation expression "${expression}":`, error);
+      return value;
     }
+  }
+
+  /**
+   * Attempt field inference based on data
+   * @param values Sample values from a field
+   * @returns Inferred field type and properties
+   */
+  public inferFieldAttributes(values: any[]): InferredFieldAttributes {
+    // Filter out null and undefined values
+    const nonNullValues = values.filter(v => v !== null && v !== undefined);
     
-    // Create the filter condition by combining any FILTER rules
-    const filterRules = rules.filter(r => r.type === TransformationType.FILTER);
-    const filterCondition = filterRules.length > 0
-      ? filterRules.map(r => r.expression).filter(Boolean).join(' AND ')
-      : undefined;
+    if (nonNullValues.length === 0) {
+      return {
+        type: FieldType.String, // Default to string
+        nullable: true,
+        maxLength: undefined,
+        precision: undefined,
+        scale: undefined
+      };
+    }
+
+    // Determine the most common type
+    const typeDistribution = this.getTypeDistribution(nonNullValues);
+    const mostCommonType = this.getMostCommonType(typeDistribution);
     
-    // Create the table mapping
-    return {
-      sourceTable: sourceTable.name,
-      targetTable: targetTable.name,
-      columnMappings,
-      filterCondition
+    // Initialize field attributes
+    const fieldAttributes: InferredFieldAttributes = {
+      type: mostCommonType,
+      nullable: values.some(v => v === null || v === undefined),
+      maxLength: undefined,
+      precision: undefined,
+      scale: undefined
     };
+
+    // Fill in type-specific attributes
+    switch (mostCommonType) {
+      case FieldType.String:
+        fieldAttributes.maxLength = this.inferStringMaxLength(nonNullValues);
+        break;
+      case FieldType.Number:
+      case FieldType.Float:
+      case FieldType.Decimal:
+        const precision = this.inferNumericPrecision(nonNullValues);
+        fieldAttributes.precision = precision.precision;
+        fieldAttributes.scale = precision.scale;
+        break;
+      case FieldType.Enum:
+        fieldAttributes.enumValues = [...new Set(nonNullValues)];
+        break;
+    }
+
+    return fieldAttributes;
   }
-  
-  /**
-   * Apply data cleanup transformations to a SQL query
-   */
-  applyDataCleanup(
-    baseQuery: string,
-    cleanupConfig: DataCleanupConfig,
-    dbType: string = 'postgresql'
-  ): string {
-    let query = baseQuery;
-    
-    // If the query already has a WHERE clause, we need to extend it rather than replace it
-    const hasWhere = query.toLowerCase().includes('where');
-    
-    // Process each cleanup transformation
-    if (cleanupConfig.replaceNulls) {
-      for (const replaceNull of cleanupConfig.replaceNulls) {
-        for (const column of replaceNull.columns) {
-          // Use COALESCE for NULL replacement
-          query = query.replace(
-            new RegExp(`\\b${column}\\b`, 'g'),
-            `COALESCE(${column}, ${this.sqlValueLiteral(replaceNull.defaultValue, dbType)}) AS ${column}`
-          );
-        }
-      }
+
+  /* Private transformation helper methods */
+
+  private toStringType(value: any, sourceType: FieldType, options?: TransformationOptions): string {
+    switch (sourceType) {
+      case FieldType.Number:
+      case FieldType.Integer:
+      case FieldType.BigInteger:
+      case FieldType.Float:
+      case FieldType.Double:
+      case FieldType.Decimal:
+        return value.toString();
+      case FieldType.Boolean:
+        return value ? 'true' : 'false';
+      case FieldType.Date:
+      case FieldType.DateTime:
+      case FieldType.Timestamp:
+        return value instanceof Date 
+          ? value.toISOString()
+          : new Date(value).toISOString();
+      case FieldType.JSON:
+      case FieldType.JSONB:
+        return JSON.stringify(value);
+      case FieldType.Array:
+        return Array.isArray(value) 
+          ? value.join(',') 
+          : String(value);
+      default:
+        return String(value);
     }
-    
-    if (cleanupConfig.trimWhitespace) {
-      for (const column of cleanupConfig.trimWhitespace.columns) {
-        // Trim whitespace based on database type
-        if (dbType === 'postgresql') {
-          query = query.replace(
-            new RegExp(`\\b${column}\\b`, 'g'),
-            `TRIM(${column}) AS ${column}`
-          );
-        } else if (dbType === 'sqlserver') {
-          query = query.replace(
-            new RegExp(`\\b${column}\\b`, 'g'),
-            `LTRIM(RTRIM(${column})) AS ${column}`
-          );
-        } else if (dbType === 'mysql') {
-          query = query.replace(
-            new RegExp(`\\b${column}\\b`, 'g'),
-            `TRIM(${column}) AS ${column}`
-          );
-        }
-      }
-    }
-    
-    if (cleanupConfig.standardizeCase) {
-      for (const caseRule of cleanupConfig.standardizeCase) {
-        for (const column of caseRule.columns) {
-          // Apply case transformation based on database type and target case
-          if (dbType === 'postgresql') {
-            if (caseRule.targetCase === 'upper') {
-              query = query.replace(
-                new RegExp(`\\b${column}\\b`, 'g'),
-                `UPPER(${column}) AS ${column}`
-              );
-            } else if (caseRule.targetCase === 'lower') {
-              query = query.replace(
-                new RegExp(`\\b${column}\\b`, 'g'),
-                `LOWER(${column}) AS ${column}`
-              );
-            } else if (caseRule.targetCase === 'title') {
-              query = query.replace(
-                new RegExp(`\\b${column}\\b`, 'g'),
-                `INITCAP(${column}) AS ${column}`
-              );
-            }
-          } else if (dbType === 'sqlserver') {
-            if (caseRule.targetCase === 'upper') {
-              query = query.replace(
-                new RegExp(`\\b${column}\\b`, 'g'),
-                `UPPER(${column}) AS ${column}`
-              );
-            } else if (caseRule.targetCase === 'lower') {
-              query = query.replace(
-                new RegExp(`\\b${column}\\b`, 'g'),
-                `LOWER(${column}) AS ${column}`
-              );
-            }
-          } else if (dbType === 'mysql') {
-            if (caseRule.targetCase === 'upper') {
-              query = query.replace(
-                new RegExp(`\\b${column}\\b`, 'g'),
-                `UPPER(${column}) AS ${column}`
-              );
-            } else if (caseRule.targetCase === 'lower') {
-              query = query.replace(
-                new RegExp(`\\b${column}\\b`, 'g'),
-                `LOWER(${column}) AS ${column}`
-              );
-            }
-          }
-        }
-      }
-    }
-    
-    if (cleanupConfig.fixDataTypes) {
-      for (const typeRule of cleanupConfig.fixDataTypes) {
-        // Apply data type conversion
-        query = query.replace(
-          new RegExp(`\\b${typeRule.column}\\b`, 'g'),
-          `${typeRule.conversionExpression} AS ${typeRule.column}`
-        );
-      }
-    }
-    
-    if (cleanupConfig.removeDuplicates) {
-      // To remove duplicates, we need to modify the entire query structure
-      // using ROW_NUMBER() or DISTINCT depending on the database type
-      
-      const uniqueColumns = cleanupConfig.removeDuplicates.uniqueColumns.join(', ');
-      
-      if (dbType === 'postgresql') {
-        // For PostgreSQL, we can use DISTINCT ON
-        query = `SELECT DISTINCT ON (${uniqueColumns}) * FROM (${query}) AS source_data`;
-      } else if (dbType === 'sqlserver') {
-        // For SQL Server, we use ROW_NUMBER()
-        query = `
-          WITH numbered_rows AS (
-            SELECT *, ROW_NUMBER() OVER (PARTITION BY ${uniqueColumns} ORDER BY ${uniqueColumns}) AS row_num
-            FROM (${query}) AS source_data
-          )
-          SELECT * FROM numbered_rows WHERE row_num = 1
-        `;
-      } else if (dbType === 'mysql') {
-        // For MySQL, we can use GROUP BY
-        query = `SELECT * FROM (${query}) AS source_data GROUP BY ${uniqueColumns}`;
-      }
-    }
-    
-    return query;
   }
-  
-  /**
-   * Format a value as a SQL literal
-   */
-  private sqlValueLiteral(value: any, dbType: string): string {
-    if (value === null) {
-      return 'NULL';
+
+  private toNumberType(value: any, sourceType: FieldType, options?: TransformationOptions): number {
+    switch (sourceType) {
+      case FieldType.String:
+        return parseFloat(value);
+      case FieldType.Boolean:
+        return value ? 1 : 0;
+      case FieldType.Date:
+      case FieldType.DateTime:
+      case FieldType.Timestamp:
+        return value instanceof Date 
+          ? value.getTime() 
+          : new Date(value).getTime();
+      default:
+        return Number(value);
     }
-    
-    if (typeof value === 'string') {
-      // Escape single quotes based on database type
-      if (dbType === 'postgresql' || dbType === 'mysql') {
-        return `'${value.replace(/'/g, "''")}'`;
-      } else if (dbType === 'sqlserver') {
-        return `'${value.replace(/'/g, "''")}'`;
-      }
-    }
-    
-    if (typeof value === 'number') {
-      return value.toString();
-    }
-    
-    if (typeof value === 'boolean') {
-      if (dbType === 'postgresql') {
-        return value ? 'TRUE' : 'FALSE';
-      } else if (dbType === 'sqlserver') {
-        return value ? '1' : '0';
-      } else if (dbType === 'mysql') {
-        return value ? '1' : '0';
-      }
-    }
-    
-    if (value instanceof Date) {
-      if (dbType === 'postgresql') {
-        return `'${value.toISOString()}'::timestamp`;
-      } else if (dbType === 'sqlserver') {
-        return `'${value.toISOString()}'`;
-      } else if (dbType === 'mysql') {
-        return `'${value.toISOString()}'`;
-      }
-    }
-    
-    // Default to string representation
-    return `'${value.toString().replace(/'/g, "''")}'`;
   }
-  
-  /**
-   * Generate transformations based on AI analysis
-   */
-  private async generateAITransformations(
-    sourceTable: TableDefinition,
-    targetTable: TableDefinition,
-    instructions: string
-  ): Promise<TransformationRule[]> {
-    // Build prompt for AI to generate transformations
-    const sourceColumns = sourceTable.columns.map(col => 
-      `${col.name} (${col.dataType}${col.isNullable ? ', nullable' : ''})`
-    ).join('\n');
-    
-    const targetColumns = targetTable.columns.map(col => 
-      `${col.name} (${col.dataType}${col.isNullable ? ', nullable' : ''})`
-    ).join('\n');
-    
-    const prompt = `
-      I need to transform data from a source table to a target table. 
-      
-      SOURCE TABLE: ${sourceTable.name}
-      COLUMNS:
-      ${sourceColumns}
-      
-      TARGET TABLE: ${targetTable.name}
-      COLUMNS:
-      ${targetColumns}
-      
-      USER INSTRUCTIONS:
-      ${instructions}
-      
-      Based on the source and target table structures and the user instructions, generate a list of transformation rules in JSON format.
-      Each transformation rule should include:
-      1. The type of transformation (normalize, clean, format, split, merge, extract, calculate, remap, filter, or enrich)
-      2. The source column(s) involved
-      3. The target column(s) affected
-      4. A SQL expression that implements the transformation (use PostgreSQL syntax)
-      5. A natural language description of what the transformation does
-      
-      Return the transformation rules as a valid JSON array of objects.
-    `;
-    
-    // Call AI to generate transformations
-    const response = await this.llmService.generateText(prompt);
-    
+
+  private toIntegerType(value: any, sourceType: FieldType, options?: TransformationOptions): number {
+    switch (sourceType) {
+      case FieldType.String:
+        return parseInt(value, 10);
+      case FieldType.Number:
+      case FieldType.Float:
+      case FieldType.Double:
+      case FieldType.Decimal:
+        return Math.round(value);
+      case FieldType.Boolean:
+        return value ? 1 : 0;
+      case FieldType.Date:
+      case FieldType.DateTime:
+      case FieldType.Timestamp:
+        return value instanceof Date 
+          ? Math.floor(value.getTime() / 1000) 
+          : Math.floor(new Date(value).getTime() / 1000);
+      default:
+        return Math.round(Number(value));
+    }
+  }
+
+  private toBooleanType(value: any, sourceType: FieldType, options?: TransformationOptions): boolean {
+    switch (sourceType) {
+      case FieldType.String:
+        const lowercaseValue = String(value).toLowerCase();
+        return lowercaseValue === 'true' || lowercaseValue === 'yes' || lowercaseValue === '1';
+      case FieldType.Number:
+      case FieldType.Integer:
+      case FieldType.BigInteger:
+      case FieldType.Float:
+      case FieldType.Double:
+      case FieldType.Decimal:
+        return value !== 0;
+      default:
+        return Boolean(value);
+    }
+  }
+
+  private toDateType(value: any, sourceType: FieldType, options?: TransformationOptions): Date | null {
     try {
-      // Parse the response as JSON
-      // We need to extract JSON from the response, which might include other text
-      const jsonMatch = response.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        throw new Error('No JSON array found in the AI response');
+      switch (sourceType) {
+        case FieldType.String:
+          return new Date(value);
+        case FieldType.Number:
+        case FieldType.Integer:
+        case FieldType.BigInteger:
+          return new Date(value);
+        case FieldType.Timestamp:
+          // Assuming timestamp is in seconds (Unix timestamp)
+          return new Date(value * 1000);
+        default:
+          return new Date(value);
       }
-      
-      const rules = JSON.parse(jsonMatch[0]) as TransformationRule[];
-      return rules;
     } catch (error) {
-      console.error('Error parsing AI transformation rules:', error);
-      console.log('AI response:', response);
-      
-      // Return a basic transformation
-      return this.generateBasicTransformations(sourceTable, targetTable);
+      console.error('Error converting to date:', error);
+      return null;
     }
   }
-  
-  /**
-   * Generate basic transformations based on schema differences
-   */
-  private generateBasicTransformations(
-    sourceTable: TableDefinition,
-    targetTable: TableDefinition
-  ): TransformationRule[] {
-    const rules: TransformationRule[] = [];
-    
-    // Create mappings for columns with same name (identity mapping)
-    const sourceColumnNames = new Set(sourceTable.columns.map(c => c.name));
-    const targetColumnNames = new Set(targetTable.columns.map(c => c.name));
-    
-    // Find common column names
-    const commonColumns = [...sourceColumnNames].filter(col => targetColumnNames.has(col));
-    
-    // Create direct mappings for common columns
-    for (const col of commonColumns) {
-      rules.push({
-        type: TransformationType.NORMALIZE,
-        sourceColumns: [col],
-        targetColumns: [col],
-        description: `Direct mapping of column ${col}`
-      });
+
+  private toJsonType(value: any, sourceType: FieldType, options?: TransformationOptions): object | string {
+    switch (sourceType) {
+      case FieldType.String:
+        try {
+          return JSON.parse(value);
+        } catch (error) {
+          // If not valid JSON, wrap in an object
+          return { value };
+        }
+      case FieldType.Array:
+        return Array.isArray(value) ? value : [value];
+      default:
+        // For other types, try to create a JSON representation
+        if (typeof value === 'object' && value !== null) {
+          return value;
+        } else {
+          return { value };
+        }
     }
+  }
+
+  private toUuidType(value: any, sourceType: FieldType, options?: TransformationOptions): string {
+    if (sourceType === FieldType.String && this.isValidUuid(value)) {
+      return value;
+    } else {
+      // Generate a new UUID if the value can't be converted
+      return this.generateUuid();
+    }
+  }
+
+  private toArrayType(value: any, sourceType: FieldType, options?: TransformationOptions): any[] {
+    switch (sourceType) {
+      case FieldType.String:
+        try {
+          // Try to parse as JSON first
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : value.split(',').map(item => item.trim());
+        } catch (error) {
+          // If not valid JSON, split by comma
+          return value.split(',').map(item => item.trim());
+        }
+      case FieldType.JSON:
+      case FieldType.JSONB:
+        return Array.isArray(value) ? value : [value];
+      default:
+        return [value];
+    }
+  }
+
+  private getDefaultValueForType(type: FieldType): any {
+    switch (type) {
+      case FieldType.String:
+        return '';
+      case FieldType.Number:
+      case FieldType.Integer:
+      case FieldType.BigInteger:
+      case FieldType.Float:
+      case FieldType.Double:
+      case FieldType.Decimal:
+        return 0;
+      case FieldType.Boolean:
+        return false;
+      case FieldType.Date:
+      case FieldType.DateTime:
+      case FieldType.Timestamp:
+        return new Date();
+      case FieldType.JSON:
+      case FieldType.JSONB:
+        return {};
+      case FieldType.UUID:
+        return this.generateUuid();
+      case FieldType.Array:
+        return [];
+      default:
+        return null;
+    }
+  }
+
+  private generateUuid(): string {
+    // Simple UUID generator for demo purposes
+    // In a real implementation, you would use a proper UUID library
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  private isValidUuid(str: string): boolean {
+    const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return regex.test(str);
+  }
+
+  /* Field inference helper methods */
+
+  private getTypeDistribution(values: any[]): Record<string, number> {
+    const distribution: Record<string, number> = {};
     
-    // Check for columns that need data type conversion
-    for (const col of commonColumns) {
-      const sourceCol = sourceTable.columns.find(c => c.name === col);
-      const targetCol = targetTable.columns.find(c => c.name === col);
+    values.forEach(value => {
+      let type = typeof value;
       
-      if (sourceCol.dataType !== targetCol.dataType) {
-        // We need a data type conversion
-        rules.push({
-          type: TransformationType.NORMALIZE,
-          sourceColumns: [col],
-          targetColumns: [col],
-          expression: `CAST(${col} AS ${targetCol.dataType})`,
-          description: `Convert ${col} from ${sourceCol.dataType} to ${targetCol.dataType}`
-        });
+      // Refine types for more specific categories
+      if (type === 'object') {
+        if (value instanceof Date) {
+          type = 'date';
+        } else if (Array.isArray(value)) {
+          type = 'array';
+        } else if (value === null) {
+          type = 'null';
+        }
+      } else if (type === 'number') {
+        if (Number.isInteger(value)) {
+          type = 'integer';
+        } else {
+          type = 'float';
+        }
+      } else if (type === 'string') {
+        // Check if string is a valid date
+        if (!isNaN(Date.parse(value))) {
+          type = 'date-string';
+        }
+        // Check if string is a valid UUID
+        else if (this.isValidUuid(value)) {
+          type = 'uuid';
+        }
+      }
+      
+      distribution[type] = (distribution[type] || 0) + 1;
+    });
+    
+    return distribution;
+  }
+
+  private getMostCommonType(distribution: Record<string, number>): FieldType {
+    let maxCount = 0;
+    let mostCommonType = '';
+    
+    for (const [type, count] of Object.entries(distribution)) {
+      if (count > maxCount) {
+        maxCount = count;
+        mostCommonType = type;
       }
     }
     
-    return rules;
-  }
-  
-  /**
-   * Generate data cleanup configuration using AI
-   */
-  private async generateAICleanupConfig(
-    tableDefinition: TableDefinition,
-    sampleData: any[] = [],
-    instructions: string
-  ): Promise<DataCleanupConfig> {
-    // Build prompt for AI to generate cleanup config
-    const columns = tableDefinition.columns.map(col => 
-      `${col.name} (${col.dataType}${col.isNullable ? ', nullable' : ''})`
-    ).join('\n');
-    
-    let sampleDataStr = '';
-    if (sampleData.length > 0) {
-      // Convert sample data to a string representation
-      // Limit to maximum 5 rows to keep prompt size reasonable
-      const sampleRows = sampleData.slice(0, 5).map(row => 
-        JSON.stringify(row)
-      ).join('\n');
-      
-      sampleDataStr = `
-        SAMPLE DATA (${Math.min(sampleData.length, 5)} of ${sampleData.length} rows):
-        ${sampleRows}
-      `;
+    // Map to FieldType enum
+    switch (mostCommonType) {
+      case 'string':
+        return FieldType.String;
+      case 'integer':
+        return FieldType.Integer;
+      case 'float':
+        return FieldType.Float;
+      case 'boolean':
+        return FieldType.Boolean;
+      case 'date':
+      case 'date-string':
+        return FieldType.DateTime;
+      case 'array':
+        return FieldType.Array;
+      case 'uuid':
+        return FieldType.UUID;
+      case 'object':
+        return FieldType.JSON;
+      default:
+        return FieldType.String; // Default fallback
     }
+  }
+
+  private inferStringMaxLength(values: string[]): number {
+    return Math.max(...values.map(v => String(v).length)) * 2; // Double for safety margin
+  }
+
+  private inferNumericPrecision(values: number[]): { precision: number, scale: number } {
+    let maxPrecision = 0;
+    let maxScale = 0;
     
-    const prompt = `
-      I need to clean data in a table before migration.
+    values.forEach(value => {
+      const strValue = value.toString();
+      const parts = strValue.split('.');
       
-      TABLE: ${tableDefinition.name}
-      COLUMNS:
-      ${columns}
-      ${sampleDataStr}
-      
-      USER INSTRUCTIONS:
-      ${instructions}
-      
-      Based on the table structure, sample data, and user instructions, generate a data cleanup configuration in JSON format.
-      Include any of the following that are appropriate:
-      1. Replace NULL values with defaults
-      2. Trim whitespace from string columns
-      3. Remove duplicate rows
-      4. Standardize case (upper, lower, title case)
-      5. Fix data type issues
-      
-      Return the cleanup configuration as a valid JSON object.
-    `;
-    
-    // Call AI to generate cleanup config
-    const response = await this.llmService.generateText(prompt);
-    
-    try {
-      // Parse the response as JSON
-      // We need to extract JSON from the response, which might include other text
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON object found in the AI response');
+      // Total digits
+      const totalDigits = strValue.replace('.', '').length;
+      if (totalDigits > maxPrecision) {
+        maxPrecision = totalDigits;
       }
       
-      const config = JSON.parse(jsonMatch[0]) as DataCleanupConfig;
-      return config;
-    } catch (error) {
-      console.error('Error parsing AI cleanup config:', error);
-      console.log('AI response:', response);
-      
-      // Return a basic cleanup config
-      return this.generateBasicCleanupConfig(tableDefinition, sampleData);
-    }
+      // Decimal places
+      if (parts.length > 1) {
+        const decimalPlaces = parts[1].length;
+        if (decimalPlaces > maxScale) {
+          maxScale = decimalPlaces;
+        }
+      }
+    });
+    
+    // Add safety margins
+    maxPrecision = Math.min(maxPrecision + 2, 38); // Max precision for most DBs is 38
+    maxScale = Math.min(maxScale + 1, 18); // Max scale for most DBs is 18
+    
+    return { precision: maxPrecision, scale: maxScale };
   }
-  
-  /**
-   * Generate basic data cleanup configuration
-   */
-  private generateBasicCleanupConfig(
-    tableDefinition: TableDefinition,
-    sampleData: any[] = []
-  ): DataCleanupConfig {
-    const config: DataCleanupConfig = {};
-    
-    // Identify string columns for whitespace trimming
-    const stringColumns = tableDefinition.columns
-      .filter(col => ['varchar', 'char', 'text', 'string'].some(t => col.dataType.toLowerCase().includes(t)))
-      .map(col => col.name);
-    
-    if (stringColumns.length > 0) {
-      config.trimWhitespace = {
-        columns: stringColumns
-      };
-    }
-    
-    // If there's a primary key, suggest removing duplicates based on it
-    if (tableDefinition.primaryKey) {
-      config.removeDuplicates = {
-        uniqueColumns: tableDefinition.primaryKey.columns
-      };
-    }
-    
-    return config;
-  }
+}
+
+/* Types for the Data Transformation Service */
+
+export interface TransformationOptions {
+  format?: string;
+  truncate?: boolean;
+  defaultValue?: any;
+  customTransformer?: (value: any) => any;
+}
+
+export interface InferredFieldAttributes {
+  type: FieldType;
+  nullable: boolean;
+  maxLength?: number;
+  precision?: number;
+  scale?: number;
+  enumValues?: any[];
 }

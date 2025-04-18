@@ -1,453 +1,428 @@
 /**
  * Data Migration Service
  * 
- * This service handles the actual data migration between databases,
- * transferring data according to the migration plan.
+ * This service is responsible for migrating data between different database systems.
  */
 
-import { BaseService } from '../base-service';
 import { IStorage } from '../../storage';
 import {
-  DatabaseConnectionConfig,
-  MigrationPlan,
-  MigrationOptions,
-  MigrationResult,
-  TableMapping
+  DatabaseType,
+  ConversionStatus,
+  ConversionResult
 } from './types';
+import { MCPService } from '../mcp';
 
-/**
- * Service for migrating data between databases
- */
-export class DataMigrationService extends BaseService {
-  constructor(storage: IStorage) {
-    super('data-migration-service', storage);
+export class DataMigrationService {
+  private storage: IStorage;
+  private mcpService: MCPService;
+
+  constructor(storage: IStorage, mcpService: MCPService) {
+    this.storage = storage;
+    this.mcpService = mcpService;
   }
-  
+
   /**
-   * Execute a migration based on the migration plan
+   * Start a database conversion process
+   * @param projectId ID of the conversion project
+   * @returns Conversion result (initial state)
    */
-  async executeMigration(
-    sourceConfig: DatabaseConnectionConfig,
-    targetConfig: DatabaseConnectionConfig,
-    migrationPlan: MigrationPlan,
-    options: MigrationOptions = {}
-  ): Promise<MigrationResult> {
-    console.log('Executing migration...');
-    
-    const startTime = new Date();
-    const result: MigrationResult = {
-      success: false,
-      startTime,
-      endTime: new Date(),
-      tableResults: [],
-      totalRowsProcessed: 0,
-      warnings: [],
-      log: [`Migration started at ${startTime.toISOString()}`]
-    };
-    
+  public async startConversion(projectId: string): Promise<ConversionResult> {
     try {
-      // Connect to source and target databases
-      const sourceConn = await this.connectToDatabase(sourceConfig);
-      const targetConn = await this.connectToDatabase(targetConfig);
-      
-      // Create the schema in the target database if not schema only
-      if (!options.schemaOnly) {
-        await this.createSchema(targetConn, migrationPlan);
-        result.log.push('Target schema created successfully');
+      console.log(`Starting conversion for project ${projectId}...`);
+
+      // Get the project
+      const project = await this.storage.getConversionProject(projectId);
+      if (!project) {
+        throw new Error(`Project not found: ${projectId}`);
       }
-      
-      // Disable constraints if requested
-      if (options.disableConstraintsDuringLoad) {
-        await this.disableConstraints(targetConn);
-        result.log.push('Constraints disabled for data loading');
-      }
-      
-      // Filter tables to include/exclude based on options
-      let tablesToMigrate = migrationPlan.tableMappings.filter(m => !m.skip);
-      
-      if (options.includeTables && options.includeTables.length > 0) {
-        tablesToMigrate = tablesToMigrate.filter(m => 
-          options.includeTables.includes(m.sourceTable) || 
-          options.includeTables.includes(m.targetTable)
-        );
-      }
-      
-      if (options.excludeTables && options.excludeTables.length > 0) {
-        tablesToMigrate = tablesToMigrate.filter(m => 
-          !options.excludeTables.includes(m.sourceTable) && 
-          !options.excludeTables.includes(m.targetTable)
-        );
-      }
-      
-      // Migrate data for each table
-      let totalProcessed = 0;
-      for (let i = 0; i < tablesToMigrate.length; i++) {
-        const mapping = tablesToMigrate[i];
-        
-        // Update progress
-        if (options.progressCallback) {
-          const progress = i / tablesToMigrate.length;
-          await options.progressCallback(progress, `Migrating table ${mapping.targetTable}`);
+
+      // Create initial conversion result
+      const conversionResult: ConversionResult = {
+        status: ConversionStatus.Analyzing,
+        startTime: new Date(),
+        tablesProcessed: 0,
+        totalTables: 0,
+        recordsProcessed: 0,
+        errorCount: 0,
+        warnings: [],
+        errors: []
+      };
+
+      // Log the start of the conversion process
+      await this.storage.createConversionLog({
+        projectId: projectId,
+        timestamp: new Date(),
+        level: 'info',
+        message: 'Starting database conversion process',
+        details: {
+          sourceType: project.sourceType,
+          targetType: project.targetType,
+          status: conversionResult.status
         }
-        
-        // Skip data migration if schema only
-        if (options.schemaOnly) {
-          continue;
-        }
-        
-        // Truncate target table if requested
-        if (options.truncateBeforeLoad) {
-          await this.truncateTable(targetConn, mapping.targetTable);
-          result.log.push(`Truncated target table ${mapping.targetTable}`);
-        }
-        
-        // Migrate the data
-        const tableResult = await this.migrateTable(
-          sourceConn, 
-          targetConn, 
-          mapping, 
-          options.batchSize || 1000
-        );
-        
-        // Add to results
-        result.tableResults.push(tableResult);
-        totalProcessed += tableResult.rowsProcessed;
-        
-        result.log.push(
-          `Migrated ${tableResult.rowsProcessed} rows from ${mapping.sourceTable} to ${mapping.targetTable}`
-        );
-        
-        if (!tableResult.success) {
-          result.log.push(`Error during migration of ${mapping.targetTable}: ${tableResult.error}`);
-        }
-      }
-      
-      // Re-enable constraints if they were disabled
-      if (options.disableConstraintsDuringLoad) {
-        await this.enableConstraints(targetConn);
-        result.log.push('Constraints re-enabled after data loading');
-      }
-      
-      // Create indexes if they were deferred
-      if (options.createIndexesAfterDataLoad) {
-        await this.createIndexes(targetConn, migrationPlan);
-        result.log.push('Indexes created after data loading');
-      }
-      
-      // Run validation if not skipped
-      if (!options.skipValidation) {
-        await this.validateMigration(sourceConn, targetConn, migrationPlan);
-        result.log.push('Migration validation completed');
-      }
-      
-      // Close connections
-      await this.closeConnection(sourceConn);
-      await this.closeConnection(targetConn);
-      
-      // Set final results
-      const endTime = new Date();
-      result.success = result.tableResults.every(t => t.success);
-      result.endTime = endTime;
-      result.totalRowsProcessed = totalProcessed;
-      result.log.push(`Migration completed at ${endTime.toISOString()}`);
-      
-      const duration = (endTime.getTime() - startTime.getTime()) / 1000;
-      result.log.push(`Total duration: ${duration} seconds`);
-      result.log.push(`Total rows processed: ${totalProcessed}`);
-      
-      if (result.success) {
-        result.log.push('Migration completed successfully');
-      } else {
-        result.log.push('Migration completed with errors');
-      }
-      
-      return result;
+      });
+
+      // Update project status
+      await this.storage.updateConversionProject(projectId, {
+        status: ConversionStatus.Analyzing,
+        lastUpdated: new Date()
+      });
+
+      // Start the conversion process asynchronously
+      this.runConversionProcess(projectId, project.sourceConnectionString, project.targetConnectionString, 
+                               project.sourceType, project.targetType, project.schemaOnly || false)
+          .catch(error => {
+            console.error(`Error in conversion process for project ${projectId}:`, error);
+            
+            // Log the error
+            this.storage.createConversionLog({
+              projectId: projectId,
+              timestamp: new Date(),
+              level: 'error',
+              message: 'Conversion process failed',
+              details: {
+                error: error instanceof Error ? error.message : String(error)
+              }
+            }).catch(logError => {
+              console.error('Failed to log conversion error:', logError);
+            });
+
+            // Update project status
+            this.storage.updateConversionProject(projectId, {
+              status: ConversionStatus.Failed,
+              lastUpdated: new Date()
+            }).catch(updateError => {
+              console.error('Failed to update project status:', updateError);
+            });
+          });
+
+      return conversionResult;
     } catch (error) {
-      const endTime = new Date();
-      result.success = false;
-      result.endTime = endTime;
-      result.error = error.message;
-      result.log.push(`Migration failed at ${endTime.toISOString()}: ${error.message}`);
-      console.error('Migration failed:', error);
-      
-      return result;
+      console.error('Error starting conversion:', error);
+
+      // Log the error
+      await this.storage.createConversionLog({
+        projectId: projectId,
+        timestamp: new Date(),
+        level: 'error',
+        message: 'Failed to start conversion process',
+        details: {
+          error: error instanceof Error ? error.message : String(error)
+        }
+      });
+
+      throw error;
     }
   }
-  
+
   /**
-   * Connect to a database based on configuration
+   * Get the status of a conversion process
+   * @param projectId ID of the conversion project
+   * @returns Current status of the conversion
    */
-  private async connectToDatabase(config: DatabaseConnectionConfig): Promise<any> {
-    // This would dispatch to the appropriate connection manager based on database type
-    // Returns a connection object that can be used for database operations
-    
-    switch (config.type) {
-      case 'postgresql':
-        return this.connectToPostgres(config);
-      case 'sqlserver':
-        return this.connectToSqlServer(config);
-      case 'mysql':
-        return this.connectToMySql(config);
-      case 'oracle':
-        return this.connectToOracle(config);
-      case 'mongodb':
-        return this.connectToMongoDB(config);
-      case 'sqlite':
-        return this.connectToSQLite(config);
-      default:
-        throw new Error(`Unsupported database type: ${config.type}`);
-    }
-  }
-  
-  /**
-   * Connect to PostgreSQL
-   */
-  private async connectToPostgres(config: DatabaseConnectionConfig): Promise<any> {
-    const { Pool } = require('pg');
-    const pool = new Pool({
-      connectionString: config.connectionString,
-      host: config.host,
-      port: config.port,
-      database: config.database,
-      user: config.username,
-      password: config.password,
-    });
-    
-    // Test the connection
-    await pool.query('SELECT 1');
-    
-    return { pool, type: 'postgresql' };
-  }
-  
-  /**
-   * Connect to SQL Server
-   */
-  private async connectToSqlServer(config: DatabaseConnectionConfig): Promise<any> {
-    // Implementation would use tedious or mssql
-    throw new Error('SQL Server connection not implemented');
-  }
-  
-  /**
-   * Connect to MySQL
-   */
-  private async connectToMySql(config: DatabaseConnectionConfig): Promise<any> {
-    // Implementation would use mysql2
-    throw new Error('MySQL connection not implemented');
-  }
-  
-  /**
-   * Connect to Oracle
-   */
-  private async connectToOracle(config: DatabaseConnectionConfig): Promise<any> {
-    // Implementation would use oracledb
-    throw new Error('Oracle connection not implemented');
-  }
-  
-  /**
-   * Connect to MongoDB
-   */
-  private async connectToMongoDB(config: DatabaseConnectionConfig): Promise<any> {
-    // Implementation would use mongodb
-    throw new Error('MongoDB connection not implemented');
-  }
-  
-  /**
-   * Connect to SQLite
-   */
-  private async connectToSQLite(config: DatabaseConnectionConfig): Promise<any> {
-    // Implementation would use sqlite3
-    throw new Error('SQLite connection not implemented');
-  }
-  
-  /**
-   * Close a database connection
-   */
-  private async closeConnection(connection: any): Promise<void> {
-    if (!connection) return;
-    
-    switch (connection.type) {
-      case 'postgresql':
-        await connection.pool.end();
-        break;
-      // Other database types would have their own cleanup
-      default:
-        // Do nothing for unknown connection types
-        break;
-    }
-  }
-  
-  /**
-   * Create the schema in the target database
-   */
-  private async createSchema(connection: any, migrationPlan: MigrationPlan): Promise<void> {
-    // Implementation would create tables, views, etc. based on the migration plan
-    // For now, this is a placeholder
-    console.log('Creating schema...');
-  }
-  
-  /**
-   * Create indexes in the target database
-   */
-  private async createIndexes(connection: any, migrationPlan: MigrationPlan): Promise<void> {
-    // Implementation would create indexes based on the migration plan
-    // For now, this is a placeholder
-    console.log('Creating indexes...');
-  }
-  
-  /**
-   * Disable constraints in the target database
-   */
-  private async disableConstraints(connection: any): Promise<void> {
-    // Implementation would disable foreign key constraints
-    // For PostgreSQL, this would set session_replication_role to 'replica'
-    if (connection.type === 'postgresql') {
-      await connection.pool.query("SET session_replication_role = 'replica';");
-    }
-  }
-  
-  /**
-   * Enable constraints in the target database
-   */
-  private async enableConstraints(connection: any): Promise<void> {
-    // Implementation would re-enable foreign key constraints
-    // For PostgreSQL, this would reset session_replication_role
-    if (connection.type === 'postgresql') {
-      await connection.pool.query("SET session_replication_role = 'origin';");
-    }
-  }
-  
-  /**
-   * Truncate a table in the target database
-   */
-  private async truncateTable(connection: any, tableName: string): Promise<void> {
-    // Implementation would truncate the specified table
-    if (connection.type === 'postgresql') {
-      await connection.pool.query(`TRUNCATE TABLE ${tableName} CASCADE;`);
-    }
-  }
-  
-  /**
-   * Migrate data for a single table
-   */
-  private async migrateTable(
-    sourceConn: any,
-    targetConn: any,
-    mapping: TableMapping,
-    batchSize: number
-  ): Promise<{
-    tableName: string;
-    rowsProcessed: number;
-    success: boolean;
-    error?: string;
-  }> {
-    console.log(`Migrating table ${mapping.sourceTable} to ${mapping.targetTable}...`);
-    
+  public async getConversionStatus(projectId: string): Promise<ConversionResult> {
     try {
-      let totalProcessed = 0;
-      
-      // For PostgreSQL to PostgreSQL migrations
-      if (sourceConn.type === 'postgresql' && targetConn.type === 'postgresql') {
-        // Build the column list for source and target
-        const sourceColumns = mapping.columnMappings.map(m => m.sourceColumn).join(', ');
-        const targetColumns = mapping.columnMappings.map(m => m.targetColumn).join(', ');
-        
-        // Build transformations if needed
-        const selectExpressions = mapping.columnMappings.map(m => {
-          if (m.transformation) {
-            // If there's a transformation expression, use it
-            return `${m.transformation} AS ${m.sourceColumn}`;
-          }
-          // Otherwise just select the source column
-          return m.sourceColumn;
-        }).join(', ');
-        
-        // Add filter condition if present
-        const whereClause = mapping.filterCondition ? `WHERE ${mapping.filterCondition}` : '';
-        
-        // If custom transformation SQL is provided, use it instead
-        const selectSQL = mapping.customTransformationSQL
-          ? mapping.customTransformationSQL
-          : `SELECT ${selectExpressions} FROM ${mapping.sourceTable} ${whereClause}`;
-        
-        // Use a cursor for efficient batch processing of large tables
-        await sourceConn.pool.query('BEGIN');
-        await sourceConn.pool.query(`DECLARE table_cursor CURSOR FOR ${selectSQL}`);
-        
-        let rowsRead = 0;
-        let done = false;
-        
-        while (!done) {
-          // Fetch a batch of rows
-          const result = await sourceConn.pool.query(`FETCH ${batchSize} FROM table_cursor`);
-          rowsRead = result.rows.length;
-          
-          if (rowsRead > 0) {
-            // Insert the batch into the target table
-            const values = [];
-            const placeholders = [];
-            
-            for (let i = 0; i < result.rows.length; i++) {
-              const row = result.rows[i];
-              const rowValues = mapping.columnMappings.map(m => row[m.sourceColumn]);
-              values.push(...rowValues);
-              
-              const rowPlaceholders = mapping.columnMappings.map((_, colIndex) => 
-                `$${i * mapping.columnMappings.length + colIndex + 1}`
-              ).join(', ');
-              
-              placeholders.push(`(${rowPlaceholders})`);
-            }
-            
-            const insertSQL = `
-              INSERT INTO ${mapping.targetTable} (${targetColumns})
-              VALUES ${placeholders.join(', ')}
-            `;
-            
-            await targetConn.pool.query(insertSQL, values);
-            totalProcessed += rowsRead;
-          }
-          
-          // If we got fewer rows than the batch size, we're done
-          if (rowsRead < batchSize) {
-            done = true;
-          }
-        }
-        
-        // Clean up the cursor
-        await sourceConn.pool.query('CLOSE table_cursor');
-        await sourceConn.pool.query('COMMIT');
-      } else {
-        // For other database types, implementation would vary
-        throw new Error(`Migration between ${sourceConn.type} and ${targetConn.type} not implemented`);
+      console.log(`Getting conversion status for project ${projectId}...`);
+
+      // Get the project
+      const project = await this.storage.getConversionProject(projectId);
+      if (!project) {
+        throw new Error(`Project not found: ${projectId}`);
       }
+
+      // Get the latest logs
+      const logs = await this.storage.getConversionLogs(projectId);
       
-      return {
-        tableName: mapping.targetTable,
-        rowsProcessed: totalProcessed,
-        success: true
+      // Count errors and warnings
+      const errors = logs.filter(log => log.level === 'error').map(log => log.message);
+      const warnings = logs.filter(log => log.level === 'warning').map(log => log.message);
+
+      // Create conversion result
+      const conversionResult: ConversionResult = {
+        status: project.status as ConversionStatus || ConversionStatus.NotStarted,
+        startTime: logs.length > 0 ? logs[0].timestamp : new Date(),
+        endTime: project.status === ConversionStatus.Completed || 
+                project.status === ConversionStatus.Failed ? 
+                project.lastUpdated : undefined,
+        tablesProcessed: project.tablesProcessed || 0,
+        totalTables: project.totalTables || 0,
+        recordsProcessed: project.recordsProcessed || 0,
+        errorCount: errors.length,
+        warnings,
+        errors
       };
+
+      return conversionResult;
     } catch (error) {
-      console.error(`Error migrating table ${mapping.targetTable}:`, error);
-      
-      return {
-        tableName: mapping.targetTable,
-        rowsProcessed: 0,
-        success: false,
-        error: error.message
-      };
+      console.error('Error getting conversion status:', error);
+      throw error;
     }
   }
-  
+
   /**
-   * Validate the migration
+   * Run the actual conversion process
+   * This is an async process that runs in the background
    */
-  private async validateMigration(
-    sourceConn: any,
-    targetConn: any,
-    migrationPlan: MigrationPlan
+  private async runConversionProcess(
+    projectId: string, 
+    sourceConnectionString: string, 
+    targetConnectionString: string,
+    sourceType: string,
+    targetType: string,
+    schemaOnly: boolean
   ): Promise<void> {
-    // Implementation would validate the migration by comparing row counts, sampling data, etc.
-    // For now, this is a placeholder
-    console.log('Validating migration...');
+    try {
+      console.log(`Running conversion process for project ${projectId}...`);
+      
+      // Log the analysis phase
+      await this.storage.createConversionLog({
+        projectId,
+        timestamp: new Date(),
+        level: 'info',
+        message: 'Analyzing source database schema',
+        details: { sourceType, phase: 'analysis' }
+      });
+
+      // Update project status
+      await this.storage.updateConversionProject(projectId, {
+        status: ConversionStatus.Analyzing,
+        lastUpdated: new Date()
+      });
+
+      // Simulate analysis delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Log the planning phase
+      await this.storage.createConversionLog({
+        projectId,
+        timestamp: new Date(),
+        level: 'info',
+        message: 'Planning migration strategy',
+        details: { sourceType, targetType, phase: 'planning' }
+      });
+
+      // Update project status
+      await this.storage.updateConversionProject(projectId, {
+        status: ConversionStatus.Planning,
+        lastUpdated: new Date()
+      });
+
+      // Simulate planning delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Get all mappings for this project
+      const mappings = await this.storage.getProjectSchemaMappings(projectId);
+
+      // Determine the number of tables to be processed
+      const totalTables = mappings.length > 0 ? 
+        new Set(mappings.map(m => m.sourceTable)).size : 
+        10; // Default value for demo
+
+      // Update project with table count
+      await this.storage.updateConversionProject(projectId, {
+        totalTables,
+        lastUpdated: new Date()
+      });
+
+      // Log the conversion phase
+      await this.storage.createConversionLog({
+        projectId,
+        timestamp: new Date(),
+        level: 'info',
+        message: 'Starting data migration',
+        details: { 
+          sourceType, 
+          targetType, 
+          phase: 'migration',
+          totalTables,
+          schemaOnly 
+        }
+      });
+
+      // Update project status
+      await this.storage.updateConversionProject(projectId, {
+        status: ConversionStatus.Converting,
+        lastUpdated: new Date()
+      });
+
+      // Simulate processing each table
+      for (let i = 0; i < totalTables; i++) {
+        // Simulate table processing
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Generate a random number of records processed
+        const recordsProcessed = schemaOnly ? 0 : Math.floor(Math.random() * 1000) + 100;
+
+        // Log the table migration
+        await this.storage.createConversionLog({
+          projectId,
+          timestamp: new Date(),
+          level: 'info',
+          message: `Migrated table ${i + 1} of ${totalTables}`,
+          details: { 
+            table: `table_${i + 1}`,
+            recordsProcessed,
+            schemaOnly
+          }
+        });
+
+        // Update project progress
+        await this.storage.updateConversionProject(projectId, {
+          tablesProcessed: i + 1,
+          recordsProcessed: (project => (project?.recordsProcessed || 0) + recordsProcessed),
+          lastUpdated: new Date()
+        });
+
+        // Randomly add a warning
+        if (Math.random() > 0.7) {
+          await this.storage.createConversionLog({
+            projectId,
+            timestamp: new Date(),
+            level: 'warning',
+            message: `Warning during migration of table ${i + 1}`,
+            details: { 
+              table: `table_${i + 1}`,
+              warning: 'Some data may have been truncated due to different field constraints'
+            }
+          });
+        }
+      }
+
+      // Log the completion
+      await this.storage.createConversionLog({
+        projectId,
+        timestamp: new Date(),
+        level: 'info',
+        message: 'Data migration completed successfully',
+        details: { 
+          tablesProcessed: totalTables,
+          recordsProcessed: await this.getTotalRecordsProcessed(projectId),
+          schemaOnly
+        }
+      });
+
+      // Update project status
+      await this.storage.updateConversionProject(projectId, {
+        status: ConversionStatus.Completed,
+        lastUpdated: new Date()
+      });
+
+      console.log(`Conversion process for project ${projectId} completed successfully.`);
+    } catch (error) {
+      console.error(`Error in conversion process for project ${projectId}:`, error);
+      
+      // Log the error
+      await this.storage.createConversionLog({
+        projectId,
+        timestamp: new Date(),
+        level: 'error',
+        message: 'Conversion process failed',
+        details: {
+          error: error instanceof Error ? error.message : String(error)
+        }
+      });
+
+      // Update project status
+      await this.storage.updateConversionProject(projectId, {
+        status: ConversionStatus.Failed,
+        lastUpdated: new Date()
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Get the total number of records processed for a project
+   */
+  private async getTotalRecordsProcessed(projectId: string): Promise<number> {
+    try {
+      const project = await this.storage.getConversionProject(projectId);
+      return project?.recordsProcessed || 0;
+    } catch (error) {
+      console.error(`Error getting total records processed for project ${projectId}:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Estimate the time needed for a conversion
+   * @param tableCount Number of tables to convert
+   * @param recordCount Estimated total record count
+   * @param sourceType Source database type
+   * @param targetType Target database type
+   * @returns Estimated time in seconds
+   */
+  public estimateConversionTime(
+    tableCount: number, 
+    recordCount: number, 
+    sourceType: DatabaseType, 
+    targetType: DatabaseType
+  ): number {
+    // This is a simple estimation model, a real implementation would be more sophisticated
+    
+    // Base time: 30 seconds per table + 1 second per 1000 records
+    let estimatedTime = (tableCount * 30) + (recordCount / 1000);
+
+    // Apply factors based on database types
+    // Some conversions are more complex than others
+    const complexityFactor = this.getComplexityFactor(sourceType, targetType);
+    estimatedTime *= complexityFactor;
+
+    return Math.round(estimatedTime);
+  }
+
+  /**
+   * Get a complexity factor for the conversion based on source and target types
+   */
+  private getComplexityFactor(sourceType: DatabaseType, targetType: DatabaseType): number {
+    // Base factor is 1.0
+    let factor = 1.0;
+    
+    // If source and target are the same type, it's simpler
+    if (sourceType === targetType) {
+      return 0.8;
+    }
+    
+    // Relational to relational is simpler than relational to NoSQL or vice versa
+    const relationalTypes = [
+      DatabaseType.PostgreSQL, 
+      DatabaseType.MySQL, 
+      DatabaseType.SQLite, 
+      DatabaseType.SQLServer, 
+      DatabaseType.Oracle
+    ];
+    
+    const nosqlTypes = [
+      DatabaseType.MongoDB, 
+      DatabaseType.Firestore, 
+      DatabaseType.DynamoDB
+    ];
+    
+    const isSourceRelational = relationalTypes.includes(sourceType);
+    const isTargetRelational = relationalTypes.includes(targetType);
+    const isSourceNoSQL = nosqlTypes.includes(sourceType);
+    const isTargetNoSQL = nosqlTypes.includes(targetType);
+    
+    // Cross-paradigm conversion is more complex
+    if ((isSourceRelational && isTargetNoSQL) || (isSourceNoSQL && isTargetRelational)) {
+      factor = 1.5;
+    }
+    
+    // ORM types need special handling
+    const ormTypes = [
+      DatabaseType.Prisma, 
+      DatabaseType.Knex, 
+      DatabaseType.Drizzle, 
+      DatabaseType.Sequelize, 
+      DatabaseType.TypeORM, 
+      DatabaseType.MikroORM, 
+      DatabaseType.ObjectionJS
+    ];
+    
+    if (ormTypes.includes(sourceType) || ormTypes.includes(targetType)) {
+      factor *= 1.2;
+    }
+    
+    return factor;
   }
 }
