@@ -258,11 +258,40 @@ export async function implementGISStorage(storage: IStorage): Promise<void> {
   };
 
   // Agent Message methods
-  storage.createAgentMessage = async (message: InsertAgentMessage): Promise<AgentMessage> => {
-    const [result] = await db.insert(agentMessagesTable)
-      .values(message)
-      .returning();
-    return result;
+  storage.createAgentMessage = async (message: any): Promise<AgentMessage> => {
+    // Check which schema format the message is in
+    if ('senderAgentId' in message) {
+      // Convert from main schema format to GIS schema format
+      const adaptedMessage = {
+        agent_id: message.senderAgentId,
+        type: message.messageType || 'INFO',
+        content: typeof message.content === 'object' ? 
+          JSON.stringify(message.content) : 
+          message.content || message.subject || 'No content provided',
+        metadata: {
+          messageId: message.messageId,
+          conversationId: message.conversationId,
+          receiverAgentId: message.receiverAgentId,
+          priority: message.priority,
+          status: message.status,
+          subject: message.subject,
+          contextData: message.contextData,
+          entityType: message.entityType,
+          entityId: message.entityId
+        }
+      };
+      
+      const [result] = await db.insert(agentMessagesTable)
+        .values(adaptedMessage)
+        .returning();
+      return result;
+    } else {
+      // Standard GIS schema format
+      const [result] = await db.insert(agentMessagesTable)
+        .values(message)
+        .returning();
+      return result;
+    }
   };
 
   storage.getAgentMessage = async (id: number): Promise<AgentMessage | undefined> => {

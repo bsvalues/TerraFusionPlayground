@@ -195,13 +195,9 @@ export class GISAgentOrchestrationService {
     taskData: Omit<InsertGISAgentTask, 'id' | 'status' | 'startTime' | 'endTime'>
   ): Promise<GISAgentTask> {
     try {
-      // Create a unique ID for the task
-      const taskId = uuidv4();
-      
-      // Create the task object
+      // Create the task object - let the database auto-generate the ID
       const newTask: InsertGISAgentTask = {
         ...taskData,
-        id: taskId,
         status: TaskStatus.PENDING,
         startTime: new Date(),
       };
@@ -240,9 +236,9 @@ export class GISAgentOrchestrationService {
       // In a production system, this would use more sophisticated load balancing
       const agent = availableAgents[0];
       
-      // Update task status
+      // Update task status - ensure ID is handled as a number
       const updatedTask = await this.storage.updateGISAgentTask(
-        task.id as unknown as number, 
+        typeof task.id === 'number' ? task.id : parseInt(task.id as string), 
         { 
           status: TaskStatus.RUNNING,
           agentId: agent.id
@@ -272,7 +268,7 @@ export class GISAgentOrchestrationService {
       
       // Update task status to failed
       await this.storage.updateGISAgentTask(
-        task.id as unknown as number, 
+        typeof task.id === 'number' ? task.id : parseInt(task.id as string),
         { 
           status: TaskStatus.FAILED,
           error: error.message || 'Failed to assign task'
@@ -293,7 +289,7 @@ export class GISAgentOrchestrationService {
       
       // Update task status
       const updatedTask = await this.storage.updateGISAgentTask(
-        task.id as unknown as number, 
+        typeof task.id === 'number' ? task.id : parseInt(task.id as string), 
         { 
           status: TaskStatus.COMPLETED,
           result,
@@ -322,7 +318,7 @@ export class GISAgentOrchestrationService {
       
       // Update task status to failed
       await this.storage.updateGISAgentTask(
-        task.id as unknown as number, 
+        typeof task.id === 'number' ? task.id : parseInt(task.id as string), 
         { 
           status: TaskStatus.FAILED,
           error: error.message || 'Failed to process task',
@@ -350,7 +346,7 @@ export class GISAgentOrchestrationService {
    * @param taskId The ID of the task to cancel
    */
   public async cancelTask(taskId: string): Promise<void> {
-    const numericTaskId = taskId as unknown as number;
+    const numericTaskId = typeof taskId === 'number' ? taskId : parseInt(taskId);
     const task = this.activeTasks.get(numericTaskId);
     
     if (!task) {
@@ -359,7 +355,7 @@ export class GISAgentOrchestrationService {
     
     // Update task status
     const updatedTask = await this.storage.updateGISAgentTask(
-      numericTaskId, 
+      numericTaskId,
       { 
         status: TaskStatus.CANCELLED,
         endTime: new Date()
