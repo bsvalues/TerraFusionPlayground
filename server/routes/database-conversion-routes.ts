@@ -1,339 +1,451 @@
-/**
- * Database Conversion Routes
- * 
- * This file contains all the API routes for the database conversion functionality.
- */
-
-import { Express, Request, Response } from 'express';
-import { DatabaseConversionService } from '../services/database-conversion';
+import { Router, Express } from 'express';
+import { storage } from '../storage';
 import { z } from 'zod';
+import { DatabaseConversionService } from '../services/database-conversion';
+import { databaseConversionProjects, connectionTemplates, schemaMappings, conversionLogs, compatibilityLayers } from '@shared/schema';
+import { createInsertSchema } from 'drizzle-zod';
+import { randomUUID } from 'crypto';
+
+// Zod validation schemas
+const insertProjectSchema = createInsertSchema(databaseConversionProjects);
+const insertConnectionTemplateSchema = createInsertSchema(connectionTemplates);
+const insertSchemaMappingSchema = createInsertSchema(schemaMappings);
+const insertConversionLogSchema = createInsertSchema(conversionLogs);
+const insertCompatibilityLayerSchema = createInsertSchema(compatibilityLayers);
+
+// Project ID parameter validation
+const projectIdParamSchema = z.object({
+  projectId: z.string().uuid()
+});
+
+// Resource ID parameter validation
+const resourceIdParamSchema = z.object({
+  id: z.coerce.number().int().positive()
+});
+
+const databaseConversionRouter = Router();
+
+// Project endpoints
+databaseConversionRouter.post('/projects', async (req, res) => {
+  try {
+    const projectData = req.body;
+    
+    // Generate UUID if not provided
+    if (!projectData.projectId) {
+      projectData.projectId = randomUUID();
+    }
+    
+    const validatedData = insertProjectSchema.parse(projectData);
+    const project = await storage.createConversionProject(validatedData);
+    res.status(201).json(project);
+  } catch (error) {
+    console.error('Error creating conversion project:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid project data' });
+  }
+});
+
+databaseConversionRouter.get('/projects', async (req, res) => {
+  try {
+    const projects = await storage.getConversionProjects();
+    res.json(projects);
+  } catch (error) {
+    console.error('Error fetching conversion projects:', error);
+    res.status(500).json({ error: 'Failed to fetch conversion projects' });
+  }
+});
+
+databaseConversionRouter.get('/projects/:projectId', async (req, res) => {
+  try {
+    const { projectId } = projectIdParamSchema.parse(req.params);
+    const project = await storage.getConversionProject(projectId);
+    
+    if (!project) {
+      return res.status(404).json({ error: 'Conversion project not found' });
+    }
+    
+    res.json(project);
+  } catch (error) {
+    console.error('Error fetching conversion project:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid project ID' });
+  }
+});
+
+databaseConversionRouter.patch('/projects/:projectId', async (req, res) => {
+  try {
+    const { projectId } = projectIdParamSchema.parse(req.params);
+    const updateData = req.body;
+    
+    const project = await storage.updateConversionProject(projectId, updateData);
+    
+    if (!project) {
+      return res.status(404).json({ error: 'Conversion project not found' });
+    }
+    
+    res.json(project);
+  } catch (error) {
+    console.error('Error updating conversion project:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid update data' });
+  }
+});
+
+databaseConversionRouter.delete('/projects/:projectId', async (req, res) => {
+  try {
+    const { projectId } = projectIdParamSchema.parse(req.params);
+    const success = await storage.deleteConversionProject(projectId);
+    
+    if (!success) {
+      return res.status(404).json({ error: 'Conversion project not found' });
+    }
+    
+    res.status(204).end();
+  } catch (error) {
+    console.error('Error deleting conversion project:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid project ID' });
+  }
+});
+
+// Connection Templates endpoints
+databaseConversionRouter.post('/connection-templates', async (req, res) => {
+  try {
+    const templateData = req.body;
+    const validatedData = insertConnectionTemplateSchema.parse(templateData);
+    const template = await storage.createConnectionTemplate(validatedData);
+    res.status(201).json(template);
+  } catch (error) {
+    console.error('Error creating connection template:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid template data' });
+  }
+});
+
+databaseConversionRouter.get('/connection-templates', async (req, res) => {
+  try {
+    const isPublic = req.query.isPublic === 'true' ? true : 
+                    req.query.isPublic === 'false' ? false : 
+                    undefined;
+    
+    const templates = await storage.getConnectionTemplates(isPublic);
+    res.json(templates);
+  } catch (error) {
+    console.error('Error fetching connection templates:', error);
+    res.status(500).json({ error: 'Failed to fetch connection templates' });
+  }
+});
+
+databaseConversionRouter.get('/connection-templates/:id', async (req, res) => {
+  try {
+    const { id } = resourceIdParamSchema.parse(req.params);
+    const template = await storage.getConnectionTemplate(id);
+    
+    if (!template) {
+      return res.status(404).json({ error: 'Connection template not found' });
+    }
+    
+    res.json(template);
+  } catch (error) {
+    console.error('Error fetching connection template:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid template ID' });
+  }
+});
+
+databaseConversionRouter.patch('/connection-templates/:id', async (req, res) => {
+  try {
+    const { id } = resourceIdParamSchema.parse(req.params);
+    const updateData = req.body;
+    
+    const template = await storage.updateConnectionTemplate(id, updateData);
+    
+    if (!template) {
+      return res.status(404).json({ error: 'Connection template not found' });
+    }
+    
+    res.json(template);
+  } catch (error) {
+    console.error('Error updating connection template:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid update data' });
+  }
+});
+
+databaseConversionRouter.delete('/connection-templates/:id', async (req, res) => {
+  try {
+    const { id } = resourceIdParamSchema.parse(req.params);
+    const success = await storage.deleteConnectionTemplate(id);
+    
+    if (!success) {
+      return res.status(404).json({ error: 'Connection template not found' });
+    }
+    
+    res.status(204).end();
+  } catch (error) {
+    console.error('Error deleting connection template:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid template ID' });
+  }
+});
+
+// Schema Mappings endpoints
+databaseConversionRouter.post('/schema-mappings', async (req, res) => {
+  try {
+    const mappingData = req.body;
+    const validatedData = insertSchemaMappingSchema.parse(mappingData);
+    const mapping = await storage.createSchemaMapping(validatedData);
+    res.status(201).json(mapping);
+  } catch (error) {
+    console.error('Error creating schema mapping:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid mapping data' });
+  }
+});
+
+databaseConversionRouter.get('/schema-mappings', async (req, res) => {
+  try {
+    const sourceType = req.query.sourceType as string | undefined;
+    const targetType = req.query.targetType as string | undefined;
+    
+    const mappings = await storage.getSchemaMappings(sourceType, targetType);
+    res.json(mappings);
+  } catch (error) {
+    console.error('Error fetching schema mappings:', error);
+    res.status(500).json({ error: 'Failed to fetch schema mappings' });
+  }
+});
+
+databaseConversionRouter.get('/schema-mappings/:id', async (req, res) => {
+  try {
+    const { id } = resourceIdParamSchema.parse(req.params);
+    const mapping = await storage.getSchemaMapping(id);
+    
+    if (!mapping) {
+      return res.status(404).json({ error: 'Schema mapping not found' });
+    }
+    
+    res.json(mapping);
+  } catch (error) {
+    console.error('Error fetching schema mapping:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid mapping ID' });
+  }
+});
+
+databaseConversionRouter.patch('/schema-mappings/:id', async (req, res) => {
+  try {
+    const { id } = resourceIdParamSchema.parse(req.params);
+    const updateData = req.body;
+    
+    const mapping = await storage.updateSchemaMapping(id, updateData);
+    
+    if (!mapping) {
+      return res.status(404).json({ error: 'Schema mapping not found' });
+    }
+    
+    res.json(mapping);
+  } catch (error) {
+    console.error('Error updating schema mapping:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid update data' });
+  }
+});
+
+databaseConversionRouter.delete('/schema-mappings/:id', async (req, res) => {
+  try {
+    const { id } = resourceIdParamSchema.parse(req.params);
+    const success = await storage.deleteSchemaMapping(id);
+    
+    if (!success) {
+      return res.status(404).json({ error: 'Schema mapping not found' });
+    }
+    
+    res.status(204).end();
+  } catch (error) {
+    console.error('Error deleting schema mapping:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid mapping ID' });
+  }
+});
+
+// Conversion Logs endpoints
+databaseConversionRouter.post('/conversion-logs', async (req, res) => {
+  try {
+    const logData = req.body;
+    const validatedData = insertConversionLogSchema.parse(logData);
+    const log = await storage.createConversionLog(validatedData);
+    res.status(201).json(log);
+  } catch (error) {
+    console.error('Error creating conversion log:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid log data' });
+  }
+});
+
+databaseConversionRouter.get('/conversion-logs/:projectId', async (req, res) => {
+  try {
+    const { projectId } = projectIdParamSchema.parse({ projectId: req.params.projectId });
+    const logs = await storage.getConversionLogs(projectId);
+    res.json(logs);
+  } catch (error) {
+    console.error('Error fetching conversion logs:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid project ID' });
+  }
+});
+
+// Compatibility Layer endpoints
+databaseConversionRouter.post('/compatibility-layers', async (req, res) => {
+  try {
+    const layerData = req.body;
+    const validatedData = insertCompatibilityLayerSchema.parse(layerData);
+    const layer = await storage.createCompatibilityLayer(validatedData);
+    res.status(201).json(layer);
+  } catch (error) {
+    console.error('Error creating compatibility layer:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid layer data' });
+  }
+});
+
+databaseConversionRouter.get('/compatibility-layers/:projectId', async (req, res) => {
+  try {
+    const { projectId } = projectIdParamSchema.parse({ projectId: req.params.projectId });
+    const layers = await storage.getCompatibilityLayersByProject(projectId);
+    res.json(layers);
+  } catch (error) {
+    console.error('Error fetching compatibility layers:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid project ID' });
+  }
+});
+
+databaseConversionRouter.get('/compatibility-layers/single/:id', async (req, res) => {
+  try {
+    const { id } = resourceIdParamSchema.parse(req.params);
+    const layer = await storage.getCompatibilityLayer(id);
+    
+    if (!layer) {
+      return res.status(404).json({ error: 'Compatibility layer not found' });
+    }
+    
+    res.json(layer);
+  } catch (error) {
+    console.error('Error fetching compatibility layer:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid layer ID' });
+  }
+});
+
+databaseConversionRouter.patch('/compatibility-layers/:id', async (req, res) => {
+  try {
+    const { id } = resourceIdParamSchema.parse(req.params);
+    const updateData = req.body;
+    
+    const layer = await storage.updateCompatibilityLayer(id, updateData);
+    
+    if (!layer) {
+      return res.status(404).json({ error: 'Compatibility layer not found' });
+    }
+    
+    res.json(layer);
+  } catch (error) {
+    console.error('Error updating compatibility layer:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid update data' });
+  }
+});
+
+export default databaseConversionRouter;
 
 /**
- * Register database conversion routes
+ * Register database conversion routes with the Express application
+ * 
+ * @param app Express application
+ * @param databaseConversionService Database conversion service instance
  */
-export function registerDatabaseConversionRoutes(app: Express, databaseConversionService: DatabaseConversionService) {
-  // Validate token for all DB conversion API routes
-  app.use('/api/database-conversion/*', (req, res, next) => {
-    // The authentication middleware would go here
-    // For now, just continue to the next middleware
-    next();
-  });
-
-  // Get all conversion projects
-  app.get('/api/database-conversion/projects', async (req: Request, res: Response) => {
+export function registerDatabaseConversionRoutes(app: Express, databaseConversionService: DatabaseConversionService): void {
+  // Operation endpoints that use the service directly
+  
+  // Analyze schema endpoint
+  app.post('/api/database-conversion/analyze-schema', async (req, res) => {
     try {
-      const projects = await databaseConversionService.getConversionProjects();
-      return res.status(200).json(projects);
-    } catch (error) {
-      console.error('Error fetching conversion projects:', error);
-      return res.status(500).json({ error: 'Failed to fetch conversion projects' });
-    }
-  });
-
-  // Get a specific conversion project
-  app.get('/api/database-conversion/projects/:id', async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
+      const { connectionString, databaseType } = req.body;
       
-      if (!id) {
-        return res.status(400).json({ error: 'Project ID is required' });
+      if (!connectionString || !databaseType) {
+        return res.status(400).json({ error: 'Connection string and database type are required' });
       }
       
-      const project = await databaseConversionService.getConversionProject(id);
-      
-      if (!project) {
-        return res.status(404).json({ error: 'Project not found' });
-      }
-      
-      return res.status(200).json(project);
-    } catch (error) {
-      console.error('Error fetching conversion project:', error);
-      return res.status(500).json({ error: 'Failed to fetch conversion project' });
-    }
-  });
-
-  // Create a new conversion project
-  app.post('/api/database-conversion/projects', async (req: Request, res: Response) => {
-    try {
-      const projectSchema = z.object({
-        name: z.string().min(1, "Name is required"),
-        description: z.string().optional(),
-        sourceConfig: z.object({
-          type: z.string().optional(),
-          connectionString: z.string().optional(),
-          host: z.string().optional(),
-          port: z.number().optional(),
-          database: z.string().optional(),
-          schema: z.string().optional(),
-          username: z.string().optional(),
-          password: z.string().optional(),
-          options: z.record(z.any()).optional(),
-          filePath: z.string().optional(),
-        }).refine(data => {
-          // Ensure at least connection string or host/db is provided
-          return !!(data.connectionString || (data.host && data.database));
-        }, {
-          message: "Either connectionString or host and database must be provided"
-        }),
-        targetConfig: z.object({
-          type: z.string().optional(),
-          connectionString: z.string().optional(),
-          host: z.string().optional(),
-          port: z.number().optional(),
-          database: z.string().optional(),
-          schema: z.string().optional(),
-          username: z.string().optional(),
-          password: z.string().optional(),
-          options: z.record(z.any()).optional(),
-          filePath: z.string().optional(),
-        }).refine(data => {
-          // Ensure at least connection string or host/db is provided
-          return !!(data.connectionString || (data.host && data.database));
-        }, {
-          message: "Either connectionString or host and database must be provided"
-        }),
-      });
-
-      const validatedData = projectSchema.parse(req.body);
-      
-      const project = await databaseConversionService.createConversionProject(
-        validatedData.name,
-        validatedData.description || '',
-        validatedData.sourceConfig,
-        validatedData.targetConfig
-      );
-      
-      return res.status(201).json(project);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Invalid project data', details: error.errors });
-      }
-      
-      console.error('Error creating conversion project:', error);
-      return res.status(500).json({ error: 'Failed to create conversion project' });
-    }
-  });
-
-  // Update an existing conversion project
-  app.patch('/api/database-conversion/projects/:id', async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      
-      if (!id) {
-        return res.status(400).json({ error: 'Project ID is required' });
-      }
-      
-      const project = await databaseConversionService.getConversionProject(id);
-      
-      if (!project) {
-        return res.status(404).json({ error: 'Project not found' });
-      }
-      
-      const updatedProject = await databaseConversionService.updateConversionProject(id, req.body);
-      return res.status(200).json(updatedProject);
-    } catch (error) {
-      console.error('Error updating conversion project:', error);
-      return res.status(500).json({ error: 'Failed to update conversion project' });
-    }
-  });
-
-  // Delete a conversion project
-  app.delete('/api/database-conversion/projects/:id', async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      
-      if (!id) {
-        return res.status(400).json({ error: 'Project ID is required' });
-      }
-      
-      const deleted = await databaseConversionService.deleteConversionProject(id);
-      
-      if (!deleted) {
-        return res.status(404).json({ error: 'Project not found' });
-      }
-      
-      return res.status(200).json({ message: 'Project deleted successfully' });
-    } catch (error) {
-      console.error('Error deleting conversion project:', error);
-      return res.status(500).json({ error: 'Failed to delete conversion project' });
-    }
-  });
-
-  // Get connection templates
-  app.get('/api/database-conversion/templates', async (req: Request, res: Response) => {
-    try {
-      const isPublic = req.query.isPublic === 'true';
-      const templates = await databaseConversionService.getConnectionTemplates(isPublic);
-      return res.status(200).json(templates);
-    } catch (error) {
-      console.error('Error fetching connection templates:', error);
-      return res.status(500).json({ error: 'Failed to fetch connection templates' });
-    }
-  });
-
-  // Create a connection template
-  app.post('/api/database-conversion/templates', async (req: Request, res: Response) => {
-    try {
-      const templateSchema = z.object({
-        name: z.string().min(1, "Name is required"),
-        description: z.string().optional(),
-        databaseType: z.string().min(1, "Database type is required"),
-        connectionConfig: z.record(z.any()).min(1, "Connection configuration is required"),
-        isPublic: z.boolean().optional(),
-        createdBy: z.number().int().min(1, "Creator ID is required"),
-      });
-
-      const validatedData = templateSchema.parse(req.body);
-      const template = await databaseConversionService.createConnectionTemplate(validatedData);
-      
-      return res.status(201).json(template);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Invalid template data', details: error.errors });
-      }
-      
-      console.error('Error creating connection template:', error);
-      return res.status(500).json({ error: 'Failed to create connection template' });
-    }
-  });
-
-  // Analyze database schema
-  app.post('/api/database-conversion/projects/:id/analyze', async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      
-      if (!id) {
-        return res.status(400).json({ error: 'Project ID is required' });
-      }
-      
-      const project = await databaseConversionService.getConversionProject(id);
-      
-      if (!project) {
-        return res.status(404).json({ error: 'Project not found' });
-      }
-      
-      const analysisResult = await databaseConversionService.analyzeDatabase(id);
-      return res.status(200).json(analysisResult);
+      const schema = await databaseConversionService.analyzeSchema(connectionString, databaseType);
+      res.json(schema);
     } catch (error) {
       console.error('Error analyzing database schema:', error);
-      return res.status(500).json({ error: 'Failed to analyze database schema' });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to analyze schema' });
     }
   });
-
-  // Generate migration plan
-  app.post('/api/database-conversion/projects/:id/plan', async (req: Request, res: Response) => {
+  
+  // Test connection endpoint
+  app.post('/api/database-conversion/test-connection', async (req, res) => {
     try {
-      const { id } = req.params;
-      const { customInstructions } = req.body;
+      const { connectionString, databaseType } = req.body;
       
-      if (!id) {
+      if (!connectionString || !databaseType) {
+        return res.status(400).json({ error: 'Connection string and database type are required' });
+      }
+      
+      const result = await databaseConversionService.testConnection(connectionString, databaseType);
+      res.json(result);
+    } catch (error) {
+      console.error('Error testing database connection:', error);
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to test connection' });
+    }
+  });
+  
+  // Start conversion process endpoint
+  app.post('/api/database-conversion/start', async (req, res) => {
+    try {
+      const { projectId } = req.body;
+      
+      if (!projectId) {
         return res.status(400).json({ error: 'Project ID is required' });
       }
       
-      const project = await databaseConversionService.getConversionProject(id);
-      
-      if (!project) {
-        return res.status(404).json({ error: 'Project not found' });
-      }
-      
-      const migrationPlan = await databaseConversionService.generateMigrationPlan(id, customInstructions);
-      return res.status(200).json(migrationPlan);
+      const result = await databaseConversionService.startConversion(projectId);
+      res.json(result);
     } catch (error) {
-      console.error('Error generating migration plan:', error);
-      return res.status(500).json({ error: 'Failed to generate migration plan' });
+      console.error('Error starting conversion process:', error);
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to start conversion' });
     }
   });
-
-  // Generate migration script
-  app.post('/api/database-conversion/projects/:id/script', async (req: Request, res: Response) => {
+  
+  // Get conversion status endpoint
+  app.get('/api/database-conversion/status/:projectId', async (req, res) => {
     try {
-      const { id } = req.params;
+      const { projectId } = req.params;
       
-      if (!id) {
+      if (!projectId) {
         return res.status(400).json({ error: 'Project ID is required' });
       }
       
-      const project = await databaseConversionService.getConversionProject(id);
-      
-      if (!project) {
-        return res.status(404).json({ error: 'Project not found' });
-      }
-      
-      const migrationScript = await databaseConversionService.generateMigrationScript(id);
-      return res.status(200).json(migrationScript);
+      const status = await databaseConversionService.getConversionStatus(projectId);
+      res.json(status);
     } catch (error) {
-      console.error('Error generating migration script:', error);
-      return res.status(500).json({ error: 'Failed to generate migration script' });
+      console.error('Error fetching conversion status:', error);
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to get conversion status' });
     }
   });
-
-  // Execute migration
-  app.post('/api/database-conversion/projects/:id/migrate', async (req: Request, res: Response) => {
+  
+  // Generate compatibility layer endpoint
+  app.post('/api/database-conversion/generate-compatibility', async (req, res) => {
     try {
-      const { id } = req.params;
-      const options = req.body;
+      const { projectId, options } = req.body;
       
-      if (!id) {
+      if (!projectId) {
         return res.status(400).json({ error: 'Project ID is required' });
       }
       
-      const project = await databaseConversionService.getConversionProject(id);
-      
-      if (!project) {
-        return res.status(404).json({ error: 'Project not found' });
-      }
-      
-      const migrationResult = await databaseConversionService.executeMigration(id, options);
-      return res.status(200).json(migrationResult);
+      const layer = await databaseConversionService.generateCompatibilityLayer(projectId, options);
+      res.json(layer);
     } catch (error) {
-      console.error('Error executing migration:', error);
-      return res.status(500).json({ error: 'Failed to execute migration' });
+      console.error('Error generating compatibility layer:', error);
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to generate compatibility layer' });
     }
   });
-
-  // Create compatibility layer
-  app.post('/api/database-conversion/projects/:id/compatibility', async (req: Request, res: Response) => {
+  
+  // Database type info endpoint
+  app.get('/api/database-conversion/database-types', async (req, res) => {
     try {
-      const { id } = req.params;
-      
-      if (!id) {
-        return res.status(400).json({ error: 'Project ID is required' });
-      }
-      
-      const project = await databaseConversionService.getConversionProject(id);
-      
-      if (!project) {
-        return res.status(404).json({ error: 'Project not found' });
-      }
-      
-      const compatibilityResult = await databaseConversionService.createCompatibilityLayer(id);
-      return res.status(200).json(compatibilityResult);
+      const databaseTypes = await databaseConversionService.getSupportedDatabaseTypes();
+      res.json(databaseTypes);
     } catch (error) {
-      console.error('Error creating compatibility layer:', error);
-      return res.status(500).json({ error: 'Failed to create compatibility layer' });
+      console.error('Error fetching supported database types:', error);
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to fetch database types' });
     }
   });
-
-  // Estimate migration complexity
-  app.get('/api/database-conversion/projects/:id/complexity', async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      
-      if (!id) {
-        return res.status(400).json({ error: 'Project ID is required' });
-      }
-      
-      const project = await databaseConversionService.getConversionProject(id);
-      
-      if (!project) {
-        return res.status(404).json({ error: 'Project not found' });
-      }
-      
-      const complexityEstimate = await databaseConversionService.estimateMigrationComplexity(id);
-      return res.status(200).json(complexityEstimate);
-    } catch (error) {
-      console.error('Error estimating migration complexity:', error);
-      return res.status(500).json({ error: 'Failed to estimate migration complexity' });
-    }
-  });
+  
+  // Register the router for the CRUD operations
+  app.use('/api/database-conversion', databaseConversionRouter);
 }

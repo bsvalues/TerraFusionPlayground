@@ -38,6 +38,7 @@ import extensionRoutes from "./extensions/extension-routes";
 import { registerTeamAgentRoutes } from "./routes/team-agent-routes";
 import { registerDemoRoutes } from "./routes/demo-routes";
 import aiAssistantRoutes from "./routes/ai-assistant-routes";
+import databaseConversionRoutes from "./routes/database-conversion-routes";
 import developmentPlatformRoutes from "./routes/development-platform-routes";
 import assessmentModelWorkbenchRoutes from "./routes/assessment-model-workbench-routes";
 import assistantPersonalityRoutes from "./routes/assistant-personality-routes";
