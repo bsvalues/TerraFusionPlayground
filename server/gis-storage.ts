@@ -262,8 +262,9 @@ export async function implementGISStorage(storage: IStorage): Promise<void> {
     // Check which schema format the message is in
     if ('senderAgentId' in message) {
       // Convert from main schema format to GIS schema format
+      // Ensure agent_id is not null by providing a default if senderAgentId is null
       const adaptedMessage = {
-        agent_id: message.senderAgentId,
+        agent_id: message.senderAgentId || message.agentId || 'system',
         type: message.messageType || 'INFO',
         content: typeof message.content === 'object' ? 
           JSON.stringify(message.content) : 
