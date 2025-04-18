@@ -12,7 +12,7 @@ import {
   InsertVoiceCommandHelpContent
 } from '@shared/schema';
 import { eq, and, or, sql, desc, asc } from 'drizzle-orm';
-import { getPlandexAIService } from '../plandex-ai-service';
+import { getPlandexAIService } from '../plandex-ai-factory';
 import { logger } from '../../utils/logger';
 
 // Coding command intents
