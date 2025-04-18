@@ -37,6 +37,13 @@ export interface CommandContext {
   sessionId: string;
   contextId?: string; // Current page/section
   deviceInfo?: any; // Browser/device info
+  
+  // Coding context
+  currentFile?: string; // Path to the currently open file
+  selectedCode?: string; // Currently selected code in the editor
+  projectLanguage?: string; // Primary language of the project
+  errorMessage?: string; // Current error message if applicable
+  clipboardContent?: string; // Content in the clipboard
 }
 
 export interface CommandResult {
