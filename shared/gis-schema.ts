@@ -131,12 +131,21 @@ export const gisAgentTasks = pgTable('gis_agent_tasks', {
 export const agentMessages = pgTable('agent_messages', {
   id: serial('id').primaryKey(),
   agentId: text('agent_id').notNull(),
-  parentId: integer('parent_id').references(() => agentMessages.id),
+  parentId: integer('parent_id'),
   content: text('content').notNull(),
   type: text('type').notNull(),
   metadata: json('metadata'),
   createdAt: timestamp('created_at').notNull().defaultNow()
 });
+
+// Define agent message relations
+export const agentMessagesRelations = relations(agentMessages, ({ one }) => ({
+  parent: one(agentMessages, {
+    fields: [agentMessages.parentId],
+    references: [agentMessages.id],
+    relationName: "agentMessageParent"
+  })
+}));
 
 // Spatial Event table
 export const spatialEvents = pgTable('spatial_events', {

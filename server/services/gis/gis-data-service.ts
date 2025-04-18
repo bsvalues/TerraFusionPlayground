@@ -15,7 +15,7 @@ import {
   GISFeatureCollection, 
   InsertGISLayer, 
   InsertGISFeatureCollection 
-} from '@shared/schema';
+} from '@shared/gis-schema';
 
 /**
  * GIS Data Service options
@@ -364,7 +364,10 @@ export class GISDataService {
     // Extract all features
     let allFeatures: any[] = [];
     for (const collection of collections) {
-      const features = collection.data?.features || [];
+      // Handle data property which could be GeoJSON
+      // Cast to any because we're handling data of unknown structure
+      const geojson = (collection.data as any) || {};
+      const features = Array.isArray(geojson.features) ? geojson.features : [];
       allFeatures = [...allFeatures, ...features];
     }
     
@@ -954,7 +957,10 @@ export class GISDataService {
    * Invalidate cache entries that start with a prefix
    */
   private invalidateCache(prefix: string): void {
-    for (const key of this.cache.keys()) {
+    // Convert keys to array first to avoid iterator issues
+    const keys = Array.from(this.cache.keys());
+    
+    for (const key of keys) {
       if (key.startsWith(prefix)) {
         this.cache.delete(key);
       }
