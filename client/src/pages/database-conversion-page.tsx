@@ -951,6 +951,80 @@ const DatabaseConversionPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {/* Conversion Progress */}
+                {conversionStatus && conversionStatus.status === 'running' && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-md mb-6">
+                    <div className="flex items-center">
+                      <Loader2 className="w-5 h-5 text-blue-500 mr-2 animate-spin" />
+                      <h4 className="font-medium">Conversion in Progress</h4>
+                    </div>
+                    <p className="text-sm mt-1 mb-3">
+                      {conversionStatus.statusMessage || "Your database is being converted. Please wait..."}
+                    </p>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span>Overall Progress</span>
+                        <span>{Math.round(conversionStatus.progress.overallProgress * 100)}%</span>
+                      </div>
+                      <Progress value={conversionStatus.progress.overallProgress * 100} className="h-2" />
+                      
+                      <div className="grid grid-cols-2 gap-4 mt-3">
+                        <div className="bg-white dark:bg-gray-800 p-2 rounded border">
+                          <div className="text-xs text-muted-foreground">Tables</div>
+                          <div className="font-medium">{conversionStatus.progress.tablesConverted} / {conversionStatus.progress.totalTables}</div>
+                        </div>
+                        <div className="bg-white dark:bg-gray-800 p-2 rounded border">
+                          <div className="text-xs text-muted-foreground">Records</div>
+                          <div className="font-medium">{conversionStatus.progress.recordsProcessed.toLocaleString()} / {conversionStatus.progress.estimatedTotalRecords.toLocaleString()}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error State */}
+                {conversionStatus && conversionStatus.status === 'failed' && (
+                  <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-md mb-6">
+                    <div className="flex items-center">
+                      <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+                      <h4 className="font-medium">Conversion Failed</h4>
+                    </div>
+                    <p className="text-sm mt-1">
+                      {conversionStatus.error || "There was an error during the conversion process."}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => setConversionStatus(null)}
+                    >
+                      Try Again
+                    </Button>
+                  </div>
+                )}
+
+                {/* Success State */}
+                {conversionStatus && conversionStatus.status === 'completed' && (
+                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-md mb-6">
+                    <div className="flex items-center">
+                      <CheckCircle2 className="w-5 h-5 text-green-500 mr-2" />
+                      <h4 className="font-medium">Conversion Complete</h4>
+                    </div>
+                    <p className="text-sm mt-1">
+                      Database conversion was successfully completed.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => setActiveTab('compatibility')}
+                    >
+                      Continue to Compatibility Layer
+                    </Button>
+                  </div>
+                )}
+
                 {!schemaAnalysisResult ? (
                   <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-md">
                     <div className="flex items-center">
