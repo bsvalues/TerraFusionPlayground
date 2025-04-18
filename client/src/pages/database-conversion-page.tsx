@@ -951,22 +951,22 @@ const DatabaseConversionPage = () => {
                             <div className="mt-4">
                               <p className="text-sm font-medium text-muted-foreground">Detected Issues</p>
                               <div className="mt-1 space-y-1">
-                                {schemaAnalysisResult?.schemaIssues?.tablesWithoutPrimaryKey?.length > 0 && (
+                                {(schemaAnalysisResult?.schemaIssues?.tablesWithoutPrimaryKey?.length ?? 0) > 0 && (
                                   <div className="flex items-center">
                                     <AlertCircle className="w-3 h-3 text-yellow-500 mr-2" />
-                                    <p className="text-xs">{schemaAnalysisResult?.schemaIssues?.tablesWithoutPrimaryKey?.length} tables without primary key</p>
+                                    <p className="text-xs">{schemaAnalysisResult?.schemaIssues?.tablesWithoutPrimaryKey?.length ?? 0} tables without primary key</p>
                                   </div>
                                 )}
-                                {schemaAnalysisResult?.schemaIssues?.inconsistentNaming?.length > 0 && (
+                                {(schemaAnalysisResult?.schemaIssues?.inconsistentNaming?.length ?? 0) > 0 && (
                                   <div className="flex items-center">
                                     <AlertCircle className="w-3 h-3 text-yellow-500 mr-2" />
-                                    <p className="text-xs">{schemaAnalysisResult?.schemaIssues?.inconsistentNaming?.length} inconsistent naming patterns</p>
+                                    <p className="text-xs">{schemaAnalysisResult?.schemaIssues?.inconsistentNaming?.length ?? 0} inconsistent naming patterns</p>
                                   </div>
                                 )}
-                                {schemaAnalysisResult?.performanceIssues?.tablesWithoutIndexes?.length > 0 && (
+                                {(schemaAnalysisResult?.performanceIssues?.tablesWithoutIndexes?.length ?? 0) > 0 && (
                                   <div className="flex items-center">
                                     <AlertCircle className="w-3 h-3 text-yellow-500 mr-2" />
-                                    <p className="text-xs">{schemaAnalysisResult?.performanceIssues?.tablesWithoutIndexes?.length} tables without indexes</p>
+                                    <p className="text-xs">{schemaAnalysisResult?.performanceIssues?.tablesWithoutIndexes?.length ?? 0} tables without indexes</p>
                                   </div>
                                 )}
                               </div>
