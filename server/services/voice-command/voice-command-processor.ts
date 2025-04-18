@@ -243,6 +243,38 @@ export class VoiceCommandProcessor {
       };
     }
     
+    // Coding assistance commands - code generation
+    if (/(?:generate|create|write)\s+(?:a|some|new)?\s+(?:code|function|method|class|component)/i.test(command)) {
+      return {
+        commandType: VoiceCommandType.CODING_ASSISTANCE,
+        intent: 'coding.generate'
+      };
+    }
+    
+    // Coding assistance commands - code explanation
+    if (/(?:explain|describe|tell me about)\s+(?:this|the|current|selected)?\s+(?:code|function|method|implementation)/i.test(command)) {
+      return {
+        commandType: VoiceCommandType.CODING_ASSISTANCE,
+        intent: 'coding.explain'
+      };
+    }
+    
+    // Coding assistance commands - bug fixing
+    if (/(?:fix|resolve|correct|debug)\s+(?:the|this|current)?\s+(?:bug|issue|problem|error)/i.test(command)) {
+      return {
+        commandType: VoiceCommandType.CODING_ASSISTANCE,
+        intent: 'coding.fix'
+      };
+    }
+    
+    // Coding assistance commands - code optimization
+    if (/(?:optimize|improve|refactor)\s+(?:the|this|current|selected)?\s+(?:code|function|method|query)/i.test(command)) {
+      return {
+        commandType: VoiceCommandType.CODING_ASSISTANCE,
+        intent: 'coding.optimize'
+      };
+    }
+    
     // Default to system command if we can't determine the type
     return { commandType: VoiceCommandType.SYSTEM };
   }
@@ -292,6 +324,21 @@ export class VoiceCommandProcessor {
         
       case VoiceCommandType.CUSTOM:
         // Custom commands would need special handling
+        break;
+        
+      case VoiceCommandType.CODING_ASSISTANCE:
+        // Extract code description or operation type
+        // For code generation
+        const generateMatch = command.match(/(?:generate|create|write)\s+(?:a|some|new)?\s+(?:code|function|method|class|component)\s+(?:for|to|that)?\s+(.*)/i);
+        if (generateMatch && generateMatch[1]) {
+          parameters.description = generateMatch[1].trim();
+        }
+        
+        // For code explanation/optimization/bug fixing
+        const codeTypeMatch = command.match(/(?:explain|describe|optimize|improve|refactor|fix|debug)\s+(?:this|the|current|selected)?\s+(code|function|method|class|component|implementation|bug|issue|problem|error)/i);
+        if (codeTypeMatch && codeTypeMatch[1]) {
+          parameters.codeType = codeTypeMatch[1].trim();
+        }
         break;
     }
     
@@ -361,6 +408,55 @@ export class VoiceCommandProcessor {
           commandType,
           helpContent
         };
+      }
+      
+      // Handle coding assistance commands
+      if (commandType === VoiceCommandType.CODING_ASSISTANCE) {
+        try {
+          // Import here to avoid circular dependencies
+          const { getVoiceCommandCodingAssistanceService } = require('./voice-command-coding-assistance-service');
+          const codingAssistanceService = getVoiceCommandCodingAssistanceService();
+          
+          // Process the coding command
+          const result = await codingAssistanceService.processCodingCommand(
+            command, 
+            {
+              userId: context?.userId,
+              contextId: context?.contextId,
+              selectedCode: context?.selectedCode,
+              currentFile: context?.currentFile,
+              projectLanguage: context?.projectLanguage,
+              errorMessage: context?.errorMessage,
+              clipboardContent: context?.clipboardContent
+            }
+          );
+          
+          return {
+            success: result.success,
+            intent,
+            result: result.data || result.response,
+            message: result.response,
+            status: result.success ? VoiceCommandStatus.SUCCESS : VoiceCommandStatus.FAILED,
+            commandType,
+            actions: result.actions
+          };
+        } catch (error) {
+          console.error('Error processing coding assistance command:', error);
+          
+          const errorResponse = await voiceCommandErrorHandler.handleSystemError(
+            command, 
+            new Error(`Coding assistance error: ${error.message || 'Unknown error'}`)
+          );
+          
+          return {
+            success: false,
+            message: errorResponse.errorMessage,
+            error: error.message,
+            status: errorResponse.status,
+            suggestions: errorResponse.suggestions,
+            commandType
+          };
+        }
       }
       
       // For other commands, delegate to the existing voice command service
