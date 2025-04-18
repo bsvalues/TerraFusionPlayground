@@ -30,6 +30,7 @@ import { createPropertyRoutes } from "./routes/property-routes";
 import { createAgentRoutes } from "./routes/agent-routes";
 import { createGisRoutes } from "./routes/gis-routes";
 import { implementGISStorage } from "./gis-storage";
+import { initializeGISAgentsWithService } from "./services/gis/initialize-gis-agents";
 import { createAuthRoutes } from "./routes/auth-routes";
 import { createMarketRoutes } from "./routes/market-routes";
 import { createRiskRoutes } from "./routes/risk-routes";
@@ -226,6 +227,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Initialize GIS Storage implementation with database
   await implementGISStorage(storage);
+  
+  // Initialize GIS Agent Orchestration System
+  try {
+    console.log("Initializing GIS Agent System...");
+    const gisOrchestrationService = await initializeGISAgentsWithService(storage);
+    console.log("GIS Agent System initialized successfully");
+  } catch (error) {
+    console.error("Failed to initialize GIS Agent System:", error);
+  }
   
   // Register GIS routes
   app.use('/api/gis', createGisRoutes());
