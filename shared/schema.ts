@@ -8,6 +8,421 @@ import {
   TaskStatus
 } from "./team-agent-types";
 
+// Development Tools Enums
+
+export enum ToolCategory {
+  UI_UX_DESIGN = 'ui_ux_design',
+  BUSINESS_INTELLIGENCE = 'business_intelligence',
+  DEVELOPER_PRODUCTIVITY = 'developer_productivity',
+  COLLABORATION = 'collaboration',
+  DATA_INTEGRATION = 'data_integration',
+  EXPERIMENTAL = 'experimental'
+}
+
+export enum ComponentType {
+  LAYOUT = 'layout',
+  INPUT = 'input',
+  DISPLAY = 'display',
+  NAVIGATION = 'navigation',
+  FEEDBACK = 'feedback',
+  DATA_DISPLAY = 'data_display',
+  CUSTOM = 'custom'
+}
+
+export enum VisualizationType {
+  BAR_CHART = 'bar_chart',
+  LINE_CHART = 'line_chart',
+  PIE_CHART = 'pie_chart',
+  SCATTER_PLOT = 'scatter_plot',
+  HEATMAP = 'heatmap',
+  TABLE = 'table',
+  MAP = 'map',
+  DASHBOARD = 'dashboard',
+  CUSTOM = 'custom'
+}
+
+export enum CodeSnippetType {
+  FUNCTION = 'function',
+  COMPONENT = 'component',
+  UTILITY = 'utility',
+  API_CALL = 'api_call',
+  DATA_MODEL = 'data_model',
+  TEST = 'test',
+  CUSTOM = 'custom'
+}
+
+export enum CollaborationType {
+  CODE_REVIEW = 'code_review',
+  PAIR_PROGRAMMING = 'pair_programming',
+  KNOWLEDGE_SHARING = 'knowledge_sharing',
+  TEAM_COMMUNICATION = 'team_communication',
+  CUSTOM = 'custom'
+}
+
+export enum DataPipelineType {
+  IMPORT = 'import',
+  EXPORT = 'export',
+  TRANSFORM = 'transform',
+  VALIDATE = 'validate',
+  ENRICH = 'enrich',
+  CUSTOM = 'custom'
+}
+
+// Enhanced Development Projects table - Stores information about enhanced development projects
+export const enhancedDevProjects = pgTable("enhanced_dev_projects", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdBy: integer("created_by").notNull(), // User ID who created the project
+  projectType: text("project_type").notNull(), // Type of project: assessment_app, dashboard, data_pipeline, etc.
+  configuration: jsonb("configuration"), // Project settings and configuration
+  gitRepository: text("git_repository"), // Optional connection to Git repo
+  isPublic: boolean("is_public").default(false),
+  isTemplate: boolean("is_template").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    nameIdx: index("enhanced_dev_projects_name_idx").on(table.name),
+    createdByIdx: index("enhanced_dev_projects_created_by_idx").on(table.createdBy),
+  };
+});
+
+export const insertEnhancedDevProjectSchema = createInsertSchema(enhancedDevProjects).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type EnhancedDevProject = typeof enhancedDevProjects.$inferSelect;
+export type InsertEnhancedDevProject = z.infer<typeof insertEnhancedDevProjectSchema>;
+
+// Development Project Files - Stores files related to development projects
+export const developmentProjectFiles = pgTable("development_project_files", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull(), // Foreign key to developmentProjects
+  path: text("path").notNull(), // File path relative to project root
+  content: text("content"), // File content
+  lastModifiedBy: integer("last_modified_by").notNull(), // User ID who last modified
+  fileType: text("file_type").notNull(), // js, ts, css, json, etc.
+  isDirectory: boolean("is_directory").default(false),
+  metadata: jsonb("metadata").default({}), // Additional metadata about the file
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    projectIdPathIdx: index("dev_project_files_project_path_idx").on(table.projectId, table.path),
+  };
+});
+
+export const insertDevelopmentProjectFileSchema = createInsertSchema(developmentProjectFiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type DevelopmentProjectFile = typeof developmentProjectFiles.$inferSelect;
+export type InsertDevelopmentProjectFile = z.infer<typeof insertDevelopmentProjectFileSchema>;
+
+// UI Component Templates - Reusable UI components for the Interactive Component Playground
+export const uiComponentTemplates = pgTable("ui_component_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  componentType: text("component_type").notNull(), // Corresponds to ComponentType enum
+  framework: text("framework").notNull(), // react, vue, svelte, etc.
+  code: text("code").notNull(), // Component source code
+  previewImage: text("preview_image"), // URL to preview image
+  tags: text("tags").array(), // Tags for searching and filtering
+  createdBy: integer("created_by").notNull(),
+  isPublic: boolean("is_public").default(false),
+  usageCount: integer("usage_count").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    createdByIdx: index("ui_component_templates_created_by_idx").on(table.createdBy),
+    componentTypeIdx: index("ui_component_templates_type_idx").on(table.componentType),
+  };
+});
+
+export const insertUIComponentTemplateSchema = createInsertSchema(uiComponentTemplates).omit({
+  id: true,
+  usageCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type UIComponentTemplate = typeof uiComponentTemplates.$inferSelect;
+export type InsertUIComponentTemplate = z.infer<typeof insertUIComponentTemplateSchema>;
+
+// Design Systems - Store design system configurations for the Design System Generator
+export const designSystems = pgTable("design_systems", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  primaryColor: text("primary_color").notNull(),
+  secondaryColor: text("secondary_color").notNull(),
+  accentColor: text("accent_color"),
+  typography: jsonb("typography").notNull(), // Font families, sizes, weights, etc.
+  spacing: jsonb("spacing").notNull(), // Spacing scale
+  borderRadius: jsonb("border_radius"), // Border radius scale
+  shadows: jsonb("shadows"), // Shadow definitions
+  darkMode: boolean("dark_mode").default(false),
+  accessibilityLevel: text("accessibility_level").default("AA"), // AA, AAA
+  createdBy: integer("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    nameIdx: index("design_systems_name_idx").on(table.name),
+    createdByIdx: index("design_systems_created_by_idx").on(table.createdBy),
+  };
+});
+
+export const insertDesignSystemSchema = createInsertSchema(designSystems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type DesignSystem = typeof designSystems.$inferSelect;
+export type InsertDesignSystem = z.infer<typeof insertDesignSystemSchema>;
+
+// Data Visualizations - Store saved visualizations for the Data Visualization Workshop
+export const dataVisualizations = pgTable("data_visualizations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  visualizationType: text("visualization_type").notNull(), // Corresponds to VisualizationType enum
+  dataSource: jsonb("data_source").notNull(), // Query, API endpoint, etc.
+  configuration: jsonb("configuration").notNull(), // Visualization-specific configuration
+  previewImage: text("preview_image"), // URL to preview image
+  createdBy: integer("created_by").notNull(),
+  isPublic: boolean("is_public").default(false),
+  viewCount: integer("view_count").default(0),
+  lastViewed: timestamp("last_viewed"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    nameIdx: index("data_visualizations_name_idx").on(table.name),
+    createdByIdx: index("data_visualizations_created_by_idx").on(table.createdBy),
+    typeIdx: index("data_visualizations_type_idx").on(table.visualizationType),
+  };
+});
+
+export const insertDataVisualizationSchema = createInsertSchema(dataVisualizations).omit({
+  id: true,
+  viewCount: true,
+  lastViewed: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type DataVisualization = typeof dataVisualizations.$inferSelect;
+export type InsertDataVisualization = z.infer<typeof insertDataVisualizationSchema>;
+
+// Code Snippets - Store code snippets for the Smart Code Snippets Library
+export const codeSnippets = pgTable("code_snippets", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  language: text("language").notNull(), // javascript, typescript, python, etc.
+  snippetType: text("snippet_type").notNull(), // Corresponds to CodeSnippetType enum
+  code: text("code").notNull(), // Snippet source code
+  tags: text("tags").array(), // Tags for searching and filtering
+  createdBy: integer("created_by").notNull(),
+  isPublic: boolean("is_public").default(false),
+  usageCount: integer("usage_count").default(0),
+  aiGenerated: boolean("ai_generated").default(false),
+  aiModel: text("ai_model"), // If generated by AI, which model
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    languageTypeIdx: index("code_snippets_language_type_idx").on(table.language, table.snippetType),
+    createdByIdx: index("code_snippets_created_by_idx").on(table.createdBy),
+  };
+});
+
+export const insertCodeSnippetSchema = createInsertSchema(codeSnippets).omit({
+  id: true,
+  usageCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type CodeSnippet = typeof codeSnippets.$inferSelect;
+export type InsertCodeSnippet = z.infer<typeof insertCodeSnippetSchema>;
+
+// Data Pipelines - Store data pipeline configurations for the Data Pipeline Designer
+export const dataPipelines = pgTable("data_pipelines", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  pipelineType: text("pipeline_type").notNull(), // Corresponds to DataPipelineType enum
+  configuration: jsonb("configuration").notNull(), // Pipeline configuration
+  steps: jsonb("steps").notNull(), // Array of pipeline steps
+  schedule: text("schedule"), // CRON expression for scheduled execution
+  lastRunStatus: text("last_run_status"), // success, failed, running
+  lastRunTime: timestamp("last_run_time"),
+  createdBy: integer("created_by").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    nameIdx: index("data_pipelines_name_idx").on(table.name),
+    createdByIdx: index("data_pipelines_created_by_idx").on(table.createdBy),
+    typeIdx: index("data_pipelines_type_idx").on(table.pipelineType),
+  };
+});
+
+export const insertDataPipelineSchema = createInsertSchema(dataPipelines).omit({
+  id: true,
+  lastRunStatus: true,
+  lastRunTime: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type DataPipeline = typeof dataPipelines.$inferSelect;
+export type InsertDataPipeline = z.infer<typeof insertDataPipelineSchema>;
+
+// Debugging Sessions - Store debugging sessions for the Intelligent Debugging Assistant
+export const debuggingSessions = pgTable("debugging_sessions", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  projectId: integer("project_id").notNull(), // Reference to developmentProjects
+  errorMessage: text("error_message"),
+  errorStack: text("error_stack"),
+  errorLocation: jsonb("error_location"), // file, line, column
+  status: text("status").default("open"), // open, resolved, closed
+  resolution: text("resolution"),
+  steps: jsonb("steps").array(), // Steps taken to debug the issue
+  createdBy: integer("created_by").notNull(),
+  aiAssisted: boolean("ai_assisted").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+}, (table) => {
+  return {
+    projectIdIdx: index("debugging_sessions_project_id_idx").on(table.projectId),
+    createdByIdx: index("debugging_sessions_created_by_idx").on(table.createdBy),
+  };
+});
+
+export const insertDebuggingSessionSchema = createInsertSchema(debuggingSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  resolvedAt: true,
+});
+
+export type DebuggingSession = typeof debuggingSessions.$inferSelect;
+export type InsertDebuggingSession = z.infer<typeof insertDebuggingSessionSchema>;
+
+// API Documentation - Store API documentation for the API Playground
+export const apiDocumentation = pgTable("api_documentation", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  baseUrl: text("base_url").notNull(),
+  version: text("version").notNull(),
+  endpoints: jsonb("endpoints").notNull(), // Array of endpoint documentation
+  authentication: jsonb("authentication"), // Authentication methods
+  schemas: jsonb("schemas"), // Data schemas
+  examples: jsonb("examples"), // Example requests/responses
+  createdBy: integer("created_by").notNull(),
+  isPublic: boolean("is_public").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    nameVersionIdx: index("api_documentation_name_version_idx").on(table.name, table.version),
+    createdByIdx: index("api_documentation_created_by_idx").on(table.createdBy),
+  };
+});
+
+export const insertAPIDocumentationSchema = createInsertSchema(apiDocumentation).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type APIDocumentation = typeof apiDocumentation.$inferSelect;
+export type InsertAPIDocumentation = z.infer<typeof insertAPIDocumentationSchema>;
+
+// Enhanced Team Collaboration Sessions - Store team collaboration sessions for the Collaboration Space
+export const enhancedTeamSessions = pgTable("enhanced_team_sessions", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  collaborationType: text("collaboration_type").notNull(), // Corresponds to CollaborationType enum
+  projectId: integer("project_id"), // Optional reference to developmentProjects
+  status: text("status").default("active"), // active, completed, archived
+  participants: jsonb("participants").notNull(), // Array of user IDs and roles
+  aiParticipants: jsonb("ai_participants"), // Array of AI agent IDs and roles
+  artifacts: jsonb("artifacts"), // Files, code snippets, etc. produced during session
+  createdBy: integer("created_by").notNull(),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  endedAt: timestamp("ended_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    nameIdx: index("enhanced_team_sessions_name_idx").on(table.name),
+    createdByIdx: index("enhanced_team_sessions_created_by_idx").on(table.createdBy),
+    typeIdx: index("enhanced_team_sessions_type_idx").on(table.collaborationType),
+  };
+});
+
+export const insertEnhancedTeamSessionSchema = createInsertSchema(enhancedTeamSessions).omit({
+  id: true,
+  startedAt: true,
+  endedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type EnhancedTeamSession = typeof enhancedTeamSessions.$inferSelect;
+export type InsertEnhancedTeamSession = z.infer<typeof insertEnhancedTeamSessionSchema>;
+
+// Learning Paths - Store learning paths for the Learning Path Creator
+export const learningPaths = pgTable("learning_paths", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  difficultyLevel: text("difficulty_level").notNull(), // beginner, intermediate, advanced
+  estimatedHours: integer("estimated_hours"),
+  topics: text("topics").array(),
+  prerequisites: jsonb("prerequisites"),
+  modules: jsonb("modules").notNull(), // Array of learning modules
+  resources: jsonb("resources"), // Additional learning resources
+  createdBy: integer("created_by").notNull(),
+  isPublic: boolean("is_public").default(false),
+  enrollmentCount: integer("enrollment_count").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    nameIdx: index("learning_paths_name_idx").on(table.name),
+    createdByIdx: index("learning_paths_created_by_idx").on(table.createdBy),
+    difficultyIdx: index("learning_paths_difficulty_idx").on(table.difficultyLevel),
+  };
+});
+
+export const insertLearningPathSchema = createInsertSchema(learningPaths).omit({
+  id: true,
+  enrollmentCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type LearningPath = typeof learningPaths.$inferSelect;
+export type InsertLearningPath = z.infer<typeof insertLearningPathSchema>;
+
 // Assistant Personality Theme Types
 export enum AssistantPersonalityTheme {
   PROFESSIONAL = 'professional',
@@ -1309,7 +1724,7 @@ export const insertTaskCommentSchema = createInsertSchema(taskComments).omit({
 });
 
 // Team Collaboration Sessions table
-export const teamCollaborationSessions = pgTable("team_collaboration_sessions", {
+export const basicTeamCollaborationSessions = pgTable("team_collaboration_sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),
   description: text("description").notNull(),
@@ -1324,7 +1739,7 @@ export const teamCollaborationSessions = pgTable("team_collaboration_sessions", 
   taskIds: uuid("task_ids").array().default([]),
 });
 
-export const insertTeamCollaborationSessionSchema = createInsertSchema(teamCollaborationSessions).omit({
+export const insertBasicTeamCollaborationSessionSchema = createInsertSchema(basicTeamCollaborationSessions).omit({
   id: true,
 });
 
@@ -1374,8 +1789,8 @@ export type InsertTeamTask = z.infer<typeof insertTeamTaskSchema>;
 export type TaskComment = typeof taskComments.$inferSelect;
 export type InsertTaskComment = z.infer<typeof insertTaskCommentSchema>;
 
-export type TeamCollaborationSession = typeof teamCollaborationSessions.$inferSelect;
-export type InsertTeamCollaborationSession = z.infer<typeof insertTeamCollaborationSessionSchema>;
+export type TeamCollaborationSession = typeof basicTeamCollaborationSessions.$inferSelect;
+export type InsertTeamCollaborationSession = z.infer<typeof insertBasicTeamCollaborationSessionSchema>;
 
 export type TeamFeedback = typeof teamFeedbacks.$inferSelect;
 export type InsertTeamFeedback = z.infer<typeof insertTeamFeedbackSchema>;
