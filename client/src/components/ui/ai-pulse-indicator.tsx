@@ -1,242 +1,219 @@
 /**
  * AI Pulse Indicator
  * 
- * A component that shows a visual indicator when AI agents are actively
- * working on tasks. Provides transparency into backend AI processing.
+ * This component shows a visual indicator when AI agents are working.
+ * It provides real-time feedback to users about AI agent activity,
+ * agent type, and progress.
  */
 
-import React, { useState, useEffect } from 'react';
-import { Brain, Activity, X } from 'lucide-react';
-import { Button } from './button';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
+import { Brain, Activity, CheckCircle, AlertCircle, RotateCw } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAgentActivity } from "@/hooks/use-agent-activity";
+import { Badge } from "@/components/ui/badge";
 
-export interface AITask {
+// AI Task interface to represent current active tasks
+interface AITask {
   id: string;
-  agentName: string;
-  taskName: string;
+  type: 'analysis' | 'repair' | 'conversion' | 'enhancement' | 'search' | 'detection';
+  agentType: string;
+  status: 'working' | 'completed' | 'failed';
+  progress?: number;
+  message?: string;
   startTime: Date;
-  status: 'running' | 'complete' | 'error';
-  progress?: number; // 0-100
-  detail?: string;
+  endTime?: Date;
+  notified?: boolean;
 }
 
-export interface AIPulseIndicatorProps {
-  tasks?: AITask[];
+interface AIPulseIndicatorProps {
+  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  size?: 'sm' | 'md' | 'lg';
+  showTooltip?: boolean;
+  showBadges?: boolean;
+  maxTasks?: number;
   className?: string;
-  expanded?: boolean;
-  maxDisplayedTasks?: number;
-  variant?: 'default' | 'subtle' | 'minimal';
-  onViewAllTasks?: () => void;
 }
 
+/**
+ * AI Pulse Indicator Component
+ * Shows a pulsing indicator when AI is processing, with optional tooltips and badges
+ */
 export function AIPulseIndicator({
-  tasks = [],
-  className = '',
-  expanded: initialExpanded = false,
-  maxDisplayedTasks = 3,
-  variant = 'default',
-  onViewAllTasks
+  position = 'bottom-right',
+  size = 'md',
+  showTooltip = true,
+  showBadges = true,
+  maxTasks = 3,
+  className
 }: AIPulseIndicatorProps) {
-  const [expanded, setExpanded] = useState(initialExpanded);
-  const [pulseSize, setPulseSize] = useState(1);
-  const [showDetail, setShowDetail] = useState<string | null>(null);
-  const { toast } = useToast();
+  const { activeTasks, completedTasks } = useAgentActivity();
+  const [notifications, setNotifications] = useState<AITask[]>([]);
+  const [isExpanded, setIsExpanded] = useState(false);
   
-  // Pulse effect when agents are working
-  useEffect(() => {
-    if (tasks.length > 0 && tasks.some(task => task.status === 'running')) {
-      const interval = setInterval(() => {
-        setPulseSize(size => size === 1 ? 1.2 : 1);
-      }, 1000);
-      return () => clearInterval(interval);
-    } else {
-      setPulseSize(1);
-    }
-  }, [tasks]);
-  
-  // Collapse after 5 seconds of inactivity if no running tasks
-  useEffect(() => {
-    if (expanded && tasks.every(task => task.status !== 'running')) {
-      const timeout = setTimeout(() => {
-        setExpanded(false);
-      }, 5000);
-      return () => clearTimeout(timeout);
-    }
-  }, [expanded, tasks]);
-  
-  // Show toast on task completion
-  useEffect(() => {
-    const completedTask = tasks.find(task => task.status === 'complete' && !task.notified);
-    if (completedTask) {
-      toast({
-        title: "AI Task Complete",
-        description: `${completedTask.agentName} completed: ${completedTask.taskName}`,
-        variant: "default",
-      });
-      
-      // Mark as notified (this is mock implementation, real app would track this on the server)
-      completedTask.notified = true;
-    }
-    
-    const errorTask = tasks.find(task => task.status === 'error' && !task.notified);
-    if (errorTask) {
-      toast({
-        title: "AI Task Error",
-        description: `${errorTask.agentName} encountered an error: ${errorTask.taskName}`,
-        variant: "destructive",
-      });
-      
-      // Mark as notified
-      errorTask.notified = true;
-    }
-  }, [tasks, toast]);
-  
-  const activeTasks = tasks.filter(task => task.status === 'running');
-  const recentTasks = tasks.filter(task => task.status !== 'running').slice(0, maxDisplayedTasks);
-  const displayedTasks = [...activeTasks, ...recentTasks].slice(0, maxDisplayedTasks);
-  const totalTasks = tasks.length;
-  const hiddenTasks = Math.max(0, totalTasks - maxDisplayedTasks);
-  
-  // Determine appropriate status icon and color
-  const getStatusIcon = (status: AITask['status']) => {
-    switch (status) {
-      case 'running':
-        return <Activity className="h-3 w-3 text-blue-500 animate-pulse" />;
-      case 'complete':
-        return <div className="h-3 w-3 rounded-full bg-green-500" />;
-      case 'error':
-        return <div className="h-3 w-3 rounded-full bg-red-500" />;
-      default:
-        return null;
-    }
+  // Set sizing based on the size prop
+  const sizeClasses = {
+    sm: "w-8 h-8",
+    md: "w-10 h-10",
+    lg: "w-12 h-12"
   };
   
-  if (variant === 'minimal') {
-    return (
-      <div 
-        className={`fixed z-50 bottom-4 right-4 ${className}`}
-        onClick={() => setExpanded(!expanded)}
-      >
-        {activeTasks.length > 0 ? (
-          <div 
-            className="transition-transform duration-500 ease-in-out flex items-center justify-center h-10 w-10 rounded-full bg-primary shadow-lg cursor-pointer"
-            style={{ transform: `scale(${pulseSize})` }}
-          >
-            <Brain className="h-5 w-5 text-white" />
-            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center text-[10px] text-white font-semibold">
-              {activeTasks.length}
-            </span>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gray-200 shadow-lg cursor-pointer">
-            <Brain className="h-5 w-5 text-gray-700" />
-          </div>
-        )}
-      </div>
-    );
-  }
+  // Set positioning based on the position prop
+  const positionClasses = {
+    'top-left': "top-4 left-4",
+    'top-right': "top-4 right-4",
+    'bottom-left': "bottom-4 left-4",
+    'bottom-right': "bottom-4 right-4"
+  };
+  
+  // Process new notifications
+  useEffect(() => {
+    // Look for new active tasks that haven't been notified
+    const newTasks = activeTasks.filter(task => !task.notified);
+    
+    if (newTasks.length > 0) {
+      // Mark tasks as notified
+      const updatedTasks = activeTasks.map(task => ({
+        ...task,
+        notified: true
+      }));
+      
+      // Update active tasks
+      // In a real implementation, this would call a function from useAgentActivity
+      // to update the notified status
+      
+      // Add new tasks to notifications
+      setNotifications(prev => [...prev, ...newTasks].slice(-maxTasks));
+    }
+    
+    // Process completed tasks that haven't been notified
+    const newCompletedTasks = completedTasks.filter(task => !task.notified);
+    
+    if (newCompletedTasks.length > 0) {
+      // Update notifications with completed status
+      setNotifications(prev => 
+        prev.map(notification => {
+          const completedTask = newCompletedTasks.find(task => task.id === notification.id);
+          if (completedTask) {
+            return {
+              ...notification,
+              status: completedTask.status,
+              message: completedTask.message || notification.message
+            };
+          }
+          return notification;
+        })
+      );
+    }
+  }, [activeTasks, completedTasks, maxTasks]);
+  
+  // Clear older notifications after they've been shown for a while
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setNotifications(prev => 
+        prev.filter(task => 
+          task.status === 'working' || 
+          (new Date().getTime() - new Date(task.startTime).getTime()) < 10000
+        )
+      );
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, [notifications]);
+  
+  // Get the color and animation based on current state
+  const getStateClasses = () => {
+    const hasActiveTasks = activeTasks.length > 0;
+    
+    if (hasActiveTasks) {
+      return "text-blue-500 animate-pulse";
+    }
+    
+    return "text-gray-500";
+  };
+  
+  // Get activity count to show in badge
+  const getActivityCount = () => {
+    return activeTasks.length;
+  };
   
   return (
-    <div className={`fixed z-50 bottom-4 right-4 ${className}`}>
-      <div className={`bg-card border rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${expanded ? 'max-w-sm' : 'max-w-[48px]'}`}>
-        <div className="flex">
-          <div 
-            className="flex items-center justify-center h-12 w-12 cursor-pointer"
-            onClick={() => setExpanded(!expanded)}
-          >
-            <div 
-              className="transition-transform duration-500 ease-in-out"
-              style={{ transform: `scale(${pulseSize})` }}
+    <div className={cn(
+      "fixed z-50 flex flex-col items-end gap-2",
+      positionClasses[position],
+      className
+    )}>
+      {/* Notification badges */}
+      {showBadges && notifications.length > 0 && isExpanded && (
+        <div className="flex flex-col gap-2 mb-2 items-end">
+          {notifications.map(task => (
+            <Badge 
+              key={task.id}
+              variant={task.status === 'completed' ? "outline" : "default"}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2",
+                task.status === 'working' ? "bg-blue-500" : 
+                task.status === 'completed' ? "border-green-500 text-green-500" : 
+                "border-red-500 text-red-500"
+              )}
             >
-              <Brain className={`h-6 w-6 ${activeTasks.length > 0 ? 'text-primary' : 'text-muted-foreground'}`} />
-            </div>
-          </div>
-          
-          {expanded && (
-            <>
-              <div className="flex-1 p-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium">AI Assistant</h3>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-6 w-6 p-0" 
-                    onClick={() => setExpanded(false)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
+              {task.status === 'working' && <RotateCw className="w-3 h-3 animate-spin" />}
+              {task.status === 'completed' && <CheckCircle className="w-3 h-3" />}
+              {task.status === 'failed' && <AlertCircle className="w-3 h-3" />}
+              <span className="text-xs">
+                {task.status === 'working' ? `${task.agentType} working...` : 
+                 task.status === 'completed' ? `${task.agentType} completed` : 
+                 `${task.agentType} failed`}
+              </span>
+            </Badge>
+          ))}
         </div>
-        
-        {expanded && (
-          <div className="px-3 pb-3">
-            {displayedTasks.length > 0 ? (
-              <div className="space-y-2">
-                {displayedTasks.map(task => (
-                  <div 
-                    key={task.id} 
-                    className="bg-accent rounded p-2 text-xs space-y-1"
-                    onClick={() => setShowDetail(task.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium">{task.agentName}</div>
-                      <div className="flex items-center gap-1">
-                        {getStatusIcon(task.status)}
-                        <span className="text-[10px] uppercase font-semibold tracking-wider">
-                          {task.status}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-muted-foreground">{task.taskName}</div>
-                    
-                    {task.progress !== undefined && (
-                      <div className="w-full bg-secondary h-1 rounded-full">
-                        <div 
-                          className="bg-primary h-1 rounded-full" 
-                          style={{ width: `${task.progress}%` }}
-                        />
-                      </div>
-                    )}
-                    
-                    {showDetail === task.id && task.detail && (
-                      <div className="mt-2 p-2 bg-muted rounded text-[10px]">
-                        {task.detail}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                
-                {hiddenTasks > 0 && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="w-full text-xs"
-                    onClick={onViewAllTasks}
-                  >
-                    View {hiddenTasks} more tasks...
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="py-2 text-xs text-muted-foreground">
-                No AI tasks currently running.
-              </div>
-            )}
-            
-            {activeTasks.length > 0 && (
-              <div className="flex gap-2 items-center mt-3 px-1 text-xs text-muted-foreground">
-                <Activity className="h-3 w-3" />
-                <span>
-                  {activeTasks.length} AI task{activeTasks.length > 1 ? 's' : ''} running in the background
+      )}
+      
+      {/* Main indicator button */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className={cn(
+                "rounded-full bg-white shadow-md flex items-center justify-center",
+                "border border-gray-200 hover:shadow-lg transition-all",
+                getStateClasses(),
+                sizeClasses[size]
+              )}
+              aria-label="AI Activity"
+            >
+              {activeTasks.length > 0 ? <Activity className="w-5 h-5" /> : <Brain className="w-5 h-5" />}
+              
+              {/* Activity count badge */}
+              {getActivityCount() > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {getActivityCount()}
                 </span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+              )}
+            </button>
+          </TooltipTrigger>
+          
+          {showTooltip && (
+            <TooltipContent side="left" align="center">
+              {activeTasks.length > 0 
+                ? `AI agents working: ${activeTasks.map(t => t.agentType).join(', ')}`
+                : "AI waiting for tasks"}
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 }
+
+// Animations for different agent states
+const animations = {
+  thinking: "animate-pulse",
+  processing: "animate-spin",
+  success: "animate-bounce",
+  error: "animate-shake"
+};
+
+export default AIPulseIndicator;
