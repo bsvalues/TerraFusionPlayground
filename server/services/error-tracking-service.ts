@@ -27,7 +27,11 @@ export enum ErrorCategory {
   SECURITY = 'security',
   VALIDATION = 'validation',
   SYSTEM = 'system',
-  UNKNOWN = 'unknown'
+  UNKNOWN = 'unknown',
+  TASK_PROCESSING = 'task_processing',
+  CONVERSION = 'conversion',
+  LOGGING = 'logging',
+  LIFECYCLE = 'lifecycle'
 }
 
 // Error source components
@@ -38,7 +42,10 @@ export enum ErrorSource {
   API = 'api',
   UI = 'ui',
   AUTHENTICATION = 'authentication',
-  EXTERNAL_SERVICE = 'external_service'
+  EXTERNAL_SERVICE = 'external_service',
+  AGENT = 'agent',
+  INTERNAL = 'internal',
+  SYSTEM = 'system'
 }
 
 // Structured error interface
@@ -302,7 +309,11 @@ export class ErrorTrackingService {
         [ErrorCategory.SECURITY]: 0,
         [ErrorCategory.VALIDATION]: 0,
         [ErrorCategory.SYSTEM]: 0,
-        [ErrorCategory.UNKNOWN]: 0
+        [ErrorCategory.UNKNOWN]: 0,
+        [ErrorCategory.TASK_PROCESSING]: 0,
+        [ErrorCategory.CONVERSION]: 0,
+        [ErrorCategory.LOGGING]: 0,
+        [ErrorCategory.LIFECYCLE]: 0
       };
       
       const severityCounts: Record<ErrorSeverity, number> = {
@@ -319,7 +330,10 @@ export class ErrorTrackingService {
         [ErrorSource.API]: 0,
         [ErrorSource.UI]: 0,
         [ErrorSource.AUTHENTICATION]: 0,
-        [ErrorSource.EXTERNAL_SERVICE]: 0
+        [ErrorSource.EXTERNAL_SERVICE]: 0,
+        [ErrorSource.AGENT]: 0,
+        [ErrorSource.INTERNAL]: 0,
+        [ErrorSource.SYSTEM]: 0
       };
       
       let resolvedCount = 0;
@@ -388,7 +402,11 @@ export class ErrorTrackingService {
           [ErrorCategory.SECURITY]: 0,
           [ErrorCategory.VALIDATION]: 0,
           [ErrorCategory.SYSTEM]: 0,
-          [ErrorCategory.UNKNOWN]: 0
+          [ErrorCategory.UNKNOWN]: 0,
+          [ErrorCategory.TASK_PROCESSING]: 0,
+          [ErrorCategory.CONVERSION]: 0,
+          [ErrorCategory.LOGGING]: 0,
+          [ErrorCategory.LIFECYCLE]: 0
         },
         severityCounts: {
           [ErrorSeverity.LOW]: 0,
@@ -403,7 +421,10 @@ export class ErrorTrackingService {
           [ErrorSource.API]: 0,
           [ErrorSource.UI]: 0,
           [ErrorSource.AUTHENTICATION]: 0,
-          [ErrorSource.EXTERNAL_SERVICE]: 0
+          [ErrorSource.EXTERNAL_SERVICE]: 0,
+          [ErrorSource.AGENT]: 0,
+          [ErrorSource.INTERNAL]: 0,
+          [ErrorSource.SYSTEM]: 0
         },
         recentErrors: 0,
         resolvedCount: 0,

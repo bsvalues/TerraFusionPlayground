@@ -241,8 +241,20 @@ export class SchemaConversionAgent implements IGISAgent {
       await this.logMessage('INFO', `Schema validation ${validationResults.isValid ? 'passed' : 'failed'} with ${validationResults.issues.length} issues and ${validationResults.warnings.length} warnings`);
       
       return validationResults;
-    } catch (error) {
+    } catch (error: any) {
       await this.logMessage('ERROR', `Schema validation error: ${error.message}`);
+      
+      // Track the error
+      this.errorTrackingService.trackGisError(error, {
+        component: 'SchemaConversionAgent',
+        method: 'validateSchema',
+        agentId: this.id,
+        severity: ErrorSeverity.MEDIUM,
+        category: ErrorCategory.VALIDATION,
+        source: ErrorSource.AGENT,
+        context: { format }
+      });
+      
       throw new Error(`Schema validation failed: ${error.message}`);
     }
   }
@@ -306,8 +318,24 @@ export class SchemaConversionAgent implements IGISAgent {
       await this.logMessage('INFO', `Schema conversion completed successfully with ${conversionResult.conversionSummary.fieldsMapped} fields mapped and ${conversionResult.conversionSummary.fieldsDropped} fields dropped`);
       
       return conversionResult;
-    } catch (error) {
+    } catch (error: any) {
       await this.logMessage('ERROR', `Schema conversion error: ${error.message}`);
+      
+      // Track the error
+      this.errorTrackingService.trackGisError(error, {
+        component: 'SchemaConversionAgent',
+        method: 'convertFormat',
+        agentId: this.id,
+        severity: ErrorSeverity.MEDIUM,
+        category: ErrorCategory.CONVERSION,
+        source: ErrorSource.AGENT,
+        context: { 
+          sourceFormat,
+          targetFormat,
+          fieldsCount: Object.keys(sourceSchema || {}).length
+        }
+      });
+      
       throw new Error(`Schema conversion failed: ${error.message}`);
     }
   }
@@ -556,8 +584,23 @@ export class SchemaConversionAgent implements IGISAgent {
       };
       
       await this.storage.createAgentMessage(message);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to log message from agent ${this.id}:`, error);
+      
+      // Track the error, but don't re-throw since this is a non-critical operation
+      this.errorTrackingService.trackGisError(error, {
+        component: 'SchemaConversionAgent',
+        method: 'logMessage',
+        agentId: this.id,
+        severity: ErrorSeverity.LOW,
+        category: ErrorCategory.LOGGING,
+        source: ErrorSource.INTERNAL,
+        context: { 
+          messageType: type,
+          messageContent: content.substring(0, 100) // Include just the beginning in case it's long
+        }
+      });
+      
       // Don't throw here, as this is a non-critical operation
     }
   }
@@ -579,8 +622,23 @@ export class SchemaConversionAgent implements IGISAgent {
       this.status = 'OFFLINE';
       this.isInitialized = false;
       console.log(`${this.name} (${this.id}) shut down successfully`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to shut down ${this.name} (${this.id}):`, error);
+      
+      // Track the error
+      this.errorTrackingService.trackGisError(error, {
+        component: 'SchemaConversionAgent',
+        method: 'shutdown',
+        agentId: this.id,
+        severity: ErrorSeverity.HIGH,
+        category: ErrorCategory.LIFECYCLE,
+        source: ErrorSource.INTERNAL,
+        context: { 
+          agentStatus: this.status,
+          isInitialized: this.isInitialized.toString()
+        }
+      });
+      
       throw error;
     }
   }
