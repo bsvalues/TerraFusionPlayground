@@ -224,6 +224,217 @@ export class QGISService {
   }
   
   /**
+   * Get property boundaries as GeoJSON
+   * 
+   * @param bbox Optional bounding box string in format 'minLon,minLat,maxLon,maxLat'
+   * @param filter Optional filter string for property attributes
+   */
+  public async getPropertyBoundaries(bbox?: string, filter?: string): Promise<any> {
+    try {
+      // In a real implementation, this would query QGIS server, PostGIS, or database
+      // For now, return sample data
+      
+      // Parse bbox if provided
+      let bounds;
+      if (bbox) {
+        const [minLon, minLat, maxLon, maxLat] = bbox.split(',').map(Number);
+        bounds = { minLon, minLat, maxLon, maxLat };
+      }
+      
+      // Generate sample property boundaries
+      const features = [];
+      
+      // Add some sample properties
+      for (let i = 0; i < 20; i++) {
+        // Generate property ID
+        const propertyId = `BC-${10000 + i}`;
+        
+        // Generate base coordinates (would be real coordinates in actual implementation)
+        const baseLon = -122.3 + (Math.random() * 0.1);
+        const baseLat = 47.2 + (Math.random() * 0.1);
+        
+        // Skip if outside bounding box
+        if (bounds && (
+          baseLon < bounds.minLon || 
+          baseLon > bounds.maxLon || 
+          baseLat < bounds.minLat || 
+          baseLat > bounds.maxLat
+        )) {
+          continue;
+        }
+        
+        // Generate property polygon (simplified for example)
+        const size = 0.002 + (Math.random() * 0.003);
+        const coordinates = [[[
+          [baseLon, baseLat],
+          [baseLon + size, baseLat],
+          [baseLon + size, baseLat + size],
+          [baseLon, baseLat + size],
+          [baseLon, baseLat]
+        ]]];
+        
+        // Generate property attributes
+        const value = Math.floor(100000 + Math.random() * 500000);
+        const propertyTypes = ['residential', 'commercial', 'agricultural', 'industrial', 'vacant', 'exempt'];
+        const propertyStatuses = ['current', 'delinquent', 'exempt', 'appealed'];
+        
+        const propertyType = propertyTypes[Math.floor(Math.random() * propertyTypes.length)];
+        const propertyStatus = propertyStatuses[Math.floor(Math.random() * propertyStatuses.length)];
+        
+        // Create GeoJSON feature
+        features.push({
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: coordinates
+          },
+          properties: {
+            propertyId: propertyId,
+            address: `${1000 + i} Main St, Benton County`,
+            ownerName: `Owner ${i}`,
+            assessedValue: value,
+            marketValue: Math.floor(value * (1 + Math.random() * 0.3)),
+            taxAmount: Math.floor(value * 0.01),
+            lastAssessmentDate: new Date(2022, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1),
+            propertyType: propertyType,
+            propertyStatus: propertyStatus,
+            yearBuilt: Math.floor(1950 + Math.random() * 70),
+            buildingArea: Math.floor(1000 + Math.random() * 3000),
+            landArea: Math.floor(5000 + Math.random() * 20000),
+            bedrooms: Math.floor(2 + Math.random() * 4),
+            bathrooms: Math.floor(1 + Math.random() * 3),
+            valueChangePercent: Math.floor(-20 + Math.random() * 40)
+          }
+        });
+      }
+      
+      // Return GeoJSON FeatureCollection
+      return {
+        type: 'FeatureCollection',
+        features: features
+      };
+    } catch (error) {
+      console.error('Error getting property boundaries:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get detailed information for a specific property
+   */
+  public async getPropertyDetails(propertyId: string): Promise<any> {
+    try {
+      // In a real implementation, this would query QGIS server, PostGIS, or database
+      // For now, return sample data
+      
+      // Generate property details
+      const value = Math.floor(100000 + Math.random() * 500000);
+      const propertyTypes = ['residential', 'commercial', 'agricultural', 'industrial', 'vacant', 'exempt'];
+      const propertyStatuses = ['current', 'delinquent', 'exempt', 'appealed'];
+      
+      const propertyType = propertyTypes[Math.floor(Math.random() * propertyTypes.length)];
+      const propertyStatus = propertyStatuses[Math.floor(Math.random() * propertyStatuses.length)];
+      
+      return {
+        propertyId: propertyId,
+        address: `123 Main St, Benton County`,
+        ownerName: `Owner Name`,
+        assessedValue: value,
+        marketValue: Math.floor(value * (1 + Math.random() * 0.3)),
+        taxAmount: Math.floor(value * 0.01),
+        lastAssessmentDate: new Date(2022, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1),
+        propertyType: propertyType,
+        propertyStatus: propertyStatus,
+        yearBuilt: Math.floor(1950 + Math.random() * 70),
+        buildingArea: Math.floor(1000 + Math.random() * 3000),
+        landArea: Math.floor(5000 + Math.random() * 20000),
+        bedrooms: Math.floor(2 + Math.random() * 4),
+        bathrooms: Math.floor(1 + Math.random() * 3),
+        valueChangePercent: Math.floor(-20 + Math.random() * 40)
+      };
+    } catch (error) {
+      console.error(`Error getting property details for ${propertyId}:`, error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Search properties by address or ID
+   */
+  public async searchProperties(query: string): Promise<any[]> {
+    try {
+      // In a real implementation, this would query a search index
+      // For now, return sample data
+      
+      // Generate search results
+      const results = [];
+      
+      // If query is empty, return empty results
+      if (!query.trim()) {
+        return [];
+      }
+      
+      // Generate 5 sample results
+      for (let i = 0; i < 5; i++) {
+        const propertyId = `BC-${10000 + i}`;
+        
+        // Generate base coordinates
+        const baseLon = -122.3 + (Math.random() * 0.1);
+        const baseLat = 47.2 + (Math.random() * 0.1);
+        
+        // Generate property polygon (simplified for example)
+        const size = 0.002 + (Math.random() * 0.003);
+        const coordinates = [[[
+          [baseLon, baseLat],
+          [baseLon + size, baseLat],
+          [baseLon + size, baseLat + size],
+          [baseLon, baseLat + size],
+          [baseLon, baseLat]
+        ]]];
+        
+        results.push({
+          propertyId: propertyId,
+          address: `${1000 + i} Main St, Benton County`,
+          ownerName: `Owner ${i}`,
+          assessedValue: Math.floor(100000 + Math.random() * 500000),
+          propertyType: ['residential', 'commercial', 'agricultural'][Math.floor(Math.random() * 3)],
+          geometry: {
+            type: 'Polygon',
+            coordinates: coordinates
+          }
+        });
+      }
+      
+      return results;
+    } catch (error) {
+      console.error(`Error searching properties with query "${query}":`, error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Export map as image
+   */
+  public async exportMapImage(
+    bbox: number[],
+    width: number,
+    height: number,
+    layers: string[],
+    format: string = 'png'
+  ): Promise<Buffer> {
+    try {
+      // In a real implementation, this would use QGIS server to render the map
+      // For now, return a placeholder buffer
+      
+      // This is a placeholder - in a real implementation, we'd render using QGIS
+      return Buffer.from('Placeholder image data');
+    } catch (error) {
+      console.error('Error exporting map image:', error);
+      throw error;
+    }
+  }
+  
+  /**
    * Export a map to an image format
    */
   public async exportMap(
@@ -264,6 +475,50 @@ export class QGISService {
       supportsGeoJSON: true,
       supportsRasterAnalysis: true
     };
+  }
+  
+  /**
+   * Get available basemaps
+   */
+  public async getBasemaps(): Promise<any[]> {
+    return [
+      {
+        id: 'osm',
+        name: 'OpenStreetMap',
+        type: 'xyz',
+        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+        preview: '/basemaps/osm-preview.png'
+      },
+      {
+        id: 'satellite',
+        name: 'Satellite Imagery',
+        type: 'xyz',
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attribution: 'Esri, Maxar, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community',
+        maxZoom: 19,
+        preview: '/basemaps/satellite-preview.png'
+      },
+      {
+        id: 'terrain',
+        name: 'Terrain',
+        type: 'xyz',
+        url: 'https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg',
+        attribution: 'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL',
+        maxZoom: 18,
+        preview: '/basemaps/terrain-preview.png'
+      },
+      {
+        id: 'topo',
+        name: 'Topographic',
+        type: 'xyz',
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+        attribution: 'Esri, HERE, Garmin, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), (c) OpenStreetMap contributors, and the GIS User Community',
+        maxZoom: 19,
+        preview: '/basemaps/topo-preview.png'
+      }
+    ];
   }
   
   /**
