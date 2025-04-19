@@ -25,66 +25,72 @@ export function createSpatialQueryAgent(storage: IStorage) {
 
 class SpatialQueryAgent extends BaseGISAgent {
   constructor(storage: IStorage, agentId: string) {
-    super(storage, {
+    // First call super with basic config, then we'll add capabilities after constructor
+    const config = {
       id: agentId,
       name: 'Spatial Query Agent',
       description: 'Processes spatial operations like intersections, buffering, and overlays using PostGIS',
-      capabilities: [
-        {
-          name: 'performIntersection',
-          description: 'Find the intersection between two geometries or layers',
-          parameters: {
-            sourceLayerId: { type: 'number', description: 'ID of the source layer' },
-            targetLayerId: { type: 'number', description: 'ID of the target layer' },
-            options: { type: 'object', optional: true, description: 'Additional options for the intersection operation' }
-          },
-          handler: this.performIntersection.bind(this)
-        },
-        {
-          name: 'createBuffer',
-          description: 'Create a buffer around geometries',
-          parameters: {
-            layerId: { type: 'number', description: 'ID of the layer to buffer' },
-            distance: { type: 'number', description: 'Buffer distance in the layer\'s unit of measure' },
-            options: { type: 'object', optional: true, description: 'Additional options for the buffer operation' }
-          },
-          handler: this.createBuffer.bind(this)
-        },
-        {
-          name: 'performSpatialOverlay',
-          description: 'Perform a spatial overlay operation (union, difference, etc.)',
-          parameters: {
-            sourceLayerId: { type: 'number', description: 'ID of the source layer' },
-            targetLayerId: { type: 'number', description: 'ID of the target layer' },
-            operation: { type: 'string', enum: ['union', 'difference', 'symmetric_difference'], description: 'Type of overlay operation' },
-            options: { type: 'object', optional: true, description: 'Additional options for the overlay operation' }
-          },
-          handler: this.performSpatialOverlay.bind(this)
-        },
-        {
-          name: 'nearestNeighborAnalysis',
-          description: 'Find nearest neighbors for points in a layer',
-          parameters: {
-            layerId: { type: 'number', description: 'ID of the layer containing points' },
-            targetLayerId: { type: 'number', optional: true, description: 'Optional target layer to find neighbors from' },
-            maxDistance: { type: 'number', optional: true, description: 'Maximum distance to search for neighbors' },
-            maxResults: { type: 'number', optional: true, description: 'Maximum number of results per point' }
-          },
-          handler: this.nearestNeighborAnalysis.bind(this)
-        },
-        {
-          name: 'convertGeoJSONToSQL',
-          description: 'Convert GeoJSON to PostGIS SQL queries',
-          parameters: {
-            geoJSON: { type: 'object', description: 'GeoJSON object to convert' },
-            tableName: { type: 'string', description: 'Target table name' },
-            options: { type: 'object', optional: true, description: 'Additional options for the conversion' }
-          },
-          handler: this.convertGeoJSONToSQL.bind(this)
-        }
-      ],
+      capabilities: [],
       permissions: ['gis:read', 'gis:write', 'gis:analyze']
-    });
+    };
+    
+    super(storage, config);
+    
+    // Now add the capabilities after super() has been called
+    this.config.capabilities = [
+      {
+        name: 'performIntersection',
+        description: 'Find the intersection between two geometries or layers',
+        parameters: {
+          sourceLayerId: { type: 'number', description: 'ID of the source layer' },
+          targetLayerId: { type: 'number', description: 'ID of the target layer' },
+          options: { type: 'object', optional: true, description: 'Additional options for the intersection operation' }
+        },
+        handler: this.performIntersection.bind(this)
+      },
+      {
+        name: 'createBuffer',
+        description: 'Create a buffer around geometries',
+        parameters: {
+          layerId: { type: 'number', description: 'ID of the layer to buffer' },
+          distance: { type: 'number', description: 'Buffer distance in the layer\'s unit of measure' },
+          options: { type: 'object', optional: true, description: 'Additional options for the buffer operation' }
+        },
+        handler: this.createBuffer.bind(this)
+      },
+      {
+        name: 'performSpatialOverlay',
+        description: 'Perform a spatial overlay operation (union, difference, etc.)',
+        parameters: {
+          sourceLayerId: { type: 'number', description: 'ID of the source layer' },
+          targetLayerId: { type: 'number', description: 'ID of the target layer' },
+          operation: { type: 'string', enum: ['union', 'difference', 'symmetric_difference'], description: 'Type of overlay operation' },
+          options: { type: 'object', optional: true, description: 'Additional options for the overlay operation' }
+        },
+        handler: this.performSpatialOverlay.bind(this)
+      },
+      {
+        name: 'nearestNeighborAnalysis',
+        description: 'Find nearest neighbors for points in a layer',
+        parameters: {
+          layerId: { type: 'number', description: 'ID of the layer containing points' },
+          targetLayerId: { type: 'number', optional: true, description: 'Optional target layer to find neighbors from' },
+          maxDistance: { type: 'number', optional: true, description: 'Maximum distance to search for neighbors' },
+          maxResults: { type: 'number', optional: true, description: 'Maximum number of results per point' }
+        },
+        handler: this.nearestNeighborAnalysis.bind(this)
+      },
+      {
+        name: 'convertGeoJSONToSQL',
+        description: 'Convert GeoJSON to PostGIS SQL queries',
+        parameters: {
+          geoJSON: { type: 'object', description: 'GeoJSON object to convert' },
+          tableName: { type: 'string', description: 'Target table name' },
+          options: { type: 'object', optional: true, description: 'Additional options for the conversion' }
+        },
+        handler: this.convertGeoJSONToSQL.bind(this)
+      }
+    ];
   }
 
   /**

@@ -38,60 +38,66 @@ class DataConversionAgent extends BaseGISAgent {
   private converters: Map<string, Function>;
 
   constructor(storage: IStorage, agentId: string) {
-    super(storage, {
+    // First call super with basic config, then we'll add capabilities after constructor
+    const config = {
       id: agentId,
       name: 'Data Conversion Agent',
       description: 'Automates the transformation of various GIS data formats into standardized formats',
-      capabilities: [
-        {
-          name: 'convertToGeoJSON',
-          description: 'Convert various spatial data formats to GeoJSON',
-          parameters: {
-            sourceFormat: { type: 'string', enum: ['shapefile', 'kml', 'geojson', 'csv', 'gml', 'gpx'], description: 'Source data format' },
-            sourceData: { type: 'object', description: 'Source data (file content as base64 or URL)' },
-            options: { type: 'object', optional: true, description: 'Additional conversion options' }
-          },
-          handler: this.convertToGeoJSON.bind(this)
-        },
-        {
-          name: 'convertFromGeoJSON',
-          description: 'Convert GeoJSON to various spatial data formats',
-          parameters: {
-            targetFormat: { type: 'string', enum: ['shapefile', 'kml', 'csv', 'gml', 'gpx'], description: 'Target data format' },
-            geoJSON: { type: 'object', description: 'GeoJSON data to convert' },
-            options: { type: 'object', optional: true, description: 'Additional conversion options' }
-          },
-          handler: this.convertFromGeoJSON.bind(this)
-        },
-        {
-          name: 'detectFormat',
-          description: 'Detect the format of spatial data',
-          parameters: {
-            data: { type: 'object', description: 'Spatial data to analyze (file content as base64 or URL)' }
-          },
-          handler: this.detectFormat.bind(this)
-        },
-        {
-          name: 'validateGeoJSON',
-          description: 'Validate GeoJSON data',
-          parameters: {
-            geoJSON: { type: 'object', description: 'GeoJSON data to validate' },
-            options: { type: 'object', optional: true, description: 'Additional validation options' }
-          },
-          handler: this.validateGeoJSON.bind(this)
-        },
-        {
-          name: 'repairGeometry',
-          description: 'Repair invalid geometries',
-          parameters: {
-            geoJSON: { type: 'object', description: 'GeoJSON data containing geometries to repair' },
-            options: { type: 'object', optional: true, description: 'Additional repair options' }
-          },
-          handler: this.repairGeometry.bind(this)
-        }
-      ],
+      capabilities: [],
       permissions: ['gis:read', 'gis:write', 'gis:convert', 'file:read', 'file:write']
-    });
+    };
+    
+    super(storage, config);
+    
+    // Now add the capabilities after super() has been called
+    this.config.capabilities = [
+      {
+        name: 'convertToGeoJSON',
+        description: 'Convert various spatial data formats to GeoJSON',
+        parameters: {
+          sourceFormat: { type: 'string', enum: ['shapefile', 'kml', 'geojson', 'csv', 'gml', 'gpx'], description: 'Source data format' },
+          sourceData: { type: 'object', description: 'Source data (file content as base64 or URL)' },
+          options: { type: 'object', optional: true, description: 'Additional conversion options' }
+        },
+        handler: this.convertToGeoJSON.bind(this)
+      },
+      {
+        name: 'convertFromGeoJSON',
+        description: 'Convert GeoJSON to various spatial data formats',
+        parameters: {
+          targetFormat: { type: 'string', enum: ['shapefile', 'kml', 'csv', 'gml', 'gpx'], description: 'Target data format' },
+          geoJSON: { type: 'object', description: 'GeoJSON data to convert' },
+          options: { type: 'object', optional: true, description: 'Additional conversion options' }
+        },
+        handler: this.convertFromGeoJSON.bind(this)
+      },
+      {
+        name: 'detectFormat',
+        description: 'Detect the format of spatial data',
+        parameters: {
+          data: { type: 'object', description: 'Spatial data to analyze (file content as base64 or URL)' }
+        },
+        handler: this.detectFormat.bind(this)
+      },
+      {
+        name: 'validateGeoJSON',
+        description: 'Validate GeoJSON data',
+        parameters: {
+          geoJSON: { type: 'object', description: 'GeoJSON data to validate' },
+          options: { type: 'object', optional: true, description: 'Additional validation options' }
+        },
+        handler: this.validateGeoJSON.bind(this)
+      },
+      {
+        name: 'repairGeometry',
+        description: 'Repair invalid geometries',
+        parameters: {
+          geoJSON: { type: 'object', description: 'GeoJSON data containing geometries to repair' },
+          options: { type: 'object', optional: true, description: 'Additional repair options' }
+        },
+        handler: this.repairGeometry.bind(this)
+      }
+    ];
 
     // Set up temp directory for conversions
     this.tempDir = path.join(process.cwd(), 'uploads', 'gis_temp');

@@ -234,10 +234,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Initialize GIS Agent Orchestration System
   try {
-    console.log("GIS Agent System initialization is currently disabled, but new agents have been implemented.");
-    console.log("To enable GIS agents, uncomment the line below:");
-    // const gisOrchestrationService = await initializeGISAgentsWithService(storage);
-    console.log("GIS Agent System initialization bypassed for now");
+    console.log("Initializing GIS Agent System with new implemented agents...");
+    const gisOrchestrationService = await initializeGISAgentsWithService(storage);
+    console.log("GIS Agent System initialization completed successfully");
     
     // Note: The following specialized GIS agents have been implemented and are ready to use:
     // 1. Spatial Query Agent - handles spatial operations like intersections and buffering

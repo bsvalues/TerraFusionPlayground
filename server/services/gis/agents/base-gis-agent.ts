@@ -7,7 +7,7 @@
 
 import { BaseAgent, AgentConfig } from '../../agents/base-agent';
 import { IStorage } from '../../../storage';
-import { MCPService } from '../../mcp-service';
+import { MCPService } from '../../mcp';
 
 /**
  * Abstract base class for GIS agents

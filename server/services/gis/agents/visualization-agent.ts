@@ -48,61 +48,67 @@ class VisualizationAgent extends BaseGISAgent {
   };
 
   constructor(storage: IStorage, agentId: string) {
-    super(storage, {
+    // First call super with basic config, then we'll add capabilities after constructor
+    const config = {
       id: agentId,
       name: 'Visualization Agent',
       description: 'Manages dynamic layer rendering and visualization effects',
-      capabilities: [
-        {
-          name: 'generateMapVisualization',
-          description: 'Generate a complete map visualization with multiple layers',
-          parameters: {
-            projectId: { type: 'number', description: 'ID of the map project' },
-            options: { type: 'object', optional: true, description: 'Visualization options' }
-          },
-          handler: this.generateMapVisualization.bind(this)
-        },
-        {
-          name: 'applyLayerStyle',
-          description: 'Apply a style to a GIS layer',
-          parameters: {
-            layerId: { type: 'number', description: 'ID of the layer to style' },
-            style: { type: 'object', description: 'Style properties to apply' }
-          },
-          handler: this.applyLayerStyle.bind(this)
-        },
-        {
-          name: 'createThematicLayer',
-          description: 'Create a thematic layer based on data attributes',
-          parameters: {
-            layerId: { type: 'number', description: 'ID of the base layer' },
-            attribute: { type: 'string', description: 'Attribute to use for theming' },
-            method: { type: 'string', enum: ['categorized', 'graduated', 'heatmap', 'choropleth'], description: 'Thematic mapping method' },
-            options: { type: 'object', optional: true, description: 'Additional styling options' }
-          },
-          handler: this.createThematicLayer.bind(this)
-        },
-        {
-          name: 'createLayerGroup',
-          description: 'Create a group of layers with synchronized visualization',
-          parameters: {
-            layerIds: { type: 'array', items: { type: 'number' }, description: 'IDs of layers to group' },
-            groupOptions: { type: 'object', optional: true, description: 'Group configuration options' }
-          },
-          handler: this.createLayerGroup.bind(this)
-        },
-        {
-          name: 'generateVennDiagramLayers',
-          description: 'Generate layers for a spatial Venn diagram visualization',
-          parameters: {
-            layerIds: { type: 'array', items: { type: 'number' }, description: 'IDs of layers to use in the Venn diagram' },
-            options: { type: 'object', optional: true, description: 'Venn diagram options' }
-          },
-          handler: this.generateVennDiagramLayers.bind(this)
-        }
-      ],
+      capabilities: [],
       permissions: ['gis:read', 'gis:write', 'gis:visualize']
-    });
+    };
+    
+    super(storage, config);
+    
+    // Now add the capabilities after super() has been called
+    this.config.capabilities = [
+      {
+        name: 'generateMapVisualization',
+        description: 'Generate a complete map visualization with multiple layers',
+        parameters: {
+          projectId: { type: 'number', description: 'ID of the map project' },
+          options: { type: 'object', optional: true, description: 'Visualization options' }
+        },
+        handler: this.generateMapVisualization.bind(this)
+      },
+      {
+        name: 'applyLayerStyle',
+        description: 'Apply a style to a GIS layer',
+        parameters: {
+          layerId: { type: 'number', description: 'ID of the layer to style' },
+          style: { type: 'object', description: 'Style properties to apply' }
+        },
+        handler: this.applyLayerStyle.bind(this)
+      },
+      {
+        name: 'createThematicLayer',
+        description: 'Create a thematic layer based on data attributes',
+        parameters: {
+          layerId: { type: 'number', description: 'ID of the base layer' },
+          attribute: { type: 'string', description: 'Attribute to use for theming' },
+          method: { type: 'string', enum: ['categorized', 'graduated', 'heatmap', 'choropleth'], description: 'Thematic mapping method' },
+          options: { type: 'object', optional: true, description: 'Additional styling options' }
+        },
+        handler: this.createThematicLayer.bind(this)
+      },
+      {
+        name: 'createLayerGroup',
+        description: 'Create a group of layers with synchronized visualization',
+        parameters: {
+          layerIds: { type: 'array', items: { type: 'number' }, description: 'IDs of layers to group' },
+          groupOptions: { type: 'object', optional: true, description: 'Group configuration options' }
+        },
+        handler: this.createLayerGroup.bind(this)
+      },
+      {
+        name: 'generateVennDiagramLayers',
+        description: 'Generate layers for a spatial Venn diagram visualization',
+        parameters: {
+          layerIds: { type: 'array', items: { type: 'number' }, description: 'IDs of layers to use in the Venn diagram' },
+          options: { type: 'object', optional: true, description: 'Venn diagram options' }
+        },
+        handler: this.generateVennDiagramLayers.bind(this)
+      }
+    ];
   }
 
   /**
