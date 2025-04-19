@@ -7,6 +7,7 @@ import GISMap from '@/components/dashboard/gis-map';
 import PropertyList from '@/components/dashboard/property-list';
 import AIAgentOverview from '@/components/dashboard/ai-agent-overview';
 import SystemActivityFeed from '@/components/dashboard/system-activity';
+import { ProductivityTrackerWidget } from '@/components/developer-productivity';
 import { Link } from 'wouter';
 import { Home, TrendingUp, FileText, CheckSquare, Database, Code2, Laptop, Share2, Settings, ArrowRightCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -102,6 +103,7 @@ const Dashboard = () => {
         <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
           <AIAgentOverview />
           <SystemActivityFeed />
+          <ProductivityTrackerWidget />
         </div>
 
         {/* TaxI_AI Developer Tools Section */}
