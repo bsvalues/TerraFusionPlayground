@@ -5,7 +5,7 @@
  * to use the equivalent TerraFusion token.
  * 
  * Usage: 
- * npx jscodeshift -t scripts/hexToToken.js "client/src/**/*.{js,jsx,ts,tsx}"
+ * npx jscodeshift -t scripts/hexToToken.js client/src/**/*.{js,jsx,ts,tsx}
  */
 
 module.exports = function transformer(file, api) {

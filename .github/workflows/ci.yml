@@ -1,10 +1,10 @@
-name: TerraFusion CI/CD Pipeline
+name: TerraFusion CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, master ]
 
 jobs:
   build:
@@ -12,86 +12,101 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
-        
+      
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
           cache: 'npm'
-          
+      
       - name: Install dependencies
         run: npm ci
-        
-      - name: Lint code
+      
+      - name: Run linting
         run: npm run lint
-        
+      
+      - name: Run type checking
+        run: npm run typecheck
+      
       - name: Run tests
-        run: npm test
-        
-      - name: Build project
+        run: npm run test
+      
+      - name: Build application
         run: npm run build
-  
-  security_scanning:
-    name: Security Scanning
+
+  security-scan-zap:
+    name: TerraFusion Security Scan - ZAP
     needs: build
+    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
+    uses: ./.github/workflows/zap.yml
+    with:
+      target_url: 'https://staging.terrafusion.ai'
+      scan_type: 'baseline'
+      fail_on_high: false
+  
+  security-scan-trivy:
+    name: TerraFusion Security Scan - Trivy
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
       
-      - name: Run Trivy filesystem scan
-        uses: ./.github/workflows/trivy
+      - name: Run Trivy vulnerability scanner (dependencies)
+        uses: aquasecurity/trivy-action@master
         with:
-          scan_type: 'fs'
-          target_directory: '.'
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
           severity: 'CRITICAL,HIGH'
-          format: 'sarif'
-          output_file: 'trivy-results.sarif'
-          fail_on_detection: false
+          output: 'trivy-results-deps.txt'
       
-  security_scan_deployed:
-    name: Security Scan Deployed Application
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [build, security_scanning]
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        
-      - name: Run ZAP baseline scan
-        uses: ./.github/workflows/zap
+      - name: Run Trivy vulnerability scanner (code)
+        uses: aquasecurity/trivy-action@master
         with:
-          target_url: ${{ secrets.DEPLOYMENT_URL }}
-          scan_type: 'baseline'
-          fail_action: false
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'sarif'
+          severity: 'CRITICAL,HIGH'
+          output: 'trivy-results-code.sarif'
+      
+      - name: Upload Trivy Scan Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-scan-results
+          path: |
+            trivy-results-deps.txt
+            trivy-results-code.sarif
+          retention-days: 30
+      
+      - name: Upload SARIF report
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results-code.sarif'
 
   deploy:
-    name: Deploy
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [build, security_scanning]
+    name: Deploy to Staging
+    needs: [build, security-scan-trivy]
+    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
     runs-on: ubuntu-latest
-    
+    environment: staging
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
-        
+      
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
           cache: 'npm'
-          
+      
       - name: Install dependencies
         run: npm ci
-        
-      - name: Build project
+      
+      - name: Build application
         run: npm run build
-        
-      # Add your deployment steps here
-      # This section will vary depending on your deployment platform
-      - name: Deploy to production
-        run: echo "Deployment steps go here"
+      
+      - name: Deploy to staging
+        run: echo "Deploying to staging environment..."
+        # Add your actual deployment steps here
