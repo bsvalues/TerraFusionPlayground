@@ -195,6 +195,48 @@ export function createGisRoutes(storage: IStorage) {
   
   // Mount the prediction routes
   router.use('/', createPredictionRoutes(storage));
+  
+  // Get sample data points for clustering demo
+  router.get('/clustering-demo/data', async (req, res) => {
+    try {
+      // Retrieve properties from storage for clustering demo
+      const properties = await storage.getAllProperties();
+      
+      // Format for clustering demo with coordinates
+      const dataPoints = properties.map(property => {
+        // Generate coordinates near Benton County if none exist
+        const center = [-119.7, 46.2]; // Benton County, WA
+        const randomOffset = () => (Math.random() - 0.5) * 0.4; // ~20km radius
+        
+        // Use property coordinates from extraFields if available, otherwise generate random ones
+        const propertyCoordinates = property.extraFields && 
+          typeof property.extraFields === 'object' && 
+          'coordinates' in property.extraFields ?
+          (property.extraFields as any).coordinates : null;
+        
+        const coordinates = propertyCoordinates || [
+          center[0] + randomOffset(),
+          center[1] + randomOffset()
+        ];
+        
+        return {
+          id: property.propertyId,
+          position: coordinates,
+          properties: {
+            address: property.address,
+            value: property.value,
+            type: property.propertyType,
+            status: property.status
+          }
+        };
+      });
+      
+      res.json(dataPoints);
+    } catch (error) {
+      console.error('Error fetching clustering data:', error);
+      res.status(500).json({ error: 'Failed to fetch clustering data' });
+    }
+  });
 
   return router;
 }
