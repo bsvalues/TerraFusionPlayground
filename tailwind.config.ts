@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import terrafusionPlugin from './scripts/patchTailwind';
 
 export default {
   darkMode: ["class"],
@@ -86,5 +87,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+  plugins: [terrafusionPlugin(), require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config;
