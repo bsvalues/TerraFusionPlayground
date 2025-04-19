@@ -16,8 +16,11 @@ export abstract class SpecialistAgent extends BaseAgent {
   protected componentLeadId: string;
   
   constructor(agentId: string, componentName: string, specialization: string, componentLeadId: string, storage: IStorage, mcpService?: MCPService) {
+    // Ensure agentId is a non-null string with a fallback for safety
+    const safeAgentId = agentId || `${componentName.toLowerCase()}_${specialization.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`;
+    
     const config = {
-      id: agentId,
+      id: safeAgentId,
       name: `${componentName} ${specialization} Agent`,
       description: `Specialist agent for ${specialization} in ${componentName} component`,
       capabilities: [
@@ -51,9 +54,16 @@ export abstract class SpecialistAgent extends BaseAgent {
     };
     
     super(storage, mcpService || new MCPService(storage), config);
+    
+    // Double check that both id and agentId are properly set after the super constructor call
+    this.id = safeAgentId;
+    this.agentId = safeAgentId;
+    
     this.componentName = componentName;
     this.specialization = specialization;
     this.componentLeadId = componentLeadId;
+    
+    console.log(`SpecialistAgent constructed with id: ${this.id} and agentId: ${this.agentId}`);
   }
 
   async initialize(): Promise<void> {

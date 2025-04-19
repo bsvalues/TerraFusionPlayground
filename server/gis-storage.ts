@@ -259,52 +259,58 @@ export async function implementGISStorage(storage: IStorage): Promise<void> {
 
   // Agent Message methods
   storage.createAgentMessage = async (message: any): Promise<AgentMessage> => {
-    // Check which schema format the message is in
-    if ('senderAgentId' in message || 'messageType' in message) {
-      // Convert from main schema format to GIS schema format
-      // Enhanced logic to ensure agent_id is never null
-      const agentId = message.senderAgentId || message.agentId || message.agent_id || 'system';
-      
-      // Log the message and agent ID to help with debugging
-      console.log(`Creating agent message with agent ID: ${agentId}`, 
-                  `Message has senderAgentId: ${'senderAgentId' in message}`,
-                  `Message has agentId: ${'agentId' in message}`);
-      
-      if (!agentId || agentId === 'null' || agentId === 'undefined') {
-        console.error('Warning: Attempting to create agent message with null/undefined agent ID', message);
-        // Fall back to a guaranteed agent ID to prevent null constraint violations
-        throw new Error('Agent ID cannot be null or undefined');
-      }
-      
-      const adaptedMessage = {
-        agent_id: agentId,
-        type: message.messageType || 'INFO',
-        content: typeof message.content === 'object' ? 
-          JSON.stringify(message.content) : 
-          message.content || message.subject || 'No content provided',
-        metadata: {
-          messageId: message.messageId,
-          conversationId: message.conversationId,
-          receiverAgentId: message.receiverAgentId,
-          priority: message.priority,
-          status: message.status,
-          subject: message.subject,
-          contextData: message.contextData,
-          entityType: message.entityType,
-          entityId: message.entityId
+    try {
+      // Check which schema format the message is in
+      if ('senderAgentId' in message || 'messageType' in message) {
+        // Convert from main schema format to GIS schema format
+        // Enhanced logic to ensure agent_id is never null
+        let agentId = message.senderAgentId || message.agentId || message.agent_id || null;
+        
+        // Generate a fallback ID if none is provided to prevent database constraint violations
+        if (!agentId || agentId === 'null' || agentId === 'undefined') {
+          // Create a deterministic but unique default agentId
+          agentId = `system_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+          console.log(`Generated fallback agent ID: ${agentId} for message`);
         }
-      };
-      
-      const [result] = await db.insert(agentMessagesTable)
-        .values(adaptedMessage)
-        .returning();
-      return result;
-    } else {
-      // Standard GIS schema format
-      const [result] = await db.insert(agentMessagesTable)
-        .values(message)
-        .returning();
-      return result;
+        
+        // Log the message and agent ID to help with debugging
+        console.log(`Creating agent message with agent ID: ${agentId}`, 
+                    `Message has senderAgentId: ${'senderAgentId' in message}`,
+                    `Message has agentId: ${'agentId' in message}`);
+        
+        const adaptedMessage = {
+          agent_id: agentId,
+          type: message.messageType || 'INFO',
+          content: typeof message.content === 'object' ? 
+            JSON.stringify(message.content) : 
+            message.content || message.subject || 'No content provided',
+          metadata: {
+            messageId: message.messageId || `msg-${Date.now()}`,
+            conversationId: message.conversationId,
+            receiverAgentId: message.receiverAgentId,
+            priority: message.priority || 'NORMAL',
+            status: message.status || 'pending',
+            subject: message.subject || 'No subject',
+            contextData: message.contextData || {},
+            entityType: message.entityType || 'UNKNOWN',
+            entityId: message.entityId || `entity-${Date.now()}`
+          }
+        };
+        
+        const [result] = await db.insert(agentMessagesTable)
+          .values(adaptedMessage)
+          .returning();
+        return result;
+      } else {
+        // Standard GIS schema format
+        const [result] = await db.insert(agentMessagesTable)
+          .values(message)
+          .returning();
+        return result;
+      }
+    } catch (error) {
+      console.error('Error creating agent message:', error);
+      throw error;
     }
   };
 
