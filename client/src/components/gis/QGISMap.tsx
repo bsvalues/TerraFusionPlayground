@@ -32,8 +32,7 @@ const QGISMap = ({
   const mapRef = useRef<HTMLDivElement>(null);
   const map = useRef<Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  // Create local state for baseMapType with initial value from props
-  const [baseMapType, setBaseMapType] = useState<'osm' | 'satellite' | 'terrain'>(initialBaseMapType);
+  // Use context baseMapType instead of local state to ensure synchronization across components
   
   const {
     center,
@@ -45,7 +44,9 @@ const QGISMap = ({
     isLayersPanelOpen,
     toggleLayersPanel,
     visibleLayers,
-    layerOpacity
+    layerOpacity,
+    baseMapType: contextBaseMapType,
+    setBaseMapType: contextSetBaseMapType
   } = useGIS();
 
   // Convert center coordinates from [longitude, latitude] to OpenLayers projection
@@ -84,7 +85,7 @@ const QGISMap = ({
     
     if (mapRef.current) {
       // Create base layer
-      const baseLayer = createBaseLayer(baseMapType);
+      const baseLayer = createBaseLayer(contextBaseMapType);
       
       // Create vector source for GIS features
       const vectorSource = new VectorSource({
@@ -142,7 +143,7 @@ const QGISMap = ({
         map.current = null;
       }
     };
-  }, []);
+  }, [contextBaseMapType, center, zoom]);
 
   // Update map when center or zoom changes
   useEffect(() => {
@@ -179,10 +180,10 @@ const QGISMap = ({
       // Remove the base layer (first layer)
       layers.removeAt(0);
       // Create and add the new base layer at position 0
-      const newBaseLayer = createBaseLayer(baseMapType);
+      const newBaseLayer = createBaseLayer(contextBaseMapType);
       layers.insertAt(0, newBaseLayer);
     }
-  }, [baseMapType, mapLoaded]);
+  }, [contextBaseMapType, mapLoaded]);
 
   return (
     <div className={cn("relative h-full w-full bg-gray-100 tf-map-container", className, 
@@ -256,20 +257,20 @@ const QGISMap = ({
             <div className="tf-layer-group-header mb-2">Base Map Type</div>
             <div className="grid grid-cols-3 gap-2">
               <button
-                className={`px-2 py-1 text-xs rounded ${baseMapType === 'osm' ? 'bg-primary text-white' : 'bg-gray-100'}`}
-                onClick={() => setBaseMapType('osm')}
+                className={`px-2 py-1 text-xs rounded ${contextBaseMapType === 'osm' ? 'bg-primary text-white' : 'bg-gray-100'}`}
+                onClick={() => contextSetBaseMapType('osm')}
               >
                 Streets
               </button>
               <button
-                className={`px-2 py-1 text-xs rounded ${baseMapType === 'satellite' ? 'bg-primary text-white' : 'bg-gray-100'}`}
-                onClick={() => setBaseMapType('satellite')}
+                className={`px-2 py-1 text-xs rounded ${contextBaseMapType === 'satellite' ? 'bg-primary text-white' : 'bg-gray-100'}`}
+                onClick={() => contextSetBaseMapType('satellite')}
               >
                 Satellite
               </button>
               <button
-                className={`px-2 py-1 text-xs rounded ${baseMapType === 'terrain' ? 'bg-primary text-white' : 'bg-gray-100'}`}
-                onClick={() => setBaseMapType('terrain')}
+                className={`px-2 py-1 text-xs rounded ${contextBaseMapType === 'terrain' ? 'bg-primary text-white' : 'bg-gray-100'}`}
+                onClick={() => contextSetBaseMapType('terrain')}
               >
                 Terrain
               </button>
