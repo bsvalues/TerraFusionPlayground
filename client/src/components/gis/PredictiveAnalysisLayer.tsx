@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+
 import '@/styles/predictive-analysis.css';
 
 interface PredictiveAnalysisLayerProps {
@@ -49,7 +50,7 @@ interface PredictionData {
   riskScore?: number;
   riskFactors?: string[];
   developmentPotential?: 'high' | 'medium' | 'low';
-  coordinates: number[][]; // Array of polygon coordinates [lng, lat]
+  coordinates: [number, number][]; // Array of polygon coordinates [lng, lat]
 }
 
 /**
@@ -86,14 +87,15 @@ const PredictiveAnalysisLayer = ({
     queryKey: ['/api/gis/predictions', predictionType, timeFrame],
     queryFn: async () => {
       try {
-        const response = await apiRequest<PredictionData[]>(
+        const response = await apiRequest(
           `/api/gis/predictions?type=${predictionType}&timeframe=${timeFrame}`
         );
         
-        return response || [];
+        // First cast to unknown, then to our specific type
+        return (response as unknown as PredictionData[]) || ([] as PredictionData[]);
       } catch (error) {
         console.error('Error fetching prediction data:', error);
-        return [];
+        return [] as PredictionData[];
       }
     },
     staleTime: 300000 // 5 minutes
@@ -151,15 +153,15 @@ const PredictiveAnalysisLayer = ({
     vectorSource.clear();
     
     // Filter data based on confidence threshold
-    const filteredData = predictionData.filter(item => 
+    const filteredData = predictionData.filter((item: PredictionData) => 
       item.confidence >= confidenceThreshold
     );
     
     // Add features to the layer
-    filteredData.forEach(item => {
+    filteredData.forEach((item: PredictionData) => {
       try {
         // Create polygon from coordinates
-        const polygonCoords = item.coordinates.map(coord => 
+        const polygonCoords = item.coordinates.map((coord: [number, number]) => 
           fromLonLat([coord[0], coord[1]])
         );
         
@@ -333,7 +335,7 @@ const PredictiveAnalysisLayer = ({
   
   // Get selected property details
   const selectedProperty = selectedPropertyId && predictionData ? 
-    predictionData.find(item => item.propertyId === selectedPropertyId) : null;
+    predictionData.find((item: PredictionData) => item.propertyId === selectedPropertyId) : null;
   
   return (
     <div className={cn("predictive-analysis-container", className)}>
@@ -559,7 +561,7 @@ const PredictiveAnalysisLayer = ({
               <div className="flex items-center justify-between px-1">
                 <div>
                   <span className="text-xs text-muted-foreground mr-1">Change:</span>
-                  <Badge variant={selectedProperty.changePercent > 0 ? "success" : "destructive"} className="text-xs">
+                  <Badge variant={selectedProperty.changePercent > 0 ? "default" : "destructive"} className={`text-xs ${selectedProperty.changePercent > 0 ? 'bg-green-500 hover:bg-green-600' : ''}`}>
                     {selectedProperty.changePercent > 0 ? '+' : ''}{selectedProperty.changePercent}%
                   </Badge>
                 </div>
