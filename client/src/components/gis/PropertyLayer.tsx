@@ -27,18 +27,30 @@ const PropertyLayer = ({ visualizationMode = 'value', opacity = 0.7, map }: Prop
   const { data: propertyData } = useQuery({
     queryKey: ['/api/gis/property-boundaries'],
     queryFn: async () => {
-      const response = await apiRequest('/api/gis/property-boundaries');
-      return response as {
-        type: string;
-        features: Array<{
-          type: string;
-          geometry: {
-            type: string;
-            coordinates: number[][][][];
+      try {
+        const response = await apiRequest('/api/gis/property-boundaries');
+        const data = response as any;
+        
+        // Create default placeholder data if needed
+        if (!data || !data.features) {
+          console.warn('Property boundary data is missing or in unexpected format.');
+          return {
+            type: 'FeatureCollection',
+            features: []
           };
-          properties: Record<string, any>;
-        }>;
-      };
+        }
+        
+        return {
+          type: data.type || 'FeatureCollection',
+          features: data.features || []
+        };
+      } catch (error) {
+        console.error('Error fetching property boundaries:', error);
+        return {
+          type: 'FeatureCollection',
+          features: []
+        };
+      }
     },
     enabled: !!map && visibleLayers['property-boundaries'] === true
   });

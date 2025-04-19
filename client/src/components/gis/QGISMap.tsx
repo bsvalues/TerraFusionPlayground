@@ -6,8 +6,9 @@ import XYZ from 'ol/source/XYZ';
 import { fromLonLat } from 'ol/proj';
 import 'ol/ol.css';
 import '@/styles/map-branding.css'; // Import our custom map styling
+import '@/styles/qgis-showcase.css'; // Import QGIS showcase styling
 import { useGIS } from '@/contexts/gis-context';
-import { Maximize, Layers, Compass } from 'lucide-react';
+import { Maximize, Layers, Compass, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
@@ -15,6 +16,8 @@ import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import GeoJSON from 'ol/format/GeoJSON';
 import { defaults as defaultControls } from 'ol/control';
+import PropertyLayer from './PropertyLayer';
+import QGISFeaturesShowcase from './QGISFeaturesShowcase';
 
 interface QGISMapProps {
   className?: string;
@@ -32,6 +35,7 @@ const QGISMap = ({
   const mapRef = useRef<HTMLDivElement>(null);
   const map = useRef<Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [showQGISFeatures, setShowQGISFeatures] = useState(false);
   // Use context baseMapType instead of local state to ensure synchronization across components
   
   const {
@@ -241,7 +245,35 @@ const QGISMap = ({
           >
             <Compass className="h-4 w-4" />
           </Button>
+          
+          <div className="tf-zoom-divider"></div>
+          
+          <Button
+            variant="outline"
+            size="icon"
+            className="tf-zoom-button tf-qgis-info-button"
+            onClick={() => setShowQGISFeatures(!showQGISFeatures)}
+          >
+            <Info className="h-4 w-4" />
+          </Button>
         </div>
+      )}
+      
+      {/* QGIS Features Showcase Panel */}
+      {showQGISFeatures && (
+        <QGISFeaturesShowcase
+          map={map.current}
+          onClose={() => setShowQGISFeatures(false)}
+        />
+      )}
+      
+      {/* Add Property Layer if map is loaded */}
+      {mapLoaded && map.current && (
+        <PropertyLayer 
+          map={map.current}
+          visualizationMode="value"
+          opacity={0.7} 
+        />
       )}
       
       {/* Layer Control Panel */}
