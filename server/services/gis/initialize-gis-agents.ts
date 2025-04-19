@@ -8,6 +8,10 @@ import { IStorage } from '../../storage';
 import { GISAgentOrchestrationService } from './agent-orchestration-service';
 import { createSchemaConversionAgent } from './agents/schema-conversion-agent';
 import { createDataNormalizationAgent } from './agents/data-normalization-agent';
+import { createSpatialQueryAgent } from './agents/spatial-query-agent';
+import { createDataConversionAgent } from './agents/data-conversion-agent';
+import { createVisualizationAgent } from './agents/visualization-agent';
+import { createAIInsightsAgent } from './agents/ai-insights-agent';
 
 /**
  * Initialize GIS agents and register them with the orchestration service
@@ -34,7 +38,25 @@ export async function initializeGISAgents(
     await dataNormalizationAgent.initialize();
     orchestrationService.registerAgent(dataNormalizationAgent);
     
-    // Initialize more agents as needed...
+    // Create and register spatial query agent
+    const spatialQueryAgent = createSpatialQueryAgent(storage);
+    await spatialQueryAgent.initialize();
+    orchestrationService.registerAgent(spatialQueryAgent);
+    
+    // Create and register data conversion agent
+    const dataConversionAgent = createDataConversionAgent(storage);
+    await dataConversionAgent.initialize();
+    orchestrationService.registerAgent(dataConversionAgent);
+    
+    // Create and register visualization agent
+    const visualizationAgent = createVisualizationAgent(storage);
+    await visualizationAgent.initialize();
+    orchestrationService.registerAgent(visualizationAgent);
+    
+    // Create and register AI insights agent
+    const aiInsightsAgent = createAIInsightsAgent(storage);
+    await aiInsightsAgent.initialize();
+    orchestrationService.registerAgent(aiInsightsAgent);
     
     console.log('GIS agents initialized successfully');
   } catch (error) {

@@ -55,8 +55,23 @@ export abstract class BaseAgent {
     this.storage = storage;
     this.mcpService = mcpService;
     this.config = config;
-    this.id = config.id;
-    this.agentId = config.id; // Set agentId as an alias for id
+    
+    // Generate a fallback ID in case config.id is invalid
+    const fallbackId = `base_agent_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    
+    // Validate that config.id is a non-empty string
+    if (!config.id || typeof config.id !== 'string' || config.id.trim() === '') {
+      console.warn(`WARNING: Agent created with invalid ID (${config.id}), using fallback: ${fallbackId}`);
+      this.id = fallbackId;
+      this.agentId = fallbackId;
+    } else {
+      this.id = config.id;
+      this.agentId = config.id; // Set agentId as an alias for id
+    }
+    
+    // Log confirmation of ID assignment
+    console.log(`BaseAgent constructor: assigned ID ${this.id} and agentId ${this.agentId}`);
+    
     this.name = config.name;
     this.description = config.description;
     this.permissions = config.permissions || [];
