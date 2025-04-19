@@ -4,7 +4,8 @@
  * This codemod transforms hardcoded hex or RGB color values in the codebase
  * to use the equivalent TerraFusion token.
  * 
- * Usage: npx jscodeshift -t scripts/hexToToken.js "src/**/*.{js,jsx,ts,tsx}"
+ * Usage: 
+ * npx jscodeshift -t scripts/hexToToken.js "client/src/**/*.{js,jsx,ts,tsx}"
  */
 
 module.exports = function transformer(file, api) {
