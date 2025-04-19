@@ -67,58 +67,58 @@ export abstract class SpecialistAgent extends BaseAgent {
   }
 
   async initialize(): Promise<void> {
-    logger.info({ 
-      component: `${this.componentName} ${this.specialization} Agent`, 
-      message: `Initializing ${this.specialization} specialist agent`, 
-      agentId: this.agentId 
-    });
+    logger.info(`${this.componentName} ${this.specialization} Agent: Initializing ${this.specialization} specialist agent (ID: ${this.agentId})`);
     
     // Register capabilities
     this.capabilities.forEach((capability) => {
-      logger.debug({ 
-        component: `${this.componentName} ${this.specialization} Agent`, 
-        message: `Registered capability: ${capability}` 
-      });
+      logger.debug(`${this.componentName} ${this.specialization} Agent: Registered capability: ${capability}`);
     });
     
     // Register with component lead
-    const agentId = this.id || this.agentId; // Make sure we have a valid ID
-    console.log(`Specialist agent ${this.specialization} registering with component lead. Agent ID: ${agentId}`);
+    // Generate a fallback ID in case both id and agentId are missing or invalid
+    const fallbackId = `${this.componentName.toLowerCase()}_${this.specialization.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`;
+    let agentId = this.id || this.agentId || fallbackId; // Make sure we have a valid ID
     
-    if (!agentId) {
-      console.error(`ERROR: Specialist agent ${this.specialization} has no valid ID!`);
-      throw new Error(`Specialist agent ${this.specialization} has no valid ID!`);
+    // Ensure agentId is not null, undefined, 'null', 'undefined', or empty string
+    if (!agentId || agentId === 'null' || agentId === 'undefined' || agentId.trim() === '') {
+      console.log(`WARNING: Specialist agent ${this.specialization} had invalid ID, using fallback: ${fallbackId}`);
+      agentId = fallbackId;
+      // Update the instance property to maintain consistency
+      this.agentId = fallbackId;
+      this.id = fallbackId;
     }
     
-    await this.storage.createAgentMessage({
-      senderAgentId: agentId,
-      receiverAgentId: this.componentLeadId,
-      messageType: MessageEventType.STATUS_UPDATE,
-      priority: MessagePriority.NORMAL,
-      subject: `Specialist Registration`,
-      content: `${this.specialization} specialist is initialized and ready for assignments.`,
-      entityType: EntityType.WORKFLOW,
-      entityId: 'specialist-registration',
-      status: 'pending',
-      messageId: `reg-${Date.now()}`,
-      conversationId: null
-    });
+    console.log(`Specialist agent ${this.specialization} registering with component lead. Agent ID: ${agentId}`);
     
-    logger.info({ 
-      component: `${this.componentName} ${this.specialization} Agent`, 
-      message: `${this.specialization} specialist agent initialization complete`, 
-      agentId: this.agentId 
-    });
+    try {
+      await this.storage.createAgentMessage({
+        senderAgentId: agentId,
+        receiverAgentId: this.componentLeadId,
+        messageType: MessageEventType.STATUS_UPDATE,
+        priority: MessagePriority.NORMAL,
+        subject: `Specialist Registration`,
+        content: {
+          message: `${this.specialization} specialist is initialized and ready for assignments.`,
+          type: 'registration',
+          capabilities: this.capabilities
+        },
+        status: 'pending',
+        messageId: `reg-${Date.now()}`,
+        conversationId: null
+      });
+    } catch (error) {
+      console.error(`Error registering specialist agent (${this.specialization}):`, error);
+      // Continue execution even if registration fails - don't block initialization
+    }
+    
+    logger.info(`${this.componentName} ${this.specialization} Agent: ${this.specialization} specialist agent initialization complete (ID: ${this.agentId})`);
   }
 
   /**
    * Process tasks assigned by component lead
    */
   async processAssignedTask(task: string): Promise<string> {
-    logger.info({ 
-      component: `${this.componentName} ${this.specialization} Agent`, 
-      message: `Processing assigned task: ${task.substring(0, 50)}...` 
-    });
+    logger.info(`${this.componentName} ${this.specialization} Agent: Processing assigned task: ${task.substring(0, 50)}...`);
     
     // Simulate task execution time
     const executionTime = Math.floor(Math.random() * 1000) + 500; // 500-1500ms
@@ -131,10 +131,17 @@ export abstract class SpecialistAgent extends BaseAgent {
     `;
     
     // Report result to component lead
-    const agentId = this.id || this.agentId; // Make sure we have a valid ID
-    if (!agentId) {
-      console.error(`ERROR: Specialist agent ${this.specialization} has no valid ID when reporting task results!`);
-      throw new Error(`Specialist agent ${this.specialization} has no valid ID!`);
+    // Generate a fallback ID in case both id and agentId are missing or invalid
+    const fallbackId = `${this.componentName.toLowerCase()}_${this.specialization.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`;
+    let agentId = this.id || this.agentId || fallbackId; // Make sure we have a valid ID
+    
+    // Ensure agentId is not null, undefined, 'null', 'undefined', or empty string
+    if (!agentId || agentId === 'null' || agentId === 'undefined' || agentId.trim() === '') {
+      console.log(`WARNING: Specialist agent ${this.specialization} had invalid ID, using fallback: ${fallbackId}`);
+      agentId = fallbackId;
+      // Update the instance property to maintain consistency
+      this.agentId = fallbackId;
+      this.id = fallbackId;
     }
     
     await this.storage.createAgentMessage({
@@ -144,8 +151,7 @@ export abstract class SpecialistAgent extends BaseAgent {
       priority: MessagePriority.NORMAL,
       subject: `Task Execution Report`,
       content: result,
-      entityType: EntityType.WORKFLOW,
-      entityId: 'task-execution',
+
       status: 'pending',
       messageId: `result-${Date.now()}`,
       conversationId: null
@@ -153,11 +159,15 @@ export abstract class SpecialistAgent extends BaseAgent {
     
     // Log task completion
     await this.storage.createSystemActivity({
-      activity: `Executed assigned task`,
-      entityType: 'task-execution',
-      entityId: `task-${Date.now()}`,
+      activity_type: `task_executed`,
       component: `${this.componentName} ${this.specialization} Agent`,
-      details: result
+      status: 'info',
+      details: {
+        message: `Executed assigned task`,
+        task_result: result,
+        specialization: this.specialization,
+        executionTime: executionTime
+      }
     });
     
     return result;
@@ -167,10 +177,7 @@ export abstract class SpecialistAgent extends BaseAgent {
    * Request assistance from peers or component lead
    */
   async requestAssistance(issue: string): Promise<void> {
-    logger.info({ 
-      component: `${this.componentName} ${this.specialization} Agent`, 
-      message: `Requesting assistance: ${issue}` 
-    });
+    logger.info(`${this.componentName} ${this.specialization} Agent: Requesting assistance: ${issue}`);
     
     // Request help from component lead
     const agentId = this.id || this.agentId; // Make sure we have a valid ID
@@ -185,9 +192,13 @@ export abstract class SpecialistAgent extends BaseAgent {
       messageType: MessageEventType.ASSISTANCE_REQUESTED,
       priority: MessagePriority.HIGH,
       subject: `Assistance Request from ${this.specialization} specialist`,
-      content: issue,
-      entityType: EntityType.WORKFLOW,
-      entityId: 'assistance-request',
+      content: {
+        message: issue,
+        context: {
+          workflow: 'assistance-request',
+          requestedBy: this.specialization
+        }
+      },
       status: 'pending',
       messageId: `assist-${Date.now()}`,
       conversationId: null
@@ -198,10 +209,7 @@ export abstract class SpecialistAgent extends BaseAgent {
    * Report current status to component lead
    */
   async reportStatus(): Promise<Record<string, any>> {
-    logger.info({ 
-      component: `${this.componentName} ${this.specialization} Agent`, 
-      message: `Reporting status to component lead` 
-    });
+    logger.info(`${this.componentName} ${this.specialization} Agent: Reporting status to component lead`);
     
     const status = {
       agentId: this.agentId,
@@ -231,9 +239,7 @@ export abstract class SpecialistAgent extends BaseAgent {
       messageType: MessageEventType.STATUS_UPDATE,
       priority: MessagePriority.NORMAL,
       subject: `Status Report from ${this.specialization} specialist`,
-      content: JSON.stringify(status),
-      entityType: EntityType.WORKFLOW,
-      entityId: 'specialist-status',
+      content: status, // Pass the object directly, content should be a JSON-compatible object
       status: 'pending',
       messageId: `status-${Date.now()}`,
       conversationId: null
@@ -246,10 +252,7 @@ export abstract class SpecialistAgent extends BaseAgent {
    * Collaborate with peer specialists
    */
   async collaborateWithPeer(peerAgentId: string, collaborationTask: string): Promise<void> {
-    logger.info({ 
-      component: `${this.componentName} ${this.specialization} Agent`, 
-      message: `Collaborating with peer ${peerAgentId} on task: ${collaborationTask.substring(0, 50)}...` 
-    });
+    logger.info(`${this.componentName} ${this.specialization} Agent: Collaborating with peer ${peerAgentId} on task: ${collaborationTask.substring(0, 50)}...`);
     
     // Send collaboration request
     await this.storage.createAgentMessage({
@@ -258,9 +261,10 @@ export abstract class SpecialistAgent extends BaseAgent {
       messageType: MessageEventType.COMMAND,
       priority: MessagePriority.NORMAL,
       subject: `Collaboration Request`,
-      content: collaborationTask,
-      entityType: EntityType.WORKFLOW,
-      entityId: 'peer-collaboration',
+      content: {
+        task: collaborationTask,
+        type: 'peer-collaboration'
+      },
       status: 'pending',
       messageId: `collab-${Date.now()}`,
       conversationId: `collab-${Date.now()}`
@@ -273,9 +277,11 @@ export abstract class SpecialistAgent extends BaseAgent {
       messageType: MessageEventType.STATUS_UPDATE,
       priority: MessagePriority.LOW,
       subject: `Peer Collaboration Initiated`,
-      content: `Initiated collaboration with ${peerAgentId} on task: ${collaborationTask.substring(0, 50)}...`,
-      entityType: EntityType.WORKFLOW,
-      entityId: 'peer-collaboration',
+      content: {
+        message: `Initiated collaboration with ${peerAgentId} on task: ${collaborationTask.substring(0, 50)}...`,
+        peerAgentId: peerAgentId,
+        collaborationType: 'peer-collaboration'
+      },
       status: 'pending',
       messageId: `collab-info-${Date.now()}`,
       conversationId: null

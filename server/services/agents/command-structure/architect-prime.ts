@@ -12,11 +12,11 @@ import { MCPService } from '../../../services/mcp';
  * Provides guidance to the Integration Coordinator and Component Lead agents.
  */
 export class ArchitectPrimeAgent extends BaseAgent {
-  private agentId: string = 'architect_prime';
-  
   constructor(storage: IStorage, mcpService?: MCPService) {
+    const agentId = 'architect_prime';
+    
     const config: AgentConfig = {
-      id: 'architect_prime',
+      id: agentId,
       name: 'Architect Prime',
       description: 'The highest level agent in the command structure that maintains architectural vision and system integrity.',
       capabilities: [
@@ -54,6 +54,14 @@ export class ArchitectPrimeAgent extends BaseAgent {
     };
     
     super(storage, mcpService || {} as MCPService, config);
+    
+    // Ensure both id and agentId are properly set
+    this.id = agentId;
+    this.agentId = agentId;
+    
+    console.log(`Creating agent message with agent ID: ${agentId}`, 
+      `Message has senderAgentId: ${this.agentId ? 'true' : 'false'}`, 
+      `Message has agentId: ${this.agentId ? 'true' : 'false'}`);
   }
 
   async initialize(): Promise<void> {
@@ -73,6 +81,17 @@ export class ArchitectPrimeAgent extends BaseAgent {
   async createDailyVisionStatement(): Promise<string> {
     logger.info({ component: 'Architect Prime Agent', message: 'Creating daily vision statement' });
     
+    // Generate a fallback agent ID if this.agentId is null or undefined
+    const fallbackAgentId = 'architect_prime_fallback';
+    if (!this.agentId || this.agentId === 'null' || this.agentId === 'undefined' || typeof this.agentId !== 'string') {
+      console.log(`WARNING: ArchitectPrimeAgent.agentId is invalid (${this.agentId}), using fallback ID: ${fallbackAgentId}`);
+      this.agentId = fallbackAgentId;
+      // Also update the id property to maintain consistency
+      this.id = fallbackAgentId;
+    }
+    
+    console.log(`ArchitectPrimeAgent.createDailyVisionStatement using agentId: ${this.agentId}, id: ${this.id}`);
+    
     const visionStatement = `
       BCBS GeoAssessment System Vision: 
       A state-of-the-art property assessment platform integrating geospatial data, 
@@ -91,15 +110,22 @@ export class ArchitectPrimeAgent extends BaseAgent {
     ];
 
     for (const leadId of componentLeads) {
+      // Ensure we have a valid agentId before calling createAgentMessage
+      const agentId = this.agentId || fallbackAgentId;
+      
       await this.storage.createAgentMessage({
-        senderAgentId: this.agentId,
+        senderAgentId: agentId,
         receiverAgentId: leadId,
         messageType: MessageEventType.COMMAND,
         priority: MessagePriority.HIGH,
         subject: 'Daily Vision Statement',
-        content: visionStatement,
-        entityType: EntityType.WORKFLOW,
-        entityId: 'system-vision',
+        content: {
+          message: visionStatement,
+          context: {
+            workflow: 'system-vision',
+            type: 'vision-statement'
+          }
+        },
         status: 'pending',
         messageId: `vision-${Date.now()}`,
         conversationId: null
@@ -107,15 +133,22 @@ export class ArchitectPrimeAgent extends BaseAgent {
     }
 
     // Also send to integration coordinator
+    // Ensure we have a valid agentId before calling createAgentMessage
+    const agentId = this.agentId || fallbackAgentId;
+      
     await this.storage.createAgentMessage({
-      senderAgentId: this.agentId,
+      senderAgentId: agentId,
       receiverAgentId: 'integration_coordinator',
       messageType: MessageEventType.COMMAND,
       priority: MessagePriority.HIGH,
       subject: 'Daily Vision Statement',
-      content: visionStatement,
-      entityType: EntityType.WORKFLOW,
-      entityId: 'system-vision',
+      content: {
+        message: visionStatement,
+        context: {
+          workflow: 'system-vision',
+          type: 'vision-statement'
+        }
+      },
       status: 'pending',
       messageId: `vision-${Date.now()}`,
       conversationId: null
@@ -180,30 +213,56 @@ export class ArchitectPrimeAgent extends BaseAgent {
       message: `Resolving architectural conflict between ${componentA} and ${componentB}`
     });
     
+    // Generate a fallback agent ID if this.agentId is null or undefined
+    const fallbackAgentId = 'architect_prime_fallback';
+    if (!this.agentId || this.agentId === 'null' || this.agentId === 'undefined' || typeof this.agentId !== 'string') {
+      console.log(`WARNING: ArchitectPrimeAgent.agentId is invalid (${this.agentId}), using fallback ID: ${fallbackAgentId}`);
+      this.agentId = fallbackAgentId;
+      // Also update the id property to maintain consistency
+      this.id = fallbackAgentId;
+    }
+    
+    console.log(`ArchitectPrimeAgent.resolveArchitecturalConflict using agentId: ${this.agentId}, id: ${this.id}`);
+    
+    // Ensure we have a valid agentId
+    const agentId = this.agentId || fallbackAgentId;
+    
     // Request information from both components
     await this.storage.createAgentMessage({
-      senderAgentId: this.agentId,
+      senderAgentId: agentId,
       receiverAgentId: `${componentA}_lead`,
       messageType: MessageEventType.QUERY,
       priority: MessagePriority.URGENT,
       subject: `Architectural Conflict Resolution`,
-      content: `Please provide details about your component's requirements regarding: ${conflictDescription}`,
-      entityType: EntityType.WORKFLOW,
-      entityId: 'conflict-resolution',
+      content: {
+        message: `Please provide details about your component's requirements regarding: ${conflictDescription}`,
+        context: {
+          workflow: 'conflict-resolution',
+          componentA,
+          componentB,
+          conflictDescription
+        }
+      },
       status: 'pending',
       messageId: `conflict-${Date.now()}-a`,
       conversationId: `conflict-${Date.now()}`
     });
 
     await this.storage.createAgentMessage({
-      senderAgentId: this.agentId,
+      senderAgentId: agentId,
       receiverAgentId: `${componentB}_lead`,
       messageType: MessageEventType.QUERY,
       priority: MessagePriority.URGENT,
       subject: `Architectural Conflict Resolution`,
-      content: `Please provide details about your component's requirements regarding: ${conflictDescription}`,
-      entityType: EntityType.WORKFLOW,
-      entityId: 'conflict-resolution',
+      content: {
+        message: `Please provide details about your component's requirements regarding: ${conflictDescription}`,
+        context: {
+          workflow: 'conflict-resolution',
+          componentA,
+          componentB,
+          conflictDescription
+        }
+      },
       status: 'pending',
       messageId: `conflict-${Date.now()}-b`,
       conversationId: `conflict-${Date.now()}`
@@ -219,15 +278,22 @@ export class ArchitectPrimeAgent extends BaseAgent {
     `;
 
     // Notify all involved parties
+    // Use the same agentId we defined earlier
     await this.storage.createAgentMessage({
-      senderAgentId: this.agentId,
+      senderAgentId: agentId,
       receiverAgentId: 'integration_coordinator',
       messageType: MessageEventType.STATUS_UPDATE,
       priority: MessagePriority.HIGH,
       subject: `Conflict Resolution: ${componentA} and ${componentB}`,
-      content: resolution,
-      entityType: EntityType.WORKFLOW,
-      entityId: 'conflict-resolution',
+      content: {
+        resolution,
+        context: {
+          workflow: 'conflict-resolution',
+          componentA,
+          componentB,
+          conflictDescription
+        }
+      },
       status: 'pending',
       messageId: `resolution-${Date.now()}`,
       conversationId: null
