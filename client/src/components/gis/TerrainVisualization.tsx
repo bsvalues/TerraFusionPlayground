@@ -19,7 +19,8 @@ import {
   Droplets, 
   ChevronDown, 
   Eye, 
-  Compass 
+  Compass,
+  Box
 } from 'lucide-react';
 import { useGIS } from '@/contexts/gis-context';
 import { cn } from '@/lib/utils';
