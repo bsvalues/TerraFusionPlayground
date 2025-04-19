@@ -1,7 +1,20 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Search, Layers, Maximize, Info, Map as MapIcon, PenTool, Settings } from "lucide-react";
-import { useState } from "react";
+import { 
+  Search, 
+  Layers, 
+  Maximize, 
+  Info, 
+  Map as MapIcon, 
+  PenTool, 
+  Settings, 
+  Mountain, 
+  BarChart4, 
+  Share2,
+  Download,
+  Ruler
+} from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import QGISMap from "@/components/gis/QGISMap";
 import GISControlPanel from "@/components/gis/GISControlPanel";
 import { GISProvider } from "@/contexts/gis-context";
@@ -14,12 +27,25 @@ import {
   TooltipTrigger
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import TerrainVisualization from "@/components/gis/TerrainVisualization";
+import PredictiveAnalysisLayer from "@/components/gis/PredictiveAnalysisLayer";
+import Map from 'ol/Map';
 
 const GISMap = () => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [activeTab, setActiveTab] = useState("map");
   const [baseMapType, setBaseMapType] = useState<'osm' | 'satellite' | 'terrain'>('osm');
   const { currentProvider, providers, setCurrentProvider } = useMapProvider();
+  const [map, setMap] = useState<Map | null>(null);
+  const [showTerrainVisualization, setShowTerrainVisualization] = useState(false);
+  const [showPredictiveAnalysis, setShowPredictiveAnalysis] = useState(false);
+  const [activeVisualization, setActiveVisualization] = useState<'none' | 'terrain' | 'predictive'>('none');
+  
+  // Pass map instance from QGISMap to parent component
+  const handleMapInit = (mapInstance: Map) => {
+    setMap(mapInstance);
+  };
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -30,6 +56,30 @@ const GISMap = () => {
   // Handle basemap type changes
   const handleBaseMapChange = (type: 'osm' | 'satellite' | 'terrain') => {
     setBaseMapType(type);
+  };
+  
+  // Toggle terrain visualization
+  const toggleTerrainVisualization = () => {
+    if (activeVisualization === 'terrain') {
+      setActiveVisualization('none');
+      setShowTerrainVisualization(false);
+    } else {
+      setActiveVisualization('terrain');
+      setShowTerrainVisualization(true);
+      setShowPredictiveAnalysis(false);
+    }
+  };
+  
+  // Toggle predictive analysis layer
+  const togglePredictiveAnalysis = () => {
+    if (activeVisualization === 'predictive') {
+      setActiveVisualization('none');
+      setShowPredictiveAnalysis(false);
+    } else {
+      setActiveVisualization('predictive');
+      setShowPredictiveAnalysis(true);
+      setShowTerrainVisualization(false);
+    }
   };
 
   return (
@@ -56,7 +106,23 @@ const GISMap = () => {
                 <div className="mt-2">
                   <TabsContent value="map" className="m-0">
                     <div className="h-[450px] rounded overflow-hidden border border-secondary-gray relative">
-                      <QGISMap baseMapType={baseMapType} />
+                      <QGISMap baseMapType={baseMapType} onMapInit={handleMapInit} />
+                      
+                      {/* Advanced visualization layers */}
+                      {map && showTerrainVisualization && (
+                        <TerrainVisualization 
+                          map={map} 
+                          showControls={true}
+                        />
+                      )}
+                      
+                      {map && showPredictiveAnalysis && (
+                        <PredictiveAnalysisLayer 
+                          map={map} 
+                          onClose={() => setShowPredictiveAnalysis(false)} 
+                        />
+                      )}
+                      
                       <Badge variant="outline" className="absolute top-2 left-2 bg-white/80 text-primary font-medium px-2 py-1 text-xs">
                         <span className="text-green-600 mr-1">▲</span> QGIS Open Source
                       </Badge>
@@ -88,6 +154,56 @@ const GISMap = () => {
                           Terrain
                         </Button>
                       </div>
+                      
+                      {/* Advanced visualization toggle panel */}
+                      <div className="absolute bottom-2 left-2 bg-white/90 rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                        <div className="p-2">
+                          <h4 className="text-xs font-semibold text-primary mb-2">Advanced Visualization</h4>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant={activeVisualization === 'terrain' ? 'default' : 'outline'}
+                              className="h-8 text-xs"
+                              onClick={toggleTerrainVisualization}
+                            >
+                              <Mountain className="h-3 w-3 mr-1" /> 3D Terrain
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={activeVisualization === 'predictive' ? 'default' : 'outline'}
+                              className="h-8 text-xs"
+                              onClick={togglePredictiveAnalysis}
+                            >
+                              <BarChart4 className="h-3 w-3 mr-1" /> AI Predictions
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Export tools */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="absolute bottom-2 right-2 h-8 text-xs bg-white/90"
+                          >
+                            <Download className="h-3 w-3 mr-1" /> Export
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="text-xs">
+                          <DropdownMenuItem>
+                            <Download className="h-3 w-3 mr-2" /> Export as PNG
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Download className="h-3 w-3 mr-2" /> Export as PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem>
+                            <Share2 className="h-3 w-3 mr-2" /> Share Map
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <TooltipProvider>

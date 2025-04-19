@@ -24,13 +24,15 @@ interface QGISMapProps {
   showControls?: boolean;
   interactive?: boolean;
   baseMapType?: 'osm' | 'satellite' | 'terrain';
+  onMapInit?: (map: Map) => void;
 }
 
 const QGISMap = ({
   className = '',
   showControls = true,
   interactive = true,
-  baseMapType: initialBaseMapType = 'osm'
+  baseMapType: initialBaseMapType = 'osm',
+  onMapInit
 }: QGISMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const map = useRef<Map | null>(null);
@@ -121,6 +123,11 @@ const QGISMap = ({
       // Set map as loaded
       setMapLoaded(true);
       
+      // Call onMapInit callback if provided
+      if (onMapInit && map.current) {
+        onMapInit(map.current);
+      }
+      
       // Update center and zoom when view changes
       map.current.getView().on('change:center', () => {
         if (map.current) {
@@ -147,7 +154,7 @@ const QGISMap = ({
         map.current = null;
       }
     };
-  }, [contextBaseMapType, center, zoom]);
+  }, [contextBaseMapType, center, zoom, onMapInit]);
 
   // Update map when center or zoom changes
   useEffect(() => {
