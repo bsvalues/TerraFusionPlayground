@@ -34,6 +34,7 @@ import DatabaseConversionPage from "@/pages/database-conversion-page";
 import ClusteringDemoPage from "@/pages/clustering-demo";
 import AdvancedClusteringDemoPage from "@/pages/advanced-clustering-demo";
 import Terrain3DDemoPage from "@/pages/terrain-3d-demo";
+import GISHubPage from "@/pages/gis/index";
 import AppLayout from "@/layout/app-layout";
 
 
@@ -176,6 +177,13 @@ function Router() {
       <Route path="/database-conversion">
         <AppLayout>
           <DatabaseConversionPage />
+        </AppLayout>
+      </Route>
+      
+      {/* GIS Routes */}
+      <Route path="/gis">
+        <AppLayout>
+          <GISHubPage />
         </AppLayout>
       </Route>
       

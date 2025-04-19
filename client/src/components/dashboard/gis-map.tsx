@@ -12,9 +12,11 @@ import {
   BarChart4, 
   Share2,
   Download,
-  Ruler
+  Ruler,
+  ExternalLink
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { Link } from "wouter";
 import QGISMap from "@/components/gis/QGISMap";
 import GISControlPanel from "@/components/gis/GISControlPanel";
 import { GISProvider } from "@/contexts/gis-context";
@@ -276,6 +278,27 @@ const GISMap = () => {
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>Get AI-powered insights for this area</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="flex items-center"
+                              asChild
+                            >
+                              <Link to="/gis">
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                GIS Hub
+                              </Link>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Open the GIS Analysis Hub with advanced features</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
