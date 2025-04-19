@@ -132,20 +132,20 @@ const Dashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="pb-2">
-                <ul className="space-y-1 text-sm text-muted-foreground">
+                <ul className="space-y-1 text-sm text-primary-blue-dark/70">
                   <li className="flex items-center">
-                    <span className="mr-2">•</span> AI-assisted coding environment
+                    <span className="mr-2 text-primary-teal">•</span> AI-assisted coding environment
                   </li>
                   <li className="flex items-center">
-                    <span className="mr-2">•</span> Component library & templates
+                    <span className="mr-2 text-primary-teal">•</span> Component library & templates
                   </li>
                   <li className="flex items-center">
-                    <span className="mr-2">•</span> Collaborative development
+                    <span className="mr-2 text-primary-teal">•</span> Collaborative development
                   </li>
                 </ul>
               </CardContent>
               <CardFooter>
-                <Button className="w-full" asChild>
+                <Button className="w-full bg-primary-blue-dark hover:bg-primary-blue text-white" asChild>
                   <Link href="/development">
                     Open Development Platform
                   </Link>
@@ -167,20 +167,20 @@ const Dashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="pb-2">
-                <ul className="space-y-1 text-sm text-muted-foreground">
+                <ul className="space-y-1 text-sm text-primary-blue-dark/70">
                   <li className="flex items-center">
-                    <span className="mr-2">•</span> AI-powered schema analysis
+                    <span className="mr-2 text-primary-teal">•</span> AI-powered schema analysis
                   </li>
                   <li className="flex items-center">
-                    <span className="mr-2">•</span> Secure data transformation
+                    <span className="mr-2 text-primary-teal">•</span> Secure data transformation
                   </li>
                   <li className="flex items-center">
-                    <span className="mr-2">•</span> Multiple database support
+                    <span className="mr-2 text-primary-teal">•</span> Multiple database support
                   </li>
                 </ul>
               </CardContent>
               <CardFooter>
-                <Button className="w-full" asChild>
+                <Button className="w-full bg-primary-blue-dark hover:bg-primary-blue text-white" asChild>
                   <Link href="/database-conversion">
                     Open Database Conversion
                   </Link>
@@ -189,33 +189,33 @@ const Dashboard = () => {
             </Card>
 
             {/* Assessment Workbench Card */}
-            <Card className="hover:border-primary/50 hover:shadow-md transition-all duration-300">
+            <Card className="hover:border-primary-blue/50 hover:shadow-md transition-all duration-300 border border-primary-blue-light/20">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <div className="rounded-full bg-primary/10 p-2">
-                    <Laptop className="h-5 w-5 text-primary"/>
+                  <div className="rounded-full bg-primary-teal/10 p-2">
+                    <Laptop className="h-5 w-5 text-primary-teal"/>
                   </div>
                 </div>
-                <CardTitle className="mt-2">Assessment Workbench</CardTitle>
-                <CardDescription>
+                <CardTitle className="mt-2 tf-font-heading text-primary-blue-dark">Assessment Workbench</CardTitle>
+                <CardDescription className="tf-font-body text-primary-blue">
                   Design and test assessment models with AI assistance
                 </CardDescription>
               </CardHeader>
               <CardContent className="pb-2">
-                <ul className="space-y-1 text-sm text-muted-foreground">
+                <ul className="space-y-1 text-sm text-primary-blue-dark/70">
                   <li className="flex items-center">
-                    <span className="mr-2">•</span> Model builder interface
+                    <span className="mr-2 text-primary-teal">•</span> Model builder interface
                   </li>
                   <li className="flex items-center">
-                    <span className="mr-2">•</span> Validation & testing tools
+                    <span className="mr-2 text-primary-teal">•</span> Validation & testing tools
                   </li>
                   <li className="flex items-center">
-                    <span className="mr-2">•</span> Performance analysis
+                    <span className="mr-2 text-primary-teal">•</span> Performance analysis
                   </li>
                 </ul>
               </CardContent>
               <CardFooter>
-                <Button className="w-full" asChild>
+                <Button className="w-full bg-primary-blue-dark hover:bg-primary-blue text-white" asChild>
                   <Link href="/development/assessment-workbench">
                     Open Assessment Workbench
                   </Link>

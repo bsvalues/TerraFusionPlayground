@@ -29,10 +29,10 @@ const KPICard: React.FC<KPICardProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <Card className="bg-white overflow-hidden shadow animate-pulse">
+      <Card className="bg-white overflow-hidden shadow-md animate-pulse border border-primary-blue-light/20">
         <CardContent className="p-6">
-          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-          <div className="h-8 bg-gray-200 rounded w-1/2 mt-4"></div>
+          <div className="h-4 bg-primary-blue-light/20 rounded w-3/4"></div>
+          <div className="h-8 bg-primary-blue-light/10 rounded w-1/2 mt-4"></div>
         </CardContent>
       </Card>
     );
@@ -40,10 +40,10 @@ const KPICard: React.FC<KPICardProps> = ({
 
   if (error) {
     return (
-      <Card className="bg-white overflow-hidden shadow border-red-200">
+      <Card className="bg-white overflow-hidden shadow-md border-red-200 border">
         <CardContent className="p-6">
-          <h3 className="text-lg text-gray-600">{title}</h3>
-          <p className="text-red-500 mt-2">{error}</p>
+          <h3 className="text-lg text-primary-blue-dark tf-font-heading">{title}</h3>
+          <p className="text-red-500 mt-2 tf-font-body">{error}</p>
         </CardContent>
       </Card>
     );

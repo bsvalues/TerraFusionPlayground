@@ -128,9 +128,9 @@ const TopNavigation = () => {
               
               {isExtensionsMenuOpen && (
                 <div 
-                  className="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
+                  className="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-white ring-1 ring-primary-blue-light/20 focus:outline-none"
                 >
-                  <div className="py-1">
+                  <div className="py-1 text-primary-blue-dark tf-font-body">
                     <ExtensionMenuItems onItemClick={() => setIsExtensionsMenuOpen(false)} />
                   </div>
                 </div>
@@ -155,11 +155,11 @@ const TopNavigation = () => {
               
               {isDropdownOpen && (
                 <div 
-                  className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none text-gray-700"
+                  className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-primary-blue-light/20 focus:outline-none text-primary-blue-dark tf-font-body"
                 >
-                  <a href="#" className="block px-4 py-2 text-sm hover:bg-gray-100">Your Profile</a>
-                  <a href="#" className="block px-4 py-2 text-sm hover:bg-gray-100">Settings</a>
-                  <a href="#" className="block px-4 py-2 text-sm hover:bg-gray-100">Sign out</a>
+                  <a href="#" className="block px-4 py-2 text-sm hover:bg-primary-blue-light/5 transition-colors">Your Profile</a>
+                  <a href="#" className="block px-4 py-2 text-sm hover:bg-primary-blue-light/5 transition-colors">Settings</a>
+                  <a href="#" className="block px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors">Sign out</a>
                 </div>
               )}
             </div>
