@@ -14,20 +14,20 @@
 export async function importOlExt(importPath: string) {
   try {
     // Try the standard import path first
-    /* @vite-ignore */
+    // @vite-ignore
     return await import(`ol-ext/${importPath}`);
   } catch (error) {
     console.error(`Failed to import ol-ext/${importPath}:`, error);
     try {
       // Try the dist folder as fallback
-      /* @vite-ignore */
+      // @vite-ignore
       return await import(`ol-ext/dist/${importPath}`);
     } catch (fallbackError) {
       console.error(`Failed to import ol-ext/dist/${importPath}:`, fallbackError);
       
       // Final fallback approach - try with default export handling
       try {
-        /* @vite-ignore */
+        // @vite-ignore
         const module = await import(`ol-ext/dist/${importPath}`);
         return { default: module.default || module };
       } catch (finalError) {

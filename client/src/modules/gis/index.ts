@@ -6,6 +6,7 @@
  * - Advanced Clustering
  * - Viewshed Analysis
  * - Property Extrusion
+ * - QGIS Integration
  * 
  * The module is designed to be self-contained with its own components,
  * contexts, utilities, and pages.
@@ -23,3 +24,6 @@ export { useGIS, GISProvider } from './contexts/GISContext';
 
 // Export utilities
 export * from './utils/ol-ext-utils';
+
+// Export services
+export { MapProviderService } from './services/MapProviderService';
