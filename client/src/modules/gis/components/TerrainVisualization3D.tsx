@@ -238,38 +238,7 @@ const TerrainVisualization3D = ({
     if (!terrainMapRef.current) return;
     
     try {
-      // Import ol-ext components dynamically
-      const elevationModule = await importOlExt('control/Elevation');
-      const elevationFilterModule = await importOlExt('filter/Elevation');
-      
-      // Add elevation profile if enabled
-      if (showElevationProfile && profileContainerRef.current && elevationModule?.default) {
-        try {
-          // Remove any existing elevation profile
-          if (elevationProfile) {
-            terrainMapRef.current.removeControl(elevationProfile);
-          }
-          
-          const profile = new elevationModule.default({
-            target: profileContainerRef.current,
-            style: {
-              fillColor: 'rgba(0,128,255,0.2)',
-              strokeColor: 'rgba(0,128,255,0.8)',
-              lineWidth: 2
-            }
-          });
-          
-          terrainMapRef.current.addControl(profile);
-          setElevationProfile(profile);
-        } catch (e) {
-          console.error('Failed to initialize elevation profile:', e);
-        }
-      }
-      
-      // Apply elevation visualization based on selected mode
-      if (elevationFilterModule?.default) {
-        applyElevationMode(elevationMode, elevationFilterModule.default);
-      }
+      console.log("Initializing terrain layers");
       
       // Initialize 3D property extrusion if enabled
       if (showPropertyExtrusion) {
@@ -287,73 +256,57 @@ const TerrainVisualization3D = ({
         setViewshedLayer(null);
       }
       
+      // For now, we'll add a basic overlay to simulate elevation visualization
+      // This is a temporary solution until we properly integrate ol-ext
+      if (elevationMode !== 'none' && terrainMapRef.current) {
+        console.log(`Setting elevation mode: ${elevationMode} (simulated)`);
+        
+        // Apply basic styling based on mode
+        const terrainLayer = terrainMapRef.current.getLayers().getArray()[0];
+        if (terrainLayer) {
+          switch(elevationMode) {
+            case 'gradient':
+              terrainLayer.setOpacity(0.9);
+              break;
+            case 'hillshade':
+              terrainLayer.setOpacity(1);
+              break;
+            case 'contour':
+              terrainLayer.setOpacity(0.8);
+              break;
+          }
+        }
+      }
+      
     } catch (error) {
       console.error('Error initializing terrain layers:', error);
     }
   };
   
   // Apply the selected elevation visualization mode
-  const applyElevationMode = (mode: ElevationMode, ElevationFilter: any) => {
+  const applyElevationMode = (mode: ElevationMode) => {
     if (!terrainMapRef.current) return;
     
     try {
-      // Remove existing filter if any
-      if (elevationFilter && terrainMapRef.current.getLayers().getArray()[0]) {
-        try {
-          // Use type assertion to handle the ol-ext specific methods
-          const terrainLayer = terrainMapRef.current.getLayers().getArray()[0] as any;
-          if (terrainLayer && typeof terrainLayer.removeFilter === 'function') {
-            terrainLayer.removeFilter(elevationFilter);
-          }
-          setElevationFilter(null);
-        } catch (e) {
-          console.error('Error removing filter:', e);
-        }
-      }
+      console.log(`Applying elevation mode: ${mode} (simulated)`);
       
-      // Apply new filter based on mode
-      if (mode !== 'none') {
-        // Use type assertion to access ol-ext specific methods
-        const terrainLayer = terrainMapRef.current.getLayers().getArray()[0] as any;
-        
-        let filter;
-        switch (mode) {
+      // Apply basic styling based on mode - this is a simplified version until ol-ext is properly integrated
+      const terrainLayer = terrainMapRef.current.getLayers().getArray()[0];
+      if (terrainLayer) {
+        // Apply simulated effects
+        switch(mode) {
           case 'gradient':
-            filter = new ElevationFilter({
-              colorScheme: [
-                { color: '#d8f2fa', level: 0 },   // Water level
-                { color: '#c8e6d0', level: 50 },  // Low elevation
-                { color: '#a4d8a5', level: 100 }, // Low hills
-                { color: '#73c378', level: 200 }, // Hills
-                { color: '#48ae5c', level: 350 }, // Mountains
-                { color: '#328a44', level: 500 }, // High mountains
-                { color: '#2a623a', level: 650 }, // Very high mountains
-                { color: '#eae5d9', level: 800 }  // Snow
-              ]
-            });
+            terrainLayer.setOpacity(0.9);
             break;
-            
           case 'hillshade':
-            filter = new ElevationFilter({
-              hillshading: true,
-              shading: getLightingIntensity(),
-              azimuth: getAzimuthAngle()
-            });
+            terrainLayer.setOpacity(1);
             break;
-            
           case 'contour':
-            filter = new ElevationFilter({
-              contours: true,
-              contourWidth: 0.5,
-              contourSteps: [100, 500],
-              contourColors: ['rgba(100, 100, 100, 0.5)', 'rgba(100, 100, 100, 1)']
-            });
+            terrainLayer.setOpacity(0.8);
             break;
-        }
-        
-        if (filter && terrainLayer && typeof terrainLayer.addFilter === 'function') {
-          terrainLayer.addFilter(filter);
-          setElevationFilter(filter);
+          case 'none':
+            terrainLayer.setOpacity(1);
+            break;
         }
       }
     } catch (e) {
@@ -610,14 +563,8 @@ const TerrainVisualization3D = ({
   
   // Handle elevation mode change
   useEffect(() => {
-    // Dynamically import ol-ext ElevationFilter component
-    importOlExt('filter/Elevation').then(module => {
-      if (module?.default) {
-        applyElevationMode(elevationMode, module.default);
-      }
-    }).catch(error => {
-      console.error('Error importing ElevationFilter:', error);
-    });
+    // Apply the elevation mode directly without depending on ol-ext
+    applyElevationMode(elevationMode);
   }, [elevationMode, lightingDirection, customLightingAngle, customLightingElevation]);
   
   // Handle elevation profile toggle
@@ -716,14 +663,8 @@ const TerrainVisualization3D = ({
       currentView.setZoom(currentZoom);
     }
     
-    // Re-apply elevation mode
-    importOlExt('filter/Elevation').then(module => {
-      if (module?.default) {
-        applyElevationMode(elevationMode, module.default);
-      }
-    }).catch(error => {
-      console.error('Error importing ElevationFilter:', error);
-    });
+    // Re-apply elevation mode directly
+    applyElevationMode(elevationMode);
   }, [terrainSource]);
   
   return (
