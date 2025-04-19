@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="240" height="60" viewBox="0 0 240 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- TerraFusion Logo -->
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1976D2" />
+      <stop offset="50%" stop-color="#388E3C" />
+      <stop offset="100%" stop-color="#00ACC1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Logo Symbol -->
+  <g transform="translate(10, 10)">
+    <path d="M20 0L40 20L20 40L0 20L20 0Z" fill="url(#logoGradient)" />
+    <circle cx="20" cy="20" r="10" fill="#FFFFFF" fill-opacity="0.3" />
+    <path d="M32 20C32 26.6274 26.6274 32 20 32C13.3726 32 8 26.6274 8 20" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
+  </g>
+  
+  <!-- Logo Text -->
+  <g transform="translate(60, 35)" fill="#1976D2">
+    <text font-family="Inter, sans-serif" font-size="22" font-weight="700">
+      Terra<tspan fill="#388E3C">Fusion</tspan>
+    </text>
+  </g>
+</svg>

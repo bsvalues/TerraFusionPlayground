@@ -1,3 +1,6 @@
+/* Import TerraFusion tokens */
+@import './styles/terrafusion-tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,5 +12,18 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+  
+  /* Apply TerraFusion font families */
+  .tf-font-display {
+    font-family: var(--font-display);
+  }
+  
+  .tf-font-body {
+    font-family: var(--font-body);
+  }
+  
+  .tf-font-mono {
+    font-family: var(--font-mono);
   }
 }

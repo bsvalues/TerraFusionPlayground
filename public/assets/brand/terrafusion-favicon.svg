@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- TerraFusion Favicon -->
+  <defs>
+    <linearGradient id="faviconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1976D2" />
+      <stop offset="60%" stop-color="#388E3C" />
+      <stop offset="100%" stop-color="#00ACC1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="64" height="64" rx="12" fill="url(#faviconGradient)" />
+  
+  <!-- Icon -->
+  <path d="M32 12L52 32L32 52L12 32L32 12Z" fill="white" fill-opacity="0.3" />
+  <circle cx="32" cy="32" r="12" fill="white" fill-opacity="0.2" />
+  <path d="M44 32C44 38.6274 38.6274 44 32 44C25.3726 44 20 38.6274 20 32" stroke="white" stroke-width="3" stroke-linecap="round" />
+</svg>

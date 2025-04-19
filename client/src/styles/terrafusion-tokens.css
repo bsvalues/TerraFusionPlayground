@@ -1,0 +1,95 @@
+/**
+ * TerraFusion Design Tokens
+ * CSS Custom Properties (Variables)
+ */
+
+:root {
+  /* Font Families */
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  /* Primary Colors */
+  --color-primary-blue: hsl(210, 100%, 45%);
+  --color-primary-blue-light: hsl(210, 100%, 55%);
+  --color-primary-blue-dark: hsl(210, 100%, 35%);
+  --color-primary-green: hsl(145, 63%, 42%);
+  --color-primary-green-light: hsl(145, 63%, 52%);
+  --color-primary-green-dark: hsl(145, 63%, 32%);
+  --color-primary-orange: hsl(30, 100%, 50%);
+  --color-primary-orange-light: hsl(30, 100%, 60%);
+  --color-primary-orange-dark: hsl(30, 100%, 40%);
+  --color-primary-red: hsl(0, 85%, 55%);
+  --color-primary-red-light: hsl(0, 85%, 65%);
+  --color-primary-red-dark: hsl(0, 85%, 45%);
+
+  /* Secondary Colors */
+  --color-secondary-blue: hsl(210, 100%, 65%);
+  --color-secondary-blue-light: hsl(210, 100%, 85%);
+  --color-secondary-green: hsl(145, 63%, 62%);
+  --color-secondary-green-light: hsl(145, 63%, 82%);
+  --color-secondary-orange: hsl(30, 100%, 70%);
+  --color-secondary-orange-light: hsl(30, 100%, 90%);
+  --color-secondary-red: hsl(0, 85%, 75%);
+  --color-secondary-red-light: hsl(0, 85%, 95%);
+
+  /* Neutral Colors */
+  --color-black: hsl(210, 10%, 10%);
+  --color-white: hsl(210, 10%, 98%);
+  --color-primary-gray-dark: hsl(210, 10%, 25%);
+  --color-primary-gray: hsl(210, 10%, 50%);
+  --color-primary-gray-light: hsl(210, 10%, 75%);
+  --color-secondary-gray-ultralight: hsl(210, 10%, 95%);
+  --color-secondary-gray-light: hsl(210, 10%, 90%);
+  --color-secondary-gray: hsl(210, 10%, 85%);
+
+  /* Accent Colors */
+  --color-accent-teal: hsl(180, 70%, 45%);
+  --color-accent-purple: hsl(270, 70%, 55%);
+  --color-accent-gold: hsl(45, 90%, 50%);
+
+  /* System Colors */
+  --color-success: hsl(145, 80%, 42%);
+  --color-warning: hsl(45, 100%, 50%);
+  --color-error: hsl(0, 85%, 55%);
+  --color-info: hsl(210, 100%, 55%);
+
+  /* Background Colors */
+  --color-background-light: hsl(210, 10%, 98%);
+  --color-background-dark: hsl(210, 15%, 12%);
+
+  /* Surface Colors */
+  --color-surface-light: hsl(0, 0%, 100%);
+  --color-surface-dark: hsl(210, 15%, 18%);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+
+  /* Border Radius */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Override any variables that need adjustments in dark mode */
+  }
+}
+
+/* Class for forcing dark mode */
+.dark-mode {
+  --color-background: var(--color-background-dark);
+  --color-surface: var(--color-surface-dark);
+  /* Add other dark mode overrides as needed */
+}

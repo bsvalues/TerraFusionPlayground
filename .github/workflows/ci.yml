@@ -1,0 +1,97 @@
+name: TerraFusion CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Lint code
+        run: npm run lint
+        
+      - name: Run tests
+        run: npm test
+        
+      - name: Build project
+        run: npm run build
+  
+  security_scanning:
+    name: Security Scanning
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Run Trivy filesystem scan
+        uses: ./.github/workflows/trivy
+        with:
+          scan_type: 'fs'
+          target_directory: '.'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output_file: 'trivy-results.sarif'
+          fail_on_detection: false
+      
+  security_scan_deployed:
+    name: Security Scan Deployed Application
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build, security_scanning]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Run ZAP baseline scan
+        uses: ./.github/workflows/zap
+        with:
+          target_url: ${{ secrets.DEPLOYMENT_URL }}
+          scan_type: 'baseline'
+          fail_action: false
+
+  deploy:
+    name: Deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build, security_scanning]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build project
+        run: npm run build
+        
+      # Add your deployment steps here
+      # This section will vary depending on your deployment platform
+      - name: Deploy to production
+        run: echo "Deployment steps go here"

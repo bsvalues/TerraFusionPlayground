@@ -1,0 +1,57 @@
+name: ZAP Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      target_url:
+        required: true
+        type: string
+        description: "URL to scan"
+      fail_action:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to fail the action if vulnerabilities are found"
+      rules_file_name:
+        required: false
+        type: string
+        default: ""
+        description: "Name of ZAP rules configuration file"
+      scan_type:
+        required: false
+        type: string
+        default: "baseline"
+        description: "Type of scan: baseline, full, or api"
+
+jobs:
+  zap_scan:
+    name: ZAP Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: ZAP Baseline Scan
+        if: inputs.scan_type == 'baseline'
+        uses: zaproxy/action-baseline@v0.7.0
+        with:
+          target: ${{ inputs.target_url }}
+          rules_file_name: ${{ inputs.rules_file_name }}
+          fail_action: ${{ inputs.fail_action }}
+          
+      - name: ZAP Full Scan
+        if: inputs.scan_type == 'full'
+        uses: zaproxy/action-full-scan@v0.4.0
+        with:
+          target: ${{ inputs.target_url }}
+          rules_file_name: ${{ inputs.rules_file_name }}
+          fail_action: ${{ inputs.fail_action }}
+          
+      - name: ZAP API Scan
+        if: inputs.scan_type == 'api'
+        uses: zaproxy/action-api-scan@v0.1.1
+        with:
+          target: ${{ inputs.target_url }}
+          rules_file_name: ${{ inputs.rules_file_name }}
+          fail_action: ${{ inputs.fail_action }}

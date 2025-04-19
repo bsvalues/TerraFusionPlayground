@@ -1,0 +1,91 @@
+name: Trivy Security Scanner
+
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        required: false
+        type: string
+        description: "The container image to scan (if scanning a container)"
+      scan_type:
+        required: false
+        type: string
+        default: "fs"
+        description: "Type of scan: fs (filesystem), image (container), repo (repository)"
+      target_directory:
+        required: false
+        type: string
+        default: "."
+        description: "Target directory for filesystem scan"
+      severity:
+        required: false
+        type: string
+        default: "CRITICAL,HIGH"
+        description: "Severities to detect (CRITICAL,HIGH,MEDIUM,LOW)"
+      fail_on_detection:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to fail the workflow if vulnerabilities are found"
+      exit_code:
+        required: false
+        type: string
+        default: "1"
+        description: "Exit code when vulnerabilities are found"
+      format:
+        required: false
+        type: string
+        default: "table"
+        description: "Output format (table, json, sarif)"
+      output_file:
+        required: false
+        type: string
+        default: "trivy-results.sarif"
+        description: "Output file name"
+
+jobs:
+  trivy_scan:
+    name: Trivy Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      # Filesystem scan
+      - name: Run Trivy filesystem scan
+        if: inputs.scan_type == 'fs'
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: ${{ inputs.target_directory }}
+          format: ${{ inputs.format }}
+          output: ${{ inputs.output_file }}
+          severity: ${{ inputs.severity }}
+          exit-code: ${{ inputs.exit_code }}
+      
+      # Container image scan
+      - name: Run Trivy container scan
+        if: inputs.scan_type == 'image' && inputs.image_name != ''
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'image'
+          image-ref: ${{ inputs.image_name }}
+          format: ${{ inputs.format }}
+          output: ${{ inputs.output_file }}
+          severity: ${{ inputs.severity }}
+          exit-code: ${{ inputs.exit_code }}
+      
+      # Upload scan results if in SARIF format
+      - name: Upload SARIF file
+        if: inputs.format == 'sarif'
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: ${{ inputs.output_file }}
+          
+      # Fail the workflow if vulnerabilities are found and fail_on_detection is true
+      - name: Fail on vulnerability detection
+        if: ${{ inputs.fail_on_detection && steps.trivy.outcome == 'failure' }}
+        run: |
+          echo "Critical or high vulnerabilities detected in the scan!"
+          exit 1
