@@ -1,23 +1,25 @@
-import { useEffect, useState, useRef } from 'react';
-import Map from 'ol/Map';
+import { useEffect, useRef, useState } from 'react';
+import { Map } from 'ol';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
-import Feature from 'ol/Feature';
-import Point from 'ol/geom/Point';
-import { fromLonLat } from 'ol/proj';
-import Cluster from 'ol/source/Cluster';
-import { Circle as CircleStyle, Fill, Stroke, Style, Text } from 'ol/style';
-import { easeOut } from 'ol/easing';
-import { StyleFunction } from 'ol/style/Style';
-import Geometry from 'ol/geom/Geometry';
-import { FeatureLike } from 'ol/Feature';
+import { Cluster } from 'ol/source';
+import { Feature } from 'ol';
+import { Point } from 'ol/geom';
+import { Style, Circle as CircleStyle, Fill, Stroke, Text } from 'ol/style';
 import { useGIS } from '@/contexts/gis-context';
-import { cn } from '@/lib/utils';
+import { fromLonLat } from 'ol/proj';
+import type { StyleFunction } from 'ol/style/Style';
+import type { FeatureLike } from 'ol/Feature';
+import type { Geometry } from 'ol/geom';
 
 // Animation duration in milliseconds
 const ANIMATION_DURATION = 500;
 
-// Interface for data points
+// Easing function for animations
+const easeOut = (t: number): number => {
+  return t * (2 - t);
+};
+
 interface DataPoint {
   id: string;
   position: [number, number]; // [longitude, latitude]
@@ -52,42 +54,44 @@ interface AnimatedClusterLayerProps {
  * - Supports custom styling and interaction
  */
 const AnimatedClusterLayer = ({
-  className,
-  map,
+  map: externalMap,
   data = [],
   distance = 40,
   minDistance = 20,
   maxZoom = 19,
-  initialOpacity = 0.8,
-  primaryColor = '#3C91E6',
-  secondaryColor = '#6FB1F4',
-  textColor = '#FFFFFF',
-  strokeColor = '#FFFFFF',
+  initialOpacity = 1,
+  primaryColor = 'rgba(33, 150, 243, 0.8)',
+  secondaryColor = 'rgba(76, 175, 80, 0.8)',
+  textColor = '#fff',
+  strokeColor = '#fff',
   animationEnabled = true,
-  onClusterClick
+  onClusterClick,
 }: AnimatedClusterLayerProps) => {
-  // GIS context for accessing the map if not provided as prop
-  const { map: contextMap } = useGIS();
-  const activeMap = map || contextMap;
+  // State and refs
+  const [opacity, setOpacity] = useState(initialOpacity);
+  const vectorLayerRef = useRef<VectorLayer<VectorSource>>();
+  const clusterSourceRef = useRef<Cluster>();
+  const animatingRef = useRef(false);
+  const animationFrameRef = useRef<number>();
+  const { center, zoom } = useGIS();
   
-  // References and state
-  const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
-  const clusterSourceRef = useRef<Cluster | null>(null);
-  const animatingRef = useRef<boolean>(false);
-  const [opacity, setOpacity] = useState<number>(initialOpacity);
-  const animationFrameRef = useRef<number | null>(null);
-
+  // Use externally provided map instance
+  const activeMap = externalMap;
+  
   // Convert data points to features
-  const createFeatures = (dataPoints: DataPoint[]): Feature[] => {
+  const createFeatures = (dataPoints: DataPoint[]) => {
     return dataPoints.map(point => {
+      const { id, position, properties } = point;
+      
+      // Create feature with Point geometry
       const feature = new Feature({
-        geometry: new Point(fromLonLat(point.position)),
-        ...point.properties,
-        id: point.id
+        geometry: new Point(fromLonLat(position)),
+        originalCoordinates: position,
+        properties: properties
       });
       
-      // Store original coordinates as property for animation
-      feature.set('originalCoordinates', fromLonLat(point.position));
+      // Set feature ID
+      feature.setId(id);
       
       return feature;
     });
@@ -178,12 +182,14 @@ const AnimatedClusterLayer = ({
     // Handle click events on clusters
     if (onClusterClick) {
       const clickHandler = (event: any) => {
-        activeMap.forEachFeatureAtPixel(event.pixel, (feature) => {
-          const features = feature.get('features');
+        activeMap.forEachFeatureAtPixel(event.pixel, (clickedFeature: FeatureLike) => {
+          // We need to handle both Feature and RenderFeature types
+          const features = clickedFeature.get('features');
           if (features && features.length > 1) {
-            const geometry = feature.getGeometry();
+            const geometry = clickedFeature.getGeometry();
             if (geometry) {
-              const coordinate = geometry.getCoordinates();
+              // Type assertion for Point geometry which has getCoordinates
+              const coordinate = (geometry as Point).getCoordinates();
               onClusterClick(features, coordinate);
               return true;
             }
@@ -240,9 +246,13 @@ const AnimatedClusterLayer = ({
       // Record current positions
       const previousPositions = new Map();
       features.forEach(feature => {
-        const coords = feature.getGeometry()?.getCoordinates();
-        if (coords) {
-          previousPositions.set(feature, [...coords]);
+        const geometry = feature.getGeometry();
+        if (geometry) {
+          // Type assertion to Point which has getCoordinates
+          const coords = (geometry as Point).getCoordinates();
+          if (coords) {
+            previousPositions.set(feature, [...coords]);
+          }
         }
       });
       
@@ -275,7 +285,8 @@ const AnimatedClusterLayer = ({
         const originalGeometry = feature.getGeometry();
         if (!originalGeometry) return;
         
-        const currentCoords = originalGeometry.getCoordinates();
+        // Type assertion to Point which has getCoordinates
+        const currentCoords = (originalGeometry as Point).getCoordinates();
         let prevCoords = previousPositions.get(feature);
         
         // If we don't have previous coordinates for this feature, check if it's a new cluster
@@ -300,7 +311,7 @@ const AnimatedClusterLayer = ({
         }
         
         // Clone the geometry for animation
-        const animGeom = originalGeometry.clone();
+        const animGeom = originalGeometry.clone() as Point;
         animGeom.setCoordinates(prevCoords);
         feature.setGeometry(animGeom);
         
