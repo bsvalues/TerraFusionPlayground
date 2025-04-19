@@ -6,9 +6,14 @@ import { cn } from '@/lib/utils';
 
 // SVG Icons
 const Logo = () => (
-  <svg className="h-8 w-8 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3 21V3H10L12 5L14 3H21V21H3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="white" fillOpacity="0.3"/>
-  </svg>
+  <div className="flex items-center">
+    <img 
+      src="/assets/terrafusion-icon.svg" 
+      alt="TerraFusion" 
+      className="h-8 w-8"
+    />
+    <span className="ml-2 text-white tf-font-heading text-lg font-semibold">TerraFusion</span>
+  </div>
 );
 
 const DashboardIcon = () => (
@@ -140,7 +145,7 @@ interface SidebarMenuItemProps {
 
 const SidebarMenuItem = ({ href, icon, children, isActive = false }: SidebarMenuItemProps) => {
   const activeClasses = "bg-primary-blue text-white";
-  const inactiveClasses = "text-gray-700 hover:bg-primary-blue-light/10";
+  const inactiveClasses = "text-primary-blue-dark hover:bg-primary-blue-light/10 hover:text-primary-blue";
   
   return (
     <Link href={href}>
@@ -148,7 +153,9 @@ const SidebarMenuItem = ({ href, icon, children, isActive = false }: SidebarMenu
         "flex items-center px-3 py-2 text-sm font-medium rounded-md group cursor-pointer tf-font-body transition-colors duration-150",
         isActive ? activeClasses : inactiveClasses
       )}>
-        {icon}
+        <span className={isActive ? "text-white" : "text-primary-teal"}>
+          {icon}
+        </span>
         {children}
       </div>
     </Link>
@@ -258,7 +265,7 @@ export const Sidebar = () => {
                 icon={<AgentSystemIcon />}
                 isActive={location === "/agent-system"}
               >
-                MCP Agent System
+                TerraFusion Agent System
               </SidebarMenuItem>
 
               <SidebarMenuItem 
@@ -366,7 +373,7 @@ export const Sidebar = () => {
                 icon={<DevelopmentIcon />}
                 isActive={location === "/development" || location.startsWith("/development/")}
               >
-                TaxI_AI Development
+                TerraFusion Development
               </SidebarMenuItem>
             </SidebarSection>
           </nav>
