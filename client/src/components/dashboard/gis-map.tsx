@@ -1,26 +1,35 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Search, Layers, Maximize, Info, Map as MapIcon } from "lucide-react";
+import { Search, Layers, Maximize, Info, Map as MapIcon, PenTool, Settings } from "lucide-react";
 import { useState } from "react";
-import MapboxMap from "@/components/gis/MapboxMap";
+import QGISMap from "@/components/gis/QGISMap";
 import GISControlPanel from "@/components/gis/GISControlPanel";
 import { GISProvider } from "@/contexts/gis-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useMapProvider } from "@/services/map-provider-service";
 import { 
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger
 } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 const GISMap = () => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [activeTab, setActiveTab] = useState("map");
+  const [baseMapType, setBaseMapType] = useState<'osm' | 'satellite' | 'terrain'>('osm');
+  const { currentProvider, providers, setCurrentProvider } = useMapProvider();
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
     // In a real app, you would implement actual full screen functionality here
     // using the Fullscreen API or a library like react-full-screen
+  };
+  
+  // Handle basemap type changes
+  const handleBaseMapChange = (type: 'osm' | 'satellite' | 'terrain') => {
+    setBaseMapType(type);
   };
 
   return (
@@ -46,8 +55,39 @@ const GISMap = () => {
                 
                 <div className="mt-2">
                   <TabsContent value="map" className="m-0">
-                    <div className="h-[450px] rounded overflow-hidden border border-secondary-gray">
-                      <MapboxMap />
+                    <div className="h-[450px] rounded overflow-hidden border border-secondary-gray relative">
+                      <QGISMap baseMapType={baseMapType} />
+                      <Badge variant="outline" className="absolute top-2 left-2 bg-white/80 text-primary font-medium px-2 py-1 text-xs">
+                        <span className="text-green-600 mr-1">▲</span> QGIS Open Source
+                      </Badge>
+                      
+                      {/* Map type controls */}
+                      <div className="absolute top-2 right-2 flex space-x-1">
+                        <Button 
+                          size="sm" 
+                          variant={baseMapType === 'osm' ? 'default' : 'outline'}
+                          className="h-8 px-3 text-xs bg-white/90 hover:bg-white/100 text-gray-700" 
+                          onClick={() => handleBaseMapChange('osm')}
+                        >
+                          Streets
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant={baseMapType === 'satellite' ? 'default' : 'outline'}
+                          className="h-8 px-3 text-xs bg-white/90 hover:bg-white/100 text-gray-700" 
+                          onClick={() => handleBaseMapChange('satellite')}
+                        >
+                          Satellite
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant={baseMapType === 'terrain' ? 'default' : 'outline'}
+                          className="h-8 px-3 text-xs bg-white/90 hover:bg-white/100 text-gray-700" 
+                          onClick={() => handleBaseMapChange('terrain')}
+                        >
+                          Terrain
+                        </Button>
+                      </div>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <TooltipProvider>
@@ -129,6 +169,40 @@ const GISMap = () => {
                   <TabsContent value="controls" className="m-0">
                     <div className="h-[450px] overflow-auto">
                       <GISControlPanel />
+                      
+                      {/* QGIS Open Source Features */}
+                      <div className="mt-6 border rounded-md p-4 bg-gray-50">
+                        <h4 className="text-sm font-semibold flex items-center mb-3 text-primary">
+                          <span className="text-green-600 mr-1">▲</span> QGIS Open Source Features
+                        </h4>
+                        <div className="space-y-3">
+                          <div className="flex items-start">
+                            <PenTool className="h-4 w-4 text-green-600 mt-0.5 mr-2" />
+                            <div>
+                              <h5 className="text-xs font-medium">Advanced Editing Tools</h5>
+                              <p className="text-xs text-gray-600">Access to powerful vector editing capabilities for modifying parcel boundaries</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start">
+                            <Layers className="h-4 w-4 text-green-600 mt-0.5 mr-2" />
+                            <div>
+                              <h5 className="text-xs font-medium">Enhanced Layer Management</h5>
+                              <p className="text-xs text-gray-600">Support for complex layer structures and relationships between GIS datasets</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start">
+                            <Settings className="h-4 w-4 text-green-600 mt-0.5 mr-2" />
+                            <div>
+                              <h5 className="text-xs font-medium">Custom Processing Tools</h5>
+                              <p className="text-xs text-gray-600">Create and execute specialized spatial analysis workflows specific to assessment needs</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-4 text-xs text-gray-600">
+                          <p className="italic">QGIS is a free, open-source geographic information system enabling users to create, edit, visualize, analyze, and publish geospatial information.</p>
+                          <p className="mt-1">The TerraFusion platform leverages QGIS capabilities for property assessment visualization and analysis.</p>
+                        </div>
+                      </div>
                     </div>
                     <div className="mt-3">
                       <Button 

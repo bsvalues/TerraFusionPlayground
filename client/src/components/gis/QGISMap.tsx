@@ -169,36 +169,50 @@ const QGISMap = ({
   }, [layerOpacity, mapLoaded]);
 
   return (
-    <div className={cn("relative h-full w-full bg-gray-100", className, 
+    <div className={cn("relative h-full w-full bg-gray-100 tf-map-container", className, 
       isFullScreen ? "fixed inset-0 z-50" : "")}>
       {/* Map Container */}
       <div ref={mapRef} className="h-full w-full" />
       
+      {/* QGIS Open Source Badge */}
+      <div className="tf-map-overlay top-left tf-qgis-badge">
+        <span className="text-green-600 mr-1">▲</span> QGIS Open Source
+      </div>
+      
+      {/* TerraFusion Attribution */}
+      <div className="tf-map-attribution">
+        TerraFusion | Powered by QGIS | © OpenStreetMap contributors
+      </div>
+      
       {/* Map Controls */}
       {showControls && (
-        <div className="absolute bottom-4 right-4 flex flex-col space-y-2">
+        <div className="absolute bottom-4 right-4 flex flex-col gap-2 tf-zoom-control">
           <Button
             variant="outline"
             size="icon"
-            className="bg-white hover:bg-gray-100 shadow"
+            className="tf-zoom-button"
             onClick={toggleFullScreen}
           >
             <Maximize className="h-4 w-4" />
           </Button>
           
+          <div className="tf-zoom-divider"></div>
+          
           <Button
             variant="outline"
             size="icon"
-            className="bg-white hover:bg-gray-100 shadow"
+            className="tf-zoom-button"
             onClick={toggleLayersPanel}
           >
             <Layers className="h-4 w-4" />
           </Button>
           
+          <div className="tf-zoom-divider"></div>
+          
           <Button
             variant="outline"
             size="icon"
-            className="bg-white hover:bg-gray-100 shadow"
+            className="tf-zoom-button"
             onClick={() => {
               if (map.current) {
                 map.current.getView().animate({
@@ -215,34 +229,81 @@ const QGISMap = ({
       
       {/* Layer Control Panel */}
       {isLayersPanelOpen && (
-        <div className="absolute left-4 top-4 bg-white p-4 rounded shadow-lg w-64">
-          <h3 className="font-medium mb-2">Layers</h3>
-          {/* This would be populated with actual layer data in a real implementation */}
-          <div className="space-y-2">
-            {Object.keys(visibleLayers).map((layerId) => (
-              <div key={layerId} className="flex flex-col space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">{layerId}</span>
-                  <input
-                    type="checkbox"
-                    checked={visibleLayers[layerId]}
-                    onChange={() => {
-                      // Toggle layer visibility
-                    }}
-                  />
-                </div>
-                <Slider
-                  value={[layerOpacity[layerId] || 100]}
-                  min={0}
-                  max={100}
-                  step={1}
-                  className="mt-2"
-                  onValueChange={(value) => {
-                    // Update layer opacity
-                  }}
-                />
+        <div className="absolute left-4 top-12 bg-white p-4 rounded shadow-lg w-64">
+          <h3 className="font-medium mb-3 text-primary flex items-center">
+            <Layers className="h-4 w-4 mr-2" /> 
+            QGIS Layers
+          </h3>
+          {/* Layer groups */}
+          <div className="space-y-3">
+            <div className="tf-layer-group">
+              <div className="tf-layer-group-header">Base Maps</div>
+              <div className="space-y-2">
+                {Object.keys(visibleLayers).slice(0, 2).map((layerId) => (
+                  <div key={layerId} className="flex flex-col space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">{layerId}</span>
+                      <input
+                        type="checkbox"
+                        checked={visibleLayers[layerId]}
+                        onChange={() => {
+                          // Toggle layer visibility
+                        }}
+                      />
+                    </div>
+                    <Slider
+                      value={[layerOpacity[layerId] || 100]}
+                      min={0}
+                      max={100}
+                      step={1}
+                      className="mt-2"
+                      onValueChange={(value) => {
+                        // Update layer opacity
+                      }}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+            
+            <div className="tf-layer-group">
+              <div className="tf-layer-group-header">Property Data</div>
+              <div className="space-y-2">
+                {Object.keys(visibleLayers).slice(2).map((layerId) => (
+                  <div key={layerId} className="flex flex-col space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">{layerId}</span>
+                      <input
+                        type="checkbox"
+                        checked={visibleLayers[layerId]}
+                        onChange={() => {
+                          // Toggle layer visibility
+                        }}
+                      />
+                    </div>
+                    <Slider
+                      value={[layerOpacity[layerId] || 100]}
+                      min={0}
+                      max={100}
+                      step={1}
+                      className="mt-2"
+                      onValueChange={(value) => {
+                        // Update layer opacity
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          {/* QGIS Features Reminder */}
+          <div className="mt-4 text-xs text-gray-600">
+            <p className="italic">Using QGIS open-source GIS technology</p>
+            <p className="mt-1 flex items-center">
+              <span className="text-green-600 mr-1">▲</span> 
+              TerraFusion leverages QGIS for maximum flexibility and customization
+            </p>
           </div>
         </div>
       )}

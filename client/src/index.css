@@ -1,5 +1,6 @@
 /* Import TerraFusion tokens */
 @import './styles/terrafusion-tokens.css';
+@import './styles/map-branding.css';
 
 @tailwind base;
 @tailwind components;
