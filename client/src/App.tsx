@@ -32,6 +32,7 @@ import VoiceCommandPage from "@/pages/VoiceCommandPage";
 import VoiceCommandSettingsPage from "@/pages/voice-command-settings-page";
 import DatabaseConversionPage from "@/pages/database-conversion-page";
 import ClusteringDemoPage from "@/pages/clustering-demo";
+import AdvancedClusteringDemoPage from "@/pages/advanced-clustering-demo";
 import AppLayout from "@/layout/app-layout";
 
 
