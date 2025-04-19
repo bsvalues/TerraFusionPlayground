@@ -1,123 +1,324 @@
 {
-  "name": "TerraFusion Design Tokens",
+  "name": "TerraFusion",
   "version": "1.0.0",
   "colors": {
     "primary": {
-      "blue": "hsl(210, 100%, 45%)",
-      "green": "hsl(145, 63%, 42%)",
-      "orange": "hsl(30, 100%, 50%)",
-      "red": "hsl(0, 85%, 55%)"
+      "blue": {
+        "value": "hsl(210, 100%, 45%)",
+        "description": "Primary blue color for buttons, links, and primary actions"
+      },
+      "blue-light": {
+        "value": "hsl(210, 100%, 55%)",
+        "description": "Lighter shade of primary blue for hover states and highlights"
+      },
+      "blue-dark": {
+        "value": "hsl(210, 100%, 35%)",
+        "description": "Darker shade of primary blue for active states and contrast"
+      },
+      "green": {
+        "value": "hsl(145, 63%, 42%)",
+        "description": "Primary green for success states and environmental features"
+      },
+      "green-light": {
+        "value": "hsl(145, 63%, 52%)",
+        "description": "Lighter shade of primary green"
+      },
+      "green-dark": {
+        "value": "hsl(145, 63%, 32%)",
+        "description": "Darker shade of primary green"
+      },
+      "orange": {
+        "value": "hsl(30, 100%, 50%)",
+        "description": "Primary orange for warnings and attention states"
+      },
+      "orange-light": {
+        "value": "hsl(30, 100%, 60%)",
+        "description": "Lighter shade of primary orange"
+      },
+      "orange-dark": {
+        "value": "hsl(30, 100%, 40%)",
+        "description": "Darker shade of primary orange"
+      },
+      "red": {
+        "value": "hsl(0, 85%, 55%)",
+        "description": "Primary red for errors and destructive actions"
+      },
+      "red-light": {
+        "value": "hsl(0, 85%, 65%)",
+        "description": "Lighter shade of primary red"
+      },
+      "red-dark": {
+        "value": "hsl(0, 85%, 45%)",
+        "description": "Darker shade of primary red"
+      },
+      "gray": {
+        "value": "hsl(210, 10%, 50%)",
+        "description": "Primary gray for text and UI elements"
+      },
+      "gray-light": {
+        "value": "hsl(210, 10%, 75%)",
+        "description": "Lighter shade of primary gray"
+      },
+      "gray-dark": {
+        "value": "hsl(210, 10%, 25%)",
+        "description": "Darker shade of primary gray"
+      }
     },
     "secondary": {
-      "blue": "hsl(210, 100%, 65%)",
-      "green": "hsl(145, 63%, 62%)",
-      "orange": "hsl(30, 100%, 70%)",
-      "red": "hsl(0, 85%, 75%)"
-    },
-    "neutral": {
-      "black": "hsl(210, 10%, 10%)",
-      "darkGray": "hsl(210, 10%, 25%)",
-      "gray": "hsl(210, 10%, 50%)",
-      "lightGray": "hsl(210, 10%, 75%)",
-      "white": "hsl(210, 10%, 98%)"
+      "blue": {
+        "value": "hsl(210, 100%, 65%)",
+        "description": "Secondary blue for backgrounds and subtle elements"
+      },
+      "blue-light": {
+        "value": "hsl(210, 100%, 85%)",
+        "description": "Lighter shade of secondary blue"
+      },
+      "green": {
+        "value": "hsl(145, 63%, 62%)",
+        "description": "Secondary green for backgrounds and subtle elements"
+      },
+      "green-light": {
+        "value": "hsl(145, 63%, 82%)",
+        "description": "Lighter shade of secondary green"
+      },
+      "orange": {
+        "value": "hsl(30, 100%, 70%)",
+        "description": "Secondary orange for backgrounds and subtle elements"
+      },
+      "orange-light": {
+        "value": "hsl(30, 100%, 90%)",
+        "description": "Lighter shade of secondary orange"
+      },
+      "red": {
+        "value": "hsl(0, 85%, 75%)",
+        "description": "Secondary red for backgrounds and subtle elements"
+      },
+      "red-light": {
+        "value": "hsl(0, 85%, 95%)",
+        "description": "Lighter shade of secondary red"
+      },
+      "gray": {
+        "value": "hsl(210, 10%, 85%)",
+        "description": "Secondary gray for borders and subtle UI elements"
+      },
+      "gray-light": {
+        "value": "hsl(210, 10%, 90%)",
+        "description": "Lighter shade of secondary gray"
+      },
+      "gray-ultralight": {
+        "value": "hsl(210, 10%, 95%)",
+        "description": "Ultralight shade of secondary gray"
+      }
     },
     "accent": {
-      "teal": "hsl(180, 70%, 45%)",
-      "purple": "hsl(270, 70%, 55%)",
-      "gold": "hsl(45, 90%, 50%)"
+      "teal": {
+        "value": "hsl(180, 70%, 45%)",
+        "description": "Accent teal for highlighting important information"
+      },
+      "purple": {
+        "value": "hsl(270, 70%, 55%)",
+        "description": "Accent purple for special features and premium content"
+      },
+      "gold": {
+        "value": "hsl(45, 90%, 50%)",
+        "description": "Accent gold for high-value content and premium features"
+      }
     },
     "system": {
-      "success": "hsl(145, 80%, 42%)",
-      "warning": "hsl(45, 100%, 50%)",
-      "error": "hsl(0, 85%, 55%)",
-      "info": "hsl(210, 100%, 55%)"
+      "success": {
+        "value": "hsl(145, 80%, 42%)",
+        "description": "System success color for positive feedback"
+      },
+      "warning": {
+        "value": "hsl(45, 100%, 50%)",
+        "description": "System warning color for cautionary messages"
+      },
+      "error": {
+        "value": "hsl(0, 85%, 55%)",
+        "description": "System error color for error messages"
+      },
+      "info": {
+        "value": "hsl(210, 100%, 55%)",
+        "description": "System info color for informational messages"
+      }
     },
     "background": {
-      "light": "hsl(210, 10%, 98%)",
-      "dark": "hsl(210, 15%, 12%)"
+      "light": {
+        "value": "hsl(210, 10%, 98%)",
+        "description": "Light background color for light mode"
+      },
+      "dark": {
+        "value": "hsl(210, 15%, 12%)",
+        "description": "Dark background color for dark mode"
+      }
     },
     "surface": {
-      "light": "hsl(0, 0%, 100%)",
-      "dark": "hsl(210, 15%, 18%)"
+      "light": {
+        "value": "hsl(0, 0%, 100%)",
+        "description": "Light surface color for cards and containers in light mode"
+      },
+      "dark": {
+        "value": "hsl(210, 15%, 18%)",
+        "description": "Dark surface color for cards and containers in dark mode"
+      }
+    },
+    "black": {
+      "value": "hsl(210, 10%, 10%)",
+      "description": "Black color for text and UI elements"
+    },
+    "white": {
+      "value": "hsl(210, 10%, 98%)",
+      "description": "White color for text and UI elements"
     }
   },
-  "fontFamily": {
-    "display": "Inter, system-ui, sans-serif",
-    "body": "Inter, system-ui, sans-serif",
-    "mono": "JetBrains Mono, monospace"
+  "fonts": {
+    "display": {
+      "value": "Inter, system-ui, sans-serif",
+      "description": "Font for headings and display text"
+    },
+    "body": {
+      "value": "Inter, system-ui, sans-serif",
+      "description": "Font for body text"
+    },
+    "mono": {
+      "value": "JetBrains Mono, monospace",
+      "description": "Monospace font for code and technical content"
+    }
   },
-  "borderRadius": {
-    "none": "0",
-    "sm": "0.25rem",
-    "md": "0.5rem",
-    "lg": "0.75rem",
-    "xl": "1rem",
-    "2xl": "1.5rem",
-    "full": "9999px"
+  "fontSizes": {
+    "xs": {
+      "value": "0.75rem",
+      "description": "Extra small font size"
+    },
+    "sm": {
+      "value": "0.875rem",
+      "description": "Small font size"
+    },
+    "md": {
+      "value": "1rem",
+      "description": "Medium font size (base)"
+    },
+    "lg": {
+      "value": "1.125rem",
+      "description": "Large font size"
+    },
+    "xl": {
+      "value": "1.25rem",
+      "description": "Extra large font size"
+    },
+    "2xl": {
+      "value": "1.5rem",
+      "description": "2X large font size"
+    },
+    "3xl": {
+      "value": "1.875rem",
+      "description": "3X large font size"
+    },
+    "4xl": {
+      "value": "2.25rem",
+      "description": "4X large font size"
+    }
   },
   "spacing": {
-    "0": "0",
-    "1": "0.25rem",
-    "2": "0.5rem",
-    "3": "0.75rem",
-    "4": "1rem",
-    "5": "1.25rem",
-    "6": "1.5rem",
-    "8": "2rem",
-    "10": "2.5rem",
-    "12": "3rem",
-    "16": "4rem",
-    "20": "5rem",
-    "24": "6rem",
-    "32": "8rem",
-    "40": "10rem",
-    "48": "12rem",
-    "56": "14rem",
-    "64": "16rem"
-  },
-  "boxShadow": {
-    "none": "none",
-    "sm": "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-    "md": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-    "lg": "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-    "xl": "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-    "2xl": "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-    "inner": "inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)"
-  },
-  "typography": {
-    "fontSize": {
-      "xs": "0.75rem",
-      "sm": "0.875rem",
-      "base": "1rem",
-      "lg": "1.125rem",
-      "xl": "1.25rem",
-      "2xl": "1.5rem",
-      "3xl": "1.875rem",
-      "4xl": "2.25rem",
-      "5xl": "3rem",
-      "6xl": "3.75rem",
-      "7xl": "4.5rem",
-      "8xl": "6rem",
-      "9xl": "8rem"
+    "0": {
+      "value": "0",
+      "description": "No spacing"
     },
-    "fontWeight": {
-      "thin": "100",
-      "extralight": "200",
-      "light": "300",
-      "normal": "400",
-      "medium": "500",
-      "semibold": "600",
-      "bold": "700",
-      "extrabold": "800",
-      "black": "900"
+    "1": {
+      "value": "0.25rem",
+      "description": "Extra small spacing"
     },
-    "lineHeight": {
-      "none": "1",
-      "tight": "1.25",
-      "snug": "1.375",
-      "normal": "1.5",
-      "relaxed": "1.625",
-      "loose": "2"
+    "2": {
+      "value": "0.5rem",
+      "description": "Small spacing"
+    },
+    "3": {
+      "value": "0.75rem",
+      "description": "Medium-small spacing"
+    },
+    "4": {
+      "value": "1rem",
+      "description": "Medium spacing (base)"
+    },
+    "5": {
+      "value": "1.25rem",
+      "description": "Medium-large spacing"
+    },
+    "6": {
+      "value": "1.5rem",
+      "description": "Large spacing"
+    },
+    "8": {
+      "value": "2rem",
+      "description": "Extra large spacing"
+    },
+    "10": {
+      "value": "2.5rem",
+      "description": "2X large spacing"
+    },
+    "12": {
+      "value": "3rem",
+      "description": "3X large spacing"
+    },
+    "16": {
+      "value": "4rem",
+      "description": "4X large spacing"
+    }
+  },
+  "radius": {
+    "none": {
+      "value": "0",
+      "description": "No border radius"
+    },
+    "sm": {
+      "value": "0.25rem",
+      "description": "Small border radius"
+    },
+    "md": {
+      "value": "0.5rem",
+      "description": "Medium border radius"
+    },
+    "lg": {
+      "value": "0.75rem",
+      "description": "Large border radius"
+    },
+    "xl": {
+      "value": "1rem",
+      "description": "Extra large border radius"
+    },
+    "2xl": {
+      "value": "1.5rem",
+      "description": "2X large border radius"
+    },
+    "full": {
+      "value": "9999px",
+      "description": "Full border radius (circle/pill)"
+    }
+  },
+  "shadows": {
+    "sm": {
+      "value": "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+      "description": "Small shadow"
+    },
+    "md": {
+      "value": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+      "description": "Medium shadow"
+    },
+    "lg": {
+      "value": "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+      "description": "Large shadow"
+    },
+    "xl": {
+      "value": "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+      "description": "Extra large shadow"
+    },
+    "2xl": {
+      "value": "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+      "description": "2X large shadow"
+    },
+    "inner": {
+      "value": "inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)",
+      "description": "Inner shadow"
     }
   }
 }
