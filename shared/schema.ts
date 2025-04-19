@@ -8,6 +8,32 @@ import {
   TaskStatus
 } from "./team-agent-types";
 
+// Energy and Productivity Tracking Enums
+export enum DeveloperEnergyLevel {
+  HIGH = 'high',
+  MEDIUM = 'medium',
+  LOW = 'low'
+}
+
+export enum ProductivityMetricType {
+  CODE_COMPLETION = 'code_completion',
+  BUG_FIX = 'bug_fix',
+  FEATURE_IMPLEMENTATION = 'feature_implementation',
+  DOCUMENTATION = 'documentation',
+  CODE_REVIEW = 'code_review',
+  TESTING = 'testing',
+  PLANNING = 'planning',
+  MEETING = 'meeting',
+  OTHER = 'other'
+}
+
+export enum FocusLevel {
+  DEEP = 'deep',
+  MODERATE = 'moderate',
+  SHALLOW = 'shallow',
+  DISTRACTED = 'distracted'
+}
+
 // Development Tools Enums
 
 export enum ToolCategory {
@@ -796,6 +822,99 @@ export const insertAiAgentSchema = createInsertSchema(aiAgents).pick({
   status: true,
   performance: true,
 });
+
+// Developer Energy and Productivity Metrics table
+export const developerProductivityMetrics = pgTable("developer_productivity_metrics", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // Foreign key to users table
+  date: date("date").notNull().defaultNow(),
+  energyLevel: text("energy_level").notNull(), // Corresponds to DeveloperEnergyLevel enum
+  focusLevel: text("focus_level").notNull(), // Corresponds to FocusLevel enum
+  productiveHours: numeric("productive_hours").notNull(),
+  distractionCount: integer("distraction_count").default(0),
+  completedTasks: integer("completed_tasks").default(0),
+  tasksInProgress: integer("tasks_in_progress").default(0),
+  blockedTasks: integer("blocked_tasks").default(0),
+  codeLines: integer("code_lines").default(0),
+  commitCount: integer("commit_count").default(0),
+  notes: text("notes"),
+  tags: text("tags").array(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userDateIdx: index("dev_productivity_user_date_idx").on(table.userId, table.date),
+    energyLevelIdx: index("dev_productivity_energy_level_idx").on(table.energyLevel),
+  };
+});
+
+export const insertDeveloperProductivityMetricSchema = createInsertSchema(developerProductivityMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type DeveloperProductivityMetric = typeof developerProductivityMetrics.$inferSelect;
+export type InsertDeveloperProductivityMetric = z.infer<typeof insertDeveloperProductivityMetricSchema>;
+
+// Developer Activity Sessions table - Tracks individual work sessions
+export const developerActivitySessions = pgTable("developer_activity_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // Foreign key to users table
+  metricId: integer("metric_id"), // Foreign key to developerProductivityMetrics
+  startTime: timestamp("start_time").notNull().defaultNow(),
+  endTime: timestamp("end_time"),
+  duration: integer("duration"), // In minutes, calculated when session ends
+  activityType: text("activity_type").notNull(), // Corresponds to ProductivityMetricType enum
+  projectId: integer("project_id"), // Optional foreign key to projects
+  description: text("description"),
+  codeLines: integer("code_lines").default(0),
+  isCompleted: boolean("is_completed").default(false),
+  details: jsonb("details").default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userActivityIdx: index("dev_activity_user_activity_idx").on(table.userId, table.activityType),
+    timeRangeIdx: index("dev_activity_time_range_idx").on(table.startTime, table.endTime),
+  };
+});
+
+export const insertDeveloperActivitySessionSchema = createInsertSchema(developerActivitySessions).omit({
+  id: true,
+  duration: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type DeveloperActivitySession = typeof developerActivitySessions.$inferSelect;
+export type InsertDeveloperActivitySession = z.infer<typeof insertDeveloperActivitySessionSchema>;
+
+// Energy Level Recommendations - Store personalized productivity recommendations
+export const energyLevelRecommendations = pgTable("energy_level_recommendations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // Foreign key to users table
+  energyLevel: text("energy_level").notNull(), // Corresponds to DeveloperEnergyLevel enum
+  recommendedActivities: jsonb("recommended_activities").default([]), // Array of recommended tasks for this energy level
+  avoidActivities: jsonb("avoid_activities").default([]), // Array of tasks to avoid at this energy level
+  bestTimeOfDay: text("best_time_of_day"), // morning, afternoon, evening
+  strategies: text("strategies").array(), // Productivity strategies that work for this user at this energy level
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userEnergyLevelIdx: index("energy_rec_user_level_idx").on(table.userId, table.energyLevel),
+  };
+});
+
+export const insertEnergyLevelRecommendationSchema = createInsertSchema(energyLevelRecommendations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type EnergyLevelRecommendation = typeof energyLevelRecommendations.$inferSelect;
+export type InsertEnergyLevelRecommendation = z.infer<typeof insertEnergyLevelRecommendationSchema>;
 
 // System Activities table
 export const systemActivities = pgTable("system_activities", {
