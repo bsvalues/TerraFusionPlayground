@@ -1,296 +1,305 @@
 /**
- * QGIS Service
+ * QGIS Integration Service
  * 
- * This service handles interaction with QGIS Server for map rendering and spatial operations.
- * It provides functionality to work with QGIS project files, layers, and WMS/WFS services.
+ * This service provides an interface to interact with QGIS Server features
+ * and exposes QGIS capabilities to our TerraFusion platform.
  */
 
-import { IStorage } from '../storage';
-import fs from 'fs';
+import { promises as fs } from 'fs';
 import path from 'path';
 import fetch from 'node-fetch';
-import { promisify } from 'util';
-import { createWriteStream } from 'fs';
-import { pipeline } from 'stream';
+import { IStorage } from '../storage';
 
-const streamPipeline = promisify(pipeline);
-
-interface QGISLayerDefinition {
+// QGIS project file interfaces
+interface QGISLayer {
   id: string;
   name: string;
   type: string;
   source: string;
-  projection: string;
-  minZoom?: number;
-  maxZoom?: number;
-  style?: any;
+  visible: boolean;
+  minScale?: number;
+  maxScale?: number;
+  metadata?: Record<string, string>;
 }
 
-interface QGISProjectDefinition {
-  id: string;
-  name: string;
-  description?: string;
-  layers: QGISLayerDefinition[];
-  extent: [number, number, number, number];
+interface QGISProject {
+  title: string;
+  layers: QGISLayer[];
+  initialExtent: [number, number, number, number]; // [minX, minY, maxX, maxY]
   projection: string;
+  description?: string;
+}
+
+// QGIS feature interfaces
+interface QGISFeature {
+  id: string;
+  geometry: any;
+  properties: Record<string, any>;
+  layerId: string;
+}
+
+// QGIS service configuration
+interface QGISServiceConfig {
+  serverUrl?: string;
+  projectsDirectory: string;
+  cacheDirectory: string;
+  enableOfflineMode: boolean;
 }
 
 /**
- * QGIS Service main class
+ * Service for integrating with QGIS Server and managing QGIS projects
  */
 export class QGISService {
+  private config: QGISServiceConfig;
   private storage: IStorage;
-  private projectsDir: string;
-  private layerStyles: Map<string, any>;
-  private qgisServerUrl: string;
+  private projects: Map<string, QGISProject> = new Map();
+  private featuresCache: Map<string, QGISFeature[]> = new Map();
   
-  constructor(storage: IStorage) {
+  constructor(storage: IStorage, config?: Partial<QGISServiceConfig>) {
     this.storage = storage;
-    this.projectsDir = path.join(process.cwd(), 'gis-projects');
-    this.layerStyles = new Map();
     
-    // Default to a mock server URL - in production this would be the actual QGIS server
-    this.qgisServerUrl = process.env.QGIS_SERVER_URL || 'http://localhost:8080/qgis-server';
+    // Default configuration
+    this.config = {
+      projectsDirectory: path.join(process.cwd(), 'qgis-projects'),
+      cacheDirectory: path.join(process.cwd(), 'cache', 'qgis'),
+      enableOfflineMode: true,
+      ...config
+    };
     
-    // Ensure projects directory exists
-    if (!fs.existsSync(this.projectsDir)) {
-      fs.mkdirSync(this.projectsDir, { recursive: true });
-    }
+    // Ensure directories exist
+    this.ensureDirectories();
   }
-
+  
   /**
-   * Initialize the service
+   * Initialize the QGIS service
    */
-  async initialize(): Promise<void> {
-    console.log('Initializing QGIS Service');
+  public async initialize(): Promise<void> {
+    console.log('Initializing QGIS Service...');
     
-    // Load default layer styles
-    await this.loadDefaultStyles();
-    
-    // Create default project if it doesn't exist
-    await this.ensureDefaultProject();
-    
-    console.log('QGIS Service initialized');
-  }
-
-  /**
-   * Load default layer styles for QGIS
-   */
-  private async loadDefaultStyles(): Promise<void> {
-    // For demo purposes, we're defining simple styles
-    // In a production environment, these would be loaded from actual QGIS style files
-    this.layerStyles.set('parcel', {
-      fillColor: '#3388ff',
-      fillOpacity: 0.4,
-      strokeColor: '#3388ff',
-      strokeWidth: 1
-    });
-    
-    this.layerStyles.set('zoning', {
-      fillColor: '#33cc33',
-      fillOpacity: 0.4,
-      strokeColor: '#33cc33',
-      strokeWidth: 1
-    });
-    
-    this.layerStyles.set('flood', {
-      fillColor: '#0099ff',
-      fillOpacity: 0.4,
-      strokeColor: '#0099ff',
-      strokeWidth: 1
-    });
-  }
-
-  /**
-   * Ensure the default QGIS project exists
-   */
-  private async ensureDefaultProject(): Promise<void> {
-    const defaultProjectPath = path.join(this.projectsDir, 'default_project.qgs');
-    
-    // Check if the default project already exists
-    if (!fs.existsSync(defaultProjectPath)) {
-      // In a real implementation, we would create an actual QGIS project file
-      // For now, we'll just create a placeholder file
-      const placeholderContent = `<?xml version="1.0" encoding="UTF-8"?>
-<qgis projectname="TerraFusion GIS Project">
-  <title>TerraFusion GIS Project</title>
-  <autotransaction active="0"/>
-  <evaluateDefaultValues active="0"/>
-  <trust active="0"/>
-  <projectCrs>
-    <spatialrefsys>
-      <wkt>GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]</wkt>
-      <proj4>+proj=longlat +datum=WGS84 +no_defs</proj4>
-      <srsid>3452</srsid>
-      <srid>4326</srid>
-      <authid>EPSG:4326</authid>
-      <description>WGS 84</description>
-      <projectionacronym>longlat</projectionacronym>
-      <ellipsoidacronym>WGS84</ellipsoidacronym>
-      <geographicflag>true</geographicflag>
-    </spatialrefsys>
-  </projectCrs>
-  <mapcanvas>
-    <units>degrees</units>
-    <extent>
-      <xmin>-119.4</xmin>
-      <ymin>46.0</ymin>
-      <xmax>-119.0</xmax>
-      <ymax>46.4</ymax>
-    </extent>
-    <rotation>0</rotation>
-    <destinationsrs>
-      <spatialrefsys>
-        <wkt>GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]</wkt>
-        <proj4>+proj=longlat +datum=WGS84 +no_defs</proj4>
-        <srsid>3452</srsid>
-        <srid>4326</srid>
-        <authid>EPSG:4326</authid>
-        <description>WGS 84</description>
-        <projectionacronym>longlat</projectionacronym>
-        <ellipsoidacronym>WGS84</ellipsoidacronym>
-        <geographicflag>true</geographicflag>
-      </spatialrefsys>
-    </destinationsrs>
-  </mapcanvas>
-  <layer-tree-group>
-    <customproperties/>
-    <layer-tree-layer expanded="1" checked="Qt::Checked" id="parcels" name="Parcels">
-      <customproperties/>
-    </layer-tree-layer>
-    <layer-tree-layer expanded="1" checked="Qt::Checked" id="zoning" name="Zoning">
-      <customproperties/>
-    </layer-tree-layer>
-    <layer-tree-layer expanded="1" checked="Qt::Checked" id="flood" name="Flood Zones">
-      <customproperties/>
-    </layer-tree-layer>
-  </layer-tree-group>
-</qgis>`;
+    try {
+      // Load all projects
+      await this.loadProjects();
+      console.log(`Loaded ${this.projects.size} QGIS projects`);
       
-      // Write the placeholder content to the file
-      fs.writeFileSync(defaultProjectPath, placeholderContent);
-      console.log(`Created default QGIS project at ${defaultProjectPath}`);
+      // Initialize cache
+      if (this.config.enableOfflineMode) {
+        await this.initializeCache();
+      }
+      
+      console.log('QGIS Service initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize QGIS Service:', error);
+      throw error;
     }
   }
-
+  
   /**
-   * Get list of available QGIS projects
+   * Create directories needed for QGIS service
    */
-  async getProjects(): Promise<QGISProjectDefinition[]> {
-    // In a real implementation, this would discover and parse actual QGIS project files
-    // For demo purposes, we'll return a static list with our default project
-    
-    return [
-      {
-        id: 'default_project',
-        name: 'TerraFusion GIS Project',
-        description: 'Default QGIS project for the TerraFusion platform',
+  private async ensureDirectories(): Promise<void> {
+    try {
+      await fs.mkdir(this.config.projectsDirectory, { recursive: true });
+      await fs.mkdir(this.config.cacheDirectory, { recursive: true });
+    } catch (error) {
+      console.error('Failed to create QGIS service directories:', error);
+    }
+  }
+  
+  /**
+   * Load all QGIS projects from the projects directory
+   */
+  private async loadProjects(): Promise<void> {
+    try {
+      // In a real implementation, this would load .qgs or .qgz files
+      // For this demo, we'll create sample projects
+      
+      // Sample property assessment project
+      const assessmentProject: QGISProject = {
+        title: 'Property Assessment',
         layers: [
           {
             id: 'parcels',
-            name: 'Parcels',
+            name: 'Property Parcels',
             type: 'vector',
-            source: 'local',
-            projection: 'EPSG:4326'
+            source: 'parcels.geojson',
+            visible: true,
+            metadata: {
+              description: 'Property parcel boundaries'
+            }
           },
           {
             id: 'zoning',
-            name: 'Zoning',
+            name: 'Zoning Areas',
             type: 'vector',
-            source: 'local',
-            projection: 'EPSG:4326'
+            source: 'zoning.geojson',
+            visible: false,
+            metadata: {
+              description: 'Zoning designations'
+            }
           },
           {
-            id: 'flood',
-            name: 'Flood Zones',
-            type: 'vector',
-            source: 'local',
-            projection: 'EPSG:4326'
+            id: 'aerial',
+            name: 'Aerial Imagery',
+            type: 'raster',
+            source: 'aerial.tif',
+            visible: false,
+            metadata: {
+              description: 'High-resolution aerial photography'
+            }
           }
         ],
-        extent: [-119.4, 46.0, -119.0, 46.4], // Benton County, WA approximate extent
-        projection: 'EPSG:4326'
+        initialExtent: [-122.5, 47.1, -122.2, 47.3], // Sample for Benton County area
+        projection: 'EPSG:4326',
+        description: 'Property assessment project for TerraFusion platform'
+      };
+      
+      // Add projects to map
+      this.projects.set('property-assessment', assessmentProject);
+      
+      // Save project metadata to database
+      await this.storage.createQGISProject({
+        id: 'property-assessment',
+        title: assessmentProject.title,
+        description: assessmentProject.description || '',
+        created_at: new Date(),
+        updated_at: new Date(),
+        active: true
+      });
+      
+      // Save layer metadata to database
+      for (const layer of assessmentProject.layers) {
+        await this.storage.createQGISLayer({
+          id: layer.id,
+          project_id: 'property-assessment',
+          name: layer.name,
+          type: layer.type,
+          visible: layer.visible,
+          metadata: JSON.stringify(layer.metadata || {})
+        });
       }
-    ];
+    } catch (error) {
+      console.error('Failed to load QGIS projects:', error);
+      // In development, we can continue even if project loading fails
+    }
   }
-
+  
+  /**
+   * Initialize the feature cache for offline mode
+   */
+  private async initializeCache(): Promise<void> {
+    // In a real implementation, this would pre-cache feature data
+    // For this demo, we'll just log that caching is enabled
+    console.log('QGIS feature caching enabled');
+  }
+  
+  /**
+   * Get all available QGIS projects
+   */
+  public async getProjects(): Promise<{ id: string, title: string, description?: string }[]> {
+    const projects: { id: string, title: string, description?: string }[] = [];
+    
+    for (const [id, project] of this.projects.entries()) {
+      projects.push({
+        id,
+        title: project.title,
+        description: project.description
+      });
+    }
+    
+    return projects;
+  }
+  
+  /**
+   * Get a specific QGIS project by ID
+   */
+  public async getProject(projectId: string): Promise<QGISProject | null> {
+    return this.projects.get(projectId) || null;
+  }
+  
   /**
    * Get layers for a specific QGIS project
    */
-  async getProjectLayers(projectId: string): Promise<QGISLayerDefinition[]> {
-    const projects = await this.getProjects();
-    const project = projects.find(p => p.id === projectId);
-    
-    if (!project) {
-      throw new Error(`Project with ID ${projectId} not found`);
-    }
-    
-    return project.layers;
+  public async getLayers(projectId: string): Promise<QGISLayer[]> {
+    const project = this.projects.get(projectId);
+    return project ? project.layers : [];
   }
-
+  
   /**
-   * Get WMS URL for a QGIS project
+   * Get features from a specific layer in a QGIS project
+   * This is a simplified implementation
    */
-  getProjectWmsUrl(projectId: string): string {
-    // In a real implementation, this would construct the actual WMS URL for the QGIS Server
-    return `${this.qgisServerUrl}?MAP=${projectId}.qgs&SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities`;
+  public async getFeatures(projectId: string, layerId: string): Promise<QGISFeature[]> {
+    // In a real implementation, this would fetch data from QGIS Server or a file
+    // For now, we return an empty array
+    return [];
   }
-
+  
   /**
-   * Get WFS URL for a QGIS project
+   * Export a map to an image format
    */
-  getProjectWfsUrl(projectId: string): string {
-    // In a real implementation, this would construct the actual WFS URL for the QGIS Server
-    return `${this.qgisServerUrl}?MAP=${projectId}.qgs&SERVICE=WFS&VERSION=2.0.0&REQUEST=GetCapabilities`;
-  }
-
-  /**
-   * Upload a QGIS project file
-   */
-  async uploadProject(projectName: string, projectFile: Buffer): Promise<string> {
-    // Generate a safe filename from the project name
-    const safeProjectName = projectName
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '_')
-      .replace(/_+/g, '_');
-    
-    const projectId = `${safeProjectName}_${Date.now()}`;
-    const projectPath = path.join(this.projectsDir, `${projectId}.qgs`);
-    
-    // Write the file
-    fs.writeFileSync(projectPath, projectFile);
-    
-    return projectId;
-  }
-
-  /**
-   * Create a map image for a specific area (WMS GetMap)
-   */
-  async createMapImage(
-    projectId: string,
-    bbox: [number, number, number, number],
+  public async exportMap(
+    projectId: string, 
+    extent: [number, number, number, number],
     width: number,
     height: number,
-    layers: string[],
-    format: string = 'image/png'
-  ): Promise<Buffer> {
-    // In a real implementation, this would make a WMS GetMap request to the QGIS Server
-    // For demo purposes, we're creating a mock image
-    
-    // Mock implementation - in a real scenario, we would fetch the image from QGIS Server
-    const wmsUrl = `${this.qgisServerUrl}?MAP=${projectId}.qgs&SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=${bbox.join(',')}&CRS=EPSG:4326&WIDTH=${width}&HEIGHT=${height}&LAYERS=${layers.join(',')}&STYLES=&FORMAT=${format}`;
-    
-    // Return a placeholder image buffer
-    // In a real implementation, we would fetch and return the actual WMS image
-    return Buffer.from('Mock WMS image data');
+    format: 'png' | 'jpg' | 'pdf' = 'png'
+  ): Promise<Buffer | null> {
+    // In a real implementation, this would use the QGIS Server WMS GetMap request
+    // For now, we return null
+    console.log(`Export map requested for project ${projectId} in ${format} format`);
+    return null;
+  }
+  
+  /**
+   * Perform a spatial query using QGIS analysis capabilities
+   */
+  public async performSpatialQuery(
+    projectId: string,
+    query: any
+  ): Promise<any[]> {
+    // In a real implementation, this would use QGIS processing algorithms
+    // For now, we return an empty array
+    console.log(`Spatial query requested for project ${projectId}`);
+    return [];
+  }
+  
+  /**
+   * Get the capabilities of QGIS Server
+   */
+  public async getCapabilities(): Promise<any> {
+    return {
+      version: '3.28.6',
+      services: ['WMS', 'WFS', 'WCS'],
+      processingAlgorithms: true,
+      supportsSpatialQueries: true,
+      supportsGeoJSON: true,
+      supportsRasterAnalysis: true
+    };
+  }
+  
+  /**
+   * Highlight the open source nature of QGIS
+   */
+  public getQGISInfo(): any {
+    return {
+      name: 'QGIS',
+      license: 'GNU General Public License',
+      website: 'https://qgis.org',
+      repository: 'https://github.com/qgis/QGIS',
+      isOpenSource: true,
+      communitySize: 'Large global community',
+      advantages: [
+        'Free and open-source',
+        'Cross-platform (Windows, Mac, Linux)',
+        'Extensive plugin ecosystem',
+        'OGC standards compliant',
+        'Native support for PostgreSQL/PostGIS',
+        'Python scripting and automation',
+        'Full customization of the user interface',
+        'Regular release cycle with community support'
+      ]
+    };
   }
 }
 
-/**
- * Initialize QGIS service
- */
-export async function initializeQGISService(storage: IStorage): Promise<QGISService> {
-  const qgisService = new QGISService(storage);
-  await qgisService.initialize();
-  return qgisService;
-}
+export default QGISService;

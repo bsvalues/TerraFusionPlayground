@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { randomUUID } from "crypto";
 import { storage } from "./storage";
 import { z } from "zod";
+import QGISService from "./services/qgis-service";
 import { 
   insertPropertySchema, 
   insertLandRecordSchema,
@@ -98,6 +99,9 @@ const agentVoiceCommandService = initializeAgentVoiceCommandService(storage);
 
 // Initialize database conversion service
 const databaseConversionService = new DatabaseConversionService(storage, mcpService);
+
+// Initialize QGIS service for TerraFusion map integration
+const qgisService = new QGISService(storage);
 
 // Initialize agent coordinator and factory 
 const agentCoordinator = AgentCoordinator.getInstance(storage);
@@ -249,6 +253,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register GIS routes
   app.use('/api/gis', createGisRoutes());
+  
+  /**
+   * QGIS Integration Routes
+   * TerraFusion QGIS-powered mapping API endpoints
+   */
+  app.get('/api/qgis/info', (_req, res) => {
+    res.json(qgisService.getQGISInfo());
+  });
+  
+  app.get('/api/qgis/capabilities', async (_req, res) => {
+    try {
+      const capabilities = await qgisService.getCapabilities();
+      res.json(capabilities);
+    } catch (error) {
+      console.error('Error fetching QGIS capabilities:', error);
+      res.status(500).json({ error: 'Failed to retrieve QGIS capabilities' });
+    }
+  });
+  
+  app.get('/api/qgis/projects', async (_req, res) => {
+    try {
+      const projects = await qgisService.getProjects();
+      res.json(projects);
+    } catch (error) {
+      console.error('Error fetching QGIS projects:', error);
+      res.status(500).json({ error: 'Failed to retrieve QGIS projects' });
+    }
+  });
+  
+  app.get('/api/qgis/projects/:projectId', async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const project = await qgisService.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: 'QGIS project not found' });
+      }
+      
+      res.json(project);
+    } catch (error) {
+      console.error('Error fetching QGIS project:', error);
+      res.status(500).json({ error: 'Failed to retrieve QGIS project' });
+    }
+  });
+  
+  app.get('/api/qgis/projects/:projectId/layers', async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const layers = await qgisService.getLayers(projectId);
+      res.json(layers);
+    } catch (error) {
+      console.error('Error fetching QGIS layers:', error);
+      res.status(500).json({ error: 'Failed to retrieve QGIS layers' });
+    }
+  });
+  
+  app.get('/api/qgis/projects/:projectId/layers/:layerId/features', async (req, res) => {
+    try {
+      const { projectId, layerId } = req.params;
+      const features = await qgisService.getFeatures(projectId, layerId);
+      res.json(features);
+    } catch (error) {
+      console.error('Error fetching QGIS features:', error);
+      res.status(500).json({ error: 'Failed to retrieve QGIS features' });
+    }
+  });
 
   /**
    * Data Lineage Routes

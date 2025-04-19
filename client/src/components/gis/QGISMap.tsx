@@ -48,40 +48,40 @@ const QGISMap = ({
   // Convert center coordinates from [longitude, latitude] to OpenLayers projection
   const olCenter = fromLonLat(center);
 
+  // Create base layer based on type
+  const createBaseLayer = (type: 'osm' | 'satellite' | 'terrain') => {
+    switch (type) {
+      case 'satellite':
+        return new TileLayer({
+          source: new XYZ({
+            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            maxZoom: 19,
+            attributions: 'Tiles © <a href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer">ArcGIS</a>'
+          })
+        });
+      case 'terrain':
+        return new TileLayer({
+          source: new XYZ({
+            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+            maxZoom: 19,
+            attributions: 'Tiles © <a href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer">ArcGIS</a>'
+          })
+        });
+      case 'osm':
+      default:
+        return new TileLayer({
+          source: new OSM()
+        });
+    }
+  };
+  
   // Initialize map
   useEffect(() => {
     if (map.current) return; // initialize map only once
     
     if (mapRef.current) {
-      // Create base layer based on type
-      let baseLayer;
-      
-      switch (baseMapType) {
-        case 'satellite':
-          baseLayer = new TileLayer({
-            source: new XYZ({
-              url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-              maxZoom: 19,
-              attributions: 'Tiles © <a href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer">ArcGIS</a>'
-            })
-          });
-          break;
-        case 'terrain':
-          baseLayer = new TileLayer({
-            source: new XYZ({
-              url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-              maxZoom: 19,
-              attributions: 'Tiles © <a href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer">ArcGIS</a>'
-            })
-          });
-          break;
-        case 'osm':
-        default:
-          baseLayer = new TileLayer({
-            source: new OSM()
-          });
-          break;
-      }
+      // Create base layer
+      const baseLayer = createBaseLayer(baseMapType);
       
       // Create vector source for GIS features
       const vectorSource = new VectorSource({
@@ -167,6 +167,19 @@ const QGISMap = ({
       // This would be where you'd update layer opacity
     }
   }, [layerOpacity, mapLoaded]);
+  
+  // Handle base map type changes
+  useEffect(() => {
+    if (map.current && mapLoaded) {
+      // Get all layers
+      const layers = map.current.getLayers();
+      // Remove the base layer (first layer)
+      layers.removeAt(0);
+      // Create and add the new base layer at position 0
+      const newBaseLayer = createBaseLayer(baseMapType);
+      layers.insertAt(0, newBaseLayer);
+    }
+  }, [baseMapType, mapLoaded]);
 
   return (
     <div className={cn("relative h-full w-full bg-gray-100 tf-map-container", className, 
