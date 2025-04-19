@@ -251,7 +251,8 @@ const AnimatedClusterLayer = ({
           // Type assertion to Point which has getCoordinates
           const coords = (geometry as Point).getCoordinates();
           if (coords) {
-            previousPositions.set(feature, [...coords]);
+            // Use an alternative key approach
+            previousPositions.set(String(feature.getId()), [...coords]);
           }
         }
       });
@@ -274,7 +275,7 @@ const AnimatedClusterLayer = ({
     };
     
     // Animate clusters to their new positions
-    const animateToNewPositions = (previousPositions: Map<Feature, number[]>) => {
+    const animateToNewPositions = (previousPositions: Map) => {
       if (!clusterSourceRef.current) return;
       
       const clusterSource = clusterSourceRef.current;
@@ -287,7 +288,7 @@ const AnimatedClusterLayer = ({
         
         // Type assertion to Point which has getCoordinates
         const currentCoords = (originalGeometry as Point).getCoordinates();
-        let prevCoords = previousPositions.get(feature);
+        let prevCoords = previousPositions.get(String(feature.getId()));
         
         // If we don't have previous coordinates for this feature, check if it's a new cluster
         if (!prevCoords) {

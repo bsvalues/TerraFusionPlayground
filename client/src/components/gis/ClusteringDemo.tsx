@@ -72,7 +72,7 @@ const ClusteringDemo = ({
   const [selectedCluster, setSelectedCluster] = useState<DataPoint[] | null>(null);
   
   // Fetch property data for clustering
-  const { data: clusterData, isLoading } = useQuery({
+  const { data: clusterData, isLoading } = useQuery<DataPoint[]>({
     queryKey: ['/api/gis/clustering-demo/data'],
     staleTime: 60000,
   });
