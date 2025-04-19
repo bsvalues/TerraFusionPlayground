@@ -33,7 +33,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Doughnut } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip as ChartTooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, ArcElement, Tooltip as ChartTooltip, Legend, ChartData } from 'chart.js';
 
 // Register Chart.js components
 ChartJS.register(ArcElement, ChartTooltip, Legend);
@@ -224,10 +224,13 @@ export default function AdvancedClusteringDemoPage() {
     const data = Object.values(categoryCount);
     
     // Get colors for categories
-    const colors = labels.map(label => 
-      COLOR_SCHEMES[pieChartAttribute][label] || 
-      DEFAULT_COLORS[Math.abs(String(label).hashCode()) % DEFAULT_COLORS.length]
-    );
+    const colors = labels.map(label => {
+      // Find the right color scheme based on the attribute
+      const colorScheme = COLOR_SCHEMES[pieChartAttribute];
+      // Use the specific color if it exists, otherwise use a default color
+      return (colorScheme && colorScheme[label as keyof typeof colorScheme]) || 
+        DEFAULT_COLORS[Math.abs(String(label).hashCode()) % DEFAULT_COLORS.length];
+    });
     
     return {
       labels,
@@ -410,9 +413,8 @@ export default function AdvancedClusteringDemoPage() {
                           </div>
                           
                           <div className="space-y-2">
-                            <Label htmlFor="pieChartAttribute">Categorize By:</Label>
+                            <Label>Categorize By:</Label>
                             <Select
-                              id="pieChartAttribute"
                               value={pieChartAttribute}
                               onValueChange={(value: ClusterStyleAttribute) => setPieChartAttribute(value)}
                               disabled={!showPieCharts}
@@ -456,7 +458,7 @@ export default function AdvancedClusteringDemoPage() {
                             <div className="h-48">
                               {generateClusterChartData() && (
                                 <Doughnut 
-                                  data={generateClusterChartData()} 
+                                  data={generateClusterChartData() as ChartData<'doughnut', number[], string>} 
                                   options={chartOptions}
                                 />
                               )}
@@ -511,8 +513,8 @@ export default function AdvancedClusteringDemoPage() {
                             <div className="pt-1">
                               <span className="font-medium">Breakdown:</span>
                               <ul className="pl-2 pt-1">
-                                {Object.entries(hoverMetadata.categoryCount).map(([category, count]) => (
-                                  <li key={category}>{category}: {count}</li>
+                                {Object.entries(hoverMetadata.categoryCount || {}).map(([category, count]) => (
+                                  <li key={category}>{category}: {String(count)}</li>
                                 ))}
                               </ul>
                             </div>

@@ -183,6 +183,12 @@ function Router() {
           <ClusteringDemoPage />
         </AppLayout>
       </Route>
+      
+      <Route path="/gis/advanced-clustering">
+        <AppLayout>
+          <AdvancedClusteringDemoPage />
+        </AppLayout>
+      </Route>
 
       {/* Add more routes as needed */}
 

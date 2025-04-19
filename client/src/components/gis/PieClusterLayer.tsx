@@ -128,7 +128,8 @@ const PieClusterLayer = ({
   const clusterSourceRef = useRef<Cluster>();
   const animatingRef = useRef(false);
   const animationFrameRef = useRef<number>();
-  const pieChartCanvasCache = useRef<Map<string, HTMLCanvasElement>>(new Map());
+  // Using a simple JS Map object for canvas caching
+  const pieChartCanvasCache = useRef<Record<string, HTMLCanvasElement>>({});
   
   // Use externally provided map instance
   const activeMap = externalMap;
@@ -257,23 +258,27 @@ const PieClusterLayer = ({
         );
         
         // Check if we have this chart cached
-        let canvas = pieChartCanvasCache.current.get(cacheKey);
+        let canvas = pieChartCanvasCache.current[cacheKey];
         if (!canvas) {
           canvas = generatePieChartCanvas(categoryCount, radius * 2);
-          pieChartCanvasCache.current.set(cacheKey, canvas);
+          pieChartCanvasCache.current[cacheKey] = canvas;
         }
         
-        // Store metadata for hover/click events
-        feature.set('pieChartData', {
-          categoryCount,
-          totalItems: size
-        });
+        // Store metadata for hover/click events only for actual Feature instances (not RenderFeature)
+        if (feature instanceof Feature) {
+          feature.set('pieChartData', {
+            categoryCount,
+            totalItems: size
+          });
+        }
+        
+        // Convert canvas to data URL
+        const dataUrl = canvas.toDataURL('image/png');
         
         // Create style with the pie chart as icon
         return new Style({
           image: new Icon({
-            img: canvas,
-            imgSize: [canvas.width, canvas.height],
+            src: dataUrl,
             scale: 1,
             anchor: [0.5, 0.5],
             anchorXUnits: 'fraction',
@@ -320,6 +325,15 @@ const PieClusterLayer = ({
         
         // Use color of dominant category or default
         const fillColor = styleOptions.colorScheme[dominantCategory] || styleOptions.defaultColors[0];
+        
+        // Store metadata for hover/click events only for actual Feature instances (not RenderFeature)
+        if (feature instanceof Feature) {
+          feature.set('pieChartData', {
+            categoryCounts: categoryCounts,
+            dominantCategory,
+            totalItems: size
+          });
+        }
         
         // Create style with circle and text
         return new Style({
@@ -435,27 +449,19 @@ const PieClusterLayer = ({
       };
       
       activeMap.on('pointermove', moveHandler);
-      
-      return () => {
-        activeMap.un('pointermove', moveHandler);
-        
-        if (onClusterClick) {
-          activeMap.un('click', clickHandler);
-        }
-        
-        if (vectorLayerRef.current) {
-          activeMap.removeLayer(vectorLayerRef.current);
-        }
-        
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
-      };
     }
     
+    // Store handlers for cleanup
+    const activeClickHandler = onClusterClick ? clickHandler : null;
+    
+    // Cleanup function
     return () => {
-      if (onClusterClick) {
-        activeMap.un('click', clickHandler);
+      if (activeClickHandler) {
+        activeMap.un('click', activeClickHandler);
+      }
+      
+      if (onClusterHover) {
+        activeMap.un('pointermove', moveHandler);
       }
       
       if (vectorLayerRef.current) {
