@@ -30,11 +30,12 @@ export async function importOlExt(importPath: string): Promise<any | null> {
         const olExt = await import('ol-ext');
         // Try to navigate through the object structure based on the path
         const parts = importPath.split('/');
-        let result = olExt;
+        // Start with the default export
+        let result: any = olExt.default || olExt;
         
         for (const part of parts) {
-          if (result && part in result) {
-            result = result[part];
+          if (result && typeof result === 'object' && part in result) {
+            result = result[part as keyof typeof result];
           } else {
             console.error(`Could not find '${part}' in ol-ext object path`);
             return null;
@@ -58,7 +59,7 @@ export async function importOlExt(importPath: string): Promise<any | null> {
 export async function isOlExtAvailable(): Promise<boolean> {
   try {
     const olExt = await import('ol-ext');
-    return !!olExt;
+    return !!(olExt.default || olExt);
   } catch (error) {
     console.error('ol-ext is not available:', error);
     return false;

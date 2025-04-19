@@ -11,6 +11,7 @@ import type { StyleFunction } from 'ol/style/Style';
 import type { FeatureLike } from 'ol/Feature';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
+import '../../utils/string-utils'; // Import string hashCode extension
 
 // Register required Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -146,10 +147,10 @@ const PieClusterLayer = ({
     const data = Object.values(categories);
     
     // Generate colors for each category
-    const colors = labels.map(label => 
-      styleOptions.colorScheme[label] || 
-      styleOptions.defaultColors[Math.abs(label.hashCode()) % styleOptions.defaultColors.length]
-    );
+    const colors = labels.map(label => {
+      const hash = Math.abs(String(label).hashCode()) % styleOptions.defaultColors.length;
+      return styleOptions.colorScheme[label] || styleOptions.defaultColors[hash];
+    });
     
     // Create chart
     const ctx = canvas.getContext('2d');
@@ -264,7 +265,7 @@ const PieClusterLayer = ({
           pieChartCanvasCache.current[cacheKey] = canvas;
         }
         
-        // Store metadata for hover/click events only for actual Feature instances (not RenderFeature)
+        // Store metadata for hover/click events
         if (feature instanceof Feature) {
           feature.set('pieChartData', {
             categoryCount,
@@ -300,8 +301,10 @@ const PieClusterLayer = ({
         
         // Get dominant category if available
         let dominantCategory = 'unknown';
+        let categoryCounts: Record<string, number> = {};
+        
         if (features.length > 0) {
-          const categoryCounts: Record<string, number> = {};
+          categoryCounts = {};
           features.forEach(f => {
             const props = f.get('properties') || {};
             const category = props[styleOptions.pieChartAttribute] || 'unknown';
@@ -315,21 +318,15 @@ const PieClusterLayer = ({
               dominantCategory = category;
             }
           });
-          
-          feature.set('pieChartData', {
-            categoryCounts,
-            dominantCategory,
-            totalItems: size
-          });
         }
         
         // Use color of dominant category or default
         const fillColor = styleOptions.colorScheme[dominantCategory] || styleOptions.defaultColors[0];
         
-        // Store metadata for hover/click events only for actual Feature instances (not RenderFeature)
+        // Store metadata for hover/click events
         if (feature instanceof Feature) {
           feature.set('pieChartData', {
-            categoryCounts: categoryCounts,
+            categoryCount: categoryCounts,
             dominantCategory,
             totalItems: size
           });
@@ -396,6 +393,9 @@ const PieClusterLayer = ({
     // Add layer to map
     activeMap.addLayer(vectorLayer);
     
+    let clickHandlerRef: ((event: any) => void) | null = null;
+    let moveHandlerRef: ((event: any) => void) | null = null;
+    
     // Handle click events on clusters
     if (onClusterClick) {
       const clickHandler = (event: any) => {
@@ -417,6 +417,7 @@ const PieClusterLayer = ({
       };
       
       activeMap.on('click', clickHandler);
+      clickHandlerRef = clickHandler;
     }
     
     // Handle hover events on clusters
@@ -449,19 +450,17 @@ const PieClusterLayer = ({
       };
       
       activeMap.on('pointermove', moveHandler);
+      moveHandlerRef = moveHandler;
     }
-    
-    // Store handlers for cleanup
-    const activeClickHandler = onClusterClick ? clickHandler : null;
     
     // Cleanup function
     return () => {
-      if (activeClickHandler) {
-        activeMap.un('click', activeClickHandler);
+      if (clickHandlerRef) {
+        activeMap.un('click', clickHandlerRef);
       }
       
-      if (onClusterHover) {
-        activeMap.un('pointermove', moveHandler);
+      if (moveHandlerRef) {
+        activeMap.un('pointermove', moveHandlerRef);
       }
       
       if (vectorLayerRef.current) {
@@ -472,7 +471,7 @@ const PieClusterLayer = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [activeMap, data, distance, minDistance]);
+  }, [activeMap, data, distance, minDistance, onClusterClick, onClusterHover]);
 
   // Update opacity when prop changes
   useEffect(() => {
@@ -493,128 +492,83 @@ const PieClusterLayer = ({
       // Get current features in the cluster
       const features = clusterSource.getFeatures();
       
-      // Record current positions
-      const previousPositions = new Map();
+      // Record current positions as a Record/dictionary
+      const previousPositions: Record<string, number[]> = {};
       features.forEach(feature => {
         const geometry = feature.getGeometry();
         if (geometry) {
           // Type assertion to Point which has getCoordinates
-          const coords = (geometry as Point).getCoordinates();
-          if (coords) {
-            // Use an alternative key approach
-            previousPositions.set(String(feature.getId()), [...coords]);
-          }
+          const center = (geometry as Point).getCoordinates();
+          const featureId = String(feature.getId() || Math.random().toString(36).substring(2, 9));
+          previousPositions[featureId] = center;
         }
       });
       
-      // Force the cluster source to refresh
-      const distance = clusterSource.getDistance();
-      clusterSource.setDistance(0);
+      // Force re-clustering
+      clusterSource.refresh();
       
-      // Now set it back to trigger reorganization
-      setTimeout(() => {
-        if (clusterSourceRef.current) {
-          clusterSourceRef.current.setDistance(distance);
+      // Setup animation from previous positions to new ones
+      animatingRef.current = true;
+      let start = Date.now();
+      
+      // Animation function
+      const animate = () => {
+        const elapsed = Date.now() - start;
+        const progress = Math.min(elapsed / ANIMATION_DURATION, 1);
+        const frameProgress = easeOut(progress);
+        
+        // Apply the animation to each cluster
+        features.forEach(feature => {
+          const featureId = String(feature.getId() || '');
+          const prevCoords = previousPositions[featureId];
+          if (!prevCoords) return;
           
-          // After clusters reorganize, animate to new positions
-          setTimeout(() => {
-            animateToNewPositions(previousPositions);
-          }, 0);
+          const geometry = feature.getGeometry();
+          if (!geometry) return;
+          
+          // Only animate if feature still exists
+          const isPoint = geometry instanceof Point;
+          if (!isPoint) return;
+          
+          // Get current coordinates
+          const currentCoords = geometry.getCoordinates();
+          
+          // Skip if no change
+          if (prevCoords[0] === currentCoords[0] && prevCoords[1] === currentCoords[1]) return;
+          
+          // Calculate interpolated position
+          const x = prevCoords[0] + (currentCoords[0] - prevCoords[0]) * frameProgress;
+          const y = prevCoords[1] + (currentCoords[1] - prevCoords[1]) * frameProgress;
+          
+          // Create a new point geometry for the interpolated position
+          const animGeom = new Point([x, y]);
+          (feature as Feature).setGeometry(animGeom);
+        });
+        
+        // Request next frame if not complete
+        if (progress < 1) {
+          animationFrameRef.current = requestAnimationFrame(animate);
+        } else {
+          animatingRef.current = false;
+          // Apply final positions
+          vectorLayerRef.current?.changed();
         }
-      }, 0);
+      };
+      
+      // Start animation
+      animationFrameRef.current = requestAnimationFrame(animate);
     };
     
-    // Animate clusters to their new positions
-    const animateToNewPositions = (previousPositions: Map) => {
-      if (!clusterSourceRef.current) return;
-      
-      const clusterSource = clusterSourceRef.current;
-      const features = clusterSource.getFeatures();
-      
-      // Setup animation for each feature
-      features.forEach(feature => {
-        const originalGeometry = feature.getGeometry();
-        if (!originalGeometry) return;
-        
-        // Type assertion to Point which has getCoordinates
-        const currentCoords = (originalGeometry as Point).getCoordinates();
-        let prevCoords = previousPositions.get(String(feature.getId()));
-        
-        // If we don't have previous coordinates for this feature, check if it's a new cluster
-        if (!prevCoords) {
-          // For new clusters, get the center of the contained features
-          const clusterFeatures = feature.get('features');
-          if (clusterFeatures && clusterFeatures.length > 0) {
-            // Use the first feature's position as starting point
-            const firstFeature = clusterFeatures[0];
-            prevCoords = firstFeature.get('originalCoordinates') || currentCoords;
-          } else {
-            prevCoords = currentCoords;
-          }
-        }
-        
-        // Skip animation if positions are the same
-        if (
-          prevCoords[0] === currentCoords[0] &&
-          prevCoords[1] === currentCoords[1]
-        ) {
-          return;
-        }
-        
-        // Clone the geometry for animation
-        const animGeom = originalGeometry.clone() as Point;
-        animGeom.setCoordinates(prevCoords);
-        feature.setGeometry(animGeom);
-        
-        // Start animation
-        const startTime = Date.now();
-        const animate = () => {
-          const elapsed = Date.now() - startTime;
-          const progress = Math.min(elapsed / ANIMATION_DURATION, 1);
-          const easeProgress = easeOut(progress);
-          
-          // Calculate intermediate position
-          const x = prevCoords[0] + (currentCoords[0] - prevCoords[0]) * easeProgress;
-          const y = prevCoords[1] + (currentCoords[1] - prevCoords[1]) * easeProgress;
-          
-          // Update geometry position
-          animGeom.setCoordinates([x, y]);
-          
-          // Continue animation until complete
-          if (progress < 1) {
-            animationFrameRef.current = requestAnimationFrame(animate);
-          } else {
-            animGeom.setCoordinates(currentCoords);
-            animatingRef.current = false;
-          }
-        };
-        
-        animatingRef.current = true;
-        animate();
-      });
-    };
-    
-    // Add event listener for map movement
+    // Add event listener
     activeMap.on('moveend', handleMoveEnd);
     
+    // Cleanup
     return () => {
       activeMap.un('moveend', handleMoveEnd);
     };
   }, [activeMap, animationEnabled]);
 
-  return null; // This component doesn't render any DOM elements
-};
-
-// Helper method to create a simple hash code for strings
-// Used for consistent color selection based on category names
-String.prototype.hashCode = function() {
-  let hash = 0;
-  for (let i = 0; i < this.length; i++) {
-    const char = this.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return hash;
+  return null; // The layer is added directly to the map
 };
 
 export default PieClusterLayer;

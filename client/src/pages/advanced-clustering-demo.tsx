@@ -458,7 +458,7 @@ export default function AdvancedClusteringDemoPage() {
                             <div className="h-48">
                               {generateClusterChartData() && (
                                 <Doughnut 
-                                  data={generateClusterChartData() as ChartData<'doughnut', number[], string>} 
+                                  data={generateClusterChartData() as any} 
                                   options={chartOptions}
                                 />
                               )}
