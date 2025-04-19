@@ -1,12 +1,23 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useGISServices } from '@/hooks/use-gis-services';
 
+// Updated GIS Layer interface to work with different map backends
+interface GISLayer {
+  id: string; // Use string to be more flexible with multiple backends
+  name: string;
+  type: 'base' | 'vector' | 'raster';
+  visible: boolean;
+  opacity: number;
+  source?: string;
+  metadata?: Record<string, any>;
+}
+
 interface GISContextType {
   // Layer management
-  visibleLayers: number[];
-  toggleLayerVisibility: (layerId: number) => void;
-  baseMapId: number | null;
-  setBaseMapId: (id: number | null) => void;
+  visibleLayers: Record<string, boolean>; // Changed to map of layer IDs to visibility
+  toggleLayerVisibility: (layerId: string) => void;
+  baseMapType: 'osm' | 'satellite' | 'terrain'; // For OpenLayers/QGIS integration
+  setBaseMapType: (type: 'osm' | 'satellite' | 'terrain') => void;
   
   // Map state
   center: [number, number];
@@ -19,8 +30,8 @@ interface GISContextType {
   setSelectedFeatureId: (id: string | null) => void;
   
   // Layer manipulation
-  layerOpacity: Record<number, number>;
-  setLayerOpacity: (layerId: number, opacity: number) => void;
+  layerOpacity: Record<string, number>; // Changed to use string IDs
+  setLayerOpacity: (layerId: string, opacity: number) => void;
   
   // User interface state
   isLayersPanelOpen: boolean;
