@@ -138,6 +138,17 @@ export function createGisRoutes(storage: IStorage) {
     const qgisInfo = qgisService.getQGISInfo();
     res.json(qgisInfo);
   });
+  
+  // Get available basemaps
+  router.get('/basemaps', async (req, res) => {
+    try {
+      const basemaps = await qgisService.getBasemaps();
+      res.json(basemaps);
+    } catch (error) {
+      console.error('Error fetching basemaps:', error);
+      res.status(500).json({ error: 'Failed to fetch basemaps' });
+    }
+  });
 
   return router;
 }

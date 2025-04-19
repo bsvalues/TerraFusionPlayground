@@ -252,7 +252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
   
   // Register GIS routes
-  app.use('/api/gis', createGisRoutes());
+  app.use('/api/gis', createGisRoutes(storage));
   
   /**
    * QGIS Integration Routes
