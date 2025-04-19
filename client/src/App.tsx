@@ -33,6 +33,7 @@ import VoiceCommandSettingsPage from "@/pages/voice-command-settings-page";
 import DatabaseConversionPage from "@/pages/database-conversion-page";
 import ClusteringDemoPage from "@/pages/clustering-demo";
 import AdvancedClusteringDemoPage from "@/pages/advanced-clustering-demo";
+import Terrain3DDemoPage from "@/pages/terrain-3d-demo";
 import AppLayout from "@/layout/app-layout";
 
 
@@ -187,6 +188,12 @@ function Router() {
       <Route path="/gis/advanced-clustering">
         <AppLayout>
           <AdvancedClusteringDemoPage />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/gis/terrain-3d">
+        <AppLayout>
+          <Terrain3DDemoPage />
         </AppLayout>
       </Route>
 
