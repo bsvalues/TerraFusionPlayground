@@ -42,10 +42,10 @@ const TopNavigation = () => {
   ];
   
   return (
-    <header className="bg-[#111] backdrop-blur-md text-white sticky top-0 z-30">
+    <header className="bg-primary-blue-dark backdrop-blur-md text-white sticky top-0 z-30">
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main navigation bar */}
-        <div className="flex items-center justify-between h-14">
+        <div className="flex items-center justify-between h-16">
           {/* Mobile menu button */}
           <button
             className="md:hidden p-2 text-white/70 hover:text-white focus:outline-none"
@@ -67,7 +67,11 @@ const TopNavigation = () => {
           <div className="flex items-center gap-4">
             <Link href="/">
               <div className="flex items-center cursor-pointer">
-                <span className="text-xl font-semibold">BCBS GeoAssessment</span>
+                <img 
+                  src="/assets/terrafusion-logo.svg" 
+                  alt="TerraFusion" 
+                  className="h-8 w-auto"
+                />
               </div>
             </Link>
           </div>
@@ -77,10 +81,10 @@ const TopNavigation = () => {
             {menuItems.map((item) => (
               <Link key={item.path} href={item.path}>
                 <div 
-                  className={`px-3 py-2 text-sm font-medium rounded-md cursor-pointer ${
+                  className={`px-3 py-2 text-sm font-medium rounded-md cursor-pointer tf-font-body ${
                     location === item.path
-                      ? 'text-white bg-primary-600/10'
-                      : 'text-white/70 hover:text-white hover:bg-white/10'
+                      ? 'text-white bg-primary-blue'
+                      : 'text-white/80 hover:text-white hover:bg-primary-blue-light/30'
                   } transition-colors duration-150 ease-in-out`}
                 >
                   {item.label}
@@ -144,7 +148,7 @@ const TopNavigation = () => {
                 }}
               >
                 <span className="sr-only">Open user menu</span>
-                <div className="h-8 w-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white font-medium">
+                <div className="h-9 w-9 rounded-full bg-primary-teal border border-primary-teal-light flex items-center justify-center text-white font-medium">
                   {user?.name.charAt(0)}
                 </div>
               </button>
@@ -181,7 +185,7 @@ const TopNavigation = () => {
 
       {/* Mobile menu dropdown - animated sliding panel */}
       <div 
-        className={`md:hidden fixed inset-x-0 top-14 bg-[#111]/95 backdrop-blur-md transform transition-transform duration-300 ease-in-out ${
+        className={`md:hidden fixed inset-x-0 top-16 bg-primary-blue-dark/95 backdrop-blur-md transform transition-transform duration-300 ease-in-out ${
           mobileMenuOpen ? 'translate-y-0 shadow-lg' : '-translate-y-full'
         }`}
       >
@@ -189,10 +193,10 @@ const TopNavigation = () => {
           {menuItems.map((item) => (
             <Link key={item.path} href={item.path}>
               <div 
-                className={`flex items-center px-3 py-3 rounded-lg text-base font-medium cursor-pointer ${
+                className={`flex items-center px-3 py-3 rounded-lg text-base font-medium cursor-pointer tf-font-body ${
                   location === item.path
-                    ? 'bg-white/10 text-white'
-                    : 'text-white/80 hover:text-white'
+                    ? 'bg-primary-blue text-white'
+                    : 'text-white/80 hover:text-white hover:bg-primary-blue-light/30'
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
