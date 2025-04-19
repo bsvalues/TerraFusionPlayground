@@ -139,13 +139,13 @@ interface SidebarMenuItemProps {
 }
 
 const SidebarMenuItem = ({ href, icon, children, isActive = false }: SidebarMenuItemProps) => {
-  const activeClasses = "bg-primary-600 text-white";
-  const inactiveClasses = "text-gray-700 hover:bg-gray-100";
+  const activeClasses = "bg-primary-blue text-white";
+  const inactiveClasses = "text-gray-700 hover:bg-primary-blue-light/10";
   
   return (
     <Link href={href}>
       <div className={cn(
-        "flex items-center px-3 py-2 text-sm font-medium rounded-md group cursor-pointer",
+        "flex items-center px-3 py-2 text-sm font-medium rounded-md group cursor-pointer tf-font-body transition-colors duration-150",
         isActive ? activeClasses : inactiveClasses
       )}>
         {icon}
@@ -163,7 +163,7 @@ interface SidebarSectionProps {
 
 const SidebarSection = ({ title, agentType, children }: SidebarSectionProps) => (
   <div data-agent={agentType}>
-    <div className="px-3 py-2 mt-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+    <div className="px-3 py-2 mt-5 text-xs font-semibold text-primary-teal-dark uppercase tracking-wider tf-font-heading">
       {title}
     </div>
     {children}
@@ -181,10 +181,14 @@ export const Sidebar = () => {
   return (
     <div className="hidden md:flex md:flex-shrink-0">
       <div className="flex flex-col w-64 border-r border-gray-200 bg-white">
-        <div className="flex items-center justify-center h-16 px-4 bg-primary-600">
+        <div className="flex items-center justify-center h-16 px-4 bg-primary-blue-dark">
           <div className="flex items-center">
-            <Logo />
-            <span className="ml-2 text-white font-semibold text-lg">MCP Platform</span>
+            <img 
+              src="/assets/terrafusion-icon.svg" 
+              alt="TerraFusion" 
+              className="h-8 w-8" 
+            />
+            <span className="ml-2 text-white font-semibold text-lg tf-font-heading">TerraFusion</span>
           </div>
         </div>
         
@@ -373,13 +377,13 @@ export const Sidebar = () => {
           <div className="flex-shrink-0 w-full group block cursor-pointer">
             <div className="flex items-center">
               <div>
-                <div className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-gray-500 text-white">
+                <div className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-primary-teal border border-primary-teal-light text-white tf-font-heading">
                   {user?.name.charAt(0)}
                 </div>
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">{user?.name}</p>
-                <p className="text-xs font-medium text-gray-500 group-hover:text-gray-700">{user?.role}</p>
+                <p className="text-sm font-medium text-primary-blue-dark group-hover:text-primary-blue tf-font-body">{user?.name}</p>
+                <p className="text-xs font-medium text-primary-teal-dark group-hover:text-primary-teal tf-font-body">{user?.role}</p>
               </div>
             </div>
           </div>
