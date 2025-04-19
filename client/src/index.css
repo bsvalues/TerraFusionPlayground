@@ -19,6 +19,11 @@
     font-family: var(--font-display);
   }
   
+  .tf-font-heading {
+    font-family: var(--font-display);
+    font-weight: 600;
+  }
+  
   .tf-font-body {
     font-family: var(--font-body);
   }
