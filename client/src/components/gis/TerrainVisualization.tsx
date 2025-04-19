@@ -104,10 +104,23 @@ const TerrainVisualization = ({
         });
       case 'terrain-rgb':
       default:
+        // Check for Mapbox token
+        const mapboxToken = import.meta.env.MAPBOX_TOKEN;
+        if (!mapboxToken) {
+          console.warn('Mapbox token not found. Using default terrain source.');
+          // Fallback to USGS if no token available
+          return new TileLayer({
+            source: new XYZ({
+              url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
+              maxZoom: 16,
+              attributions: 'Tiles courtesy of the <a href="https://usgs.gov/">U.S. Geological Survey</a>'
+            }),
+            className: 'terrain-layer'
+          });
+        }
         return new TileLayer({
           source: new XYZ({
-            url: 'https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=' + 
-                 process.env.MAPBOX_TOKEN || '',
+            url: `https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=${mapboxToken}`,
             maxZoom: 15,
             attributions: 'Elevation data © <a href="https://www.mapbox.com/">Mapbox</a>'
           }),
@@ -205,62 +218,71 @@ const TerrainVisualization = ({
   const applyElevationMode = (mode: ElevationMode) => {
     if (!terrainMapRef.current) return;
     
-    // Remove existing filter if any
-    if (elevationFilter && terrainMapRef.current.getLayers().getArray()[0]) {
-      const terrainLayer = terrainMapRef.current.getLayers().getArray()[0];
-      terrainLayer.removeFilter(elevationFilter);
-      setElevationFilter(null);
-    }
-    
-    if (!ElevationFilter) return;
-    
-    try {
-      // Apply new filter based on mode
-      if (mode !== 'none') {
-        const terrainLayer = terrainMapRef.current.getLayers().getArray()[0];
-        
-        let filter;
-        switch (mode) {
-          case 'gradient':
-            filter = new ElevationFilter({
-              colorScheme: [
-                { color: '#d8f2fa', level: 0 },   // Water level
-                { color: '#c8e6d0', level: 50 },  // Low elevation
-                { color: '#a4d8a5', level: 100 }, // Low hills
-                { color: '#73c378', level: 200 }, // Hills
-                { color: '#48ae5c', level: 350 }, // Mountains
-                { color: '#328a44', level: 500 }, // High mountains
-                { color: '#2a623a', level: 650 }, // Very high mountains
-                { color: '#eae5d9', level: 800 }  // Snow
-              ]
-            });
-            break;
-            
-          case 'hillshade':
-            filter = new ElevationFilter({
-              hillshading: true,
-              shading: 0.5
-            });
-            break;
-            
-          case 'contour':
-            // Contour lines implementation goes here, using Contour from ol-ext if available
-            filter = new ElevationFilter({
-              contours: true,
-              contourWidth: 0.5,
-              contourSteps: [100, 500],
-              contourColors: ['rgba(100, 100, 100, 0.5)', 'rgba(100, 100, 100, 1)']
-            });
-            break;
-        }
-        
-        if (filter) {
-          terrainLayer.addFilter(filter);
-          setElevationFilter(filter);
+    // Handle ol-ext filters if available
+    if (ElevationFilter && terrainMapRef.current) {
+      // Remove existing filter if any
+      if (elevationFilter && terrainMapRef.current.getLayers().getArray()[0]) {
+        try {
+          // Use type assertion to handle the ol-ext specific methods
+          const terrainLayer = terrainMapRef.current.getLayers().getArray()[0] as any;
+          if (terrainLayer && typeof terrainLayer.removeFilter === 'function') {
+            terrainLayer.removeFilter(elevationFilter);
+          }
+          setElevationFilter(null);
+        } catch (e) {
+          console.error('Error removing filter:', e);
         }
       }
-    } catch (e) {
-      console.error('Failed to apply elevation mode:', e);
+      
+      try {
+        // Apply new filter based on mode
+        if (mode !== 'none') {
+          // Use type assertion to access ol-ext specific methods
+          const terrainLayer = terrainMapRef.current.getLayers().getArray()[0] as any;
+          
+          let filter;
+          switch (mode) {
+            case 'gradient':
+              filter = new ElevationFilter({
+                colorScheme: [
+                  { color: '#d8f2fa', level: 0 },   // Water level
+                  { color: '#c8e6d0', level: 50 },  // Low elevation
+                  { color: '#a4d8a5', level: 100 }, // Low hills
+                  { color: '#73c378', level: 200 }, // Hills
+                  { color: '#48ae5c', level: 350 }, // Mountains
+                  { color: '#328a44', level: 500 }, // High mountains
+                  { color: '#2a623a', level: 650 }, // Very high mountains
+                  { color: '#eae5d9', level: 800 }  // Snow
+                ]
+              });
+              break;
+              
+            case 'hillshade':
+              filter = new ElevationFilter({
+                hillshading: true,
+                shading: 0.5
+              });
+              break;
+              
+            case 'contour':
+              // Contour lines implementation goes here, using Contour from ol-ext if available
+              filter = new ElevationFilter({
+                contours: true,
+                contourWidth: 0.5,
+                contourSteps: [100, 500],
+                contourColors: ['rgba(100, 100, 100, 0.5)', 'rgba(100, 100, 100, 1)']
+              });
+              break;
+          }
+          
+          if (filter && terrainLayer && typeof terrainLayer.addFilter === 'function') {
+            terrainLayer.addFilter(filter);
+            setElevationFilter(filter);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to apply elevation mode:', e);
+      }
     }
   };
   
