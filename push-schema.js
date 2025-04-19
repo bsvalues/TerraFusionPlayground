@@ -267,6 +267,71 @@ async function pushSchema() {
           user_id: { dataType: 'INTEGER' },
           metadata: { dataType: 'JSONB' }
         }
+      },
+      developer_productivity_metrics: {
+        name: 'developer_productivity_metrics',
+        columns: {
+          id: { dataType: 'SERIAL', primaryKey: true },
+          user_id: { dataType: 'INTEGER', notNull: true },
+          date: { dataType: 'DATE', notNull: true, defaultValue: 'now()' },
+          energy_level: { dataType: 'TEXT', notNull: true },
+          focus_level: { dataType: 'TEXT', notNull: true },
+          productive_hours: { dataType: 'NUMERIC', notNull: true },
+          distraction_count: { dataType: 'INTEGER', defaultValue: 0 },
+          completed_tasks: { dataType: 'INTEGER', defaultValue: 0 },
+          tasks_in_progress: { dataType: 'INTEGER', defaultValue: 0 },
+          blocked_tasks: { dataType: 'INTEGER', defaultValue: 0 },
+          code_lines: { dataType: 'INTEGER', defaultValue: 0 },
+          commit_count: { dataType: 'INTEGER', defaultValue: 0 },
+          notes: { dataType: 'TEXT' },
+          tags: { dataType: 'TEXT[]' },
+          created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
+          updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' }
+        },
+        indexes: [
+          { name: 'user_date', columns: ['user_id', 'date'] },
+          { name: 'energy_level', columns: ['energy_level'] }
+        ]
+      },
+      developer_activity_sessions: {
+        name: 'developer_activity_sessions',
+        columns: {
+          id: { dataType: 'SERIAL', primaryKey: true },
+          user_id: { dataType: 'INTEGER', notNull: true },
+          metric_id: { dataType: 'INTEGER' },
+          start_time: { dataType: 'TIMESTAMP', notNull: true, defaultValue: 'now()' },
+          end_time: { dataType: 'TIMESTAMP' },
+          duration: { dataType: 'INTEGER' },
+          activity_type: { dataType: 'TEXT', notNull: true },
+          project_id: { dataType: 'INTEGER' },
+          description: { dataType: 'TEXT' },
+          code_lines: { dataType: 'INTEGER', defaultValue: 0 },
+          is_completed: { dataType: 'BOOLEAN', defaultValue: false },
+          details: { dataType: 'JSONB', defaultValue: '{}' },
+          created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
+          updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' }
+        },
+        indexes: [
+          { name: 'user_activity', columns: ['user_id', 'activity_type'] },
+          { name: 'time_range', columns: ['start_time', 'end_time'] }
+        ]
+      },
+      energy_level_recommendations: {
+        name: 'energy_level_recommendations',
+        columns: {
+          id: { dataType: 'SERIAL', primaryKey: true },
+          user_id: { dataType: 'INTEGER', notNull: true },
+          energy_level: { dataType: 'TEXT', notNull: true },
+          recommended_activities: { dataType: 'JSONB', defaultValue: '[]' },
+          avoid_activities: { dataType: 'JSONB', defaultValue: '[]' },
+          best_time_of_day: { dataType: 'TEXT' },
+          tips: { dataType: 'TEXT[]' },
+          created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
+          updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' }
+        },
+        indexes: [
+          { name: 'user_energy', columns: ['user_id', 'energy_level'] }
+        ]
       }
     };
 
