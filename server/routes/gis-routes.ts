@@ -3,6 +3,7 @@ import QGISService from '../services/qgis-service';
 import fs from 'fs';
 import path from 'path';
 import { IStorage } from '../storage';
+import { createPredictionRoutes } from './prediction-routes';
 
 export function createGisRoutes(storage: IStorage) {
   const router = express.Router();
@@ -149,6 +150,51 @@ export function createGisRoutes(storage: IStorage) {
       res.status(500).json({ error: 'Failed to fetch basemaps' });
     }
   });
+  
+  // Get all available GIS layers
+  router.get('/layers', async (req, res) => {
+    try {
+      // Sample layers data for now
+      const layers = [
+        {
+          id: 'property-parcels',
+          name: 'Property Parcels',
+          type: 'vector',
+          visible: true,
+          description: 'Property boundaries and parcel information'
+        },
+        {
+          id: 'zoning',
+          name: 'Zoning Areas',
+          type: 'vector',
+          visible: false,
+          description: 'Zoning designations and regulations'
+        },
+        {
+          id: 'terrain',
+          name: 'Terrain Elevation',
+          type: 'raster',
+          visible: false,
+          description: 'Terrain elevation data with hillshading'
+        },
+        {
+          id: 'aerial',
+          name: 'Aerial Imagery',
+          type: 'raster',
+          visible: false,
+          description: 'High-resolution aerial photography'
+        }
+      ];
+      
+      res.json(layers);
+    } catch (error) {
+      console.error('Error fetching GIS layers:', error);
+      res.status(500).json({ error: 'Failed to fetch GIS layers' });
+    }
+  });
+  
+  // Mount the prediction routes
+  router.use('/', createPredictionRoutes(storage));
 
   return router;
 }
