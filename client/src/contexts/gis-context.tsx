@@ -49,10 +49,10 @@ interface GISContextType {
 }
 
 const defaultGISContext: GISContextType = {
-  visibleLayers: [],
+  visibleLayers: {},
   toggleLayerVisibility: () => {},
-  baseMapId: null,
-  setBaseMapId: () => {},
+  baseMapType: 'osm',
+  setBaseMapType: () => {},
   
   center: [-119.7, 46.2], // Benton County, WA coordinates
   setCenter: () => {},
@@ -86,8 +86,8 @@ export const GISProvider = ({ children }: { children: ReactNode }) => {
   const { data: layers, isLoading: isLayersLoading } = useLayers();
   
   // Layer management
-  const [visibleLayers, setVisibleLayers] = useState<number[]>([]);
-  const [baseMapId, setBaseMapId] = useState<number | null>(null);
+  const [visibleLayers, setVisibleLayersState] = useState<Record<string, boolean>>({});
+  const [baseMapType, setBaseMapType] = useState<'osm' | 'satellite' | 'terrain'>('osm');
   
   // Map state
   const [center, setCenter] = useState<[number, number]>([-119.7, 46.2]); // Benton County, WA
@@ -97,7 +97,7 @@ export const GISProvider = ({ children }: { children: ReactNode }) => {
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
   
   // Layer manipulation
-  const [layerOpacity, setLayerOpacityState] = useState<Record<number, number>>({});
+  const [layerOpacity, setLayerOpacityState] = useState<Record<string, number>>({});
   
   // UI state
   const [isLayersPanelOpen, setIsLayersPanelOpen] = useState<boolean>(false);
@@ -112,25 +112,18 @@ export const GISProvider = ({ children }: { children: ReactNode }) => {
   // Set initial visible layers when layers are loaded
   useEffect(() => {
     if (layers) {
-      // Set default visible layers (non-basemaps that are marked as visible)
-      const defaultVisible = layers
-        .filter(layer => layer.is_visible && !layer.is_basemap)
-        .map(layer => layer.id);
+      // Convert old layer format to new format
+      const visibilityMap: Record<string, boolean> = {};
+      const opacityMap: Record<string, number> = {};
       
-      setVisibleLayers(defaultVisible);
-      
-      // Set default basemap
-      const defaultBasemap = layers.find(layer => layer.is_basemap && layer.is_visible);
-      if (defaultBasemap) {
-        setBaseMapId(defaultBasemap.id);
-      }
-      
-      // Set default opacity for all layers
-      const defaultOpacity: Record<number, number> = {};
       layers.forEach(layer => {
-        defaultOpacity[layer.id] = layer.opacity / 100; // Convert from percentage to decimal
+        const layerId = String(layer.id);
+        visibilityMap[layerId] = layer.is_visible && !layer.is_basemap;
+        opacityMap[layerId] = layer.opacity / 100; // Convert from percentage to decimal
       });
-      setLayerOpacityState(defaultOpacity);
+      
+      setVisibleLayersState(visibilityMap);
+      setLayerOpacityState(opacityMap);
     }
   }, [layers]);
   
@@ -141,18 +134,15 @@ export const GISProvider = ({ children }: { children: ReactNode }) => {
   }, [isLayersLoading]);
   
   // Toggle layer visibility
-  const toggleLayerVisibility = (layerId: number) => {
-    setVisibleLayers(prev => {
-      if (prev.includes(layerId)) {
-        return prev.filter(id => id !== layerId);
-      } else {
-        return [...prev, layerId];
-      }
-    });
+  const toggleLayerVisibility = (layerId: string) => {
+    setVisibleLayersState(prev => ({
+      ...prev,
+      [layerId]: !prev[layerId]
+    }));
   };
   
   // Set layer opacity
-  const setLayerOpacity = (layerId: number, opacity: number) => {
+  const setLayerOpacity = (layerId: string, opacity: number) => {
     setLayerOpacityState(prev => ({
       ...prev,
       [layerId]: opacity,
@@ -186,8 +176,8 @@ export const GISProvider = ({ children }: { children: ReactNode }) => {
   const contextValue: GISContextType = {
     visibleLayers,
     toggleLayerVisibility,
-    baseMapId,
-    setBaseMapId,
+    baseMapType,
+    setBaseMapType,
     
     center,
     setCenter,
