@@ -27,19 +27,22 @@ import { cn } from '@/lib/utils';
 import '@/styles/terrain-visualization.css';
 
 // Import ol-ext components (if available)
-let Elevation: any;
-let ElevationFilter: any;
-let Contour: any;
+// Define placeholders for ol-ext components
+let Elevation: any = null;
+let ElevationFilter: any = null;
+let Contour: any = null;
 
-try {
-  // Import dynamically to avoid bundling issues
-  const olExt = require('ol-ext');
-  Elevation = olExt.control.Elevation;
-  ElevationFilter = olExt.filter.Elevation;
-  Contour = olExt.source.Contour;
-} catch (e) {
-  console.error('Failed to import ol-ext:', e);
-}
+// Import ol-ext dynamically
+import('ol-ext').then(olExt => {
+  // Access the components once the module is loaded
+  Elevation = olExt.control?.Elevation;
+  ElevationFilter = olExt.filter?.Elevation;
+  Contour = olExt.source?.Contour;
+  console.log('Successfully imported ol-ext');
+}).catch(error => {
+  console.error('Failed to import ol-ext:', error);
+  // Continue without the advanced terrain functionality
+});
 
 interface TerrainVisualizationProps {
   className?: string;
