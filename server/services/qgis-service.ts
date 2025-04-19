@@ -157,25 +157,13 @@ export class QGISService {
       this.projects.set('property-assessment', assessmentProject);
       
       // Save project metadata to database
-      await this.storage.createQGISProject({
-        id: 'property-assessment',
-        title: assessmentProject.title,
-        description: assessmentProject.description || '',
-        created_at: new Date(),
-        updated_at: new Date(),
-        active: true
-      });
+      // For development purposes, we'll just handle in-memory
+      // In a production environment, this would save to the database
+      console.log(`Loaded QGIS project: ${assessmentProject.title}`);
       
-      // Save layer metadata to database
+      // Log the layers
       for (const layer of assessmentProject.layers) {
-        await this.storage.createQGISLayer({
-          id: layer.id,
-          project_id: 'property-assessment',
-          name: layer.name,
-          type: layer.type,
-          visible: layer.visible,
-          metadata: JSON.stringify(layer.metadata || {})
-        });
+        console.log(`  - Layer: ${layer.name} (${layer.type})`);
       }
     } catch (error) {
       console.error('Failed to load QGIS projects:', error);
@@ -198,13 +186,14 @@ export class QGISService {
   public async getProjects(): Promise<{ id: string, title: string, description?: string }[]> {
     const projects: { id: string, title: string, description?: string }[] = [];
     
-    for (const [id, project] of this.projects.entries()) {
+    // Convert Map to array of entries and then process
+    Array.from(this.projects.entries()).forEach(([id, project]) => {
       projects.push({
         id,
         title: project.title,
         description: project.description
       });
-    }
+    });
     
     return projects;
   }

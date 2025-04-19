@@ -5,6 +5,7 @@ import OSM from 'ol/source/OSM';
 import XYZ from 'ol/source/XYZ';
 import { fromLonLat } from 'ol/proj';
 import 'ol/ol.css';
+import '@/styles/map-branding.css'; // Import our custom map styling
 import { useGIS } from '@/contexts/gis-context';
 import { Maximize, Layers, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,11 +27,13 @@ const QGISMap = ({
   className = '',
   showControls = true,
   interactive = true,
-  baseMapType = 'osm'
+  baseMapType: initialBaseMapType = 'osm'
 }: QGISMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const map = useRef<Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  // Create local state for baseMapType with initial value from props
+  const [baseMapType, setBaseMapType] = useState<'osm' | 'satellite' | 'terrain'>(initialBaseMapType);
   
   const {
     center,
@@ -245,8 +248,34 @@ const QGISMap = ({
         <div className="absolute left-4 top-12 bg-white p-4 rounded shadow-lg w-64">
           <h3 className="font-medium mb-3 text-primary flex items-center">
             <Layers className="h-4 w-4 mr-2" /> 
-            QGIS Layers
+            Map Controls
           </h3>
+          
+          {/* Base Map Type Selector */}
+          <div className="mb-4">
+            <div className="tf-layer-group-header mb-2">Base Map Type</div>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                className={`px-2 py-1 text-xs rounded ${baseMapType === 'osm' ? 'bg-primary text-white' : 'bg-gray-100'}`}
+                onClick={() => setBaseMapType('osm')}
+              >
+                Streets
+              </button>
+              <button
+                className={`px-2 py-1 text-xs rounded ${baseMapType === 'satellite' ? 'bg-primary text-white' : 'bg-gray-100'}`}
+                onClick={() => setBaseMapType('satellite')}
+              >
+                Satellite
+              </button>
+              <button
+                className={`px-2 py-1 text-xs rounded ${baseMapType === 'terrain' ? 'bg-primary text-white' : 'bg-gray-100'}`}
+                onClick={() => setBaseMapType('terrain')}
+              >
+                Terrain
+              </button>
+            </div>
+          </div>
+          
           {/* Layer groups */}
           <div className="space-y-3">
             <div className="tf-layer-group">
