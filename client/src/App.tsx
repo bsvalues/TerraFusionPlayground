@@ -31,10 +31,11 @@ import AssessmentModelWorkbenchPage from "@/pages/AssessmentModelWorkbenchPage";
 import VoiceCommandPage from "@/pages/VoiceCommandPage";
 import VoiceCommandSettingsPage from "@/pages/voice-command-settings-page";
 import DatabaseConversionPage from "@/pages/database-conversion-page";
+// Import the modularized GIS components
+import { GISHub as GISHubPage, Terrain3DDemo as Terrain3DDemoPage, GISProvider } from "@/modules/gis";
+// Original page imports until we migrate them all to the GIS module
 import ClusteringDemoPage from "@/pages/clustering-demo";
 import AdvancedClusteringDemoPage from "@/pages/advanced-clustering-demo";
-import Terrain3DDemoPage from "@/pages/terrain-3d-demo";
-import GISHubPage from "@/pages/gis/index";
 import AppLayout from "@/layout/app-layout";
 
 
@@ -218,10 +219,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ExtensionProvider>
         <AIAssistantProvider>
-          <Router />
-          <ConnectionNotification />
-          <Toaster />
-          <ConnectionStatusMonitor /> {/* Added ConnectionStatusMonitor */}
+          <GISProvider>
+            <Router />
+            <ConnectionNotification />
+            <Toaster />
+            <ConnectionStatusMonitor /> {/* Added ConnectionStatusMonitor */}
+          </GISProvider>
         </AIAssistantProvider>
       </ExtensionProvider>
     </QueryClientProvider>

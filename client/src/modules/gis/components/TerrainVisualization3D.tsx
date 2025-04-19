@@ -50,7 +50,7 @@ import { cn } from '@/lib/utils';
 import '../styles/terrain-3d.css';
 
 // Context
-import { useGIS } from '@/contexts/gis-context';
+import { useGIS } from '../contexts/GISContext';
 
 // Types
 interface TerrainVisualization3DProps {

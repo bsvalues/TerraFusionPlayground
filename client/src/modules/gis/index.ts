@@ -1,26 +1,25 @@
 /**
- * TerraFusion GIS Module
+ * GIS Module
  * 
- * A comprehensive GIS module for the TerraFusion platform with features including:
- * - Advanced 3D terrain visualization
- * - Enhanced property clustering
- * - QGIS integration
- * - Viewshed analysis
- * - AI-powered geospatial analysis
+ * This module provides comprehensive GIS functionality:
+ * - 3D Terrain Visualization
+ * - Advanced Clustering
+ * - Viewshed Analysis
+ * - Property Extrusion
+ * 
+ * The module is designed to be self-contained with its own components,
+ * contexts, utilities, and pages.
  */
 
-// Export core components
+// Export pages
 export { default as GISHub } from './pages/GISHub';
-export { default as TerrainVisualization3D } from './components/TerrainVisualization3D';
-export { default as AdvancedClustering } from './pages/AdvancedClusteringDemo';
-export { default as ClusteringDemo } from './pages/ClusteringDemo';
 export { default as Terrain3DDemo } from './pages/Terrain3DDemo';
+
+// Export components
+export { default as TerrainVisualization3D } from './components/TerrainVisualization3D';
+
+// Export contexts
+export { useGIS, GISProvider } from './contexts/GISContext';
 
 // Export utilities
 export * from './utils/ol-ext-utils';
-
-// Export contexts
-export * from './contexts/GISContext';
-
-// Export services
-export * from './services/MapProviderService';
