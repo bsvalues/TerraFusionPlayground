@@ -49,13 +49,13 @@ const Dashboard = () => {
   return (
     <>
       <PageHeader 
-        title="MCP Property Tax Platform" 
-        subtitle="Beta"
+        title="TerraFusion Platform" 
+        subtitle="Enterprise"
         actions={headerActions}
       />
       
       <div className="px-4 sm:px-6 lg:max-w-7xl lg:mx-auto lg:px-8 py-6">
-        <h2 className="text-lg font-medium text-gray-900">Dashboard Overview</h2>
+        <h2 className="text-lg font-medium text-primary-blue-dark tf-font-heading">Dashboard Overview</h2>
         
         {/* KPI Cards Row */}
         <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -106,11 +106,11 @@ const Dashboard = () => {
           <ProductivityTrackerWidget />
         </div>
 
-        {/* TaxI_AI Developer Tools Section */}
+        {/* TerraFusion Developer Tools Section */}
         <div className="mt-12">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium text-gray-900">TaxI_AI Developer Tools</h2>
-            <Button variant="outline" size="sm" asChild>
+            <h2 className="text-lg font-medium text-primary-blue-dark tf-font-heading">TerraFusion Developer Tools</h2>
+            <Button variant="outline" size="sm" asChild className="border-primary-teal text-primary-teal hover:bg-primary-teal-light/10">
               <Link href="/development">
                 View All Tools <ArrowRightCircle className="ml-2 h-4 w-4" />
               </Link>
@@ -119,15 +119,15 @@ const Dashboard = () => {
           
           <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {/* Development Platform Card */}
-            <Card className="hover:border-primary/50 hover:shadow-md transition-all duration-300">
+            <Card className="hover:border-primary-blue/50 hover:shadow-md transition-all duration-300 border border-primary-blue-light/20">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <div className="rounded-full bg-primary/10 p-2">
-                    <Code2 className="h-5 w-5 text-primary"/>
+                  <div className="rounded-full bg-primary-teal/10 p-2">
+                    <Code2 className="h-5 w-5 text-primary-teal"/>
                   </div>
                 </div>
-                <CardTitle className="mt-2">Development Platform</CardTitle>
-                <CardDescription>
+                <CardTitle className="mt-2 tf-font-heading text-primary-blue-dark">Development Platform</CardTitle>
+                <CardDescription className="tf-font-body text-primary-blue">
                   Build custom assessment applications with AI-powered tools
                 </CardDescription>
               </CardHeader>
@@ -154,16 +154,16 @@ const Dashboard = () => {
             </Card>
 
             {/* Database Conversion Card */}
-            <Card className="hover:border-primary/50 hover:shadow-md transition-all duration-300">
+            <Card className="hover:border-primary-blue/50 hover:shadow-md transition-all duration-300 border border-primary-blue-light/20">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <div className="rounded-full bg-primary/10 p-2">
-                    <Database className="h-5 w-5 text-primary"/>
+                  <div className="rounded-full bg-primary-teal/10 p-2">
+                    <Database className="h-5 w-5 text-primary-teal"/>
                   </div>
                 </div>
-                <CardTitle className="mt-2">Database Conversion</CardTitle>
-                <CardDescription>
-                  Convert and migrate your existing database to TaxI_AI platform
+                <CardTitle className="mt-2 tf-font-heading text-primary-blue-dark">Database Conversion</CardTitle>
+                <CardDescription className="tf-font-body text-primary-blue">
+                  Convert and migrate your existing database to TerraFusion platform
                 </CardDescription>
               </CardHeader>
               <CardContent className="pb-2">
