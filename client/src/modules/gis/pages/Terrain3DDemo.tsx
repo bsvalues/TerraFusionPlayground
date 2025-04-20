@@ -37,38 +37,54 @@ export default function Terrain3DDemo() {
     // Debug: Log token info from context
     console.log("Mapbox token available from context:", mapboxTokenAvailable);
     console.log("Map container element exists:", !!mapRef.current);
+    console.log("Map container dimensions:", mapRef.current?.clientWidth, "x", mapRef.current?.clientHeight);
     
-    const mapLayer = mapboxToken 
-      ? new TileLayer({
-          source: new XYZ({
-            url: `https://api.mapbox.com/styles/v1/mapbox/outdoors-v11/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`,
-            maxZoom: 19,
-            attributions: '© Mapbox, © OpenStreetMap'
-          })
+    try {
+      // Default to OpenStreetMap which doesn't require a token
+      const tileSource = new XYZ({
+        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        maxZoom: 19,
+        attributions: '© OpenStreetMap contributors'
+      });
+      
+      // Try to use Mapbox if token is available
+      if (mapboxToken) {
+        console.log("Attempting to use Mapbox with token");
+        tileSource.setUrl(`https://api.mapbox.com/styles/v1/mapbox/outdoors-v11/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`);
+        tileSource.setAttributions('© Mapbox, © OpenStreetMap');
+      }
+      
+      const mapLayer = new TileLayer({
+        source: tileSource
+      });
+      
+      console.log("Creating OpenLayers map instance");
+      const map = new Map({
+        target: mapRef.current,
+        layers: [mapLayer],
+        view: new View({
+          center: fromLonLat(initialCenter),
+          zoom: initialZoom
         })
-      : // Fallback to OpenStreetMap if no Mapbox token
-        new TileLayer({
-          source: new XYZ({
-            url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            maxZoom: 19,
-            attributions: '© OpenStreetMap contributors'
-          })
-        });
-    
-    const map = new Map({
-      target: mapRef.current,
-      layers: [mapLayer],
-      view: new View({
-        center: fromLonLat(initialCenter),
-        zoom: initialZoom
-      })
-    });
-    
-    mapInstanceRef.current = map;
-    
-    // Add 3D effect to map container
-    const mapContainer = mapRef.current;
-    mapContainer.classList.add('terrain-3d-effect');
+      });
+      
+      console.log("Map instance created successfully");
+      mapInstanceRef.current = map;
+      
+      // Add 3D effect to map container
+      const mapContainer = mapRef.current;
+      mapContainer.classList.add('terrain-3d-effect');
+      
+      // Force a map resize to ensure proper rendering
+      setTimeout(() => {
+        if (map) {
+          console.log("Triggering map resize");
+          map.updateSize();
+        }
+      }, 100);
+    } catch (error) {
+      console.error("Error initializing map:", error);
+    }
     
     return () => {
       if (mapInstanceRef.current) {
@@ -76,7 +92,7 @@ export default function Terrain3DDemo() {
         mapInstanceRef.current = null;
       }
     };
-  }, []);
+  }, [mapboxToken, mapboxTokenAvailable]); // Add dependencies to re-run if token changes
   
   return (
     <>
@@ -292,14 +308,24 @@ export default function Terrain3DDemo() {
             {/* OpenLayers map container */}
             <div 
               ref={mapRef} 
-              className="w-full h-full"
+              className="w-full h-full" 
               style={{ 
                 position: 'relative',
                 transformStyle: 'preserve-3d',
                 perspective: '1000px',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                minHeight: '400px', /* Ensure minimum height */
+                backgroundColor: '#f0f0f0', /* Visible background color to debug */
+                border: '1px solid #ccc' /* Visible border to debug */
               }}
-            />
+            >
+              {/* Fallback content in case map doesn't load */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <p className="text-muted-foreground text-sm">
+                  Loading terrain visualization...
+                </p>
+              </div>
+            </div>
             
             {/* Note about simplified version */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-background/90 p-3 rounded-lg shadow-md border border-border max-w-sm">
