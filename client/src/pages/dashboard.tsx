@@ -2,6 +2,7 @@ import { useState } from 'react';
 import PageHeader from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import KPICard from '@/components/dashboard/kpi-card';
 import GISMap from '@/components/dashboard/gis-map';
 import PropertyList from '@/components/dashboard/property-list';
@@ -9,7 +10,7 @@ import AIAgentOverview from '@/components/dashboard/ai-agent-overview';
 import SystemActivityFeed from '@/components/dashboard/system-activity';
 import { ProductivityTrackerWidget } from '@/components/developer-productivity';
 import { Link } from 'wouter';
-import { Home, TrendingUp, FileText, CheckSquare, Database, Code2, Laptop, Share2, Settings, ArrowRightCircle } from 'lucide-react';
+import { Home, TrendingUp, FileText, CheckSquare, Database, Code2, Laptop, Share2, Settings, ArrowRightCircle, Map as MapIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { DashboardKPI } from '@/lib/types';
 
@@ -106,6 +107,56 @@ const Dashboard = () => {
           <ProductivityTrackerWidget />
         </div>
 
+        {/* TerraFusion GIS Hub Section */}
+        <div className="mt-12">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium text-primary-blue-dark tf-font-heading">TerraFusion GIS Tools</h2>
+            <Button variant="outline" size="sm" asChild className="border-primary-teal text-primary-teal hover:bg-primary-teal-light/10">
+              <Link href="/gis">
+                Open GIS Hub <ArrowRightCircle className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+          
+          <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {/* GIS Hub Card */}
+            <Card className="hover:border-primary-blue/50 hover:shadow-md transition-all duration-300 border-2 border-green-500">
+              <CardHeader className="pb-3 bg-green-50">
+                <div className="flex items-center justify-between">
+                  <div className="rounded-full bg-green-100 p-2">
+                    <MapIcon className="h-5 w-5 text-green-600"/>
+                  </div>
+                  <Badge className="bg-green-100 text-green-800 hover:bg-green-200">New</Badge>
+                </div>
+                <CardTitle className="mt-2 tf-font-heading text-primary-blue-dark">GIS Hub</CardTitle>
+                <CardDescription className="tf-font-body text-primary-blue">
+                  Advanced geospatial tools for property visualization and analysis
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pb-2">
+                <ul className="space-y-1 text-sm text-primary-blue-dark/70">
+                  <li className="flex items-center">
+                    <span className="mr-2 text-green-500">•</span> Interactive property map
+                  </li>
+                  <li className="flex items-center">
+                    <span className="mr-2 text-green-500">•</span> 3D terrain visualization
+                  </li>
+                  <li className="flex items-center">
+                    <span className="mr-2 text-green-500">•</span> Advanced spatial analysis
+                  </li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button className="w-full bg-green-600 hover:bg-green-700 text-white" asChild>
+                  <Link href="/gis">
+                    Open GIS Hub
+                  </Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
+        
         {/* TerraFusion Developer Tools Section */}
         <div className="mt-12">
           <div className="flex items-center justify-between">

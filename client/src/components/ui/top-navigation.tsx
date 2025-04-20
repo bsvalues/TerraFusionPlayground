@@ -27,6 +27,7 @@ const TopNavigation = () => {
   // Navigation menu items
   const menuItems = [
     { label: 'Dashboard', path: '/' },
+    { label: 'GIS Hub', path: '/gis', highlight: true }, // Added GIS Hub with highlight
     { label: 'Land Records', path: '/land-records' },
     { label: 'Improvements', path: '/improvements' },
     { label: 'Fields', path: '/fields' },
@@ -84,10 +85,13 @@ const TopNavigation = () => {
                   className={`px-3 py-2 text-sm font-medium rounded-md cursor-pointer tf-font-body ${
                     location === item.path
                       ? 'text-white bg-primary-blue'
-                      : 'text-white/80 hover:text-white hover:bg-primary-blue-light/30'
+                      : item.highlight
+                        ? 'text-white bg-green-600 hover:bg-green-700'
+                        : 'text-white/80 hover:text-white hover:bg-primary-blue-light/30'
                   } transition-colors duration-150 ease-in-out`}
                 >
                   {item.label}
+                  {item.highlight && <span className="ml-1 text-xs bg-white text-green-700 px-1 rounded">New</span>}
                 </div>
               </Link>
             ))}
@@ -196,11 +200,16 @@ const TopNavigation = () => {
                 className={`flex items-center px-3 py-3 rounded-lg text-base font-medium cursor-pointer tf-font-body ${
                   location === item.path
                     ? 'bg-primary-blue text-white'
-                    : 'text-white/80 hover:text-white hover:bg-primary-blue-light/30'
+                    : item.highlight
+                      ? 'bg-green-600 text-white'
+                      : 'text-white/80 hover:text-white hover:bg-primary-blue-light/30'
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {item.label}
+                {item.highlight && !location.startsWith(item.path) && (
+                  <span className="ml-2 px-1.5 py-0.5 text-xs bg-white text-green-700 rounded">New</span>
+                )}
                 {location === item.path && (
                   <span className="ml-auto">
                     <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
