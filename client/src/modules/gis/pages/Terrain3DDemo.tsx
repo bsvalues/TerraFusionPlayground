@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Info, MapPin, Mountain, Box, Layers, Eye } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { useGIS } from '../contexts/GISContext';
 
 /**
  * Simplified 3D Terrain Visualization Demo Page
@@ -27,12 +28,15 @@ export default function Terrain3DDemo() {
   const initialCenter = [-119.7, 46.2];
   const initialZoom = 10;
   
+  // Get GIS context
+  const { mapboxToken, mapboxTokenAvailable } = useGIS();
+
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
     
-    // Get Mapbox token from environment
-    // Client-side environment variables must be prefixed with VITE_
-    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+    // Debug: Log token info from context
+    console.log("Mapbox token available from context:", mapboxTokenAvailable);
+    console.log("Map container element exists:", !!mapRef.current);
     
     const mapLayer = mapboxToken 
       ? new TileLayer({
