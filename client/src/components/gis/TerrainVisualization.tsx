@@ -26,23 +26,18 @@ import { useGIS } from '@/contexts/gis-context';
 import { cn } from '@/lib/utils';
 import '@/styles/terrain-visualization.css';
 
-// Import ol-ext components (if available)
+// Import from our custom fallback utilities instead of direct ol-ext import
+import { olExtFallbacks } from '@/modules/gis/utils/ol-ext-utils';
+
 // Define placeholders for ol-ext components
 let Elevation: any = null;
 let ElevationFilter: any = null;
 let Contour: any = null;
 
-// Import ol-ext dynamically
-import('ol-ext').then(olExt => {
-  // Access the components once the module is loaded
-  Elevation = olExt.control?.Elevation;
-  ElevationFilter = olExt.filter?.Elevation;
-  Contour = olExt.source?.Contour;
-  console.log('Successfully imported ol-ext');
-}).catch(error => {
-  console.error('Failed to import ol-ext:', error);
-  // Continue without the advanced terrain functionality
-});
+// Use the fallback implementations
+Elevation = olExtFallbacks.createElevationControl;
+ElevationFilter = olExtFallbacks.createElevationFilter;
+Contour = olExtFallbacks.createContourSource;
 
 interface TerrainVisualizationProps {
   className?: string;
