@@ -102,7 +102,7 @@ const TerrainVisualization = ({
         });
       case 'terrain-rgb':
       default:
-        // Check for Mapbox token
+        // Get Mapbox token from environment
         const mapboxToken = import.meta.env.MAPBOX_TOKEN;
         if (!mapboxToken) {
           console.warn('Mapbox token not found. Using default terrain source.');

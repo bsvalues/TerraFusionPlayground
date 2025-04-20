@@ -31,7 +31,7 @@ export default function Terrain3DDemo() {
     if (!mapRef.current || mapInstanceRef.current) return;
     
     // Get Mapbox token from environment
-    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN || '';
+    const mapboxToken = import.meta.env.MAPBOX_TOKEN;
     
     const mapLayer = mapboxToken 
       ? new TileLayer({
