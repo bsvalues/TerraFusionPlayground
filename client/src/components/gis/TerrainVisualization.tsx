@@ -103,7 +103,8 @@ const TerrainVisualization = ({
       case 'terrain-rgb':
       default:
         // Get Mapbox token from environment
-        const mapboxToken = import.meta.env.MAPBOX_TOKEN;
+        // Client-side environment variables must be prefixed with VITE_
+        const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
         if (!mapboxToken) {
           console.warn('Mapbox token not found. Using default terrain source.');
           // Fallback to USGS if no token available
