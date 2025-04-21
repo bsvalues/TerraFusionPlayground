@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test Tool</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2563eb;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s ease;
+        }
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        button:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+        .log-container {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            background-color: #f9fafb;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            font-family: monospace;
+            margin-bottom: 5px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .sent {
+            color: #047857;
+        }
+        .received {
+            color: #1d4ed8;
+        }
+        .error {
+            color: #dc2626;
+        }
+        .info {
+            color: #9333ea;
+        }
+        .connection {
+            font-weight: bold;
+        }
+        input, select {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .protocol-section {
+            margin-top: 30px;
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            background-color: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Connection Test Tool</h1>
+    
+    <div class="form-group">
+        <label for="wsUrl">WebSocket URL:</label>
+        <input type="text" id="wsUrl" style="width: 400px;" value="ws://localhost:5000/api/agents/ws" />
+    </div>
+    
+    <div class="button-row">
+        <button id="connectBtn" onclick="connectWebSocket()">Connect</button>
+        <button id="disconnectBtn" onclick="disconnectWebSocket()" disabled>Disconnect</button>
+        <button id="clearLogBtn" onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div class="protocol-section">
+        <h3>Send Message</h3>
+        <div class="form-group">
+            <label for="messageType">Message Type:</label>
+            <select id="messageType">
+                <option value="auth">Authentication</option>
+                <option value="agent_message">Agent Message</option>
+                <option value="action">Action Request</option>
+                <option value="ping">Ping (Heartbeat)</option>
+                <option value="custom">Custom Message</option>
+            </select>
+        </div>
+        
+        <div class="form-group" id="authForm">
+            <label for="clientType">Client Type:</label>
+            <select id="clientType">
+                <option value="frontend">Frontend</option>
+                <option value="agent">Agent</option>
+                <option value="extension">Extension</option>
+            </select>
+            
+            <div class="button-row">
+                <button onclick="sendAuthMessage()">Send Auth Message</button>
+            </div>
+        </div>
+        
+        <div class="form-group" id="customMessageForm" style="display: none;">
+            <label for="customMessageContent">Custom Message JSON:</label>
+            <textarea id="customMessageContent" style="width: 100%; height: 100px; font-family: monospace;">{
+  "type": "custom",
+  "data": "test message"
+}</textarea>
+            
+            <div class="button-row">
+                <button onclick="sendCustomMessage()">Send Custom Message</button>
+            </div>
+        </div>
+    </div>
+    
+    <h3>Connection Log</h3>
+    <div class="log-container" id="logContainer"></div>
+    
+    <script>
+        let socket = null;
+        const logContainer = document.getElementById('logContainer');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const messageTypeSelect = document.getElementById('messageType');
+        const authForm = document.getElementById('authForm');
+        const customMessageForm = document.getElementById('customMessageForm');
+        
+        // Message type change handler
+        messageTypeSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                authForm.style.display = 'none';
+                customMessageForm.style.display = 'block';
+            } else {
+                authForm.style.display = 'block';
+                customMessageForm.style.display = 'none';
+            }
+        });
+        
+        // Add log entry
+        function addLogEntry(message, type) {
+            const entry = document.createElement('div');
+            entry.classList.add('log-entry', type);
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // Clear log
+        function clearLog() {
+            logContainer.innerHTML = '';
+        }
+        
+        // Connect to WebSocket
+        function connectWebSocket() {
+            try {
+                const url = document.getElementById('wsUrl').value;
+                
+                if (!url) {
+                    addLogEntry('Error: WebSocket URL is required', 'error');
+                    return;
+                }
+                
+                socket = new WebSocket(url);
+                
+                socket.onopen = function() {
+                    addLogEntry(`Connected to ${url}`, 'connection');
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                };
+                
+                socket.onmessage = function(event) {
+                    try {
+                        const message = JSON.parse(event.data);
+                        addLogEntry(`Received: ${JSON.stringify(message, null, 2)}`, 'received');
+                    } catch (error) {
+                        addLogEntry(`Received raw: ${event.data}`, 'received');
+                    }
+                };
+                
+                socket.onerror = function(error) {
+                    addLogEntry(`WebSocket error: ${error.message || 'Unknown error'}`, 'error');
+                };
+                
+                socket.onclose = function(event) {
+                    addLogEntry(`Connection closed with code ${event.code}: ${event.reason}`, 'info');
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                };
+            } catch (error) {
+                addLogEntry(`Error connecting to WebSocket: ${error.message}`, 'error');
+            }
+        }
+        
+        // Disconnect from WebSocket
+        function disconnectWebSocket() {
+            if (socket) {
+                socket.close();
+                socket = null;
+                addLogEntry('Disconnected', 'info');
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+        
+        // Send authentication message
+        function sendAuthMessage() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                addLogEntry('Error: WebSocket not connected', 'error');
+                return;
+            }
+            
+            const clientType = document.getElementById('clientType').value;
+            const authMessage = {
+                type: 'auth',
+                clientType: clientType,
+                clientId: `test-client-${Date.now()}`
+            };
+            
+            socket.send(JSON.stringify(authMessage));
+            addLogEntry(`Sent auth message: ${JSON.stringify(authMessage, null, 2)}`, 'sent');
+        }
+        
+        // Send custom message
+        function sendCustomMessage() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                addLogEntry('Error: WebSocket not connected', 'error');
+                return;
+            }
+            
+            try {
+                const messageContent = document.getElementById('customMessageContent').value;
+                const message = JSON.parse(messageContent);
+                
+                socket.send(JSON.stringify(message));
+                addLogEntry(`Sent custom message: ${JSON.stringify(message, null, 2)}`, 'sent');
+            } catch (error) {
+                addLogEntry(`Error sending custom message: ${error.message}`, 'error');
+            }
+        }
+        
+        // Send agent message
+        function sendAgentMessage(recipientId, content) {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                addLogEntry('Error: WebSocket not connected', 'error');
+                return;
+            }
+            
+            const message = {
+                type: 'agent_message',
+                message: {
+                    recipientId: recipientId || 'data-management-agent',
+                    content: content || 'Hello from WebSocket test tool',
+                    priority: 'normal'
+                }
+            };
+            
+            socket.send(JSON.stringify(message));
+            addLogEntry(`Sent agent message: ${JSON.stringify(message, null, 2)}`, 'sent');
+        }
+        
+        // Send action request
+        function sendActionRequest(targetAgent, action, params) {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                addLogEntry('Error: WebSocket not connected', 'error');
+                return;
+            }
+            
+            const message = {
+                type: 'action',
+                targetAgent: targetAgent || 'data-management-agent',
+                action: action || 'getProperties',
+                params: params || {}
+            };
+            
+            socket.send(JSON.stringify(message));
+            addLogEntry(`Sent action request: ${JSON.stringify(message, null, 2)}`, 'sent');
+        }
+        
+        // Send ping message
+        function sendPingMessage() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                addLogEntry('Error: WebSocket not connected', 'error');
+                return;
+            }
+            
+            const message = {
+                type: 'ping',
+                timestamp: Date.now()
+            };
+            
+            socket.send(JSON.stringify(message));
+            addLogEntry(`Sent ping message: ${JSON.stringify(message, null, 2)}`, 'sent');
+        }
+    </script>
+</body>
+</html>
