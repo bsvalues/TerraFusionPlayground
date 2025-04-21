@@ -213,34 +213,89 @@ export function createAgentLearningRoutes(agentSystem: AgentSystem) {
 
       const { agentName, knowledgeType, title, content, confidence, verified } = result.data;
       
-      // Get the agent ID
-      const agent = agentSystem.getAgent(agentName);
-      if (!agent) {
-        return res.status(404).json({ 
-          error: 'Agent not found',
-          message: `Agent '${agentName}' not found`
+      // Add knowledge directly
+      try {
+        const knowledge = await agentLearningService.addKnowledge(
+          agentName,
+          knowledgeType,
+          title,
+          content,
+          [],
+          confidence,
+          verified
+        );
+      
+        res.status(201).json({
+          success: true,
+          knowledge
+        });
+      } catch (err) {
+        console.error("Error adding knowledge:", err);
+        res.status(500).json({
+          success: false,
+          error: err instanceof Error ? err.message : "Unknown error",
+          details: "Error occurred in agentLearningService.addKnowledge"
         });
       }
-      
-      // Add knowledge
-      const knowledge = await agentLearningService.addKnowledge(
-        agent.id,
-        knowledgeType,
-        title,
-        content,
-        [],
-        confidence,
-        verified
-      );
-      
-      res.status(201).json({
-        success: true,
-        knowledge
-      });
     } catch (error) {
       console.error('Error adding knowledge:', error);
       res.status(500).json({ 
         error: 'Failed to add knowledge',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  /**
+   * Record a new performance metric
+   */
+  router.post('/metrics', async (req, res) => {
+    try {
+      // Validate request body
+      const schema = z.object({
+        agentName: z.string(),
+        metricType: z.string(),
+        value: z.string(),
+        timeframe: z.string().default('daily'),
+        metadata: z.any().optional()
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          error: 'Invalid request body',
+          issues: result.error.issues
+        });
+      }
+
+      const { agentName, metricType, value, timeframe, metadata } = result.data;
+      
+      // Record metric directly
+      try {
+        const metric = await agentLearningService.recordMetric(
+          agentName,
+          metricType,
+          value,
+          timeframe,
+          metadata || {}
+        );
+      
+        res.status(201).json({
+          success: true,
+          metric
+        });
+      } catch (err) {
+        console.error("Error recording metric:", err);
+        res.status(500).json({
+          success: false,
+          error: err instanceof Error ? err.message : "Unknown error",
+          details: "Error occurred in agentLearningService.recordMetric"
+        });
+      }
+    } catch (error) {
+      console.error('Error recording metric:', error);
+      res.status(500).json({ 
+        error: 'Failed to record metric',
         message: error instanceof Error ? error.message : String(error)
       });
     }
@@ -254,27 +309,27 @@ export function createAgentLearningRoutes(agentSystem: AgentSystem) {
       const { agentName } = req.params;
       const { metricType, timeframe } = req.query;
       
-      // Get the agent ID
-      const agent = agentSystem.getAgent(agentName);
-      if (!agent) {
-        return res.status(404).json({ 
-          error: 'Agent not found',
-          message: `Agent '${agentName}' not found`
+      // Get metrics directly using agent name
+      try {
+        const metrics = await agentLearningService.getAgentMetrics(
+          agentName,
+          metricType ? String(metricType) : undefined,
+          timeframe ? String(timeframe) : undefined
+        );
+      
+        res.json({
+          success: true,
+          metrics,
+          count: metrics.length
+        });
+      } catch (err) {
+        console.error("Error getting agent metrics:", err);
+        res.status(500).json({
+          success: false,
+          error: err instanceof Error ? err.message : "Unknown error",
+          details: "Error occurred in agentLearningService.getAgentMetrics"
         });
       }
-      
-      // Get metrics from database using agent's ID
-      const metrics = await agentLearningService.getAgentMetrics(
-        agent.id,
-        metricType ? String(metricType) : undefined,
-        timeframe ? String(timeframe) : undefined
-      );
-      
-      res.json({
-        success: true,
-        metrics,
-        count: metrics.length
-      });
     } catch (error) {
       console.error('Error getting agent metrics:', error);
       res.status(500).json({ 
