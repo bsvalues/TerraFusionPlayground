@@ -5127,7 +5127,7 @@ export class PgStorage implements IStorage {
   }
 
   async getAuditLogs(limit?: number): Promise<AuditLog[]> {
-    const query = this.db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp));
+    const query = this.db.select().from(auditLogs).orderBy((eb) => eb.desc(auditLogs.timestamp));
     if (limit) {
       query.limit(limit);
     }
@@ -5149,7 +5149,11 @@ export class PgStorage implements IStorage {
 
   // System Activity methods
   async getSystemActivities(limit?: number): Promise<SystemActivity[]> {
-    const query = this.db.select().from(systemActivities).orderBy(desc(systemActivities.timestamp));
+    // Fix SQL syntax error by correctly using orderBy with the desc function
+    const query = this.db.select()
+      .from(systemActivities)
+      .orderBy((eb) => eb.desc(systemActivities.timestamp));
+    
     if (limit) {
       query.limit(limit);
     }
@@ -5347,7 +5351,7 @@ export class PgStorage implements IStorage {
   async getMCPToolExecutionLogs(limit: number = 100): Promise<MCPToolExecutionLog[]> {
     const results = await this.db.select()
       .from(mcpToolExecutionLogs)
-      .orderBy(desc(mcpToolExecutionLogs.createdAt))
+      .orderBy((eb) => eb.desc(mcpToolExecutionLogs.createdAt))
       .limit(limit);
       
     return results;
