@@ -119,17 +119,36 @@ export function createAgentLearningRoutes(agentSystem: AgentSystem) {
         });
       }
 
-      const { agentName, ...feedbackData } = result.data;
+      const { agentName, userId, conversationId, taskId, feedbackText, sentiment, rating, categories } = result.data;
       
-      const response = await agentSystem.recordAgentFeedback(
-        agentName,
-        feedbackData
-      );
-      
-      if (response.success) {
-        res.status(201).json(response);
-      } else {
-        res.status(400).json(response);
+      // Record directly with the learning service
+      try {
+        const feedback = await agentLearningService.recordUserFeedback(
+          agentName,
+          {
+            userId: userId || null,
+            conversationId: conversationId || null,
+            taskId: taskId || null,
+            feedbackText: feedbackText || null,
+            sentiment: sentiment || null,
+            rating: rating || null,
+            categories: categories || null
+          }
+        );
+        
+        res.status(201).json({
+          success: true,
+          feedbackId: feedback ? feedback.id : null,
+          agentId: agentName,
+          message: `Feedback recorded for agent ${agentName}`
+        });
+      } catch (err) {
+        console.error("Error recording feedback:", err);
+        res.status(500).json({
+          success: false,
+          error: err instanceof Error ? err.message : "Unknown error",
+          details: "Error occurred in agentLearningService.recordUserFeedback"
+        });
       }
     } catch (error) {
       console.error('Error recording feedback:', error);
