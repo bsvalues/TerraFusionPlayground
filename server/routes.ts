@@ -31,6 +31,7 @@ import voiceCommandRoutes from "./routes/voice-command-routes";
 import { createPropertyStoryRoutes } from "./routes/property-story-routes";
 import { createPropertyRoutes } from "./routes/property-routes";
 import { createAgentRoutes } from "./routes/agent-routes";
+import { createAgentHealthRoutes } from "./routes/agent-health-routes";
 import { createGisRoutes } from "./routes/gis-routes";
 import { implementGISStorage } from "./gis-storage";
 import { initializeGISAgentsWithService } from "./services/gis/initialize-gis-agents";
@@ -62,6 +63,7 @@ import { mappingIntegration } from "./services/mapping-integration";
 import { notificationService, NotificationType } from "./services/notification-service";
 import { agentWebSocketService } from "./services/agent-websocket-service";
 import { agentSocketIOService } from "./services/agent-socketio-service";
+import { agentHealthWebSocketService } from "./services/agent-health-websocket-service";
 import { collaborationWebSocketService, initializeCollaborationWebSocketService } from "./services/collaboration-websocket-service";
 import { TeamCollaborationWebSocketService } from "./services/team-collaboration-ws-service";
 import { perplexityService } from "./services/perplexity";
@@ -215,6 +217,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Agent routes
   app.use('/api/agents', createAgentRoutes(agentSystem));
+  
+  // Register Agent Health Monitoring routes
+  app.use('/api/agent-health', createAgentHealthRoutes(storage, agentSystem));
   
   // Register Agent Learning routes
   app.use('/api/agent-learning', createAgentLearningRoutes(agentSystem));
