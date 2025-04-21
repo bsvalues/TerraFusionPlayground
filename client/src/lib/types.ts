@@ -83,7 +83,7 @@ export interface AIAgent {
   agentId?: string; // Added for consistent ID naming
   name: string;
   type: string;
-  status: 'active' | 'syncing' | 'error' | 'inactive';
+  status: 'active' | 'syncing' | 'error' | 'inactive' | 'learning';
   lastActivity: string;
   performance: number;
   createdAt: string;

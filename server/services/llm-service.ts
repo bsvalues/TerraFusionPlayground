@@ -413,7 +413,7 @@ export class LLMService {
        
        ${request.specialFactors ? `Special Factors to Consider:\n${request.specialFactors.join(', ')}` : ''}`;
     
-    const messages = [
+    const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ];
@@ -462,7 +462,7 @@ export class LLMService {
        
        ${request.economicIndicators ? `Economic Indicators:\n${JSON.stringify(request.economicIndicators, null, 2)}` : ''}`;
     
-    const messages = [
+    const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ];
@@ -540,7 +540,7 @@ export class LLMService {
        
        ${marketFactorExplanation ? `\nDetailed Market Factor Analysis:\n${marketFactorExplanation}` : ''}`;
     
-    const messages = [
+    const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ];
@@ -613,7 +613,7 @@ export class LLMService {
        Comparable Properties:
        ${JSON.stringify(comparables, null, 2)}`;
     
-    const messages = [
+    const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ];
