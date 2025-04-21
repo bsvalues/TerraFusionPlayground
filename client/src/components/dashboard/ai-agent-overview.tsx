@@ -113,24 +113,54 @@ const formatTimeSince = (timestamp: string) => {
 // Helper to render mobile card view for each agent
 const AgentMobileCard = ({ agent }: { agent: AIAgent }) => {
   return (
-    <div className="p-4 border rounded-lg mb-3 bg-white">
+    <div 
+      className="p-4 border rounded-lg mb-3 bg-white"
+      role="article"
+      aria-labelledby={`agent-title-${agent.id}`}
+      tabIndex={0}
+    >
       <div className="flex items-start">
-        <div className="h-9 w-9 flex items-center justify-center rounded-md bg-gray-100 text-gray-600 mr-3">
+        <div 
+          className="h-9 w-9 flex items-center justify-center rounded-md bg-gray-100 text-gray-600 mr-3"
+          aria-hidden="true"
+        >
           {getAgentIcon(agent.type)}
         </div>
         <div className="flex-1">
           <div className="flex justify-between items-start">
             <div>
-              <div className="font-medium text-gray-900">{agent.name}</div>
-              <div className="text-xs text-gray-500">{agent.type} • ID: {agent.agentId || agent.id}</div>
+              <div 
+                id={`agent-title-${agent.id}`}
+                className="font-medium text-gray-900"
+              >
+                {agent.name}
+              </div>
+              <div 
+                className="text-xs text-gray-500"
+                aria-label={`Agent type: ${agent.type}, ID: ${agent.agentId || agent.id}`}
+              >
+                {agent.type} • ID: {agent.agentId || agent.id}
+              </div>
             </div>
             {getStatusBadge(agent.status)}
           </div>
           
           <div className="mt-3">
-            <div className="text-xs text-gray-500 mb-1">Last Activity: {formatTimeSince(agent.lastActivity)}</div>
+            <div 
+              className="text-xs text-gray-500 mb-1"
+              aria-label={`Last active ${formatTimeSince(agent.lastActivity)}`}
+            >
+              Last Activity: {formatTimeSince(agent.lastActivity)}
+            </div>
             <div className="flex items-center mb-3">
-              <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+              <div 
+                className="w-full bg-gray-200 rounded-full h-2.5 mr-2"
+                role="progressbar"
+                aria-valuenow={agent.performance}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`Agent performance: ${agent.performance}%`}
+              >
                 <div 
                   className={`${
                     agent.status === AIAgentStatus.Syncing ? 'bg-yellow-500' : 
@@ -361,7 +391,12 @@ const AIAgentOverview = () => {
           // Desktop view - table layout
           <div>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table 
+                className="min-w-full divide-y divide-gray-200" 
+                role="grid" 
+                aria-label="AI Agents table"
+              >
+                <caption className="sr-only">List of AI agents, their status, activity and performance metrics</caption>
                 <thead>
                   <tr>
                     <th scope="col" className="py-3 pl-4 pr-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Agent</th>
@@ -435,7 +470,19 @@ const AIAgentOverview = () => {
                     </tr>
                   ) : (
                     displayedAgents.map((agent) => (
-                      <tr key={agent.agentId || agent.id} className="hover:bg-gray-50 transition-colors">
+                      <tr 
+                        key={agent.agentId || agent.id} 
+                        className="hover:bg-gray-50 transition-colors"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            // Trigger the same action as clicking the Run button
+                            e.preventDefault();
+                            // This would typically call an agent run function
+                            console.log(`Running agent: ${agent.name}`);
+                          }
+                        }}
+                      >
                         <td className="py-3 pl-4 pr-3">
                           <div className="flex items-center">
                             <div className="h-9 w-9 flex items-center justify-center rounded-md bg-gray-100 text-gray-600 mr-3">
@@ -455,7 +502,14 @@ const AIAgentOverview = () => {
                         </td>
                         <td className="px-3 py-3 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="w-24 bg-gray-200 rounded-full h-2.5 mr-2">
+                            <div 
+                              className="w-24 bg-gray-200 rounded-full h-2.5 mr-2"
+                              role="progressbar"
+                              aria-valuenow={agent.performance}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-label={`Agent performance: ${agent.performance}%`}
+                            >
                               <div 
                                 className={`${
                                   agent.status === AIAgentStatus.Syncing ? 'bg-yellow-500' : 
