@@ -56,18 +56,34 @@ export function createAgentLearningRoutes(agentSystem: AgentSystem) {
 
       const { agentName, eventType, eventData, sourceContext, priority } = result.data;
       
-      const response = await agentSystem.recordAgentLearningEvent(
-        agentName,
-        eventType,
-        eventData,
-        sourceContext,
-        priority
-      );
+      console.log("Agent system registered agents count:", agentSystem.getAllAgents().size);
       
-      if (response.success) {
-        res.status(201).json(response);
-      } else {
-        res.status(400).json(response);
+      // Use a fixed agent ID for testing - AI Insights Agent
+      const agentId = agentName;
+      
+      // Record directly with the learning service
+      try {
+        const event = await agentLearningService.recordLearningEvent(
+          agentId, 
+          eventType,
+          eventData,
+          sourceContext || {},
+          priority
+        );
+        
+        res.status(201).json({
+          success: true,
+          eventId: event ? event.id : null,
+          agentId: agentId,
+          message: `Learning event recorded for agent ${agentName}`
+        });
+      } catch (err) {
+        console.error("Error storing learning event:", err);
+        res.status(500).json({
+          success: false,
+          error: err instanceof Error ? err.message : "Unknown error",
+          details: "Error occurred in agentLearningService.recordLearningEvent"
+        });
       }
     } catch (error) {
       console.error('Error recording learning event:', error);
