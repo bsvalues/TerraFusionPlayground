@@ -260,8 +260,13 @@ export class LLMService {
         max_tokens: 4000,
       });
       
+      // Check if the response has content and if the first content item has text
+      const contentText = response.content[0] && 'text' in response.content[0] 
+        ? response.content[0].text 
+        : JSON.stringify(response.content);
+        
       return {
-        text: response.content[0].text,
+        text: contentText,
         model: selectedModel,
         usage: {
           promptTokens: response.usage?.input_tokens,

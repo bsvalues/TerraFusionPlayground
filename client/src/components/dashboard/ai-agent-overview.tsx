@@ -1,7 +1,20 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { AIAgent } from "@/lib/types";
-import { Database, Calculator, MessageSquare, ClipboardCheck, Scale, Upload } from "lucide-react";
+import { 
+  Database, 
+  Calculator, 
+  MessageSquare, 
+  ClipboardCheck, 
+  Scale, 
+  Upload, 
+  MapPin, 
+  BrainCircuit, 
+  FileText, 
+  PieChart, 
+  Network 
+} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Get icon based on agent type
 const getAgentIcon = (type: string) => {
@@ -18,6 +31,16 @@ const getAgentIcon = (type: string) => {
       return <Scale className="h-5 w-5 text-primary-500 mr-2" />;
     case 'integration':
       return <Upload className="h-5 w-5 text-primary-500 mr-2" />;
+    case 'gis':
+      return <MapPin className="h-5 w-5 text-primary-500 mr-2" />;
+    case 'ai':
+      return <BrainCircuit className="h-5 w-5 text-primary-500 mr-2" />;
+    case 'report':
+      return <FileText className="h-5 w-5 text-primary-500 mr-2" />;
+    case 'analytics':
+      return <PieChart className="h-5 w-5 text-primary-500 mr-2" />;
+    case 'workflow':
+      return <Network className="h-5 w-5 text-primary-500 mr-2" />;
     default:
       return <Database className="h-5 w-5 text-primary-500 mr-2" />;
   }
@@ -92,9 +115,28 @@ const AIAgentOverview = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {isLoading ? (
-                    <tr>
-                      <td colSpan={4} className="py-4 text-center text-gray-500">Loading agents...</td>
-                    </tr>
+                    Array(4).fill(0).map((_, index) => (
+                      <tr key={`loading-${index}`}>
+                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
+                          <div className="flex items-center">
+                            <Skeleton className="h-5 w-5 rounded mr-2" />
+                            <Skeleton className="h-4 w-32 rounded" />
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          <Skeleton className="h-4 w-16 rounded-full" />
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          <Skeleton className="h-4 w-24 rounded" />
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          <div className="flex items-center">
+                            <Skeleton className="w-16 h-2.5 mr-2 rounded-full" />
+                            <Skeleton className="h-4 w-8 rounded" />
+                          </div>
+                        </td>
+                      </tr>
+                    ))
                   ) : agents.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="py-4 text-center text-gray-500">No agents found</td>
