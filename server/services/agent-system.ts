@@ -28,6 +28,8 @@ import { NotificationService } from './notification-service';
 import { PropertyValidationEngine } from './data-quality/property-validation-engine';
 import { AgentReplayBufferService, ReplayBufferConfig } from './agent-replay-buffer';
 import { CommandStructure } from './command-structure';
+import { AgentLearningService, agentLearningService } from './agent-learning-service';
+import { LearningEventType, FeedbackSentiment } from '../../shared/schema';
 
 export class AgentSystem {
   private _storage: IStorage;
@@ -72,6 +74,13 @@ export class AgentSystem {
    */
   get commandStructureService(): CommandStructure {
     return this.commandStructure;
+  }
+  
+  /**
+   * Get the agent learning service
+   */
+  get learningService(): AgentLearningService {
+    return agentLearningService;
   }
   
   /**
@@ -352,16 +361,148 @@ export class AgentSystem {
       console.error('Error getting command structure status:', error);
       commandStructureInfo = {
         error: 'Failed to retrieve command structure status',
-        message: error.message
+        message: error instanceof Error ? error.message : String(error)
       };
     }
+    
+    // Get learning service status
+    const learningServiceEnabled = agentLearningService.config.enabled;
+    const learningServiceProviders = agentLearningService.config.providers;
     
     return {
       isInitialized: this.isInitialized,
       agentCount: this.agents.size,
       agents: agentStatuses,
       replayBuffer: replayBufferStats,
-      commandStructure: commandStructureInfo
+      commandStructure: commandStructureInfo,
+      learningSystem: {
+        enabled: learningServiceEnabled,
+        providers: learningServiceProviders
+      }
     };
+  }
+  
+  /**
+   * Record a learning event for an agent
+   */
+  public async recordAgentLearningEvent(
+    agentName: string,
+    eventType: LearningEventType,
+    eventData: any,
+    sourceContext?: any,
+    priority: number = 3
+  ): Promise<any> {
+    try {
+      const agent = this.agents.get(agentName);
+      if (!agent) {
+        throw new Error(`Agent '${agentName}' not found`);
+      }
+      
+      // Get the unique agent ID
+      const agentId = agent.id;
+      
+      // Record the learning event
+      const event = await this.learningService.recordLearningEvent(
+        agentId,
+        eventType,
+        eventData,
+        sourceContext,
+        priority
+      );
+      
+      return {
+        success: true,
+        eventId: event ? event.id : null,
+        message: event ? `Learning event recorded for agent ${agentName}` : 'Learning system is disabled'
+      };
+    } catch (error) {
+      console.error(`Error recording learning event for agent ${agentName}:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+  
+  /**
+   * Record user feedback for an agent
+   */
+  public async recordAgentFeedback(
+    agentName: string,
+    feedbackData: {
+      userId?: number;
+      conversationId?: string;
+      taskId?: string;
+      feedbackText?: string;
+      sentiment?: FeedbackSentiment;
+      rating?: number;
+      categories?: string[];
+    }
+  ): Promise<any> {
+    try {
+      const agent = this.agents.get(agentName);
+      if (!agent) {
+        throw new Error(`Agent '${agentName}' not found`);
+      }
+      
+      // Get the unique agent ID
+      const agentId = agent.id;
+      
+      // Record the feedback
+      const feedback = await this.learningService.recordUserFeedback(agentId, feedbackData);
+      
+      return {
+        success: true,
+        feedbackId: feedback ? feedback.id : null,
+        message: feedback ? `Feedback recorded for agent ${agentName}` : 'Learning system is disabled'
+      };
+    } catch (error) {
+      console.error(`Error recording feedback for agent ${agentName}:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+  
+  /**
+   * Get knowledge for an agent
+   */
+  public async getAgentKnowledge(
+    agentName: string,
+    knowledgeType?: string,
+    searchTerm?: string,
+    verifiedOnly: boolean = false
+  ): Promise<any> {
+    try {
+      const agent = this.agents.get(agentName);
+      if (!agent) {
+        throw new Error(`Agent '${agentName}' not found`);
+      }
+      
+      // Get the unique agent ID
+      const agentId = agent.id;
+      
+      // Get the knowledge
+      const knowledge = await this.learningService.getAgentKnowledge(
+        agentId,
+        knowledgeType,
+        searchTerm,
+        verifiedOnly
+      );
+      
+      return {
+        success: true,
+        knowledge: knowledge || [],
+        count: knowledge ? knowledge.length : 0
+      };
+    } catch (error) {
+      console.error(`Error getting knowledge for agent ${agentName}:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        knowledge: []
+      };
+    }
   }
 }
