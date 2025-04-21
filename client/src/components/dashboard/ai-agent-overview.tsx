@@ -31,29 +31,29 @@ import { useState, useMemo, useEffect } from "react";
 const getAgentIcon = (type: string) => {
   switch (type.toLowerCase()) {
     case 'data':
-      return <Database className="h-5 w-5 text-primary-500 mr-2" />;
+      return <Database className="h-5 w-5 text-primary-500 mr-2" aria-hidden="true" role="img" />;
     case 'property':
-      return <Calculator className="h-5 w-5 text-primary-500 mr-2" />;
+      return <Calculator className="h-5 w-5 text-primary-500 mr-2" aria-hidden="true" role="img" />;
     case 'citizen':
-      return <MessageSquare className="h-5 w-5 text-primary-500 mr-2" />;
+      return <MessageSquare className="h-5 w-5 text-primary-500 mr-2" aria-hidden="true" role="img" />;
     case 'quality':
-      return <ClipboardCheck className="h-5 w-5 text-primary-500 mr-2" />;
+      return <ClipboardCheck className="h-5 w-5 text-primary-500 mr-2" aria-hidden="true" role="img" />;
     case 'legal':
-      return <Scale className="h-5 w-5 text-primary-500 mr-2" />;
+      return <Scale className="h-5 w-5 text-primary-500 mr-2" aria-hidden="true" role="img" />;
     case 'integration':
-      return <Upload className="h-5 w-5 text-primary-500 mr-2" />;
+      return <Upload className="h-5 w-5 text-primary-500 mr-2" aria-hidden="true" role="img" />;
     case 'gis':
-      return <MapPin className="h-5 w-5 text-primary-500 mr-2" />;
+      return <MapPin className="h-5 w-5 text-primary-500 mr-2" aria-hidden="true" role="img" />;
     case 'ai':
-      return <BrainCircuit className="h-5 w-5 text-primary-500 mr-2" />;
+      return <BrainCircuit className="h-5 w-5 text-primary-500 mr-2" aria-hidden="true" role="img" />;
     case 'report':
-      return <FileText className="h-5 w-5 text-primary-500 mr-2" />;
+      return <FileText className="h-5 w-5 text-primary-500 mr-2" aria-hidden="true" role="img" />;
     case 'analytics':
-      return <PieChart className="h-5 w-5 text-primary-500 mr-2" />;
+      return <PieChart className="h-5 w-5 text-primary-500 mr-2" aria-hidden="true" role="img" />;
     case 'workflow':
-      return <Network className="h-5 w-5 text-primary-500 mr-2" />;
+      return <Network className="h-5 w-5 text-primary-500 mr-2" aria-hidden="true" role="img" />;
     default:
-      return <Database className="h-5 w-5 text-primary-500 mr-2" />;
+      return <Database className="h-5 w-5 text-primary-500 mr-2" aria-hidden="true" role="img" />;
   }
 };
 
@@ -62,33 +62,53 @@ const getStatusBadge = (status: AIAgentStatus) => {
   switch (status) {
     case AIAgentStatus.Active:
       return (
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
-          <CheckCircle2 className="h-3 w-3" /> Active
+        <Badge 
+          variant="outline" 
+          className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1"
+          aria-label="Agent status: Active"
+        >
+          <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> Active
         </Badge>
       );
     case AIAgentStatus.Syncing:
       return (
-        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 flex items-center gap-1">
-          <RefreshCcw className="h-3 w-3 animate-spin" /> Syncing
+        <Badge 
+          variant="outline" 
+          className="bg-yellow-50 text-yellow-700 border-yellow-200 flex items-center gap-1"
+          aria-label="Agent status: Syncing"
+        >
+          <RefreshCcw className="h-3 w-3 animate-spin" aria-hidden="true" /> Syncing
         </Badge>
       );
     case AIAgentStatus.Error:
       return (
-        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 flex items-center gap-1">
-          <AlertTriangle className="h-3 w-3" /> Error
+        <Badge 
+          variant="outline" 
+          className="bg-red-50 text-red-700 border-red-200 flex items-center gap-1"
+          aria-label="Agent status: Error"
+        >
+          <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Error
         </Badge>
       );
     case AIAgentStatus.Learning:
       return (
-        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
-          <BookOpen className="h-3 w-3" /> Learning
+        <Badge 
+          variant="outline" 
+          className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1"
+          aria-label="Agent status: Learning"
+        >
+          <BookOpen className="h-3 w-3" aria-hidden="true" /> Learning
         </Badge>
       );
     case AIAgentStatus.Inactive:
     default:
       return (
-        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 flex items-center gap-1">
-          <RotateCcw className="h-3 w-3" /> Inactive
+        <Badge 
+          variant="outline" 
+          className="bg-gray-50 text-gray-700 border-gray-200 flex items-center gap-1"
+          aria-label="Agent status: Inactive"
+        >
+          <RotateCcw className="h-3 w-3" aria-hidden="true" /> Inactive
         </Badge>
       );
   }
@@ -288,11 +308,11 @@ const AIAgentOverview = () => {
           </div>
           <div className="flex items-center gap-2 mt-3 sm:mt-0">
             <Button variant="outline" size="sm" className="h-8 gap-1" aria-label="Add Agent">
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               <span className="sm:inline">Add Agent</span>
             </Button>
             <Button variant="outline" size="sm" className="h-8 gap-1" aria-label="Agent Settings">
-              <Settings className="h-3.5 w-3.5" />
+              <Settings className="h-3.5 w-3.5" aria-hidden="true" />
               <span className="sm:inline">Settings</span>
             </Button>
           </div>
@@ -353,7 +373,7 @@ const AIAgentOverview = () => {
                 <div className="flex flex-col items-center justify-center gap-2">
                   {selectedTab === 'active' ? (
                     <>
-                      <RotateCcw className="h-8 w-8 text-gray-400" />
+                      <RotateCcw className="h-8 w-8 text-gray-400" aria-hidden="true" />
                       <p>No active agents found</p>
                       <Button 
                         variant="link" 
@@ -366,7 +386,7 @@ const AIAgentOverview = () => {
                     </>
                   ) : (
                     <>
-                      <BrainCircuit className="h-8 w-8 text-gray-400" />
+                      <BrainCircuit className="h-8 w-8 text-gray-400" aria-hidden="true" />
                       <p>No agents found</p>
                       <Button 
                         variant="outline" 
@@ -421,30 +441,35 @@ const AIAgentOverview = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {isLoading ? (
                     Array(4).fill(0).map((_, index) => (
-                      <tr key={`loading-${index}`}>
+                      <tr 
+                        key={`loading-${index}`}
+                        role="row"
+                        aria-busy="true"
+                        aria-label="Loading agent information"
+                      >
                         <td className="py-3 pl-4 pr-3">
                           <div className="flex items-center">
-                            <Skeleton className="h-8 w-8 rounded-md mr-3" />
+                            <Skeleton className="h-8 w-8 rounded-md mr-3" aria-hidden="true" />
                             <div>
-                              <Skeleton className="h-4 w-32 rounded mb-1" />
-                              <Skeleton className="h-3 w-24 rounded" />
+                              <Skeleton className="h-4 w-32 rounded mb-1" aria-hidden="true" />
+                              <Skeleton className="h-3 w-24 rounded" aria-hidden="true" />
                             </div>
                           </div>
                         </td>
                         <td className="px-3 py-3">
-                          <Skeleton className="h-5 w-20 rounded-full" />
+                          <Skeleton className="h-5 w-20 rounded-full" aria-hidden="true" />
                         </td>
                         <td className="px-3 py-3">
-                          <Skeleton className="h-4 w-24 rounded" />
+                          <Skeleton className="h-4 w-24 rounded" aria-hidden="true" />
                         </td>
                         <td className="px-3 py-3">
                           <div className="flex items-center">
-                            <Skeleton className="w-24 h-2.5 mr-2 rounded-full" />
-                            <Skeleton className="h-4 w-8 rounded" />
+                            <Skeleton className="w-24 h-2.5 mr-2 rounded-full" aria-hidden="true" />
+                            <Skeleton className="h-4 w-8 rounded" aria-hidden="true" />
                           </div>
                         </td>
                         <td className="px-3 py-3">
-                          <Skeleton className="h-8 w-20 rounded" />
+                          <Skeleton className="h-8 w-20 rounded" aria-hidden="true" />
                         </td>
                       </tr>
                     ))
@@ -454,7 +479,7 @@ const AIAgentOverview = () => {
                         <div className="flex flex-col items-center justify-center gap-2">
                           {selectedTab === 'active' ? (
                             <>
-                              <RotateCcw className="h-8 w-8 text-gray-400" />
+                              <RotateCcw className="h-8 w-8 text-gray-400" aria-hidden="true" />
                               <p>No active agents found</p>
                               <Button 
                                 variant="link" 
