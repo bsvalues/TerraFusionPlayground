@@ -96,7 +96,7 @@
     "ol": "^10.5.0",
     "ol-ext": "^4.0.30",
     "ol-mapbox-style": "^12.5.0",
-    "openai": "^4.95.0",
+    "openai": "^4.95.1",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "pg": "^8.14.1",

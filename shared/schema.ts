@@ -8,6 +8,38 @@ import {
   TaskStatus
 } from "./team-agent-types";
 
+// Agent Learning System Enums
+export enum LearningEventType {
+  USER_FEEDBACK = 'user_feedback',
+  TASK_COMPLETION = 'task_completion',
+  ERROR_RECOVERY = 'error_recovery',
+  MODEL_IMPROVEMENT = 'model_improvement',
+  COLLABORATIVE_LEARNING = 'collaborative_learning',
+  KNOWLEDGE_TRANSFER = 'knowledge_transfer'
+}
+
+export enum FeedbackSentiment {
+  POSITIVE = 'positive',
+  NEUTRAL = 'neutral',
+  NEGATIVE = 'negative'
+}
+
+export enum LearningModelProvider {
+  OPENAI = 'openai',
+  ANTHROPIC = 'anthropic',
+  PERPLEXITY = 'perplexity',
+  INTERNAL = 'internal'
+}
+
+export enum AgentPerformanceMetricType {
+  RESPONSE_TIME = 'response_time',
+  ACCURACY = 'accuracy',
+  USER_SATISFACTION = 'user_satisfaction',
+  TASK_COMPLETION_RATE = 'task_completion_rate',
+  ERROR_RATE = 'error_rate',
+  LEARNING_RATE = 'learning_rate'
+}
+
 // Energy and Productivity Tracking Enums
 export enum DeveloperEnergyLevel {
   HIGH = 'high',
