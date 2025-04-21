@@ -1,5 +1,6 @@
 import express from 'express';
 import QGISService from '../services/qgis-service';
+import { GISExportService } from '../services/gis/gis-export-service';
 import fs from 'fs';
 import path from 'path';
 import { IStorage } from '../storage';
