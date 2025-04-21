@@ -341,15 +341,27 @@ const AIAgentOverview = () => {
           </div>
           
           <div className="ml-auto flex flex-wrap items-center gap-2 sm:gap-4 mt-3 sm:mt-0">
-            <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-gray-50">
+            <div 
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-gray-50"
+              role="status"
+              aria-label={`${activeAgents} active agents`}
+            >
               <CheckCircle2 className="h-3.5 w-3.5 text-green-500" aria-hidden="true" /> 
               <span className="text-xs font-medium">{activeAgents} Active</span>
             </div>
-            <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-gray-50">
+            <div 
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-gray-50"
+              role="status"
+              aria-label={`${learningAgents} learning agents`}
+            >
               <BookOpen className="h-3.5 w-3.5 text-blue-500" aria-hidden="true" /> 
               <span className="text-xs font-medium">{learningAgents} Learning</span>
             </div>
-            <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-gray-50">
+            <div 
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-gray-50"
+              role="status"
+              aria-label={`${errorAgents} agents with errors`}
+            >
               <AlertTriangle className="h-3.5 w-3.5 text-red-500" aria-hidden="true" /> 
               <span className="text-xs font-medium">{errorAgents} Error</span>
             </div>
@@ -492,7 +504,7 @@ const AIAgentOverview = () => {
                             </>
                           ) : (
                             <>
-                              <BrainCircuit className="h-8 w-8 text-gray-400" />
+                              <BrainCircuit className="h-8 w-8 text-gray-400" aria-hidden="true" />
                               <p>No agents found</p>
                               <Button 
                                 variant="outline" 

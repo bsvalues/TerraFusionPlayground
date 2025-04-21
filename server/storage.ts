@@ -8130,6 +8130,5 @@ export class PgStorage implements IStorage {
 
 // Use database storage instead of in-memory
 // Choose which storage implementation to use
-// For production/default, use PgStorage
-// For testing/development when needed, use MemStorage
-export const storage = new MemStorage(); // Change to PgStorage once stable
+// For production, use PgStorage that connects to the PostgreSQL database
+export const storage = new PgStorage(); // Using PostgreSQL for data persistence

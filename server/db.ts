@@ -1,13 +1,21 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import pg from 'pg';
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-serverless';
+import ws from "ws";
 import * as schema from '../shared/schema';
 import * as gisSchema from '../shared/gis-schema';
 
+// Configure WebSocket for Neon serverless
+neonConfig.webSocketConstructor = ws;
+
+// Validate database URL
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL must be set. Did you forget to provision a database?",
+  );
+}
+
 // Configure PostgreSQL connection
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 // Merge all schemas
 const mergedSchema = { ...schema, ...gisSchema };
