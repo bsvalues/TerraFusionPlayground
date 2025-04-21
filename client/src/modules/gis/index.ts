@@ -19,6 +19,7 @@ export { default as Terrain3DDemo } from './pages/Terrain3DDemo';
 // Export components
 export { default as TerrainVisualization3D } from './components/TerrainVisualization3D';
 export { default as GeospatialExportWizard } from './components/GeospatialExportWizard';
+export { default as GeospatialStorytellingWizard } from './components/GeospatialStorytellingWizard';
 
 // Export contexts
 export { useGIS, GISProvider } from './contexts/GISContext';

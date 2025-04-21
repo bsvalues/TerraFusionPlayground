@@ -31,11 +31,13 @@ import {
   FileDown, 
   Camera, 
   RotateCw, 
-  Compass 
+  Compass,
+  BookOpen 
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import GeospatialExportWizard from '@/modules/gis/components/GeospatialExportWizard';
+import GeospatialStorytellingWizard from '@/modules/gis/components/GeospatialStorytellingWizard';
 
 const GISControlPanel = () => {
   const {
@@ -394,6 +396,9 @@ const GISControlPanel = () => {
           
           {/* Geospatial Export Wizard */}
           <GeospatialExportWizard />
+          
+          {/* Geospatial Storytelling Wizard */}
+          <GeospatialStorytellingWizard />
           
           <div className="flex items-center space-x-2 mt-3">
             <Label htmlFor="ai-analysis" className="text-xs flex-1">
