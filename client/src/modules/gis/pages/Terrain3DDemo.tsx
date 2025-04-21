@@ -16,6 +16,9 @@ import { ArrowLeft, Info, MapPin, Mountain, Box, Layers, Eye } from 'lucide-reac
 import { useEffect, useRef } from 'react';
 import { useGIS } from '../contexts/GISContext';
 
+// Import terrain visualization styles
+import '@/styles/terrain-visualization.css';
+
 /**
  * Simplified 3D Terrain Visualization Demo Page
  */
@@ -29,17 +32,31 @@ export default function Terrain3DDemo() {
   const initialZoom = 10;
   
   // Get GIS context
-  const { mapboxToken, mapboxTokenAvailable } = useGIS();
+  const { 
+    mapboxToken, 
+    mapboxTokenAvailable, 
+    useOpenStreetMapFallback, 
+    setMapLoaded, 
+    addMapError
+  } = useGIS();
+
+  // Status states for UI feedback
+  const [mapStatus, setMapStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [statusMessage, setStatusMessage] = useState<string>('Initializing terrain visualization...');
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
     
     // Debug: Log token info from context
     console.log("Mapbox token available from context:", mapboxTokenAvailable);
+    console.log("Using OpenStreetMap fallback:", useOpenStreetMapFallback);
     console.log("Map container element exists:", !!mapRef.current);
     console.log("Map container dimensions:", mapRef.current?.clientWidth, "x", mapRef.current?.clientHeight);
     
     try {
+      setMapStatus('loading');
+      setStatusMessage('Loading terrain map tiles...');
+      
       // Default to OpenStreetMap which doesn't require a token
       const tileSource = new XYZ({
         url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -47,11 +64,14 @@ export default function Terrain3DDemo() {
         attributions: '© OpenStreetMap contributors'
       });
       
-      // Try to use Mapbox if token is available
-      if (mapboxToken) {
+      // Try to use Mapbox if token is available and we're not in fallback mode
+      if (mapboxToken && !useOpenStreetMapFallback) {
         console.log("Attempting to use Mapbox with token");
+        setStatusMessage('Loading Mapbox terrain data...');
         tileSource.setUrl(`https://api.mapbox.com/styles/v1/mapbox/outdoors-v11/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`);
         tileSource.setAttributions('© Mapbox, © OpenStreetMap');
+      } else {
+        console.log("Using OpenStreetMap tiles");
       }
       
       const mapLayer = new TileLayer({
@@ -66,6 +86,20 @@ export default function Terrain3DDemo() {
           center: fromLonLat(initialCenter),
           zoom: initialZoom
         })
+      });
+      
+      // Set up event listeners for map
+      map.once('rendercomplete', () => {
+        console.log("Map render complete");
+        setMapStatus('loaded');
+        setStatusMessage('Terrain visualization loaded successfully');
+        setMapLoaded(true);
+      });
+      
+      map.getView().on('change:resolution', () => {
+        // Update zoom level when it changes
+        const newZoom = Math.round(map.getView().getZoom() || initialZoom);
+        console.log("Zoom level changed:", newZoom);
       });
       
       console.log("Map instance created successfully");
@@ -84,6 +118,9 @@ export default function Terrain3DDemo() {
       }, 100);
     } catch (error) {
       console.error("Error initializing map:", error);
+      setMapStatus('error');
+      setStatusMessage('Failed to initialize terrain map');
+      addMapError(`Failed to initialize map: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
     
     return () => {
@@ -92,7 +129,7 @@ export default function Terrain3DDemo() {
         mapInstanceRef.current = null;
       }
     };
-  }, [mapboxToken, mapboxTokenAvailable]); // Add dependencies to re-run if token changes
+  }, [mapboxToken, mapboxTokenAvailable, useOpenStreetMapFallback, setMapLoaded, addMapError]); // Add dependencies to re-run if token changes
   
   return (
     <>
@@ -308,24 +345,56 @@ export default function Terrain3DDemo() {
             {/* OpenLayers map container */}
             <div 
               ref={mapRef} 
-              className="w-full h-full" 
+              className={`w-full h-full ${mapStatus === 'loaded' ? 'terrain-3d-effect' : ''}`}
               style={{ 
                 position: 'relative',
                 transformStyle: 'preserve-3d',
                 perspective: '1000px',
                 boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                minHeight: '400px', /* Ensure minimum height */
-                backgroundColor: '#f0f0f0', /* Visible background color to debug */
-                border: '1px solid #ccc' /* Visible border to debug */
+                minHeight: '400px',
+                backgroundColor: mapStatus === 'error' ? '#FEF2F2' : '#f0f0f0',
+                border: `1px solid ${mapStatus === 'error' ? '#FCA5A5' : '#ccc'}`
               }}
-            >
-              {/* Fallback content in case map doesn't load */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <p className="text-muted-foreground text-sm">
-                  Loading terrain visualization...
+            />
+            
+            {/* Loading/Error overlay */}
+            {mapStatus !== 'loaded' && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+                {mapStatus === 'loading' ? (
+                  <>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                    <p className="text-center text-muted-foreground">{statusMessage}</p>
+                    <p className="text-xs mt-2 text-muted-foreground">
+                      {useOpenStreetMapFallback ? 'Using OpenStreetMap' : 'Using Mapbox terrain data'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </div>
+                    <p className="text-center text-red-600 font-medium">Failed to load terrain visualization</p>
+                    <p className="text-center text-sm mt-2 text-muted-foreground">
+                      {statusMessage}
+                    </p>
+                    <Button variant="outline" size="sm" className="mt-4" onClick={() => window.location.reload()}>
+                      Reload page
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+            
+            {/* Map data source info */}
+            {mapStatus === 'loaded' && (
+              <div className="absolute top-4 right-4 bg-background/90 p-2 rounded-md shadow-sm border border-border">
+                <p className="text-xs text-muted-foreground">
+                  Data source: {useOpenStreetMapFallback ? 'OpenStreetMap' : 'Mapbox'}
                 </p>
               </div>
-            </div>
+            )}
             
             {/* Note about simplified version */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-background/90 p-3 rounded-lg shadow-md border border-border max-w-sm">
