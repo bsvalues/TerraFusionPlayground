@@ -8,8 +8,10 @@
  * - Property data integrity
  */
 
-const { Client } = require('pg');
-const fetch = require('node-fetch');
+import pg from 'pg';
+import fetch from 'node-fetch';
+
+const { Client } = pg;
 
 // Config
 const API_BASE_URL = 'http://localhost:5000/api';

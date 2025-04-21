@@ -8,7 +8,7 @@
  * - Error handling
  */
 
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 // Config
 const API_BASE_URL = 'http://localhost:5000/api';

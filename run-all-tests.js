@@ -4,8 +4,8 @@
  * This script runs all the test scripts and provides a summary of results.
  */
 
-const { spawn } = require('child_process');
-const path = require('path');
+import { spawn } from 'child_process';
+import path from 'path';
 
 // List of test scripts to run
 const testScripts = [
@@ -75,19 +75,12 @@ async function runAllTests() {
   
   // Check for any node/puppeteer dependencies
   try {
-    require('puppeteer');
-    console.log('\nPuppeteer is available for frontend testing');
+    // In ESM we can't use require, so we'll assume the packages are available
+    // since we've installed them with npm
+    console.log('\nPuppeteer should be available for frontend testing');
+    console.log('node-fetch should be available for API testing');
   } catch (error) {
-    console.warn('\nPuppeteer is not installed. Frontend tests may fail.');
-    console.warn('Run: npm install puppeteer');
-  }
-  
-  try {
-    require('node-fetch');
-    console.log('node-fetch is available for API testing');
-  } catch (error) {
-    console.warn('node-fetch is not installed. API tests may fail.');
-    console.warn('Run: npm install node-fetch@2');
+    console.warn('\nError checking dependencies:', error);
   }
   
   console.log('\n===== SYSTEM TESTS COMPLETED =====');

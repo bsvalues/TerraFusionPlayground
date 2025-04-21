@@ -5,7 +5,7 @@
  * and monitoring the console for errors or warnings.
  */
 
-const puppeteer = require('puppeteer');
+import puppeteer from 'puppeteer';
 
 async function testFrontendForErrors() {
   console.log('Starting frontend error test...');
