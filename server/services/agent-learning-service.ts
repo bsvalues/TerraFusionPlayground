@@ -284,13 +284,13 @@ export class AgentLearningService {
     try {
       if (!this.config.enabled) {
         console.log(`Learning system disabled, not recording performance metric for agent ${agentId}`);
-        return null;
+        throw new Error("Learning system is disabled");
       }
 
       const [metric] = await db.insert(agentPerformanceMetrics).values({
         agentId,
         metricType,
-        value,
+        value: value.toString(), // Convert number to string for numeric database column
         timeframe,
         metadata
       }).returning();

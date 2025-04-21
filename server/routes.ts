@@ -120,18 +120,18 @@ import { initializeAICodeAssistant } from "./scripts/initialize-ai-code-assistan
 // Initialize agent systems
 (async () => {
   try {
-    console.log("TEMPORARILY SKIPPING Agent System initialization due to database constraint issues...");
-    // await agentSystem.initialize();
-    console.log("Agent System initialization bypassed for debugging");
+    console.log("Initializing Agent System...");
+    await agentSystem.initialize();
+    console.log("Agent System initialization completed successfully");
     
     console.log("Initializing Agent Factory...");
     await agentFactory.initialize();
     console.log("Agent Factory initialized successfully");
     
     // Initialize team agents (Frontend, Backend, Designer, QA, Assessor)
-    console.log("TEMPORARILY SKIPPING Team Agents initialization...");
-    // await initializeTeamAgents();
-    console.log("Team Agents initialization bypassed for debugging");
+    console.log("Initializing Team Agents...");
+    await initializeTeamAgents();
+    console.log("Team Agents initialization completed successfully");
     
     // Initialize AI Code Assistant
     console.log("Initializing AI Code Assistant...");
