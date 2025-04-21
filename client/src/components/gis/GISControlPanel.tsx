@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGIS } from '@/contexts/gis-context';
+import { useGIS } from '@/modules/gis/contexts/GISContext';
 import { 
   Tabs, 
   TabsContent, 

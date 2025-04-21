@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGIS } from '../contexts/GISContext';
+import { useGIS } from '@/modules/gis/contexts/GISContext';
 import { Button } from '@/components/ui/button';
 import { 
   Dialog, 

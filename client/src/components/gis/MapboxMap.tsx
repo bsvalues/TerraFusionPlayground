@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { useGIS } from '@/contexts/gis-context';
+import { useGIS } from '@/modules/gis/contexts/GISContext';
 import { Maximize, Layers, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
