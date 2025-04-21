@@ -267,9 +267,15 @@ export abstract class BaseAgent {
     details: any = {}
   ): Promise<void> {
     try {
-      // Updated to match actual database schema structure
+      // Skip database logging for string agent IDs to avoid type conversion errors
+      if (typeof this.agentId === 'string') {
+        console.log(`Agent ${this.name} activity: ${activityType} - ${message}`);
+        return;
+      }
+      
+      // Updated to match actual database schema structure - agent_id is an integer
       const activityData: InsertSystemActivity = {
-        agent_id: String(this.agentId), // Convert to string
+        agent_id: typeof this.agentId === 'number' ? this.agentId : null,
         activity: message || activityType, // Ensure activity is not null
         entity_type: 'agent',
         entity_id: String(this.agentId)
