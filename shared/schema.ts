@@ -951,19 +951,18 @@ export type InsertEnergyLevelRecommendation = z.infer<typeof insertEnergyLevelRe
 // System Activities table
 export const systemActivities = pgTable("system_activities", {
   id: serial("id").primaryKey(),
-  activity_type: text("activity_type").notNull(),
-  component: text("component").notNull(),
-  status: text("status").notNull().default("info"), // info, warning, error, success
-  details: jsonb("details").default({}),
-  created_at: timestamp("created_at").defaultNow().notNull(),
+  agent_id: integer("agent_id"),
+  activity: text("activity").notNull(),
+  entity_type: text("entity_type"),
+  entity_id: text("entity_id"),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
 export const insertSystemActivitySchema = createInsertSchema(systemActivities).pick({
-  activity_type: true,
-  component: true,
-  status: true,
-  details: true,
-  created_at: true,
+  agent_id: true,
+  activity: true,
+  entity_type: true,
+  entity_id: true,
 });
 
 // MCP Tool Execution Logs table
