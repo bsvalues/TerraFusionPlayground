@@ -47,6 +47,20 @@ const GISMap = () => {
   // Pass map instance from QGISMap to parent component
   const handleMapInit = (mapInstance: Map) => {
     setMap(mapInstance);
+    console.debug("Map instance initialized successfully");
+    
+    // Set up event listeners for map performance monitoring
+    if (mapInstance) {
+      mapInstance.on('rendercomplete', () => {
+        console.debug("Map render completed");
+        // Could add performance metrics here in the future
+      });
+      
+      // Handle map errors
+      mapInstance.on('error', (error) => {
+        console.error("Map error:", error);
+      });
+    }
   };
 
   const toggleFullScreen = () => {

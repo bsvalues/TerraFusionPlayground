@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { AIAgent } from "@/lib/types";
 import { 
@@ -12,9 +12,19 @@ import {
   BrainCircuit, 
   FileText, 
   PieChart, 
-  Network 
+  Network, 
+  Zap,
+  RefreshCcw,
+  AlertTriangle,
+  CheckCircle2,
+  RotateCcw,
+  Settings,
+  Plus
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 
 // Get icon based on agent type
 const getAgentIcon = (type: string) => {
