@@ -3082,3 +3082,156 @@ export const insertCompatibilityLayerSchema = createInsertSchema(compatibilityLa
 
 export type CompatibilityLayer = typeof compatibilityLayers.$inferSelect;
 export type InsertCompatibilityLayer = z.infer<typeof insertCompatibilityLayerSchema>;
+
+// =======================================================================
+// AGENT CONTINUOUS LEARNING SYSTEM TABLES
+// =======================================================================
+
+// Agent Learning Events - Records learning opportunities, feedback, and experiences
+export const agentLearningEvents = pgTable("agent_learning_events", {
+  id: serial("id").primaryKey(),
+  agentId: text("agent_id").notNull(), // Agent identifier
+  eventType: text("event_type").notNull(), // Maps to LearningEventType enum
+  eventData: jsonb("event_data").notNull(), // Structured data about the learning event
+  sourceContext: jsonb("source_context"), // Context where the learning occurred (conversation, task, etc.)
+  priority: integer("priority").default(1), // 1-5 priority level (5 being highest)
+  processed: boolean("processed").default(false), // Whether this event has been processed
+  processingNotes: text("processing_notes"), // Notes from the processing of this event
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  processedAt: timestamp("processed_at"),
+}, (table) => {
+  return {
+    agentIdIdx: index("agent_learning_events_agent_id_idx").on(table.agentId),
+    eventTypeIdx: index("agent_learning_events_event_type_idx").on(table.eventType),
+    createdAtIdx: index("agent_learning_events_created_at_idx").on(table.createdAt),
+  };
+});
+
+export const insertAgentLearningEventSchema = createInsertSchema(agentLearningEvents).omit({
+  id: true,
+  processed: true,
+  processingNotes: true,
+  createdAt: true,
+  processedAt: true,
+});
+
+export type AgentLearningEvent = typeof agentLearningEvents.$inferSelect;
+export type InsertAgentLearningEvent = z.infer<typeof insertAgentLearningEventSchema>;
+
+// User Feedback - Stores feedback from users about agent performance
+export const agentUserFeedback = pgTable("agent_user_feedback", {
+  id: serial("id").primaryKey(),
+  agentId: text("agent_id").notNull(), // Agent identifier
+  userId: integer("user_id"), // Optional user identifier (may be anonymous)
+  conversationId: text("conversation_id"), // Optional reference to specific conversation
+  taskId: text("task_id"), // Optional reference to specific task
+  feedbackText: text("feedback_text"), // Textual feedback from user
+  sentiment: text("sentiment"), // Maps to FeedbackSentiment enum
+  rating: integer("rating"), // Optional numerical rating (e.g., 1-5)
+  categories: text("categories").array(), // Array of feedback categories
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  processed: boolean("processed").default(false), // Whether feedback has been processed for learning
+}, (table) => {
+  return {
+    agentIdIdx: index("agent_user_feedback_agent_id_idx").on(table.agentId),
+    sentimentIdx: index("agent_user_feedback_sentiment_idx").on(table.sentiment),
+  };
+});
+
+export const insertAgentUserFeedbackSchema = createInsertSchema(agentUserFeedback).omit({
+  id: true,
+  createdAt: true,
+  processed: true,
+});
+
+export type AgentUserFeedback = typeof agentUserFeedback.$inferSelect;
+export type InsertAgentUserFeedback = z.infer<typeof insertAgentUserFeedbackSchema>;
+
+// Agent Knowledge Base - Repository of learned knowledge and insights
+export const agentKnowledgeBase = pgTable("agent_knowledge_base", {
+  id: serial("id").primaryKey(),
+  agentId: text("agent_id").notNull(), // Agent identifier (or 'shared' for shared knowledge)
+  knowledgeType: text("knowledge_type").notNull(), // Type of knowledge: pattern, rule, fact, procedure, concept
+  title: text("title").notNull(), // Short title/description
+  content: text("content").notNull(), // The actual knowledge content
+  sourceEvents: integer("source_events").array(), // IDs of learning events that led to this knowledge
+  confidence: numeric("confidence").notNull(), // Confidence score (0.0-1.0)
+  usageCount: integer("usage_count").default(0), // How often this knowledge has been applied
+  lastUsed: timestamp("last_used"), // When this knowledge was last used
+  verified: boolean("verified").default(false), // Whether this knowledge has been verified by experts
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    agentIdTypeIdx: index("agent_knowledge_base_agent_type_idx").on(table.agentId, table.knowledgeType),
+    titleIdx: index("agent_knowledge_base_title_idx").on(table.title),
+  };
+});
+
+export const insertAgentKnowledgeBaseSchema = createInsertSchema(agentKnowledgeBase).omit({
+  id: true,
+  usageCount: true,
+  lastUsed: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AgentKnowledgeBase = typeof agentKnowledgeBase.$inferSelect;
+export type InsertAgentKnowledgeBase = z.infer<typeof insertAgentKnowledgeBaseSchema>;
+
+// Agent Performance Metrics - Tracks agent performance over time
+export const agentPerformanceMetrics = pgTable("agent_performance_metrics", {
+  id: serial("id").primaryKey(),
+  agentId: text("agent_id").notNull(), // Agent identifier
+  metricType: text("metric_type").notNull(), // Maps to AgentPerformanceMetricType enum
+  value: numeric("value").notNull(), // Metric value
+  timeframe: text("timeframe").notNull(), // hourly, daily, weekly, monthly
+  metadata: jsonb("metadata"), // Additional context about the metric
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    agentMetricTimeframeIdx: index("agent_perf_metrics_agent_metric_time_idx").on(
+      table.agentId, table.metricType, table.timeframe
+    ),
+    createdAtIdx: index("agent_perf_metrics_created_at_idx").on(table.createdAt),
+  };
+});
+
+export const insertAgentPerformanceMetricSchema = createInsertSchema(agentPerformanceMetrics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type AgentPerformanceMetric = typeof agentPerformanceMetrics.$inferSelect;
+export type InsertAgentPerformanceMetric = z.infer<typeof insertAgentPerformanceMetricSchema>;
+
+// Agent Learning Models - Tracks agent learning models and their versions
+export const agentLearningModels = pgTable("agent_learning_models", {
+  id: serial("id").primaryKey(),
+  agentId: text("agent_id").notNull(), // Agent identifier
+  modelName: text("model_name").notNull(), // Name of the learning model
+  version: text("version").notNull(), // Model version identifier
+  provider: text("provider").notNull(), // Maps to LearningModelProvider enum
+  configuration: jsonb("configuration"), // Model-specific configuration
+  performanceMetrics: jsonb("performance_metrics"), // Performance metrics for this model
+  active: boolean("active").default(true), // Whether this model is currently active
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastUsed: timestamp("last_used").defaultNow().notNull(),
+}, (table) => {
+  return {
+    agentModelVersionIdx: index("agent_learning_models_agent_model_version_idx").on(
+      table.agentId, table.modelName, table.version
+    ),
+    activeIdx: index("agent_learning_models_active_idx").on(table.active),
+  };
+});
+
+export const insertAgentLearningModelSchema = createInsertSchema(agentLearningModels).omit({
+  id: true,
+  active: true,
+  createdAt: true,
+  lastUsed: true,
+});
+
+export type AgentLearningModel = typeof agentLearningModels.$inferSelect;
+export type InsertAgentLearningModel = z.infer<typeof insertAgentLearningModelSchema>;
