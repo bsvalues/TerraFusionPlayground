@@ -1,63 +1,99 @@
 /**
  * Agent Health Monitoring Service
  * 
- * This service is responsible for collecting, analyzing, and reporting agent health metrics.
- * It provides real-time monitoring of agent status, performance, and resource usage.
+ * This service is responsible for monitoring and tracking the health and performance
+ * of agents in the system. It collects metrics related to CPU usage, memory usage,
+ * request latency, and other performance indicators.
  */
 
+import { EventEmitter } from 'events';
+import { AgentSystem } from './agent-system';
 import { IStorage } from '../storage';
 import { logger } from '../utils/logger';
-import { AgentSystem } from './agent-system';
-import { AgentHealthStatus, InsertAgentHealthMonitoring } from '@shared/schema';
-import { AgentPerformanceMetricType } from '@shared/schema';
-import EventEmitter from 'events';
-import os from 'os';
 
-// Thresholds for health status
-interface HealthThresholds {
-  cpu: {
-    warning: number;  // percentage
-    critical: number; // percentage
-  };
-  memory: {
-    warning: number;  // MB
-    critical: number; // MB
-  };
-  responseTime: {
-    warning: number;  // ms
-    critical: number; // ms
-  };
-  errorRate: {
-    warning: number;  // errors per minute
-    critical: number; // errors per minute
-  };
-}
+// Define types for the health monitoring service
+export type AgentHealth = {
+  agentId: string;
+  status: 'healthy' | 'degraded' | 'critical' | 'unknown';
+  timestamp: string;
+  cpuUsage: number;
+  memoryUsage: number;
+  requestLatency: number;
+  tokenConsumption: number;
+  apiCalls: number;
+  errorRate: number;
+  lastActivityTimestamp: string;
+  messages: number;
+  totalTokens: number;
+  consecutiveErrors: number;
+  initStatus: 'initializing' | 'initialized' | 'failed' | 'unknown';
+  initTimestamp: string | null;
+  lastHealthCheck: string;
+  metricHistory: AgentMetricHistory;
+};
 
-export class AgentHealthMonitoringService extends EventEmitter {
+export type AgentMetricHistory = {
+  cpuUsage: number[];
+  memoryUsage: number[];
+  requestLatency: number[];
+  tokenConsumption: number[];
+  apiCalls: number[];
+  errorRate: number[];
+};
+
+export type SystemHealth = {
+  overallStatus: 'healthy' | 'degraded' | 'critical' | 'unknown';
+  agentCount: number;
+  healthyAgents: number;
+  degradedAgents: number;
+  criticalAgents: number;
+  unknownAgents: number;
+  totalCpuUsage: number;
+  totalMemoryUsage: number;
+  averageLatency: number;
+  totalErrors: number;
+  totalApiCalls: number;
+  timestamp: string;
+};
+
+export type AgentAlert = {
+  agentId: string;
+  alertType: 'high-cpu' | 'high-memory' | 'high-latency' | 'high-error-rate' | 'timeout' | 'initialization-failed';
+  severity: 'warning' | 'error' | 'critical';
+  message: string;
+  timestamp: string;
+  acknowledged: boolean;
+  resolvedTimestamp: string | null;
+  metricValue: number | null;
+  thresholdValue: number | null;
+};
+
+export type AgentMetrics = {
+  cpuUsage: number[];
+  memoryUsage: number[];
+  requestLatency: number[];
+  errorRate: number[];
+  apiCalls: number[];
+  tokenUsage: number[];
+  messageCount: number[];
+  timestamps: string[];
+};
+
+/**
+ * Service for monitoring and tracking agent health and performance
+ */
+class AgentHealthMonitoringService extends EventEmitter {
   private static instance: AgentHealthMonitoringService;
-  private storage: IStorage;
+  private storage: IStorage | null = null;
   private agentSystem: AgentSystem | null = null;
   private monitoringInterval: NodeJS.Timeout | null = null;
-  private healthCheckInterval: number = 30000; // 30 seconds by default
-  public isInitialized: boolean = false;
-  private healthThresholds: HealthThresholds = {
-    cpu: {
-      warning: 70,  // 70% CPU usage
-      critical: 90  // 90% CPU usage
-    },
-    memory: {
-      warning: 1024,  // 1 GB
-      critical: 2048   // 2 GB
-    },
-    responseTime: {
-      warning: 2000,  // 2 seconds
-      critical: 5000   // 5 seconds
-    },
-    errorRate: {
-      warning: 5,  // 5 errors per minute
-      critical: 15 // 15 errors per minute
-    }
-  };
+  private intervalMs: number = 30000; // Default to 30 seconds
+  private _isInitialized: boolean = false;
+  
+  // Singleton pattern
+  private constructor() {
+    super();
+  }
   
   /**
    * Get singleton instance
@@ -66,383 +102,380 @@ export class AgentHealthMonitoringService extends EventEmitter {
     if (!AgentHealthMonitoringService.instance) {
       AgentHealthMonitoringService.instance = new AgentHealthMonitoringService();
     }
-    
     return AgentHealthMonitoringService.instance;
   }
   
   /**
-   * Private constructor for singleton
+   * Initialize the health monitoring service
    */
-  private constructor() {
-    super();
-    
-    // Will be initialized later with initialize()
-    this.storage = null as unknown as IStorage;
-  }
-  
-  /**
-   * Initialize the monitoring service
-   */
-  public initialize(storage: IStorage, agentSystem: AgentSystem, options?: {
-    healthCheckInterval?: number;
-    healthThresholds?: Partial<HealthThresholds>;
-  }): void {
-    this.storage = storage;
-    this.agentSystem = agentSystem;
-    this.isInitialized = true;
-    
-    // Configure options if provided
-    if (options) {
-      if (options.healthCheckInterval) {
-        this.healthCheckInterval = options.healthCheckInterval;
-      }
-      
-      if (options.healthThresholds) {
-        this.healthThresholds = {
-          ...this.healthThresholds,
-          ...options.healthThresholds
-        };
-      }
+  public initialize(storage: IStorage, agentSystem: AgentSystem, intervalMs: number = 30000): void {
+    if (this._isInitialized) {
+      logger.warn({
+        component: "AgentHealthMonitoringService",
+        message: "Service already initialized"
+      });
+      return;
     }
     
-    // Start monitoring
+    this.storage = storage;
+    this.agentSystem = agentSystem;
+    this.intervalMs = intervalMs;
+    
+    // Start monitoring interval
     this.startMonitoring();
     
-    logger.info(`Agent Health Monitoring Service initialized with interval ${this.healthCheckInterval}ms`);
+    // Subscribe to agent system events
+    this.subscribeToEvents();
+    
+    this._isInitialized = true;
+    
+    logger.info({
+      component: "AgentHealthMonitoringService", 
+      message: "Agent Health Monitoring started",
+      interval: this.intervalMs
+    });
+    
+    // Perform initial health check
+    this.performHealthCheck();
   }
   
   /**
-   * Start the health monitoring process
+   * Check if the service is initialized
    */
-  public startMonitoring(): void {
+  public get isInitialized(): boolean {
+    return this._isInitialized;
+  }
+  
+  /**
+   * Start periodic health monitoring
+   */
+  private startMonitoring(): void {
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
     }
     
     this.monitoringInterval = setInterval(() => {
       this.performHealthCheck();
-    }, this.healthCheckInterval);
-    
-    // Perform an immediate health check
-    this.performHealthCheck();
+    }, this.intervalMs);
     
     logger.info({
-      component: 'AgentHealthMonitoringService',
-      message: 'Agent Health Monitoring started',
-      interval: this.healthCheckInterval
+      component: "AgentHealthMonitoringService",
+      message: "Agent Health Monitoring Service initialized with interval " + this.intervalMs + "ms"
     });
   }
   
   /**
-   * Stop the health monitoring process
+   * Perform a health check across all agents
+   * This method is made public to allow manual health checks
    */
-  public stopMonitoring(): void {
-    if (this.monitoringInterval) {
-      clearInterval(this.monitoringInterval);
-      this.monitoringInterval = null;
+  public async performHealthCheck(): Promise<void> {
+    if (!this.agentSystem || !this.storage) {
+      logger.error({
+        component: "AgentHealthMonitoringService",
+        message: "Cannot perform health check - service not properly initialized"
+      });
+      return;
+    }
+    
+    try {
+      // Get list of all registered agents
+      const agentStatus = this.agentSystem.getSystemStatus();
+      const agentIds = Object.keys(agentStatus.agents);
       
-      logger.info({
-        component: 'AgentHealthMonitoringService',
-        message: 'Agent Health Monitoring stopped'
+      // Process each agent
+      for (const agentId of agentIds) {
+        await this.checkAgentHealth(agentId);
+      }
+      
+      logger.debug({
+        component: "AgentHealthMonitoringService",
+        message: `Completed health check for ${agentIds.length} agents`
+      });
+      
+      // Emit event that health check is complete
+      this.emit('health-check-complete', {
+        timestamp: new Date().toISOString(),
+        agentCount: agentIds.length
+      });
+    } catch (error) {
+      logger.error({
+        component: "AgentHealthMonitoringService",
+        message: "Error performing health check",
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   }
   
   /**
-   * Perform a health check for all agents
+   * Check health of a specific agent
    */
-  public async performHealthCheck(): Promise<void> {
+  private async checkAgentHealth(agentId: string): Promise<void> {
+    if (!this.agentSystem || !this.storage) return;
+    
     try {
-      if (!this.agentSystem) {
+      // Get current agent status from agent system
+      const agentStatus = this.agentSystem.getAgentStatus(agentId);
+      
+      if (!agentStatus) {
         logger.warn({
-          component: 'AgentHealthMonitoringService',
-          message: 'Agent System not initialized for health check'
+          component: "AgentHealthMonitoringService",
+          message: `Agent not found for health check: ${agentId}`
         });
         return;
       }
       
-      // Get all agents from the system
-      const systemStatus = this.agentSystem.getSystemStatus();
-      const agentIds = Object.keys(systemStatus.agents);
+      // Get existing health record if any
+      let agentHealth = await this.storage.getAgentHealthByAgentId(agentId);
       
-      for (const agentId of agentIds) {
-        // Check if agent exists in agentHealthMonitoring table
-        const existingHealth = await this.storage.getAgentHealthByAgentId(agentId);
-        
-        // Collect health metrics for this agent
-        const healthMetrics = await this.collectAgentHealthMetrics(agentId);
-        const healthStatus = this.determineHealthStatus(healthMetrics);
-        
-        // Prepare health data
-        const healthData: InsertAgentHealthMonitoring = {
-          agentId,
-          healthStatus,
-          cpuUsage: healthMetrics.cpuUsage,
-          memoryUsage: healthMetrics.memoryUsage,
-          responseTime: healthMetrics.responseTime,
-          uptime: healthMetrics.uptime,
-          activeConnections: healthMetrics.activeConnections,
-          errorCount: healthMetrics.errorCount,
-          llmApiCallCount: healthMetrics.llmApiCallCount,
-          tokenUsage: healthMetrics.tokenUsage,
-          lastActivityTimestamp: healthMetrics.lastActivityTimestamp,
-          alertsTriggered: healthMetrics.alertsTriggered,
-          metadata: healthMetrics.metadata
+      // Get performance metrics
+      const metrics = this.collectAgentMetrics(agentId);
+      
+      // Calculate health status
+      const healthStatus = this.determineHealthStatus(metrics);
+      
+      const now = new Date().toISOString();
+      
+      // Update or create health record
+      if (agentHealth) {
+        // Update existing record
+        agentHealth = {
+          ...agentHealth,
+          status: healthStatus,
+          timestamp: now,
+          cpuUsage: metrics.cpuUsage,
+          memoryUsage: metrics.memoryUsage,
+          requestLatency: metrics.requestLatency,
+          tokenConsumption: metrics.tokenConsumption,
+          apiCalls: metrics.apiCalls,
+          errorRate: metrics.errorRate,
+          lastActivityTimestamp: agentStatus.lastActivity || now,
+          lastHealthCheck: now,
+          // Add to metric history
+          metricHistory: {
+            cpuUsage: [...(agentHealth.metricHistory?.cpuUsage || []).slice(-9), metrics.cpuUsage],
+            memoryUsage: [...(agentHealth.metricHistory?.memoryUsage || []).slice(-9), metrics.memoryUsage],
+            requestLatency: [...(agentHealth.metricHistory?.requestLatency || []).slice(-9), metrics.requestLatency],
+            tokenConsumption: [...(agentHealth.metricHistory?.tokenConsumption || []).slice(-9), metrics.tokenConsumption],
+            apiCalls: [...(agentHealth.metricHistory?.apiCalls || []).slice(-9), metrics.apiCalls],
+            errorRate: [...(agentHealth.metricHistory?.errorRate || []).slice(-9), metrics.errorRate]
+          }
         };
         
-        // Update or create health record
-        if (existingHealth) {
-          await this.storage.updateAgentHealth(agentId, healthData);
-          
-          // Check if health status changed
-          if (existingHealth.healthStatus !== healthStatus) {
-            this.emit('health-status-changed', {
-              agentId,
-              previousStatus: existingHealth.healthStatus,
-              currentStatus: healthStatus,
-              timestamp: new Date()
-            });
-            
-            logger.info({
-              component: 'AgentHealthMonitoringService',
-              message: `Agent ${agentId} health status changed from ${existingHealth.healthStatus} to ${healthStatus}`
-            });
-          }
-        } else {
-          await this.storage.createAgentHealth(healthData);
-          
-          this.emit('health-status-initialized', {
-            agentId,
-            status: healthStatus,
-            timestamp: new Date()
-          });
-        }
+        await this.storage.updateAgentHealth(agentHealth);
         
-        // Emit health metrics updated event
-        this.emit('health-metrics-updated', {
+        logger.debug({
+          component: "AgentHealthMonitoringService",
+          message: `Updated health record for agent ${agentId}`
+        });
+      } else {
+        // Create new health record
+        agentHealth = {
           agentId,
-          metrics: healthMetrics,
           status: healthStatus,
-          timestamp: new Date()
+          timestamp: now,
+          cpuUsage: metrics.cpuUsage,
+          memoryUsage: metrics.memoryUsage,
+          requestLatency: metrics.requestLatency,
+          tokenConsumption: metrics.tokenConsumption,
+          apiCalls: metrics.apiCalls,
+          errorRate: metrics.errorRate,
+          lastActivityTimestamp: agentStatus.lastActivity || now,
+          messages: 0,
+          totalTokens: 0,
+          consecutiveErrors: 0,
+          initStatus: agentStatus.initialized ? 'initialized' : 'initializing',
+          initTimestamp: agentStatus.initTimestamp || null,
+          lastHealthCheck: now,
+          metricHistory: {
+            cpuUsage: [metrics.cpuUsage],
+            memoryUsage: [metrics.memoryUsage],
+            requestLatency: [metrics.requestLatency],
+            tokenConsumption: [metrics.tokenConsumption],
+            apiCalls: [metrics.apiCalls],
+            errorRate: [metrics.errorRate]
+          }
+        };
+        
+        await this.storage.createAgentHealth(agentHealth);
+        
+        logger.debug({
+          component: "AgentHealthMonitoringService",
+          message: `Created health record for agent ${agentId}`
         });
       }
       
-      logger.debug({
-        component: 'AgentHealthMonitoringService',
-        message: `Completed health check for ${agentIds.length} agents`
+      // Check for alerts
+      this.checkForAlerts(agentHealth);
+      
+      // Emit health status changed event
+      this.emit('health-status-changed', {
+        agentId,
+        status: healthStatus,
+        timestamp: now,
+        metrics
       });
     } catch (error) {
       logger.error({
-        component: 'AgentHealthMonitoringService',
-        message: 'Error performing health check',
+        component: "AgentHealthMonitoringService",
+        message: "Error checking agent health",
         error: error instanceof Error ? error.message : String(error)
       });
     }
   }
   
   /**
-   * Collect health metrics for a specific agent
+   * Collect performance metrics for an agent
    */
-  private async collectAgentHealthMetrics(agentId: string): Promise<{
+  private collectAgentMetrics(agentId: string): {
     cpuUsage: number;
     memoryUsage: number;
-    responseTime: number;
-    uptime: number;
-    activeConnections: number;
-    errorCount: number;
-    llmApiCallCount: number;
-    tokenUsage: number;
-    lastActivityTimestamp: Date | null;
-    lastErrorTimestamp: Date | null;
-    alertsTriggered: Record<string, any>;
-    metadata: Record<string, any>;
-  }> {
-    // Get agent from system
-    const systemStatus = this.agentSystem?.getSystemStatus();
-    const agent = systemStatus?.agents[agentId];
+    requestLatency: number;
+    tokenConsumption: number;
+    apiCalls: number;
+    errorRate: number;
+  } {
+    // In a real implementation, these metrics would be collected from
+    // monitoring systems, agent telemetry, or performance counters
     
-    if (!agent) {
-      logger.warn({
-        component: 'AgentHealthMonitoringService',
-        message: `Agent ${agentId} not found in system status`,
-        agentId
-      });
-      
-      // Return default metrics
-      return {
-        cpuUsage: 0,
-        memoryUsage: 0,
-        responseTime: 0,
-        uptime: 0,
-        activeConnections: 0,
-        errorCount: 0,
-        llmApiCallCount: 0,
-        tokenUsage: 0,
-        lastActivityTimestamp: null,
-        lastErrorTimestamp: null,
-        alertsTriggered: {},
-        metadata: {}
-      };
-    }
-    
-    // Get performance metrics for this agent
-    const recentMetrics = await this.storage.getAgentPerformanceMetrics(
-      agentId,
-      undefined,
-      'hourly',
-      5 // Last 5 hours
-    );
-    
-    // Get error counts
-    const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const recentErrors = await this.storage.getAgentMessages({
-      senderAgentId: agentId,
-      messageType: 'error',
-      createdAfter: hourAgo
-    });
-    
-    // Get API call counts (for LLM agents)
-    const llmApiCalls = await this.storage.getAgentMetadata(agentId, 'llm_api_calls') || 0;
-    const tokenUsageCount = await this.storage.getAgentMetadata(agentId, 'token_usage') || 0;
-    
-    // Get last activity
-    const lastActivity = await this.storage.getLatestAgentActivity(agentId);
-    
-    // Get system metrics
-    const totalMem = os.totalmem();
-    const freeMem = os.freemem();
-    const memUsageMB = Math.round((totalMem - freeMem) / (1024 * 1024));
-    
-    // Calculate CPU usage by agent (simplified - in a real system you'd use process monitoring)
-    const cpuUsage = Math.min(
-      Math.round(
-        os.loadavg()[0] * (Math.random() * 0.3 + 0.7) * 100 / os.cpus().length
-      ),
-      100
-    );
-    
-    // Get response time from metrics or estimate
-    const responseTimeMetrics = recentMetrics.filter(
-      m => m.metricType === AgentPerformanceMetricType.RESPONSE_TIME
-    );
-    let avgResponseTime = 0;
-    if (responseTimeMetrics.length > 0) {
-      avgResponseTime = responseTimeMetrics.reduce(
-        (sum, m) => sum + Number(m.value),
-        0
-      ) / responseTimeMetrics.length;
-    }
-    
-    // Calculate agent-specific memory usage (mock implementation for demo)
-    // In a real system, you'd monitor the actual process memory
-    const agentMemoryUsage = Math.round(
-      memUsageMB * (0.05 + Math.random() * 0.15) // 5-20% of system memory
-    );
-    
-    // Get actual uptime or last restart time
-    let uptime = 0;
-    const agentStartTime = await this.storage.getAgentMetadata(agentId, 'start_time');
-    if (agentStartTime) {
-      uptime = Math.round((Date.now() - new Date(agentStartTime).getTime()) / 1000);
-    }
-    
-    // Determine active connections (simplified for demo)
-    const activeConnections = Math.round(Math.random() * 5); // 0-5 connections
-    
-    // Get alerts that were triggered for this agent
-    const activeAlerts = await this.storage.getActiveAlertsForAgent(agentId);
-    
+    // For now, use simulated data
     return {
-      cpuUsage,
-      memoryUsage: agentMemoryUsage,
-      responseTime: avgResponseTime,
-      uptime,
-      activeConnections,
-      errorCount: recentErrors.length,
-      llmApiCallCount: Number(llmApiCalls),
-      tokenUsage: Number(tokenUsageCount),
-      lastActivityTimestamp: lastActivity?.timestamp || null,
-      lastErrorTimestamp: recentErrors.length > 0 
-        ? new Date(recentErrors[0].createdAt) 
-        : null,
-      alertsTriggered: Object.fromEntries(
-        activeAlerts.map(alert => [alert.alertType, alert.metadata])
-      ),
-      metadata: {
-        // Additional agent-specific metadata
-        agentType: agent.type,
-        capabilities: agent.capabilities,
-        lastStatus: agent.status
-      }
+      cpuUsage: Math.random() * 100,
+      memoryUsage: Math.random() * 512,  // MB
+      requestLatency: Math.random() * 1000,  // ms
+      tokenConsumption: Math.floor(Math.random() * 5000),
+      apiCalls: Math.floor(Math.random() * 100),
+      errorRate: Math.random() * 10
     };
   }
   
   /**
-   * Determine the health status based on metrics
+   * Determine health status based on metrics
    */
   private determineHealthStatus(metrics: {
     cpuUsage: number;
     memoryUsage: number;
-    responseTime: number;
-    errorCount: number;
-    uptime: number;
-  }): AgentHealthStatus {
-    // Check for critical conditions
-    if (
-      metrics.cpuUsage >= this.healthThresholds.cpu.critical ||
-      metrics.memoryUsage >= this.healthThresholds.memory.critical ||
-      metrics.responseTime >= this.healthThresholds.responseTime.critical ||
-      metrics.errorCount >= this.healthThresholds.errorRate.critical
-    ) {
-      return AgentHealthStatus.CRITICAL;
+    requestLatency: number;
+    errorRate: number;
+  }): 'healthy' | 'degraded' | 'critical' | 'unknown' {
+    if (metrics.cpuUsage > 90 || metrics.memoryUsage > 480 || metrics.errorRate > 8) {
+      return 'critical';
+    } else if (metrics.cpuUsage > 70 || metrics.memoryUsage > 384 || metrics.requestLatency > 800 || metrics.errorRate > 5) {
+      return 'degraded';
+    } else if (metrics.cpuUsage !== undefined) {
+      return 'healthy';
+    } else {
+      return 'unknown';
     }
-    
-    // Check for degraded conditions
-    if (
-      metrics.cpuUsage >= this.healthThresholds.cpu.warning ||
-      metrics.memoryUsage >= this.healthThresholds.memory.warning ||
-      metrics.responseTime >= this.healthThresholds.responseTime.warning ||
-      metrics.errorCount >= this.healthThresholds.errorRate.warning
-    ) {
-      return AgentHealthStatus.DEGRADED;
-    }
-    
-    // Check if agent is offline (no activity for extended period)
-    if (metrics.uptime === 0) {
-      return AgentHealthStatus.OFFLINE;
-    }
-    
-    // Otherwise, agent is healthy
-    return AgentHealthStatus.HEALTHY;
   }
   
   /**
-   * Get the current health status for all agents
+   * Check for alertable conditions
    */
-  public async getAllAgentHealth(): Promise<any[]> {
-    try {
-      return await this.storage.getAllAgentHealth();
-    } catch (error) {
-      logger.error({
-        component: 'AgentHealthMonitoringService',
-        message: 'Error getting all agent health data',
-        error: error instanceof Error ? error.message : String(error)
+  private async checkForAlerts(agentHealth: AgentHealth): Promise<void> {
+    if (!this.storage) return;
+    
+    const alerts: AgentAlert[] = [];
+    
+    // Check CPU usage
+    if (agentHealth.cpuUsage > 90) {
+      alerts.push({
+        agentId: agentHealth.agentId,
+        alertType: 'high-cpu',
+        severity: 'critical',
+        message: `Agent ${agentHealth.agentId} has critical CPU usage: ${agentHealth.cpuUsage.toFixed(1)}%`,
+        timestamp: new Date().toISOString(),
+        acknowledged: false,
+        resolvedTimestamp: null,
+        metricValue: agentHealth.cpuUsage,
+        thresholdValue: 90
       });
-      return [];
+    } else if (agentHealth.cpuUsage > 70) {
+      alerts.push({
+        agentId: agentHealth.agentId,
+        alertType: 'high-cpu',
+        severity: 'warning',
+        message: `Agent ${agentHealth.agentId} has high CPU usage: ${agentHealth.cpuUsage.toFixed(1)}%`,
+        timestamp: new Date().toISOString(),
+        acknowledged: false,
+        resolvedTimestamp: null,
+        metricValue: agentHealth.cpuUsage,
+        thresholdValue: 70
+      });
+    }
+    
+    // Check memory usage
+    if (agentHealth.memoryUsage > 480) {
+      alerts.push({
+        agentId: agentHealth.agentId,
+        alertType: 'high-memory',
+        severity: 'critical',
+        message: `Agent ${agentHealth.agentId} has critical memory usage: ${agentHealth.memoryUsage.toFixed(1)}MB`,
+        timestamp: new Date().toISOString(),
+        acknowledged: false,
+        resolvedTimestamp: null,
+        metricValue: agentHealth.memoryUsage,
+        thresholdValue: 480
+      });
+    } else if (agentHealth.memoryUsage > 384) {
+      alerts.push({
+        agentId: agentHealth.agentId,
+        alertType: 'high-memory',
+        severity: 'warning',
+        message: `Agent ${agentHealth.agentId} has high memory usage: ${agentHealth.memoryUsage.toFixed(1)}MB`,
+        timestamp: new Date().toISOString(),
+        acknowledged: false,
+        resolvedTimestamp: null,
+        metricValue: agentHealth.memoryUsage,
+        thresholdValue: 384
+      });
+    }
+    
+    // Create alerts in storage
+    for (const alert of alerts) {
+      try {
+        // Check if similar alert already exists
+        const existingAlerts = await this.storage.getActiveAlertsForAgent(agentHealth.agentId);
+        const similarAlert = existingAlerts.find(a => 
+          a.alertType === alert.alertType && 
+          a.severity === alert.severity && 
+          !a.resolvedTimestamp
+        );
+        
+        if (!similarAlert) {
+          await this.storage.createAgentAlert(alert);
+          
+          // Emit alert event
+          this.emit('agent-alert', alert);
+          
+          logger.warn({
+            component: "AgentHealthMonitoringService",
+            message: `Created alert for agent ${agentHealth.agentId}: ${alert.message}`
+          });
+        }
+      } catch (error) {
+        logger.error({
+          component: "AgentHealthMonitoringService",
+          message: "Error creating agent alert",
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
     }
   }
   
   /**
-   * Get the current health status for a specific agent
+   * Get performance metrics for an agent over time
    */
-  public async getAgentHealth(agentId: string): Promise<any | null> {
+  public async getAgentPerformanceMetrics(agentId: string): Promise<AgentMetrics | null> {
+    if (!this.storage) return null;
+    
     try {
-      return await this.storage.getAgentHealthByAgentId(agentId);
+      // Retrieve metric history from storage
+      const metrics = await this.storage.getAgentPerformanceMetrics(agentId);
+      return metrics;
     } catch (error) {
       logger.error({
-        component: 'AgentHealthMonitoringService',
-        message: `Error getting health data for agent ${agentId}`,
-        agentId,
+        component: "AgentHealthMonitoringService",
+        message: "Error retrieving agent performance metrics",
         error: error instanceof Error ? error.message : String(error)
       });
       return null;
@@ -450,104 +483,129 @@ export class AgentHealthMonitoringService extends EventEmitter {
   }
   
   /**
-   * Get health statistics for all agents
+   * Get the message history for an agent
+   */
+  public async getAgentMessages(agentId: string): Promise<any[]> {
+    if (!this.storage) return [];
+    
+    try {
+      // Get recent messages from storage
+      return await this.storage.getAgentMessages(agentId, 50);
+    } catch (error) {
+      logger.error({
+        component: "AgentHealthMonitoringService",
+        message: "Error retrieving agent messages",
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return [];
+    }
+  }
+  
+  /**
+   * Get agent metadata and initialization status
+   */
+  public async getAgentMetadata(agentId: string): Promise<any> {
+    if (!this.agentSystem || !this.storage) return null;
+    
+    try {
+      const agentStatus = this.agentSystem.getAgentStatus(agentId);
+      const metadata = await this.storage.getAgentMetadata(agentId);
+      const latestActivity = await this.storage.getLatestAgentActivity(agentId);
+      
+      return {
+        ...metadata,
+        status: agentStatus,
+        latestActivity
+      };
+    } catch (error) {
+      logger.error({
+        component: "AgentHealthMonitoringService",
+        message: "Error retrieving agent metadata",
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
+  }
+  
+  /**
+   * Calculate health statistics across all agents
    */
   public async getHealthStatistics(): Promise<{
     totalAgents: number;
     healthyCount: number;
     degradedCount: number;
     criticalCount: number;
-    offlineCount: number;
+    unknownCount: number;
     averageCpuUsage: number;
     averageMemoryUsage: number;
-    averageResponseTime: number;
+    averageLatency: number;
     totalErrors: number;
-    totalLlmApiCalls: number;
-    totalTokenUsage: number;
+    timestamp: string;
   }> {
+    if (!this.storage) {
+      return {
+        totalAgents: 0,
+        healthyCount: 0,
+        degradedCount: 0,
+        criticalCount: 0,
+        unknownCount: 0,
+        averageCpuUsage: 0,
+        averageMemoryUsage: 0,
+        averageLatency: 0,
+        totalErrors: 0,
+        timestamp: new Date().toISOString()
+      };
+    }
+    
     try {
-      const allHealth = await this.storage.getAllAgentHealth();
+      // Get all agent health records
+      const healthRecords = await this.storage.getAllAgentHealth();
       
-      if (allHealth.length === 0) {
+      if (!healthRecords || healthRecords.length === 0) {
         return {
           totalAgents: 0,
           healthyCount: 0,
           degradedCount: 0,
           criticalCount: 0,
-          offlineCount: 0,
+          unknownCount: 0,
           averageCpuUsage: 0,
           averageMemoryUsage: 0,
-          averageResponseTime: 0,
+          averageLatency: 0,
           totalErrors: 0,
-          totalLlmApiCalls: 0,
-          totalTokenUsage: 0
+          timestamp: new Date().toISOString()
         };
       }
       
-      // Count agents by status
-      const healthyCount = allHealth.filter(h => h.healthStatus === AgentHealthStatus.HEALTHY).length;
-      const degradedCount = allHealth.filter(h => h.healthStatus === AgentHealthStatus.DEGRADED).length;
-      const criticalCount = allHealth.filter(h => h.healthStatus === AgentHealthStatus.CRITICAL).length;
-      const offlineCount = allHealth.filter(h => h.healthStatus === AgentHealthStatus.OFFLINE).length;
+      // Calculate counts by status
+      const healthyCount = healthRecords.filter(h => h.status === 'healthy').length;
+      const degradedCount = healthRecords.filter(h => h.status === 'degraded').length;
+      const criticalCount = healthRecords.filter(h => h.status === 'critical').length;
+      const unknownCount = healthRecords.filter(h => h.status === 'unknown').length;
       
       // Calculate averages
-      const activeCpuValues = allHealth
-        .filter(h => h.cpuUsage !== null && h.cpuUsage !== undefined)
-        .map(h => Number(h.cpuUsage));
-        
-      const activeMemoryValues = allHealth
-        .filter(h => h.memoryUsage !== null && h.memoryUsage !== undefined)
-        .map(h => Number(h.memoryUsage));
-        
-      const activeResponseTimeValues = allHealth
-        .filter(h => h.responseTime !== null && h.responseTime !== undefined)
-        .map(h => Number(h.responseTime));
-      
-      const averageCpuUsage = activeCpuValues.length > 0
-        ? activeCpuValues.reduce((sum, val) => sum + val, 0) / activeCpuValues.length
-        : 0;
-        
-      const averageMemoryUsage = activeMemoryValues.length > 0
-        ? activeMemoryValues.reduce((sum, val) => sum + val, 0) / activeMemoryValues.length
-        : 0;
-        
-      const averageResponseTime = activeResponseTimeValues.length > 0
-        ? activeResponseTimeValues.reduce((sum, val) => sum + val, 0) / activeResponseTimeValues.length
-        : 0;
+      const averageCpuUsage = healthRecords.reduce((sum, h) => sum + h.cpuUsage, 0) / healthRecords.length;
+      const averageMemoryUsage = healthRecords.reduce((sum, h) => sum + h.memoryUsage, 0) / healthRecords.length;
+      const averageLatency = healthRecords.reduce((sum, h) => sum + h.requestLatency, 0) / healthRecords.length;
       
       // Calculate totals
-      const totalErrors = allHealth.reduce(
-        (sum, h) => sum + (h.errorCount || 0), 
-        0
-      );
-      
-      const totalLlmApiCalls = allHealth.reduce(
-        (sum, h) => sum + (h.llmApiCallCount || 0), 
-        0
-      );
-      
-      const totalTokenUsage = allHealth.reduce(
-        (sum, h) => sum + (h.tokenUsage || 0), 
-        0
-      );
+      const totalErrors = healthRecords.reduce((sum, h) => sum + (h.errorRate * 100), 0);
       
       return {
-        totalAgents: allHealth.length,
+        totalAgents: healthRecords.length,
         healthyCount,
         degradedCount,
         criticalCount,
-        offlineCount,
+        unknownCount,
         averageCpuUsage,
         averageMemoryUsage,
-        averageResponseTime,
+        averageLatency,
         totalErrors,
-        totalLlmApiCalls,
-        totalTokenUsage
+        timestamp: new Date().toISOString()
       };
     } catch (error) {
       logger.error({
-        component: 'AgentHealthMonitoringService',
-        message: 'Error getting health statistics',
+        component: "AgentHealthMonitoringService",
+        message: "Error calculating health statistics",
         error: error instanceof Error ? error.message : String(error)
       });
       
@@ -556,15 +614,340 @@ export class AgentHealthMonitoringService extends EventEmitter {
         healthyCount: 0,
         degradedCount: 0,
         criticalCount: 0,
-        offlineCount: 0,
+        unknownCount: 0,
         averageCpuUsage: 0,
         averageMemoryUsage: 0,
-        averageResponseTime: 0,
+        averageLatency: 0,
         totalErrors: 0,
-        totalLlmApiCalls: 0,
-        totalTokenUsage: 0
+        timestamp: new Date().toISOString()
       };
     }
+  }
+  
+  /**
+   * Get initialization status for an agent
+   */
+  public async getAgentInitStatus(agentId: string): Promise<{
+    initStatus: 'initializing' | 'initialized' | 'failed' | 'unknown';
+    initTimestamp: string | null;
+    initDuration: number | null;
+  } | null> {
+    if (!this.storage) return null;
+    
+    try {
+      const agentHealth = await this.storage.getAgentHealthByAgentId(agentId);
+      if (!agentHealth) return null;
+      
+      let initDuration = null;
+      if (agentHealth.initStatus === 'initialized' && agentHealth.initTimestamp) {
+        initDuration = new Date(agentHealth.timestamp).getTime() - new Date(agentHealth.initTimestamp).getTime();
+      }
+      
+      return {
+        initStatus: agentHealth.initStatus,
+        initTimestamp: agentHealth.initTimestamp,
+        initDuration
+      };
+    } catch (error) {
+      logger.error({
+        component: "AgentHealthMonitoringService",
+        message: "Error retrieving agent initialization status",
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
+  }
+  
+  /**
+   * Get active alerts for all agents
+   */
+  public async getActiveAlerts(): Promise<AgentAlert[]> {
+    if (!this.storage) return [];
+    
+    try {
+      // Get all agents
+      const healthRecords = await this.storage.getAllAgentHealth();
+      
+      if (!healthRecords || healthRecords.length === 0) {
+        return [];
+      }
+      
+      const alerts: AgentAlert[] = [];
+      
+      // For each agent, check if there are active alerts
+      for (const health of healthRecords) {
+        try {
+          const agentAlerts = await this.storage.getActiveAlertsForAgent(health.agentId);
+          alerts.push(...agentAlerts);
+        } catch (error) {
+          logger.error({
+            component: "AgentHealthMonitoringService",
+            message: `Error retrieving alerts for agent ${health.agentId}`,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+      
+      return alerts;
+    } catch (error) {
+      logger.error({
+        component: "AgentHealthMonitoringService",
+        message: "Error retrieving active alerts",
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return [];
+    }
+  }
+  
+  /**
+   * Subscribe to agent system events
+   */
+  private subscribeToEvents(): void {
+    if (!this.agentSystem) return;
+    
+    // Since AgentSystem doesn't implement EventEmitter, we'll manually check for agent status changes
+    // during our health check intervals instead of using event subscriptions
+    
+    logger.info({
+      component: "AgentHealthMonitoringService",
+      message: "Agent event monitoring initialized with polling"
+    });
+  }
+  
+  /**
+   * Track agent initialization status
+   */
+  private async trackAgentInitialization(agentId: string, status: 'initializing' | 'initialized' | 'failed' | 'unknown'): Promise<void> {
+    if (!this.storage) return;
+    
+    try {
+      // Get existing health record if any
+      let agentHealth = await this.storage.getAgentHealthByAgentId(agentId);
+      
+      const now = new Date().toISOString();
+      
+      if (agentHealth) {
+        // Update existing record
+        agentHealth = {
+          ...agentHealth,
+          initStatus: status,
+          initTimestamp: status === 'initializing' ? now : agentHealth.initTimestamp,
+          timestamp: now
+        };
+        
+        await this.storage.updateAgentHealth(agentHealth);
+      } else {
+        // Create new health record with initialization status
+        agentHealth = {
+          agentId,
+          status: 'unknown',
+          timestamp: now,
+          cpuUsage: 0,
+          memoryUsage: 0,
+          requestLatency: 0,
+          tokenConsumption: 0,
+          apiCalls: 0,
+          errorRate: 0,
+          lastActivityTimestamp: now,
+          messages: 0,
+          totalTokens: 0,
+          consecutiveErrors: 0,
+          initStatus: status,
+          initTimestamp: status === 'initializing' ? now : null,
+          lastHealthCheck: now,
+          metricHistory: {
+            cpuUsage: [],
+            memoryUsage: [],
+            requestLatency: [],
+            tokenConsumption: [],
+            apiCalls: [],
+            errorRate: []
+          }
+        };
+        
+        await this.storage.createAgentHealth(agentHealth);
+      }
+      
+      // Emit initialization status event
+      this.emit('health-status-initialized', {
+        agentId,
+        status,
+        timestamp: now
+      });
+      
+      logger.info({
+        component: "AgentHealthMonitoringService",
+        message: `Agent ${agentId} initialization status: ${status}`
+      });
+    } catch (error) {
+      logger.error({
+        component: "AgentHealthMonitoringService",
+        message: "Error tracking agent initialization",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+  
+  /**
+   * Get health status for all agents
+   */
+  public async getAllAgentHealth(): Promise<AgentHealth[]> {
+    if (!this.storage) {
+      return [];
+    }
+    
+    try {
+      return await this.storage.getAllAgentHealth();
+    } catch (error) {
+      logger.error({
+        component: "AgentHealthMonitoringService",
+        message: "Error retrieving all agent health records",
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return [];
+    }
+  }
+  
+  /**
+   * Get health status for a specific agent
+   */
+  public async getAgentHealthByAgentId(agentId: string): Promise<AgentHealth | null> {
+    if (!this.storage) {
+      return null;
+    }
+    
+    try {
+      return await this.storage.getAgentHealthByAgentId(agentId);
+    } catch (error) {
+      logger.error({
+        component: "AgentHealthMonitoringService",
+        message: "Error retrieving agent health record",
+        agentId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
+  }
+  
+  /**
+   * Get overall system health
+   */
+  public async getSystemHealth(): Promise<SystemHealth> {
+    if (!this.storage) {
+      return {
+        overallStatus: 'unknown',
+        agentCount: 0,
+        healthyAgents: 0,
+        degradedAgents: 0,
+        criticalAgents: 0,
+        unknownAgents: 0,
+        totalCpuUsage: 0,
+        totalMemoryUsage: 0,
+        averageLatency: 0,
+        totalErrors: 0,
+        totalApiCalls: 0,
+        timestamp: new Date().toISOString()
+      };
+    }
+    
+    try {
+      // Get all agent health records
+      const healthRecords = await this.storage.getAllAgentHealth();
+      
+      if (!healthRecords || healthRecords.length === 0) {
+        return {
+          overallStatus: 'unknown',
+          agentCount: 0,
+          healthyAgents: 0,
+          degradedAgents: 0,
+          criticalAgents: 0,
+          unknownAgents: 0,
+          totalCpuUsage: 0,
+          totalMemoryUsage: 0,
+          averageLatency: 0,
+          totalErrors: 0,
+          totalApiCalls: 0,
+          timestamp: new Date().toISOString()
+        };
+      }
+      
+      // Count agents by status
+      const healthyAgents = healthRecords.filter(h => h.status === 'healthy').length;
+      const degradedAgents = healthRecords.filter(h => h.status === 'degraded').length;
+      const criticalAgents = healthRecords.filter(h => h.status === 'critical').length;
+      const unknownAgents = healthRecords.filter(h => h.status === 'unknown').length;
+      
+      // Calculate totals
+      const totalCpuUsage = healthRecords.reduce((sum, h) => sum + h.cpuUsage, 0);
+      const totalMemoryUsage = healthRecords.reduce((sum, h) => sum + h.memoryUsage, 0);
+      const averageLatency = healthRecords.reduce((sum, h) => sum + h.requestLatency, 0) / healthRecords.length;
+      const totalErrors = healthRecords.reduce((sum, h) => sum + (h.errorRate * 100), 0);
+      const totalApiCalls = healthRecords.reduce((sum, h) => sum + h.apiCalls, 0);
+      
+      // Determine overall status
+      let overallStatus: 'healthy' | 'degraded' | 'critical' | 'unknown' = 'healthy';
+      
+      if (criticalAgents > 0) {
+        overallStatus = 'critical';
+      } else if (degradedAgents > healthyAgents) {
+        overallStatus = 'degraded';
+      } else if (healthyAgents === 0 && unknownAgents === healthRecords.length) {
+        overallStatus = 'unknown';
+      }
+      
+      return {
+        overallStatus,
+        agentCount: healthRecords.length,
+        healthyAgents,
+        degradedAgents,
+        criticalAgents,
+        unknownAgents,
+        totalCpuUsage,
+        totalMemoryUsage,
+        averageLatency,
+        totalErrors,
+        totalApiCalls,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      logger.error({
+        component: "AgentHealthMonitoringService",
+        message: "Error retrieving system health",
+        error: error instanceof Error ? error.message : String(error)
+      });
+      
+      return {
+        overallStatus: 'unknown',
+        agentCount: 0,
+        healthyAgents: 0,
+        degradedAgents: 0,
+        criticalAgents: 0,
+        unknownAgents: 0,
+        totalCpuUsage: 0,
+        totalMemoryUsage: 0,
+        averageLatency: 0,
+        totalErrors: 0,
+        totalApiCalls: 0,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+  
+  /**
+   * Stop health monitoring
+   */
+  public shutdown(): void {
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
+      this.monitoringInterval = null;
+    }
+    
+    this._isInitialized = false;
+    
+    logger.info({
+      component: "AgentHealthMonitoringService",
+      message: "Agent Health Monitoring service shutdown"
+    });
   }
 }
 

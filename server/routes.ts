@@ -2798,6 +2798,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   agentWebSocketService.initialize(httpServer);
   console.log('Agent WebSocket service initialized');
   
+  // Initialize Agent Health WebSocket service for real-time monitoring updates
+  console.log('Initializing Agent Health WebSocket service...');
+  agentHealthWebSocketService.initialize(httpServer, storage, agentSystem);
+  console.log('Agent Health WebSocket service initialized');
+  
   // Initialize Socket.IO service (preferred method for better compatibility)
   console.log('Initializing Agent Socket.IO service...');
   agentSocketIOService.initialize(httpServer);
