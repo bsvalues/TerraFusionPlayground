@@ -1364,10 +1364,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create system activity for the NLP query
       await storage.createSystemActivity({
-        agentId: 3, // Assuming NLP Agent ID
+        agent_id: 3, // Assuming NLP Agent ID
         activity: `Processed natural language query: "${query}"`,
-        entityType: "query",
-        entityId: null
+        entity_type: "query",
+        entity_id: null
       });
       
       res.json(result);
@@ -1418,10 +1418,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create system activity for the summary
       await storage.createSystemActivity({
-        agentId: 3, // Assuming NLP Agent ID
+        agent_id: 3, // Assuming NLP Agent ID
         activity: `Generated summary for query: "${query}"`,
-        entityType: "summary",
-        entityId: null
+        entity_type: "summary",
+        entity_id: null
       });
       
       res.json(result);

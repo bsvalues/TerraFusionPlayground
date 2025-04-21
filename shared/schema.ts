@@ -2762,7 +2762,7 @@ export const workspacePreferences = pgTable("workspace_preferences", {
   workspaceLayout: text("workspace_layout").default(WorkspaceLayout.STANDARD), // standard, compact, expanded, custom
   fontSize: integer("font_size").default(14),
   fontFamily: text("font_family").default("JetBrains Mono"),
-  lineHeight: numeric("line_height").default(1.5),
+  lineHeight: numeric("line_height").default('1.5'),
   showMinimap: boolean("show_minimap").default(true),
   tabSize: integer("tab_size").default(2),
   wordWrap: boolean("word_wrap").default(false),
