@@ -9,6 +9,7 @@ import { createPredictionRoutes } from './prediction-routes';
 export function createGisRoutes(storage: IStorage) {
   const router = express.Router();
   const qgisService = new QGISService(storage);
+  const gisExportService = new GISExportService(storage);
 
   // Get all QGIS projects
   router.get('/projects', async (req, res) => {
@@ -236,6 +237,16 @@ export function createGisRoutes(storage: IStorage) {
     } catch (error) {
       console.error('Error fetching clustering data:', error);
       res.status(500).json({ error: 'Failed to fetch clustering data' });
+    }
+  });
+
+  // Geospatial Data Export endpoint
+  router.post('/export', async (req, res) => {
+    try {
+      await gisExportService.exportData(req, res);
+    } catch (error) {
+      console.error('Error exporting geospatial data:', error);
+      res.status(500).json({ error: 'Failed to export geospatial data' });
     }
   });
 

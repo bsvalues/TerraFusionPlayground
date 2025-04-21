@@ -184,9 +184,9 @@ export class GISExportService {
     
     // If there's only one layer, return just that layer's GeoJSON
     // Otherwise, return an object with each layer
-    const response = geoJSON.length === 1
-      ? geoJSON[0]
-      : geoJSON.reduce((acc, layer, index) => {
+    const response: any = geoJSON.length === 1
+      ? { ...geoJSON[0] }
+      : geoJSON.reduce((acc: Record<string, any>, layer, index) => {
           acc[layerData[index].layerId] = layer;
           return acc;
         }, {});
@@ -224,7 +224,7 @@ export class GISExportService {
     // For demo purposes, we'll just return GeoJSON with shapefile metadata
     
     // Create a simple shapefile-like structure (as JSON)
-    const shapefile = {
+    const shapefile: any = {
       type: 'ShapefileExport',
       layers: layerData.map(layer => ({
         name: layer.layerId,
@@ -255,7 +255,7 @@ export class GISExportService {
     // In a real implementation, this would convert the data to KML format
     // For demo purposes, we'll just return a simple KML-like structure (as JSON)
     
-    const kml = {
+    const kml: any = {
       type: 'KMLExport',
       document: {
         name: 'Exported Data',
@@ -291,9 +291,9 @@ export class GISExportService {
     // In a real implementation, this would convert the data to CSV format
     // For demo purposes, we'll create a CSV-like structure (as JSON)
     
-    const csv = {
+    const csv: any = {
       type: 'CSVExport',
-      data: []
+      data: [] as any[]
     };
     
     // If we have multiple layers, we'll create a CSV structure for each layer

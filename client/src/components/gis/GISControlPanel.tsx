@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import GeospatialExportWizard from '@/modules/gis/components/GeospatialExportWizard';
 
 const GISControlPanel = () => {
   const {
@@ -391,16 +392,10 @@ const GISControlPanel = () => {
         <div className="space-y-2">
           <h3 className="text-sm font-medium">Data Operations</h3>
           
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="w-full flex justify-start items-center"
-          >
-            <Database className="h-4 w-4 mr-2" />
-            <span className="text-xs">Download Selected Data</span>
-          </Button>
+          {/* Geospatial Export Wizard */}
+          <GeospatialExportWizard />
           
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 mt-3">
             <Label htmlFor="ai-analysis" className="text-xs flex-1">
               AI-Enhanced Analysis
             </Label>
