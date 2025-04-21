@@ -172,6 +172,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
+  // Add diagnostics endpoint for API connectivity testing
+  app.get('/api/diagnostics', (req, res) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      apiVersion: '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      corsEnabled: true,
+      websocketCorsEnabled: true,
+      requestInfo: {
+        headers: req.headers,
+        ip: req.ip,
+        method: req.method,
+        path: req.path,
+        protocol: req.protocol,
+        query: req.query
+      }
+    });
+  });
+  
   // Register data import routes
   app.use('/api/data-import', createDataImportRoutes(storage));
   
