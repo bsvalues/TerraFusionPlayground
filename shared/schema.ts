@@ -37,7 +37,13 @@ export enum AgentPerformanceMetricType {
   USER_SATISFACTION = 'user_satisfaction',
   TASK_COMPLETION_RATE = 'task_completion_rate',
   ERROR_RATE = 'error_rate',
-  LEARNING_RATE = 'learning_rate'
+  LEARNING_RATE = 'learning_rate',
+  MEMORY_USAGE = 'memory_usage',
+  CPU_USAGE = 'cpu_usage',
+  API_CALLS = 'api_calls',
+  TOKEN_USAGE = 'token_usage',
+  AVAILABILITY = 'availability',
+  LATENCY = 'latency'
 }
 
 // Energy and Productivity Tracking Enums
@@ -3203,6 +3209,48 @@ export const insertAgentPerformanceMetricSchema = createInsertSchema(agentPerfor
 
 export type AgentPerformanceMetric = typeof agentPerformanceMetrics.$inferSelect;
 export type InsertAgentPerformanceMetric = z.infer<typeof insertAgentPerformanceMetricSchema>;
+
+// Agent Health Status - For real-time monitoring of agent health
+export enum AgentHealthStatus {
+  HEALTHY = 'healthy',
+  DEGRADED = 'degraded',
+  CRITICAL = 'critical',
+  OFFLINE = 'offline'
+}
+
+// Agent Health Monitoring - Tracks current health state of agents
+export const agentHealthMonitoring = pgTable("agent_health_monitoring", {
+  id: serial("id").primaryKey(),
+  agentId: text("agent_id").notNull(), // Agent identifier
+  healthStatus: text("health_status").notNull().default(AgentHealthStatus.HEALTHY), // Current health status
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(), // Last health check timestamp
+  cpuUsage: numeric("cpu_usage"), // Current CPU usage percentage
+  memoryUsage: numeric("memory_usage"), // Current memory usage in MB
+  responseTime: numeric("response_time"), // Last response time in ms
+  uptime: numeric("uptime"), // Uptime in seconds
+  activeConnections: integer("active_connections"), // Number of active connections
+  lastErrorTimestamp: timestamp("last_error_timestamp"), // When the most recent error occurred
+  errorCount: integer("error_count").default(0), // Number of errors since last restart
+  llmApiCallCount: integer("llm_api_call_count").default(0), // Number of LLM API calls
+  tokenUsage: integer("token_usage").default(0), // Token usage count
+  lastActivityTimestamp: timestamp("last_activity_timestamp"), // Last activity timestamp
+  alertsTriggered: jsonb("alerts_triggered").default({}), // Alerts that have been triggered
+  metadata: jsonb("metadata").default({}), // Additional health information
+}, (table) => {
+  return {
+    agentIdIdx: index("agent_health_agent_id_idx").on(table.agentId),
+    lastUpdatedIdx: index("agent_health_last_updated_idx").on(table.lastUpdated),
+    healthStatusIdx: index("agent_health_status_idx").on(table.healthStatus),
+  };
+});
+
+export const insertAgentHealthMonitoringSchema = createInsertSchema(agentHealthMonitoring).omit({
+  id: true,
+  lastUpdated: true,
+});
+
+export type AgentHealthMonitoring = typeof agentHealthMonitoring.$inferSelect;
+export type InsertAgentHealthMonitoring = z.infer<typeof insertAgentHealthMonitoringSchema>;
 
 // Agent Learning Models - Tracks agent learning models and their versions
 export const agentLearningModels = pgTable("agent_learning_models", {
