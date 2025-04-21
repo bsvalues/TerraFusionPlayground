@@ -288,10 +288,21 @@ export class LLMService {
   }
   
   /**
+   * Ensure messages have the correct type for LLM prompting
+   */
+  private validateMessages(messages: any[]): LLMMessage[] {
+    // Validate and convert messages to ensure they have the correct format
+    return messages.map(msg => ({
+      role: msg.role as 'user' | 'assistant' | 'system',
+      content: msg.content
+    }));
+  }
+
+  /**
    * Generic method to send a prompt to the default or specified LLM provider
    */
   public async prompt(
-    messages: LLMMessage[],
+    messages: any[],
     options?: {
       provider?: 'openai' | 'anthropic';
       model?: string;
@@ -300,17 +311,18 @@ export class LLMService {
     }
   ): Promise<LLMResponse> {
     const provider = options?.provider || this.config.defaultProvider;
+    const validatedMessages = this.validateMessages(messages);
     
     if (provider === 'openai' && this.openaiClient) {
       return this.promptOpenAI(
-        messages,
+        validatedMessages as ChatCompletionMessageParam[],
         options?.model,
         options?.temperature,
         options?.responseFormat
       );
     } else if (provider === 'anthropic' && this.anthropicClient) {
       return this.promptAnthropic(
-        messages,
+        validatedMessages,
         options?.model,
         options?.temperature
       );
