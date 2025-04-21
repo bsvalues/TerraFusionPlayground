@@ -103,6 +103,24 @@ export class AgentWebSocketService {
                 connection: request.headers.connection
               }
             });
+            
+            // Import and use WebSocket CORS middleware
+            try {
+              // Dynamically import the WebSocket CORS middleware to avoid circular dependencies
+              import('../middleware/websocket-cors').then(({ verifyWebSocketRequest }) => {
+                // Use the WebSocket CORS middleware to verify the request
+                if (verifyWebSocketRequest(request, socket, head)) {
+                  logger.info(`[Agent WebSocket] CORS verification passed for WebSocket upgrade`);
+                } else {
+                  logger.warn(`[Agent WebSocket] CORS verification failed for WebSocket upgrade`);
+                  // CORS middleware will handle rejection response
+                }
+              }).catch(err => {
+                logger.error(`[Agent WebSocket] Error importing WebSocket CORS middleware:`, err);
+              });
+            } catch (corsError) {
+              logger.error(`[Agent WebSocket] Error applying CORS middleware:`, corsError);
+            }
           }
         } catch (error) {
           logger.error('Error handling upgrade event:', error);
