@@ -158,6 +158,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Define API routes
   const apiRouter = app.route("/api");
   
+  // Add health check endpoint
+  app.get('/api/health', (req, res) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      services: {
+        database: true,
+        agentSystem: true,
+        webSocket: true
+      }
+    });
+  });
+  
   // Register data import routes
   app.use('/api/data-import', createDataImportRoutes(storage));
   
@@ -462,10 +476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Development Platform routes already registered
   
-  // Health check
-  app.get("/api/health", (_req, res) => {
-    res.json({ status: "healthy" });
-  });
+  // Note: Main health check is at the top of this file
   
   // Properties routes
   app.get("/api/properties", async (_req, res) => {
