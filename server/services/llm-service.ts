@@ -11,10 +11,29 @@ import { ChatCompletionMessageParam } from 'openai/resources';
 import Anthropic from '@anthropic-ai/sdk';
 
 // Define a message type for LLM requests
+export type LLMRole = 'user' | 'assistant' | 'system';
+
 export type LLMMessage = { 
-  role: 'user' | 'assistant' | 'system'; 
+  role: LLMRole; 
   content: string 
 };
+
+// Type guard to check if a message is a valid LLM message
+export function isValidLLMMessage(message: any): message is LLMMessage {
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    ('role' in message) &&
+    ('content' in message) &&
+    typeof message.content === 'string' &&
+    (message.role === 'user' || message.role === 'assistant' || message.role === 'system')
+  );
+}
+
+// Type guard to check if an array contains valid LLM messages
+export function isValidLLMMessageArray(messages: any[]): messages is LLMMessage[] {
+  return Array.isArray(messages) && messages.every(message => isValidLLMMessage(message));
+}
 
 export interface LLMResponse {
   text: string;
@@ -291,11 +310,38 @@ export class LLMService {
    * Ensure messages have the correct type for LLM prompting
    */
   private validateMessages(messages: any[]): LLMMessage[] {
-    // Validate and convert messages to ensure they have the correct format
-    return messages.map(msg => ({
-      role: msg.role as 'user' | 'assistant' | 'system',
-      content: msg.content
-    }));
+    if (!Array.isArray(messages)) {
+      throw new Error('Messages must be an array');
+    }
+    
+    // If messages are already valid, return them
+    if (isValidLLMMessageArray(messages)) {
+      return messages;
+    }
+    
+    // Otherwise, try to convert them to valid format
+    return messages.map(msg => {
+      if (!msg || typeof msg !== 'object') {
+        throw new Error(`Invalid message format: ${JSON.stringify(msg)}`);
+      }
+      
+      // Check if message has required properties
+      if (!('role' in msg) || !('content' in msg)) {
+        throw new Error(`Message is missing required properties: ${JSON.stringify(msg)}`);
+      }
+      
+      // Validate role
+      const role = String(msg.role).toLowerCase();
+      if (role !== 'user' && role !== 'assistant' && role !== 'system') {
+        throw new Error(`Invalid role in message: ${role}. Must be 'user', 'assistant', or 'system'`);
+      }
+      
+      // Return properly formatted message
+      return {
+        role: role as LLMRole,
+        content: String(msg.content)
+      };
+    });
   }
 
   /**

@@ -78,12 +78,20 @@ export interface AuditLog {
 }
 
 // AI Agent Types
+export enum AIAgentStatus {
+  Active = 'active',
+  Syncing = 'syncing',
+  Error = 'error',
+  Inactive = 'inactive',
+  Learning = 'learning'
+}
+
 export interface AIAgent {
   id: number;
   agentId?: string; // Added for consistent ID naming
   name: string;
   type: string;
-  status: 'active' | 'syncing' | 'error' | 'inactive' | 'learning';
+  status: AIAgentStatus;
   lastActivity: string;
   performance: number;
   createdAt: string;
