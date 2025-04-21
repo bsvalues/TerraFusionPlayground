@@ -10,6 +10,12 @@ import OpenAI from 'openai';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import Anthropic from '@anthropic-ai/sdk';
 
+// Define a message type for LLM requests
+export type LLMMessage = { 
+  role: 'user' | 'assistant' | 'system'; 
+  content: string 
+};
+
 export interface LLMResponse {
   text: string;
   model: string;
