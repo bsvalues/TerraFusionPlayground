@@ -337,6 +337,34 @@ export class AgentLearningService {
       throw new Error(`Failed to retrieve agent knowledge: ${error.message}`);
     }
   }
+  
+  /**
+   * Get agent performance metrics
+   */
+  public async getAgentMetrics(
+    agentId: string,
+    metricType?: string,
+    timeframe?: string
+  ): Promise<AgentPerformanceMetric[]> {
+    try {
+      let query = db.select().from(agentPerformanceMetrics).where(eq(agentPerformanceMetrics.agentId, agentId));
+
+      if (metricType) {
+        query = query.where(eq(agentPerformanceMetrics.metricType, metricType));
+      }
+
+      if (timeframe) {
+        query = query.where(eq(agentPerformanceMetrics.timeframe, timeframe));
+      }
+
+      // Order by creation date (descending)
+      const metrics = await query.orderBy(desc(agentPerformanceMetrics.createdAt));
+      return metrics;
+    } catch (error) {
+      console.error(`Error retrieving metrics for agent ${agentId}:`, error);
+      throw new Error(`Failed to retrieve agent metrics: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
 
   /**
    * Process pending feedback

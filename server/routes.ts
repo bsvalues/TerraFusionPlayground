@@ -48,6 +48,7 @@ import assessmentModelWorkbenchRoutes from "./routes/assessment-model-workbench-
 import assistantPersonalityRoutes from "./routes/assistant-personality-routes";
 import workspaceRoutes from "./routes/workspace-routes";
 import personalizedAgentRoutes from "./routes/personalized-agent-routes";
+import { createAgentLearningRoutes } from "./routes/agent-learning-routes";
 import productivityRoutes from "./routes/productivity-routes";
 import { registerDatabaseConversionRoutes } from "./routes/database-conversion-routes";
 import { DatabaseConversionService } from "./services/database-conversion";
@@ -212,6 +213,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Agent routes
   app.use('/api/agents', createAgentRoutes(agentSystem));
+  
+  // Register Agent Learning routes
+  app.use('/api/agent-learning', createAgentLearningRoutes(agentSystem));
   
   // Register Authentication routes
   app.use('/api/auth', createAuthRoutes());
