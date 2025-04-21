@@ -291,7 +291,7 @@ export class LLMService {
    * Generic method to send a prompt to the default or specified LLM provider
    */
   public async prompt(
-    messages: { role: 'user' | 'assistant' | 'system'; content: string }[],
+    messages: LLMMessage[],
     options?: {
       provider?: 'openai' | 'anthropic';
       model?: string;
@@ -358,7 +358,7 @@ export class LLMService {
        
        ${request.marketFactors ? `Market Factors to Consider:\n${request.marketFactors.join(', ')}` : ''}`;
     
-    const messages: { role: 'user' | 'assistant' | 'system'; content: string }[] = [
+    const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ];
