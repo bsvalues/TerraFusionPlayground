@@ -267,17 +267,12 @@ export abstract class BaseAgent {
     details: any = {}
   ): Promise<void> {
     try {
+      // Updated to match actual database schema structure
       const activityData: InsertSystemActivity = {
-        activity_type: activityType,
-        component: `agent:${this.name}`,
-        status: 'info',
-        details: {
-          agentId: this.agentId,
-          agentName: this.name,
-          message,
-          ...details
-        },
-        created_at: new Date()
+        agent_id: String(this.agentId), // Convert to string
+        activity: message || activityType, // Ensure activity is not null
+        entity_type: 'agent',
+        entity_id: String(this.agentId)
       };
       
       // Check if the method exists before calling it
@@ -436,12 +431,17 @@ export abstract class BaseAgent {
 
     const stats = this.replayBuffer.getBufferStats();
     
-    // Map any necessary fields between the two interfaces
+    // Map fields explicitly instead of using spread operator
     return {
       totalExperiences: stats.size,
       highPriorityExperiences: stats.highPriorityCount,
-      lastTrainingTime: stats.lastTrainingTime,
-      ...stats
+      lastTrainingTime: null, // Default to null since it doesn't exist in stats
+      size: stats.size,
+      maxSize: stats.maxSize,
+      highPriorityCount: stats.highPriorityCount,
+      agentDistribution: stats.agentDistribution,
+      actionDistribution: stats.actionDistribution,
+      updateCount: stats.updateCount
     };
   }
 

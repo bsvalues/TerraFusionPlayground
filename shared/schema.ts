@@ -951,7 +951,7 @@ export type InsertEnergyLevelRecommendation = z.infer<typeof insertEnergyLevelRe
 // System Activities table
 export const systemActivities = pgTable("system_activities", {
   id: serial("id").primaryKey(),
-  agent_id: integer("agent_id"),
+  agent_id: text("agent_id"), // Changed to text to match how agent IDs are stored
   activity: text("activity").notNull(),
   entity_type: text("entity_type"),
   entity_id: text("entity_id"),
