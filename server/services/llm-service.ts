@@ -73,11 +73,13 @@ export class LLMService {
   
   constructor(config?: LLMServiceConfig) {
     // Set default config if none provided
+    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+    // the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
     this.config = config || {
       defaultProvider: 'openai',
       defaultModels: {
         openai: 'gpt-4o',
-        anthropic: 'claude-3-opus-20240229'
+        anthropic: 'claude-3-7-sonnet-20250219'
       }
     };
     
@@ -85,7 +87,7 @@ export class LLMService {
     if (!this.config.defaultModels) {
       this.config.defaultModels = {
         openai: 'gpt-4o',
-        anthropic: 'claude-3-opus-20240229'
+        anthropic: 'claude-3-7-sonnet-20250219'
       };
     } else {
       // Ensure both providers are defined
@@ -93,7 +95,7 @@ export class LLMService {
         this.config.defaultModels.openai = 'gpt-4o';
       }
       if (!this.config.defaultModels.anthropic) {
-        this.config.defaultModels.anthropic = 'claude-3-opus-20240229';
+        this.config.defaultModels.anthropic = 'claude-3-7-sonnet-20250219';
       }
     }
     
@@ -242,7 +244,7 @@ export class LLMService {
       throw new Error('Anthropic client not configured');
     }
     
-    const selectedModel = model || this.config.defaultModels.anthropic || 'claude-3-opus-20240229';
+    const selectedModel = model || this.config.defaultModels.anthropic || 'claude-3-7-sonnet-20250219';
     
     try {
       // Convert messages to Anthropic format

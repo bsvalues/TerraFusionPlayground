@@ -165,8 +165,9 @@ INSTRUCTIONS:
     const client = getAnthropicClient();
     
     // Send the message to Anthropic's Claude
+    // the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
     const message = await client.messages.create({
-      model: 'claude-3-sonnet-20240229',
+      model: 'claude-3-7-sonnet-20250219',
       max_tokens: 1000,
       temperature: 0,
       system: systemPrompt,
@@ -265,8 +266,9 @@ Be objective and only report what is directly supported by the data.`;
     const client = getAnthropicClient();
     
     // Send the message to Anthropic's Claude
+    // the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
     const message = await client.messages.create({
-      model: 'claude-3-haiku-20240307',
+      model: 'claude-3-7-sonnet-20250219',
       max_tokens: 500,
       temperature: 0,
       system: systemPrompt,
