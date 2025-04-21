@@ -39,6 +39,7 @@ export class AgentHealthMonitoringService extends EventEmitter {
   private agentSystem: AgentSystem | null = null;
   private monitoringInterval: NodeJS.Timeout | null = null;
   private healthCheckInterval: number = 30000; // 30 seconds by default
+  public isInitialized: boolean = false;
   private healthThresholds: HealthThresholds = {
     cpu: {
       warning: 70,  // 70% CPU usage
@@ -88,6 +89,7 @@ export class AgentHealthMonitoringService extends EventEmitter {
   }): void {
     this.storage = storage;
     this.agentSystem = agentSystem;
+    this.isInitialized = true;
     
     // Configure options if provided
     if (options) {
@@ -106,11 +108,7 @@ export class AgentHealthMonitoringService extends EventEmitter {
     // Start monitoring
     this.startMonitoring();
     
-    logger.info({
-      component: 'AgentHealthMonitoringService',
-      message: 'Agent Health Monitoring Service initialized',
-      interval: this.healthCheckInterval
-    });
+    logger.info(`Agent Health Monitoring Service initialized with interval ${this.healthCheckInterval}ms`);
   }
   
   /**
@@ -153,7 +151,7 @@ export class AgentHealthMonitoringService extends EventEmitter {
   /**
    * Perform a health check for all agents
    */
-  private async performHealthCheck(): Promise<void> {
+  public async performHealthCheck(): Promise<void> {
     try {
       if (!this.agentSystem) {
         logger.warn({
