@@ -272,10 +272,10 @@ export function createAgentLearningRoutes(agentSystem: AgentSystem) {
       
       // Record metric directly
       try {
-        const metric = await agentLearningService.recordMetric(
+        const metric = await agentLearningService.recordPerformanceMetric(
           agentName,
           metricType,
-          value,
+          parseFloat(value), // Convert value from string to number
           timeframe,
           metadata || {}
         );
@@ -289,7 +289,7 @@ export function createAgentLearningRoutes(agentSystem: AgentSystem) {
         res.status(500).json({
           success: false,
           error: err instanceof Error ? err.message : "Unknown error",
-          details: "Error occurred in agentLearningService.recordMetric"
+          details: "Error occurred in agentLearningService.recordPerformanceMetric"
         });
       }
     } catch (error) {
