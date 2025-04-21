@@ -191,25 +191,30 @@ const AgentMobileCard = ({ agent }: { agent: AIAgent }) => {
 // Helper to render loading skeleton for mobile view
 const AgentMobileCardSkeleton = () => {
   return (
-    <div className="p-4 border rounded-lg mb-3 bg-white">
+    <div 
+      className="p-4 border rounded-lg mb-3 bg-white"
+      role="alert"
+      aria-busy="true"
+      aria-label="Loading agent information"
+    >
       <div className="flex items-start">
-        <Skeleton className="h-9 w-9 rounded-md mr-3" />
+        <Skeleton className="h-9 w-9 rounded-md mr-3" aria-hidden="true" />
         <div className="flex-1">
           <div className="flex justify-between items-start">
             <div>
-              <Skeleton className="h-4 w-32 rounded mb-1" />
-              <Skeleton className="h-3 w-24 rounded" />
+              <Skeleton className="h-4 w-32 rounded mb-1" aria-hidden="true" />
+              <Skeleton className="h-3 w-24 rounded" aria-hidden="true" />
             </div>
-            <Skeleton className="h-5 w-20 rounded-full" />
+            <Skeleton className="h-5 w-20 rounded-full" aria-hidden="true" />
           </div>
           
           <div className="mt-3">
-            <Skeleton className="h-3 w-32 rounded mb-2" />
+            <Skeleton className="h-3 w-32 rounded mb-2" aria-hidden="true" />
             <div className="flex items-center mb-3">
-              <Skeleton className="w-full h-2.5 mr-2 rounded-full" />
-              <Skeleton className="h-4 w-8 rounded" />
+              <Skeleton className="w-full h-2.5 mr-2 rounded-full" aria-hidden="true" />
+              <Skeleton className="h-4 w-8 rounded" aria-hidden="true" />
             </div>
-            <Skeleton className="h-8 w-full rounded" />
+            <Skeleton className="h-8 w-full rounded" aria-hidden="true" />
           </div>
         </div>
       </div>
@@ -354,6 +359,7 @@ const AIAgentOverview = () => {
                         variant="link" 
                         size="sm" 
                         onClick={() => setSelectedTab('all')}
+                        aria-label="View all agents including inactive ones"
                       >
                         View all agents
                       </Button>
@@ -366,8 +372,9 @@ const AIAgentOverview = () => {
                         variant="outline" 
                         size="sm" 
                         className="mt-2"
+                        aria-label="Add a new agent to the system"
                       >
-                        <Plus className="h-4 w-4 mr-1" /> Add Agent
+                        <Plus className="h-4 w-4 mr-1" aria-hidden="true" /> Add Agent
                       </Button>
                     </>
                   )}
@@ -382,7 +389,12 @@ const AIAgentOverview = () => {
             
             {/* Show more/less button for mobile */}
             <div className="mt-4 flex justify-center">
-              <Button variant="link" size="sm" onClick={() => setSelectedTab(selectedTab === 'active' ? 'all' : 'active')}>
+              <Button 
+                variant="link" 
+                size="sm" 
+                onClick={() => setSelectedTab(selectedTab === 'active' ? 'all' : 'active')}
+                aria-label={selectedTab === 'active' ? 'Show all agents including inactive ones' : 'Show only active agents'}
+              >
                 {selectedTab === 'active' ? 'Show all agents' : 'Show active agents only'}
               </Button>
             </div>
@@ -448,6 +460,7 @@ const AIAgentOverview = () => {
                                 variant="link" 
                                 size="sm" 
                                 onClick={() => setSelectedTab('all')}
+                                aria-label="View all agents including inactive ones"
                               >
                                 View all agents
                               </Button>
@@ -460,8 +473,9 @@ const AIAgentOverview = () => {
                                 variant="outline" 
                                 size="sm" 
                                 className="mt-2"
+                                aria-label="Add a new agent to the system"
                               >
-                                <Plus className="h-4 w-4 mr-1" /> Add Agent
+                                <Plus className="h-4 w-4 mr-1" aria-hidden="true" /> Add Agent
                               </Button>
                             </>
                           )}
@@ -541,7 +555,12 @@ const AIAgentOverview = () => {
             </div>
             
             <div className="mt-4 flex justify-center">
-              <Button variant="link" size="sm" onClick={() => setSelectedTab(selectedTab === 'active' ? 'all' : 'active')}>
+              <Button 
+                variant="link" 
+                size="sm" 
+                onClick={() => setSelectedTab(selectedTab === 'active' ? 'all' : 'active')}
+                aria-label={selectedTab === 'active' ? 'Show all agents including inactive ones' : 'Show only active agents'}
+              >
                 {selectedTab === 'active' ? 'Show all agents' : 'Show active agents only'}
               </Button>
             </div>
