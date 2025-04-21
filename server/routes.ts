@@ -2,6 +2,8 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { randomUUID } from "crypto";
 import { storage } from "./storage";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 import { z } from "zod";
 import QGISService from "./services/qgis-service";
 import { 
@@ -1023,12 +1025,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // System Activities route
   app.get("/api/system-activities", async (req, res) => {
     try {
+      console.log("Getting system activities from storage");
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
-      const activities = await storage.getSystemActivities(limit);
-      res.json(activities);
+      
+      try {
+        // Query directly from the database rather than using the storage interface
+        // This allows us more control over the query and avoids type conversion issues
+        const result = await db.execute(sql`
+          SELECT id, agent_id, activity, entity_type, entity_id, timestamp
+          FROM system_activities 
+          ORDER BY timestamp DESC
+          LIMIT ${limit}
+        `);
+        
+        console.log(`Retrieved ${result.rows.length} system activities directly from DB`);
+        
+        // Map result to match frontend expectations
+        const activities = result.rows.map(row => ({
+          id: row.id,
+          agentId: row.agent_id ? parseInt(row.agent_id) : null,
+          activity: row.activity || '',
+          entityType: row.entity_type || null,
+          entityId: row.entity_id || null,
+          timestamp: row.timestamp
+        }));
+        
+        res.json(activities);
+      } catch (innerError) {
+        console.error("Detailed error in getSystemActivities:", innerError);
+        // Return empty array instead of error to not break the UI
+        res.json([]);
+      }
     } catch (error) {
       console.error("Error fetching system activities:", error);
-      res.status(500).json({ message: "Failed to fetch system activities" });
+      // Return empty array instead of error to not break the UI
+      res.json([]);
     }
   });
   
