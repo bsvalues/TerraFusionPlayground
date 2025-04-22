@@ -8200,7 +8200,399 @@ export class PgStorage implements IStorage {
     return result;
   }
 
-
+  // TerraFusion Repository Marketplace methods
+  // Repository methods
+  async getRepositories(filters?: { repositoryType?: string, visibility?: string, tags?: string[], featured?: boolean }): Promise<Repository[]> {
+    let repositories = Array.from(this.repositories.values());
+    
+    // Apply filters if provided
+    if (filters) {
+      if (filters.repositoryType) {
+        repositories = repositories.filter(repo => repo.repositoryType === filters.repositoryType);
+      }
+      
+      if (filters.visibility) {
+        repositories = repositories.filter(repo => repo.visibility === filters.visibility);
+      }
+      
+      if (filters.tags && filters.tags.length > 0) {
+        repositories = repositories.filter(repo => 
+          repo.tags && filters.tags?.some(tag => repo.tags?.includes(tag))
+        );
+      }
+      
+      if (filters.featured) {
+        repositories = repositories.filter(repo => repo.featured);
+      }
+    }
+    
+    return repositories;
+  }
+  
+  async getRepositoryById(id: number): Promise<Repository | undefined> {
+    return this.repositories.get(id);
+  }
+  
+  async getRepositoryByName(name: string): Promise<Repository | undefined> {
+    return Array.from(this.repositories.values()).find(repo => repo.name === name);
+  }
+  
+  async createRepository(repository: InsertRepository): Promise<Repository> {
+    const id = this.currentRepositoryId++;
+    const timestamp = new Date();
+    
+    const newRepository: Repository = {
+      ...repository,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      stars: 0,
+      forks: 0,
+      downloads: 0,
+      featured: false,
+      metadata: null
+    };
+    
+    this.repositories.set(id, newRepository);
+    return newRepository;
+  }
+  
+  async updateRepository(id: number, updates: Partial<InsertRepository>): Promise<Repository | undefined> {
+    const repository = this.repositories.get(id);
+    if (!repository) {
+      return undefined;
+    }
+    
+    const updatedRepo: Repository = {
+      ...repository,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.repositories.set(id, updatedRepo);
+    return updatedRepo;
+  }
+  
+  async deleteRepository(id: number): Promise<boolean> {
+    const exists = this.repositories.has(id);
+    if (!exists) {
+      return false;
+    }
+    
+    // Delete the repository
+    this.repositories.delete(id);
+    
+    // Also delete associated versions, reviews, and dependencies
+    const versions = Array.from(this.repositoryVersions.values())
+      .filter(version => version.repositoryId === id);
+    
+    const reviews = Array.from(this.repositoryReviews.values())
+      .filter(review => review.repositoryId === id);
+    
+    const dependencies = Array.from(this.repositoryDependencies.values())
+      .filter(dep => dep.repositoryId === id || dep.dependencyRepoId === id);
+    
+    for (const version of versions) {
+      this.repositoryVersions.delete(version.id);
+    }
+    
+    for (const review of reviews) {
+      this.repositoryReviews.delete(review.id);
+    }
+    
+    for (const dependency of dependencies) {
+      this.repositoryDependencies.delete(dependency.id);
+    }
+    
+    return true;
+  }
+  
+  async incrementRepositoryStars(id: number): Promise<Repository | undefined> {
+    const repository = this.repositories.get(id);
+    if (!repository) {
+      return undefined;
+    }
+    
+    const updatedRepo: Repository = {
+      ...repository,
+      stars: repository.stars + 1,
+      updatedAt: new Date()
+    };
+    
+    this.repositories.set(id, updatedRepo);
+    return updatedRepo;
+  }
+  
+  async incrementRepositoryForks(id: number): Promise<Repository | undefined> {
+    const repository = this.repositories.get(id);
+    if (!repository) {
+      return undefined;
+    }
+    
+    const updatedRepo: Repository = {
+      ...repository,
+      forks: repository.forks + 1,
+      updatedAt: new Date()
+    };
+    
+    this.repositories.set(id, updatedRepo);
+    return updatedRepo;
+  }
+  
+  async incrementRepositoryDownloads(id: number): Promise<Repository | undefined> {
+    const repository = this.repositories.get(id);
+    if (!repository) {
+      return undefined;
+    }
+    
+    const updatedRepo: Repository = {
+      ...repository,
+      downloads: repository.downloads + 1,
+      updatedAt: new Date()
+    };
+    
+    this.repositories.set(id, updatedRepo);
+    return updatedRepo;
+  }
+  
+  async getRepositoriesByOwner(ownerId: number): Promise<Repository[]> {
+    return Array.from(this.repositories.values())
+      .filter(repo => repo.ownerId === ownerId);
+  }
+  
+  async getFeaturedRepositories(): Promise<Repository[]> {
+    return Array.from(this.repositories.values())
+      .filter(repo => repo.featured);
+  }
+  
+  // Repository Version methods
+  async getRepositoryVersions(repositoryId: number): Promise<RepositoryVersion[]> {
+    return Array.from(this.repositoryVersions.values())
+      .filter(version => version.repositoryId === repositoryId);
+  }
+  
+  async getRepositoryVersionById(id: number): Promise<RepositoryVersion | undefined> {
+    return this.repositoryVersions.get(id);
+  }
+  
+  async getRepositoryVersionByVersion(repositoryId: number, version: string): Promise<RepositoryVersion | undefined> {
+    return Array.from(this.repositoryVersions.values())
+      .find(v => v.repositoryId === repositoryId && v.version === version);
+  }
+  
+  async createRepositoryVersion(version: InsertRepositoryVersion): Promise<RepositoryVersion> {
+    const id = this.currentRepositoryVersionId++;
+    const timestamp = new Date();
+    
+    const newVersion: RepositoryVersion = {
+      ...version,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      downloads: 0
+    };
+    
+    this.repositoryVersions.set(id, newVersion);
+    
+    // If this is the first version or marked as latest, update other versions
+    if (newVersion.isLatest) {
+      await this.setRepositoryVersionAsLatest(id);
+    }
+    
+    return newVersion;
+  }
+  
+  async updateRepositoryVersion(id: number, updates: Partial<InsertRepositoryVersion>): Promise<RepositoryVersion | undefined> {
+    const version = this.repositoryVersions.get(id);
+    if (!version) {
+      return undefined;
+    }
+    
+    const updatedVersion: RepositoryVersion = {
+      ...version,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.repositoryVersions.set(id, updatedVersion);
+    
+    // If the version is being set as latest, update other versions
+    if (updates.isLatest) {
+      await this.setRepositoryVersionAsLatest(id);
+    }
+    
+    return updatedVersion;
+  }
+  
+  async setRepositoryVersionAsLatest(id: number): Promise<RepositoryVersion | undefined> {
+    const version = this.repositoryVersions.get(id);
+    if (!version) {
+      return undefined;
+    }
+    
+    // Set all other versions of this repository to not be latest
+    const otherVersions = Array.from(this.repositoryVersions.values())
+      .filter(v => v.repositoryId === version.repositoryId && v.id !== id);
+    
+    for (const otherVersion of otherVersions) {
+      otherVersion.isLatest = false;
+      this.repositoryVersions.set(otherVersion.id, otherVersion);
+    }
+    
+    // Set this version as latest
+    version.isLatest = true;
+    this.repositoryVersions.set(id, version);
+    
+    return version;
+  }
+  
+  async incrementVersionDownloads(id: number): Promise<RepositoryVersion | undefined> {
+    const version = this.repositoryVersions.get(id);
+    if (!version) {
+      return undefined;
+    }
+    
+    const updatedVersion: RepositoryVersion = {
+      ...version,
+      downloads: version.downloads + 1,
+      updatedAt: new Date()
+    };
+    
+    this.repositoryVersions.set(id, updatedVersion);
+    
+    // Also increment the parent repository's downloads
+    await this.incrementRepositoryDownloads(version.repositoryId);
+    
+    return updatedVersion;
+  }
+  
+  async getLatestRepositoryVersion(repositoryId: number): Promise<RepositoryVersion | undefined> {
+    return Array.from(this.repositoryVersions.values())
+      .find(version => version.repositoryId === repositoryId && version.isLatest);
+  }
+  
+  // Repository Review methods
+  async getRepositoryReviews(repositoryId: number): Promise<RepositoryReview[]> {
+    return Array.from(this.repositoryReviews.values())
+      .filter(review => review.repositoryId === repositoryId);
+  }
+  
+  async getRepositoryReviewById(id: number): Promise<RepositoryReview | undefined> {
+    return this.repositoryReviews.get(id);
+  }
+  
+  async createRepositoryReview(review: InsertRepositoryReview): Promise<RepositoryReview> {
+    const id = this.currentRepositoryReviewId++;
+    const timestamp = new Date();
+    
+    const newReview: RepositoryReview = {
+      ...review,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+    
+    this.repositoryReviews.set(id, newReview);
+    return newReview;
+  }
+  
+  async updateRepositoryReview(id: number, updates: Partial<InsertRepositoryReview>): Promise<RepositoryReview | undefined> {
+    const review = this.repositoryReviews.get(id);
+    if (!review) {
+      return undefined;
+    }
+    
+    const updatedReview: RepositoryReview = {
+      ...review,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.repositoryReviews.set(id, updatedReview);
+    return updatedReview;
+  }
+  
+  async deleteRepositoryReview(id: number): Promise<boolean> {
+    const exists = this.repositoryReviews.has(id);
+    if (!exists) {
+      return false;
+    }
+    
+    this.repositoryReviews.delete(id);
+    return true;
+  }
+  
+  async getRepositoryReviewsByUser(userId: number): Promise<RepositoryReview[]> {
+    return Array.from(this.repositoryReviews.values())
+      .filter(review => review.userId === userId);
+  }
+  
+  async getRepositoryAverageRating(repositoryId: number): Promise<number> {
+    const reviews = await this.getRepositoryReviews(repositoryId);
+    
+    if (reviews.length === 0) {
+      return 0;
+    }
+    
+    const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+    return sum / reviews.length;
+  }
+  
+  // Repository Dependency methods
+  async getRepositoryDependencies(repositoryId: number): Promise<RepositoryDependency[]> {
+    return Array.from(this.repositoryDependencies.values())
+      .filter(dependency => dependency.repositoryId === repositoryId);
+  }
+  
+  async getDependentRepositories(dependencyRepoId: number): Promise<RepositoryDependency[]> {
+    return Array.from(this.repositoryDependencies.values())
+      .filter(dependency => dependency.dependencyRepoId === dependencyRepoId);
+  }
+  
+  async createRepositoryDependency(dependency: InsertRepositoryDependency): Promise<RepositoryDependency> {
+    const id = this.currentRepositoryDependencyId++;
+    const timestamp = new Date();
+    
+    const newDependency: RepositoryDependency = {
+      ...dependency,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+    
+    this.repositoryDependencies.set(id, newDependency);
+    return newDependency;
+  }
+  
+  async updateRepositoryDependency(id: number, updates: Partial<InsertRepositoryDependency>): Promise<RepositoryDependency | undefined> {
+    const dependency = this.repositoryDependencies.get(id);
+    if (!dependency) {
+      return undefined;
+    }
+    
+    const updatedDependency: RepositoryDependency = {
+      ...dependency,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.repositoryDependencies.set(id, updatedDependency);
+    return updatedDependency;
+  }
+  
+  async deleteRepositoryDependency(id: number): Promise<boolean> {
+    const exists = this.repositoryDependencies.has(id);
+    if (!exists) {
+      return false;
+    }
+    
+    this.repositoryDependencies.delete(id);
+    return true;
+  }
+  
+  async getRepositoryDependency(id: number): Promise<RepositoryDependency | undefined> {
+    return this.repositoryDependencies.get(id);
+  }
 }
 
 // Use database storage instead of in-memory

@@ -1,23 +1,21 @@
 import { IStorage } from '../storage';
 import {
   Repository,
-  InsertRepository,
   RepositoryVersion,
-  InsertRepositoryVersion,
   RepositoryReview,
-  InsertRepositoryReview,
   RepositoryDependency,
+  InsertRepository,
+  InsertRepositoryVersion,
+  InsertRepositoryReview,
   InsertRepositoryDependency,
   RepositoryType,
   RepositoryVisibility,
   RepositoryLicense
-} from '@shared/schema';
-import * as fs from 'fs';
-import * as path from 'path';
-import { z } from 'zod';
+} from '../../shared/schema';
 
 /**
- * Service for managing the TerraFusion Repository Marketplace
+ * RepositoryMarketplaceService provides functionality for managing repositories
+ * in the Terra Fusion Repository Marketplace.
  */
 export class RepositoryMarketplaceService {
   private storage: IStorage;
@@ -27,39 +25,26 @@ export class RepositoryMarketplaceService {
   }
 
   /**
-   * Get all repositories with optional filters
+   * Get all repositories with optional filtering
    */
-  async getRepositories(filters?: {
-    repositoryType?: string;
-    visibility?: string; 
-    tags?: string[];
-    featured?: boolean;
-    search?: string;
+  async getRepositories(filters?: { 
+    repositoryType?: string, 
+    visibility?: string, 
+    tags?: string[], 
+    featured?: boolean 
   }): Promise<Repository[]> {
-    const repositories = await this.storage.getRepositories(filters);
-    
-    // If search term is provided, filter repositories by name or description
-    if (filters?.search) {
-      const searchTerm = filters.search.toLowerCase();
-      return repositories.filter(repo => 
-        repo.name.toLowerCase().includes(searchTerm) || 
-        repo.displayName.toLowerCase().includes(searchTerm) || 
-        (repo.description && repo.description.toLowerCase().includes(searchTerm))
-      );
-    }
-    
-    return repositories;
+    return this.storage.getRepositories(filters);
   }
 
   /**
-   * Get repository by ID
+   * Get a repository by ID
    */
   async getRepositoryById(id: number): Promise<Repository | undefined> {
     return this.storage.getRepositoryById(id);
   }
 
   /**
-   * Get repository by name
+   * Get a repository by name
    */
   async getRepositoryByName(name: string): Promise<Repository | undefined> {
     return this.storage.getRepositoryByName(name);
@@ -68,43 +53,21 @@ export class RepositoryMarketplaceService {
   /**
    * Create a new repository
    */
-  async createRepository(repository: InsertRepository, userId: number): Promise<Repository> {
-    // Ensure owner ID is set
-    const repoWithOwner = { ...repository, ownerId: userId };
-    return this.storage.createRepository(repoWithOwner);
+  async createRepository(repository: InsertRepository): Promise<Repository> {
+    return this.storage.createRepository(repository);
   }
 
   /**
-   * Update a repository
+   * Update an existing repository
    */
-  async updateRepository(id: number, updates: Partial<InsertRepository>, userId: number): Promise<Repository | undefined> {
-    // Check if user owns the repository
-    const repo = await this.storage.getRepositoryById(id);
-    if (!repo) {
-      return undefined;
-    }
-
-    if (repo.ownerId !== userId) {
-      throw new Error('Unauthorized: You do not have permission to update this repository');
-    }
-
+  async updateRepository(id: number, updates: Partial<InsertRepository>): Promise<Repository | undefined> {
     return this.storage.updateRepository(id, updates);
   }
 
   /**
    * Delete a repository
    */
-  async deleteRepository(id: number, userId: number): Promise<boolean> {
-    // Check if user owns the repository
-    const repo = await this.storage.getRepositoryById(id);
-    if (!repo) {
-      return false;
-    }
-
-    if (repo.ownerId !== userId) {
-      throw new Error('Unauthorized: You do not have permission to delete this repository');
-    }
-
+  async deleteRepository(id: number): Promise<boolean> {
     return this.storage.deleteRepository(id);
   }
 
@@ -118,37 +81,8 @@ export class RepositoryMarketplaceService {
   /**
    * Fork a repository
    */
-  async forkRepository(id: number, userId: number): Promise<Repository | undefined> {
-    const sourceRepo = await this.storage.getRepositoryById(id);
-    if (!sourceRepo) {
-      return undefined;
-    }
-
-    // Increment the fork count on the source repository
-    await this.storage.incrementRepositoryForks(id);
-
-    // Create a new repository as a fork of the source
-    const forkedRepo: InsertRepository = {
-      name: `${sourceRepo.name}-fork-${userId}`,
-      displayName: `${sourceRepo.displayName} (Fork)`,
-      description: sourceRepo.description ? `Fork of: ${sourceRepo.description}` : 'Fork of ' + sourceRepo.displayName,
-      readmeContent: sourceRepo.readmeContent,
-      repositoryType: sourceRepo.repositoryType as RepositoryType,
-      visibility: 'private' as RepositoryVisibility, // Forks are private by default
-      license: sourceRepo.license as RepositoryLicense,
-      gitUrl: sourceRepo.gitUrl,
-      websiteUrl: sourceRepo.websiteUrl,
-      logoUrl: sourceRepo.logoUrl,
-      ownerId: userId,
-      organizationId: null,
-      tags: sourceRepo.tags
-    };
-
-    const newRepo = await this.storage.createRepository(forkedRepo);
-
-    // TODO: Copy repository contents and versions (can be implemented later)
-
-    return newRepo;
+  async forkRepository(id: number): Promise<Repository | undefined> {
+    return this.storage.incrementRepositoryForks(id);
   }
 
   /**
@@ -166,44 +100,75 @@ export class RepositoryMarketplaceService {
   }
 
   /**
-   * Create a new repository version
+   * Search repositories by various criteria
    */
-  async createRepositoryVersion(repositoryId: number, version: InsertRepositoryVersion, userId: number): Promise<RepositoryVersion | undefined> {
-    // Check if user owns the repository
-    const repo = await this.storage.getRepositoryById(repositoryId);
-    if (!repo) {
-      return undefined;
-    }
-
-    if (repo.ownerId !== userId) {
-      throw new Error('Unauthorized: You do not have permission to create versions for this repository');
-    }
-
-    // Check if version already exists
-    const existingVersion = await this.storage.getRepositoryVersionByVersion(repositoryId, version.version);
-    if (existingVersion) {
-      throw new Error(`Version ${version.version} already exists for this repository`);
-    }
-
-    // Set published by user ID
-    const versionWithPublisher = { ...version, publishedBy: userId };
+  async searchRepositories(query: string): Promise<Repository[]> {
+    // Get all repositories
+    const allRepositories = await this.storage.getRepositories();
     
-    // Create the version
-    const newVersion = await this.storage.createRepositoryVersion(versionWithPublisher);
+    // Convert query to lowercase for case-insensitive search
+    const lowerQuery = query.toLowerCase();
     
-    // If it's marked as latest, update other versions
-    if (newVersion.isLatest) {
-      await this.setVersionAsLatest(newVersion.id);
-    }
-    
-    return newVersion;
+    // Filter repositories based on the query
+    return allRepositories.filter(repo => {
+      // Check if query matches repository name, display name, or description
+      return (
+        repo.name.toLowerCase().includes(lowerQuery) ||
+        repo.displayName.toLowerCase().includes(lowerQuery) ||
+        (repo.description && repo.description.toLowerCase().includes(lowerQuery)) ||
+        // Check if query matches any tags
+        (repo.tags && repo.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
+      );
+    });
   }
 
   /**
-   * Get versions for a repository
+   * Get repository versions
    */
   async getRepositoryVersions(repositoryId: number): Promise<RepositoryVersion[]> {
     return this.storage.getRepositoryVersions(repositoryId);
+  }
+
+  /**
+   * Get a specific repository version by ID
+   */
+  async getRepositoryVersionById(id: number): Promise<RepositoryVersion | undefined> {
+    return this.storage.getRepositoryVersionById(id);
+  }
+
+  /**
+   * Get a specific repository version by version string
+   */
+  async getRepositoryVersionByVersion(repositoryId: number, version: string): Promise<RepositoryVersion | undefined> {
+    return this.storage.getRepositoryVersionByVersion(repositoryId, version);
+  }
+
+  /**
+   * Create a new repository version
+   */
+  async createRepositoryVersion(version: InsertRepositoryVersion): Promise<RepositoryVersion> {
+    return this.storage.createRepositoryVersion(version);
+  }
+
+  /**
+   * Update an existing repository version
+   */
+  async updateRepositoryVersion(id: number, updates: Partial<InsertRepositoryVersion>): Promise<RepositoryVersion | undefined> {
+    return this.storage.updateRepositoryVersion(id, updates);
+  }
+
+  /**
+   * Set a repository version as the latest version
+   */
+  async setRepositoryVersionAsLatest(id: number): Promise<RepositoryVersion | undefined> {
+    return this.storage.setRepositoryVersionAsLatest(id);
+  }
+
+  /**
+   * Download a repository version
+   */
+  async downloadRepositoryVersion(id: number): Promise<RepositoryVersion | undefined> {
+    return this.storage.incrementVersionDownloads(id);
   }
 
   /**
@@ -214,114 +179,93 @@ export class RepositoryMarketplaceService {
   }
 
   /**
-   * Set a version as the latest for a repository
-   */
-  async setVersionAsLatest(versionId: number): Promise<RepositoryVersion | undefined> {
-    return this.storage.setRepositoryVersionAsLatest(versionId);
-  }
-
-  /**
-   * Add a review to a repository
-   */
-  async createRepositoryReview(repositoryId: number, review: InsertRepositoryReview, userId: number): Promise<RepositoryReview | undefined> {
-    // Check if repository exists
-    const repo = await this.storage.getRepositoryById(repositoryId);
-    if (!repo) {
-      return undefined;
-    }
-
-    // Check if user has already reviewed this repository
-    const userReviews = await this.storage.getRepositoryReviewsByUser(userId);
-    const existingReview = userReviews.find(r => r.repositoryId === repositoryId);
-    
-    if (existingReview) {
-      // Update existing review instead
-      return this.storage.updateRepositoryReview(existingReview.id, review);
-    }
-
-    // Set the user ID
-    const reviewWithUser = { ...review, userId };
-    
-    // Create the review
-    return this.storage.createRepositoryReview(reviewWithUser);
-  }
-
-  /**
-   * Get reviews for a repository
+   * Get repository reviews
    */
   async getRepositoryReviews(repositoryId: number): Promise<RepositoryReview[]> {
     return this.storage.getRepositoryReviews(repositoryId);
   }
 
   /**
-   * Get average rating for a repository
+   * Get a specific repository review by ID
+   */
+  async getRepositoryReviewById(id: number): Promise<RepositoryReview | undefined> {
+    return this.storage.getRepositoryReviewById(id);
+  }
+
+  /**
+   * Create a new repository review
+   */
+  async createRepositoryReview(review: InsertRepositoryReview): Promise<RepositoryReview> {
+    return this.storage.createRepositoryReview(review);
+  }
+
+  /**
+   * Update an existing repository review
+   */
+  async updateRepositoryReview(id: number, updates: Partial<InsertRepositoryReview>): Promise<RepositoryReview | undefined> {
+    return this.storage.updateRepositoryReview(id, updates);
+  }
+
+  /**
+   * Delete a repository review
+   */
+  async deleteRepositoryReview(id: number): Promise<boolean> {
+    return this.storage.deleteRepositoryReview(id);
+  }
+
+  /**
+   * Get repository reviews by user
+   */
+  async getRepositoryReviewsByUser(userId: number): Promise<RepositoryReview[]> {
+    return this.storage.getRepositoryReviewsByUser(userId);
+  }
+
+  /**
+   * Get the average rating of a repository
    */
   async getRepositoryAverageRating(repositoryId: number): Promise<number> {
     return this.storage.getRepositoryAverageRating(repositoryId);
   }
 
   /**
-   * Get dependencies for a repository
+   * Get repository dependencies
    */
   async getRepositoryDependencies(repositoryId: number): Promise<RepositoryDependency[]> {
     return this.storage.getRepositoryDependencies(repositoryId);
   }
 
   /**
-   * Add a dependency to a repository
+   * Get repositories that depend on a specific repository
    */
-  async addRepositoryDependency(dependency: InsertRepositoryDependency, userId: number): Promise<RepositoryDependency | undefined> {
-    // Check if user owns the repository
-    const repo = await this.storage.getRepositoryById(dependency.repositoryId);
-    if (!repo) {
-      return undefined;
-    }
+  async getDependentRepositories(dependencyRepoId: number): Promise<RepositoryDependency[]> {
+    return this.storage.getDependentRepositories(dependencyRepoId);
+  }
 
-    if (repo.ownerId !== userId) {
-      throw new Error('Unauthorized: You do not have permission to add dependencies to this repository');
-    }
-
-    // Create the dependency
+  /**
+   * Create a new repository dependency
+   */
+  async createRepositoryDependency(dependency: InsertRepositoryDependency): Promise<RepositoryDependency> {
     return this.storage.createRepositoryDependency(dependency);
   }
 
   /**
-   * Remove a dependency from a repository
+   * Update an existing repository dependency
    */
-  async removeRepositoryDependency(id: number, userId: number): Promise<boolean> {
-    // Check if user owns the repository
-    const dependency = await this.storage.getRepositoryDependency(id);
-    if (!dependency) {
-      return false;
-    }
+  async updateRepositoryDependency(id: number, updates: Partial<InsertRepositoryDependency>): Promise<RepositoryDependency | undefined> {
+    return this.storage.updateRepositoryDependency(id, updates);
+  }
 
-    const repo = await this.storage.getRepositoryById(dependency.repositoryId);
-    if (!repo) {
-      return false;
-    }
-
-    if (repo.ownerId !== userId) {
-      throw new Error('Unauthorized: You do not have permission to remove dependencies from this repository');
-    }
-
+  /**
+   * Delete a repository dependency
+   */
+  async deleteRepositoryDependency(id: number): Promise<boolean> {
     return this.storage.deleteRepositoryDependency(id);
   }
 
   /**
-   * Find repositories that depend on a given repository
+   * Get a repository dependency by ID
    */
-  async findDependentRepositories(repositoryId: number): Promise<Repository[]> {
-    const dependencies = await this.storage.getDependentRepositories(repositoryId);
-    
-    // Get the actual repositories
-    const repositories: Repository[] = [];
-    for (const dependency of dependencies) {
-      const repo = await this.storage.getRepositoryById(dependency.repositoryId);
-      if (repo) {
-        repositories.push(repo);
-      }
-    }
-    
-    return repositories;
+  async getRepositoryDependency(id: number): Promise<RepositoryDependency | undefined> {
+    return this.storage.getRepositoryDependency(id);
   }
 }

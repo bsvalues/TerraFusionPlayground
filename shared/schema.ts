@@ -548,6 +548,95 @@ export const insertRepositoryReviewSchema = createInsertSchema(repositoryReviews
 export type RepositoryReview = typeof repositoryReviews.$inferSelect;
 export type InsertRepositoryReview = z.infer<typeof insertRepositoryReviewSchema>;
 
+// Intelligent Development Workflow Optimizer Enums
+export enum WorkflowOptimizationType {
+  CODE_QUALITY = 'code_quality',
+  PERFORMANCE = 'performance',
+  ARCHITECTURE = 'architecture',
+  SECURITY = 'security',
+  BEST_PRACTICES = 'best_practices',
+  DEVELOPER_PRODUCTIVITY = 'developer_productivity',
+  DOCUMENTATION = 'documentation',
+  TESTING = 'testing'
+}
+
+export enum WorkflowOptimizationStatus {
+  PENDING = 'pending',
+  IN_PROGRESS = 'in_progress',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled'
+}
+
+export enum WorkflowOptimizationPriority {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high'
+}
+
+// Workflow Optimization Requests - Stores requests for workflow optimizations
+export const workflowOptimizationRequests = pgTable("workflow_optimization_requests", {
+  id: serial("id").primaryKey(),
+  requestId: uuid("request_id").notNull().unique().defaultRandom(),
+  repositoryId: integer("repository_id"), // Optional link to a repository
+  userId: integer("user_id").notNull(), // User who requested the optimization
+  title: text("title").notNull(),
+  description: text("description"),
+  codebase: text("codebase"), // Path to codebase for analysis or stored code
+  optimizationType: text("optimization_type").notNull(), // Corresponds to WorkflowOptimizationType enum
+  priority: text("priority").default('medium'), // Corresponds to WorkflowOptimizationPriority enum
+  status: text("status").notNull().default('pending'), // Corresponds to WorkflowOptimizationStatus enum
+  tags: text("tags").array(), // Tags for categorization
+  settings: jsonb("settings").default({}), // Configuration settings for the analysis
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userIdIdx: index("workflow_optimization_user_id_idx").on(table.userId),
+    statusIdx: index("workflow_optimization_status_idx").on(table.status),
+    typeIdx: index("workflow_optimization_type_idx").on(table.optimizationType),
+  };
+});
+
+export const insertWorkflowOptimizationRequestSchema = createInsertSchema(workflowOptimizationRequests).omit({
+  id: true,
+  requestId: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  status: z.nativeEnum(WorkflowOptimizationStatus).optional(),
+  optimizationType: z.nativeEnum(WorkflowOptimizationType),
+  priority: z.nativeEnum(WorkflowOptimizationPriority).optional(),
+});
+
+export type WorkflowOptimizationRequest = typeof workflowOptimizationRequests.$inferSelect;
+export type InsertWorkflowOptimizationRequest = z.infer<typeof insertWorkflowOptimizationRequestSchema>;
+
+// Workflow Optimization Results - Stores results of workflow optimizations
+export const workflowOptimizationResults = pgTable("workflow_optimization_results", {
+  id: serial("id").primaryKey(),
+  requestId: uuid("request_id").notNull().references(() => workflowOptimizationRequests.requestId),
+  summary: text("summary").notNull(), // Summary of the optimization analysis
+  recommendationsJson: jsonb("recommendations_json").notNull(), // Detailed recommendations as JSON
+  improvementScore: numeric("improvement_score"), // Potential improvement score (0-100)
+  runTime: integer("run_time"), // Time taken for analysis in milliseconds 
+  modelUsed: text("model_used"), // LLM model used for analysis
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    requestIdIdx: index("workflow_optimization_result_request_id_idx").on(table.requestId),
+  };
+});
+
+export const insertWorkflowOptimizationResultSchema = createInsertSchema(workflowOptimizationResults).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type WorkflowOptimizationResult = typeof workflowOptimizationResults.$inferSelect;
+export type InsertWorkflowOptimizationResult = z.infer<typeof insertWorkflowOptimizationResultSchema>;
+
 // Repository Dependencies - Stores dependencies between repositories
 export const repositoryDependencies = pgTable("repository_dependencies", {
   id: serial("id").primaryKey(),
