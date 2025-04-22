@@ -1,9 +1,10 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
-import { ContextManager } from '../context/contextManager';
-import { ToolRegistry } from '../tools/toolRegistry';
+import { ContextManager } from '../context/contextManager.js';
+import { ToolRegistry } from '../tools/toolRegistry.js';
 
 /**
  * Interface for learning data
@@ -27,6 +28,19 @@ interface FeedbackEntry {
   feedback: number;
   notes?: string;
   timestamp: string;
+}
+
+/**
+ * Interface for pattern data
+ */
+interface Pattern {
+  id?: number;
+  name: string;
+  description: string;
+  patternType: string;
+  patternData: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -202,6 +216,47 @@ export class LearningManager {
   }
   
   /**
+   * Store a new pattern
+   * @param pattern The pattern to store
+   * @returns The ID of the newly created pattern
+   */
+  async storePattern(pattern: Omit<Pattern, 'id'>): Promise<number> {
+    if (!this.db) await this.initialize();
+    
+    const result = await this.db!.run(
+      `INSERT INTO patterns 
+       (name, description, pattern_type, pattern_data, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      pattern.name,
+      pattern.description,
+      pattern.patternType,
+      pattern.patternData,
+      pattern.createdAt,
+      pattern.updatedAt
+    );
+    
+    return result.lastID!;
+  }
+  
+  /**
+   * Get patterns by type
+   * @param patternType The pattern type to search for
+   * @returns Array of matching patterns
+   */
+  async getPatternsByType(patternType: string): Promise<Pattern[]> {
+    if (!this.db) await this.initialize();
+    
+    const results = await this.db!.all<Pattern[]>(
+      `SELECT * FROM patterns 
+       WHERE pattern_type = ?
+       ORDER BY updated_at DESC`,
+      patternType
+    );
+    
+    return results;
+  }
+  
+  /**
    * Extract patterns from successful solutions
    * This is a simplified version. A more advanced implementation would
    * use clustering or other ML techniques to identify patterns.
@@ -251,6 +306,57 @@ export class LearningManager {
     };
     
     return this.storeLearningEntry(entry);
+  }
+  
+  /**
+   * Record user feedback
+   * @param learningEntryId The ID of the learning entry
+   * @param rating The feedback rating (1-5)
+   * @param notes Optional notes about the feedback
+   */
+  async recordFeedback(
+    learningEntryId: number,
+    rating: number,
+    notes?: string
+  ): Promise<void> {
+    const feedback: FeedbackEntry = {
+      learningEntryId,
+      feedback: rating,
+      notes,
+      timestamp: new Date().toISOString()
+    };
+    
+    await this.storeFeedback(feedback);
+  }
+  
+  /**
+   * Get relevant learning for a query
+   * @param query The query to search for
+   * @returns Array of relevant learning entries
+   */
+  async getRelevantLearning(query: string): Promise<LearningEntry[]> {
+    // Get similar learning entries
+    const similarLearning = await this.findSimilarLearning(query);
+    
+    // Extract potential tags from the query
+    const queryWords = query.toLowerCase().split(/\s+/);
+    const commonTags = ['javascript', 'typescript', 'python', 'java', 'go', 'rust', 'c++', 'css', 'html'];
+    const detectedTags = queryWords.filter(word => commonTags.includes(word));
+    
+    // Get learning entries for detected tags
+    let taggedLearning: LearningEntry[] = [];
+    
+    for (const tag of detectedTags) {
+      const taggedEntries = await this.getTopRatedSolutionsForTag(tag, 3);
+      taggedLearning = [...taggedLearning, ...taggedEntries];
+    }
+    
+    // Combine and deduplicate results
+    const allEntries = [...similarLearning, ...taggedLearning];
+    const uniqueEntries = Array.from(new Map(allEntries.map(entry => [entry.id, entry])).values());
+    
+    // Sort by relevance (feedback score)
+    return uniqueEntries.sort((a, b) => b.feedback - a.feedback);
   }
   
   /**
