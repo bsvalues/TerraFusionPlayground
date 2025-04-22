@@ -1,2 +1,7 @@
-export { default as WorkflowSuggestionSidebar } from './WorkflowSuggestionSidebar';
-export { default as WorkflowSuggestionCard } from './WorkflowSuggestionCard';
+import WorkflowSuggestionCard from './WorkflowSuggestionCard';
+import WorkflowSuggestionSidebar from './WorkflowSuggestionSidebar';
+
+export {
+  WorkflowSuggestionCard,
+  WorkflowSuggestionSidebar
+};
