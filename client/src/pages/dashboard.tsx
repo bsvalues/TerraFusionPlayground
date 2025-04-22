@@ -17,10 +17,10 @@ import { ElevationChart } from '@/components/visualization/elevation-chart';
 
 // Mock data for the dashboard
 const propertyStats = [
-  { label: 'Inspections', value: 72120, trend: { value: 5.2, direction: 'up' } },
-  { label: 'Properties', value: 48639, trend: { value: 1.8, direction: 'up' } },
-  { label: 'Appeals', value: 128, trend: { value: 12.3, direction: 'down' } },
-  { label: 'Assessment Ratio', value: '98.2%', trend: { value: 0.8, direction: 'up' } }
+  { label: 'Inspections', value: 72120, trend: { value: 5.2, direction: 'up' as const } },
+  { label: 'Properties', value: 48639, trend: { value: 1.8, direction: 'up' as const } },
+  { label: 'Appeals', value: 128, trend: { value: 12.3, direction: 'down' as const } },
+  { label: 'Assessment Ratio', value: '98.2%', trend: { value: 0.8, direction: 'up' as const } }
 ];
 
 const Dashboard: React.FC = () => {

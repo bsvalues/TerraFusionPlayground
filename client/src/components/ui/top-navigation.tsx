@@ -69,14 +69,14 @@ const TopNavigation = () => {
           {/* Logo and brand */}
           <div className="flex items-center gap-4">
             <Link href="/">
-              <a className="flex items-center gap-2 cursor-pointer">
+              <div className="flex items-center gap-2 cursor-pointer">
                 <img 
                   src="/assets/terrafusion-logo.svg" 
                   alt="TerraFusion" 
                   className="h-8 w-auto"
                 />
                 <span className="font-semibold text-lg hidden sm:block tf-heading">TerraFusion</span>
-              </a>
+              </div>
             </Link>
           </div>
 
@@ -84,7 +84,7 @@ const TopNavigation = () => {
           <nav className="hidden md:ml-6 md:flex md:items-center md:space-x-2">
             {menuItems.map((item) => (
               <Link key={item.path} href={item.path}>
-                <a
+                <div
                   className={cn(
                     "tf-nav-item text-sm font-medium",
                     location === item.path && "active",
@@ -97,7 +97,7 @@ const TopNavigation = () => {
                       New
                     </span>
                   )}
-                </a>
+                </div>
               </Link>
             ))}
           </nav>
@@ -221,7 +221,7 @@ const TopNavigation = () => {
         <div className="px-4 pt-4 pb-6 space-y-1 border-t border-border/20">
           {menuItems.map((item) => (
             <Link key={item.path} href={item.path}>
-              <a 
+              <div 
                 className={cn(
                   "flex items-center px-3 py-3 rounded-lg text-base font-medium cursor-pointer tf-font-body",
                   location === item.path 
@@ -244,7 +244,7 @@ const TopNavigation = () => {
                     </svg>
                   </span>
                 )}
-              </a>
+              </div>
             </Link>
           ))}
         </div>
