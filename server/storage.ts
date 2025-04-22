@@ -927,6 +927,12 @@ export class MemStorage implements IStorage {
   private comparableAnalysisEntries: Map<number, ComparableAnalysisEntry>;
   private stagedProperties: Map<string, StagedProperty>;
   
+  // TerraFusion Repository Marketplace Maps
+  private repositories: Map<number, Repository>;
+  private repositoryVersions: Map<number, RepositoryVersion>;
+  private repositoryReviews: Map<number, RepositoryReview>;
+  private repositoryDependencies: Map<number, RepositoryDependency>;
+  
   // Development Tools Maps
   private codeSnippets: Map<number, CodeSnippet>;
   private dataVisualizations: Map<number, DataVisualization>;
@@ -1036,6 +1042,12 @@ export class MemStorage implements IStorage {
   private currentConversionLogId: number;
   private currentCompatibilityLayerId: number;
   
+  // TerraFusion Repository Marketplace counters
+  private currentRepositoryId: number;
+  private currentRepositoryVersionId: number;
+  private currentRepositoryReviewId: number;
+  private currentRepositoryDependencyId: number;
+  
   // GIS counters
   private currentGISLayerId: number;
   private currentGISFeatureCollectionId: number;
@@ -1088,6 +1100,12 @@ export class MemStorage implements IStorage {
     this.projectVersions = new Map<number, ProjectVersion>();
     this.previewSettings = new Map<number, PreviewSetting>();
     this.aiCodeGenerations = new Map<number, AiCodeGeneration>();
+    
+    // Initialize TerraFusion Repository Marketplace maps
+    this.repositories = new Map<number, Repository>();
+    this.repositoryVersions = new Map<number, RepositoryVersion>();
+    this.repositoryReviews = new Map<number, RepositoryReview>();
+    this.repositoryDependencies = new Map<number, RepositoryDependency>();
     
     // Initialize Development Tools maps
     this.codeSnippets = new Map<number, CodeSnippet>();
@@ -1171,6 +1189,12 @@ export class MemStorage implements IStorage {
     this.currentSchemaMappingId = 1;
     this.currentConversionLogId = 1;
     this.currentCompatibilityLayerId = 1;
+    
+    // Initialize TerraFusion Repository Marketplace counters
+    this.currentRepositoryId = 1;
+    this.currentRepositoryVersionId = 1;
+    this.currentRepositoryReviewId = 1;
+    this.currentRepositoryDependencyId = 1;
     
     // Initialize GIS counters
     this.currentGISLayerId = 1;
