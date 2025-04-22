@@ -1,47 +1,86 @@
 /**
  * Collaboration Types
  * 
- * This file defines types related to the collaboration system.
+ * Types for the collaboration WebSocket service
  */
 
 /**
- * Types of collaboration messages
+ * Message types for collaboration WebSocket service
  */
 export enum CollaborationMessageType {
-  // Session management
+  // Connection messages
+  CONNECTION_ESTABLISHED = 'connection_established',
+  PING = 'ping',
+  PONG = 'pong',
+  ERROR = 'error',
+  
+  // Session messages
   JOIN_SESSION = 'join_session',
   LEAVE_SESSION = 'leave_session',
   USER_JOINED = 'user_joined',
   USER_LEFT = 'user_left',
+  SESSION_INFO = 'session_info',
+  SESSION_LIST = 'session_list',
   
-  // Real-time editing
+  // Presence messages
   CURSOR_POSITION = 'cursor_position',
+  USER_ACTIVITY = 'user_activity',
+  USER_PRESENCE = 'user_presence',
+  
+  // Editing messages
   EDIT_OPERATION = 'edit_operation',
+  EDIT_APPLIED = 'edit_applied',
+  SYNC_STATE = 'sync_state',
+  LOCK_SECTION = 'lock_section',
+  UNLOCK_SECTION = 'unlock_section',
+  SECTION_LOCKED = 'section_locked',
+  SECTION_UNLOCKED = 'section_unlocked',
+  
+  // Communication messages
+  CHAT_MESSAGE = 'chat_message',
   COMMENT = 'comment',
-  
-  // System messages
-  CONNECTION_ESTABLISHED = 'connection_established',
-  ERROR = 'error',
-  NOTIFICATION = 'notification',
-  
-  // Heartbeat
-  PING = 'ping',
-  PONG = 'pong'
+  NOTIFICATION = 'notification'
 }
 
 /**
- * User roles in a collaboration session
+ * Collaboration user role
  */
-export enum CollaborationRole {
-  OWNER = 'owner',
-  EDITOR = 'editor',
-  VIEWER = 'viewer'
+export type CollaborationUserRole = 'owner' | 'editor' | 'viewer';
+
+/**
+ * Collaboration user
+ */
+export interface CollaborationUser {
+  userId: number;
+  userName: string;
+  role: CollaborationUserRole;
+  isActive: boolean;
+  lastSeen?: number;
+  cursorPosition?: {
+    x: number;
+    y: number;
+    section?: string;
+  };
 }
 
 /**
- * Base interface for all collaboration messages
+ * Collaboration session
  */
-export interface CollaborationMessage {
+export interface CollaborationSession {
+  sessionId: string;
+  name: string;
+  ownerId: number;
+  createdAt: number;
+  updatedAt: number;
+  status: 'active' | 'inactive' | 'archived';
+  participants: CollaborationUser[];
+  metadata?: Record<string, any>;
+}
+
+/**
+ * Base message interface
+ */
+export interface CollaborationBaseMessage {
   type: CollaborationMessageType | string;
   sessionId?: string;
   userId?: number;
@@ -51,30 +90,103 @@ export interface CollaborationMessage {
 }
 
 /**
- * User information in a collaboration session
+ * Session join message
  */
-export interface CollaborationUser {
-  id: number;
-  name: string;
-  role: CollaborationRole;
-  cursorPosition?: {
-    x: number;
-    y: number;
-    section?: string;
+export interface JoinSessionMessage extends CollaborationBaseMessage {
+  type: CollaborationMessageType.JOIN_SESSION;
+  sessionId: string;
+  userId: number;
+  userName: string;
+  payload: {
+    role: CollaborationUserRole;
   };
-  connected: boolean;
-  lastActive: number;
 }
 
 /**
- * Collaboration session information
+ * Session leave message
  */
-export interface CollaborationSession {
-  id: string;
-  name: string;
-  created: number;
-  ownerId: number;
-  users: CollaborationUser[];
-  documentId?: string;
-  activeSections?: string[];
+export interface LeaveSessionMessage extends CollaborationBaseMessage {
+  type: CollaborationMessageType.LEAVE_SESSION;
+  sessionId: string;
+  userId: number;
+  userName: string;
 }
+
+/**
+ * Cursor position message
+ */
+export interface CursorPositionMessage extends CollaborationBaseMessage {
+  type: CollaborationMessageType.CURSOR_POSITION;
+  sessionId: string;
+  userId: number;
+  userName: string;
+  payload: {
+    position: {
+      x: number;
+      y: number;
+      section?: string;
+    };
+  };
+}
+
+/**
+ * Edit operation message
+ */
+export interface EditOperationMessage extends CollaborationBaseMessage {
+  type: CollaborationMessageType.EDIT_OPERATION;
+  sessionId: string;
+  userId: number;
+  userName: string;
+  payload: {
+    operation: any;
+    section: string;
+  };
+}
+
+/**
+ * Comment message
+ */
+export interface CommentMessage extends CollaborationBaseMessage {
+  type: CollaborationMessageType.COMMENT;
+  sessionId: string;
+  userId: number;
+  userName: string;
+  payload: {
+    text: string;
+    position?: any;
+  };
+}
+
+/**
+ * Chat message
+ */
+export interface ChatMessage extends CollaborationBaseMessage {
+  type: CollaborationMessageType.CHAT_MESSAGE;
+  sessionId: string;
+  userId: number;
+  userName: string;
+  payload: {
+    text: string;
+  };
+}
+
+/**
+ * Error message
+ */
+export interface ErrorMessage extends CollaborationBaseMessage {
+  type: CollaborationMessageType.ERROR;
+  message: string;
+}
+
+/**
+ * Union type of all collaboration message types
+ */
+export type CollaborationMessage =
+  | JoinSessionMessage
+  | LeaveSessionMessage
+  | CursorPositionMessage
+  | EditOperationMessage
+  | CommentMessage
+  | ChatMessage
+  | ErrorMessage
+  | CollaborationBaseMessage;
