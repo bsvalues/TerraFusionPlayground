@@ -13,59 +13,14 @@ import {
   Clock3Icon,
   FileTextIcon
 } from 'lucide-react';
-import { OptimizationSuggestion } from '@/types/workflow-optimizer';
-
-// Define types based on schema.ts enums and tables
-type WorkflowOptimizationStatus = 
-  | 'pending'
-  | 'in_progress'
-  | 'completed'
-  | 'failed'
-  | 'cancelled';
-
-type WorkflowOptimizationType = 
-  | 'code_quality'
-  | 'performance'
-  | 'architecture'
-  | 'security'
-  | 'best_practices'
-  | 'developer_productivity'
-  | 'documentation'
-  | 'testing';
-
-type WorkflowOptimizationPriority = 
-  | 'low'
-  | 'medium'
-  | 'high';
-
-// Mapped to schema.ts types
-interface WorkflowOptimizationRequest {
-  id: number;
-  requestId: string;
-  repositoryId?: number | null;
-  userId: number;
-  title: string;
-  description: string;
-  codebase?: string | null;
-  optimizationType: WorkflowOptimizationType;
-  priority: WorkflowOptimizationPriority;
-  status: WorkflowOptimizationStatus;
-  tags?: string[] | null;
-  settings?: Record<string, any> | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface WorkflowOptimizationResult {
-  id: number;
-  requestId: string;
-  summary: string;
-  recommendationsJson: OptimizationSuggestion[];
-  improvementScore: number;
-  runTime?: number | null;
-  modelUsed?: string | null;
-  createdAt: string;
-}
+import {
+  OptimizationType,
+  OptimizationStatus,
+  OptimizationPriority,
+  OptimizationSuggestion,
+  WorkflowOptimizationRequest,
+  WorkflowOptimizationResult
+} from '@/types/workflow-optimizer';
 
 type WorkflowSuggestionCardProps = {
   optimization: WorkflowOptimizationRequest;
@@ -118,16 +73,22 @@ export default function WorkflowSuggestionCard({ optimization, result }: Workflo
   // Determine the optimization type icon
   const getOptimizationTypeIcon = () => {
     switch (optimization.optimizationType) {
-      case 'CODE_QUALITY':
+      case 'code_quality':
         return <CodeIcon className="h-5 w-5 mr-2" />;
-      case 'PERFORMANCE':
+      case 'performance':
         return <ArrowUpCircleIcon className="h-5 w-5 mr-2" />;
-      case 'SECURITY':
+      case 'security':
         return <AlertCircleIcon className="h-5 w-5 mr-2" />;
       default:
         return <CodeIcon className="h-5 w-5 mr-2" />;
     }
   };
+  
+  // Use the recommendationsJson property from the result
+  const suggestions = (result.recommendationsJson || []) as OptimizationSuggestion[];
+  
+  // Use the improvementScore property from the result
+  const score = (result.improvementScore || 0);
   
   return (
     <Card className="p-4 mb-4">
@@ -137,7 +98,7 @@ export default function WorkflowSuggestionCard({ optimization, result }: Workflo
           <h4 className="font-semibold">{optimization.title}</h4>
         </div>
         <Badge className="ml-2">
-          Score: {result.impactScore}/10
+          Score: {score}/10
         </Badge>
       </div>
       
@@ -157,7 +118,7 @@ export default function WorkflowSuggestionCard({ optimization, result }: Workflo
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="sm" className="flex items-center w-full justify-between p-0 h-8">
             <span className="text-sm font-medium">
-              {isOpen ? 'Hide suggestions' : 'View suggestions'} ({result.suggestions.length})
+              {isOpen ? 'Hide suggestions' : 'View suggestions'} ({suggestions.length})
             </span>
             {isOpen ? (
               <ChevronDownIcon className="h-4 w-4" />
@@ -170,7 +131,7 @@ export default function WorkflowSuggestionCard({ optimization, result }: Workflo
         <CollapsibleContent className="mt-2">
           <Separator className="my-2" />
           
-          {result.suggestions.map((suggestion, index) => (
+          {suggestions.map((suggestion: OptimizationSuggestion, index: number) => (
             <div key={suggestion.id} className="py-3">
               {index > 0 && <Separator className="my-2" />}
               
@@ -212,7 +173,7 @@ export default function WorkflowSuggestionCard({ optimization, result }: Workflo
                 <div className="mt-2">
                   <p className="text-xs font-medium mb-1">Implementation steps:</p>
                   <ol className="text-xs text-muted-foreground list-decimal pl-4 space-y-1">
-                    {suggestion.implementationSteps.map((step, stepIndex) => (
+                    {suggestion.implementationSteps.map((step: string, stepIndex: number) => (
                       <li key={stepIndex}>{step}</li>
                     ))}
                   </ol>

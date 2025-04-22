@@ -30,7 +30,7 @@ import {
   Database
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
-// import { WorkflowSuggestionSidebar } from '@/components/workflow-optimizer';
+import WorkflowSuggestionSidebar from '@/components/workflow-optimizer/WorkflowSuggestionSidebar';
 
 // Project type from schema
 interface Project {
@@ -243,7 +243,7 @@ const DevelopmentPlatformPage = () => {
           <p className="text-gray-500">Build and deploy assessment applications with ease</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* <WorkflowSuggestionSidebar userId={1} /> */}
+          <WorkflowSuggestionSidebar userId={1} />
           <Button 
             onClick={() => setShowNewProjectDialog(true)}
             className="flex items-center space-x-1"
