@@ -7,12 +7,14 @@ import {
   DashboardSection 
 } from '@/components/dashboard/dashboard-layout';
 import { 
-  DashboardChartCard, 
-  TerrainVisualizationCard, 
+  DashboardChartCard,
   AIAnalysisCard 
 } from '@/components/dashboard/dashboard-chart-card';
-import { TFButton, TFIconButton } from '@/components/ui/terrafusion/tf-button';
-import { TFCard, TFStatCard } from '@/components/ui/terrafusion/tf-card';
+import { TerrainVisualizationCard } from '@/components/dashboard/terrain-visualization-card';
+import TFButton from '@/components/ui/terrafusion/tf-button';
+import { TFIconButton } from '@/components/ui/terrafusion/tf-icon-button';
+import TFCard from '@/components/ui/terrafusion/tf-card';
+import { TFStatCard } from '@/components/ui/terrafusion/tf-stat-card';
 import { ElevationChart } from '@/components/visualization/elevation-chart';
 
 // Mock data for the dashboard

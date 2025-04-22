@@ -1,9 +1,9 @@
 import React from 'react';
 import { Helmet } from 'react-helmet';
 import TFCard from '@/components/ui/terrafusion/tf-card';
-import TFStatCard from '@/components/ui/terrafusion/tf-stat-card';
+import { TFStatCard } from '@/components/ui/terrafusion/tf-stat-card';
 import TFButton from '@/components/ui/terrafusion/tf-button';
-import TFIconButton from '@/components/ui/terrafusion/tf-icon-button';
+import { TFIconButton } from '@/components/ui/terrafusion/tf-icon-button';
 import { DashboardChartCard, AIAnalysisCard } from '@/components/dashboard/dashboard-chart-card';
 import { ElevationChart } from '@/components/visualization/elevation-chart';
 import { TerrainVisualizationCard } from '@/components/dashboard/terrain-visualization-card';

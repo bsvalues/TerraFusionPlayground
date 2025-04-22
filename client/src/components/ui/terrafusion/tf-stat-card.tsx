@@ -156,4 +156,5 @@ const TFStatCard: React.FC<TFStatCardProps> = ({
   );
 };
 
+export { TFStatCard };
 export default TFStatCard;
