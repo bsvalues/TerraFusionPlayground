@@ -96,8 +96,13 @@ export class VoiceCommandManager {
    * Start the voice command service
    * @param withKeywordDetection Use keyword detection (wake word)
    * @param wakeWord Custom wake word
+   * @param useRealRecording Whether to use real audio recording (if available)
    */
-  async start(withKeywordDetection: boolean = false, wakeWord?: string): Promise<void> {
+  async start(
+    withKeywordDetection: boolean = false, 
+    wakeWord?: string,
+    useRealRecording: boolean = false
+  ): Promise<void> {
     // Check if Google Cloud Speech credentials are available
     const hasCredentials = await this.voiceService.checkCredentials();
     
@@ -106,10 +111,17 @@ export class VoiceCommandManager {
       console.log(chalk.yellow('Voice commands will be simulated using text input.'));
       console.log(chalk.yellow('For production use, set up credentials in the GOOGLE_APPLICATION_CREDENTIALS environment variable.'));
       console.log('');
+      
+      // Force simulation mode if no credentials
+      useRealRecording = false;
+    } else if (useRealRecording) {
+      console.log(chalk.green('Google Cloud Speech credentials found.'));
+      console.log(chalk.green('Using real audio recording for voice commands.'));
+      console.log('');
     }
     
     // Start listening for voice commands
-    await this.voiceService.startListening(withKeywordDetection, wakeWord);
+    await this.voiceService.startListening(withKeywordDetection, wakeWord, useRealRecording);
   }
   
   /**
