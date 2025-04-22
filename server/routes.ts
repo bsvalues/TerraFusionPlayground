@@ -55,6 +55,8 @@ import { createAgentLearningRoutes } from "./routes/agent-learning-routes";
 import productivityRoutes from "./routes/productivity-routes";
 import { registerDatabaseConversionRoutes } from "./routes/database-conversion-routes";
 import { DatabaseConversionService } from "./services/database-conversion";
+import createRepositoryMarketplaceRoutes from "./routes/repository-marketplace-routes";
+import { RepositoryMarketplaceService } from "./services/repository-marketplace-service";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -277,6 +279,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Database Conversion routes
   registerDatabaseConversionRoutes(app, databaseConversionService);
+  
+  // Register Repository Marketplace routes
+  app.use('/api/repositories', createRepositoryMarketplaceRoutes(storage));
   
   // Initialize GIS Storage implementation with database
   await implementGISStorage(storage);

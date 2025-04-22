@@ -47,6 +47,13 @@ import {
   codeSnippets, CodeSnippet, InsertCodeSnippet,
   dataVisualizations, DataVisualization, InsertDataVisualization,
   uiComponentTemplates, UIComponentTemplate, InsertUIComponentTemplate,
+  // TerraFusion Repository Marketplace
+  repositories, Repository, InsertRepository,
+  repositoryVersions, RepositoryVersion, InsertRepositoryVersion,
+  repositoryReviews, RepositoryReview, InsertRepositoryReview,
+  repositoryDependencies, RepositoryDependency, InsertRepositoryDependency,
+  // Repository Marketplace enums
+  RepositoryType, RepositoryVisibility, RepositoryLicense,
   // Database Conversion System
   databaseConversionProjects, DatabaseConversionProject, InsertDatabaseConversionProject,
   connectionTemplates, ConnectionTemplate, InsertConnectionTemplate,
@@ -126,6 +133,46 @@ import {
 } from '@shared/gis-schema';
 
 export interface IStorage {
+  // TerraFusion Repository Marketplace methods
+  // Repository methods
+  getRepositories(filters?: { repositoryType?: string, visibility?: string, tags?: string[], featured?: boolean }): Promise<Repository[]>;
+  getRepositoryById(id: number): Promise<Repository | undefined>;
+  getRepositoryByName(name: string): Promise<Repository | undefined>;
+  createRepository(repository: InsertRepository): Promise<Repository>;
+  updateRepository(id: number, updates: Partial<InsertRepository>): Promise<Repository | undefined>;
+  deleteRepository(id: number): Promise<boolean>;
+  incrementRepositoryStars(id: number): Promise<Repository | undefined>;
+  incrementRepositoryForks(id: number): Promise<Repository | undefined>;
+  incrementRepositoryDownloads(id: number): Promise<Repository | undefined>;
+  getRepositoriesByOwner(ownerId: number): Promise<Repository[]>;
+  getFeaturedRepositories(): Promise<Repository[]>;
+  
+  // Repository Version methods
+  getRepositoryVersions(repositoryId: number): Promise<RepositoryVersion[]>;
+  getRepositoryVersionById(id: number): Promise<RepositoryVersion | undefined>;
+  getRepositoryVersionByVersion(repositoryId: number, version: string): Promise<RepositoryVersion | undefined>;
+  createRepositoryVersion(version: InsertRepositoryVersion): Promise<RepositoryVersion>;
+  updateRepositoryVersion(id: number, updates: Partial<InsertRepositoryVersion>): Promise<RepositoryVersion | undefined>;
+  setRepositoryVersionAsLatest(id: number): Promise<RepositoryVersion | undefined>;
+  incrementVersionDownloads(id: number): Promise<RepositoryVersion | undefined>;
+  getLatestRepositoryVersion(repositoryId: number): Promise<RepositoryVersion | undefined>;
+  
+  // Repository Review methods
+  getRepositoryReviews(repositoryId: number): Promise<RepositoryReview[]>;
+  getRepositoryReviewById(id: number): Promise<RepositoryReview | undefined>;
+  createRepositoryReview(review: InsertRepositoryReview): Promise<RepositoryReview>;
+  updateRepositoryReview(id: number, updates: Partial<InsertRepositoryReview>): Promise<RepositoryReview | undefined>;
+  deleteRepositoryReview(id: number): Promise<boolean>;
+  getRepositoryReviewsByUser(userId: number): Promise<RepositoryReview[]>;
+  getRepositoryAverageRating(repositoryId: number): Promise<number>;
+  
+  // Repository Dependency methods
+  getRepositoryDependencies(repositoryId: number): Promise<RepositoryDependency[]>;
+  getDependentRepositories(dependencyRepoId: number): Promise<RepositoryDependency[]>;
+  createRepositoryDependency(dependency: InsertRepositoryDependency): Promise<RepositoryDependency>;
+  updateRepositoryDependency(id: number, updates: Partial<InsertRepositoryDependency>): Promise<RepositoryDependency | undefined>;
+  deleteRepositoryDependency(id: number): Promise<boolean>;
+  
   // Development Tools methods
   // Code Snippets
   getCodeSnippets(filters?: { language?: string, snippetType?: string, tags?: string[] }): Promise<CodeSnippet[]>;
