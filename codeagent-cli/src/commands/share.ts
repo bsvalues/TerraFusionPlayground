@@ -400,38 +400,34 @@ async function listSharedSnippets() {
     });
     
     // Ask if user wants to perform an action on a shared snippet
-    const { action } = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'action',
-        message: 'What would you like to do?',
-        choices: [
-          { name: 'Copy a share URL to clipboard', value: 'copy' },
-          { name: 'Revoke a share', value: 'revoke' },
-          { name: 'Generate a QR code', value: 'qrcode' },
-          { name: 'Nothing', value: 'nothing' }
-        ]
-      }
-    ]);
+    const { action } = await inquirer.prompt({
+      type: 'list',
+      name: 'action',
+      message: 'What would you like to do?',
+      choices: [
+        { name: 'Copy a share URL to clipboard', value: 'copy' },
+        { name: 'Revoke a share', value: 'revoke' },
+        { name: 'Generate a QR code', value: 'qrcode' },
+        { name: 'Nothing', value: 'nothing' }
+      ]
+    });
     
     if (action === 'nothing') {
       return;
     }
     
     // Get the share ID
-    const { shareIndex } = await inquirer.prompt([
-      {
-        type: 'number',
-        name: 'shareIndex',
-        message: 'Enter the number of the share:',
-        validate: (input) => {
-          const num = parseInt(input);
-          return (!isNaN(num) && num > 0 && num <= sharedSnippets.length)
-            ? true
-            : `Please enter a number between 1 and ${sharedSnippets.length}`;
-        }
+    const { shareIndex } = await inquirer.prompt({
+      type: 'input',
+      name: 'shareIndex',
+      message: 'Enter the number of the share:',
+      validate: (input: string) => {
+        const num = parseInt(input);
+        return (!isNaN(num) && num > 0 && num <= sharedSnippets.length)
+          ? true
+          : `Please enter a number between 1 and ${sharedSnippets.length}`;
       }
-    ]);
+    });
     
     const selectedSnippet = sharedSnippets[shareIndex - 1];
     

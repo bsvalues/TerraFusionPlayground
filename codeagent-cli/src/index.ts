@@ -75,8 +75,12 @@ async function registerCommands() {
     
     // Parse command line arguments
     program.parse();
-  } catch (error) {
-    console.error(chalk.red(`Error loading commands: ${error.message}`));
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error(chalk.red(`Error loading commands: ${error.message}`));
+    } else {
+      console.error(chalk.red(`Error loading commands: ${String(error)}`));
+    }
     process.exit(1);
   }
 }
