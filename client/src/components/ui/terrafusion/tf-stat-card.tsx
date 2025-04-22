@@ -1,211 +1,159 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import TFCard from './tf-card';
-import { ArrowDownIcon, ArrowUpIcon, ArrowRightIcon } from 'lucide-react';
-
-/**
- * TerraFusion Stat Card Types
- */
-export type TFStatTrend = 'up' | 'down' | 'neutral';
-export type TFStatVariant = 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info' | 'muted';
+import { ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
 
 /**
  * TerraFusion Stat Card Props
  */
 export interface TFStatCardProps {
-  /** The title or label for the stat */
+  /** Card title */
   title: string;
-  /** The main value to display */
-  value: string | number;
-  /** Optional trend direction */
-  trend?: TFStatTrend;
-  /** Optional percentage or change value */
-  change?: string | number;
-  /** Optional description or helper text */
+  /** Stat value to display */
+  value: number;
+  /** Optional description */
   description?: string;
-  /** Optional visual variant */
-  variant?: TFStatVariant;
   /** Optional icon to display */
   icon?: React.ReactNode;
-  /** Optional className for styling */
+  /** Trend direction: 'up', 'down', or 'neutral' */
+  trend?: 'up' | 'down' | 'neutral';
+  /** Percentage change value */
+  change?: number;
+  /** Card variant for styling */
+  variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info';
+  /** Value format: 'number', 'currency', 'percentage' */
+  format?: 'number' | 'currency' | 'percentage';
+  /** Optional className for additional styling */
   className?: string;
-  /** Whether the card should have a hover effect */
-  hoverable?: boolean;
-  /** Whether the stat is in a loading state */
-  loading?: boolean;
-  /** Label for the time period if applicable */
-  period?: string;
-  /** Format to use for values (e.g., 'currency', 'percentage') */
-  format?: 'currency' | 'percentage' | 'number' | 'integer';
-  /** Click handler for the card */
+  /** Optional click handler */
   onClick?: () => void;
 }
 
 /**
  * TerraFusion Stat Card Component
  * 
- * A card component for displaying statistics and metrics
+ * A card that displays a key metric with trend indicator
  */
-export const TFStatCard: React.FC<TFStatCardProps> = ({
+const TFStatCard: React.FC<TFStatCardProps> = ({
   title,
   value,
+  description,
+  icon,
   trend = 'neutral',
   change,
-  description,
   variant = 'primary',
-  icon,
+  format = 'number',
   className,
-  hoverable = true,
-  loading = false,
-  period,
-  format,
   onClick,
 }) => {
-  // Format the value based on format prop
+  // Format the value based on format type
   const formattedValue = React.useMemo(() => {
-    if (format === 'currency' && typeof value === 'number') {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(value);
+    switch(format) {
+      case 'currency':
+        return new Intl.NumberFormat('en-US', { 
+          style: 'currency', 
+          currency: 'USD',
+          maximumFractionDigits: 0
+        }).format(value);
+      case 'percentage':
+        return `${value.toFixed(1)}%`;
+      default:
+        return new Intl.NumberFormat('en-US').format(value);
     }
-    
-    if (format === 'percentage' && typeof value === 'number') {
-      return `${value.toFixed(1)}%`;
-    }
-    
-    if (format === 'integer' && typeof value === 'number') {
-      return Math.round(value).toLocaleString();
-    }
-    
-    if (format === 'number' && typeof value === 'number') {
-      return value.toLocaleString();
-    }
-    
-    return value;
   }, [value, format]);
-
-  // Format the change value
+  
+  // Format the change percentage
   const formattedChange = React.useMemo(() => {
-    if (typeof change === 'number') {
-      return change > 0 ? `+${change}%` : `${change}%`;
-    }
-    return change;
+    if (change === undefined) return null;
+    return `${change > 0 ? '+' : ''}${change.toFixed(1)}%`;
   }, [change]);
-
-  // Get trend icon
-  const getTrendIcon = () => {
-    switch (trend) {
-      case 'up':
-        return <ArrowUpIcon className="h-4 w-4" />;
-      case 'down':
-        return <ArrowDownIcon className="h-4 w-4" />;
-      default:
-        return <ArrowRightIcon className="h-4 w-4" />;
-    }
-  };
-
-  // Get color classes based on trend and variant
-  const getTrendColorClasses = () => {
-    if (trend === 'up') {
-      return 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30';
-    }
-    if (trend === 'down') {
-      return 'text-rose-500 bg-rose-50 dark:bg-rose-950/30';
-    }
-    return 'text-gray-500 bg-gray-50 dark:bg-gray-800/30';
-  };
-
-  // Get variant-specific classes
-  const getVariantClasses = () => {
-    switch (variant) {
+  
+  // Get the color classes based on variant
+  const getColorClasses = () => {
+    switch(variant) {
       case 'primary':
-        return 'border-primary/20 bg-gradient-to-b from-primary/5 to-primary/10';
+        return 'from-teal-900/20 to-teal-800/10 border-teal-500/30';
       case 'secondary':
-        return 'border-secondary/20 bg-gradient-to-b from-secondary/5 to-secondary/10';
+        return 'from-slate-900/30 to-slate-800/20 border-slate-500/30';
       case 'success':
-        return 'border-emerald-500/20 bg-gradient-to-b from-emerald-500/5 to-emerald-500/10';
+        return 'from-emerald-900/20 to-emerald-800/10 border-emerald-500/30';
       case 'warning':
-        return 'border-amber-500/20 bg-gradient-to-b from-amber-500/5 to-amber-500/10';
+        return 'from-amber-900/20 to-amber-800/10 border-amber-500/30';
       case 'danger':
-        return 'border-rose-500/20 bg-gradient-to-b from-rose-500/5 to-rose-500/10';
+        return 'from-rose-900/20 to-rose-800/10 border-rose-500/30';
       case 'info':
-        return 'border-sky-500/20 bg-gradient-to-b from-sky-500/5 to-sky-500/10';
-      case 'muted':
-        return 'border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50';
+        return 'from-sky-900/20 to-sky-800/10 border-sky-500/30';
       default:
-        return 'border-primary/20 bg-gradient-to-b from-primary/5 to-primary/10';
+        return 'from-teal-900/20 to-teal-800/10 border-teal-500/30';
     }
+  };
+  
+  // Get trend indicator color
+  const getTrendColor = () => {
+    if (trend === 'up') return 'text-emerald-500';
+    if (trend === 'down') return 'text-rose-500';
+    return 'text-slate-500';
   };
 
   return (
     <TFCard
       className={cn(
-        'overflow-hidden',
-        getVariantClasses(),
-        hoverable && 'transition-all hover:-translate-y-1 hover:shadow-md',
-        onClick && 'cursor-pointer',
+        'bg-gradient-to-br border-l-4',
+        getColorClasses(),
+        'hover:shadow-lg transition-all duration-200',
         className
       )}
-      loading={loading}
+      loading={false}
       shadow={true}
       size="auto"
       onClick={onClick}
     >
-      <div className="p-1">
+      <div className="p-5">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <h3 className="text-2xl font-bold tracking-tight">
+              {formattedValue}
+            </h3>
+            {description && (
+              <p className="text-xs text-muted-foreground">
+                {description}
+              </p>
+            )}
+          </div>
+          
           {icon && (
-            <div className="rounded-full bg-primary/10 p-1 text-primary">
+            <div className={cn(
+              'rounded-full p-2',
+              variant === 'primary' ? 'bg-teal-500/10 text-teal-500' : '',
+              variant === 'secondary' ? 'bg-slate-500/10 text-slate-500' : '',
+              variant === 'success' ? 'bg-emerald-500/10 text-emerald-500' : '',
+              variant === 'warning' ? 'bg-amber-500/10 text-amber-500' : '',
+              variant === 'danger' ? 'bg-rose-500/10 text-rose-500' : '',
+              variant === 'info' ? 'bg-sky-500/10 text-sky-500' : '',
+            )}>
               {icon}
             </div>
           )}
         </div>
         
-        <div className="mt-2 flex items-baseline">
-          <div className="text-2xl font-semibold">{formattedValue}</div>
-          
-          {change && (
-            <div className={cn('ml-2 flex items-center rounded-full px-2 py-0.5 text-xs', getTrendColorClasses())}>
-              {getTrendIcon()}
-              <span className="ml-1">{formattedChange}</span>
-            </div>
-          )}
-        </div>
-        
-        {description && (
-          <div className="mt-2 text-xs text-muted-foreground">{description}</div>
-        )}
-        
-        {period && (
-          <div className="mt-2 text-xs text-muted-foreground/70">{period}</div>
+        {trend !== 'neutral' && formattedChange && (
+          <div className={cn(
+            'mt-3 flex items-center space-x-1 text-xs', 
+            getTrendColor()
+          )}>
+            {trend === 'up' ? (
+              <ArrowUpIcon className="h-3 w-3" />
+            ) : (
+              <ArrowDownIcon className="h-3 w-3" />
+            )}
+            <span>{formattedChange}</span>
+            <span className="text-muted-foreground">from last period</span>
+          </div>
         )}
       </div>
     </TFCard>
   );
-};
-
-/**
- * Specialized Percentage Change Stat Card
- */
-export const TFPercentageCard: React.FC<Omit<TFStatCardProps, 'format'>> = (props) => {
-  return <TFStatCard {...props} format="percentage" />;
-};
-
-/**
- * Specialized Currency Stat Card
- */
-export const TFCurrencyCard: React.FC<Omit<TFStatCardProps, 'format'>> = (props) => {
-  return <TFStatCard {...props} format="currency" />;
-};
-
-/**
- * Specialized Count Stat Card
- */
-export const TFCountCard: React.FC<Omit<TFStatCardProps, 'format'>> = (props) => {
-  return <TFStatCard {...props} format="integer" />;
 };
 
 export default TFStatCard;

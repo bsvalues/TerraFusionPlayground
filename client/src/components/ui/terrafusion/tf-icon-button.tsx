@@ -1,102 +1,74 @@
-import React, { ButtonHTMLAttributes, forwardRef } from 'react';
-import { TFButtonVariant, TFButtonSize } from './tf-button';
-import { Button } from '@/components/ui/button';
+import React from 'react';
 import { cn } from '@/lib/utils';
-import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ButtonProps } from '@/components/ui/button';
 
-/**
- * TerraFusion Icon Button Props Interface
- */
-export interface TFIconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  /** Button variant */
-  variant?: TFButtonVariant;
-  /** Button size */
-  size?: 'sm' | 'md' | 'lg';
-  /** Is the button loading */
-  loading?: boolean;
-  /** Icon to display in the button */
+export interface TFIconButtonProps extends Omit<ButtonProps, 'asChild'> {
+  /** The icon element to display */
   icon: React.ReactNode;
   /** Optional tooltip text */
   tooltip?: string;
+  /** Optional aria label */
+  ariaLabel?: string;
+  /** Button size */
+  size?: 'default' | 'sm' | 'lg' | 'xl' | 'icon';
   /** Optional className for additional styling */
   className?: string;
-  /** Creates a glass-like effect */
-  glassmorphic?: boolean;
-  /** Animates on hover */
-  animated?: boolean;
-  /** Should the button be rounded */
-  rounded?: boolean;
-  /** Should the button have a border */
-  bordered?: boolean;
+  /** Whether to show a notification badge */
+  showBadge?: boolean;
+  /** Optional badge count */
+  badgeCount?: number;
 }
 
 /**
  * TerraFusion Icon Button Component
  * 
- * A button component specifically designed for icons
+ * A specialized button that displays only an icon
  */
-export const TFIconButton = forwardRef<HTMLButtonElement, TFIconButtonProps>(
-  ({
-    variant = 'default',
-    size = 'md',
-    loading = false,
-    icon,
-    tooltip,
-    className = '',
-    glassmorphic = false,
-    animated = false,
-    rounded = true,
-    bordered = false,
-    ...props
-  }, ref) => {
-    // Map TerraFusion variant names to Shadcn/UI variant
-    const variantMap: Record<TFButtonVariant, string> = {
-      default: 'default',
-      primary: 'default',
-      secondary: 'secondary',
-      accent: 'accent',
-      ghost: 'ghost',
-      link: 'link',
-      outline: 'outline',
-      destructive: 'destructive',
-      success: 'success',
-    };
-
-    // Map TerraFusion sizes to tailwind classes
-    const sizeClasses: Record<string, string> = {
-      sm: 'h-8 w-8 p-1',
-      md: 'h-10 w-10 p-2',
-      lg: 'h-12 w-12 p-2',
-    };
-
-    const buttonClasses = cn(
-      sizeClasses[size],
-      rounded ? 'rounded-full' : '',
-      bordered ? 'border border-border' : '',
-      glassmorphic ? 'backdrop-blur-sm bg-opacity-80 shadow-md' : '',
-      animated ? 'transition-all duration-200 hover:shadow-md hover:-translate-y-1' : '',
-      variant === 'accent' ? 'bg-teal-600 text-white hover:bg-teal-700' : '',
-      variant === 'success' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : '',
-      className
-    );
-
-    return (
+export const TFIconButton: React.FC<TFIconButtonProps> = ({
+  icon,
+  tooltip,
+  ariaLabel,
+  size = 'icon',
+  className,
+  showBadge = false,
+  badgeCount,
+  variant = 'ghost',
+  ...props
+}) => {
+  return (
+    <div className="relative inline-block">
       <Button
-        ref={ref}
-        type="button"
-        variant={variantMap[variant] as any}
-        className={buttonClasses}
-        disabled={loading || props.disabled}
-        title={tooltip}
-        aria-label={tooltip}
+        variant={variant}
+        size={size}
+        aria-label={ariaLabel || tooltip}
+        className={cn(
+          'relative',
+          size === 'sm' && 'h-8 w-8',
+          size === 'default' && 'h-10 w-10',
+          size === 'lg' && 'h-12 w-12',
+          size === 'xl' && 'h-14 w-14',
+          size === 'icon' && 'h-9 w-9 p-0',
+          className
+        )}
         {...props}
       >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
+        {icon}
       </Button>
-    );
-  }
-);
-
-TFIconButton.displayName = 'TFIconButton';
+      
+      {showBadge && (
+        <div className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-medium text-white">
+          {badgeCount && badgeCount > 0 ? (badgeCount > 99 ? '99+' : badgeCount) : ''}
+        </div>
+      )}
+      
+      {tooltip && (
+        <div className="absolute -bottom-8 left-1/2 hidden -translate-x-1/2 -translate-y-2 transform rounded bg-slate-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 peer-hover:block peer-hover:opacity-100">
+          {tooltip}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default TFIconButton;

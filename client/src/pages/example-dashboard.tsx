@@ -4,10 +4,9 @@ import TFCard from '@/components/ui/terrafusion/tf-card';
 import TFStatCard from '@/components/ui/terrafusion/tf-stat-card';
 import TFButton from '@/components/ui/terrafusion/tf-button';
 import TFIconButton from '@/components/ui/terrafusion/tf-icon-button';
-import { DashboardChartCard } from '@/components/dashboard/dashboard-chart-card';
-import { TerrainVisualizationCard } from '@/components/dashboard/terrain-visualization-card';
-import { AIAnalysisCard } from '@/components/dashboard/ai-analysis-card';
+import { DashboardChartCard, AIAnalysisCard } from '@/components/dashboard/dashboard-chart-card';
 import { ElevationChart } from '@/components/visualization/elevation-chart';
+import { TerrainVisualizationCard } from '@/components/dashboard/terrain-visualization-card';
 import { MapIcon, PlusIcon, DownloadIcon, FilterIcon, RefreshCwIcon, LayoutDashboardIcon } from 'lucide-react';
 
 /**
@@ -145,30 +144,30 @@ const ExampleDashboard: React.FC = () => {
         
         <AIAnalysisCard
           title="Property Value Analysis"
-          model="ValuePredictorLLM"
-          confidence={92}
-          lastUpdated={new Date()}
-          tags={['Machine Learning', 'Price Trends']}
-          onRefresh={() => console.log('Refreshing analysis')}
-          onDetails={() => console.log('View details clicked')}
+          className="h-full"
         >
           <p className="text-sm text-gray-300">
             Property values in the north-west district show a consistent upward trend of 8.3% over the past quarter, 
             with single-family homes appreciating faster than condominiums. Market liquidity remains high.
           </p>
+          <div className="mt-4 flex justify-between text-xs text-gray-400">
+            <span>Model: ValuePredictorLLM</span>
+            <span>Confidence: 92%</span>
+          </div>
         </AIAnalysisCard>
         
         <AIAnalysisCard
           title="Development Opportunity Insights"
-          model="ZoningInsightLLM"
-          confidence={78}
-          lastUpdated={new Date()}
-          tags={['Zoning', 'Development']}
+          className="h-full"
         >
           <p className="text-sm text-gray-300">
             Analysis of zoning regulations and market data indicates 3 high-potential areas for mixed-use 
             development. Recommended parcels have favorable regulatory conditions and infrastructure access.
           </p>
+          <div className="mt-4 flex justify-between text-xs text-gray-400">
+            <span>Model: ZoningInsightLLM</span>
+            <span>Confidence: 78%</span>
+          </div>
         </AIAnalysisCard>
       </div>
       

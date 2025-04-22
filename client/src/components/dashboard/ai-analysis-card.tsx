@@ -1,5 +1,5 @@
 import React from 'react';
-import { AIDashboardChartCard } from './dashboard-chart-card';
+import { DashboardChartCard, AIDashboardChartCard } from './dashboard-chart-card';
 import { cn } from '@/lib/utils';
 import TFButton from '@/components/ui/terrafusion/tf-button';
 import { Badge } from '@/components/ui/badge';

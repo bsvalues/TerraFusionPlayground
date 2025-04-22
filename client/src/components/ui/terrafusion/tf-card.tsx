@@ -46,6 +46,8 @@ export interface TFCardProps {
   loading?: boolean;
   /** Should the card have a shadow */
   shadow?: boolean;
+  /** Optional click handler */
+  onClick?: () => void;
   /** Card data attributes */
   'data-testid'?: string;
 }
@@ -73,6 +75,7 @@ export const TFCard: React.FC<TFCardProps> = ({
   hoverable = false,
   loading = false,
   shadow = true,
+  onClick,
   'data-testid': testId,
 }) => {
   // Size-based classes
@@ -107,10 +110,12 @@ export const TFCard: React.FC<TFCardProps> = ({
         sizeClasses[size],
         stateClasses,
         loading ? 'animate-pulse' : '',
+        onClick ? 'cursor-pointer hover:opacity-95' : '',
         className
       )}
       id={id}
       data-testid={testId}
+      onClick={onClick}
     >
       {(title || description || headerActions) && (
         <CardHeader className={cn('flex flex-row items-start justify-between', headerClassName)}>

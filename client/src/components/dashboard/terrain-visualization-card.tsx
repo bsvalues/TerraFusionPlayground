@@ -1,72 +1,64 @@
 import React from 'react';
 import { DashboardChartCard } from './dashboard-chart-card';
 import { ElevationChart } from '@/components/visualization/elevation-chart';
-import { cn } from '@/lib/utils';
 
-/**
- * TerrainVisualizationCard Props
- */
+export interface ElevationDataPoint {
+  x: number;
+  y: number;
+  elevation: number;
+}
+
 export interface TerrainVisualizationCardProps {
   /** Card title */
   title: string;
-  /** Card description */
+  /** Optional card description */
   description?: string;
-  /** Data for the elevation chart */
-  elevationData: Array<{ x: number; y: number; elevation: number; color?: string }>;
-  /** Height for the chart */
+  /** Array of elevation data points */
+  elevationData: ElevationDataPoint[];
+  /** Color gradient for visualization */
+  colorGradient?: 'terrain' | 'primary' | 'rainbow' | 'heat'; 
+  /** Optional height for the visualization */
   height?: number;
-  /** Color gradient for the chart */
-  colorGradient?: 'primary' | 'secondary' | 'terrain' | 'rainbow' | 'heatmap';
-  /** Whether the chart should animate */
-  animate?: boolean;
-  /** Whether to render in 3D mode */
-  mode3D?: boolean;
+  /** Optional card variant */
+  variant?: 'default' | 'glass' | 'gradient' | 'elevation';
   /** Optional className for additional styling */
   className?: string;
-  /** Optional click handler for the card */
+  /** Optional onClick handler */
   onClick?: () => void;
-  /** Optional click handler for data points in the chart */
-  onDataPointClick?: (data: { x: number; y: number; elevation: number }) => void;
 }
 
 /**
  * TerrainVisualizationCard Component
  * 
- * A specialized card for displaying terrain elevation data
+ * A specialized card for displaying 3D terrain visualizations
  */
 export const TerrainVisualizationCard: React.FC<TerrainVisualizationCardProps> = ({
   title,
   description,
   elevationData,
-  height = 300,
   colorGradient = 'terrain',
-  animate = true,
-  mode3D = true,
+  height = 300,
+  variant = 'glass',
   className,
-  onClick,
-  onDataPointClick,
+  onClick
 }) => {
   return (
-    <DashboardChartCard
+    <DashboardChartCard 
       title={title}
       description={description}
-      variant="elevation"
-      className={cn('cursor-default', onClick && 'cursor-pointer', className)}
+      variant={variant}
+      className={className}
       onClick={onClick}
     >
-      <div className="h-full w-full p-1">
-        <ElevationChart
+      <div style={{ height: `${height}px` }} className="w-full">
+        <ElevationChart 
           data={elevationData}
-          height={height}
-          animate={animate}
-          colorGradient={colorGradient}
-          mode3D={mode3D}
-          onClick={onDataPointClick}
-          className="h-full w-full"
+          colorScheme={colorGradient}
+          rotateEnabled={true}
+          showTooltip={true}
+          interactive={true}
         />
       </div>
     </DashboardChartCard>
   );
 };
-
-export default TerrainVisualizationCard;
