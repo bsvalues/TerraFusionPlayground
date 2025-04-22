@@ -30,6 +30,7 @@ import {
   Database
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { WorkflowSuggestionSidebar } from '@/components/workflow-optimizer';
 
 // Project type from schema
 interface Project {
@@ -241,13 +242,16 @@ const DevelopmentPlatformPage = () => {
           <h1 className="text-2xl font-bold">TaxI_AI Development Platform</h1>
           <p className="text-gray-500">Build and deploy assessment applications with ease</p>
         </div>
-        <Button 
-          onClick={() => setShowNewProjectDialog(true)}
-          className="flex items-center space-x-1"
-        >
-          <Plus className="h-4 w-4" />
-          <span>New Project</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <WorkflowSuggestionSidebar userId={1} />
+          <Button 
+            onClick={() => setShowNewProjectDialog(true)}
+            className="flex items-center space-x-1"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Project</span>
+          </Button>
+        </div>
       </div>
 
       <Tabs 
