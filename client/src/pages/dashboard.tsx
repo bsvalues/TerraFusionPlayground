@@ -1,282 +1,188 @@
-import { useState } from 'react';
-import PageHeader from '@/components/ui/page-header';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import KPICard from '@/components/dashboard/kpi-card';
-import GISMap from '@/components/dashboard/gis-map';
-import PropertyList from '@/components/dashboard/property-list';
-import AIAgentOverview from '@/components/dashboard/ai-agent-overview';
-import SystemActivityFeed from '@/components/dashboard/system-activity';
-import { ProductivityTrackerWidget } from '@/components/developer-productivity';
-import { Link } from 'wouter';
-import { Home, TrendingUp, FileText, CheckSquare, Database, Code2, Laptop, Share2, Settings, ArrowRightCircle, Map as MapIcon } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { DashboardKPI } from '@/lib/types';
+import React from 'react';
+import AppLayout from '@/layout/app-layout';
+import { 
+  DashboardLayout, 
+  DashboardItem, 
+  DashboardHeader, 
+  DashboardSection 
+} from '@/components/dashboard/dashboard-layout';
+import { 
+  DashboardChartCard, 
+  TerrainVisualizationCard, 
+  AIAnalysisCard 
+} from '@/components/dashboard/dashboard-chart-card';
+import { TFButton, TFIconButton } from '@/components/ui/terrafusion/tf-button';
+import { TFCard, TFStatCard } from '@/components/ui/terrafusion/tf-card';
+import { ElevationChart } from '@/components/visualization/elevation-chart';
 
-const Dashboard = () => {
-  // In a real app, this would fetch from an API
-  const { data: kpiData, isLoading } = useQuery<DashboardKPI>({
-    queryKey: ['/api/dashboard/kpi'],
-    // Enable this when the API is available
-    enabled: false,
-  });
-  
-  // Default KPI data for demo
-  const defaultKPI: DashboardKPI = {
-    propertiesProcessed: 14325,
-    valueIncrease: '+8.2%',
-    protestsSubmitted: 482,
-    complianceScore: '97%'
-  };
-  
-  const kpi = kpiData || defaultKPI;
+// Mock data for the dashboard
+const propertyStats = [
+  { label: 'Inspections', value: 72120, trend: { value: 5.2, direction: 'up' } },
+  { label: 'Properties', value: 48639, trend: { value: 1.8, direction: 'up' } },
+  { label: 'Appeals', value: 128, trend: { value: 12.3, direction: 'down' } },
+  { label: 'Assessment Ratio', value: '98.2%', trend: { value: 0.8, direction: 'up' } }
+];
 
-  // Page header actions
-  const headerActions = (
-    <>
-      <Button variant="outline">
-        Generate Report
-      </Button>
-      <Button>
-        New Property
-      </Button>
-      <Button variant="link" asChild>
-        <a href="/property-stories">Test Property Stories Link</a>
-      </Button>
-    </>
-  );
-
+const Dashboard: React.FC = () => {
   return (
-    <>
-      <PageHeader 
-        title="TerraFusion Platform" 
-        subtitle="Enterprise"
-        actions={headerActions}
+    <AppLayout>
+      <DashboardHeader 
+        title="TerraFusion Dashboard"
+        description="Property assessment analytics and insights"
+        actions={
+          <>
+            <TFButton 
+              variant="outline" 
+              iconLeft={
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+                </svg>
+              }
+            >
+              Export Data
+            </TFButton>
+            <TFButton
+              variant="primary"
+              iconLeft={
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              }
+            >
+              New Assessment
+            </TFButton>
+          </>
+        }
       />
       
-      <div className="px-4 sm:px-6 lg:max-w-7xl lg:mx-auto lg:px-8 py-6">
-        <h2 className="text-lg font-medium text-primary-blue-dark tf-font-heading">Dashboard Overview</h2>
+      <DashboardLayout>
+        {/* Stats row */}
+        {propertyStats.map((stat, index) => (
+          <DashboardItem key={index}>
+            <TFStatCard 
+              label={stat.label}
+              value={stat.value}
+              trend={stat.trend}
+            />
+          </DashboardItem>
+        ))}
         
-        {/* KPI Cards Row */}
-        <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <KPICard 
-            title="Properties Processed" 
-            value={kpi.propertiesProcessed.toLocaleString()}
-            icon={<Home className="h-6 w-6" />}
-            actionLabel="View all"
-            actionUrl="/properties"
+        {/* Main charts */}
+        <DashboardItem colSpan={2} rowSpan={2}>
+          <TerrainVisualizationCard
+            title="Property Valuation by Region"
+            description="Geospatial visualization of property value distribution"
+            chart={<div className="w-full h-full bg-card rounded-xl relative overflow-hidden">
+              {/* Mock GIS visualization */}
+              <div className="absolute inset-0 opacity-10 bg-gradient-to-br from-primary via-purple-500 to-pink-500"></div>
+              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
+                Interactive GIS Map Rendered Here
+              </div>
+            </div>}
+            actions={
+              <TFIconButton
+                variant="ghost"
+                size="sm"
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                }
+              />
+            }
           />
-          
-          <KPICard 
-            title="Value Increase (YoY)" 
-            value={kpi.valueIncrease}
-            icon={<TrendingUp className="h-6 w-6" />}
-            actionLabel="View details"
-            actionUrl="/valuation"
-            valueColor="text-green-600"
-          />
-          
-          <KPICard 
-            title="Protests Submitted" 
-            value={kpi.protestsSubmitted}
-            icon={<FileText className="h-6 w-6" />}
-            actionLabel="View protests"
-            actionUrl="/protests"
-          />
-          
-          <KPICard 
-            title="Compliance Score" 
-            value={kpi.complianceScore}
-            icon={<CheckSquare className="h-6 w-6" />}
-            actionLabel="View audit logs"
-            actionUrl="/audit-logs"
-          />
-        </div>
+        </DashboardItem>
         
-        {/* GIS Map & Property Listing */}
-        <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <GISMap />
-          <PropertyList />
-        </div>
+        <DashboardItem>
+          <DashboardChartCard
+            title="Assessment Trends"
+            description="Monthly assessment activity"
+            chart={<div className="w-full h-32 flex items-end justify-between space-x-1">
+              {/* Mock bar chart */}
+              {Array.from({ length: 12 }).map((_, i) => {
+                const height = 30 + Math.random() * 70;
+                return (
+                  <div 
+                    key={i} 
+                    className="bg-gradient-to-t from-primary/80 to-primary rounded-t-sm" 
+                    style={{ height: `${height}%`, width: '8%' }}
+                  />
+                );
+              })}
+            </div>}
+          />
+        </DashboardItem>
         
-        {/* AI Agents Overview & System Activity */}
-        <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <AIAgentOverview />
-          <SystemActivityFeed />
-          <ProductivityTrackerWidget />
-        </div>
-
-        {/* TerraFusion GIS Hub Section */}
-        <div className="mt-12">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium text-primary-blue-dark tf-font-heading">TerraFusion GIS Tools</h2>
-            <Button variant="outline" size="sm" asChild className="border-primary-teal text-primary-teal hover:bg-primary-teal-light/10">
-              <Link href="/gis">
-                Open GIS Hub <ArrowRightCircle className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-          
-          <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {/* GIS Hub Card */}
-            <Card className="hover:border-primary-blue/50 hover:shadow-md transition-all duration-300 border-2 border-green-500">
-              <CardHeader className="pb-3 bg-green-50">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-full bg-green-100 p-2">
-                    <MapIcon className="h-5 w-5 text-green-600"/>
-                  </div>
-                  <Badge className="bg-green-100 text-green-800 hover:bg-green-200">New</Badge>
-                </div>
-                <CardTitle className="mt-2 tf-font-heading text-primary-blue-dark">GIS Hub</CardTitle>
-                <CardDescription className="tf-font-body text-primary-blue">
-                  Advanced geospatial tools for property visualization and analysis
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <ul className="space-y-1 text-sm text-primary-blue-dark/70">
-                  <li className="flex items-center">
-                    <span className="mr-2 text-green-500">•</span> Interactive property map
-                  </li>
-                  <li className="flex items-center">
-                    <span className="mr-2 text-green-500">•</span> 3D terrain visualization
-                  </li>
-                  <li className="flex items-center">
-                    <span className="mr-2 text-green-500">•</span> Advanced spatial analysis
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full bg-green-600 hover:bg-green-700 text-white" asChild>
-                  <Link href="/gis">
-                    Open GIS Hub
-                  </Link>
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
-        </div>
+        <DashboardItem>
+          <AIAnalysisCard
+            title="AI Property Analysis"
+            description="Insights from comparative market analysis"
+            chart={<div className="w-full space-y-3">
+              <div className="p-3 bg-foreground/5 rounded-lg">
+                <p className="text-sm">Properties in North District show 12% value increase due to new transportation infrastructure development.</p>
+              </div>
+              <div className="p-3 bg-foreground/5 rounded-lg">
+                <p className="text-sm">Detected 8 potential assessment anomalies requiring review in the Southwest region.</p>
+              </div>
+            </div>}
+          />
+        </DashboardItem>
         
-        {/* TerraFusion Developer Tools Section */}
-        <div className="mt-12">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium text-primary-blue-dark tf-font-heading">TerraFusion Developer Tools</h2>
-            <Button variant="outline" size="sm" asChild className="border-primary-teal text-primary-teal hover:bg-primary-teal-light/10">
-              <Link href="/development">
-                View All Tools <ArrowRightCircle className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-          
-          <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Development Platform Card */}
-            <Card className="hover:border-primary-blue/50 hover:shadow-md transition-all duration-300 border border-primary-blue-light/20">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-full bg-primary-teal/10 p-2">
-                    <Code2 className="h-5 w-5 text-primary-teal"/>
+        <DashboardSection 
+          title="Terrain Analysis"
+          description="Elevation models of assessed regions"
+        />
+        
+        <DashboardItem>
+          <DashboardChartCard
+            title="Downtown District"
+            chart={<ElevationChart height={140} color="rgba(6, 182, 212, 1)" />}
+            variant="gradient"
+          />
+        </DashboardItem>
+        
+        <DashboardItem>
+          <DashboardChartCard
+            title="Waterfront Region"
+            chart={<ElevationChart height={140} color="rgba(124, 58, 237, 1)" />}
+            variant="gradient"
+          />
+        </DashboardItem>
+        
+        <DashboardItem>
+          <DashboardChartCard
+            title="North Hills"
+            chart={<ElevationChart height={140} color="rgba(236, 72, 153, 1)" />}
+            variant="gradient"
+          />
+        </DashboardItem>
+        
+        <DashboardItem colSpan={3}>
+          <DashboardChartCard
+            title="Recent Activities"
+            variant="default"
+            chart={
+              <div className="w-full divide-y divide-border/20">
+                {[
+                  { activity: "Property BC101 assessment completed", time: "2 hours ago", user: "John Davis" },
+                  { activity: "New appeal filed for Property BC405", time: "4 hours ago", user: "System" },
+                  { activity: "Mass appraisal batch #24 completed", time: "Yesterday", user: "AI Agent" },
+                  { activity: "GIS data updated for Downtown district", time: "Yesterday", user: "Maria Smith" },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                    <div>
+                      <p className="font-medium text-sm">{item.activity}</p>
+                      <p className="text-xs text-muted-foreground">{item.time} by {item.user}</p>
+                    </div>
+                    <TFButton variant="ghost" size="sm">View</TFButton>
                   </div>
-                </div>
-                <CardTitle className="mt-2 tf-font-heading text-primary-blue-dark">Development Platform</CardTitle>
-                <CardDescription className="tf-font-body text-primary-blue">
-                  Build custom assessment applications with AI-powered tools
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <ul className="space-y-1 text-sm text-primary-blue-dark/70">
-                  <li className="flex items-center">
-                    <span className="mr-2 text-primary-teal">•</span> AI-assisted coding environment
-                  </li>
-                  <li className="flex items-center">
-                    <span className="mr-2 text-primary-teal">•</span> Component library & templates
-                  </li>
-                  <li className="flex items-center">
-                    <span className="mr-2 text-primary-teal">•</span> Collaborative development
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full bg-primary-blue-dark hover:bg-primary-blue text-white" asChild>
-                  <Link href="/development">
-                    Open Development Platform
-                  </Link>
-                </Button>
-              </CardFooter>
-            </Card>
-
-            {/* Database Conversion Card */}
-            <Card className="hover:border-primary-blue/50 hover:shadow-md transition-all duration-300 border border-primary-blue-light/20">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-full bg-primary-teal/10 p-2">
-                    <Database className="h-5 w-5 text-primary-teal"/>
-                  </div>
-                </div>
-                <CardTitle className="mt-2 tf-font-heading text-primary-blue-dark">Database Conversion</CardTitle>
-                <CardDescription className="tf-font-body text-primary-blue">
-                  Convert and migrate your existing database to TerraFusion platform
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <ul className="space-y-1 text-sm text-primary-blue-dark/70">
-                  <li className="flex items-center">
-                    <span className="mr-2 text-primary-teal">•</span> AI-powered schema analysis
-                  </li>
-                  <li className="flex items-center">
-                    <span className="mr-2 text-primary-teal">•</span> Secure data transformation
-                  </li>
-                  <li className="flex items-center">
-                    <span className="mr-2 text-primary-teal">•</span> Multiple database support
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full bg-primary-blue-dark hover:bg-primary-blue text-white" asChild>
-                  <Link href="/database-conversion">
-                    Open Database Conversion
-                  </Link>
-                </Button>
-              </CardFooter>
-            </Card>
-
-            {/* Assessment Workbench Card */}
-            <Card className="hover:border-primary-blue/50 hover:shadow-md transition-all duration-300 border border-primary-blue-light/20">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-full bg-primary-teal/10 p-2">
-                    <Laptop className="h-5 w-5 text-primary-teal"/>
-                  </div>
-                </div>
-                <CardTitle className="mt-2 tf-font-heading text-primary-blue-dark">Assessment Workbench</CardTitle>
-                <CardDescription className="tf-font-body text-primary-blue">
-                  Design and test assessment models with AI assistance
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <ul className="space-y-1 text-sm text-primary-blue-dark/70">
-                  <li className="flex items-center">
-                    <span className="mr-2 text-primary-teal">•</span> Model builder interface
-                  </li>
-                  <li className="flex items-center">
-                    <span className="mr-2 text-primary-teal">•</span> Validation & testing tools
-                  </li>
-                  <li className="flex items-center">
-                    <span className="mr-2 text-primary-teal">•</span> Performance analysis
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full bg-primary-blue-dark hover:bg-primary-blue text-white" asChild>
-                  <Link href="/development/assessment-workbench">
-                    Open Assessment Workbench
-                  </Link>
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
-        </div>
-      </div>
-    </>
+                ))}
+              </div>
+            }
+          />
+        </DashboardItem>
+      </DashboardLayout>
+    </AppLayout>
   );
 };
 
