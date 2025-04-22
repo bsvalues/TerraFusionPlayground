@@ -285,6 +285,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Repository Marketplace routes
   app.use('/api/repositories', createRepositoryMarketplaceRoutes(storage));
   
+  // Register Workflow Optimizer routes
+  app.use('/api/workflow-optimizer', workflowOptimizerRoutes);
+  
   // Initialize GIS Storage implementation with database
   await implementGISStorage(storage);
   
