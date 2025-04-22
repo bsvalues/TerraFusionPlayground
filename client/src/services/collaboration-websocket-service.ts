@@ -60,19 +60,21 @@ export class CollaborationWebSocketService {
 
       this.updateConnectionStatus('connecting');
       
-      // Determine WebSocket URL based on the current protocol (HTTP/HTTPS)
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const hostname = window.location.hostname;
-      const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
+      // Use a consistent approach with relative path for better compatibility
+      // This works in both local and Replit environments
+      const relativePath = '/ws/collaboration';
       
-      // Construct URL with explicit hostname and port to avoid 'undefined' issues
-      const wsUrl = `${protocol}//${hostname}${port ? ':' + port : ''}/ws/collaboration`;
+      // Use the protocol from the current page
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      
+      // Construct URL using host which includes both hostname and port
+      const wsUrl = `${wsProtocol}//${window.location.host}${relativePath}`;
       
       // Add debug logging to help diagnose connection issues
       console.log(`[Collaboration WebSocket] Using URL: ${wsUrl}`);
-      console.log(`[Collaboration WebSocket] hostname: ${hostname}`);
-      console.log(`[Collaboration WebSocket] port: ${port}`);
-      console.log(`[Collaboration WebSocket] protocol: ${protocol}`);
+      console.log(`[Collaboration WebSocket] host: ${window.location.host}`);
+      console.log(`[Collaboration WebSocket] protocol: ${wsProtocol}`);
+      console.log(`[Collaboration WebSocket] relative path: ${relativePath}`);
       
       console.log(`Connecting to collaboration WebSocket at ${wsUrl}`);
       
@@ -189,17 +191,24 @@ export class CollaborationWebSocketService {
     setTimeout(() => {
       if (this.socket?.readyState === WebSocket.CLOSED) {
         console.log('Attempting reconnection...');
-        this.connect()
-          .then(success => {
-            if (success) {
-              console.log('Reconnection successful');
-            } else {
-              console.log('Reconnection failed');
-            }
-          })
-          .catch(error => {
-            console.error('Error during reconnection:', error);
-          });
+        // Wrap the connect call in a try/catch to ensure errors are properly handled
+        try {
+          this.connect()
+            .then(success => {
+              if (success) {
+                console.log('Reconnection successful');
+              } else {
+                console.log('Reconnection failed');
+              }
+            })
+            .catch(error => {
+              // Explicitly handle the error to prevent unhandled promise rejection
+              console.error('Error during reconnection:', error);
+            });
+        } catch (error) {
+          // Catch any synchronous errors in the connect call
+          console.error('Exception during reconnection attempt:', error);
+        }
       }
     }, delay);
   }
@@ -265,11 +274,15 @@ export class CollaborationWebSocketService {
         });
         
         // Try to connect
+        // Connect and queue the join operation for when connection succeeds
         this.connect().catch(error => {
           console.error('Failed to connect:', error);
+          // Don't reject here since we've already queued the message
         });
         
-        reject(new Error('WebSocket not connected'));
+        // Resolve instead of reject to prevent unhandled promise rejection
+        // The join message is already queued, so it will be sent when connected
+        resolve();
         return;
       }
       
