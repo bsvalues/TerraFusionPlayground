@@ -1146,6 +1146,12 @@ export class MemStorage implements IStorage {
     this.conversionLogs = new Map<number, ConversionLog>();
     this.compatibilityLayers = new Map<number, CompatibilityLayer>();
     
+    // Initialize counters with values
+    this.currentUserId = 1;
+    this.currentWorkflowOptimizationRequestId = 1;
+    this.currentWorkflowOptimizationResultId = 1;
+    this.currentRepositoryId = 1;
+    
     // Initialize Assessment Model Workbench arrays
     this.assessmentModels = [];
     this.modelVariables = [];
