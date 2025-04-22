@@ -10,6 +10,10 @@ CodeAgent is an advanced command-line AI coding assistant with learning capabili
 - 📊 **Code Analysis**: Analyze code for bugs, performance, security, and style issues
 - ✨ **Code Generation**: Generate code based on descriptions or transform existing code
 - 📚 **Learning System**: Improves over time by learning from feedback
+- 🔊 **Voice Command Integration**: Control the CLI using voice commands
+- 🔄 **Environment Reset**: One-click environment reset capability with backups
+- 📋 **Code Snippet Library**: Organize and manage your code snippets by context
+- 🌐 **One-Click Code Sharing**: Easily share code snippets with password protection and QR codes
 
 ## Installation
 
@@ -91,6 +95,29 @@ Manage the learning database:
 ```bash
 codeagent learn
 ```
+
+#### Code Sharing
+
+Share code snippets with others:
+
+```bash
+# Share a snippet from your library
+codeagent share snippet <id>
+
+# Share code from clipboard
+codeagent share code
+
+# Share code from file with password protection
+codeagent share code --file path/to/file.js --password
+
+# Share with QR code generation
+codeagent share snippet <id> --qrcode
+
+# List and manage shared snippets
+codeagent share list
+```
+
+For more details, see [Code Snippet Sharing Guide](./docs/SHARING.md).
 
 ### Advanced Options
 

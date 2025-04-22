@@ -67,14 +67,12 @@ async function shareExistingSnippet(id: string, options: {
     
     // Ask for password if --password is specified
     if (options.password) {
-      const { password } = await inquirer.prompt([
-        {
-          type: 'password',
-          name: 'password',
-          message: 'Enter a password to protect this snippet:',
-          validate: (input) => input.trim() !== '' ? true : 'Password is required'
-        }
-      ]);
+      const { password } = await inquirer.prompt({
+        type: 'password',
+        name: 'password',
+        message: 'Enter a password to protect this snippet:',
+        validate: (input) => input.trim() !== '' ? true : 'Password is required'
+      });
       
       shareOptions.password = password;
     }
@@ -173,65 +171,65 @@ async function shareDirectSnippet(options: {
         console.log(code);
         console.log(chalk.gray('─────────────────────────'));
         
-        const { confirm } = await inquirer.prompt([
-          {
-            type: 'confirm',
-            name: 'confirm',
-            message: 'Use this code?',
-            default: true
-          }
-        ]);
+        const { confirm } = await inquirer.prompt({
+          type: 'confirm',
+          name: 'confirm',
+          message: 'Use this code?',
+          default: true
+        });
         
         if (!confirm) {
-          const { manualCode } = await inquirer.prompt([
-            {
-              type: 'editor',
-              name: 'manualCode',
-              message: 'Enter code:',
-              validate: (input) => input.trim() !== '' ? true : 'Code is required'
-            }
-          ]);
+          const { manualCode } = await inquirer.prompt({
+            type: 'editor',
+            name: 'manualCode',
+            message: 'Enter code:',
+            validate: (input) => input.trim() !== '' ? true : 'Code is required'
+          });
           
           code = manualCode;
         }
       } catch (error) {
         console.error(chalk.red('Failed to read clipboard. Please enter code manually.'));
         
-        const { manualCode } = await inquirer.prompt([
-          {
-            type: 'editor',
-            name: 'manualCode',
-            message: 'Enter code:',
-            validate: (input) => input.trim() !== '' ? true : 'Code is required'
-          }
-        ]);
+        const { manualCode } = await inquirer.prompt({
+          type: 'editor',
+          name: 'manualCode',
+          message: 'Enter code:',
+          validate: (input) => input.trim() !== '' ? true : 'Code is required'
+        });
         
         code = manualCode;
       }
     }
     
     // If required options not provided, prompt for them
-    const answers = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'name',
-        message: 'Name:',
-        default: options.name || path.basename(options.file || '', path.extname(options.file || '')),
-        validate: (input) => input.trim() !== '' ? true : 'Name is required'
-      },
-      {
-        type: 'input',
-        name: 'description',
-        message: 'Description:',
-        default: options.description || ''
-      },
-      {
-        type: 'input',
-        name: 'language',
-        message: 'Language:',
-        default: options.language || path.extname(options.file || '').slice(1) || 'text'
-      }
-    ]);
+    const nameAnswer = await inquirer.prompt({
+      type: 'input',
+      name: 'name',
+      message: 'Name:',
+      default: options.name || path.basename(options.file || '', path.extname(options.file || '')),
+      validate: (input) => input.trim() !== '' ? true : 'Name is required'
+    });
+    
+    const descriptionAnswer = await inquirer.prompt({
+      type: 'input',
+      name: 'description',
+      message: 'Description:',
+      default: options.description || ''
+    });
+    
+    const languageAnswer = await inquirer.prompt({
+      type: 'input',
+      name: 'language',
+      message: 'Language:',
+      default: options.language || path.extname(options.file || '').slice(1) || 'text'
+    });
+    
+    const answers = {
+      name: nameAnswer.name,
+      description: descriptionAnswer.description,
+      language: languageAnswer.language
+    };
     
     // Create a temporary snippet
     const now = new Date().toISOString();
@@ -256,14 +254,12 @@ async function shareDirectSnippet(options: {
     
     // Ask for password if --password is specified
     if (options.password) {
-      const { password } = await inquirer.prompt([
-        {
-          type: 'password',
-          name: 'password',
-          message: 'Enter a password to protect this code:',
-          validate: (input) => input.trim() !== '' ? true : 'Password is required'
-        }
-      ]);
+      const { password } = await inquirer.prompt({
+        type: 'password',
+        name: 'password',
+        message: 'Enter a password to protect this code:',
+        validate: (input) => input.trim() !== '' ? true : 'Password is required'
+      });
       
       shareOptions.password = password;
     }
@@ -301,24 +297,20 @@ async function shareDirectSnippet(options: {
     }
     
     // Ask if user wants to save as a permanent snippet
-    const { saveSnippet } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'saveSnippet',
-        message: 'Save this code as a permanent snippet in your library?',
-        default: false
-      }
-    ]);
+    const { saveSnippet } = await inquirer.prompt({
+      type: 'confirm',
+      name: 'saveSnippet',
+      message: 'Save this code as a permanent snippet in your library?',
+      default: false
+    });
     
     if (saveSnippet) {
-      const { tags } = await inquirer.prompt([
-        {
-          type: 'input',
-          name: 'tags',
-          message: 'Tags (comma separated):',
-          filter: (input) => input.split(',').map((tag: string) => tag.trim()).filter(Boolean)
-        }
-      ]);
+      const { tags } = await inquirer.prompt({
+        type: 'input',
+        name: 'tags',
+        message: 'Tags (comma separated):',
+        filter: (input) => input.split(',').map((tag: string) => tag.trim()).filter(Boolean)
+      });
       
       // Create a permanent snippet
       const createSpinner = ora('Saving snippet...').start();
@@ -435,14 +427,12 @@ async function listSharedSnippets() {
       await clipboard.write(selectedSnippet.shortLink);
       console.log(chalk.green('Share URL copied to clipboard!'));
     } else if (action === 'revoke') {
-      const { confirm } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'confirm',
-          message: `Are you sure you want to revoke the share for "${selectedSnippet.snippet.name}"?`,
-          default: false
-        }
-      ]);
+      const { confirm } = await inquirer.prompt({
+        type: 'confirm',
+        name: 'confirm',
+        message: `Are you sure you want to revoke the share for "${selectedSnippet.snippet.name}"?`,
+        default: false
+      });
       
       if (confirm) {
         const revokeSpinner = ora('Revoking share...').start();
@@ -496,14 +486,12 @@ async function revokeSharedSnippet(shareId: string) {
     console.log(chalk.white(`Access Count: ${chalk.bold(String(sharedSnippet.accessCount))}`));
     
     // Confirm revocation
-    const { confirm } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'confirm',
-        message: 'Are you sure you want to revoke this shared snippet?',
-        default: false
-      }
-    ]);
+    const { confirm } = await inquirer.prompt({
+      type: 'confirm',
+      name: 'confirm',
+      message: 'Are you sure you want to revoke this shared snippet?',
+      default: false
+    });
     
     if (!confirm) {
       console.log(chalk.yellow('Revocation cancelled'));
@@ -551,14 +539,12 @@ async function cleanupExpiredSnippets(options: { force?: boolean }) {
     
     // Confirm cleanup if not forced
     if (!options.force) {
-      const { confirm } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'confirm',
-          message: `Are you sure you want to clean up ${expiredCount} expired shared snippets?`,
-          default: false
-        }
-      ]);
+      const { confirm } = await inquirer.prompt({
+        type: 'confirm',
+        name: 'confirm',
+        message: `Are you sure you want to clean up ${expiredCount} expired shared snippets?`,
+        default: false
+      });
       
       if (!confirm) {
         console.log(chalk.yellow('Cleanup cancelled'));
