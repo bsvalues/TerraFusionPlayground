@@ -7,7 +7,7 @@
  * about collaborative session activities.
  */
 
-import { CollaborationMessageType } from '../../shared/types/collaboration-types';
+import { CollaborationMessageType } from '@/shared/types/collaboration-types';
 
 type MessageHandler = (message: any) => void;
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
