@@ -3577,6 +3577,160 @@ export class MemStorage implements IStorage {
     };
   }
   
+  // Seed workflow optimizer data with sample requests and results
+  private seedWorkflowOptimizerData() {
+    // Create a completed code quality optimization request
+    const codeQualityRequestId = crypto.randomUUID();
+    const codeQualityRequest = {
+      id: this.currentWorkflowOptimizationRequestId++,
+      requestId: codeQualityRequestId,
+      userId: 1,
+      repositoryId: 1,
+      title: 'Code Quality Analysis',
+      description: 'Automated code quality analysis to identify improvement opportunities',
+      codebase: 'server/routes',
+      optimizationType: 'code_quality',
+      status: 'completed',
+      priority: 'medium',
+      tags: ['refactoring', 'maintainability'],
+      settings: null,
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 23) // 23 hours ago
+    };
+    this.workflowOptimizationRequests.set(codeQualityRequest.id, codeQualityRequest);
+    
+    // Create code quality optimization result
+    const codeQualityResult = {
+      id: this.currentWorkflowOptimizationResultId++,
+      requestId: codeQualityRequestId,
+      summary: 'Found several code quality issues that can be improved for better maintainability',
+      recommendationsJson: [
+        {
+          id: crypto.randomUUID(),
+          title: 'Improve function parameter validation',
+          description: 'Add proper parameter validation at the beginning of functions to prevent unexpected behavior',
+          code: 'function processData(data) {\n  if (!data) return null;\n  // Rest of the function\n}',
+          filePath: 'server/routes/api.js',
+          lineNumbers: [15, 25],
+          impact: 'medium',
+          effortEstimate: 'quick',
+          category: 'reliability',
+          implementationSteps: [
+            'Identify functions with missing validation',
+            'Add appropriate checks for required parameters',
+            'Return early if validation fails'
+          ]
+        },
+        {
+          id: crypto.randomUUID(),
+          title: 'Extract duplicate code into helper functions',
+          description: 'Multiple routes contain similar data processing logic that could be extracted into shared helper functions',
+          code: 'function formatResponse(data) {\n  return {\n    success: true,\n    data,\n    timestamp: new Date()\n  };\n}',
+          filePath: 'server/utils/helpers.js',
+          lineNumbers: null,
+          impact: 'medium',
+          effortEstimate: 'medium',
+          category: 'maintainability',
+          implementationSteps: [
+            'Identify duplicate code patterns',
+            'Create helper functions in utils folder',
+            'Replace duplicate code with helper function calls'
+          ]
+        }
+      ],
+      improvementScore: 72,
+      runTime: 5600,
+      modelUsed: 'gpt-4o',
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 23) // 23 hours ago
+    };
+    this.workflowOptimizationResults.set(codeQualityResult.id, codeQualityResult);
+    
+    // Create a completed performance optimization request
+    const perfRequestId = crypto.randomUUID();
+    const perfRequest = {
+      id: this.currentWorkflowOptimizationRequestId++,
+      requestId: perfRequestId,
+      userId: 1,
+      repositoryId: 1,
+      title: 'Performance Optimization',
+      description: 'Identify performance bottlenecks in the database queries and API endpoints',
+      codebase: 'server/services',
+      optimizationType: 'performance',
+      status: 'completed',
+      priority: 'high',
+      tags: ['database', 'api', 'optimization'],
+      settings: null,
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48), // 2 days ago
+      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 47) // 47 hours ago
+    };
+    this.workflowOptimizationRequests.set(perfRequest.id, perfRequest);
+    
+    // Create performance optimization result
+    const perfResult = {
+      id: this.currentWorkflowOptimizationResultId++,
+      requestId: perfRequestId,
+      summary: 'Identified several performance bottlenecks in database queries and API response handling',
+      recommendationsJson: [
+        {
+          id: crypto.randomUUID(),
+          title: 'Add database indexes',
+          description: 'Missing indexes on frequently queried columns are causing slow performance on large datasets',
+          code: 'CREATE INDEX idx_property_type ON properties(property_type);\nCREATE INDEX idx_status ON properties(status);',
+          filePath: 'server/db/schema.sql',
+          lineNumbers: null,
+          impact: 'high',
+          effortEstimate: 'quick',
+          category: 'database',
+          implementationSteps: [
+            'Add indexes to frequently queried columns',
+            'Test query performance before and after'
+          ]
+        },
+        {
+          id: crypto.randomUUID(),
+          title: 'Implement query pagination',
+          description: 'Large result sets are being returned without pagination, causing increased memory usage and slow responses',
+          code: 'function getProperties(page = 1, limit = 20) {\n  const offset = (page - 1) * limit;\n  return db.query("SELECT * FROM properties LIMIT $1 OFFSET $2", [limit, offset]);\n}',
+          filePath: 'server/services/property-service.js',
+          lineNumbers: [45, 55],
+          impact: 'high',
+          effortEstimate: 'medium',
+          category: 'api',
+          implementationSteps: [
+            'Add pagination parameters to API endpoints',
+            'Modify database queries to include LIMIT and OFFSET',
+            'Update API response to include pagination metadata'
+          ]
+        }
+      ],
+      improvementScore: 85,
+      runTime: 6200,
+      modelUsed: 'gpt-4o',
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 47) // 47 hours ago
+    };
+    this.workflowOptimizationResults.set(perfResult.id, perfResult);
+    
+    // Create an in-progress security optimization request
+    const securityRequestId = crypto.randomUUID();
+    const securityRequest = {
+      id: this.currentWorkflowOptimizationRequestId++,
+      requestId: securityRequestId,
+      userId: 1,
+      repositoryId: 1,
+      title: 'Security Vulnerability Scan',
+      description: 'Scan codebase for potential security vulnerabilities and suggest fixes',
+      codebase: 'server',
+      optimizationType: 'security',
+      status: 'in_progress',
+      priority: 'high',
+      tags: ['security', 'vulnerabilities'],
+      settings: null,
+      createdAt: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+      updatedAt: new Date(Date.now() - 1000 * 60 * 30) // 30 minutes ago
+    };
+    this.workflowOptimizationRequests.set(securityRequest.id, securityRequest);
+  }
+
   private seedData() {
     // Seed an admin user
     this.createUser({
@@ -3586,6 +3740,9 @@ export class MemStorage implements IStorage {
       role: 'administrator',
       email: 'admin@example.com'
     });
+    
+    // Seed Workflow Optimization Requests and Results
+    this.seedWorkflowOptimizerData();
     
     // Seed AI Agents
     const agentNames = [
