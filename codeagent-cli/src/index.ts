@@ -1,94 +1,79 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { config } from 'dotenv';
 import chalk from 'chalk';
-import { loadCommands } from './commands';
-import { ContextManager } from './context/contextManager';
-import { LearningManager } from './learning/learningManager';
-import { ToolRegistry } from './tools/toolRegistry';
-import { registerBuiltinTools } from './tools/builtinTools';
-import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import fs from 'fs';
-import { resolveConfig } from './utils/config';
 
-// Load environment variables
-config();
+// Get package.json for version info
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJsonPath = join(__dirname, '..', 'package.json');
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 
-async function main() {
-  console.log(chalk.blue.bold('CodeAgent CLI - Enhanced AI Coding Assistant'));
-  
-  // Initialize the program
-  const program = new Command();
-  program
-    .name('codeagent')
-    .description('Enhanced AI code assistant with learning capabilities')
-    .version('1.0.0')
-    .option('-v, --verbose', 'Enable verbose output')
-    .option('-c, --context <path>', 'Set context path', process.cwd())
-    .option('-m, --model <name>', 'Choose AI model', 'gpt-4o')
-    .option('-l, --log-level <level>', 'Set log level (debug, info, warn, error)', 'info')
-    .option('-p, --profile <name>', 'Use specific profile', 'default');
-  
-  // Create user config directory if it doesn't exist
-  const userConfigDir = path.join(process.env.HOME || process.env.USERPROFILE || '.', '.codeagent');
-  if (!fs.existsSync(userConfigDir)) {
-    fs.mkdirSync(userConfigDir, { recursive: true });
+// Create a new Command instance
+const program = new Command();
+
+// Set basic program metadata
+program
+  .name('codeagent')
+  .description('CodeAgent CLI - An advanced geospatial intelligence platform with a modular CLI agent system')
+  .version(packageJson.version);
+
+// Register commands
+async function registerCommands() {
+  try {
+    // Import and register the voice command
+    const { register: registerVoice } = await import('./commands/voice.js');
+    registerVoice(program);
+    
+    // Import and register the plugin command
+    const { register: registerPlugin } = await import('./commands/plugin.js');
+    registerPlugin(program);
+    
+    // Import and register the plugin-settings command
+    const { register: registerPluginSettings } = await import('./commands/plugin-settings.js');
+    registerPluginSettings(program);
+    
+    // Import and register the reset command
+    const { register: registerReset } = await import('./commands/reset.js');
+    registerReset(program);
+    
+    // Import and register the snippet command
+    const { register: registerSnippet } = await import('./commands/snippet.js');
+    registerSnippet(program);
+    
+    // Add more commands as they are developed
+    // ...
+    
+    // Add a default command for when no command is specified
+    program.action(() => {
+      console.log(chalk.blue.bold('\nCodeAgent CLI'));
+      console.log(chalk.blue('─────────────\n'));
+      console.log('Welcome to CodeAgent CLI!');
+      console.log('Run `codeagent --help` to see available commands.\n');
+      
+      // Show some common commands as examples
+      console.log(chalk.green('Common commands:'));
+      console.log(`  ${chalk.yellow('codeagent voice')}               - Start voice command mode`);
+      console.log(`  ${chalk.yellow('codeagent plugin --list')}       - List installed plugins`);
+      console.log(`  ${chalk.yellow('codeagent plugin --wizard')}     - Create a new plugin`);
+      console.log(`  ${chalk.yellow('codeagent voice --keyword')}     - Start voice mode with wake word detection`);
+      console.log(`  ${chalk.yellow('codeagent reset')}               - Reset your environment to a clean state`);
+      console.log(`  ${chalk.yellow('codeagent reset --list-resetable')} - List all items that can be reset`);
+      console.log(`  ${chalk.yellow('codeagent snippet suggest')}     - Suggest snippets based on current context`);
+      console.log(`  ${chalk.yellow('codeagent snippet create')}      - Create a new code snippet`);
+      console.log('');
+    });
+    
+    // Parse command line arguments
+    program.parse();
+  } catch (error) {
+    console.error(chalk.red(`Error loading commands: ${error.message}`));
+    process.exit(1);
   }
-
-  // Load user configuration
-  const config = resolveConfig(program.opts().profile);
-  
-  // Initialize core services
-  const contextManager = new ContextManager(program.opts().context);
-  const toolRegistry = new ToolRegistry();
-  
-  // Register built-in tools
-  registerBuiltinTools(toolRegistry);
-  
-  // Initialize learning manager
-  const learningManager = new LearningManager(
-    path.join(userConfigDir, 'learning.db'),
-    contextManager,
-    toolRegistry
-  );
-
-  // Make services available to commands
-  program.context = {
-    contextManager,
-    toolRegistry,
-    learningManager,
-    config
-  };
-
-  // Load all commands dynamically
-  await loadCommands(program);
-  
-  // Add global hook to validate key requirements
-  program.hook('preAction', async (thisCommand) => {
-    const opts = thisCommand.opts();
-    
-    // Verify OpenAI API key is available
-    if (!process.env.OPENAI_API_KEY) {
-      console.error(chalk.red('Error: OPENAI_API_KEY environment variable is not set.'));
-      console.log('Please set your API key using one of these methods:');
-      console.log('  1. Create a .env file in the project root with OPENAI_API_KEY=your-key');
-      console.log('  2. Set the environment variable: export OPENAI_API_KEY=your-key');
-      console.log('  3. Add it to ~/.codeagent/config.json');
-      process.exit(1);
-    }
-    
-    // Initialize context for this command
-    if (opts.context) {
-      await contextManager.setProjectPath(opts.context);
-    }
-  });
-
-  // Execute the command
-  await program.parseAsync();
 }
 
-main().catch(error => {
-  console.error(chalk.red('Fatal error:'), error);
-  process.exit(1);
-});
+// Execute the main function
+registerCommands();
