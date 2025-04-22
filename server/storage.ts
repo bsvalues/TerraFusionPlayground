@@ -1067,6 +1067,10 @@ export class MemStorage implements IStorage {
   private currentRepositoryReviewId: number;
   private currentRepositoryDependencyId: number;
   
+  // Intelligent Development Workflow Optimizer counters
+  private currentWorkflowOptimizationRequestId: number;
+  private currentWorkflowOptimizationResultId: number;
+  
   // GIS counters
   private currentGISLayerId: number;
   private currentGISFeatureCollectionId: number;
@@ -1125,6 +1129,10 @@ export class MemStorage implements IStorage {
     this.repositoryVersions = new Map<number, RepositoryVersion>();
     this.repositoryReviews = new Map<number, RepositoryReview>();
     this.repositoryDependencies = new Map<number, RepositoryDependency>();
+    
+    // Initialize Intelligent Development Workflow Optimizer maps
+    this.workflowOptimizationRequests = new Map<number, WorkflowOptimizationRequest>();
+    this.workflowOptimizationResults = new Map<number, WorkflowOptimizationResult>();
     
     // Initialize Development Tools maps
     this.codeSnippets = new Map<number, CodeSnippet>();
@@ -1214,6 +1222,10 @@ export class MemStorage implements IStorage {
     this.currentRepositoryVersionId = 1;
     this.currentRepositoryReviewId = 1;
     this.currentRepositoryDependencyId = 1;
+    
+    // Initialize Intelligent Development Workflow Optimizer counters
+    this.currentWorkflowOptimizationRequestId = 1;
+    this.currentWorkflowOptimizationResultId = 1;
     
     // Initialize GIS counters
     this.currentGISLayerId = 1;
