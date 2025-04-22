@@ -243,7 +243,7 @@ const DevelopmentPlatformPage = () => {
           <p className="text-gray-500">Build and deploy assessment applications with ease</p>
         </div>
         <div className="flex items-center gap-2">
-          <WorkflowSuggestionSidebar userId={1} />
+          {/* <WorkflowSuggestionSidebar userId={1} /> */}
           <Button 
             onClick={() => setShowNewProjectDialog(true)}
             className="flex items-center space-x-1"
