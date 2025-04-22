@@ -106,16 +106,17 @@ export class AgentWebSocketService {
       
       try {
         try {
-          // For Replit environment specifically, try the simplest approach with a relative path
-          if (window.location.host.endsWith('.replit.dev')) {
-            // Create WebSocket with just a relative path - Replit's proxy will handle the rest
-            const relativePath = '/api/agents/ws';
-            console.log(`[Agent WebSocket] Using relative WebSocket path: ${relativePath}`);
-            this.socket = new WebSocket(`wss://${window.location.host}${relativePath}`);
-          } else {
-            // Use the fully constructed URL for non-Replit environments
-            this.socket = new WebSocket(primaryWsUrl);
-          }
+          // Use a consistent approach for all environments
+          // Just use the relative path approach which works in both local and Replit environments
+          const relativePath = '/api/agents/ws';
+          console.log(`[Agent WebSocket] Using relative WebSocket path: ${relativePath}`);
+          
+          // Use the protocol from the current page
+          const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const wsUrl = `${wsProtocol}//${window.location.host}${relativePath}`;
+          
+          console.log(`[Agent WebSocket] Connecting to: ${wsUrl}`);
+          this.socket = new WebSocket(wsUrl);
         } catch (wsError) {
           console.error('[Agent WebSocket] Error creating WebSocket connection:', wsError);
           // Immediately fall back to polling on error
