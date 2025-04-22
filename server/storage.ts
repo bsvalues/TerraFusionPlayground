@@ -84,7 +84,15 @@ import {
   RuleCategory, RuleLevel, EntityType, IssueStatus, MessagePriority, MessageEventType, ImprovementType,
   CollaborationStatus, CollaborationRole
 } from "@shared/schema";
-import { MarketTrend, PropertyHistoryDataPoint, PropertyAnalysisResult } from "@shared/schema";
+import { 
+  MarketTrend, 
+  PropertyHistoryDataPoint, 
+  PropertyAnalysisResult,
+  WorkflowOptimizationRequest,
+  InsertWorkflowOptimizationRequest,
+  WorkflowOptimizationResult,
+  InsertWorkflowOptimizationResult
+} from "@shared/schema";
 import { 
   GISLayer, InsertGISLayer, 
   GISFeatureCollection, InsertGISFeatureCollection,
