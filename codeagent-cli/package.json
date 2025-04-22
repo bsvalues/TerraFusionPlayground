@@ -1,0 +1,31 @@
+{
+  "name": "codeagent-cli",
+  "version": "1.0.0",
+  "description": "Enhanced AI code assistant with learning capabilities",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "prepack": "npm run build"
+  },
+  "bin": {
+    "codeagent": "./dist/index.js"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "coding",
+    "assistant",
+    "openai",
+    "langchain",
+    "agent"
+  ],
+  "author": "",
+  "license": "MIT"
+}
