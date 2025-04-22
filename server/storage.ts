@@ -8624,6 +8624,190 @@ export class PgStorage implements IStorage {
   async getRepositoryDependency(id: number): Promise<RepositoryDependency | undefined> {
     return this.repositoryDependencies.get(id);
   }
+
+  // Intelligent Development Workflow Optimizer methods
+  // Workflow Optimization Request methods
+  async getWorkflowOptimizationRequests(filters?: { status?: string, optimizationType?: string, userId?: number, repositoryId?: number }): Promise<WorkflowOptimizationRequest[]> {
+    let requests = Array.from(this.workflowOptimizationRequests.values());
+    
+    // Apply filters if provided
+    if (filters) {
+      if (filters.status) {
+        requests = requests.filter(request => request.status === filters.status);
+      }
+      
+      if (filters.optimizationType) {
+        requests = requests.filter(request => request.optimizationType === filters.optimizationType);
+      }
+      
+      if (filters.userId) {
+        requests = requests.filter(request => request.userId === filters.userId);
+      }
+      
+      if (filters.repositoryId) {
+        requests = requests.filter(request => request.repositoryId === filters.repositoryId);
+      }
+    }
+    
+    return requests;
+  }
+  
+  async getWorkflowOptimizationRequestById(id: number): Promise<WorkflowOptimizationRequest | undefined> {
+    return this.workflowOptimizationRequests.get(id);
+  }
+  
+  async getWorkflowOptimizationRequestByRequestId(requestId: string): Promise<WorkflowOptimizationRequest | undefined> {
+    return Array.from(this.workflowOptimizationRequests.values())
+      .find(request => request.requestId === requestId);
+  }
+  
+  async createWorkflowOptimizationRequest(request: InsertWorkflowOptimizationRequest): Promise<WorkflowOptimizationRequest> {
+    const id = this.currentWorkflowOptimizationRequestId++;
+    const timestamp = new Date();
+    const requestId = crypto.randomUUID();
+    
+    const newRequest: WorkflowOptimizationRequest = {
+      ...request,
+      id,
+      requestId,
+      status: request.status || WorkflowOptimizationStatus.PENDING,
+      priority: request.priority || WorkflowOptimizationPriority.MEDIUM,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+    
+    this.workflowOptimizationRequests.set(id, newRequest);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agent_id: 1, // Using agent_id to match expected schema
+      activity: `Created workflow optimization request: ${newRequest.title}`,
+      entity_type: 'workflow_optimization',
+      entity_id: newRequest.requestId
+    });
+    
+    return newRequest;
+  }
+  
+  async updateWorkflowOptimizationRequest(id: number, updates: Partial<InsertWorkflowOptimizationRequest>): Promise<WorkflowOptimizationRequest | undefined> {
+    const request = this.workflowOptimizationRequests.get(id);
+    if (!request) {
+      return undefined;
+    }
+    
+    const updatedRequest: WorkflowOptimizationRequest = {
+      ...request,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.workflowOptimizationRequests.set(id, updatedRequest);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agent_id: 1, // Using agent_id to match expected schema
+      activity: `Updated workflow optimization request: ${updatedRequest.title}`,
+      entity_type: 'workflow_optimization',
+      entity_id: updatedRequest.requestId
+    });
+    
+    return updatedRequest;
+  }
+  
+  async deleteWorkflowOptimizationRequest(id: number): Promise<boolean> {
+    const request = this.workflowOptimizationRequests.get(id);
+    if (!request) {
+      return false;
+    }
+    
+    // Also delete any associated results
+    const results = await this.getWorkflowOptimizationResults(request.requestId);
+    for (const result of results) {
+      this.workflowOptimizationResults.delete(result.id);
+    }
+    
+    this.workflowOptimizationRequests.delete(id);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agent_id: 1, // Using agent_id to match expected schema
+      activity: `Deleted workflow optimization request: ${request.title}`,
+      entity_type: 'workflow_optimization',
+      entity_id: request.requestId
+    });
+    
+    return true;
+  }
+  
+  // Workflow Optimization Result methods
+  async getWorkflowOptimizationResults(requestId?: string): Promise<WorkflowOptimizationResult[]> {
+    let results = Array.from(this.workflowOptimizationResults.values());
+    
+    if (requestId) {
+      results = results.filter(result => result.requestId === requestId);
+    }
+    
+    return results;
+  }
+  
+  async getWorkflowOptimizationResultById(id: number): Promise<WorkflowOptimizationResult | undefined> {
+    return this.workflowOptimizationResults.get(id);
+  }
+  
+  async createWorkflowOptimizationResult(result: InsertWorkflowOptimizationResult): Promise<WorkflowOptimizationResult> {
+    const id = this.currentWorkflowOptimizationResultId++;
+    const timestamp = new Date();
+    
+    const newResult: WorkflowOptimizationResult = {
+      ...result,
+      id,
+      createdAt: timestamp
+    };
+    
+    this.workflowOptimizationResults.set(id, newResult);
+    
+    // Update the corresponding request to completed status
+    const request = await this.getWorkflowOptimizationRequestByRequestId(result.requestId);
+    if (request) {
+      await this.updateWorkflowOptimizationRequest(request.id, {
+        status: WorkflowOptimizationStatus.COMPLETED
+      });
+    }
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agent_id: 1, // Using agent_id to match expected schema
+      activity: `Created workflow optimization result for request ID: ${result.requestId}`,
+      entity_type: 'workflow_optimization_result',
+      entity_id: result.requestId
+    });
+    
+    return newResult;
+  }
+  
+  async updateWorkflowOptimizationResult(id: number, updates: Partial<InsertWorkflowOptimizationResult>): Promise<WorkflowOptimizationResult | undefined> {
+    const result = this.workflowOptimizationResults.get(id);
+    if (!result) {
+      return undefined;
+    }
+    
+    const updatedResult: WorkflowOptimizationResult = {
+      ...result,
+      ...updates
+    };
+    
+    this.workflowOptimizationResults.set(id, updatedResult);
+    
+    // Create system activity
+    await this.createSystemActivity({
+      agent_id: 1, // Using agent_id to match expected schema
+      activity: `Updated workflow optimization result ID: ${result.id}`,
+      entity_type: 'workflow_optimization_result',
+      entity_id: result.requestId
+    });
+    
+    return updatedResult;
+  }
 }
 
 // Use database storage instead of in-memory
