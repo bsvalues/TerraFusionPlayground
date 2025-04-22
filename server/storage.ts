@@ -147,6 +147,21 @@ export interface IStorage {
   getRepositoriesByOwner(ownerId: number): Promise<Repository[]>;
   getFeaturedRepositories(): Promise<Repository[]>;
   
+  // Intelligent Development Workflow Optimizer methods
+  // Workflow Optimization Request methods
+  getWorkflowOptimizationRequests(filters?: { status?: string, optimizationType?: string, userId?: number, repositoryId?: number }): Promise<WorkflowOptimizationRequest[]>;
+  getWorkflowOptimizationRequestById(id: number): Promise<WorkflowOptimizationRequest | undefined>;
+  getWorkflowOptimizationRequestByRequestId(requestId: string): Promise<WorkflowOptimizationRequest | undefined>;
+  createWorkflowOptimizationRequest(request: InsertWorkflowOptimizationRequest): Promise<WorkflowOptimizationRequest>;
+  updateWorkflowOptimizationRequest(id: number, updates: Partial<InsertWorkflowOptimizationRequest>): Promise<WorkflowOptimizationRequest | undefined>;
+  deleteWorkflowOptimizationRequest(id: number): Promise<boolean>;
+  
+  // Workflow Optimization Result methods
+  getWorkflowOptimizationResults(requestId?: string): Promise<WorkflowOptimizationResult[]>;
+  getWorkflowOptimizationResultById(id: number): Promise<WorkflowOptimizationResult | undefined>;
+  createWorkflowOptimizationResult(result: InsertWorkflowOptimizationResult): Promise<WorkflowOptimizationResult>;
+  updateWorkflowOptimizationResult(id: number, updates: Partial<InsertWorkflowOptimizationResult>): Promise<WorkflowOptimizationResult | undefined>;
+  
   // Repository Version methods
   getRepositoryVersions(repositoryId: number): Promise<RepositoryVersion[]>;
   getRepositoryVersionById(id: number): Promise<RepositoryVersion | undefined>;
@@ -932,6 +947,10 @@ export class MemStorage implements IStorage {
   private repositoryVersions: Map<number, RepositoryVersion>;
   private repositoryReviews: Map<number, RepositoryReview>;
   private repositoryDependencies: Map<number, RepositoryDependency>;
+  
+  // Intelligent Development Workflow Optimizer Maps
+  private workflowOptimizationRequests: Map<number, WorkflowOptimizationRequest>;
+  private workflowOptimizationResults: Map<number, WorkflowOptimizationResult>;
   
   // Development Tools Maps
   private codeSnippets: Map<number, CodeSnippet>;
