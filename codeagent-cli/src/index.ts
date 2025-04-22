@@ -44,6 +44,10 @@ async function registerCommands() {
     const { register: registerSnippet } = await import('./commands/snippet.js');
     registerSnippet(program);
     
+    // Import and register the share command
+    const { register: registerShare } = await import('./commands/share.js');
+    registerShare(program);
+    
     // Add more commands as they are developed
     // ...
     
@@ -64,6 +68,8 @@ async function registerCommands() {
       console.log(`  ${chalk.yellow('codeagent reset --list-resetable')} - List all items that can be reset`);
       console.log(`  ${chalk.yellow('codeagent snippet suggest')}     - Suggest snippets based on current context`);
       console.log(`  ${chalk.yellow('codeagent snippet create')}      - Create a new code snippet`);
+      console.log(`  ${chalk.yellow('codeagent share code')}          - Share code directly with a link`);
+      console.log(`  ${chalk.yellow('codeagent share snippet <id>')}  - Share a snippet from your library`);
       console.log('');
     });
     
