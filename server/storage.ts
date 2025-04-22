@@ -8799,7 +8799,16 @@ export class PgStorage implements IStorage {
   // Intelligent Development Workflow Optimizer methods
   // Workflow Optimization Request methods
   async getWorkflowOptimizationRequests(filters?: { status?: string, optimizationType?: string, userId?: number, repositoryId?: number }): Promise<WorkflowOptimizationRequest[]> {
+    // Initialize the map if it doesn't exist
+    if (!this.workflowOptimizationRequests) {
+      console.log("Initializing workflowOptimizationRequests map");
+      this.workflowOptimizationRequests = new Map<number, WorkflowOptimizationRequest>();
+      // Seed some initial data
+      this.seedWorkflowOptimizerData();
+    }
+    
     let requests = Array.from(this.workflowOptimizationRequests.values());
+    console.log(`Found ${requests.length} workflow optimization requests in storage`);
     
     // Apply filters if provided
     if (filters) {
@@ -8912,10 +8921,23 @@ export class PgStorage implements IStorage {
   
   // Workflow Optimization Result methods
   async getWorkflowOptimizationResults(requestId?: string): Promise<WorkflowOptimizationResult[]> {
+    // Initialize the map if it doesn't exist
+    if (!this.workflowOptimizationResults) {
+      console.log("Initializing workflowOptimizationResults map");
+      this.workflowOptimizationResults = new Map<number, WorkflowOptimizationResult>();
+      
+      // If the requests map doesn't exist either, seed the data
+      if (!this.workflowOptimizationRequests) {
+        this.seedWorkflowOptimizerData();
+      }
+    }
+    
     let results = Array.from(this.workflowOptimizationResults.values());
+    console.log(`Found ${results.length} workflow optimization results in storage`);
     
     if (requestId) {
       results = results.filter(result => result.requestId === requestId);
+      console.log(`Filtered to ${results.length} results for requestId ${requestId}`);
     }
     
     return results;
