@@ -119,7 +119,7 @@ async function shareExistingSnippet(id: string, options: {
     // Open URL in browser if requested
     if (options.open) {
       console.log(chalk.green('Opening in browser...'));
-      await open(url);
+      await open(String(url));
     }
     
     if (qrCodePath) {
@@ -340,7 +340,7 @@ async function shareDirectSnippet(options: {
     // Open URL in browser if requested
     if (options.open) {
       console.log(chalk.green('Opening in browser...'));
-      await open(url);
+      await open(String(url));
     }
     
     if (qrCodePath) {
