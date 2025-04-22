@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { randomUUID } from "crypto";
+import { WebSocketServer } from "ws";
 import { storage } from "./storage";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
@@ -2784,6 +2785,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add detailed logging to catch WebSocket issues
   console.log('[WebSocket Debug] Setting up WebSocket server for agent system');
   
+  // Add a simple WebSocket server on a distinct path (/ws)
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws' 
+  });
+  
+  console.log('Simple WebSocket server created on path: /ws');
+  
+  // Set up WebSocket server events
+  wss.on('connection', (ws) => {
+    console.log('WebSocket client connected to /ws');
+    
+    ws.on('message', (message) => {
+      try {
+        const parsedMessage = JSON.parse(message.toString());
+        console.log('Received message:', parsedMessage);
+        
+        // Echo the message back with a timestamp
+        ws.send(JSON.stringify({
+          type: 'echo',
+          originalMessage: parsedMessage,
+          timestamp: new Date().toISOString()
+        }));
+      } catch (error) {
+        console.error('Error handling WebSocket message:', error);
+      }
+    });
+    
+    ws.on('close', () => {
+      console.log('WebSocket client disconnected from /ws');
+    });
+    
+    // Send welcome message
+    ws.send(JSON.stringify({
+      type: 'welcome',
+      message: 'Connected to TerraFusion WebSocket server',
+      timestamp: new Date().toISOString()
+    }));
+  });
+  
   // Debug upgrade requests before they're handled by the WebSocket server
   // This should come BEFORE initializing the WebSocket services to ensure 
   // we see all upgrade requests regardless of whether they're handled
@@ -2795,7 +2836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[WebSocket Debug] Upgrade request for path:', pathname);
       
       // Only log detailed headers for our application paths (not Vite HMR)
-      if (pathname === '/api/agents/ws' || pathname === '/api/collaboration/ws') {
+      if (pathname === '/api/agents/ws' || pathname === '/api/collaboration/ws' || pathname === '/ws') {
         console.log('[WebSocket Debug] Headers:', JSON.stringify(request.headers, null, 2));
       }
     } catch (error) {
