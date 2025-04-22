@@ -57,6 +57,8 @@ import { registerDatabaseConversionRoutes } from "./routes/database-conversion-r
 import { DatabaseConversionService } from "./services/database-conversion";
 import createRepositoryMarketplaceRoutes from "./routes/repository-marketplace-routes";
 import { RepositoryMarketplaceService } from "./services/repository-marketplace-service";
+import workflowOptimizerRoutes from "./routes/workflow-optimizer-routes";
+import { workflowOptimizerService } from "./services/workflow-optimizer-service";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
