@@ -1,0 +1,18 @@
+{
+  "name": "git-tools",
+  "version": "1.0.0",
+  "description": "Enhanced Git tools for CodeAgent",
+  "author": "CodeAgent Team",
+  "tools": [
+    "tools/gitDiffAnalyzer.js",
+    "tools/gitCommitHelper.js"
+  ],
+  "hooks": {
+    "beforeCommand": [
+      "hooks/beforeCommand.js"
+    ],
+    "afterCommand": [
+      "hooks/afterCommand.js"
+    ]
+  }
+}
