@@ -30,7 +30,7 @@ import {
   Database
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
-import { WorkflowSuggestionSidebar } from '@/components/workflow-optimizer';
+// import { WorkflowSuggestionSidebar } from '@/components/workflow-optimizer';
 
 // Project type from schema
 interface Project {
