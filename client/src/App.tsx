@@ -31,6 +31,7 @@ import AssessmentModelWorkbenchPage from "@/pages/AssessmentModelWorkbenchPage";
 import VoiceCommandPage from "@/pages/VoiceCommandPage";
 import VoiceCommandSettingsPage from "@/pages/voice-command-settings-page";
 import DatabaseConversionPage from "@/pages/database-conversion-page";
+import ExampleDashboard from "@/pages/example-dashboard";
 // Import the modularized GIS components
 import { GISHub as GISHubPage, Terrain3DDemo as Terrain3DDemoPage, GISProvider } from "@/modules/gis";
 // Original page imports until we migrate them all to the GIS module
@@ -203,6 +204,13 @@ function Router() {
       <Route path="/gis/terrain-3d">
         <AppLayout>
           <Terrain3DDemoPage />
+        </AppLayout>
+      </Route>
+
+      {/* TerraFusion UI Components Demo */}
+      <Route path="/example-dashboard">
+        <AppLayout>
+          <ExampleDashboard />
         </AppLayout>
       </Route>
 
