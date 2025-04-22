@@ -21,8 +21,8 @@ export function getSeedWorkflowOptimizerData(): SeedWorkflowOptimizerData {
   let requestId = 1;
   let resultId = 1;
   
-  // Create a completed code quality optimization request
-  const codeQualityRequestId = crypto.randomUUID();
+  // Create a fixed requestId to ensure consistency across server restarts
+  const codeQualityRequestId = "5d966f0f-8b78-43dc-ac3f-a2e91da14b81"; // Match the one in the results
   const codeQualityRequest: WorkflowOptimizationRequest = {
     id: requestId++,
     requestId: codeQualityRequestId,
@@ -88,7 +88,7 @@ export function getSeedWorkflowOptimizerData(): SeedWorkflowOptimizerData {
   results.push(codeQualityResult);
   
   // Create a completed performance optimization request
-  const perfRequestId = crypto.randomUUID();
+  const perfRequestId = "503cadc4-b33e-4955-b6c3-d0a899530792"; // Match the one in the results
   const perfRequest: WorkflowOptimizationRequest = {
     id: requestId++,
     requestId: perfRequestId,
