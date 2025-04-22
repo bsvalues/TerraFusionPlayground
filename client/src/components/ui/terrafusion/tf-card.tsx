@@ -1,183 +1,142 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
-interface TFCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'gradient' | 'glass' | 'elevation' | 'ai';
-  glowEffect?: boolean;
+/**
+ * TerraFusion Card Types
+ */
+export type TFCardLevel = 'primary' | 'secondary' | 'tertiary' | 'glass';
+export type TFCardSize = 'sm' | 'md' | 'lg' | 'xl' | 'auto';
+
+/**
+ * TerraFusion Card Props Interface
+ */
+export interface TFCardProps {
+  /** Card title to display in the header */
+  title?: string;
+  /** Card description to display under the title */
+  description?: string;
+  /** Card content */
+  children: ReactNode;
+  /** Card footer content */
+  footer?: ReactNode;
+  /** Card header actions (buttons, icons, etc.) */
+  headerActions?: ReactNode;
+  /** Card visual importance level */
+  level?: TFCardLevel;
+  /** Card size preset */
+  size?: TFCardSize;
+  /** Optional className for additional styling */
+  className?: string;
+  /** Optional content className for additional styling */
+  contentClassName?: string;
+  /** Optional header className for additional styling */
+  headerClassName?: string;
+  /** Optional footer className for additional styling */
+  footerClassName?: string;
+  /** Optional ID for the card */
+  id?: string;
+  /** Gradient background for card */
+  gradient?: boolean;
+  /** Border Highlight */
+  highlight?: boolean;
+  /** Hover effect */
+  hoverable?: boolean;
+  /** Is the card in a loading state */
+  loading?: boolean;
+  /** Should the card have a shadow */
+  shadow?: boolean;
+  /** Card data attributes */
+  'data-testid'?: string;
 }
 
 /**
  * TerraFusion Card Component
  * 
- * A stylized card component that matches the TerraFusion design system.
- * 
- * @param variant - The style variant of the card 
- *   - default: Standard card with subtle gradient
- *   - gradient: Card with more pronounced gradient background
- *   - glass: Glassmorphic card with backdrop blur
- *   - elevation: 3D elevation chart style card
- *   - ai: Special styling for AI-related content
- * @param glowEffect - Whether to apply a subtle glow effect to the card
+ * A styled card component for the TerraFusion UI design system
  */
-export const TFCard = ({
+export const TFCard: React.FC<TFCardProps> = ({
+  title,
+  description,
   children,
-  className,
-  variant = 'default',
-  glowEffect = false,
-  ...props
-}: TFCardProps) => {
-  const baseClasses = "rounded-xl overflow-hidden";
-  
-  // Determine variant-specific classes
-  const variantClasses = {
-    default: "tf-card",
-    gradient: "tf-card-gradient",
-    glass: "tf-card-glass",
-    elevation: "tf-elevation-chart",
-    ai: "tf-ai-card"
+  footer,
+  headerActions,
+  level = 'primary',
+  size = 'md',
+  className = '',
+  contentClassName = '',
+  headerClassName = '',
+  footerClassName = '',
+  id,
+  gradient = false,
+  highlight = false,
+  hoverable = false,
+  loading = false,
+  shadow = true,
+  'data-testid': testId,
+}) => {
+  // Size-based classes
+  const sizeClasses = {
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-lg',
+    xl: 'max-w-xl',
+    auto: 'w-full',
   };
 
+  // Level-based classes
+  const levelClasses = {
+    primary: 'bg-card text-card-foreground',
+    secondary: 'bg-secondary text-secondary-foreground',
+    tertiary: 'bg-muted text-muted-foreground',
+    glass: 'bg-opacity-70 backdrop-blur-md bg-background border-opacity-30 shadow-lg',
+  };
+
+  // State-based classes
+  const stateClasses = [
+    gradient ? 'bg-gradient-to-br from-primary/10 to-primary/5' : '',
+    highlight ? 'border-primary/50' : '',
+    hoverable ? 'transition-all duration-200 hover:shadow-md hover:-translate-y-1' : '',
+    shadow ? 'shadow-lg' : 'shadow-none',
+  ].join(' ');
+
   return (
-    <div 
+    <Card 
       className={cn(
-        baseClasses,
-        variantClasses[variant],
-        glowEffect && "tf-glow-effect",
+        levelClasses[level],
+        sizeClasses[size],
+        stateClasses,
+        loading ? 'animate-pulse' : '',
         className
       )}
-      {...props}
+      id={id}
+      data-testid={testId}
     >
-      {children}
-    </div>
+      {(title || description || headerActions) && (
+        <CardHeader className={cn('flex flex-row items-start justify-between', headerClassName)}>
+          <div>
+            {title && <CardTitle className="text-xl font-semibold">{title}</CardTitle>}
+            {description && <CardDescription>{description}</CardDescription>}
+          </div>
+          {headerActions && (
+            <div className="flex items-center space-x-2">
+              {headerActions}
+            </div>
+          )}
+        </CardHeader>
+      )}
+      
+      <CardContent className={cn('', contentClassName)}>
+        {children}
+      </CardContent>
+      
+      {footer && (
+        <CardFooter className={cn('flex items-center justify-between', footerClassName)}>
+          {footer}
+        </CardFooter>
+      )}
+    </Card>
   );
 };
 
-/**
- * TerraFusion Card Header
- */
-export const TFCardHeader = ({
-  children,
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
-  return (
-    <div 
-      className={cn("p-4 border-b border-border/20", className)}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-};
-
-/**
- * TerraFusion Card Title
- */
-export const TFCardTitle = ({
-  children,
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
-  return (
-    <h3 
-      className={cn("text-lg font-semibold tf-heading", className)}
-      {...props}
-    >
-      {children}
-    </h3>
-  );
-};
-
-/**
- * TerraFusion Card Content
- */
-export const TFCardContent = ({
-  children,
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
-  return (
-    <div 
-      className={cn("p-4", className)}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-};
-
-/**
- * TerraFusion Card Footer
- */
-export const TFCardFooter = ({
-  children,
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
-  return (
-    <div 
-      className={cn("p-4 border-t border-border/20 bg-foreground/5", className)}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-};
-
-/**
- * TerraFusion Stat Card
- */
-export const TFStatCard = ({
-  label,
-  value,
-  icon,
-  trend,
-  className,
-  ...props
-}: {
-  label: string;
-  value: string | number;
-  icon?: React.ReactNode;
-  trend?: {
-    value: number;
-    direction: 'up' | 'down' | 'neutral';
-  };
-} & Omit<React.HTMLAttributes<HTMLDivElement>, 'label'>) => {
-  return (
-    <div 
-      className={cn("tf-stat-card", className)}
-      {...props}
-    >
-      <div className="flex justify-between items-start mb-1">
-        <span className="tf-stat-label">{label}</span>
-        {icon && <span className="text-muted-foreground">{icon}</span>}
-      </div>
-      <div className="flex items-baseline">
-        <span className="tf-stat-value">{value}</span>
-        {trend && (
-          <span className={cn(
-            "ml-2 text-xs flex items-center",
-            trend.direction === 'up' ? "text-green-500" : 
-            trend.direction === 'down' ? "text-red-500" : 
-            "text-muted-foreground"
-          )}>
-            {trend.direction === 'up' ? (
-              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path>
-              </svg>
-            ) : trend.direction === 'down' ? (
-              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-              </svg>
-            ) : (
-              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 12h14"></path>
-              </svg>
-            )}
-            {trend.value}%
-          </span>
-        )}
-      </div>
-    </div>
-  );
-};
+export default TFCard;
