@@ -1,15 +1,17 @@
 // Types related to the workflow optimizer feature
 
+// Enum aligned with backend WorkflowOptimizationType
 export type OptimizationType = 
-  | 'CODE_QUALITY' 
-  | 'PERFORMANCE' 
-  | 'SECURITY' 
-  | 'ARCHITECTURE' 
-  | 'DEPENDENCY_MANAGEMENT'
-  | 'TESTING_COVERAGE'
-  | 'ACCESSIBILITY'
-  | 'DEVELOPER_EXPERIENCE';
+  | 'code_quality'
+  | 'performance'
+  | 'architecture'
+  | 'security'
+  | 'best_practices'
+  | 'developer_productivity'
+  | 'documentation'
+  | 'testing';
 
+// Enum aligned with backend WorkflowOptimizationStatus
 export type OptimizationStatus = 
   | 'pending'
   | 'in_progress'
@@ -17,12 +19,13 @@ export type OptimizationStatus =
   | 'failed'
   | 'cancelled';
 
+// Enum aligned with backend WorkflowOptimizationPriority
 export type OptimizationPriority = 
   | 'low'
   | 'medium'
-  | 'high'
-  | 'critical';
+  | 'high';
 
+// Interface aligned with workflowOptimizationRequests table in schema.ts
 export interface WorkflowOptimizationRequest {
   id: number;
   requestId: string;
@@ -30,14 +33,17 @@ export interface WorkflowOptimizationRequest {
   repositoryId?: number | null;
   title: string;
   description: string;
+  codebase?: string | null;
   optimizationType: OptimizationType;
   status: OptimizationStatus;
   priority: OptimizationPriority;
+  tags?: string[] | null;
+  settings?: Record<string, any> | null;
   createdAt: string;
-  updatedAt?: string | null;
-  metadata?: Record<string, any> | null;
+  updatedAt: string;
 }
 
+// Optimization suggestion for workflow improvements
 export interface OptimizationSuggestion {
   id: string;
   title: string;
@@ -51,14 +57,19 @@ export interface OptimizationSuggestion {
   implementationSteps?: string[] | null;
 }
 
+// Interface aligned with workflowOptimizationResults table in schema.ts
 export interface WorkflowOptimizationResult {
   id: number;
-  resultId: string;
   requestId: string;
   summary: string;
-  impactScore: number;
-  suggestions: OptimizationSuggestion[];
-  analysisDetails?: Record<string, any> | null;
+  recommendationsJson: OptimizationSuggestion[];
+  improvementScore: number;
+  runTime?: number | null;
+  modelUsed?: string | null;
   createdAt: string;
-  metadata?: Record<string, any> | null;
+  
+  // Backwards compatibility fields for existing component
+  resultId?: string;
+  impactScore?: number;
+  suggestions?: OptimizationSuggestion[];
 }

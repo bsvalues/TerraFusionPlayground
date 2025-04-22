@@ -13,7 +13,59 @@ import {
   Clock3Icon,
   FileTextIcon
 } from 'lucide-react';
-import { WorkflowOptimizationRequest, WorkflowOptimizationResult, OptimizationSuggestion } from '@/types/workflow-optimizer';
+import { OptimizationSuggestion } from '@/types/workflow-optimizer';
+
+// Define types based on schema.ts enums and tables
+type WorkflowOptimizationStatus = 
+  | 'pending'
+  | 'in_progress'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+type WorkflowOptimizationType = 
+  | 'code_quality'
+  | 'performance'
+  | 'architecture'
+  | 'security'
+  | 'best_practices'
+  | 'developer_productivity'
+  | 'documentation'
+  | 'testing';
+
+type WorkflowOptimizationPriority = 
+  | 'low'
+  | 'medium'
+  | 'high';
+
+// Mapped to schema.ts types
+interface WorkflowOptimizationRequest {
+  id: number;
+  requestId: string;
+  repositoryId?: number | null;
+  userId: number;
+  title: string;
+  description: string;
+  codebase?: string | null;
+  optimizationType: WorkflowOptimizationType;
+  priority: WorkflowOptimizationPriority;
+  status: WorkflowOptimizationStatus;
+  tags?: string[] | null;
+  settings?: Record<string, any> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface WorkflowOptimizationResult {
+  id: number;
+  requestId: string;
+  summary: string;
+  recommendationsJson: OptimizationSuggestion[];
+  improvementScore: number;
+  runTime?: number | null;
+  modelUsed?: string | null;
+  createdAt: string;
+}
 
 type WorkflowSuggestionCardProps = {
   optimization: WorkflowOptimizationRequest;
