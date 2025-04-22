@@ -1,7 +1,7 @@
 /**
  * multi-agent-system.ts
  * 
- * Example usage of the multi-agent architecture
+ * Example usage of the multi-agent architecture with adaptive learning
  */
 
 import {
@@ -14,11 +14,50 @@ import {
   DebuggingTaskType,
   LocalDeploymentTaskType,
   VersionControlTaskType,
-  WebDeploymentTaskType
+  WebDeploymentTaskType,
+  // Adaptive learning components
+  AdaptiveDatabaseAgent,
+  AdaptiveGisAgent,
+  LearningService,
+  LearningRepository
 } from '../src/agents';
 
 async function main() {
-  console.log('=== Multi-Agent System Example ===');
+  console.log('=== Multi-Agent System Example with Adaptive Learning ===');
+  
+  // Initialize the learning service
+  console.log('\n[1] Initializing Learning Components');
+  
+  const learningService = LearningService.getInstance();
+  console.log('Learning Service initialized');
+  
+  // Configure AI providers if API keys are available
+  if (process.env.ANTHROPIC_API_KEY) {
+    learningService.configureProvider({
+      provider: 'anthropic',
+      // the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
+      model: 'claude-3-7-sonnet-20250219'
+    });
+    console.log('Anthropic provider configured');
+  } else {
+    console.log('Anthropic API key not available');
+  }
+  
+  if (process.env.PERPLEXITY_API_KEY) {
+    learningService.configureProvider({
+      provider: 'perplexity',
+      model: 'llama-3.1-sonar-small-128k-online'
+    });
+    console.log('Perplexity provider configured');
+  } else {
+    console.log('Perplexity API key not available');
+  }
+  
+  const learningRepository = LearningRepository.getInstance();
+  console.log('Learning Repository initialized');
+  
+  // Create standard agent system
+  console.log('\n[2] Initializing Standard Agent System');
   
   // Create agent system with configuration
   const config: AgentSystemConfig = {
@@ -48,151 +87,187 @@ async function main() {
     console.log(`  Capabilities: ${agent.capabilities.join(', ')}`);
   });
   
-  // Find agents by capability
-  const dbAgents = agentSystem.findAgentsByCapability('QUERY_OPTIMIZATION');
-  console.log(`\nAgents with QUERY_OPTIMIZATION capability (${dbAgents.length}):`);
-  dbAgents.forEach(agent => {
-    console.log(`- ${agent.name} (ID: ${agent.id})`);
-  });
+  // Initialize adaptive agents
+  console.log('\n[3] Initializing Adaptive Agents');
   
-  // Example: Submit database query analysis task
-  console.log('\n=== Database Query Analysis ===');
+  // Create and initialize adaptive database agent
+  const adaptiveDbAgent = new AdaptiveDatabaseAgent();
+  await adaptiveDbAgent.initialize();
+  console.log(`Adaptive Database Agent initialized (ID: ${adaptiveDbAgent.id})`);
+  
+  // Create and initialize adaptive GIS agent
+  const adaptiveGisAgent = new AdaptiveGisAgent();
+  await adaptiveGisAgent.initialize();
+  console.log(`Adaptive GIS Agent initialized (ID: ${adaptiveGisAgent.id})`);
+  
+  // Example: Standard vs Adaptive Database Query Analysis
+  console.log('\n[4] Comparing Standard vs Adaptive Query Analysis');
+  
+  const queryToAnalyze = 'SELECT * FROM users JOIN orders ON users.id = orders.user_id WHERE users.country = "US" ORDER BY orders.total DESC';
+  
+  console.log('\n=== Standard Database Query Analysis ===');
   try {
-    const result = await agentSystem.submitTask({
-      id: `task-${Date.now()}-1`,
+    const standardResult = await agentSystem.submitTask({
+      id: `task-${Date.now()}-1a`,
       type: DatabaseTaskType.ANALYZE_QUERY,
       priority: 'high',
       payload: {
-        query: 'SELECT * FROM users JOIN orders ON users.id = orders.user_id WHERE users.country = "US" ORDER BY orders.total DESC',
+        query: queryToAnalyze,
         options: { detailed: true }
       }
     });
     
-    console.log('Query Analysis Result:');
-    console.log(`Original Query: ${result.originalQuery}`);
-    if (result.potentialIssues && result.potentialIssues.length > 0) {
+    console.log('Standard Query Analysis Result:');
+    console.log(`Original Query: ${standardResult.originalQuery}`);
+    if (standardResult.potentialIssues && standardResult.potentialIssues.length > 0) {
       console.log('Potential Issues:');
-      result.potentialIssues.forEach((issue: string) => console.log(`- ${issue}`));
+      standardResult.potentialIssues.forEach((issue: string) => console.log(`- ${issue}`));
     }
-    if (result.recommendations && result.recommendations.length > 0) {
+    if (standardResult.recommendations && standardResult.recommendations.length > 0) {
       console.log('Recommendations:');
-      result.recommendations.forEach((rec: string) => console.log(`- ${rec}`));
+      standardResult.recommendations.forEach((rec: string) => console.log(`- ${rec}`));
     }
   } catch (error) {
-    console.error(`Database task error: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`Standard database task error: ${error instanceof Error ? error.message : String(error)}`);
   }
   
-  // Example: Submit GIS spatial query task
-  console.log('\n=== GIS Spatial Query ===');
+  console.log('\n=== Adaptive Database Query Analysis ===');
   try {
-    const result = await agentSystem.submitTask({
-      id: `task-${Date.now()}-2`,
+    const adaptiveResult = await adaptiveDbAgent.executeTask({
+      id: `task-${Date.now()}-1b`,
+      type: DatabaseTaskType.ANALYZE_QUERY,
+      priority: 'high',
+      payload: {
+        query: queryToAnalyze,
+        options: { detailed: true }
+      }
+    });
+    
+    console.log('Adaptive Query Analysis Result:');
+    console.log(`Original Query: ${adaptiveResult.originalQuery}`);
+    if (adaptiveResult.potentialIssues && adaptiveResult.potentialIssues.length > 0) {
+      console.log('Potential Issues:');
+      adaptiveResult.potentialIssues.forEach((issue: string) => console.log(`- ${issue}`));
+    }
+    if (adaptiveResult.recommendations && adaptiveResult.recommendations.length > 0) {
+      console.log('Recommendations:');
+      adaptiveResult.recommendations.forEach((rec: string) => console.log(`- ${rec}`));
+    }
+    if (adaptiveResult.optimizedQuery) {
+      console.log(`Optimized Query: ${adaptiveResult.optimizedQuery}`);
+    }
+    if (adaptiveResult.learningEnhanced) {
+      console.log('This result was enhanced with adaptive learning');
+    }
+  } catch (error) {
+    console.error(`Adaptive database task error: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  
+  // Example: Standard vs Adaptive GIS Spatial Query
+  console.log('\n[5] Comparing Standard vs Adaptive Spatial Query');
+  
+  const spatialQuery = 'SELECT * FROM properties WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint(-122.4194, 37.7749), 4326), 5000)';
+  const spatialBounds = {
+    minLat: 37.7,
+    minLng: -122.5,
+    maxLat: 37.8,
+    maxLng: -122.3
+  };
+  
+  console.log('\n=== Standard GIS Spatial Query ===');
+  try {
+    const standardResult = await agentSystem.submitTask({
+      id: `task-${Date.now()}-2a`,
       type: GisTaskType.PERFORM_SPATIAL_QUERY,
       priority: 'normal',
       payload: {
-        query: 'SELECT * FROM properties WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint(-122.4194, 37.7749), 4326), 5000)',
-        bounds: {
-          minLat: 37.7,
-          minLng: -122.5,
-          maxLat: 37.8,
-          maxLng: -122.3
-        }
+        query: spatialQuery,
+        bounds: spatialBounds
       }
     });
     
-    console.log('Spatial Query Result:');
-    console.log(`Found ${result.count} features`);
-    console.log(`First feature: ${JSON.stringify(result.features[0])}`);
+    console.log('Standard Spatial Query Result:');
+    console.log(`Found ${standardResult.count} features`);
+    console.log(`First feature: ${JSON.stringify(standardResult.features[0])}`);
   } catch (error) {
-    console.error(`GIS task error: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`Standard GIS task error: ${error instanceof Error ? error.message : String(error)}`);
   }
   
-  // Example: Submit debugging task
-  console.log('\n=== Code Analysis ===');
+  console.log('\n=== Adaptive GIS Spatial Query ===');
   try {
-    const result = await agentSystem.submitTask({
-      id: `task-${Date.now()}-3`,
-      type: DebuggingTaskType.ANALYZE_CODE,
-      priority: 'high',
+    const adaptiveResult = await adaptiveGisAgent.executeTask({
+      id: `task-${Date.now()}-2b`,
+      type: GisTaskType.PERFORM_SPATIAL_QUERY,
+      priority: 'normal',
       payload: {
-        sources: ['src/app.js', 'src/utils.js'],
-        options: { 
-          ruleset: 'default',
-          includeHints: true
-        }
+        query: spatialQuery,
+        bounds: spatialBounds
       }
     });
     
-    console.log('Code Analysis Result:');
-    console.log(`Found ${result.length} issues`);
-    result.forEach((issue: any) => {
-      console.log(`- ${issue.type.toUpperCase()}: ${issue.message} at ${issue.sourceFile}:${issue.lineStart}`);
-    });
+    console.log('Adaptive Spatial Query Result:');
+    console.log(`Found ${adaptiveResult.count} features`);
+    console.log(`First feature: ${JSON.stringify(adaptiveResult.features[0])}`);
+    if (adaptiveResult.metadata?.enhancedQuery) {
+      console.log(`Enhanced Query: ${adaptiveResult.metadata.enhancedQuery}`);
+    }
+    if (adaptiveResult.metadata?.learningEnhanced) {
+      console.log('This result was enhanced with adaptive learning');
+    }
   } catch (error) {
-    console.error(`Debugging task error: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`Adaptive GIS task error: ${error instanceof Error ? error.message : String(error)}`);
   }
   
-  // Example: Submit web deployment task
-  console.log('\n=== Web Deployment ===');
-  try {
-    // First configure a provider
-    const providerResult = await agentSystem.submitTask({
-      id: `task-${Date.now()}-4a`,
-      type: WebDeploymentTaskType.CONFIGURE_PROVIDER,
-      priority: 'normal',
-      payload: {
-        config: {
-          type: 'vercel',
-          name: 'vercel-provider',
-          region: 'iad1',
-          credentials: {
-            token: 'PLACEHOLDER_TOKEN' // Would be a real token in production
-          }
-        }
-      }
-    });
+  // Provide feedback on learning
+  console.log('\n[6] Providing Feedback on Learning');
+  
+  // Query the learning repository for recent records
+  const recentLearningRecords = learningRepository.queryRecords({
+    limit: 2,
+    sortBy: 'timestamp',
+    sortDirection: 'desc'
+  });
+  
+  if (recentLearningRecords.length > 0) {
+    console.log(`Found ${recentLearningRecords.length} recent learning records`);
     
-    console.log('Provider Configuration Result:');
-    console.log(`Provider: ${providerResult.provider} (${providerResult.type})`);
-    console.log(`Services: ${providerResult.services.join(', ')}`);
+    // Provide positive feedback on the first record
+    if (recentLearningRecords[0]) {
+      const recordId = recentLearningRecords[0].id;
+      learningRepository.provideFeedback(recordId, 'positive');
+      console.log(`Provided positive feedback for learning record: ${recordId}`);
+    }
     
-    // Then deploy an application
-    const deployResult = await agentSystem.submitTask({
-      id: `task-${Date.now()}-4b`,
-      type: WebDeploymentTaskType.DEPLOY_APPLICATION,
-      priority: 'normal',
-      payload: {
-        config: {
-          name: 'my-web-app',
-          provider: {
-            type: 'vercel',
-            name: 'vercel-provider'
-          },
-          type: 'static',
-          source: {
-            type: 'directory',
-            path: './build'
-          },
-          network: {
-            domain: 'example.com',
-            ssl: true
-          }
-        }
-      }
-    });
-    
-    console.log('Deployment Result:');
-    console.log(`Deployment ID: ${deployResult.deploymentId}`);
-    console.log(`Status: ${deployResult.status}`);
-    console.log(`Estimated Completion: ${deployResult.estimatedCompletionTime}`);
-  } catch (error) {
-    console.error(`Web deployment task error: ${error instanceof Error ? error.message : String(error)}`);
+    // Provide neutral feedback on the second record (if available)
+    if (recentLearningRecords[1]) {
+      const recordId = recentLearningRecords[1].id;
+      learningRepository.provideFeedback(recordId, 'neutral');
+      console.log(`Provided neutral feedback for learning record: ${recordId}`);
+    }
+  } else {
+    console.log('No learning records found');
   }
+  
+  // Get and display learning summary
+  const learningSummary = learningRepository.getSummary();
+  console.log('\nLearning Summary:');
+  console.log(`Total Records: ${learningSummary.totalRecords}`);
+  console.log(`By Feedback: Positive: ${learningSummary.byFeedback.positive}, Negative: ${learningSummary.byFeedback.negative}, Neutral: ${learningSummary.byFeedback.neutral}, Unrated: ${learningSummary.byFeedback.unrated}`);
+  console.log(`Recent Activity: Last Day: ${learningSummary.recentActivity.lastDay}, Last Week: ${learningSummary.recentActivity.lastWeek}, Last Month: ${learningSummary.recentActivity.lastMonth}`);
+  
+  // Shutdown agents
+  console.log('\n[7] Shutting down Agents');
+  
+  // Shutdown adaptive agents
+  await adaptiveDbAgent.shutdown();
+  await adaptiveGisAgent.shutdown();
+  console.log('Adaptive agents shut down');
   
   // Shutdown the agent system
-  console.log('\nShutting down Agent System...');
   await agentSystem.shutdown();
-  console.log('Shutdown complete');
+  console.log('Agent system shut down');
+  
+  console.log('\nExample completed successfully');
 }
 
 // Execute the example

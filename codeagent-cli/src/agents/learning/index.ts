@@ -18,5 +18,13 @@ export {
   LearningStats
 } from './AdaptiveAgent';
 
+// Export Learning Repository
+export {
+  LearningRepository,
+  LearningSummary,
+  LearningQuery
+} from './LearningRepository';
+
 // Export Adaptive Agents
 export { AdaptiveDatabaseAgent } from './AdaptiveDatabaseAgent';
+export { AdaptiveGisAgent } from './AdaptiveGisAgent';
