@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { EventEmitter } from 'events';
 import { spawn } from 'child_process';
 import speech from '@google-cloud/speech';
+import { AudioRecorder } from './audioRecorder.js';
 
 // Get the current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -34,6 +35,8 @@ export class VoiceCommandService extends EventEmitter {
   private keywordDetectionEnabled: boolean = false;
   private wakeWord: string = 'hey agent';
   private audioFilePath: string = '';
+  private audioRecorder: AudioRecorder;
+  private useRealRecording: boolean = false;
   
   constructor() {
     super();
@@ -53,8 +56,49 @@ export class VoiceCommandService extends EventEmitter {
       fs.mkdirSync(tempDir, { recursive: true });
     }
     
+    // Initialize audio recorder
+    this.audioRecorder = new AudioRecorder();
+    this.audioRecorder.setOutputPath(this.audioFilePath);
+    
+    // Set up audio recorder event listeners
+    this.setupAudioRecorderEvents();
+    
     // Initialize with default commands
     this.initializeCommands();
+  }
+  
+  /**
+   * Set up event listeners for the audio recorder
+   */
+  private setupAudioRecorderEvents(): void {
+    this.audioRecorder.on('recording', (data) => {
+      this.emit('recording', data);
+    });
+    
+    this.audioRecorder.on('recorded', async (data) => {
+      if (data.path) {
+        await this.processAudioFile(data.path);
+      } else if (data.text) {
+        // This is a simulation with text directly
+        this.emit('transcription', { text: data.text });
+        const commandResult = this.processCommand(data.text);
+        if (commandResult) {
+          this.emit('result', commandResult);
+        }
+      }
+    });
+    
+    this.audioRecorder.on('stopped', () => {
+      this.emit('recording_stopped');
+    });
+    
+    this.audioRecorder.on('error', (error) => {
+      this.emit('error', error);
+    });
+    
+    this.audioRecorder.on('warning', (warning) => {
+      this.emit('warning', warning);
+    });
   }
   
   /**
@@ -159,32 +203,72 @@ export class VoiceCommandService extends EventEmitter {
    * Start listening for voice commands
    * @param withKeywordDetection Use keyword detection (wake word)
    * @param wakeWord Custom wake word (default: 'hey agent')
+   * @param useRealRecording Whether to use real audio recording (if available)
    */
-  async startListening(withKeywordDetection: boolean = false, wakeWord?: string): Promise<void> {
+  async startListening(
+    withKeywordDetection: boolean = false, 
+    wakeWord?: string,
+    useRealRecording: boolean = false
+  ): Promise<void> {
     if (this.isListening) {
       return;
     }
     
     this.isListening = true;
     this.keywordDetectionEnabled = withKeywordDetection;
+    this.useRealRecording = useRealRecording;
     
     if (wakeWord) {
       this.wakeWord = wakeWord.toLowerCase();
     }
     
-    this.emit('status', { listening: true, keywordDetection: this.keywordDetectionEnabled });
+    this.emit('status', { 
+      listening: true, 
+      keywordDetection: this.keywordDetectionEnabled,
+      useRealRecording: this.useRealRecording
+    });
     
-    // Since we can't use native libraries for audio recording in this environment,
-    // we'll simulate voice input using a file-based approach for demonstration purposes
-    this.simulateVoiceInput();
+    if (this.useRealRecording) {
+      // Start recording with a continuous recording (0 duration)
+      this.startRecording();
+    } else {
+      // Since we can't use native libraries for audio recording in this environment,
+      // we'll simulate voice input using a file-based approach for demonstration purposes
+      this.simulateVoiceInput();
+    }
   }
   
   /**
    * Stop listening for voice commands
    */
   stopListening(): void {
+    if (!this.isListening) {
+      return;
+    }
+    
     this.isListening = false;
+    
+    if (this.useRealRecording) {
+      this.audioRecorder.stopRecording();
+    }
+    
     this.emit('status', { listening: false });
+  }
+  
+  /**
+   * Start recording audio
+   * @param duration Recording duration in seconds (0 for continuous)
+   */
+  private async startRecording(duration: number = 0): Promise<void> {
+    try {
+      await this.audioRecorder.startRecording(duration);
+    } catch (error) {
+      this.emit('error', { error });
+      
+      // Fall back to simulation mode
+      this.useRealRecording = false;
+      this.simulateVoiceInput();
+    }
   }
   
   /**
