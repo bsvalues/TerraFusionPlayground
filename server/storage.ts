@@ -141,6 +141,46 @@ import {
 } from '@shared/gis-schema';
 
 export interface IStorage {
+  // Property Statistics and Assessment APIs
+  // Property Statistics methods
+  getPropertyStatistics(timeRange: string): Promise<{
+    totalProperties: number;
+    totalAssessedValue: number;
+    medianValue: number;
+    changesCount: number;
+    typeDistribution: Record<string, number>;
+  }>;
+  getPropertyById(propertyId: string): Promise<any>;
+  searchProperties(params: any): Promise<{ properties: any[]; total: number }>;
+  getNearbyProperties(propertyId: string, radiusMiles: number, limit: number): Promise<any[]>;
+  getPropertyValueHistory(propertyId: string, years: number): Promise<{ date: string; value: number }[]>;
+  
+  // Assessment methods
+  getAssessmentMetrics(timeRange: string): Promise<{
+    totalAssessments: number;
+    completedAssessments: number;
+    pendingAssessments: number;
+    averageTime: number;
+    valueTrend: Array<{ date: string; value: number }>;
+  }>;
+  getAssessmentById(assessmentId: string): Promise<any>;
+  getPropertyAssessments(propertyId: string): Promise<any[]>;
+  createAssessment(assessmentData: any): Promise<any>;
+  updateAssessment(assessmentId: string, updates: any): Promise<any>;
+  getAssessmentStatusHistory(assessmentId: string): Promise<any[]>;
+  
+  // Change Tracking methods
+  getRecentPropertyChanges(limit: number): Promise<any[]>;
+  getPropertyChanges(propertyId: string, params: any): Promise<any[]>;
+  searchPropertyChanges(searchParams: any): Promise<{ changes: any[]; total: number }>;
+  getChangeStatistics(timeRange: string): Promise<{
+    totalChanges: number;
+    changesByType: Record<string, number>;
+    changesByTime: Array<{ date: string; count: number }>;
+    topChangedProperties: Array<{ propertyId: string; address: string; changeCount: number }>;
+  }>;
+  recordPropertyChange(changeData: any): Promise<any>;
+  
   // TerraFusion Repository Marketplace methods
   // Repository methods
   getRepositories(filters?: { repositoryType?: string, visibility?: string, tags?: string[], featured?: boolean }): Promise<Repository[]>;
@@ -929,6 +969,346 @@ export interface IStorage {
 
 // Implement the in-memory storage
 export class MemStorage implements IStorage {
+  // Property Statistics methods
+  async getPropertyStatistics(timeRange: string) {
+    // In a real application, this would query from a database
+    return {
+      totalProperties: 12850,
+      totalAssessedValue: 3548000000,
+      medianValue: 275000,
+      changesCount: 1243,
+      typeDistribution: {
+        'Residential': 8920,
+        'Commercial': 1750,
+        'Industrial': 650,
+        'Agricultural': 1230,
+        'Other': 300
+      }
+    };
+  }
+  
+  async getPropertyById(propertyId: string) {
+    // In a real application, this would query from a database
+    return {
+      id: propertyId,
+      parcelId: `P-${propertyId}`,
+      address: `${Math.floor(Math.random() * 9000) + 1000} Main St`,
+      city: 'Benton County',
+      state: 'WA',
+      zipCode: '99338',
+      latitude: 46.2 + (Math.random() * 0.5),
+      longitude: -119.2 + (Math.random() * 0.5),
+      propertyType: 'Residential',
+      assessedValue: 285000,
+      lastAssessmentDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+      yearBuilt: 1995,
+      squareFeet: 2200,
+      lotSize: 0.25,
+      bedrooms: 4,
+      bathrooms: 2.5
+    };
+  }
+  
+  async searchProperties(params: any) {
+    // In a real application, this would query from a database with filters
+    const totalItems = 45;
+    const pageSize = params.limit || 20;
+    const currentPage = params.page || 1;
+    
+    const properties = Array(Math.min(pageSize, totalItems - (currentPage - 1) * pageSize))
+      .fill(0)
+      .map((_, index) => {
+        const id = (currentPage - 1) * pageSize + index + 1;
+        return {
+          id: `${id}`,
+          parcelId: `P-${id}`,
+          address: `${Math.floor(Math.random() * 9000) + 1000} ${['Main', 'Oak', 'Maple', 'Pine'][index % 4]} ${['St', 'Ave', 'Blvd', 'Dr'][index % 4]}`,
+          city: 'Benton County',
+          propertyType: ['Residential', 'Commercial', 'Industrial', 'Agricultural'][index % 4],
+          assessedValue: Math.floor(Math.random() * 500000) + 150000,
+          lastAssessmentDate: new Date(Date.now() - (Math.floor(Math.random() * 365) * 24 * 60 * 60 * 1000)),
+          status: ['Current', 'Under Review', 'Appeal Pending'][index % 3]
+        };
+      });
+    
+    return { properties, total: totalItems };
+  }
+  
+  async getNearbyProperties(propertyId: string, radiusMiles: number, limit: number) {
+    // In a real application, this would query from a database with geospatial functions
+    return Array(limit).fill(0).map((_, index) => {
+      return {
+        id: `${Number(propertyId) + index + 1}`,
+        parcelId: `P-${Number(propertyId) + index + 1}`,
+        address: `${Math.floor(Math.random() * 9000) + 1000} ${['Main', 'Oak', 'Maple', 'Pine'][index % 4]} ${['St', 'Ave', 'Blvd', 'Dr'][index % 4]}`,
+        distanceMiles: (Math.random() * radiusMiles).toFixed(2),
+        assessedValue: Math.floor(Math.random() * 500000) + 150000,
+        propertyType: ['Residential', 'Commercial', 'Industrial', 'Agricultural'][index % 4],
+        squareFeet: Math.floor(Math.random() * 3000) + 1000
+      };
+    });
+  }
+  
+  async getPropertyValueHistory(propertyId: string, years: number) {
+    // In a real application, this would query from a database with historical values
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setFullYear(startDate.getFullYear() - years);
+    
+    const valuations: { date: string; value: number }[] = [];
+    const startValue = 150000 + Math.floor(Math.random() * 100000);
+    let currentValue = startValue;
+    
+    for (let year = startDate.getFullYear(); year <= endDate.getFullYear(); year++) {
+      // Add some realistic growth and fluctuations
+      const annualGrowth = 1 + (Math.random() * 0.08 - 0.01); // -1% to 7% annual change
+      currentValue = Math.floor(currentValue * annualGrowth);
+      
+      valuations.push({
+        date: `${year}-01-01`,
+        value: currentValue
+      });
+    }
+    
+    return valuations;
+  }
+  
+  // Assessment methods
+  async getAssessmentMetrics(timeRange: string) {
+    // In a real application, this would query from a database
+    return {
+      totalAssessments: 4520,
+      completedAssessments: 3870,
+      pendingAssessments: 650,
+      averageTime: 14, // days
+      valueTrend: [
+        { date: '2021-01', value: 235000 },
+        { date: '2021-07', value: 242000 },
+        { date: '2022-01', value: 250000 },
+        { date: '2022-07', value: 260000 },
+        { date: '2023-01', value: 268000 },
+        { date: '2023-07', value: 275000 },
+        { date: '2024-01', value: 282000 },
+        { date: '2024-07', value: 290000 },
+        { date: '2025-01', value: 295000 }
+      ]
+    };
+  }
+  
+  async getAssessmentById(assessmentId: string) {
+    // In a real application, this would query from a database
+    return {
+      id: assessmentId,
+      propertyId: `1${assessmentId}`,
+      assessor: `Assessor ${Math.floor(Math.random() * 10) + 1}`,
+      startDate: new Date(Date.now() - (Math.floor(Math.random() * 90) * 24 * 60 * 60 * 1000)),
+      endDate: new Date(Date.now() - (Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000)),
+      assessedValue: Math.floor(Math.random() * 500000) + 150000,
+      previousValue: Math.floor(Math.random() * 450000) + 140000,
+      status: ['In Progress', 'Completed', 'On Hold', 'Under Review'][Math.floor(Math.random() * 4)],
+      notes: 'Property assessment completed with standard valuation method',
+      appealEligible: Math.random() > 0.7
+    };
+  }
+  
+  async getPropertyAssessments(propertyId: string) {
+    // In a real application, this would query from a database
+    const count = 5 + Math.floor(Math.random() * 5);
+    const assessments = [];
+    
+    const endDate = new Date();
+    
+    for (let i = 0; i < count; i++) {
+      const yearOffset = i + 1;
+      const startDate = new Date(endDate);
+      startDate.setFullYear(endDate.getFullYear() - yearOffset);
+      
+      assessments.push({
+        id: `${i+1}`,
+        propertyId,
+        assessor: `Assessor ${Math.floor(Math.random() * 10) + 1}`,
+        startDate,
+        endDate: new Date(startDate.getTime() + (30 * 24 * 60 * 60 * 1000)),
+        assessedValue: Math.floor(Math.random() * 500000) + 150000 - (yearOffset * 10000), // Value generally increases over time
+        status: 'Completed',
+        notes: `${yearOffset} year old assessment record`
+      });
+    }
+    
+    return assessments;
+  }
+  
+  async createAssessment(assessmentData: any) {
+    // In a real application, this would insert into a database
+    return {
+      id: Date.now().toString(),
+      ...assessmentData,
+      startDate: new Date(),
+      status: 'In Progress',
+      createdAt: new Date()
+    };
+  }
+  
+  async updateAssessment(assessmentId: string, updates: any) {
+    // In a real application, this would update in a database
+    return {
+      id: assessmentId,
+      propertyId: updates.propertyId || `1${assessmentId}`,
+      assessor: updates.assessor || `Assessor ${Math.floor(Math.random() * 10) + 1}`,
+      startDate: updates.startDate || new Date(Date.now() - (60 * 24 * 60 * 60 * 1000)),
+      endDate: updates.endDate,
+      assessedValue: updates.assessedValue || Math.floor(Math.random() * 500000) + 150000,
+      status: updates.status || 'In Progress',
+      notes: updates.notes || '',
+      updatedAt: new Date()
+    };
+  }
+  
+  async getAssessmentStatusHistory(assessmentId: string) {
+    // In a real application, this would query from a database
+    return [
+      {
+        id: '1',
+        assessmentId,
+        status: 'Created',
+        changedBy: 'System',
+        timestamp: new Date(Date.now() - (90 * 24 * 60 * 60 * 1000)),
+        notes: 'Assessment created in system'
+      },
+      {
+        id: '2',
+        assessmentId,
+        status: 'Assigned',
+        changedBy: 'Admin User',
+        timestamp: new Date(Date.now() - (85 * 24 * 60 * 60 * 1000)),
+        notes: 'Assigned to field assessor'
+      },
+      {
+        id: '3',
+        assessmentId,
+        status: 'In Progress',
+        changedBy: 'Field Assessor',
+        timestamp: new Date(Date.now() - (70 * 24 * 60 * 60 * 1000)),
+        notes: 'Initial site visit completed'
+      },
+      {
+        id: '4',
+        assessmentId,
+        status: 'Under Review',
+        changedBy: 'Field Assessor',
+        timestamp: new Date(Date.now() - (45 * 24 * 60 * 60 * 1000)),
+        notes: 'Preliminary valuation submitted for review'
+      },
+      {
+        id: '5',
+        assessmentId,
+        status: 'Completed',
+        changedBy: 'Senior Assessor',
+        timestamp: new Date(Date.now() - (30 * 24 * 60 * 60 * 1000)),
+        notes: 'Final valuation approved'
+      }
+    ];
+  }
+  
+  // Change Tracking methods
+  async getRecentPropertyChanges(limit: number) {
+    // In a real application, this would query from a database
+    return Array(limit).fill(0).map((_, index) => {
+      const id = index + 1;
+      return {
+        id: `${id}`,
+        propertyId: `${Math.floor(Math.random() * 100) + 1}`,
+        address: `${Math.floor(Math.random() * 9000) + 1000} ${['Main', 'Oak', 'Maple', 'Pine'][index % 4]} ${['St', 'Ave', 'Blvd', 'Dr'][index % 4]}`,
+        changeType: ['Value Update', 'Owner Change', 'Property Feature', 'Zoning', 'Tax Status'][index % 5],
+        fieldName: ['assessedValue', 'owner', 'squareFeet', 'zoning', 'taxStatus'][index % 5],
+        oldValue: index % 5 === 0 ? '250000' : index % 5 === 1 ? 'John Doe' : index % 5 === 2 ? '2000' : index % 5 === 3 ? 'R1' : 'Current',
+        newValue: index % 5 === 0 ? '275000' : index % 5 === 1 ? 'Jane Smith' : index % 5 === 2 ? '2500' : index % 5 === 3 ? 'R2' : 'Exempt',
+        changedBy: `User ${Math.floor(Math.random() * 10) + 1}`,
+        timestamp: new Date(Date.now() - (Math.floor(Math.random() * 14) * 24 * 60 * 60 * 1000))
+      };
+    });
+  }
+  
+  async getPropertyChanges(propertyId: string, params: any) {
+    // In a real application, this would query from a database with filters
+    return Array(10).fill(0).map((_, index) => {
+      const id = index + 1;
+      return {
+        id: `${id}`,
+        propertyId,
+        address: `${Math.floor(Math.random() * 9000) + 1000} Main St`,
+        changeType: ['Value Update', 'Owner Change', 'Property Feature', 'Zoning', 'Tax Status'][index % 5],
+        fieldName: ['assessedValue', 'owner', 'squareFeet', 'zoning', 'taxStatus'][index % 5],
+        oldValue: index % 5 === 0 ? '250000' : index % 5 === 1 ? 'John Doe' : index % 5 === 2 ? '2000' : index % 5 === 3 ? 'R1' : 'Current',
+        newValue: index % 5 === 0 ? '275000' : index % 5 === 1 ? 'Jane Smith' : index % 5 === 2 ? '2500' : index % 5 === 3 ? 'R2' : 'Exempt',
+        changedBy: `User ${Math.floor(Math.random() * 10) + 1}`,
+        timestamp: new Date(Date.now() - (Math.floor(Math.random() * 365) * 24 * 60 * 60 * 1000))
+      };
+    });
+  }
+  
+  async searchPropertyChanges(searchParams: any) {
+    // In a real application, this would query from a database with filters
+    const totalItems = 45;
+    const pageSize = searchParams.limit || 20;
+    const currentPage = searchParams.page || 1;
+    
+    const changes = Array(Math.min(pageSize, totalItems - (currentPage - 1) * pageSize))
+      .fill(0)
+      .map((_, index) => {
+        const id = (currentPage - 1) * pageSize + index + 1;
+        return {
+          id: `${id}`,
+          propertyId: searchParams.propertyId || `${Math.floor(Math.random() * 100) + 1}`,
+          address: `${Math.floor(Math.random() * 9000) + 1000} ${['Main', 'Oak', 'Maple', 'Pine'][index % 4]} ${['St', 'Ave', 'Blvd', 'Dr'][index % 4]}`,
+          changeType: ['Value Update', 'Owner Change', 'Property Feature', 'Zoning', 'Tax Status'][index % 5],
+          fieldName: ['assessedValue', 'owner', 'squareFeet', 'zoning', 'taxStatus'][index % 5],
+          oldValue: index % 5 === 0 ? '250000' : index % 5 === 1 ? 'John Doe' : index % 5 === 2 ? '2000' : index % 5 === 3 ? 'R1' : 'Current',
+          newValue: index % 5 === 0 ? '275000' : index % 5 === 1 ? 'Jane Smith' : index % 5 === 2 ? '2500' : index % 5 === 3 ? 'R2' : 'Exempt',
+          changedBy: searchParams.changedBy || `User ${Math.floor(Math.random() * 10) + 1}`,
+          timestamp: new Date(Date.now() - (Math.floor(Math.random() * 365) * 24 * 60 * 60 * 1000))
+        };
+      });
+    
+    return { changes, total: totalItems };
+  }
+  
+  async getChangeStatistics(timeRange: string) {
+    // In a real application, this would query from a database
+    return {
+      totalChanges: 2364,
+      changesByType: {
+        'Value Update': 1250,
+        'Owner Change': 376,
+        'Property Feature': 425,
+        'Zoning': 188,
+        'Tax Status': 125
+      },
+      changesByTime: [
+        { date: '2025-01', count: 220 },
+        { date: '2025-02', count: 245 },
+        { date: '2025-03', count: 215 },
+        { date: '2025-04', count: 230 }
+      ],
+      topChangedProperties: [
+        { propertyId: '12', address: '1234 Main St', changeCount: 12 },
+        { propertyId: '45', address: '5678 Oak Ave', changeCount: 9 },
+        { propertyId: '78', address: '910 Pine Blvd', changeCount: 7 },
+        { propertyId: '32', address: '2468 Maple Dr', changeCount: 6 },
+        { propertyId: '56', address: '1357 Cedar Ln', changeCount: 6 }
+      ]
+    };
+  }
+  
+  async recordPropertyChange(changeData: any) {
+    // In a real application, this would insert into a database
+    return {
+      id: Date.now().toString(),
+      ...changeData,
+      timestamp: new Date(),
+      changedBy: changeData.changedBy || 'System'
+    };
+  }
   private users: Map<number, User>;
   private properties: Map<number, Property>;
   private landRecords: Map<number, LandRecord>;
@@ -2617,6 +2997,251 @@ export class MemStorage implements IStorage {
     });
     
     return true;
+  }
+  
+  // Property Statistics methods
+  async getPropertyStatistics(timeRange: string): Promise<{
+    totalProperties: number;
+    totalAssessedValue: number;
+    medianValue: number;
+    changesCount: number;
+    typeDistribution: Record<string, number>;
+  }> {
+    const properties = Array.from(this.properties.values());
+    
+    // Calculate total assessed value
+    const totalAssessedValue = properties.reduce((sum, property) => {
+      const value = property.value ? parseFloat(property.value) : 0;
+      return sum + value;
+    }, 0);
+    
+    // Calculate type distribution
+    const typeDistribution: Record<string, number> = {};
+    properties.forEach(property => {
+      const type = property.propertyType || 'Unknown';
+      typeDistribution[type] = (typeDistribution[type] || 0) + 1;
+    });
+    
+    // Calculate median value
+    const values = properties
+      .map(property => property.value ? parseFloat(property.value) : 0)
+      .sort((a, b) => a - b);
+    
+    const mid = Math.floor(values.length / 2);
+    const medianValue = values.length % 2 === 0
+      ? (values[mid - 1] + values[mid]) / 2
+      : values[mid];
+    
+    return {
+      totalProperties: properties.length,
+      totalAssessedValue,
+      medianValue,
+      changesCount: 245, // Mock data for now
+      typeDistribution
+    };
+  }
+
+  async getPropertyById(propertyId: string): Promise<any> {
+    return this.getProperty(parseInt(propertyId));
+  }
+
+  async searchProperties(params: any): Promise<{ properties: any[]; total: number }> {
+    const properties = Array.from(this.properties.values());
+    
+    // Filter properties based on search parameters
+    const filtered = properties.filter(property => {
+      let match = true;
+      
+      if (params.query) {
+        const query = params.query.toLowerCase();
+        const addressMatch = property.address?.toLowerCase().includes(query);
+        const idMatch = property.propertyId?.toString().includes(query);
+        match = match && (addressMatch || idMatch);
+      }
+      
+      if (params.propertyType) {
+        match = match && property.propertyType === params.propertyType;
+      }
+      
+      if (params.minValue) {
+        const value = property.value ? parseFloat(property.value) : 0;
+        match = match && value >= params.minValue;
+      }
+      
+      if (params.maxValue) {
+        const value = property.value ? parseFloat(property.value) : 0;
+        match = match && value <= params.maxValue;
+      }
+      
+      if (params.zipCode) {
+        match = match && property.zipCode === params.zipCode;
+      }
+      
+      return match;
+    });
+    
+    // Paginate results
+    const page = params.page || 1;
+    const limit = params.limit || 20;
+    const start = (page - 1) * limit;
+    const end = start + limit;
+    
+    return {
+      properties: filtered.slice(start, end),
+      total: filtered.length
+    };
+  }
+
+  async getNearbyProperties(propertyId: string, radiusMiles: number, limit: number): Promise<any[]> {
+    // This is a mock implementation
+    const properties = Array.from(this.properties.values());
+    return properties.slice(0, limit);
+  }
+
+  async getPropertyValueHistory(propertyId: string, years: number): Promise<{ date: string; value: number }[]> {
+    // This is a mock implementation
+    const currentValue = 250000;
+    const history: { date: string; value: number }[] = [];
+    
+    for (let i = 0; i < years; i++) {
+      const year = 2025 - i;
+      const value = currentValue * (1 - (i * 0.03)); // 3% decrease per year going back
+      history.push({
+        date: `${year}-01-01`,
+        value: Math.round(value)
+      });
+    }
+    
+    return history;
+  }
+
+  // Assessment methods
+  async getAssessmentMetrics(timeRange: string): Promise<{
+    totalAssessments: number;
+    completedAssessments: number;
+    pendingAssessments: number;
+    averageTime: number;
+    valueTrend: Array<{ date: string; value: number }>;
+  }> {
+    // This is a mock implementation
+    return {
+      totalAssessments: 425,
+      completedAssessments: 350,
+      pendingAssessments: 75,
+      averageTime: 14, // days
+      valueTrend: [
+        { date: '2025-01', value: 245000 },
+        { date: '2025-02', value: 248000 },
+        { date: '2025-03', value: 252000 },
+        { date: '2025-04', value: 257000 }
+      ]
+    };
+  }
+
+  async getAssessmentById(assessmentId: string): Promise<any> {
+    // This is a mock implementation
+    return {
+      id: assessmentId,
+      propertyId: '123',
+      assessedValue: 275000,
+      assessmentDate: new Date(),
+      assessor: 'John Smith',
+      status: 'Completed',
+      notes: 'Annual assessment completed with no issues.'
+    };
+  }
+
+  async getPropertyAssessments(propertyId: string): Promise<any[]> {
+    // This is a mock implementation
+    return [
+      {
+        id: '1',
+        propertyId,
+        assessedValue: 250000,
+        assessmentDate: new Date(Date.now() - (365 * 24 * 60 * 60 * 1000)),
+        assessor: 'Jane Doe',
+        status: 'Completed',
+        notes: 'Annual assessment completed with no issues.'
+      },
+      {
+        id: '2',
+        propertyId,
+        assessedValue: 275000,
+        assessmentDate: new Date(),
+        assessor: 'John Smith',
+        status: 'Completed',
+        notes: 'Annual assessment completed with no issues.'
+      }
+    ];
+  }
+
+  async createAssessment(assessmentData: any): Promise<any> {
+    // This is a mock implementation
+    return {
+      id: Date.now().toString(),
+      ...assessmentData,
+      assessmentDate: new Date(),
+      status: 'Pending'
+    };
+  }
+
+  async updateAssessment(assessmentId: string, updates: any): Promise<any> {
+    // This is a mock implementation
+    return {
+      id: assessmentId,
+      propertyId: '123',
+      assessedValue: updates.assessedValue || 275000,
+      assessmentDate: new Date(),
+      assessor: updates.assessor || 'John Smith',
+      status: updates.status || 'Completed',
+      notes: updates.notes || 'Annual assessment completed with no issues.'
+    };
+  }
+
+  async getAssessmentStatusHistory(assessmentId: string): Promise<any[]> {
+    // This is a mock implementation
+    return [
+      {
+        id: '1',
+        assessmentId,
+        status: 'Created',
+        changedBy: 'System',
+        timestamp: new Date(Date.now() - (90 * 24 * 60 * 60 * 1000)),
+        notes: 'Assessment created in system'
+      },
+      {
+        id: '2',
+        assessmentId,
+        status: 'Assigned',
+        changedBy: 'Manager',
+        timestamp: new Date(Date.now() - (75 * 24 * 60 * 60 * 1000)),
+        notes: 'Assessment assigned to John Smith'
+      },
+      {
+        id: '3',
+        assessmentId,
+        status: 'In Progress',
+        changedBy: 'Assessor',
+        timestamp: new Date(Date.now() - (60 * 24 * 60 * 60 * 1000)),
+        notes: 'Initial review started'
+      },
+      {
+        id: '4',
+        assessmentId,
+        status: 'Under Review',
+        changedBy: 'Assessor',
+        timestamp: new Date(Date.now() - (45 * 24 * 60 * 60 * 1000)),
+        notes: 'Preliminary valuation submitted for review'
+      },
+      {
+        id: '5',
+        assessmentId,
+        status: 'Completed',
+        changedBy: 'Senior Assessor',
+        timestamp: new Date(Date.now() - (30 * 24 * 60 * 60 * 1000)),
+        notes: 'Final valuation approved'
+      }
+    ];
   }
   
   // Comparable Sales methods
@@ -9225,5 +9850,5 @@ export class PgStorage implements IStorage {
 
 // Use database storage instead of in-memory
 // Choose which storage implementation to use
-// For production, use PgStorage that connects to the PostgreSQL database
-export const storage = new PgStorage(); // Using PostgreSQL for data persistence
+// During development, we're using MemStorage for easier testing
+export const storage = new MemStorage(); // Using in-memory storage for development

@@ -7,7 +7,8 @@ import { AIAssistantProvider } from "./providers/ai-assistant-provider";
 import { ConnectionNotification } from "@/components/connection-notification";
 import { ConnectionStatusMonitor } from "@/components/connection-status-monitor";
 import NotFound from "@/pages/not-found";
-import Dashboard from "@/pages/dashboard";
+import OldDashboard from "@/pages/dashboard";
+import NewDashboard from "@/pages/new-dashboard";
 import LandRecords from "@/pages/land-records";
 import Improvements from "@/pages/improvements";
 import Fields from "@/pages/fields";
@@ -57,7 +58,14 @@ function Router() {
       {/* Standard application routes with consistent layout */}
       <Route path="/">
         <Layout>
-          <Dashboard />
+          <NewDashboard />
+        </Layout>
+      </Route>
+
+      {/* Keep the old dashboard available for comparison */}
+      <Route path="/old-dashboard">
+        <Layout>
+          <OldDashboard />
         </Layout>
       </Route>
 

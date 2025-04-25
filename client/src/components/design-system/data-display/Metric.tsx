@@ -154,6 +154,10 @@ export interface MetricProps extends React.HTMLAttributes<HTMLDivElement>,
    * Display precision for numbers
    */
   precision?: number;
+  /**
+   * Loading state for the metric
+   */
+  isLoading?: boolean;
 }
 
 /**
@@ -184,8 +188,22 @@ export const Metric: React.FC<MetricProps> = ({
   iconPosition = 'left',
   valueFormatter,
   precision = 2,
+  isLoading = false,
   ...props
 }) => {
+  // Render loading state
+  if (isLoading) {
+    return (
+      <div className={cn(metricVariants({ variant, size }), className)} {...props}>
+        <div className="flex flex-col gap-2 w-full">
+          <div className="h-4 bg-muted/60 animate-pulse rounded"></div>
+          <div className="h-8 bg-muted/60 animate-pulse rounded"></div>
+          {delta && <div className="h-4 w-24 bg-muted/60 animate-pulse rounded"></div>}
+        </div>
+      </div>
+    );
+  }
+  
   // Format the value
   const formattedValue = valueFormatter 
     ? valueFormatter(value) 

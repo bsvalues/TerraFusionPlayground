@@ -60,6 +60,11 @@ import createRepositoryMarketplaceRoutes from "./routes/repository-marketplace-r
 import { RepositoryMarketplaceService } from "./services/repository-marketplace-service";
 import workflowOptimizerRoutes from "./routes/workflow-optimizer-routes";
 import { workflowOptimizerService } from "./services/workflow-optimizer-service";
+
+// Import new property, assessment, and change tracking API routes
+import { createPropertyApiRoutes } from "./routes/property-api";
+import { createAssessmentApiRoutes } from "./routes/assessment-api";
+import { createChangeTrackingApiRoutes } from "./routes/change-tracking-api";
 import { processNaturalLanguageQuery, getSummaryFromNaturalLanguage } from "./services/langchain";
 import { processNaturalLanguageWithAnthropic, getSummaryWithAnthropic } from "./services/anthropic";
 import { isEmailServiceConfigured, sendPropertyInsightShareEmail, createTestEmailAccount } from "./services/email-service";
@@ -288,6 +293,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Workflow Optimizer routes
   app.use('/api/workflow-optimizer', workflowOptimizerRoutes);
+  
+  // Register new Property Statistics, Assessment, and Change Tracking API routes
+  app.use('/api', createPropertyApiRoutes(storage));
+  app.use('/api', createAssessmentApiRoutes(storage));
+  app.use('/api', createChangeTrackingApiRoutes(storage));
   
   // Initialize GIS Storage implementation with database
   await implementGISStorage(storage);
