@@ -1,6 +1,14 @@
 {
   "variant": "professional",
-  "primary": "hsl(183 100% 45%)",
-  "appearance": "dark",
-  "radius": 0.75
+  "primary": "hsl(188 100% 42%)",
+  "appearance": "system",
+  "radius": 0.5,
+  "colors": {
+    "blue": "hsl(210, 100%, 45%)",
+    "teal": "hsl(188, 100%, 42%)",
+    "green": "hsl(145, 63%, 42%)",
+    "orange": "hsl(30, 100%, 50%)",
+    "red": "hsl(0, 85%, 55%)",
+    "purple": "hsl(265, 83%, 57%)"
+  }
 }
