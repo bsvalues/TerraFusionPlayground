@@ -5278,6 +5278,9 @@ export class PgStorage implements IStorage {
       aiAgents, systemActivities, mcpToolExecutionLogs, pacsModules, propertyInsightShares,
       comparableSales, comparableSalesAnalyses, comparableAnalysisEntries,
       importStaging,
+      // Team collaboration
+      teamMembers, teamTasks, taskComments, teamCollaborationSessions, teamFeedbacks, teamKnowledgeBaseItems,
+      sharedWorkflows, sharedWorkflowCollaborators, sharedWorkflowActivities, workflowSessions,
       // Development Tools
       codeSnippets, dataVisualizations, uiComponentTemplates
     }});
