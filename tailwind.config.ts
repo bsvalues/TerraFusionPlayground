@@ -62,6 +62,12 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // TerraFusion brand colors
+        "tf-dark-blue": "#001529",
+        "tf-medium-blue": "#002a4a",
+        "tf-light-blue": "#004d7a",
+        "tf-primary": "#00e5ff",
+        "tf-secondary": "#00b8d4",
       },
       keyframes: {
         "accordion-down": {
@@ -80,10 +86,21 @@ export default {
             height: "0",
           },
         },
+        "pulse-glow": {
+          "0%, 100%": {
+            opacity: "0.5",
+            filter: "blur(15px)",
+          },
+          "50%": {
+            opacity: "0.7",
+            filter: "blur(20px)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "pulse-glow": "pulse-glow 3s ease-in-out infinite",
       },
     },
   },
