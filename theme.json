@@ -1,8 +1,8 @@
 {
-  "variant": "professional",
-  "primary": "hsl(188 100% 42%)",
+  "variant": "vibrant",
+  "primary": "hsl(210, 100%, 45%)",
   "appearance": "system",
-  "radius": 0.5,
+  "radius": 0.75,
   "colors": {
     "blue": "hsl(210, 100%, 45%)",
     "teal": "hsl(188, 100%, 42%)",
