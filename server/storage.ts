@@ -5267,6 +5267,203 @@ export class PgStorage implements IStorage {
     const results = await this.db.insert(teamMembers).values(member).returning();
     return results[0];
   }
+  
+  async updateTeamMember(id: number, updates: Partial<TeamMember>): Promise<TeamMember | null> {
+    const results = await this.db.update(teamMembers)
+      .set(updates)
+      .where(eq(teamMembers.id, id))
+      .returning();
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async updateTeamMemberStatus(id: number, status: string): Promise<TeamMember> {
+    const results = await this.db.update(teamMembers)
+      .set({ 
+        status, 
+        lastActive: new Date() 
+      })
+      .where(eq(teamMembers.id, id))
+      .returning();
+    
+    if (results.length === 0) {
+      throw new Error(`Team member with ID ${id} not found`);
+    }
+    
+    return results[0];
+  }
+  
+  async deleteTeamMember(id: number): Promise<boolean> {
+    const results = await this.db.delete(teamMembers)
+      .where(eq(teamMembers.id, id))
+      .returning();
+    
+    return results.length > 0;
+  }
+  
+  // Team Collaboration Session methods
+  async getAllTeamCollaborationSessions(): Promise<TeamCollaborationSession[]> {
+    return await this.db.select().from(teamCollaborationSessions);
+  }
+  
+  async getTeamCollaborationSessionById(id: string): Promise<TeamCollaborationSession | null> {
+    const results = await this.db.select().from(teamCollaborationSessions)
+      .where(eq(teamCollaborationSessions.id, id));
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async getTeamCollaborationSessionsByOrganizer(organizerId: number): Promise<TeamCollaborationSession[]> {
+    return await this.db.select().from(teamCollaborationSessions)
+      .where(eq(teamCollaborationSessions.organizer, organizerId));
+  }
+  
+  async getTeamCollaborationSessionsByParticipant(participantId: number): Promise<TeamCollaborationSession[]> {
+    // This requires a more complex query since participants is an array
+    const sessions = await this.db.select().from(teamCollaborationSessions);
+    return sessions.filter(session => 
+      session.participants.includes(participantId)
+    );
+  }
+  
+  async createTeamCollaborationSession(session: InsertTeamCollaborationSession): Promise<TeamCollaborationSession> {
+    const results = await this.db.insert(teamCollaborationSessions)
+      .values(session)
+      .returning();
+    return results[0];
+  }
+  
+  async updateTeamCollaborationSession(id: string, updates: Partial<TeamCollaborationSession>): Promise<TeamCollaborationSession | null> {
+    const results = await this.db.update(teamCollaborationSessions)
+      .set(updates)
+      .where(eq(teamCollaborationSessions.id, id))
+      .returning();
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async deleteTeamCollaborationSession(id: string): Promise<boolean> {
+    const results = await this.db.delete(teamCollaborationSessions)
+      .where(eq(teamCollaborationSessions.id, id))
+      .returning();
+    return results.length > 0;
+  }
+  
+  // Team Knowledge Base methods
+  async getAllTeamKnowledgeBaseItems(): Promise<TeamKnowledgeBaseItem[]> {
+    return await this.db.select().from(teamKnowledgeBaseItems);
+  }
+  
+  async getTeamKnowledgeBaseItemById(id: number): Promise<TeamKnowledgeBaseItem | null> {
+    const results = await this.db.select().from(teamKnowledgeBaseItems)
+      .where(eq(teamKnowledgeBaseItems.id, id));
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async getTeamKnowledgeBaseItemsByCategory(category: string): Promise<TeamKnowledgeBaseItem[]> {
+    return await this.db.select().from(teamKnowledgeBaseItems)
+      .where(eq(teamKnowledgeBaseItems.category, category));
+  }
+  
+  async createTeamKnowledgeBaseItem(item: InsertTeamKnowledgeBaseItem): Promise<TeamKnowledgeBaseItem> {
+    const results = await this.db.insert(teamKnowledgeBaseItems)
+      .values(item)
+      .returning();
+    return results[0];
+  }
+  
+  async updateTeamKnowledgeBaseItem(id: number, updates: Partial<TeamKnowledgeBaseItem>): Promise<TeamKnowledgeBaseItem | null> {
+    const results = await this.db.update(teamKnowledgeBaseItems)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(teamKnowledgeBaseItems.id, id))
+      .returning();
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async deleteTeamKnowledgeBaseItem(id: number): Promise<boolean> {
+    const results = await this.db.delete(teamKnowledgeBaseItems)
+      .where(eq(teamKnowledgeBaseItems.id, id))
+      .returning();
+    return results.length > 0;
+  }
+  
+  // Team Tasks methods
+  async getAllTeamTasks(): Promise<TeamTask[]> {
+    return await this.db.select().from(teamTasks);
+  }
+  
+  async getTeamTaskById(id: string): Promise<TeamTask | null> {
+    const results = await this.db.select().from(teamTasks)
+      .where(eq(teamTasks.id, id));
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async getTeamTasksByAssignee(assigneeId: number): Promise<TeamTask[]> {
+    return await this.db.select().from(teamTasks)
+      .where(eq(teamTasks.assignedTo, assigneeId));
+  }
+  
+  async getTeamTasksByStatus(status: string): Promise<TeamTask[]> {
+    return await this.db.select().from(teamTasks)
+      .where(eq(teamTasks.status, status));
+  }
+  
+  async createTeamTask(task: InsertTeamTask): Promise<TeamTask> {
+    const results = await this.db.insert(teamTasks)
+      .values(task)
+      .returning();
+    return results[0];
+  }
+  
+  async updateTeamTask(id: string, updates: Partial<TeamTask>): Promise<TeamTask | null> {
+    const results = await this.db.update(teamTasks)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(teamTasks.id, id))
+      .returning();
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async updateTeamTaskStatus(id: string, status: string): Promise<TeamTask> {
+    const results = await this.db.update(teamTasks)
+      .set({
+        status,
+        updatedAt: new Date()
+      })
+      .where(eq(teamTasks.id, id))
+      .returning();
+    
+    if (results.length === 0) {
+      throw new Error(`Team task with ID ${id} not found`);
+    }
+    
+    return results[0];
+  }
+  
+  async assignTeamTask(taskId: string, teamMemberId: number): Promise<TeamTask> {
+    const results = await this.db.update(teamTasks)
+      .set({
+        assignedTo: teamMemberId,
+        updatedAt: new Date()
+      })
+      .where(eq(teamTasks.id, taskId))
+      .returning();
+    
+    if (results.length === 0) {
+      throw new Error(`Team task with ID ${taskId} not found`);
+    }
+    
+    return results[0];
+  }
+  
+  async deleteTeamTask(id: string): Promise<boolean> {
+    const results = await this.db.delete(teamTasks)
+      .where(eq(teamTasks.id, id))
+      .returning();
+    return results.length > 0;
+  }
 
   constructor() {
     this.pool = new pg.Pool({
