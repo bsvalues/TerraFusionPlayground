@@ -5248,6 +5248,26 @@ export class PgStorage implements IStorage {
   private pacsModules: Map<number, PacsModule>;
   private currentPacsModuleId: number;
 
+  // Team members implementation for PgStorage
+  async getAllTeamMembers(): Promise<TeamMember[]> {
+    const result = await this.db.select().from(teamMembers);
+    return result;
+  }
+  
+  async getTeamMemberById(id: number): Promise<TeamMember | null> {
+    const results = await this.db.select().from(teamMembers).where(eq(teamMembers.id, id));
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  async getTeamMembersByRole(role: string): Promise<TeamMember[]> {
+    return await this.db.select().from(teamMembers).where(eq(teamMembers.role, role));
+  }
+  
+  async createTeamMember(member: InsertTeamMember): Promise<TeamMember> {
+    const results = await this.db.insert(teamMembers).values(member).returning();
+    return results[0];
+  }
+
   constructor() {
     this.pool = new pg.Pool({
       connectionString: process.env.DATABASE_URL,
