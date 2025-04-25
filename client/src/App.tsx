@@ -38,135 +38,196 @@ import { GISHub as GISHubPage, Terrain3DDemo as Terrain3DDemoPage, GISProvider }
 // Original page imports until we migrate them all to the GIS module
 import ClusteringDemoPage from "@/pages/clustering-demo";
 import AdvancedClusteringDemoPage from "@/pages/advanced-clustering-demo";
-import AppLayout from "@/layout/app-layout";
 // TerraFusion design system
 import TerraFusionShowcase from "@/components/design-system/TerraFusionShowcase";
 
+// Import old and new layouts
+import AppLayout from "@/layout/app-layout";
+import NewAppLayout from "@/layout/new-app-layout";
+
+// Toggle to use the new layout (for simple A/B testing or switching back if needed)
+const USE_NEW_LAYOUT = true;
+
+// Dynamic layout selection
+const Layout = USE_NEW_LAYOUT ? NewAppLayout : AppLayout;
 
 function Router() {
   return (
     <Switch>
+      {/* Standard application routes with consistent layout */}
       <Route path="/">
-        <AppLayout>
+        <Layout>
           <Dashboard />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/land-records">
-        <AppLayout>
+        <Layout>
           <LandRecords />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/improvements">
-        <AppLayout>
+        <Layout>
           <Improvements />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/fields">
-        <AppLayout>
+        <Layout>
           <Fields />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/imports">
-        <AppLayout>
+        <Layout>
           <Imports />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/natural-language">
-        <AppLayout>
+        <Layout>
           <NaturalLanguage />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/ai-assistant">
-        <AppLayout>
+        <Layout>
           <AIAssistantPage />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/property-story-demo">
-        <AppLayout>
+        <Layout>
           <PropertyStoryDemo />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/data-import">
-        <AppLayout>
+        <Layout>
           <DataImportPage />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/property-stories">
-        <AppLayout>
+        <Layout>
           <PropertyStoryPage />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/agent-system">
-        <AppLayout>
+        <Layout>
           <AgentSystemPage />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/voice-search">
-        <AppLayout>
+        <Layout>
           <VoiceSearchDemoPage />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/data-lineage">
-        <AppLayout>
+        <Layout>
           <DataLineageDashboardPage />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/property/:propertyId/lineage">
-        <AppLayout>
+        <Layout>
           <PropertyLineagePage />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/extensions">
-        <AppLayout>
+        <Layout>
           <ExtensionsPage />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/collaboration-test">
-        <AppLayout>
+        <Layout>
           <CollaborationTestPage />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/team-agents">
-        <AppLayout>
+        <Layout>
           <TeamAgentsPage />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/master-development">
-        <AppLayout>
+        <Layout>
           <MasterDevelopmentPage />
-        </AppLayout>
+        </Layout>
       </Route>
 
       <Route path="/voice-command">
-        <AppLayout>
+        <Layout>
           <VoiceCommandPage />
-        </AppLayout>
+        </Layout>
       </Route>
       
       <Route path="/voice-command-settings">
-        <AppLayout>
+        <Layout>
           <VoiceCommandSettingsPage />
-        </AppLayout>
+        </Layout>
       </Route>
 
-      {/* TaxI_AI Development Platform Routes */}
+      <Route path="/database-conversion">
+        <Layout>
+          <DatabaseConversionPage />
+        </Layout>
+      </Route>
+      
+      {/* GIS Routes */}
+      <Route path="/gis">
+        <Layout>
+          <GISHubPage />
+        </Layout>
+      </Route>
+      
+      <Route path="/gis/clustering-demo">
+        <Layout>
+          <ClusteringDemoPage />
+        </Layout>
+      </Route>
+      
+      <Route path="/gis/advanced-clustering">
+        <Layout>
+          <AdvancedClusteringDemoPage />
+        </Layout>
+      </Route>
+      
+      <Route path="/gis/terrain-3d">
+        <Layout>
+          <Terrain3DDemoPage />
+        </Layout>
+      </Route>
+
+      {/* TerraFusion UI Components Demo */}
+      <Route path="/example-dashboard">
+        <Layout>
+          <ExampleDashboard />
+        </Layout>
+      </Route>
+
+      {/* WebSocket Test Page */}
+      <Route path="/websocket-test">
+        <Layout>
+          <WebSocketTest />
+        </Layout>
+      </Route>
+
+      {/* TerraFusion Design System Showcase */}
+      <Route path="/terrafusion-showcase">
+        <Layout>
+          <TerraFusionShowcase />
+        </Layout>
+      </Route>
+      
+      {/* Development Platform Routes - These use a different layout */}
       <Route path="/development">
         <DevelopmentPlatformPage />
       </Route>
@@ -178,60 +239,6 @@ function Router() {
       <Route path="/development/assessment-workbench">
         <AssessmentModelWorkbenchPage />
       </Route>
-      
-      <Route path="/database-conversion">
-        <AppLayout>
-          <DatabaseConversionPage />
-        </AppLayout>
-      </Route>
-      
-      {/* GIS Routes */}
-      <Route path="/gis">
-        <AppLayout>
-          <GISHubPage />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/gis/clustering-demo">
-        <AppLayout>
-          <ClusteringDemoPage />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/gis/advanced-clustering">
-        <AppLayout>
-          <AdvancedClusteringDemoPage />
-        </AppLayout>
-      </Route>
-      
-      <Route path="/gis/terrain-3d">
-        <AppLayout>
-          <Terrain3DDemoPage />
-        </AppLayout>
-      </Route>
-
-      {/* TerraFusion UI Components Demo */}
-      <Route path="/example-dashboard">
-        <AppLayout>
-          <ExampleDashboard />
-        </AppLayout>
-      </Route>
-
-      {/* WebSocket Test Page */}
-      <Route path="/websocket-test">
-        <AppLayout>
-          <WebSocketTest />
-        </AppLayout>
-      </Route>
-
-      {/* TerraFusion Design System Showcase */}
-      <Route path="/terrafusion-showcase">
-        <AppLayout>
-          <TerraFusionShowcase />
-        </AppLayout>
-      </Route>
-
-      {/* Add more routes as needed */}
 
       {/* Fallback to 404 */}
       <Route component={NotFound} />
@@ -248,7 +255,7 @@ function App() {
             <Router />
             <ConnectionNotification />
             <Toaster />
-            <ConnectionStatusMonitor /> {/* Added ConnectionStatusMonitor */}
+            <ConnectionStatusMonitor />
           </GISProvider>
         </AIAssistantProvider>
       </ExtensionProvider>
