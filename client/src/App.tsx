@@ -39,6 +39,8 @@ import { GISHub as GISHubPage, Terrain3DDemo as Terrain3DDemoPage, GISProvider }
 import ClusteringDemoPage from "@/pages/clustering-demo";
 import AdvancedClusteringDemoPage from "@/pages/advanced-clustering-demo";
 import AppLayout from "@/layout/app-layout";
+// TerraFusion design system
+import TerraFusionShowcase from "@/components/design-system/TerraFusionShowcase";
 
 
 function Router() {
@@ -219,6 +221,13 @@ function Router() {
       <Route path="/websocket-test">
         <AppLayout>
           <WebSocketTest />
+        </AppLayout>
+      </Route>
+
+      {/* TerraFusion Design System Showcase */}
+      <Route path="/terrafusion-showcase">
+        <AppLayout>
+          <TerraFusionShowcase />
         </AppLayout>
       </Route>
 
