@@ -3,6 +3,7 @@
  * 
  * Provides endpoints for advanced analytics capabilities including
  * investment analysis, neighborhood analysis, and sensitivity analysis.
+ * Also includes Web Vitals monitoring endpoints.
  */
 
 import { Router } from 'express';
@@ -14,20 +15,29 @@ import { LLMService } from '../services/llm-service';
 import { logger } from '../utils/logger';
 import { ErrorHandler } from '../utils/error-handler';
 import { asyncHandler } from '../middleware/error-middleware';
+import webVitalsRoutes from './web-vitals-routes';
 
 export function createAnalyticsRoutes(
   storage: IStorage, 
-  marketPredictionModel: EnhancedMarketPredictionModel,
-  riskAssessmentEngine: EnhancedRiskAssessmentEngine,
-  llmService: LLMService
+  marketPredictionModel?: EnhancedMarketPredictionModel,
+  riskAssessmentEngine?: EnhancedRiskAssessmentEngine,
+  llmService?: LLMService
 ) {
   const router = Router();
-  const analyticsService = new AdvancedAnalyticsService(
-    storage,
-    marketPredictionModel,
-    riskAssessmentEngine,
-    llmService
-  );
+  
+  // Mount web-vitals routes directly to make them available at /api/analytics/web-vitals/*
+  router.use('/web-vitals', webVitalsRoutes);
+  
+  // Only create the advanced analytics service if the required models are provided
+  let analyticsService;
+  if (marketPredictionModel && riskAssessmentEngine && llmService) {
+    analyticsService = new AdvancedAnalyticsService(
+      storage,
+      marketPredictionModel,
+      riskAssessmentEngine,
+      llmService
+    );
+  }
   
   /**
    * Get investment opportunity analysis for a property
@@ -40,6 +50,14 @@ export function createAnalyticsRoutes(
       component: 'analytics-routes',
       metadata: { propertyId }
     });
+    
+    // Check if analytics service is available
+    if (!analyticsService) {
+      return res.status(501).json({ 
+        error: 'Investment opportunity analysis service not available',
+        message: 'The required analytics services are not configured.'
+      });
+    }
     
     // Check if property exists
     const property = await storage.getPropertyByPropertyId(propertyId);
@@ -66,6 +84,14 @@ export function createAnalyticsRoutes(
       metadata: { zipCode, radius, includeComparables }
     });
     
+    // Check if analytics service is available
+    if (!analyticsService) {
+      return res.status(501).json({ 
+        error: 'Neighborhood analysis service not available',
+        message: 'The required analytics services are not configured.'
+      });
+    }
+    
     const analysis = await analyticsService.generateNeighborhoodAnalysis(
       zipCode,
       radius,
@@ -85,6 +111,14 @@ export function createAnalyticsRoutes(
       component: 'analytics-routes',
       metadata: { propertyId }
     });
+    
+    // Check if analytics service is available
+    if (!analyticsService) {
+      return res.status(501).json({ 
+        error: 'Valuation sensitivity analysis service not available',
+        message: 'The required analytics services are not configured.'
+      });
+    }
     
     // Check if property exists
     const property = await storage.getPropertyByPropertyId(propertyId);

@@ -41,8 +41,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Register Web Vitals routes
-app.use('/api/analytics', webVitalsRoutes);
+// Web Vitals routes are now registered via analytics-routes.ts
 
 (async () => {
   const server = await registerRoutes(app);
