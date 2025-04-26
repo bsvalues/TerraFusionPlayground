@@ -1,7 +1,13 @@
 /**
- * Conflict Resolution
+ * Conflict Resolution UI Components
  * 
- * UI components for conflict resolution.
+ * Components for visualizing and resolving conflicts.
  */
 
+// Export components
+export { default as ConflictManager } from './ConflictManager';
 export * from './ConflictManager';
+
+// Export examples
+export { default as ConflictResolutionExample } from './examples/ConflictResolutionExample';
+export * from './examples/ConflictResolutionExample';

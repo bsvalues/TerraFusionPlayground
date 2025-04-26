@@ -1,502 +1,412 @@
 /**
- * Storage Provider
+ * Storage
  * 
- * Provides an interface for persisting data locally.
+ * Storage providers for offline sync.
  */
 
-import { EventEmitter } from 'events';
-import { isBrowser } from './utils';
+import { openDB, IDBPDatabase } from 'idb';
+import { retry } from './utils';
 
 /**
- * Storage interface
+ * Storage provider interface
  */
-export interface IStorageProvider {
+export interface StorageProvider {
   /**
-   * Check if document exists
+   * Initialize storage
    * 
-   * @param docId Document ID
-   * @returns Whether document exists
+   * @returns Promise<void>
    */
-  documentExists(docId: string): Promise<boolean>;
+  initialize(): Promise<void>;
   
   /**
-   * Save document
+   * Get item
    * 
-   * @param docId Document ID
-   * @param data Document data
+   * @param key Key
+   * @returns Item if found
    */
-  saveDocument(docId: string, data: Uint8Array): Promise<void>;
+  getItem<T>(key: string): Promise<T | null>;
   
   /**
-   * Load document
+   * Set item
    * 
-   * @param docId Document ID
-   * @returns Document data
+   * @param key Key
+   * @param value Value
+   * @returns Whether item was set
    */
-  loadDocument(docId: string): Promise<Uint8Array | null>;
+  setItem<T>(key: string, value: T): Promise<boolean>;
   
   /**
-   * Delete document
+   * Remove item
    * 
-   * @param docId Document ID
+   * @param key Key
+   * @returns Whether item was removed
    */
-  deleteDocument(docId: string): Promise<void>;
+  removeItem(key: string): Promise<boolean>;
   
   /**
-   * List documents
+   * Clear all items
    * 
-   * @returns Array of document IDs
+   * @returns Whether all items were cleared
    */
-  listDocuments(): Promise<string[]>;
+  clear(): Promise<boolean>;
   
   /**
-   * Save metadata
+   * Get all keys
    * 
-   * @param docId Document ID
-   * @param metadata Metadata
+   * @returns Array of keys
    */
-  saveMetadata(docId: string, metadata: any): Promise<void>;
+  keys(): Promise<string[]>;
   
   /**
-   * Load metadata
+   * Get all items
    * 
-   * @param docId Document ID
-   * @returns Metadata
+   * @returns Record of key-value pairs
    */
-  loadMetadata(docId: string): Promise<any | null>;
+  getAll<T>(): Promise<Record<string, T>>;
+}
+
+/**
+ * Local storage provider
+ */
+export class LocalStorageProvider implements StorageProvider {
+  private prefix: string;
   
   /**
-   * Delete metadata
+   * Initialize a new local storage provider
    * 
-   * @param docId Document ID
+   * @param prefix Key prefix
    */
-  deleteMetadata(docId: string): Promise<void>;
+  constructor(prefix: string = 'terrafusion') {
+    this.prefix = prefix;
+  }
+  
+  /**
+   * Initialize storage
+   * 
+   * @returns Promise<void>
+   */
+  async initialize(): Promise<void> {
+    // Local storage is always available
+    return Promise.resolve();
+  }
+  
+  /**
+   * Get item
+   * 
+   * @param key Key
+   * @returns Item if found
+   */
+  async getItem<T>(key: string): Promise<T | null> {
+    try {
+      const value = localStorage.getItem(`${this.prefix}:${key}`);
+      
+      if (value === null) {
+        return null;
+      }
+      
+      return JSON.parse(value) as T;
+    } catch (err) {
+      console.error('Error getting item from local storage:', err);
+      return null;
+    }
+  }
+  
+  /**
+   * Set item
+   * 
+   * @param key Key
+   * @param value Value
+   * @returns Whether item was set
+   */
+  async setItem<T>(key: string, value: T): Promise<boolean> {
+    try {
+      localStorage.setItem(`${this.prefix}:${key}`, JSON.stringify(value));
+      return true;
+    } catch (err) {
+      console.error('Error setting item in local storage:', err);
+      return false;
+    }
+  }
+  
+  /**
+   * Remove item
+   * 
+   * @param key Key
+   * @returns Whether item was removed
+   */
+  async removeItem(key: string): Promise<boolean> {
+    try {
+      localStorage.removeItem(`${this.prefix}:${key}`);
+      return true;
+    } catch (err) {
+      console.error('Error removing item from local storage:', err);
+      return false;
+    }
+  }
+  
+  /**
+   * Clear all items
+   * 
+   * @returns Whether all items were cleared
+   */
+  async clear(): Promise<boolean> {
+    try {
+      const allKeys = Object.keys(localStorage);
+      
+      for (const key of allKeys) {
+        if (key.startsWith(`${this.prefix}:`)) {
+          localStorage.removeItem(key);
+        }
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Error clearing local storage:', err);
+      return false;
+    }
+  }
+  
+  /**
+   * Get all keys
+   * 
+   * @returns Array of keys
+   */
+  async keys(): Promise<string[]> {
+    try {
+      const allKeys = Object.keys(localStorage);
+      const prefixLength = `${this.prefix}:`.length;
+      
+      return allKeys
+        .filter(key => key.startsWith(`${this.prefix}:`))
+        .map(key => key.substring(prefixLength));
+    } catch (err) {
+      console.error('Error getting keys from local storage:', err);
+      return [];
+    }
+  }
+  
+  /**
+   * Get all items
+   * 
+   * @returns Record of key-value pairs
+   */
+  async getAll<T>(): Promise<Record<string, T>> {
+    try {
+      const keys = await this.keys();
+      const items: Record<string, T> = {};
+      
+      for (const key of keys) {
+        const value = await this.getItem<T>(key);
+        
+        if (value !== null) {
+          items[key] = value;
+        }
+      }
+      
+      return items;
+    } catch (err) {
+      console.error('Error getting all items from local storage:', err);
+      return {};
+    }
+  }
 }
 
 /**
  * IndexedDB storage provider
  */
-export class IndexedDBStorageProvider extends EventEmitter implements IStorageProvider {
+export class IndexedDBStorageProvider implements StorageProvider {
   private dbName: string;
-  private dbVersion: number;
-  private db: IDBDatabase | null = null;
-  private isReady: boolean = false;
-  private readyPromise: Promise<void>;
-  
-  /**
-   * Document store name
-   */
-  private static DOC_STORE = 'documents';
-  
-  /**
-   * Metadata store name
-   */
-  private static META_STORE = 'metadata';
+  private storeName: string;
+  private db: IDBPDatabase | null = null;
   
   /**
    * Initialize a new IndexedDB storage provider
    * 
    * @param dbName Database name
-   * @param dbVersion Database version
+   * @param storeName Store name
    */
-  constructor(dbName: string = 'terrafusion_docs', dbVersion: number = 1) {
-    super();
+  constructor(dbName: string = 'terrafusion', storeName: string = 'offline-sync') {
     this.dbName = dbName;
-    this.dbVersion = dbVersion;
-    this.readyPromise = this.initializeDB();
+    this.storeName = storeName;
   }
   
   /**
-   * Initialize database
+   * Initialize storage
+   * 
+   * @returns Promise<void>
    */
-  private async initializeDB(): Promise<void> {
-    if (!isBrowser()) {
-      throw new Error('IndexedDB is only available in browser environments');
-    }
-    
-    return new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, this.dbVersion);
-      
-      request.onerror = (event) => {
-        reject(new Error(`Failed to open database: ${(event.target as any).error}`));
-      };
-      
-      request.onsuccess = (event) => {
-        this.db = (event.target as IDBOpenDBRequest).result;
-        this.isReady = true;
-        resolve();
-      };
-      
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        
-        // Create document store if it doesn't exist
-        if (!db.objectStoreNames.contains(IndexedDBStorageProvider.DOC_STORE)) {
-          db.createObjectStore(IndexedDBStorageProvider.DOC_STORE);
+  async initialize(): Promise<void> {
+    try {
+      this.db = await openDB(this.dbName, 1, {
+        upgrade(db) {
+          if (!db.objectStoreNames.contains('offline-sync')) {
+            db.createObjectStore('offline-sync');
+          }
         }
-        
-        // Create metadata store if it doesn't exist
-        if (!db.objectStoreNames.contains(IndexedDBStorageProvider.META_STORE)) {
-          db.createObjectStore(IndexedDBStorageProvider.META_STORE);
-        }
-      };
-    });
-  }
-  
-  /**
-   * Ensure database is ready
-   */
-  private async ensureReady(): Promise<void> {
-    if (!this.isReady) {
-      await this.readyPromise;
+      });
+    } catch (err) {
+      console.error('Error initializing IndexedDB:', err);
+      throw err;
     }
   }
   
   /**
-   * Check if document exists
+   * Get item
    * 
-   * @param docId Document ID
-   * @returns Whether document exists
+   * @param key Key
+   * @returns Item if found
    */
-  async documentExists(docId: string): Promise<boolean> {
-    await this.ensureReady();
+  async getItem<T>(key: string): Promise<T | null> {
+    if (!this.db) {
+      await this.initialize();
+    }
     
-    return new Promise<boolean>((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
-      }
-      
-      const transaction = this.db.transaction([IndexedDBStorageProvider.DOC_STORE], 'readonly');
-      const store = transaction.objectStore(IndexedDBStorageProvider.DOC_STORE);
-      const request = store.getKey(docId);
-      
-      request.onsuccess = () => {
-        resolve(request.result !== undefined);
-      };
-      
-      request.onerror = () => {
-        reject(new Error(`Failed to check if document exists: ${docId}`));
-      };
-    });
-  }
-  
-  /**
-   * Save document
-   * 
-   * @param docId Document ID
-   * @param data Document data
-   */
-  async saveDocument(docId: string, data: Uint8Array): Promise<void> {
-    await this.ensureReady();
-    
-    return new Promise<void>((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
-      }
-      
-      const transaction = this.db.transaction([IndexedDBStorageProvider.DOC_STORE], 'readwrite');
-      const store = transaction.objectStore(IndexedDBStorageProvider.DOC_STORE);
-      const request = store.put(data, docId);
-      
-      request.onsuccess = () => {
-        resolve();
-      };
-      
-      request.onerror = () => {
-        reject(new Error(`Failed to save document: ${docId}`));
-      };
-    });
-  }
-  
-  /**
-   * Load document
-   * 
-   * @param docId Document ID
-   * @returns Document data
-   */
-  async loadDocument(docId: string): Promise<Uint8Array | null> {
-    await this.ensureReady();
-    
-    return new Promise<Uint8Array | null>((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
-      }
-      
-      const transaction = this.db.transaction([IndexedDBStorageProvider.DOC_STORE], 'readonly');
-      const store = transaction.objectStore(IndexedDBStorageProvider.DOC_STORE);
-      const request = store.get(docId);
-      
-      request.onsuccess = () => {
-        if (request.result) {
-          resolve(request.result);
-        } else {
-          resolve(null);
-        }
-      };
-      
-      request.onerror = () => {
-        reject(new Error(`Failed to load document: ${docId}`));
-      };
-    });
-  }
-  
-  /**
-   * Delete document
-   * 
-   * @param docId Document ID
-   */
-  async deleteDocument(docId: string): Promise<void> {
-    await this.ensureReady();
-    
-    return new Promise<void>((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
-      }
-      
-      const transaction = this.db.transaction([IndexedDBStorageProvider.DOC_STORE], 'readwrite');
-      const store = transaction.objectStore(IndexedDBStorageProvider.DOC_STORE);
-      const request = store.delete(docId);
-      
-      request.onsuccess = () => {
-        resolve();
-      };
-      
-      request.onerror = () => {
-        reject(new Error(`Failed to delete document: ${docId}`));
-      };
-    });
-  }
-  
-  /**
-   * List documents
-   * 
-   * @returns Array of document IDs
-   */
-  async listDocuments(): Promise<string[]> {
-    await this.ensureReady();
-    
-    return new Promise<string[]>((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
-      }
-      
-      const transaction = this.db.transaction([IndexedDBStorageProvider.DOC_STORE], 'readonly');
-      const store = transaction.objectStore(IndexedDBStorageProvider.DOC_STORE);
-      const request = store.getAllKeys();
-      
-      request.onsuccess = () => {
-        const docIds: string[] = [];
-        
-        for (let i = 0; i < request.result.length; i++) {
-          docIds.push(request.result[i] as string);
+    try {
+      return await retry(async () => {
+        if (!this.db) {
+          throw new Error('Database not initialized');
         }
         
-        resolve(docIds);
-      };
-      
-      request.onerror = () => {
-        reject(new Error('Failed to list documents'));
-      };
-    });
+        return this.db.get(this.storeName, key) as Promise<T | null>;
+      });
+    } catch (err) {
+      console.error('Error getting item from IndexedDB:', err);
+      return null;
+    }
   }
   
   /**
-   * Save metadata
+   * Set item
    * 
-   * @param docId Document ID
-   * @param metadata Metadata
+   * @param key Key
+   * @param value Value
+   * @returns Whether item was set
    */
-  async saveMetadata(docId: string, metadata: any): Promise<void> {
-    await this.ensureReady();
+  async setItem<T>(key: string, value: T): Promise<boolean> {
+    if (!this.db) {
+      await this.initialize();
+    }
     
-    return new Promise<void>((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
-      }
-      
-      const transaction = this.db.transaction([IndexedDBStorageProvider.META_STORE], 'readwrite');
-      const store = transaction.objectStore(IndexedDBStorageProvider.META_STORE);
-      const request = store.put(metadata, docId);
-      
-      request.onsuccess = () => {
-        resolve();
-      };
-      
-      request.onerror = () => {
-        reject(new Error(`Failed to save metadata: ${docId}`));
-      };
-    });
-  }
-  
-  /**
-   * Load metadata
-   * 
-   * @param docId Document ID
-   * @returns Metadata
-   */
-  async loadMetadata(docId: string): Promise<any | null> {
-    await this.ensureReady();
-    
-    return new Promise<any | null>((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
-      }
-      
-      const transaction = this.db.transaction([IndexedDBStorageProvider.META_STORE], 'readonly');
-      const store = transaction.objectStore(IndexedDBStorageProvider.META_STORE);
-      const request = store.get(docId);
-      
-      request.onsuccess = () => {
-        if (request.result) {
-          resolve(request.result);
-        } else {
-          resolve(null);
+    try {
+      await retry(async () => {
+        if (!this.db) {
+          throw new Error('Database not initialized');
         }
-      };
+        
+        await this.db.put(this.storeName, value, key);
+      });
       
-      request.onerror = () => {
-        reject(new Error(`Failed to load metadata: ${docId}`));
-      };
-    });
+      return true;
+    } catch (err) {
+      console.error('Error setting item in IndexedDB:', err);
+      return false;
+    }
   }
   
   /**
-   * Delete metadata
+   * Remove item
    * 
-   * @param docId Document ID
+   * @param key Key
+   * @returns Whether item was removed
    */
-  async deleteMetadata(docId: string): Promise<void> {
-    await this.ensureReady();
+  async removeItem(key: string): Promise<boolean> {
+    if (!this.db) {
+      await this.initialize();
+    }
     
-    return new Promise<void>((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
-      }
+    try {
+      await retry(async () => {
+        if (!this.db) {
+          throw new Error('Database not initialized');
+        }
+        
+        await this.db.delete(this.storeName, key);
+      });
       
-      const transaction = this.db.transaction([IndexedDBStorageProvider.META_STORE], 'readwrite');
-      const store = transaction.objectStore(IndexedDBStorageProvider.META_STORE);
-      const request = store.delete(docId);
+      return true;
+    } catch (err) {
+      console.error('Error removing item from IndexedDB:', err);
+      return false;
+    }
+  }
+  
+  /**
+   * Clear all items
+   * 
+   * @returns Whether all items were cleared
+   */
+  async clear(): Promise<boolean> {
+    if (!this.db) {
+      await this.initialize();
+    }
+    
+    try {
+      await retry(async () => {
+        if (!this.db) {
+          throw new Error('Database not initialized');
+        }
+        
+        await this.db.clear(this.storeName);
+      });
       
-      request.onsuccess = () => {
-        resolve();
-      };
-      
-      request.onerror = () => {
-        reject(new Error(`Failed to delete metadata: ${docId}`));
-      };
-    });
-  }
-}
-
-/**
- * Memory storage provider (for non-browser environments or testing)
- */
-export class LocalStorageProvider extends EventEmitter implements IStorageProvider {
-  private documents: Map<string, Uint8Array> = new Map();
-  private metadata: Map<string, any> = new Map();
-  
-  /**
-   * Initialize a new memory storage provider
-   */
-  constructor() {
-    super();
+      return true;
+    } catch (err) {
+      console.error('Error clearing IndexedDB:', err);
+      return false;
+    }
   }
   
   /**
-   * Check if document exists
+   * Get all keys
    * 
-   * @param docId Document ID
-   * @returns Whether document exists
+   * @returns Array of keys
    */
-  async documentExists(docId: string): Promise<boolean> {
-    return this.documents.has(docId);
+  async keys(): Promise<string[]> {
+    if (!this.db) {
+      await this.initialize();
+    }
+    
+    try {
+      return await retry(async () => {
+        if (!this.db) {
+          throw new Error('Database not initialized');
+        }
+        
+        return this.db.getAllKeys(this.storeName) as Promise<string[]>;
+      });
+    } catch (err) {
+      console.error('Error getting keys from IndexedDB:', err);
+      return [];
+    }
   }
   
   /**
-   * Save document
+   * Get all items
    * 
-   * @param docId Document ID
-   * @param data Document data
+   * @returns Record of key-value pairs
    */
-  async saveDocument(docId: string, data: Uint8Array): Promise<void> {
-    this.documents.set(docId, data);
-    this.emit('document:saved', { docId });
-  }
-  
-  /**
-   * Load document
-   * 
-   * @param docId Document ID
-   * @returns Document data
-   */
-  async loadDocument(docId: string): Promise<Uint8Array | null> {
-    return this.documents.get(docId) || null;
-  }
-  
-  /**
-   * Delete document
-   * 
-   * @param docId Document ID
-   */
-  async deleteDocument(docId: string): Promise<void> {
-    this.documents.delete(docId);
-    this.emit('document:deleted', { docId });
-  }
-  
-  /**
-   * List documents
-   * 
-   * @returns Array of document IDs
-   */
-  async listDocuments(): Promise<string[]> {
-    return Array.from(this.documents.keys());
-  }
-  
-  /**
-   * Save metadata
-   * 
-   * @param docId Document ID
-   * @param metadata Metadata
-   */
-  async saveMetadata(docId: string, metadata: any): Promise<void> {
-    this.metadata.set(docId, metadata);
-    this.emit('metadata:saved', { docId });
-  }
-  
-  /**
-   * Load metadata
-   * 
-   * @param docId Document ID
-   * @returns Metadata
-   */
-  async loadMetadata(docId: string): Promise<any | null> {
-    return this.metadata.get(docId) || null;
-  }
-  
-  /**
-   * Delete metadata
-   * 
-   * @param docId Document ID
-   */
-  async deleteMetadata(docId: string): Promise<void> {
-    this.metadata.delete(docId);
-    this.emit('metadata:deleted', { docId });
-  }
-  
-  /**
-   * Clear all data
-   */
-  async clear(): Promise<void> {
-    this.documents.clear();
-    this.metadata.clear();
-    this.emit('storage:cleared');
+  async getAll<T>(): Promise<Record<string, T>> {
+    if (!this.db) {
+      await this.initialize();
+    }
+    
+    try {
+      return await retry(async () => {
+        if (!this.db) {
+          throw new Error('Database not initialized');
+        }
+        
+        const keys = await this.db.getAllKeys(this.storeName) as string[];
+        const values = await this.db.getAll(this.storeName) as T[];
+        
+        return keys.reduce((acc, key, index) => {
+          acc[key] = values[index];
+          return acc;
+        }, {} as Record<string, T>);
+      });
+    } catch (err) {
+      console.error('Error getting all items from IndexedDB:', err);
+      return {};
+    }
   }
 }

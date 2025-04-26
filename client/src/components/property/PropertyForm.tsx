@@ -1,35 +1,39 @@
 /**
- * PropertyForm
+ * Property Form
  * 
- * A form for editing property data.
+ * Form for editing property data.
  */
 
 import React, { useState, useEffect } from 'react';
-
-/**
- * Import from offline sync module
- */
+import { 
+  Form, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormControl,
+  FormDescription 
+} from '@/components/ui/form';
 import { SyncStatus } from '@terrafusion/offline-sync/src/crdt-sync';
 import { PropertyDocState } from '@terrafusion/offline-sync/src/hooks/usePropertyDoc';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { AlertCircle, CheckCircle, Cloud, CloudOff, RefreshCw } from 'lucide-react';
 
 /**
- * PropertyForm props interface
+ * Property form props interface
  */
 export interface PropertyFormProps {
   /**
    * Property data
    */
-  property: PropertyDocState;
+  data: PropertyDocState;
   
   /**
    * Loading state
    */
   isLoading?: boolean;
-  
-  /**
-   * Read-only mode
-   */
-  readOnly?: boolean;
   
   /**
    * Sync status
@@ -42,210 +46,269 @@ export interface PropertyFormProps {
   onChange?: (data: Partial<PropertyDocState>) => void;
   
   /**
-   * On sync callback
+   * On sync request callback
    */
-  onSync?: () => void;
+  onSyncRequest?: () => void;
 }
 
 /**
- * PropertyForm component
+ * Property form component
  */
 export const PropertyForm: React.FC<PropertyFormProps> = ({
-  property,
+  data,
   isLoading = false,
-  readOnly = false,
-  syncStatus = SyncStatus.SYNCED,
+  syncStatus = SyncStatus.UNSYNCED,
   onChange,
-  onSync
+  onSyncRequest
 }) => {
-  // Local form state
-  const [formState, setFormState] = useState<PropertyDocState>(property);
+  // Local state to track form values
+  const [formValues, setFormValues] = useState<Partial<PropertyDocState>>({});
   
-  // Update form state when property changes
+  // Update form values when data changes
   useEffect(() => {
-    setFormState(property);
-  }, [property]);
+    setFormValues(data);
+  }, [data]);
   
   // Handle field change
-  const handleChange = (field: string, value: any) => {
-    // Update form state
-    setFormState(prev => ({
+  const handleChange = (field: keyof PropertyDocState, value: any) => {
+    setFormValues(prev => ({
       ...prev,
       [field]: value
     }));
     
-    // Call onChange if provided
+    // Call onChange callback
     if (onChange) {
-      onChange({ [field]: value });
+      onChange({
+        [field]: value
+      });
     }
   };
   
-  // Handle features change
-  const handleFeaturesChange = (features: string) => {
-    // Split by comma and trim
-    const featureArray = features.split(',').map(f => f.trim()).filter(f => f);
+  // Handle feature change
+  const handleFeaturesChange = (value: string) => {
+    // Split by commas and trim
+    const features = value
+      .split(',')
+      .map(feature => feature.trim())
+      .filter(Boolean);
     
-    // Update form state
-    setFormState(prev => ({
+    setFormValues(prev => ({
       ...prev,
-      features: featureArray
+      features
     }));
     
-    // Call onChange if provided
+    // Call onChange callback
     if (onChange) {
-      onChange({ features: featureArray });
+      onChange({
+        features
+      });
     }
   };
   
-  // Handle sync
-  const handleSync = () => {
-    if (onSync) {
-      onSync();
+  // Handle sync request
+  const handleSyncRequest = () => {
+    if (onSyncRequest) {
+      onSyncRequest();
     }
   };
   
-  // Get status color
-  const getStatusColor = (): string => {
+  // Get features string
+  const featuresString = formValues.features?.join(', ') || '';
+  
+  // Get sync status badge
+  const getSyncStatusBadge = () => {
     switch (syncStatus) {
       case SyncStatus.SYNCED:
-        return 'text-green-600';
+        return (
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" />
+            Synced
+          </Badge>
+        );
       case SyncStatus.SYNCING:
-        return 'text-blue-600';
-      case SyncStatus.UNSYNCED:
-        return 'text-yellow-600';
+        return (
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Syncing
+          </Badge>
+        );
       case SyncStatus.FAILED:
-        return 'text-red-600';
+        return (
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            Sync Failed
+          </Badge>
+        );
       case SyncStatus.CONFLICT:
-        return 'text-orange-600';
-      default:
-        return 'text-gray-600';
-    }
-  };
-  
-  // Get status text
-  const getStatusText = (): string => {
-    switch (syncStatus) {
-      case SyncStatus.SYNCED:
-        return 'Synced';
-      case SyncStatus.SYNCING:
-        return 'Syncing...';
+        return (
+          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            Conflict
+          </Badge>
+        );
       case SyncStatus.UNSYNCED:
-        return 'Unsynced';
-      case SyncStatus.FAILED:
-        return 'Sync Failed';
-      case SyncStatus.CONFLICT:
-        return 'Conflict';
       default:
-        return 'Unknown';
+        return (
+          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 flex items-center gap-1">
+            <CloudOff className="h-3 w-3" />
+            Unsynced
+          </Badge>
+        );
     }
   };
   
   return (
-    <div className="p-4 border rounded-lg bg-white shadow-sm">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">Property Details</h2>
-        
-        <div className="flex items-center">
-          <span className={`mr-2 ${getStatusColor()}`}>{getStatusText()}</span>
-          
-          {syncStatus !== SyncStatus.CONFLICT && (
-            <button
-              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-              onClick={handleSync}
-              disabled={isLoading || syncStatus === SyncStatus.SYNCING || readOnly}
-            >
-              {syncStatus === SyncStatus.SYNCING ? 'Syncing...' : 'Sync'}
-            </button>
-          )}
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">Property Details</h2>
+        <div className="flex gap-2 items-center">
+          {getSyncStatusBadge()}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleSyncRequest}
+            disabled={isLoading || syncStatus === SyncStatus.SYNCING}
+            className="flex items-center gap-1"
+          >
+            <Cloud className="h-4 w-4" />
+            {syncStatus === SyncStatus.SYNCING ? 'Syncing...' : 'Sync Now'}
+          </Button>
         </div>
       </div>
       
-      <div className="space-y-4">
-        {/* ID */}
-        <div className="form-group">
-          <label className="block text-sm font-medium text-gray-700 mb-1">ID</label>
-          <input
-            type="text"
-            className="w-full p-2 border rounded bg-gray-100"
-            value={formState.id || ''}
-            readOnly
+      <Form>
+        <div className="space-y-4">
+          {/* Property ID - Read-only */}
+          <FormField
+            name="id"
+            render={() => (
+              <FormItem>
+                <FormLabel>Property ID</FormLabel>
+                <FormControl>
+                  <Input 
+                    value={formValues.id || ''} 
+                    readOnly 
+                    disabled
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          
+          {/* Address */}
+          <FormField
+            name="address"
+            render={() => (
+              <FormItem>
+                <FormLabel>Address</FormLabel>
+                <FormControl>
+                  <Input 
+                    value={formValues.address || ''} 
+                    onChange={(e) => handleChange('address', e.target.value)}
+                    disabled={isLoading}
+                    placeholder="Enter property address"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          
+          {/* Owner */}
+          <FormField
+            name="owner"
+            render={() => (
+              <FormItem>
+                <FormLabel>Owner</FormLabel>
+                <FormControl>
+                  <Input 
+                    value={formValues.owner || ''} 
+                    onChange={(e) => handleChange('owner', e.target.value)}
+                    disabled={isLoading}
+                    placeholder="Enter property owner"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          
+          {/* Value */}
+          <FormField
+            name="value"
+            render={() => (
+              <FormItem>
+                <FormLabel>Value</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="number" 
+                    value={formValues.value || ''} 
+                    onChange={(e) => handleChange('value', e.target.valueAsNumber)}
+                    disabled={isLoading}
+                    placeholder="Enter property value"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          
+          {/* Last Inspection */}
+          <FormField
+            name="lastInspection"
+            render={() => (
+              <FormItem>
+                <FormLabel>Last Inspection</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="date" 
+                    value={formValues.lastInspection || ''} 
+                    onChange={(e) => handleChange('lastInspection', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          
+          {/* Features */}
+          <FormField
+            name="features"
+            render={() => (
+              <FormItem>
+                <FormLabel>Features</FormLabel>
+                <FormControl>
+                  <Input 
+                    value={featuresString} 
+                    onChange={(e) => handleFeaturesChange(e.target.value)}
+                    disabled={isLoading}
+                    placeholder="Enter features, separated by commas"
+                  />
+                </FormControl>
+                <FormDescription>
+                  Enter features separated by commas (e.g. "3 bedrooms, 2 baths, garage")
+                </FormDescription>
+              </FormItem>
+            )}
+          />
+          
+          {/* Notes */}
+          <FormField
+            name="notes"
+            render={() => (
+              <FormItem>
+                <FormLabel>Notes</FormLabel>
+                <FormControl>
+                  <Textarea 
+                    value={formValues.notes || ''} 
+                    onChange={(e) => handleChange('notes', e.target.value)}
+                    disabled={isLoading}
+                    placeholder="Enter property notes"
+                    className="min-h-32"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
           />
         </div>
-        
-        {/* Address */}
-        <div className="form-group">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-          <input
-            type="text"
-            className="w-full p-2 border rounded disabled:bg-gray-100"
-            value={formState.address || ''}
-            onChange={(e) => handleChange('address', e.target.value)}
-            disabled={isLoading || readOnly}
-          />
-        </div>
-        
-        {/* Owner */}
-        <div className="form-group">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
-          <input
-            type="text"
-            className="w-full p-2 border rounded disabled:bg-gray-100"
-            value={formState.owner || ''}
-            onChange={(e) => handleChange('owner', e.target.value)}
-            disabled={isLoading || readOnly}
-          />
-        </div>
-        
-        {/* Value */}
-        <div className="form-group">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
-          <input
-            type="number"
-            className="w-full p-2 border rounded disabled:bg-gray-100"
-            value={formState.value || ''}
-            onChange={(e) => handleChange('value', parseFloat(e.target.value))}
-            disabled={isLoading || readOnly}
-          />
-        </div>
-        
-        {/* Last Inspection */}
-        <div className="form-group">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Last Inspection</label>
-          <input
-            type="date"
-            className="w-full p-2 border rounded disabled:bg-gray-100"
-            value={formState.lastInspection || ''}
-            onChange={(e) => handleChange('lastInspection', e.target.value)}
-            disabled={isLoading || readOnly}
-          />
-        </div>
-        
-        {/* Notes */}
-        <div className="form-group">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-          <textarea
-            className="w-full p-2 border rounded disabled:bg-gray-100"
-            value={formState.notes || ''}
-            onChange={(e) => handleChange('notes', e.target.value)}
-            rows={4}
-            disabled={isLoading || readOnly}
-          />
-        </div>
-        
-        {/* Features */}
-        <div className="form-group">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Features (comma-separated)</label>
-          <textarea
-            className="w-full p-2 border rounded disabled:bg-gray-100"
-            value={(formState.features || []).join(', ')}
-            onChange={(e) => handleFeaturesChange(e.target.value)}
-            rows={2}
-            disabled={isLoading || readOnly}
-          />
-        </div>
-      </div>
+      </Form>
     </div>
   );
 };
-
-export default PropertyForm;

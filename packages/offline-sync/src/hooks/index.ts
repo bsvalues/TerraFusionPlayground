@@ -1,7 +1,7 @@
 /**
- * Hooks
+ * Offline Sync Hooks
  * 
- * React hooks for the offline sync module.
+ * Hooks for offline sync functionality.
  */
 
 export * from './usePropertyDoc';

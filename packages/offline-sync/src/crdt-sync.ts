@@ -1,620 +1,408 @@
 /**
- * CRDT Document Manager
+ * CRDT Sync
  * 
- * Manages CRDT-based document synchronization using Yjs.
+ * CRDT-based synchronization for offline data.
  */
 
-import { EventEmitter } from 'events';
 import * as Y from 'yjs';
-import { LocalStorageProvider } from './storage';
-import { generateId, deepEqual } from './utils';
+import { IndexeddbPersistence } from 'y-indexeddb';
+import * as json from 'lib0/json';
+import { retry } from './utils';
 
 /**
- * Sync status enum
+ * Sync status enumeration
  */
 export enum SyncStatus {
-  /** Document is synced */
-  SYNCED = 'synced',
-  /** Document is currently syncing */
-  SYNCING = 'syncing',
-  /** Document has local changes that need to be synced */
+  /**
+   * Unsynced
+   */
   UNSYNCED = 'unsynced',
-  /** Syncing failed */
+  
+  /**
+   * Syncing
+   */
+  SYNCING = 'syncing',
+  
+  /**
+   * Synced
+   */
+  SYNCED = 'synced',
+  
+  /**
+   * Failed
+   */
   FAILED = 'failed',
-  /** Document has conflicts */
+  
+  /**
+   * Conflict
+   */
   CONFLICT = 'conflict'
 }
 
 /**
- * Document metadata interface
+ * CRDT document manager interface
  */
-export interface DocumentMetadata {
-  /** Document ID */
-  id: string;
-  /** Document type */
-  type: string;
-  /** Creation timestamp */
-  createdAt: number;
-  /** Last modified timestamp */
-  modifiedAt: number;
-  /** Last synced timestamp */
-  lastSynced?: number;
-  /** User ID of last modifier */
-  lastModifiedBy?: string;
-  /** Sync status */
-  syncStatus: SyncStatus;
-  /** Version */
-  version: number;
-  /** Custom metadata */
-  [key: string]: any;
+export interface CRDTDocumentManager {
+  /**
+   * Create document
+   * 
+   * @param docId Document ID
+   * @returns Document
+   */
+  createDocument(docId: string): Promise<Y.Doc>;
+  
+  /**
+   * Get document
+   * 
+   * @param docId Document ID
+   * @returns Document if found
+   */
+  getDocument(docId: string): Promise<Y.Doc | null>;
+  
+  /**
+   * Get or create document
+   * 
+   * @param docId Document ID
+   * @returns Document
+   */
+  getOrCreateDocument(docId: string): Promise<Y.Doc>;
+  
+  /**
+   * Delete document
+   * 
+   * @param docId Document ID
+   * @returns Whether document was deleted
+   */
+  deleteDocument(docId: string): Promise<boolean>;
+  
+  /**
+   * Get local data
+   * 
+   * @param doc Document
+   * @returns Local data
+   */
+  getLocalData(doc: Y.Doc): any;
+  
+  /**
+   * Update local data
+   * 
+   * @param doc Document
+   * @param data Data
+   * @returns Whether data was updated
+   */
+  updateLocalData(doc: Y.Doc, data: any): Promise<boolean>;
+  
+  /**
+   * Sync with remote
+   * 
+   * @param doc Document
+   * @param endpoint API endpoint
+   * @returns Remote data
+   */
+  syncWithRemote(doc: Y.Doc, endpoint: string): Promise<any>;
+  
+  /**
+   * Observe document
+   * 
+   * @param doc Document
+   * @param observer Observer function
+   */
+  observeDocument(doc: Y.Doc, observer: (event: Y.YEvent<any>, transaction: Y.Transaction) => void): void;
+  
+  /**
+   * Unobserve document
+   * 
+   * @param doc Document
+   * @param observer Observer function
+   */
+  unobserveDocument(doc: Y.Doc, observer: (event: Y.YEvent<any>, transaction: Y.Transaction) => void): void;
 }
 
 /**
- * Document update options
+ * CRDT document manager implementation
  */
-export interface UpdateOptions {
-  /** User ID */
-  userId?: string;
-  /** Update metadata */
-  updateMetadata?: boolean;
-  /** Origin identifier */
-  origin?: any;
-}
-
-/**
- * CRDT Document Manager
- */
-export class CRDTDocumentManager extends EventEmitter {
-  private storageProvider: LocalStorageProvider;
-  private docs: Map<string, Y.Doc> = new Map();
-  private metadataCache: Map<string, DocumentMetadata> = new Map();
+export class CRDTDocumentManagerImpl implements CRDTDocumentManager {
+  private documents: Map<string, Y.Doc> = new Map();
+  private persistences: Map<string, IndexeddbPersistence> = new Map();
+  private observers: Map<string, Set<(event: Y.YEvent<any>, transaction: Y.Transaction) => void>> = new Map();
   
   /**
    * Initialize a new CRDT document manager
-   * 
-   * @param storageProvider Storage provider
    */
-  constructor(storageProvider: LocalStorageProvider) {
-    super();
-    this.storageProvider = storageProvider;
-  }
+  constructor() {}
   
   /**
-   * Initialize the document manager
-   */
-  async initialize(): Promise<void> {
-    // Load metadata for all documents
-    const docIds = await this.storageProvider.listDocuments();
-    
-    for (const docId of docIds) {
-      const metadata = await this.storageProvider.loadMetadata(docId);
-      
-      if (metadata) {
-        this.metadataCache.set(docId, metadata);
-      }
-    }
-    
-    this.emit('initialized');
-  }
-  
-  /**
-   * Create a new document
+   * Create document
    * 
    * @param docId Document ID
-   * @param initialData Initial data
-   * @param type Document type
-   * @param options Create options
-   * @returns New document
+   * @returns Document
    */
-  async createDocument(
-    docId: string,
-    initialData?: any,
-    type: string = 'default',
-    options: UpdateOptions = {}
-  ): Promise<Y.Doc> {
-    // Check if document already exists
-    if (await this.hasDocument(docId)) {
-      throw new Error(`Document already exists: ${docId}`);
-    }
-    
-    // Create new document
+  async createDocument(docId: string): Promise<Y.Doc> {
+    // Create document
     const doc = new Y.Doc();
-    this.docs.set(docId, doc);
     
-    // Set initial data if provided
-    if (initialData) {
-      this.setDocumentData(doc, initialData);
-    }
+    // Create persistence
+    const persistence = new IndexeddbPersistence(docId, doc);
     
-    // Save to storage
-    const encodedState = Y.encodeStateAsUpdate(doc);
-    await this.storageProvider.saveDocument(docId, encodedState);
+    // Wait for persistence to be synced
+    await new Promise<void>((resolve) => {
+      persistence.once('synced', () => {
+        resolve();
+      });
+    });
     
-    // Create metadata
-    const metadata: DocumentMetadata = {
-      id: docId,
-      type,
-      createdAt: Date.now(),
-      modifiedAt: Date.now(),
-      lastModifiedBy: options.userId,
-      syncStatus: SyncStatus.UNSYNCED,
-      version: 1
-    };
-    
-    // Save metadata
-    this.metadataCache.set(docId, metadata);
-    await this.storageProvider.saveMetadata(docId, metadata);
-    
-    // Emit event
-    this.emit('document:created', { docId, userId: options.userId, type });
+    // Store document and persistence
+    this.documents.set(docId, doc);
+    this.persistences.set(docId, persistence);
+    this.observers.set(docId, new Set());
     
     return doc;
-  }
-  
-  /**
-   * Check if document exists
-   * 
-   * @param docId Document ID
-   * @returns Whether the document exists
-   */
-  async hasDocument(docId: string): Promise<boolean> {
-    // Check cache first
-    if (this.docs.has(docId)) {
-      return true;
-    }
-    
-    // Check storage
-    return this.storageProvider.documentExists(docId);
   }
   
   /**
    * Get document
    * 
    * @param docId Document ID
+   * @returns Document if found
+   */
+  async getDocument(docId: string): Promise<Y.Doc | null> {
+    // Check if document exists
+    if (this.documents.has(docId)) {
+      return this.documents.get(docId) || null;
+    }
+    
+    try {
+      // Create document
+      const doc = new Y.Doc();
+      
+      // Create persistence
+      const persistence = new IndexeddbPersistence(docId, doc);
+      
+      // Wait for persistence to be synced
+      await new Promise<void>((resolve, reject) => {
+        persistence.once('synced', () => {
+          resolve();
+        });
+        
+        persistence.once('error', (err) => {
+          reject(err);
+        });
+      });
+      
+      // Check if document has data
+      const data = this.getLocalData(doc);
+      
+      if (!data || Object.keys(data).length === 0) {
+        // No data, document doesn't exist
+        persistence.destroy();
+        return null;
+      }
+      
+      // Store document and persistence
+      this.documents.set(docId, doc);
+      this.persistences.set(docId, persistence);
+      this.observers.set(docId, new Set());
+      
+      return doc;
+    } catch (err) {
+      console.error('Error getting document:', err);
+      return null;
+    }
+  }
+  
+  /**
+   * Get or create document
+   * 
+   * @param docId Document ID
    * @returns Document
    */
-  async getDocument(docId: string): Promise<Y.Doc> {
-    // Check cache first
-    let doc = this.docs.get(docId);
+  async getOrCreateDocument(docId: string): Promise<Y.Doc> {
+    const doc = await this.getDocument(docId);
     
     if (doc) {
       return doc;
     }
     
-    // Check if document exists
-    if (!await this.hasDocument(docId)) {
-      throw new Error(`Document not found: ${docId}`);
-    }
-    
-    // Load from storage
-    const encodedState = await this.storageProvider.loadDocument(docId);
-    
-    if (!encodedState) {
-      throw new Error(`Document data not found: ${docId}`);
-    }
-    
-    // Create new document
-    doc = new Y.Doc();
-    
-    // Apply stored state
-    Y.applyUpdate(doc, encodedState);
-    
-    // Cache document
-    this.docs.set(docId, doc);
-    
-    // Emit event
-    this.emit('document:loaded', { docId });
-    
-    return doc;
-  }
-  
-  /**
-   * Save document
-   * 
-   * @param docId Document ID
-   * @param options Save options
-   */
-  async saveDocument(
-    docId: string,
-    options: UpdateOptions = {}
-  ): Promise<void> {
-    const doc = this.docs.get(docId);
-    
-    if (!doc) {
-      throw new Error(`Document not loaded: ${docId}`);
-    }
-    
-    // Get state as update
-    const encodedState = Y.encodeStateAsUpdate(doc);
-    
-    // Save to storage
-    await this.storageProvider.saveDocument(docId, encodedState);
-    
-    // Update metadata if needed
-    if (options.updateMetadata !== false) {
-      const metadata = this.metadataCache.get(docId);
-      
-      if (metadata) {
-        metadata.modifiedAt = Date.now();
-        metadata.lastModifiedBy = options.userId;
-        metadata.syncStatus = SyncStatus.UNSYNCED;
-        metadata.version += 1;
-        
-        // Save metadata
-        this.metadataCache.set(docId, metadata);
-        await this.storageProvider.saveMetadata(docId, metadata);
-      }
-    }
-    
-    // Emit event
-    this.emit('document:saved', { docId, userId: options.userId });
+    return this.createDocument(docId);
   }
   
   /**
    * Delete document
    * 
    * @param docId Document ID
-   * @param options Delete options
+   * @returns Whether document was deleted
    */
-  async deleteDocument(
-    docId: string,
-    options: UpdateOptions = {}
-  ): Promise<void> {
-    // Delete from storage
-    await this.storageProvider.deleteDocument(docId);
-    await this.storageProvider.deleteMetadata(docId);
-    
-    // Delete from cache
-    this.docs.delete(docId);
-    this.metadataCache.delete(docId);
-    
-    // Emit event
-    this.emit('document:deleted', { docId, userId: options.userId });
-  }
-  
-  /**
-   * Get document metadata
-   * 
-   * @param docId Document ID
-   * @returns Document metadata
-   */
-  getDocumentMetadata(docId: string): DocumentMetadata | null {
-    return this.metadataCache.get(docId) || null;
-  }
-  
-  /**
-   * Update document metadata
-   * 
-   * @param docId Document ID
-   * @param metadata Document metadata
-   */
-  async updateDocumentMetadata(
-    docId: string,
-    metadata: DocumentMetadata
-  ): Promise<void> {
-    // Update metadata cache
-    this.metadataCache.set(docId, metadata);
-    
-    // Save to storage
-    await this.storageProvider.saveMetadata(docId, metadata);
-    
-    // Emit event
-    this.emit('metadata:updated', { docId, metadata });
-  }
-  
-  /**
-   * Get all document IDs
-   * 
-   * @returns Array of document IDs
-   */
-  async getAllDocumentIds(): Promise<string[]> {
-    return this.storageProvider.listDocuments();
-  }
-  
-  /**
-   * Get all document metadata
-   * 
-   * @returns Array of document metadata
-   */
-  async getAllDocumentMetadata(): Promise<DocumentMetadata[]> {
-    const docIds = await this.getAllDocumentIds();
-    const metadataList: DocumentMetadata[] = [];
-    
-    for (const docId of docIds) {
-      const metadata = this.metadataCache.get(docId);
-      
-      if (metadata) {
-        metadataList.push(metadata);
-      } else {
-        const loadedMetadata = await this.storageProvider.loadMetadata(docId);
-        
-        if (loadedMetadata) {
-          this.metadataCache.set(docId, loadedMetadata);
-          metadataList.push(loadedMetadata);
-        }
-      }
+  async deleteDocument(docId: string): Promise<boolean> {
+    // Check if document exists
+    if (!this.documents.has(docId)) {
+      return false;
     }
     
-    return metadataList;
-  }
-  
-  /**
-   * Apply updates to a document
-   * 
-   * @param docId Document ID
-   * @param update Updates to apply
-   * @param options Apply options
-   */
-  async applyUpdates(
-    docId: string,
-    update: Uint8Array,
-    options: UpdateOptions = {}
-  ): Promise<void> {
-    let doc = this.docs.get(docId);
+    // Get document and persistence
+    const doc = this.documents.get(docId);
+    const persistence = this.persistences.get(docId);
     
-    if (!doc) {
-      // Load document if not in cache
-      doc = await this.getDocument(docId);
+    if (!doc || !persistence) {
+      return false;
     }
     
-    // Apply update
-    Y.applyUpdate(doc, update, options.origin);
+    // Destroy document and persistence
+    doc.destroy();
+    persistence.destroy();
     
-    // Save document
-    await this.saveDocument(docId, options);
+    // Remove document and persistence
+    this.documents.delete(docId);
+    this.persistences.delete(docId);
+    this.observers.delete(docId);
     
-    // Emit event
-    this.emit('document:updated', { docId, userId: options.userId });
+    return true;
   }
   
   /**
-   * Get updates since a given state
-   * 
-   * @param docId Document ID
-   * @param stateVector State vector to compare against
-   * @returns Updates
-   */
-  async getUpdatesSince(
-    docId: string,
-    stateVector?: Uint8Array
-  ): Promise<Uint8Array> {
-    const doc = await this.getDocument(docId);
-    
-    if (stateVector) {
-      return Y.encodeStateAsUpdate(doc, stateVector);
-    } else {
-      return Y.encodeStateAsUpdate(doc);
-    }
-  }
-  
-  /**
-   * Get all updates for a document
-   * 
-   * @param docId Document ID
-   * @returns Updates
-   */
-  getUpdates(docId: string): Uint8Array | null {
-    const doc = this.docs.get(docId);
-    
-    if (!doc) {
-      return null;
-    }
-    
-    return Y.encodeStateAsUpdate(doc);
-  }
-  
-  /**
-   * Get document state vector
-   * 
-   * @param docId Document ID
-   * @returns State vector
-   */
-  getStateVector(docId: string): Uint8Array | null {
-    const doc = this.docs.get(docId);
-    
-    if (!doc) {
-      return null;
-    }
-    
-    return Y.encodeStateVector(doc);
-  }
-  
-  /**
-   * Get document data
-   * 
-   * @param docId Document ID
-   * @returns Document data
-   */
-  async getDocumentData(docId: string): Promise<any> {
-    const doc = await this.getDocument(docId);
-    return this.extractDocumentData(doc);
-  }
-  
-  /**
-   * Set document data
-   * 
-   * @param docOrId Document or document ID
-   * @param data Data to set
-   * @param options Set options
-   */
-  async setDocumentData(
-    docOrId: Y.Doc | string,
-    data: any,
-    options: UpdateOptions = {}
-  ): Promise<void> {
-    // Get document
-    const doc = typeof docOrId === 'string' 
-      ? await this.getDocument(docOrId)
-      : docOrId;
-    
-    const docId = typeof docOrId === 'string'
-      ? docOrId
-      : doc.guid;
-    
-    // Start transaction
-    doc.transact(() => {
-      // Get root map
-      const rootMap = doc.getMap('data');
-      
-      // Clear existing data
-      rootMap.clear();
-      
-      // Set new data
-      if (data) {
-        // For objects, set each property individually
-        if (typeof data === 'object' && !Array.isArray(data)) {
-          for (const [key, value] of Object.entries(data)) {
-            this.setValueInDoc(rootMap, key, value);
-          }
-        } else {
-          // For non-objects, set the value directly
-          this.setValueInDoc(rootMap, 'value', data);
-        }
-      }
-    }, options.origin);
-    
-    // Save document if needed
-    if (typeof docOrId === 'string') {
-      await this.saveDocument(docId, options);
-    }
-    
-    // Emit event
-    this.emit('data:updated', { docId, userId: options.userId });
-  }
-  
-  /**
-   * Set a value in a document map
-   * 
-   * @param map Map to set value in
-   * @param key Key to set
-   * @param value Value to set
-   */
-  private setValueInDoc(map: Y.Map<any>, key: string, value: any): void {
-    if (value === undefined || value === null) {
-      // Delete undefined/null values
-      map.delete(key);
-    } else if (typeof value === 'object' && !Array.isArray(value)) {
-      // For objects, create a nested map
-      const nestedMap = new Y.Map();
-      map.set(key, nestedMap);
-      
-      for (const [nestedKey, nestedValue] of Object.entries(value)) {
-        this.setValueInDoc(nestedMap, nestedKey, nestedValue);
-      }
-    } else if (Array.isArray(value)) {
-      // For arrays, create a Y.Array
-      const yarray = new Y.Array();
-      map.set(key, yarray);
-      
-      for (const item of value) {
-        if (typeof item === 'object' && item !== null) {
-          const itemMap = new Y.Map();
-          
-          for (const [itemKey, itemValue] of Object.entries(item)) {
-            this.setValueInDoc(itemMap, itemKey, itemValue);
-          }
-          
-          yarray.push([itemMap]);
-        } else {
-          yarray.push([item]);
-        }
-      }
-    } else {
-      // For primitives, set directly
-      map.set(key, value);
-    }
-  }
-  
-  /**
-   * Extract data from a document
+   * Get local data
    * 
    * @param doc Document
-   * @returns Document data
+   * @returns Local data
    */
-  private extractDocumentData(doc: Y.Doc): any {
-    const rootMap = doc.getMap('data');
-    return this.extractValueFromDoc(rootMap);
+  getLocalData(doc: Y.Doc): any {
+    // Get data map
+    const dataMap = doc.getMap('data');
+    
+    // Convert to object
+    const data: Record<string, any> = {};
+    
+    // Iterate over data map
+    dataMap.forEach((value, key) => {
+      data[key] = value;
+    });
+    
+    return data;
   }
   
   /**
-   * Extract a value from a document map or array
+   * Update local data
    * 
-   * @param value Y.js value
-   * @returns Extracted value
+   * @param doc Document
+   * @param data Data
+   * @returns Whether data was updated
    */
-  private extractValueFromDoc(value: any): any {
-    if (value instanceof Y.Map) {
-      // Extract object from map
-      const result: Record<string, any> = {};
+  async updateLocalData(doc: Y.Doc, data: any): Promise<boolean> {
+    try {
+      // Get data map
+      const dataMap = doc.getMap('data');
       
-      for (const [key, val] of value.entries()) {
-        result[key] = this.extractValueFromDoc(val);
-      }
+      // Update data
+      doc.transact(() => {
+        // Clear data map
+        dataMap.clear();
+        
+        // Add new data
+        for (const [key, value] of Object.entries(data)) {
+          dataMap.set(key, value);
+        }
+      });
       
-      return result;
-    } else if (value instanceof Y.Array) {
-      // Extract array
-      const result: any[] = [];
-      
-      for (let i = 0; i < value.length; i++) {
-        result.push(this.extractValueFromDoc(value.get(i)));
-      }
-      
-      return result;
-    } else {
-      // Return primitive value as is
-      return value;
+      return true;
+    } catch (err) {
+      console.error('Error updating local data:', err);
+      return false;
     }
   }
   
   /**
-   * Compare two document states
+   * Sync with remote
    * 
-   * @param docId Document ID
-   * @param remoteData Remote data to compare with
-   * @returns Whether the data is equal
+   * @param doc Document
+   * @param endpoint API endpoint
+   * @returns Remote data
    */
-  async compareDocumentData(
-    docId: string,
-    remoteData: any
-  ): Promise<boolean> {
-    const localData = await this.getDocumentData(docId);
-    return deepEqual(localData, remoteData);
+  async syncWithRemote(doc: Y.Doc, endpoint: string): Promise<any> {
+    try {
+      // Get document ID
+      const docId = doc.clientID.toString();
+      
+      // Get local data
+      const localData = this.getLocalData(doc);
+      
+      // Add docId to data
+      if (!localData.id) {
+        localData.id = docId;
+      }
+      
+      // Sync with remote
+      const response = await retry(async () => {
+        const res = await fetch(`${endpoint}/${docId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(localData)
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Error syncing with remote: ${res.statusText}`);
+        }
+        
+        const data = await res.json();
+        return data;
+      });
+      
+      return response;
+    } catch (err) {
+      console.error('Error syncing with remote:', err);
+      throw err;
+    }
   }
   
   /**
-   * Clear cache
+   * Observe document
+   * 
+   * @param doc Document
+   * @param observer Observer function
    */
-  clearCache(): void {
-    this.docs.clear();
-    this.emit('cache:cleared');
+  observeDocument(doc: Y.Doc, observer: (event: Y.YEvent<any>, transaction: Y.Transaction) => void): void {
+    // Get document ID
+    const docId = doc.clientID.toString();
+    
+    // Get data map
+    const dataMap = doc.getMap('data');
+    
+    // Get observers
+    const observers = this.observers.get(docId) || new Set();
+    
+    // Add observer
+    observers.add(observer);
+    
+    // Store observers
+    this.observers.set(docId, observers);
+    
+    // Observe data map
+    dataMap.observe(observer);
   }
   
   /**
-   * Observe document changes
+   * Unobserve document
    * 
-   * @param docId Document ID
-   * @param callback Callback to call on changes
-   * @returns Unsubscribe function
+   * @param doc Document
+   * @param observer Observer function
    */
-  async observeDocument(
-    docId: string,
-    callback: (update: Uint8Array, origin: any) => void
-  ): Promise<() => void> {
-    const doc = await this.getDocument(docId);
+  unobserveDocument(doc: Y.Doc, observer: (event: Y.YEvent<any>, transaction: Y.Transaction) => void): void {
+    // Get document ID
+    const docId = doc.clientID.toString();
     
-    // Set up observer
-    const observer = (update: Uint8Array, origin: any) => {
-      callback(update, origin);
-    };
+    // Get data map
+    const dataMap = doc.getMap('data');
     
-    doc.on('update', observer);
+    // Get observers
+    const observers = this.observers.get(docId) || new Set();
     
-    // Return unsubscribe function
-    return () => {
-      doc.off('update', observer);
-    };
+    // Remove observer
+    observers.delete(observer);
+    
+    // Store observers
+    this.observers.set(docId, observers);
+    
+    // Unobserve data map
+    dataMap.unobserve(observer);
   }
 }
-
-export default CRDTDocumentManager;

@@ -1,23 +1,23 @@
 /**
- * PropertyEditor
+ * Property Editor
  * 
- * A component for editing property data with conflict resolution.
+ * Component for editing property data with offline sync and conflict resolution.
  */
 
 import React, { useState, useEffect } from 'react';
-
-// Import from packages
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { usePropertyDoc } from '@terrafusion/offline-sync/src/hooks';
 import { ConflictManager } from '@terrafusion/ui-components/src/conflict-resolution';
-import { CRDTDocumentManager, SyncStatus } from '@terrafusion/offline-sync/src/crdt-sync';
+import { CRDTDocumentManagerImpl } from '@terrafusion/offline-sync/src/crdt-sync';
 import { ConflictResolutionManager } from '@terrafusion/offline-sync/src/conflict-resolution';
 import { IndexedDBStorageProvider } from '@terrafusion/offline-sync/src/storage';
-
-// Import local components
-import PropertyForm from './PropertyForm';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, Loader2 } from 'lucide-react';
+import { PropertyForm } from './PropertyForm';
 
 /**
- * PropertyEditor props interface
+ * Property editor props interface
  */
 export interface PropertyEditorProps {
   /**
@@ -26,39 +26,14 @@ export interface PropertyEditorProps {
   propertyId: string;
   
   /**
-   * User ID (for tracking who made changes)
-   */
-  userId?: string;
-  
-  /**
-   * API endpoint for syncing
+   * API endpoint
    */
   apiEndpoint?: string;
   
   /**
-   * CRDT document manager (if not provided, one will be created)
+   * User ID
    */
-  crdtManager?: CRDTDocumentManager;
-  
-  /**
-   * Conflict resolution manager (if not provided, one will be created)
-   */
-  conflictManager?: ConflictResolutionManager;
-  
-  /**
-   * Storage provider (if not provided, one will be created)
-   */
-  storageProvider?: IndexedDBStorageProvider;
-  
-  /**
-   * Initial property data (optional)
-   */
-  initialData?: any;
-  
-  /**
-   * Whether the component is in read-only mode
-   */
-  readOnly?: boolean;
+  userId?: string;
   
   /**
    * On save callback
@@ -67,136 +42,164 @@ export interface PropertyEditorProps {
 }
 
 /**
- * PropertyEditor component
+ * Property editor component
  */
 export const PropertyEditor: React.FC<PropertyEditorProps> = ({
   propertyId,
-  userId = 'anonymous',
   apiEndpoint = '/api/sync',
-  crdtManager,
-  conflictManager,
-  storageProvider,
-  initialData,
-  readOnly = false,
+  userId = 'anonymous',
   onSave
 }) => {
-  // Set up state for managers if not provided
-  const [internalStorageProvider] = useState(() => 
-    storageProvider || new IndexedDBStorageProvider('terrafusion_property_editor')
-  );
+  // CRDT document manager
+  const [crdtManager] = useState(() => new CRDTDocumentManagerImpl());
   
-  const [internalCrdtManager] = useState(() => 
-    crdtManager || new CRDTDocumentManager(internalStorageProvider)
-  );
+  // Conflict resolution manager
+  const [conflictManager] = useState(() => new ConflictResolutionManager());
   
-  const [internalConflictManager] = useState(() => 
-    conflictManager || new ConflictResolutionManager()
-  );
+  // Storage provider
+  const [storageProvider] = useState(() => new IndexedDBStorageProvider());
   
-  // Use our property document hook
+  // Initialize storage provider
+  useEffect(() => {
+    storageProvider.initialize();
+  }, [storageProvider]);
+  
+  // Use property document hook
   const {
-    local: localState,
-    remote: remoteState,
-    shared: sharedState,
+    local,
+    remote,
+    shared,
     isLoading,
     error,
     syncStatus,
     hasConflict,
     updateLocal,
+    debouncedUpdate,
     syncWithRemote,
-    resolveConflict
+    resolveConflict,
+    resetError
   } = usePropertyDoc(
     propertyId,
-    internalCrdtManager,
-    internalConflictManager,
+    crdtManager,
+    conflictManager,
     {
+      autoSync: true,
+      autoSyncInterval: 30000, // 30 seconds
       userId,
       apiEndpoint
     }
   );
   
-  // Initialize with initial data if provided
-  useEffect(() => {
-    if (initialData && !isLoading && Object.keys(sharedState).length <= 1) {
-      updateLocal({
-        ...initialData,
-        id: propertyId
-      });
-    }
-  }, [initialData, propertyId, isLoading, sharedState, updateLocal]);
+  // Handle property change
+  const handlePropertyChange = (data: any) => {
+    debouncedUpdate(data);
+  };
   
-  // Handle form changes
-  const handleChange = async (data: any) => {
-    await updateLocal(data);
-    
-    if (onSave) {
-      onSave({
-        ...sharedState,
-        ...data
-      });
-    }
+  // Handle sync request
+  const handleSyncRequest = () => {
+    syncWithRemote();
   };
   
   // Handle conflict resolution
-  const handleResolveConflict = async (mergedState: any) => {
-    await resolveConflict(mergedState);
+  const handleResolveConflict = (resolved: any) => {
+    resolveConflict(resolved);
     
+    // Call onSave callback
     if (onSave) {
-      onSave(mergedState);
+      onSave(resolved);
     }
   };
   
-  // Handle sync
-  const handleSync = async () => {
-    await syncWithRemote();
+  // Handle property save
+  const handlePropertySave = () => {
+    // Call onSave callback
+    if (onSave) {
+      onSave(local);
+    }
   };
   
-  // If there's an error, display it
-  if (error) {
-    return (
-      <div className="p-4 border rounded-lg bg-red-50 text-red-600">
-        <h3 className="font-bold mb-2">Error</h3>
-        <p>{error.message}</p>
-      </div>
-    );
-  }
-  
-  // If we're loading, show a loading indicator
-  if (isLoading) {
-    return (
-      <div className="p-4 border rounded-lg bg-white shadow-sm">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        </div>
-      </div>
-    );
-  }
-  
-  // If there's a conflict, show the conflict manager
-  if (hasConflict && remoteState) {
-    return (
-      <div className="p-4 border rounded-lg bg-white shadow-sm">
-        <ConflictManager
-          localState={localState}
-          remoteState={remoteState}
-          onResolve={handleResolveConflict}
-          onCancel={() => {}}
-        />
-      </div>
-    );
-  }
-  
-  // Otherwise, show the form
   return (
-    <PropertyForm
-      property={sharedState}
-      isLoading={isLoading}
-      readOnly={readOnly}
-      syncStatus={syncStatus}
-      onChange={handleChange}
-      onSync={handleSync}
-    />
+    <div className="space-y-4">
+      {/* Error message */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            {error.message}
+          </AlertDescription>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={resetError}
+            className="mt-2"
+          >
+            Dismiss
+          </Button>
+        </Alert>
+      )}
+      
+      {/* Loading state */}
+      {isLoading && (
+        <div className="flex items-center justify-center p-6">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading property data...</span>
+        </div>
+      )}
+      
+      {/* Conflict resolution */}
+      {hasConflict && remote && (
+        <Card className="border-yellow-300 dark:border-yellow-700">
+          <CardHeader>
+            <CardTitle className="flex items-center text-yellow-600 dark:text-yellow-400">
+              <AlertCircle className="mr-2 h-5 w-5" />
+              Conflict Detected
+            </CardTitle>
+            <CardDescription>
+              The property data has been modified remotely. Please resolve the conflict.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ConflictManager
+              conflictId={propertyId}
+              local={local}
+              remote={remote}
+              onResolve={handleResolveConflict}
+              userId={userId}
+            />
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Property form */}
+      {!isLoading && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Edit Property</CardTitle>
+            <CardDescription>
+              Update property details below. Changes are automatically saved locally and synced when online.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PropertyForm
+              data={hasConflict ? local : shared}
+              isLoading={isLoading}
+              syncStatus={syncStatus}
+              onChange={handlePropertyChange}
+              onSyncRequest={handleSyncRequest}
+            />
+            
+            <div className="mt-6 flex justify-end">
+              <Button
+                onClick={handlePropertySave}
+                disabled={isLoading || hasConflict}
+              >
+                Save Property
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 };
-
-export default PropertyEditor;
