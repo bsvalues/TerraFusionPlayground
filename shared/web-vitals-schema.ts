@@ -5,7 +5,7 @@
  * metrics from real users. Includes tables for raw metrics, aggregated metrics, and summaries.
  */
 
-import { pgTable, serial, text, timestamp, integer, numeric, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer, doublePrecision, jsonb, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -14,26 +14,25 @@ import { z } from "zod";
  * Stores individual Web Vitals measurements from user devices
  */
 export const webVitalsMetrics = pgTable("web_vitals_metrics", {
-  id: serial("id").primaryKey(),
+  id: text("id").primaryKey(),
   name: text("name").notNull(),
-  value: numeric("value").notNull(),
-  delta: numeric("delta").notNull(),
-  metricId: text("metric_id").notNull(),
-  timestamp: timestamp("timestamp").defaultNow().notNull(),
-  navigationType: text("navigation_type"),
+  value: doublePrecision("value").notNull(),
+  delta: doublePrecision("delta").notNull(),
   rating: text("rating"),
+  navigationType: text("navigation_type"),
   url: text("url").notNull(),
+  userAgent: text("user_agent"),
+  deviceType: text("device_type"),
+  connectionType: text("connection_type"),
+  effectiveConnectionType: text("effective_connection_type"),
   userId: text("user_id"),
   sessionId: text("session_id"),
-  deviceType: text("device_type"),
-  browser: text("browser"),
-  connection: text("connection"),
-  deviceInfo: jsonb("device_info"),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
   tags: jsonb("tags")
 });
 
 export const insertWebVitalsMetricsSchema = createInsertSchema(webVitalsMetrics).omit({
-  id: true
+  timestamp: true
 });
 
 export type WebVitalsMetric = typeof webVitalsMetrics.$inferSelect;
@@ -44,19 +43,18 @@ export type InsertWebVitalsMetric = z.infer<typeof insertWebVitalsMetricsSchema>
  * Stores batched reports from clients
  */
 export const webVitalsReports = pgTable("web_vitals_reports", {
-  id: serial("id").primaryKey(),
+  id: text("id").primaryKey().defaultRandom(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   url: text("url").notNull(),
   metrics: jsonb("metrics").notNull(),
   percentiles: jsonb("percentiles"),
   deviceInfo: jsonb("device_info"),
-  tags: jsonb("tags"),
-  processed: boolean("processed").default(false)
+  tags: jsonb("tags")
 });
 
 export const insertWebVitalsReportsSchema = createInsertSchema(webVitalsReports).omit({
   id: true,
-  processed: true
+  timestamp: true
 });
 
 export type WebVitalsReport = typeof webVitalsReports.$inferSelect;
@@ -67,25 +65,21 @@ export type InsertWebVitalsReport = z.infer<typeof insertWebVitalsReportsSchema>
  * Stores hourly aggregated metrics for faster queries
  */
 export const webVitalsAggregates = pgTable("web_vitals_aggregates", {
-  id: serial("id").primaryKey(),
+  id: text("id").primaryKey().defaultRandom(),
   metricName: text("metric_name").notNull(),
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time").notNull(),
   urlPattern: text("url_pattern").notNull(),
-  device: text("device"),
-  connection: text("connection"),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  p50: doublePrecision("p50").notNull(),
+  p75: doublePrecision("p75").notNull(),
+  p95: doublePrecision("p95").notNull(),
   count: integer("count").notNull(),
-  p50: numeric("p50").notNull(),
-  p75: numeric("p75").notNull(),
-  p95: numeric("p95").notNull(),
-  p99: numeric("p99").notNull(),
-  min: numeric("min").notNull(),
-  max: numeric("max").notNull(),
-  avg: numeric("avg").notNull()
+  deviceType: text("device_type"),
+  connectionType: text("connection_type")
 });
 
 export const insertWebVitalsAggregatesSchema = createInsertSchema(webVitalsAggregates).omit({
-  id: true
+  id: true,
+  timestamp: true
 });
 
 export type WebVitalsAggregate = typeof webVitalsAggregates.$inferSelect;
@@ -96,14 +90,14 @@ export type InsertWebVitalsAggregate = z.infer<typeof insertWebVitalsAggregatesS
  * Stores performance budgets for different metrics and URL patterns
  */
 export const webVitalsBudgets = pgTable("web_vitals_budgets", {
-  id: serial("id").primaryKey(),
+  id: text("id").primaryKey().defaultRandom(),
   metricName: text("metric_name").notNull(),
   urlPattern: text("url_pattern").notNull(),
-  device: text("device"),
-  budget: numeric("budget").notNull(),
-  severity: text("severity").notNull(),
+  budget: doublePrecision("budget").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull()
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdBy: text("created_by"),
+  active: boolean("active").default(true)
 });
 
 export const insertWebVitalsBudgetsSchema = createInsertSchema(webVitalsBudgets).omit({
@@ -120,14 +114,14 @@ export type InsertWebVitalsBudget = z.infer<typeof insertWebVitalsBudgetsSchema>
  * Stores alerts when metrics exceed budgets
  */
 export const webVitalsAlerts = pgTable("web_vitals_alerts", {
-  id: serial("id").primaryKey(),
+  id: text("id").primaryKey().defaultRandom(),
+  budgetId: text("budget_id").notNull().references(() => webVitalsBudgets.id),
   metricName: text("metric_name").notNull(),
   urlPattern: text("url_pattern").notNull(),
-  device: text("device"),
-  budget: numeric("budget").notNull(),
-  actual: numeric("actual").notNull(),
-  severity: text("severity").notNull(),
-  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  currentValue: doublePrecision("current_value").notNull(),
+  thresholdValue: doublePrecision("threshold_value").notNull(),
+  percentageOverBudget: doublePrecision("percentage_over_budget").notNull(),
+  detectedAt: timestamp("detected_at").defaultNow().notNull(),
   acknowledged: boolean("acknowledged").default(false),
   acknowledgedBy: text("acknowledged_by"),
   acknowledgedAt: timestamp("acknowledged_at")
@@ -135,6 +129,7 @@ export const webVitalsAlerts = pgTable("web_vitals_alerts", {
 
 export const insertWebVitalsAlertsSchema = createInsertSchema(webVitalsAlerts).omit({
   id: true,
+  detectedAt: true,
   acknowledged: true,
   acknowledgedBy: true,
   acknowledgedAt: true
