@@ -1,44 +1,105 @@
-# Grafana Dashboards for TerraFusion Web Vitals
+# TerraFusion Grafana Configuration
 
-This directory contains dashboard provisioning configurations for visualizing web vitals metrics in Grafana.
+This directory contains Grafana dashboards and provisioning configurations for TerraFusion's observability system.
 
-## Files
+## Directory Structure
 
-- `dashboards/webvitals.json`: Web Vitals Dashboard definition
-- `provisioning/dashboards/webvitals.yml`: Dashboard provisioning configuration
+- **`dashboards/`**: Contains JSON dashboard definitions
+- **`provisioning/`**: Contains Grafana provisioning configuration
+  - **`dashboards/`**: Dashboard provisioning configuration
+  - **`datasources/`**: Data source provisioning configuration
 
-## Dashboard Features
+## Dashboards
 
-The Web Vitals dashboard provides:
+This repository includes the following dashboards:
 
-- Time series visualizations for all core web vitals (LCP, TTFB, CLS, FCP, FID, INP)
-- 95th percentile tracking with configurable thresholds
-- Budget breach counter
-- Filtering by route and device type
+- **`webvitals_segmented.json`**: Web Vitals dashboard with page type and network quality segmentation
+- **`error_budget.json`**: SLO compliance and error budget consumption dashboard
 
-## Deployment
+### Web Vitals Segmented Dashboard
 
-When deploying Grafana, ensure the provisioning directory is mounted correctly:
+The Web Vitals Segmented dashboard provides detailed metrics on application performance across different dimensions:
 
-```bash
-# Example docker command
-docker run \
-  -p 3000:3000 \
-  -v /path/to/grafana/provisioning:/etc/grafana/provisioning \
-  -v /path/to/grafana/dashboards:/var/lib/grafana/dashboards/webvitals \
-  grafana/grafana
-```
+- Visualizations for each core Web Vital (LCP, FID, CLS, TTFB, INP)
+- Filtering by network quality (4g, 3g, 2g, slow-2g)
+- Filtering by page type (dashboard, map-view, property-details, search, etc.)
+- Time-series views for trend analysis
+- Heat maps for correlation analysis
 
-## Integration with Prometheus
+### Error Budget Dashboard
 
-This dashboard is designed to work with Prometheus metrics, specifically looking for:
+The Error Budget dashboard tracks SLO compliance and error budget consumption:
 
-- `web_vitals_lcp_bucket`
-- `web_vitals_ttfb_bucket`
-- `web_vitals_cls_bucket`
-- `web_vitals_fcp_bucket`
-- `web_vitals_fid_bucket`
-- `web_vitals_inp_bucket`
-- `web_vitals_budget_breaches_total`
+- Current compliance status for each SLO
+- Remaining error budget visualization
+- Burn rate trending over time
+- SLO breach alerts and history
+- Segment-specific panels for critical page types and network conditions
 
-Ensure these metrics are being collected by your Prometheus instance.
+## Provisioning
+
+Grafana dashboards and data sources are provisioned using Grafana's provisioning system, allowing for automated deployment and version control.
+
+### Dashboard Provisioning
+
+Dashboard provisioning configurations are in `provisioning/dashboards/`:
+
+- `webvitals.yml`: Provisions the Web Vitals Segmented dashboard
+- `error_budget.yml`: Provisions the Error Budget dashboard
+
+### Datasource Provisioning
+
+Data source provisioning configurations are in `provisioning/datasources/`:
+
+- `prometheus.yml`: Configures the Prometheus data source
+
+## Template Variables
+
+Both dashboards use template variables for flexible filtering:
+
+- `$pageType`: Filter by page type
+- `$networkQuality`: Filter by network quality
+- `$timeRange`: Adjust the time range for analysis
+
+## Development and Testing
+
+When creating or modifying dashboards:
+
+1. Make changes in the Grafana UI
+2. Export the dashboard JSON
+3. Format the JSON for better diff-ability:
+   ```bash
+   jq . dashboards/my_dashboard.json > formatted.json
+   mv formatted.json dashboards/my_dashboard.json
+   ```
+4. Run the verification script: `./scripts/run-observability-ci.sh --lint`
+
+## Adding New Dashboards
+
+To add a new dashboard:
+
+1. Create a new JSON file in the `dashboards/` directory
+2. Add a corresponding provisioning configuration in `provisioning/dashboards/`
+3. Update this README with details about the new dashboard
+4. Run the verification script to ensure the JSON is valid
+
+## Dashboard IDs and UIDs
+
+To avoid conflicts, use consistent IDs and UIDs:
+
+- Web Vitals Segmented Dashboard: UID `terrafusion-webvitals-segmented`
+- Error Budget Dashboard: UID `terrafusion-slo-error-budget`
+
+## Links and Integration
+
+Dashboards include links to related resources:
+
+- Links to other dashboards for context switching
+- Links to documentation and runbooks
+- Links to source code for metrics and alerts
+
+## References
+
+- [Grafana Dashboard JSON Documentation](https://grafana.com/docs/grafana/latest/dashboards/build-dashboards/view-dashboard-json-model/)
+- [Grafana Provisioning Documentation](https://grafana.com/docs/grafana/latest/administration/provisioning/)
+- [Grafana Variables Documentation](https://grafana.com/docs/grafana/latest/dashboards/variables/)

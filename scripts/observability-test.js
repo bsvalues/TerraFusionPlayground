@@ -11,9 +11,15 @@
  *   node scripts/observability-test.js
  */
 
-const http = require('http');
-const WebSocket = require('ws');
-const { execSync } = require('child_process');
+import http from 'http';
+import { WebSocket } from 'ws';
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+// Get the current file's directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Configuration
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
