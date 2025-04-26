@@ -58,7 +58,7 @@ export default function WebVitalsTestPage() {
   // Mutation to acknowledge an alert
   const acknowledgeMutation = useMutation({
     mutationFn: (alertId: string) => 
-      apiRequest(`/api/analytics/web-vitals/alerts/${alertId}/acknowledge`, {
+      apiRequest(`/api/web-vitals/alerts/${alertId}/acknowledge`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ export default function WebVitalsTestPage() {
         body: JSON.stringify({ acknowledgedBy: 'test-user' }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/analytics/web-vitals/alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/web-vitals/alerts'] });
     },
   });
   
