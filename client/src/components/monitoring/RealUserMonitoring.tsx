@@ -91,7 +91,7 @@ const DEFAULT_SAMPLING_RATE = 1.0; // 100% by default
  */
 export function RealUserMonitoring({
   debug = false,
-  reportUrl = '/api/analytics/web-vitals/batch',
+  reportUrl = '/api/web-vitals/batch',
   tags = {},
   includeDeviceInfo = true,
   includePercentiles = true,
