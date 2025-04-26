@@ -299,17 +299,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Web Vitals routes
   app.use('/api/web-vitals', registerWebVitalsRoutes(express.Router(), storage));
   
-  // Prometheus metrics endpoint (for monitoring systems)
+  /**
+   * Prometheus metrics endpoint
+   * 
+   * This endpoint exposes metrics in Prometheus format for consumption by monitoring systems.
+   * It includes metrics for:
+   * - Web vitals metrics (LCP, FID, CLS, TTFB, FCP, INP)
+   * - Budget breaches (when metrics exceed configured thresholds)
+   * - HTTP errors in reporting
+   * - Default Node.js metrics (memory, CPU, etc.)
+   */
   app.get('/metrics', async (_req, res) => {
     try {
-      console.log('Metrics endpoint called');
-      // Debug output
-      console.log('Registry:', metricsService.getRegistry());
-      console.log('Content type:', metricsService.getRegistry().contentType);
-      
       res.set('Content-Type', metricsService.getRegistry().contentType);
       const metrics = await metricsService.getRegistry().metrics();
-      console.log('Metrics generated:', metrics ? 'success' : 'empty');
       res.end(metrics);
     } catch (error) {
       console.error('Error generating Prometheus metrics:', error);

@@ -2,7 +2,22 @@
  * Test script for Prometheus metrics endpoint
  * 
  * This script tests the Prometheus metrics endpoint to verify that
- * web vitals metrics are being properly exported.
+ * web vitals metrics are being properly exported in Prometheus format.
+ * 
+ * The metrics endpoint exposes the following Web Vitals metrics:
+ * - web_vitals_lcp - Largest Contentful Paint in milliseconds (visual loading)
+ * - web_vitals_fid - First Input Delay in milliseconds (interactivity)
+ * - web_vitals_cls - Cumulative Layout Shift (visual stability)
+ * - web_vitals_ttfb - Time to First Byte in milliseconds (server response time)
+ * - web_vitals_fcp - First Contentful Paint in milliseconds (initial rendering)
+ * - web_vitals_inp - Interaction to Next Paint in milliseconds (responsiveness)
+ * 
+ * It also exposes the following counters:
+ * - web_vitals_records_total - Total number of Web Vitals records received
+ * - web_vitals_budget_breaches_total - Performance budget violations
+ * - web_vitals_http_errors_total - HTTP errors in Web Vitals reporting
+ * 
+ * Default Node.js metrics (CPU, memory, etc.) are also included.
  */
 
 import * as https from 'node:https';
