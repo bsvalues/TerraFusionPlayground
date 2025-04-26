@@ -2,7 +2,31 @@
 
 This runbook provides standardized procedures for responding to performance alerts and incidents in the TerraFusion platform, with special focus on our new segmented Web Vitals monitoring.
 
-## Alert Types
+## SLOs and Error Budgets
+
+TerraFusion uses defined Service Level Objectives (SLOs) to set clear targets for web performance. Each SLO has an associated error budget (the amount of time the SLO can be violated). See the complete list of SLOs in [observability/slo/SLOs_and_error_budgets.md](../observability/slo/SLOs_and_error_budgets.md).
+
+### Key SLOs by Page Type and Network
+
+| Page Type | Network | Metric | SLO Target | Error Budget |
+|-----------|---------|--------|------------|--------------|
+| Dashboard | 4G | LCP | p75 < 2.0s, 99% of the time over 30 days | 1% (7.2 hours/month) |
+| Dashboard | 3G | LCP | p75 < 3.0s, 99% of the time over 30 days | 1% (7.2 hours/month) |
+| Map View | 4G | LCP | p75 < 2.5s, 99% of the time over 30 days | 1% (7.2 hours/month) |
+| Property Details | 4G | LCP | p75 < 2.0s, 99.5% of the time over 30 days | 0.5% (3.6 hours/month) |
+| Search | 4G | LCP | p75 < 1.8s, 99.5% of the time over 30 days | 0.5% (3.6 hours/month) |
+
+### Error Budget Burn Rate Alerts
+
+TerraFusion uses automated burn rate alerts to detect when error budgets are being consumed too quickly:
+
+| Alert Name | Trigger | Priority |
+|------------|---------|----------|
+| SLO_*_ErrorBudgetBurn | Error budget burn rate >5% over 24h | P3 |
+| SLO_*_HighErrorBudgetBurn | Error budget burn rate >10% over 6h | P2 |
+| SLO_CriticalErrorBudgetBurn | Error budget burn rate >25% over 1h | P1 |
+
+## Standard Alert Types
 
 ### Standard Web Vitals Alerts
 
@@ -62,6 +86,34 @@ This runbook provides standardized procedures for responding to performance aler
    - Look for abrupt changes or gradual degradation
 
 ### Investigation
+
+#### SLO Error Budget Alerts
+
+1. **SLO_*_ErrorBudgetBurn (>5% over 24h)**
+   - Check the [Error Budget Dashboard](https://grafana.terrafusion.io/dashboards/error_budget)
+   - Identify which specific SLO is burning budget too quickly
+   - Filter by the affected page type and network quality
+   - Compare with recent deployments
+   - Create a P3 ticket to investigate and address the issue within 8 hours
+
+2. **SLO_*_HighErrorBudgetBurn (>10% over 6h)**
+   - Immediately notify the engineering team lead
+   - Create a P2 ticket to investigate and address within 4 hours
+   - Consider rolling back recent changes if the burn rate started after a deployment
+   - Begin gathering performance traces for the affected page type and network combination
+
+3. **SLO_CriticalErrorBudgetBurn (>25% over 1h)**
+   - Create a P1 incident and establish a war room
+   - Immediately begin root cause analysis
+   - Consider enabling degraded mode for affected page types
+   - If error budget is >50% consumed, halt all non-critical deployments
+   - Gather real user data and traces to identify the specific component causing the issue
+
+4. **Tools to Use for SLO Investigations**
+   - Error Budget Dashboard in Grafana
+   - Prometheus Query Browser for custom queries
+   - WebPageTest with custom profiles for affected page types and network speeds
+   - Real User Monitoring data in Grafana
 
 #### Network Quality Issues
 
@@ -165,8 +217,27 @@ Document the incident in the incident tracking system with the following informa
 - Root cause
 - Resolution steps taken
 - Long-term recommendations
+- Impact on error budgets
 
-### Follow-up
+### SLO-Specific Follow-up
+
+1. **Error Budget Impact Assessment**
+   - Calculate how much of the error budget was consumed during the incident
+   - Document in the post-mortem: `X% of our monthly error budget for [SLO] was consumed`
+   - If >50% of any error budget was consumed, flag for immediate prioritization
+
+2. **SLO Review**
+   - If SLOs were breached repeatedly, review whether they are realistic
+   - Consider adjusting SLO targets or error budget policies if needed
+   - Document reasoning behind any changes
+
+3. **Error Budget Policy Enforcement**
+   - If an error budget is fully exhausted:
+     - Enact the error budget policy (freeze feature deployments)
+     - Focus engineering efforts on improving the affected SLI
+     - Only resume normal development after error budget levels return to acceptable levels
+
+### Standard Follow-up
 
 1. Create or update a Performance Improvement Plan for the affected page type
 2. Schedule a performance review focusing on the affected segment
