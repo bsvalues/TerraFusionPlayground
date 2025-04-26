@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { PerformanceBudgets, PerformanceAlerts } from '@/components/monitoring/PerformanceBudgets';
+import { Progress } from '@/components/ui/progress';
 
 interface WebVital {
   id: string;
@@ -299,6 +300,232 @@ export default function WebVitalsTestPage() {
     );
   };
   
+  // Render summary metrics from the summary endpoint
+  const renderSummaryMetrics = (summary: any) => {
+    if (!summary) return <p>No summary data available.</p>;
+    
+    return (
+      <div className="space-y-4">
+        {Object.entries(summary).map(([name, data]: [string, any]) => {
+          if (!data) return null;
+          
+          const metricName = name.toUpperCase();
+          const goodPercentage = data.goodPercentage || 0;
+          
+          return (
+            <div key={name} className="space-y-2">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="font-medium">{metricName}</h3>
+                  <p className="text-sm text-gray-500">{getMetricDescription(metricName)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium">
+                    <span className={getStatusClassForValue(goodPercentage)}>
+                      {goodPercentage.toFixed(1)}% Good
+                    </span>
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {data.count} samples
+                  </p>
+                </div>
+              </div>
+              
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Median: {formatMetricValue(metricName, data.median)}</span>
+                  <span>p75: {formatMetricValue(metricName, data.p75)}</span>
+                  <span>p95: {formatMetricValue(metricName, data.p95)}</span>
+                </div>
+              
+                <Progress 
+                  value={goodPercentage} 
+                  className="h-2 w-full" 
+                />
+                
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>Good: {data.ratings.good || 0}</span>
+                  <span>Needs improvement: {data.ratings['needs-improvement'] || 0}</span>
+                  <span>Poor: {data.ratings.poor || 0}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+  
+  // Render device type distribution
+  const renderDeviceTypeDistribution = (summary: any) => {
+    if (!summary) return <p>No summary data available.</p>;
+    
+    // Get list of device types
+    const deviceTypes: Record<string, number> = {};
+    let totalSamples = 0;
+    
+    // Count metrics by device type
+    Object.values(summary).forEach((metricData: any) => {
+      if (!metricData) return;
+      
+      metricData.deviceTypes?.forEach((dt: any) => {
+        deviceTypes[dt.type] = (deviceTypes[dt.type] || 0) + dt.count;
+        totalSamples += dt.count;
+      });
+    });
+    
+    if (totalSamples === 0) {
+      return <p>No device type data available.</p>;
+    }
+    
+    return (
+      <div className="space-y-4">
+        {Object.entries(deviceTypes).map(([deviceType, count]) => {
+          const percentage = (count / totalSamples) * 100;
+          
+          return (
+            <div key={deviceType} className="space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="font-medium capitalize">{deviceType}</span>
+                <span>{count} samples ({percentage.toFixed(1)}%)</span>
+              </div>
+              <Progress value={percentage} className="h-2 w-full" />
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+  
+  // Render trends chart
+  const renderTrendsChart = (trends: any[], metricName: string) => {
+    if (!trends || trends.length === 0) {
+      return <p>No trend data available.</p>;
+    }
+    
+    // Format date labels
+    const dateLabels = trends.map(t => {
+      const date = new Date(t.startTime);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
+    });
+    
+    // Get metric values
+    const metricKey = metricName.toLowerCase();
+    const values = trends.map(t => {
+      const metricData = t[metricKey];
+      return metricData?.median || null;
+    });
+    
+    // Get sample counts
+    const sampleCounts = trends.map(t => t.sampleSize || 0);
+    
+    return (
+      <div className="space-y-4">
+        <div className="h-48 flex items-end justify-between">
+          {values.map((value, index) => {
+            if (value === null) return (
+              <div key={index} className="h-0 w-full flex-1 mx-px" />
+            );
+            
+            // Calculate height percentage (maximum 100%)
+            const heightPercentage = Math.min(100, (value / maxValueForMetric(metricName)) * 100);
+            const bgColor = getBarColorForValue(metricName, value);
+            
+            return (
+              <div 
+                key={index}
+                className="flex-1 relative group mx-px flex items-end justify-center"
+              >
+                <div
+                  className={`w-full ${bgColor}`}
+                  style={{ height: `${heightPercentage}%` }}
+                  title={`${formatMetricValue(metricName, value)}`}
+                >
+                  <div className="absolute bottom-full mb-1 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    {formatMetricValue(metricName, value)}
+                    <br />
+                    {sampleCounts[index]} samples
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        <div className="flex justify-between text-xs text-gray-500">
+          {dateLabels.map((label, index) => (
+            <div key={index} className="text-center" style={{ width: `${100 / dateLabels.length}%` }}>
+              {index % Math.ceil(dateLabels.length / 5) === 0 ? label : ''}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+  
+  // Helper function to get a color for a value
+  const getStatusClassForValue = (percentage: number) => {
+    if (percentage >= 75) return 'text-green-600';
+    if (percentage >= 50) return 'text-amber-600';
+    return 'text-red-600';
+  };
+  
+  // Helper function to get the bar color based on metric value
+  const getBarColorForValue = (metricName: string, value: number) => {
+    const rating = getRatingForMetric(metricName, value);
+    
+    switch (rating) {
+      case 'good':
+        return 'bg-green-500';
+      case 'needs-improvement':
+        return 'bg-amber-500';
+      case 'poor':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-300';
+    }
+  };
+  
+  // Helper function to get maximum value for a metric for chart scaling
+  const maxValueForMetric = (metricName: string): number => {
+    switch (metricName.toUpperCase()) {
+      case 'LCP':
+        return 5000; // 5s
+      case 'FID':
+        return 300; // 300ms
+      case 'CLS':
+        return 0.5; // 0.5
+      case 'TTFB':
+        return 1500; // 1.5s
+      case 'FCP':
+        return 3000; // 3s
+      case 'INP':
+        return 500; // 500ms
+      default:
+        return 1000;
+    }
+  };
+  
+  // Helper function to get rating for metric value
+  const getRatingForMetric = (metricName: string, value: number): string => {
+    switch (metricName.toUpperCase()) {
+      case 'LCP':
+        return value <= 2500 ? 'good' : value <= 4000 ? 'needs-improvement' : 'poor';
+      case 'FID':
+        return value <= 100 ? 'good' : value <= 300 ? 'needs-improvement' : 'poor';
+      case 'CLS':
+        return value <= 0.1 ? 'good' : value <= 0.25 ? 'needs-improvement' : 'poor';
+      case 'TTFB':
+        return value <= 800 ? 'good' : value <= 1800 ? 'needs-improvement' : 'poor';
+      case 'FCP':
+        return value <= 1800 ? 'good' : value <= 3000 ? 'needs-improvement' : 'poor';
+      case 'INP':
+        return value <= 200 ? 'good' : value <= 500 ? 'needs-improvement' : 'poor';
+      default:
+        return 'unknown';
+    }
+  };
+  
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Web Vitals Monitoring Test</h1>
@@ -356,15 +583,97 @@ export default function WebVitalsTestPage() {
         </TabsList>
         
         <TabsContent value="overview" className="pt-4">
-          {isLoading ? (
-            <p>Loading metrics data...</p>
-          ) : error ? (
-            <p className="text-red-500">Error loading metrics: {(error as Error).message}</p>
-          ) : !webVitalsData || !Array.isArray(webVitalsData) || webVitalsData.length === 0 ? (
-            <p>No metrics data available yet. Try reloading the page or simulating events.</p>
-          ) : (
-            renderMetricSummary(webVitalsData)
-          )}
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-4">Web Vitals Summary</h2>
+            {summaryLoading ? (
+              <p>Loading summary data...</p>
+            ) : !summaryData || !summaryData.summary ? (
+              <p>No summary data available.</p>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Core Web Vitals Performance</CardTitle>
+                    <CardDescription>
+                      Summary of Core Web Vitals metrics over the last {summaryData.timeRange || '7d'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {renderSummaryMetrics(summaryData.summary)}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Performance Trends</CardTitle>
+                    <CardDescription className="flex justify-between items-center">
+                      <span>Data for the last {timeRange}</span>
+                      <div className="flex items-center space-x-2">
+                        <select 
+                          value={selectedMetric} 
+                          onChange={(e) => setSelectedMetric(e.target.value)}
+                          className="text-sm border rounded p-1"
+                        >
+                          <option value="LCP">LCP</option>
+                          <option value="FID">FID</option>
+                          <option value="CLS">CLS</option>
+                          <option value="TTFB">TTFB</option>
+                          <option value="FCP">FCP</option>
+                          <option value="INP">INP</option>
+                        </select>
+                        
+                        <select 
+                          value={timeRange} 
+                          onChange={(e) => setTimeRange(e.target.value)}
+                          className="text-sm border rounded p-1"
+                        >
+                          <option value="1d">Last 24 hours</option>
+                          <option value="7d">Last 7 days</option>
+                          <option value="30d">Last 30 days</option>
+                        </select>
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {trendsLoading ? (
+                      <p>Loading trends data...</p>
+                    ) : !trendsData || !trendsData.trends ? (
+                      <p>No trends data available.</p>
+                    ) : (
+                      <div className="h-64">
+                        {renderTrendsChart(trendsData.trends, selectedMetric)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle>User Experience by Device Type</CardTitle>
+                    <CardDescription>
+                      Breakdown of performance metrics by device type
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {renderDeviceTypeDistribution(summaryData.summary)}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+          
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Recent Metrics</h2>
+            {isLoading ? (
+              <p>Loading metrics data...</p>
+            ) : error ? (
+              <p className="text-red-500">Error loading metrics: {(error as Error).message}</p>
+            ) : !webVitalsData || !Array.isArray(webVitalsData) || webVitalsData.length === 0 ? (
+              <p>No metrics data available yet. Try reloading the page or simulating events.</p>
+            ) : (
+              renderMetricSummary(webVitalsData)
+            )}
+          </div>
         </TabsContent>
         
         <TabsContent value="details" className="pt-4">
