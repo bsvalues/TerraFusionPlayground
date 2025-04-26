@@ -1,782 +1,396 @@
 /**
- * Storage Manager
+ * Storage Module
  * 
- * Provides storage capabilities for offline data:
- * - Document persistence
- * - Asset storage
- * - Configuration storage
- * - Sync queue management
+ * Provides storage capabilities for offline sync, with adapters for
+ * IndexedDB, localStorage, and Realm.
  */
 
 import { EventEmitter } from 'events';
 
 /**
- * Sync queue item status
+ * Storage provider interface
  */
-export type SyncQueueItemStatus = 'pending' | 'processing' | 'completed' | 'failed';
-
-/**
- * Sync queue item
- */
-export interface SyncQueueItem {
-  id: string;
-  docId: string;
-  operation: 'create' | 'update' | 'delete';
-  data: any;
-  timestamp: Date;
-  status: SyncQueueItemStatus;
-  retries: number;
-  error?: string;
-}
-
-/**
- * Storage Manager interface
- */
-export interface StorageManager {
-  /**
-   * Initialize storage
-   */
-  initialize(): Promise<void>;
-  
-  /**
-   * Store a document
-   */
-  storeDocument(docId: string, data: any, metadata?: any): Promise<void>;
-  
-  /**
-   * Load a document
-   */
-  loadDocument(docId: string): Promise<any | null>;
-  
-  /**
-   * Load document metadata
-   */
-  loadDocumentMetadata(docId: string): Promise<any | null>;
-  
-  /**
-   * Update document metadata
-   */
-  updateDocumentMetadata(docId: string, metadata: any): Promise<void>;
-  
-  /**
-   * Delete a document
-   */
-  deleteDocument(docId: string): Promise<boolean>;
-  
-  /**
-   * Check if a document exists
-   */
+export interface StorageProvider {
+  /** Has document */
   hasDocument(docId: string): Promise<boolean>;
-  
-  /**
-   * List all documents
-   */
+  /** Save document */
+  saveDocument(docId: string, data: Uint8Array): Promise<void>;
+  /** Load document */
+  loadDocument(docId: string): Promise<Uint8Array | null>;
+  /** Delete document */
+  deleteDocument(docId: string): Promise<void>;
+  /** Save metadata */
+  saveMetadata(docId: string, metadata: any): Promise<void>;
+  /** Load metadata */
+  loadMetadata(docId: string): Promise<any>;
+  /** Delete metadata */
+  deleteMetadata(docId: string): Promise<void>;
+  /** List documents */
   listDocuments(): Promise<string[]>;
-  
-  /**
-   * Store an asset
-   */
-  storeAsset(assetId: string, data: Blob | ArrayBuffer, metadata?: any): Promise<void>;
-  
-  /**
-   * Load an asset
-   */
-  loadAsset(assetId: string): Promise<Blob | ArrayBuffer | null>;
-  
-  /**
-   * Delete an asset
-   */
-  deleteAsset(assetId: string): Promise<boolean>;
-  
-  /**
-   * Store configuration
-   */
-  storeConfig<T>(key: string, data: T): Promise<void>;
-  
-  /**
-   * Load configuration
-   */
-  loadConfig<T>(key: string, defaultValue?: T): Promise<T>;
-  
-  /**
-   * Delete configuration
-   */
-  deleteConfig(key: string): Promise<boolean>;
-  
-  /**
-   * Add item to sync queue
-   */
-  addToSyncQueue(item: Omit<SyncQueueItem, 'id' | 'timestamp' | 'status' | 'retries'>): Promise<string>;
-  
-  /**
-   * Get sync queue items
-   */
-  getSyncQueueItems(status?: SyncQueueItemStatus): Promise<SyncQueueItem[]>;
-  
-  /**
-   * Get pending sync items
-   */
-  getPendingSyncItems(): Promise<SyncQueueItem[]>;
-  
-  /**
-   * Update a sync queue item
-   */
-  updateSyncQueueItem(id: string, updates: Partial<SyncQueueItem>): Promise<void>;
-  
-  /**
-   * Remove a sync queue item
-   */
-  removeSyncQueueItem(id: string): Promise<boolean>;
-  
-  /**
-   * Clear all sync queue items
-   */
-  clearSyncQueue(status?: SyncQueueItemStatus): Promise<void>;
+  /** Clear all */
+  clearAll(): Promise<void>;
 }
 
 /**
- * Storage Manager implementation using IndexedDB
+ * Local storage provider using IndexedDB
  */
-export class IndexedDBStorageManager extends EventEmitter implements StorageManager {
+export class LocalStorageProvider extends EventEmitter implements StorageProvider {
   private dbName: string;
+  private docStoreName: string;
+  private metaStoreName: string;
   private db: IDBDatabase | null = null;
+  private dbPromise: Promise<IDBDatabase> | null = null;
   
-  constructor(dbName: string = 'terrafusion-offline-storage') {
+  /**
+   * Initialize a new local storage provider
+   * 
+   * @param dbName IndexedDB database name
+   * @param docStoreName Document store name
+   * @param metaStoreName Metadata store name
+   */
+  constructor(
+    dbName = 'terraFusionOfflineSync',
+    docStoreName = 'documents',
+    metaStoreName = 'metadata'
+  ) {
     super();
     this.dbName = dbName;
+    this.docStoreName = docStoreName;
+    this.metaStoreName = metaStoreName;
   }
   
   /**
-   * Initialize storage
+   * Open the database
+   * 
+   * @returns The opened database
    */
-  public async initialize(): Promise<void> {
+  private async openDb(): Promise<IDBDatabase> {
     if (this.db) {
-      return;
+      return this.db;
     }
     
-    return new Promise<void>((resolve, reject) => {
+    if (this.dbPromise) {
+      return this.dbPromise;
+    }
+    
+    this.dbPromise = new Promise((resolve, reject) => {
       const request = indexedDB.open(this.dbName, 1);
       
       request.onerror = (event) => {
+        console.error('Error opening IndexedDB:', event);
         reject(new Error('Failed to open IndexedDB'));
       };
       
       request.onsuccess = (event) => {
         this.db = request.result;
-        resolve();
+        resolve(this.db);
       };
       
       request.onupgradeneeded = (event) => {
         const db = request.result;
         
-        // Create object stores
-        if (!db.objectStoreNames.contains('documents')) {
-          db.createObjectStore('documents', { keyPath: 'id' });
+        // Create document store
+        if (!db.objectStoreNames.contains(this.docStoreName)) {
+          db.createObjectStore(this.docStoreName);
         }
         
-        if (!db.objectStoreNames.contains('metadata')) {
-          db.createObjectStore('metadata', { keyPath: 'id' });
-        }
-        
-        if (!db.objectStoreNames.contains('assets')) {
-          db.createObjectStore('assets', { keyPath: 'id' });
-        }
-        
-        if (!db.objectStoreNames.contains('configs')) {
-          db.createObjectStore('configs', { keyPath: 'key' });
-        }
-        
-        if (!db.objectStoreNames.contains('syncQueue')) {
-          const store = db.createObjectStore('syncQueue', { keyPath: 'id' });
-          store.createIndex('status', 'status', { unique: false });
-          store.createIndex('docId', 'docId', { unique: false });
+        // Create metadata store
+        if (!db.objectStoreNames.contains(this.metaStoreName)) {
+          db.createObjectStore(this.metaStoreName);
         }
       };
     });
-  }
-  
-  /**
-   * Store a document
-   */
-  public async storeDocument(docId: string, data: any, metadata?: any): Promise<void> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
     
-    return new Promise<void>((resolve, reject) => {
-      const transaction = this.db!.transaction(['documents', 'metadata'], 'readwrite');
-      
-      transaction.onerror = (event) => {
-        reject(new Error('Transaction failed'));
-      };
-      
-      // Store document
-      const documentStore = transaction.objectStore('documents');
-      const documentRequest = documentStore.put({
-        id: docId,
-        data,
-        timestamp: new Date()
-      });
-      
-      documentRequest.onerror = (event) => {
-        reject(new Error('Failed to store document'));
-      };
-      
-      // Store metadata if provided
-      if (metadata) {
-        const metadataStore = transaction.objectStore('metadata');
-        const metadataRequest = metadataStore.put({
-          id: docId,
-          ...metadata,
-          timestamp: new Date()
-        });
-        
-        metadataRequest.onerror = (event) => {
-          reject(new Error('Failed to store metadata'));
-        };
-      }
-      
-      transaction.oncomplete = (event) => {
-        this.emit('document:stored', { docId });
-        resolve();
-      };
-    });
-  }
-  
-  /**
-   * Load a document
-   */
-  public async loadDocument(docId: string): Promise<any | null> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<any | null>((resolve, reject) => {
-      const transaction = this.db!.transaction(['documents'], 'readonly');
-      const store = transaction.objectStore('documents');
-      const request = store.get(docId);
-      
-      request.onerror = (event) => {
-        reject(new Error('Failed to load document'));
-      };
-      
-      request.onsuccess = (event) => {
-        const result = request.result;
-        if (result) {
-          resolve(result.data);
-        } else {
-          resolve(null);
-        }
-      };
-    });
-  }
-  
-  /**
-   * Load document metadata
-   */
-  public async loadDocumentMetadata(docId: string): Promise<any | null> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<any | null>((resolve, reject) => {
-      const transaction = this.db!.transaction(['metadata'], 'readonly');
-      const store = transaction.objectStore('metadata');
-      const request = store.get(docId);
-      
-      request.onerror = (event) => {
-        reject(new Error('Failed to load metadata'));
-      };
-      
-      request.onsuccess = (event) => {
-        const result = request.result;
-        if (result) {
-          const { id, timestamp, ...metadata } = result;
-          resolve(metadata);
-        } else {
-          resolve(null);
-        }
-      };
-    });
-  }
-  
-  /**
-   * Update document metadata
-   */
-  public async updateDocumentMetadata(docId: string, metadata: any): Promise<void> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    // First, load existing metadata
-    const existingMetadata = await this.loadDocumentMetadata(docId);
-    
-    return new Promise<void>((resolve, reject) => {
-      const transaction = this.db!.transaction(['metadata'], 'readwrite');
-      const store = transaction.objectStore('metadata');
-      
-      const updatedMetadata = {
-        id: docId,
-        ...(existingMetadata || {}),
-        ...metadata,
-        timestamp: new Date()
-      };
-      
-      const request = store.put(updatedMetadata);
-      
-      request.onerror = (event) => {
-        reject(new Error('Failed to update metadata'));
-      };
-      
-      request.onsuccess = (event) => {
-        this.emit('metadata:updated', { docId });
-        resolve();
-      };
-    });
-  }
-  
-  /**
-   * Delete a document
-   */
-  public async deleteDocument(docId: string): Promise<boolean> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<boolean>((resolve, reject) => {
-      const transaction = this.db!.transaction(['documents', 'metadata'], 'readwrite');
-      
-      transaction.onerror = (event) => {
-        reject(new Error('Transaction failed'));
-      };
-      
-      // Delete document
-      const documentStore = transaction.objectStore('documents');
-      const documentRequest = documentStore.delete(docId);
-      
-      documentRequest.onerror = (event) => {
-        reject(new Error('Failed to delete document'));
-      };
-      
-      // Delete metadata
-      const metadataStore = transaction.objectStore('metadata');
-      const metadataRequest = metadataStore.delete(docId);
-      
-      metadataRequest.onerror = (event) => {
-        // Non-critical error, just log it
-        console.error('Failed to delete metadata:', event);
-      };
-      
-      transaction.oncomplete = (event) => {
-        this.emit('document:deleted', { docId });
-        resolve(true);
-      };
-    });
+    return this.dbPromise;
   }
   
   /**
    * Check if a document exists
+   * 
+   * @param docId Document ID
+   * @returns Whether the document exists
    */
-  public async hasDocument(docId: string): Promise<boolean> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<boolean>((resolve, reject) => {
-      const transaction = this.db!.transaction(['documents'], 'readonly');
-      const store = transaction.objectStore('documents');
+  async hasDocument(docId: string): Promise<boolean> {
+    try {
+      const db = await this.openDb();
+      const transaction = db.transaction([this.docStoreName], 'readonly');
+      const store = transaction.objectStore(this.docStoreName);
       const request = store.get(docId);
       
-      request.onerror = (event) => {
-        reject(new Error('Failed to check document existence'));
-      };
+      return new Promise((resolve) => {
+        request.onsuccess = () => {
+          resolve(!!request.result);
+        };
+        
+        request.onerror = () => {
+          resolve(false);
+        };
+      });
+    } catch (error) {
+      console.error('Error checking document:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Save a document
+   * 
+   * @param docId Document ID
+   * @param data Document data
+   */
+  async saveDocument(docId: string, data: Uint8Array): Promise<void> {
+    try {
+      const db = await this.openDb();
+      const transaction = db.transaction([this.docStoreName], 'readwrite');
+      const store = transaction.objectStore(this.docStoreName);
       
-      request.onsuccess = (event) => {
-        resolve(request.result !== undefined);
-      };
-    });
+      return new Promise((resolve, reject) => {
+        const request = store.put(data, docId);
+        
+        request.onsuccess = () => {
+          this.emit('document:saved', { docId });
+          resolve();
+        };
+        
+        request.onerror = () => {
+          reject(new Error(`Failed to save document: ${docId}`));
+        };
+      });
+    } catch (error) {
+      console.error('Error saving document:', error);
+      throw new Error(`Failed to save document: ${docId}`);
+    }
+  }
+  
+  /**
+   * Load a document
+   * 
+   * @param docId Document ID
+   * @returns The document data or null if not found
+   */
+  async loadDocument(docId: string): Promise<Uint8Array | null> {
+    try {
+      const db = await this.openDb();
+      const transaction = db.transaction([this.docStoreName], 'readonly');
+      const store = transaction.objectStore(this.docStoreName);
+      
+      return new Promise((resolve) => {
+        const request = store.get(docId);
+        
+        request.onsuccess = () => {
+          if (request.result) {
+            this.emit('document:loaded', { docId });
+            resolve(request.result);
+          } else {
+            resolve(null);
+          }
+        };
+        
+        request.onerror = () => {
+          resolve(null);
+        };
+      });
+    } catch (error) {
+      console.error('Error loading document:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Delete a document
+   * 
+   * @param docId Document ID
+   */
+  async deleteDocument(docId: string): Promise<void> {
+    try {
+      const db = await this.openDb();
+      const transaction = db.transaction([this.docStoreName], 'readwrite');
+      const store = transaction.objectStore(this.docStoreName);
+      
+      return new Promise((resolve, reject) => {
+        const request = store.delete(docId);
+        
+        request.onsuccess = () => {
+          this.emit('document:deleted', { docId });
+          resolve();
+        };
+        
+        request.onerror = () => {
+          reject(new Error(`Failed to delete document: ${docId}`));
+        };
+      });
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      throw new Error(`Failed to delete document: ${docId}`);
+    }
+  }
+  
+  /**
+   * Save document metadata
+   * 
+   * @param docId Document ID
+   * @param metadata Metadata
+   */
+  async saveMetadata(docId: string, metadata: any): Promise<void> {
+    try {
+      const db = await this.openDb();
+      const transaction = db.transaction([this.metaStoreName], 'readwrite');
+      const store = transaction.objectStore(this.metaStoreName);
+      
+      return new Promise((resolve, reject) => {
+        const request = store.put(metadata, docId);
+        
+        request.onsuccess = () => {
+          this.emit('metadata:saved', { docId, metadata });
+          resolve();
+        };
+        
+        request.onerror = () => {
+          reject(new Error(`Failed to save metadata: ${docId}`));
+        };
+      });
+    } catch (error) {
+      console.error('Error saving metadata:', error);
+      throw new Error(`Failed to save metadata: ${docId}`);
+    }
+  }
+  
+  /**
+   * Load document metadata
+   * 
+   * @param docId Document ID
+   * @returns The metadata or null if not found
+   */
+  async loadMetadata(docId: string): Promise<any> {
+    try {
+      const db = await this.openDb();
+      const transaction = db.transaction([this.metaStoreName], 'readonly');
+      const store = transaction.objectStore(this.metaStoreName);
+      
+      return new Promise((resolve) => {
+        const request = store.get(docId);
+        
+        request.onsuccess = () => {
+          if (request.result) {
+            resolve(request.result);
+          } else {
+            resolve(null);
+          }
+        };
+        
+        request.onerror = () => {
+          resolve(null);
+        };
+      });
+    } catch (error) {
+      console.error('Error loading metadata:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Delete document metadata
+   * 
+   * @param docId Document ID
+   */
+  async deleteMetadata(docId: string): Promise<void> {
+    try {
+      const db = await this.openDb();
+      const transaction = db.transaction([this.metaStoreName], 'readwrite');
+      const store = transaction.objectStore(this.metaStoreName);
+      
+      return new Promise((resolve, reject) => {
+        const request = store.delete(docId);
+        
+        request.onsuccess = () => {
+          this.emit('metadata:deleted', { docId });
+          resolve();
+        };
+        
+        request.onerror = () => {
+          reject(new Error(`Failed to delete metadata: ${docId}`));
+        };
+      });
+    } catch (error) {
+      console.error('Error deleting metadata:', error);
+      throw new Error(`Failed to delete metadata: ${docId}`);
+    }
   }
   
   /**
    * List all documents
+   * 
+   * @returns Array of document IDs
    */
-  public async listDocuments(): Promise<string[]> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<string[]>((resolve, reject) => {
-      const transaction = this.db!.transaction(['documents'], 'readonly');
-      const store = transaction.objectStore('documents');
-      const request = store.getAllKeys();
+  async listDocuments(): Promise<string[]> {
+    try {
+      const db = await this.openDb();
+      const transaction = db.transaction([this.docStoreName], 'readonly');
+      const store = transaction.objectStore(this.docStoreName);
       
-      request.onerror = (event) => {
-        reject(new Error('Failed to list documents'));
-      };
-      
-      request.onsuccess = (event) => {
-        resolve(request.result as string[]);
-      };
-    });
-  }
-  
-  /**
-   * Store an asset
-   */
-  public async storeAsset(assetId: string, data: Blob | ArrayBuffer, metadata?: any): Promise<void> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<void>((resolve, reject) => {
-      const transaction = this.db!.transaction(['assets'], 'readwrite');
-      const store = transaction.objectStore('assets');
-      
-      const asset = {
-        id: assetId,
-        data,
-        metadata: metadata || {},
-        timestamp: new Date()
-      };
-      
-      const request = store.put(asset);
-      
-      request.onerror = (event) => {
-        reject(new Error('Failed to store asset'));
-      };
-      
-      request.onsuccess = (event) => {
-        this.emit('asset:stored', { assetId });
-        resolve();
-      };
-    });
-  }
-  
-  /**
-   * Load an asset
-   */
-  public async loadAsset(assetId: string): Promise<Blob | ArrayBuffer | null> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<Blob | ArrayBuffer | null>((resolve, reject) => {
-      const transaction = this.db!.transaction(['assets'], 'readonly');
-      const store = transaction.objectStore('assets');
-      const request = store.get(assetId);
-      
-      request.onerror = (event) => {
-        reject(new Error('Failed to load asset'));
-      };
-      
-      request.onsuccess = (event) => {
-        const result = request.result;
-        if (result) {
-          resolve(result.data);
-        } else {
-          resolve(null);
-        }
-      };
-    });
-  }
-  
-  /**
-   * Delete an asset
-   */
-  public async deleteAsset(assetId: string): Promise<boolean> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<boolean>((resolve, reject) => {
-      const transaction = this.db!.transaction(['assets'], 'readwrite');
-      const store = transaction.objectStore('assets');
-      const request = store.delete(assetId);
-      
-      request.onerror = (event) => {
-        reject(new Error('Failed to delete asset'));
-      };
-      
-      request.onsuccess = (event) => {
-        this.emit('asset:deleted', { assetId });
-        resolve(true);
-      };
-    });
-  }
-  
-  /**
-   * Store configuration
-   */
-  public async storeConfig<T>(key: string, data: T): Promise<void> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<void>((resolve, reject) => {
-      const transaction = this.db!.transaction(['configs'], 'readwrite');
-      const store = transaction.objectStore('configs');
-      
-      const config = {
-        key,
-        data,
-        timestamp: new Date()
-      };
-      
-      const request = store.put(config);
-      
-      request.onerror = (event) => {
-        reject(new Error('Failed to store config'));
-      };
-      
-      request.onsuccess = (event) => {
-        this.emit('config:stored', { key });
-        resolve();
-      };
-    });
-  }
-  
-  /**
-   * Load configuration
-   */
-  public async loadConfig<T>(key: string, defaultValue?: T): Promise<T> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<T>((resolve, reject) => {
-      const transaction = this.db!.transaction(['configs'], 'readonly');
-      const store = transaction.objectStore('configs');
-      const request = store.get(key);
-      
-      request.onerror = (event) => {
-        reject(new Error('Failed to load config'));
-      };
-      
-      request.onsuccess = (event) => {
-        const result = request.result;
-        if (result) {
-          resolve(result.data as T);
-        } else {
-          resolve(defaultValue as T);
-        }
-      };
-    });
-  }
-  
-  /**
-   * Delete configuration
-   */
-  public async deleteConfig(key: string): Promise<boolean> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<boolean>((resolve, reject) => {
-      const transaction = this.db!.transaction(['configs'], 'readwrite');
-      const store = transaction.objectStore('configs');
-      const request = store.delete(key);
-      
-      request.onerror = (event) => {
-        reject(new Error('Failed to delete config'));
-      };
-      
-      request.onsuccess = (event) => {
-        this.emit('config:deleted', { key });
-        resolve(true);
-      };
-    });
-  }
-  
-  /**
-   * Add item to sync queue
-   */
-  public async addToSyncQueue(item: Omit<SyncQueueItem, 'id' | 'timestamp' | 'status' | 'retries'>): Promise<string> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<string>((resolve, reject) => {
-      const transaction = this.db!.transaction(['syncQueue'], 'readwrite');
-      const store = transaction.objectStore('syncQueue');
-      
-      const id = `sync-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-      
-      const queueItem: SyncQueueItem = {
-        id,
-        ...item,
-        timestamp: new Date(),
-        status: 'pending',
-        retries: 0
-      };
-      
-      const request = store.add(queueItem);
-      
-      request.onerror = (event) => {
-        reject(new Error('Failed to add item to sync queue'));
-      };
-      
-      request.onsuccess = (event) => {
-        this.emit('syncQueue:itemAdded', { id });
-        resolve(id);
-      };
-    });
-  }
-  
-  /**
-   * Get sync queue items
-   */
-  public async getSyncQueueItems(status?: SyncQueueItemStatus): Promise<SyncQueueItem[]> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<SyncQueueItem[]>((resolve, reject) => {
-      const transaction = this.db!.transaction(['syncQueue'], 'readonly');
-      const store = transaction.objectStore('syncQueue');
-      
-      let request: IDBRequest;
-      
-      if (status) {
-        const index = store.index('status');
-        request = index.getAll(status);
-      } else {
-        request = store.getAll();
-      }
-      
-      request.onerror = (event) => {
-        reject(new Error('Failed to get sync queue items'));
-      };
-      
-      request.onsuccess = (event) => {
-        resolve(request.result as SyncQueueItem[]);
-      };
-    });
-  }
-  
-  /**
-   * Get pending sync items
-   */
-  public async getPendingSyncItems(): Promise<SyncQueueItem[]> {
-    return this.getSyncQueueItems('pending');
-  }
-  
-  /**
-   * Update a sync queue item
-   */
-  public async updateSyncQueueItem(id: string, updates: Partial<SyncQueueItem>): Promise<void> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    // First, get the existing item
-    return new Promise<void>((resolve, reject) => {
-      const transaction = this.db!.transaction(['syncQueue'], 'readwrite');
-      const store = transaction.objectStore('syncQueue');
-      
-      const getRequest = store.get(id);
-      
-      getRequest.onerror = (event) => {
-        reject(new Error('Failed to get sync queue item'));
-      };
-      
-      getRequest.onsuccess = (event) => {
-        const existingItem = getRequest.result as SyncQueueItem;
+      return new Promise((resolve) => {
+        const request = store.getAllKeys();
         
-        if (!existingItem) {
-          reject(new Error('Sync queue item not found'));
-          return;
-        }
-        
-        // Update the item
-        const updatedItem: SyncQueueItem = {
-          ...existingItem,
-          ...updates
+        request.onsuccess = () => {
+          const keys = Array.from(request.result).map(key => String(key));
+          resolve(keys);
         };
         
-        const putRequest = store.put(updatedItem);
-        
-        putRequest.onerror = (event) => {
-          reject(new Error('Failed to update sync queue item'));
-        };
-        
-        putRequest.onsuccess = (event) => {
-          this.emit('syncQueue:itemUpdated', { id });
-          resolve();
-        };
-      };
-    });
-  }
-  
-  /**
-   * Remove a sync queue item
-   */
-  public async removeSyncQueueItem(id: string): Promise<boolean> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise<boolean>((resolve, reject) => {
-      const transaction = this.db!.transaction(['syncQueue'], 'readwrite');
-      const store = transaction.objectStore('syncQueue');
-      const request = store.delete(id);
-      
-      request.onerror = (event) => {
-        reject(new Error('Failed to remove sync queue item'));
-      };
-      
-      request.onsuccess = (event) => {
-        this.emit('syncQueue:itemRemoved', { id });
-        resolve(true);
-      };
-    });
-  }
-  
-  /**
-   * Clear all sync queue items
-   */
-  public async clearSyncQueue(status?: SyncQueueItemStatus): Promise<void> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    if (status) {
-      // Get items with the specified status
-      const items = await this.getSyncQueueItems(status);
-      
-      // Delete each item
-      for (const item of items) {
-        await this.removeSyncQueueItem(item.id);
-      }
-    } else {
-      // Clear the entire store
-      return new Promise<void>((resolve, reject) => {
-        const transaction = this.db!.transaction(['syncQueue'], 'readwrite');
-        const store = transaction.objectStore('syncQueue');
-        const request = store.clear();
-        
-        request.onerror = (event) => {
-          reject(new Error('Failed to clear sync queue'));
-        };
-        
-        request.onsuccess = (event) => {
-          this.emit('syncQueue:cleared');
-          resolve();
+        request.onerror = () => {
+          resolve([]);
         };
       });
+    } catch (error) {
+      console.error('Error listing documents:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Clear all data
+   */
+  async clearAll(): Promise<void> {
+    try {
+      const db = await this.openDb();
+      
+      // Clear document store
+      const docTransaction = db.transaction([this.docStoreName], 'readwrite');
+      const docStore = docTransaction.objectStore(this.docStoreName);
+      
+      await new Promise<void>((resolve, reject) => {
+        const request = docStore.clear();
+        
+        request.onsuccess = () => {
+          resolve();
+        };
+        
+        request.onerror = () => {
+          reject(new Error('Failed to clear document store'));
+        };
+      });
+      
+      // Clear metadata store
+      const metaTransaction = db.transaction([this.metaStoreName], 'readwrite');
+      const metaStore = metaTransaction.objectStore(this.metaStoreName);
+      
+      await new Promise<void>((resolve, reject) => {
+        const request = metaStore.clear();
+        
+        request.onsuccess = () => {
+          resolve();
+        };
+        
+        request.onerror = () => {
+          reject(new Error('Failed to clear metadata store'));
+        };
+      });
+      
+      this.emit('storage:cleared');
+    } catch (error) {
+      console.error('Error clearing storage:', error);
+      throw new Error('Failed to clear storage');
     }
   }
 }
 
-/**
- * Create a storage manager
- */
-export async function createStorageManager(
-  options: { dbName?: string } = {}
-): Promise<StorageManager> {
-  const { dbName = 'terrafusion-offline-storage' } = options;
-  
-  const storage = new IndexedDBStorageManager(dbName);
-  await storage.initialize();
-  
-  return storage;
-}
+export default LocalStorageProvider;

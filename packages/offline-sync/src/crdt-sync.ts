@@ -1,462 +1,407 @@
 /**
  * CRDT Document Manager
  * 
- * Provides CRDT-based document management:
- * - Document creation and loading
- * - Change tracking
- * - Conflict-free merging
- * - Awareness for collaboration
+ * Manages CRDT-based document synchronization using Yjs.
  */
 
 import { EventEmitter } from 'events';
 import * as Y from 'yjs';
-import { StorageManager } from './storage';
+import { LocalStorageProvider } from './storage';
 
 /**
- * Sync status enum
+ * Synchronization status enum
  */
 export enum SyncStatus {
+  /** Not yet synchronized */
   UNSYNCED = 'unsynced',
+  /** Synchronizing in progress */
   SYNCING = 'syncing',
+  /** Synchronized */
   SYNCED = 'synced',
-  ERROR = 'error'
+  /** Failed to synchronize */
+  FAILED = 'failed',
+  /** Conflict detected */
+  CONFLICT = 'conflict'
 }
 
 /**
- * Document metadata
+ * Document metadata interface
  */
 export interface DocumentMetadata {
+  /** Document ID */
+  id: string;
+  /** Last modified timestamp */
+  lastModified: number;
+  /** Last synced timestamp */
+  lastSynced?: number;
+  /** Synchronization status */
   syncStatus: SyncStatus;
-  lastSyncedAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  /** Version */
   version: number;
-  author?: string;
+  /** Size in bytes */
+  size?: number;
+  /** Custom metadata properties */
   [key: string]: any;
 }
 
 /**
- * CRDT Document Manager interface
+ * CRDT document manager
  */
-export interface CRDTDocumentManager {
-  /**
-   * Initialize the CRDT document manager
-   */
-  initialize(): Promise<void>;
+export class CRDTDocumentManager extends EventEmitter {
+  private documents: Map<string, Y.Doc> = new Map();
+  private metadata: Map<string, DocumentMetadata> = new Map();
+  private storageProvider: LocalStorageProvider;
+  private static DEFAULT_NAMESPACE = 'terraFusion';
   
   /**
-   * Create a new document
+   * Initialize a new CRDT document manager
+   * 
+   * @param storageProvider Storage provider
+   * @param namespace Namespace for document IDs
    */
-  createDocument(docId: string, initialData?: any, metadata?: Partial<DocumentMetadata>): Promise<Y.Doc>;
-  
-  /**
-   * Load a document
-   */
-  getDocument(docId: string): any;
+  constructor(storageProvider: LocalStorageProvider, namespace: string = CRDTDocumentManager.DEFAULT_NAMESPACE) {
+    super();
+    this.storageProvider = storageProvider;
+  }
   
   /**
    * Check if a document exists
+   * 
+   * @param docId Document ID
+   * @returns Whether the document exists
    */
-  hasDocument(docId: string): Promise<boolean>;
-  
-  /**
-   * Save a document
-   */
-  saveDocument(docId: string): Promise<void>;
-  
-  /**
-   * Delete a document
-   */
-  deleteDocument(docId: string): Promise<boolean>;
-  
-  /**
-   * Get all document IDs
-   */
-  getAllDocumentIds(): string[];
-  
-  /**
-   * Get document metadata
-   */
-  getDocumentMetadata(docId: string): DocumentMetadata | null;
-  
-  /**
-   * Update document metadata
-   */
-  updateDocumentMetadata(docId: string, metadata: Partial<DocumentMetadata>): Promise<void>;
-  
-  /**
-   * Get document updates
-   */
-  getUpdates(docId: string): Uint8Array | null;
-  
-  /**
-   * Apply updates to a document
-   */
-  applyUpdates(docId: string, updates: Uint8Array): void;
-  
-  /**
-   * Get document awareness
-   */
-  getAwareness(docId: string): any;
-  
-  /**
-   * Get document state vector
-   */
-  getStateVector(docId: string): Uint8Array | null;
-  
-  /**
-   * Get missing updates for a document given a state vector
-   */
-  getMissingUpdates(docId: string, stateVector: Uint8Array): Uint8Array | null;
-  
-  /**
-   * Register a change listener
-   */
-  on(event: string, listener: (...args: any[]) => void): this;
-  
-  /**
-   * Remove a change listener
-   */
-  off(event: string, listener: (...args: any[]) => void): this;
-}
-
-/**
- * CRDT Document Manager implementation using Yjs
- */
-export class YjsDocumentManager extends EventEmitter implements CRDTDocumentManager {
-  private storage: StorageManager;
-  private docs: Map<string, Y.Doc> = new Map();
-  private metadata: Map<string, DocumentMetadata> = new Map();
-  private awareness: Map<string, any> = new Map();
-  
-  constructor(storage: StorageManager) {
-    super();
-    this.storage = storage;
-  }
-  
-  /**
-   * Initialize the CRDT document manager
-   */
-  public async initialize(): Promise<void> {
-    console.log('Initializing CRDT document manager');
-    
-    // Load documents from storage
-    await this.loadDocuments();
-    
-    this.emit('initialized');
-  }
-  
-  /**
-   * Load documents from storage
-   */
-  private async loadDocuments(): Promise<void> {
-    // Get all document IDs
-    const docIds = await this.storage.listDocuments();
-    
-    for (const docId of docIds) {
-      try {
-        // Load document data
-        const data = await this.storage.loadDocument(docId);
-        
-        if (data) {
-          // Create Yjs document
-          const doc = new Y.Doc();
-          this.docs.set(docId, doc);
-          
-          // Load document metadata
-          const metadata = await this.storage.loadDocumentMetadata(docId);
-          
-          if (metadata) {
-            this.metadata.set(docId, metadata as DocumentMetadata);
-          } else {
-            // Create default metadata
-            const defaultMetadata: DocumentMetadata = {
-              syncStatus: SyncStatus.UNSYNCED,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              version: 1
-            };
-            
-            this.metadata.set(docId, defaultMetadata);
-            await this.storage.updateDocumentMetadata(docId, defaultMetadata);
-          }
-        }
-      } catch (error) {
-        console.error(`Error loading document ${docId}:`, error);
-      }
+  async hasDocument(docId: string): Promise<boolean> {
+    // Check in-memory cache
+    if (this.documents.has(docId)) {
+      return true;
     }
+    
+    // Check storage
+    return this.storageProvider.hasDocument(docId);
   }
   
   /**
    * Create a new document
+   * 
+   * @param docId Document ID
+   * @param initialData Initial data
+   * @returns The created document
    */
-  public async createDocument(
-    docId: string, 
-    initialData?: any, 
-    metadata?: Partial<DocumentMetadata>
-  ): Promise<Y.Doc> {
-    // Check if document already exists
-    if (this.docs.has(docId)) {
-      throw new Error(`Document ${docId} already exists`);
-    }
-    
-    // Create new Yjs document
-    const doc = new Y.Doc();
-    this.docs.set(docId, doc);
+  async createDocument(docId: string, initialData?: any): Promise<Y.Doc> {
+    // Create Yjs document
+    const doc = new Y.Doc({ guid: docId });
     
     // Initialize with data if provided
     if (initialData) {
-      const rootMap = doc.getMap();
+      const map = doc.getMap('data');
       
-      // Set initial data
-      if (typeof initialData === 'object' && initialData !== null) {
-        for (const [key, value] of Object.entries(initialData)) {
-          rootMap.set(key, value);
-        }
-      }
+      doc.transact(() => {
+        Object.entries(initialData).forEach(([key, value]) => {
+          map.set(key, value);
+        });
+      });
     }
     
     // Create metadata
-    const defaultMetadata: DocumentMetadata = {
+    const metadata: DocumentMetadata = {
+      id: docId,
+      lastModified: Date.now(),
       syncStatus: SyncStatus.UNSYNCED,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      version: 1,
-      ...metadata
+      version: 1
     };
     
-    this.metadata.set(docId, defaultMetadata);
+    // Store in memory
+    this.documents.set(docId, doc);
+    this.metadata.set(docId, metadata);
     
-    // Save to storage
-    await this.saveDocument(docId);
+    // Store in storage
+    await this.storageProvider.saveDocument(docId, Y.encodeStateAsUpdate(doc));
+    await this.storageProvider.saveMetadata(docId, metadata);
     
-    this.emit('document:created', { docId });
+    // Emit event
+    this.emit('document:created', { docId, doc, metadata });
     
     return doc;
   }
   
   /**
    * Get a document
+   * 
+   * @param docId Document ID
+   * @returns The document
    */
-  public getDocument(docId: string): any {
-    const doc = this.docs.get(docId);
+  async getDocument(docId: string): Promise<Y.Doc> {
+    // Check if document exists in memory
+    const existingDoc = this.documents.get(docId);
     
-    if (!doc) {
-      return null;
+    if (existingDoc) {
+      return existingDoc;
     }
     
-    // Convert Yjs document to plain object
-    return this.yDocToObject(doc);
+    // Load from storage
+    const update = await this.storageProvider.loadDocument(docId);
+    
+    if (!update) {
+      throw new Error(`Document not found: ${docId}`);
+    }
+    
+    // Create Yjs document
+    const doc = new Y.Doc({ guid: docId });
+    
+    // Apply update
+    Y.applyUpdate(doc, update);
+    
+    // Load metadata
+    const metadata = await this.storageProvider.loadMetadata(docId);
+    
+    if (metadata) {
+      this.metadata.set(docId, metadata);
+    } else {
+      // Create default metadata
+      const defaultMetadata: DocumentMetadata = {
+        id: docId,
+        lastModified: Date.now(),
+        syncStatus: SyncStatus.UNSYNCED,
+        version: 1
+      };
+      
+      this.metadata.set(docId, defaultMetadata);
+      await this.storageProvider.saveMetadata(docId, defaultMetadata);
+    }
+    
+    // Store in memory
+    this.documents.set(docId, doc);
+    
+    // Listen for document changes
+    doc.on('update', (update: Uint8Array, origin: any) => {
+      this.handleDocumentUpdate(docId, update, origin);
+    });
+    
+    // Emit event
+    this.emit('document:loaded', { docId, doc });
+    
+    return doc;
   }
   
   /**
-   * Check if a document exists
+   * Handle document update
+   * 
+   * @param docId Document ID
+   * @param update Update data
+   * @param origin Update origin
    */
-  public async hasDocument(docId: string): Promise<boolean> {
-    return this.docs.has(docId) || await this.storage.hasDocument(docId);
+  private handleDocumentUpdate(docId: string, update: Uint8Array, origin: any): void {
+    // Update metadata
+    const metadata = this.metadata.get(docId);
+    
+    if (metadata) {
+      metadata.lastModified = Date.now();
+      metadata.version++;
+      metadata.syncStatus = SyncStatus.UNSYNCED;
+      
+      this.metadata.set(docId, metadata);
+      
+      // Save metadata
+      this.storageProvider.saveMetadata(docId, metadata).catch(error => {
+        console.error('Error saving metadata:', error);
+      });
+      
+      // Emit event
+      this.emit('metadata:updated', { docId, metadata });
+    }
+    
+    // Save document (async)
+    this.saveDocument(docId).catch(error => {
+      console.error('Error saving document:', error);
+    });
+    
+    // Emit event
+    this.emit('document:updated', { docId, update, origin });
   }
   
   /**
    * Save a document
+   * 
+   * @param docId Document ID
    */
-  public async saveDocument(docId: string): Promise<void> {
-    const doc = this.docs.get(docId);
+  async saveDocument(docId: string): Promise<void> {
+    const doc = this.documents.get(docId);
     
     if (!doc) {
-      throw new Error(`Document ${docId} not found`);
+      throw new Error(`Document not found: ${docId}`);
     }
     
-    // Convert Yjs document to plain object
-    const data = this.yDocToObject(doc);
+    // Encode state as update
+    const update = Y.encodeStateAsUpdate(doc);
+    
+    // Save to storage
+    await this.storageProvider.saveDocument(docId, update);
     
     // Update metadata
     const metadata = this.metadata.get(docId);
     
     if (metadata) {
-      metadata.updatedAt = new Date();
-      metadata.version += 1;
+      metadata.lastModified = Date.now();
       
-      // Save to storage
-      await this.storage.storeDocument(docId, data, metadata);
-      
-      this.emit('document:saved', { docId });
-    } else {
-      throw new Error(`Metadata for document ${docId} not found`);
+      this.metadata.set(docId, metadata);
+      await this.storageProvider.saveMetadata(docId, metadata);
     }
+    
+    // Emit event
+    this.emit('document:saved', { docId });
   }
   
   /**
    * Delete a document
+   * 
+   * @param docId Document ID
    */
-  public async deleteDocument(docId: string): Promise<boolean> {
+  async deleteDocument(docId: string): Promise<void> {
     // Remove from memory
-    this.docs.delete(docId);
+    this.documents.delete(docId);
     this.metadata.delete(docId);
-    this.awareness.delete(docId);
     
     // Remove from storage
-    const result = await this.storage.deleteDocument(docId);
+    await this.storageProvider.deleteDocument(docId);
+    await this.storageProvider.deleteMetadata(docId);
     
-    if (result) {
-      this.emit('document:deleted', { docId });
+    // Emit event
+    this.emit('document:deleted', { docId });
+  }
+  
+  /**
+   * Get document metadata
+   * 
+   * @param docId Document ID
+   * @returns The document metadata or undefined if not found
+   */
+  getDocumentMetadata(docId: string): DocumentMetadata | undefined {
+    return this.metadata.get(docId);
+  }
+  
+  /**
+   * Update document metadata
+   * 
+   * @param docId Document ID
+   * @param metadata Metadata to update
+   */
+  async updateDocumentMetadata(docId: string, metadata: Partial<DocumentMetadata>): Promise<void> {
+    const existingMetadata = this.metadata.get(docId);
+    
+    if (!existingMetadata) {
+      throw new Error(`Document metadata not found: ${docId}`);
+    }
+    
+    // Update metadata
+    const updatedMetadata = {
+      ...existingMetadata,
+      ...metadata,
+      id: docId // Ensure ID doesn't change
+    };
+    
+    // Store in memory
+    this.metadata.set(docId, updatedMetadata);
+    
+    // Store in storage
+    await this.storageProvider.saveMetadata(docId, updatedMetadata);
+    
+    // Emit event
+    this.emit('metadata:updated', { docId, metadata: updatedMetadata });
+  }
+  
+  /**
+   * List all documents
+   * 
+   * @returns Array of document IDs
+   */
+  async listDocuments(): Promise<string[]> {
+    return this.storageProvider.listDocuments();
+  }
+  
+  /**
+   * List all document metadata
+   * 
+   * @returns Array of document metadata
+   */
+  async listDocumentMetadata(): Promise<DocumentMetadata[]> {
+    const docIds = await this.listDocuments();
+    const result: DocumentMetadata[] = [];
+    
+    for (const docId of docIds) {
+      const metadata = await this.storageProvider.loadMetadata(docId);
+      
+      if (metadata) {
+        result.push(metadata);
+      }
     }
     
     return result;
   }
   
   /**
-   * Get all document IDs
+   * Get updates for a document
+   * 
+   * @param docId Document ID
+   * @returns The updates or null if not found
    */
-  public getAllDocumentIds(): string[] {
-    return Array.from(this.docs.keys());
-  }
-  
-  /**
-   * Get document metadata
-   */
-  public getDocumentMetadata(docId: string): DocumentMetadata | null {
-    return this.metadata.get(docId) || null;
-  }
-  
-  /**
-   * Update document metadata
-   */
-  public async updateDocumentMetadata(docId: string, metadata: Partial<DocumentMetadata>): Promise<void> {
-    const existingMetadata = this.metadata.get(docId);
-    
-    if (!existingMetadata) {
-      throw new Error(`Document ${docId} not found`);
-    }
-    
-    // Update metadata
-    const updatedMetadata: DocumentMetadata = {
-      ...existingMetadata,
-      ...metadata,
-      updatedAt: new Date()
-    };
-    
-    this.metadata.set(docId, updatedMetadata);
-    
-    // Save to storage
-    await this.storage.updateDocumentMetadata(docId, updatedMetadata);
-    
-    this.emit('metadata:updated', { docId, metadata: updatedMetadata });
-  }
-  
-  /**
-   * Get document updates
-   */
-  public getUpdates(docId: string): Uint8Array | null {
-    const doc = this.docs.get(docId);
+  getUpdates(docId: string): Uint8Array | null {
+    const doc = this.documents.get(docId);
     
     if (!doc) {
       return null;
     }
     
-    // Get updates
     return Y.encodeStateAsUpdate(doc);
   }
   
   /**
    * Apply updates to a document
+   * 
+   * @param docId Document ID
+   * @param update Update data
    */
-  public applyUpdates(docId: string, updates: Uint8Array): void {
-    const doc = this.docs.get(docId);
+  async applyUpdates(docId: string, update: Uint8Array): Promise<void> {
+    const doc = this.documents.get(docId);
     
     if (!doc) {
-      throw new Error(`Document ${docId} not found`);
+      throw new Error(`Document not found: ${docId}`);
     }
     
-    // Apply updates
-    Y.applyUpdate(doc, updates);
+    // Apply update
+    Y.applyUpdate(doc, update);
     
-    this.emit('document:updated', { docId });
-  }
-  
-  /**
-   * Get document awareness
-   */
-  public getAwareness(docId: string): any {
-    return this.awareness.get(docId) || null;
-  }
-  
-  /**
-   * Get document state vector
-   */
-  public getStateVector(docId: string): Uint8Array | null {
-    const doc = this.docs.get(docId);
+    // Update metadata
+    const metadata = this.metadata.get(docId);
     
-    if (!doc) {
-      return null;
-    }
-    
-    // Get state vector
-    return Y.encodeStateVector(doc);
-  }
-  
-  /**
-   * Get missing updates for a document given a state vector
-   */
-  public getMissingUpdates(docId: string, stateVector: Uint8Array): Uint8Array | null {
-    const doc = this.docs.get(docId);
-    
-    if (!doc) {
-      return null;
-    }
-    
-    // Get missing updates
-    return Y.encodeStateAsUpdate(doc, stateVector);
-  }
-  
-  /**
-   * Convert a Yjs document to a plain JavaScript object
-   */
-  private yDocToObject(doc: Y.Doc): any {
-    const rootMap = doc.getMap();
-    const result: any = {};
-    
-    // Convert Yjs map to plain object
-    rootMap.forEach((value, key) => {
-      result[key] = this.yValueToPlainValue(value);
-    });
-    
-    return result;
-  }
-  
-  /**
-   * Convert a Yjs value to a plain JavaScript value
-   */
-  private yValueToPlainValue(value: any): any {
-    if (value instanceof Y.Map) {
-      // Convert Y.Map to plain object
-      const result: any = {};
+    if (metadata) {
+      metadata.lastSynced = Date.now();
+      metadata.syncStatus = SyncStatus.SYNCED;
       
-      value.forEach((v, k) => {
-        result[k] = this.yValueToPlainValue(v);
-      });
+      this.metadata.set(docId, metadata);
+      await this.storageProvider.saveMetadata(docId, metadata);
       
-      return result;
-    } else if (value instanceof Y.Array) {
-      // Convert Y.Array to plain array
-      return Array.from(value).map(v => this.yValueToPlainValue(v));
-    } else if (value instanceof Y.Text) {
-      // Convert Y.Text to string
-      return value.toString();
-    } else {
-      // Return primitive values as is
-      return value;
+      // Emit event
+      this.emit('metadata:updated', { docId, metadata });
     }
+    
+    // Emit event
+    this.emit('remote:update', { docId, updates: update });
+  }
+  
+  /**
+   * Clear all documents
+   */
+  async clearAllDocuments(): Promise<void> {
+    // Clear memory
+    this.documents.clear();
+    this.metadata.clear();
+    
+    // Clear storage
+    await this.storageProvider.clearAll();
+    
+    // Emit event
+    this.emit('documents:cleared');
   }
 }
 
-/**
- * Create a CRDT document manager
- */
-export async function createCRDTDocumentManager(
-  storage: StorageManager
-): Promise<CRDTDocumentManager> {
-  const manager = new YjsDocumentManager(storage);
-  await manager.initialize();
-  
-  return manager;
-}
+export default CRDTDocumentManager;
