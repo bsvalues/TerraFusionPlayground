@@ -1,633 +1,462 @@
 /**
- * CRDT Synchronization Module
+ * CRDT Document Manager
  * 
- * Implements conflict-free replicated data types (CRDTs) using Yjs to enable:
- * - Conflict-free data merging
- * - Real-time collaboration
- * - Offline-first operations
- * - Automatic state reconciliation
+ * Provides CRDT-based document management:
+ * - Document creation and loading
+ * - Change tracking
+ * - Conflict-free merging
+ * - Awareness for collaboration
  */
 
 import { EventEmitter } from 'events';
 import * as Y from 'yjs';
-import { IndexeddbPersistence } from 'y-indexeddb';
-import * as awarenessProtocol from 'y-protocols/awareness';
-import { WebrtcProvider } from 'y-webrtc';
-import * as encoding from 'lib0/encoding';
-import * as decoding from 'lib0/decoding';
+import { StorageManager } from './storage';
 
-// CRDT Document Types
-export enum CRDTDocumentType {
-  PROPERTY = 'property',
-  TASK = 'task',
-  ASSESSMENT = 'assessment',
-  NOTES = 'notes',
-  MAP_FEATURE = 'map_feature'
-}
-
-// Sync status
+/**
+ * Sync status enum
+ */
 export enum SyncStatus {
-  SYNCED = 'synced',
+  UNSYNCED = 'unsynced',
   SYNCING = 'syncing',
-  PENDING_CHANGES = 'pending_changes',
-  CONFLICT = 'conflict',
-  ERROR = 'error',
-  OFFLINE = 'offline'
-}
-
-// Awareness state (for collaborative editing)
-export interface AwarenessState {
-  userId: string;
-  userName: string;
-  color: string;
-  location?: {
-    lat: number;
-    lng: number;
-  };
-  selectedElement?: string;
-  status: 'active' | 'idle' | 'away';
-}
-
-// Sync provider type
-export enum SyncProviderType {
-  WEBSOCKET = 'websocket',
-  WEBRTC = 'webrtc',
-  INDEXEDDB = 'indexeddb',
-  CUSTOM = 'custom'
-}
-
-// CRDT document metadata
-export interface CRDTDocumentMetadata {
-  id: string;
-  type: CRDTDocumentType;
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string;
-  updatedBy: string;
-  version: number;
-  name: string;
-  description?: string;
-  syncStatus: SyncStatus;
-  lastSyncedAt?: Date;
+  SYNCED = 'synced',
+  ERROR = 'error'
 }
 
 /**
- * CRDT Document Manager
- * 
- * Manages CRDT documents for various entities in the system.
+ * Document metadata
  */
-export class CRDTDocumentManager extends EventEmitter {
-  private docs: Map<string, Y.Doc> = new Map();
-  private metadata: Map<string, CRDTDocumentMetadata> = new Map();
-  private providers: Map<string, Map<string, any>> = new Map();
-  private awareness: Map<string, awarenessProtocol.Awareness> = new Map();
-  private isOnline: boolean = navigator.onLine;
+export interface DocumentMetadata {
+  syncStatus: SyncStatus;
+  lastSyncedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  version: number;
+  author?: string;
+  [key: string]: any;
+}
 
-  constructor() {
-    super();
-    
-    // Listen for online/offline events
-    window.addEventListener('online', () => this.handleOnlineStatusChange(true));
-    window.addEventListener('offline', () => this.handleOnlineStatusChange(false));
-  }
-
+/**
+ * CRDT Document Manager interface
+ */
+export interface CRDTDocumentManager {
   /**
    * Initialize the CRDT document manager
    */
-  public initialize(): void {
-    console.log('Initializing CRDT document manager');
-    this.emit('initialized');
-  }
-
+  initialize(): Promise<void>;
+  
   /**
-   * Create a new CRDT document
+   * Create a new document
    */
-  public createDocument(
-    docId: string,
-    type: CRDTDocumentType,
-    userId: string,
-    userName: string,
-    name: string,
-    description?: string
-  ): Y.Doc {
-    // Check if document already exists
-    if (this.docs.has(docId)) {
-      throw new Error(`Document with ID ${docId} already exists`);
-    }
-    
-    // Create new Y.Doc
-    const doc = new Y.Doc();
-    
-    // Initialize document with basic structure based on type
-    this.initializeDocumentStructure(doc, type);
-    
-    // Create metadata
-    const metadata: CRDTDocumentMetadata = {
-      id: docId,
-      type,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      createdBy: userId,
-      updatedBy: userId,
-      version: 1,
-      name,
-      description,
-      syncStatus: this.isOnline ? SyncStatus.SYNCED : SyncStatus.OFFLINE
-    };
-    
-    // Store document and metadata
-    this.docs.set(docId, doc);
-    this.metadata.set(docId, metadata);
-    
-    // Initialize awareness for collaborative editing
-    const awareness = new awarenessProtocol.Awareness(doc);
-    awareness.setLocalState({
-      userId,
-      userName,
-      color: this.getRandomColor(),
-      status: 'active'
-    });
-    this.awareness.set(docId, awareness);
-    
-    // Initialize local persistence
-    this.setupLocalPersistence(docId, doc);
-    
-    // If online, set up synchronization
-    if (this.isOnline) {
-      this.setupSynchronization(docId, doc, awareness);
-    }
-    
-    console.log(`CRDT document created: ${docId} (${type})`);
-    this.emit('document:created', { docId, type, metadata });
-    
-    return doc;
-  }
-
+  createDocument(docId: string, initialData?: any, metadata?: Partial<DocumentMetadata>): Promise<Y.Doc>;
+  
   /**
-   * Initialize the document structure based on its type
+   * Load a document
    */
-  private initializeDocumentStructure(doc: Y.Doc, type: CRDTDocumentType): void {
-    // Create shared data structures based on document type
-    switch (type) {
-      case CRDTDocumentType.PROPERTY:
-        doc.getMap('property'); // Main property data
-        doc.getMap('attributes'); // Property attributes
-        doc.getMap('values'); // Assessment values
-        doc.getArray('history'); // History of changes
-        doc.getMap('files'); // Attached files
-        break;
-        
-      case CRDTDocumentType.TASK:
-        doc.getMap('task'); // Main task data
-        doc.getArray('steps'); // Task steps/checklist
-        doc.getMap('assignees'); // Assigned users
-        doc.getArray('comments'); // Task comments
-        doc.getMap('timestamps'); // Task timestamps (created, due, completed)
-        break;
-        
-      case CRDTDocumentType.ASSESSMENT:
-        doc.getMap('assessment'); // Main assessment data
-        doc.getMap('values'); // Assessment values
-        doc.getArray('comparables'); // Comparable properties
-        doc.getMap('factors'); // Assessment factors
-        doc.getArray('history'); // History of changes
-        break;
-        
-      case CRDTDocumentType.NOTES:
-        doc.getText('content'); // Note content
-        doc.getMap('metadata'); // Note metadata
-        doc.getArray('tags'); // Note tags
-        break;
-        
-      case CRDTDocumentType.MAP_FEATURE:
-        doc.getMap('feature'); // Feature data
-        doc.getMap('geometry'); // Geometry data
-        doc.getMap('properties'); // Feature properties
-        doc.getArray('history'); // Edit history
-        break;
-        
-      default:
-        // Generic structure for unknown types
-        doc.getMap('data');
-        doc.getArray('history');
-    }
-    
-    // Add shared metadata
-    doc.getMap('metadata').set('type', type);
-    doc.getMap('metadata').set('createdAt', new Date().toISOString());
-  }
-
+  getDocument(docId: string): any;
+  
   /**
-   * Set up local persistence using IndexedDB
+   * Check if a document exists
    */
-  private setupLocalPersistence(docId: string, doc: Y.Doc): void {
-    // Create IndexedDB provider
-    const dbName = `terrafusion-crdt-${docId}`;
-    const indexeddbProvider = new IndexeddbPersistence(dbName, doc);
-    
-    // Store provider
-    let providers = this.providers.get(docId);
-    if (!providers) {
-      providers = new Map();
-      this.providers.set(docId, providers);
-    }
-    providers.set(SyncProviderType.INDEXEDDB, indexeddbProvider);
-    
-    // Listen for sync events
-    indexeddbProvider.on('synced', () => {
-      console.log(`Document ${docId} synced with IndexedDB`);
-      this.emit('document:persisted', { docId });
-    });
-    
-    console.log(`Local persistence set up for document: ${docId}`);
-  }
-
+  hasDocument(docId: string): Promise<boolean>;
+  
   /**
-   * Set up synchronization providers
+   * Save a document
    */
-  private setupSynchronization(docId: string, doc: Y.Doc, awareness: awarenessProtocol.Awareness): void {
-    // Get providers map for this document
-    let providers = this.providers.get(docId);
-    if (!providers) {
-      providers = new Map();
-      this.providers.set(docId, providers);
-    }
-    
-    // Set up WebRTC provider for P2P sync
-    if (!providers.has(SyncProviderType.WEBRTC)) {
-      const webrtcProvider = new WebrtcProvider(`terrafusion-crdt-${docId}`, doc, {
-        awareness,
-        maxConns: 20,
-        filterBcConns: true,
-        peerOpts: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
-      });
-      
-      providers.set(SyncProviderType.WEBRTC, webrtcProvider);
-      
-      console.log(`WebRTC provider set up for document: ${docId}`);
-    }
-    
-    // Update sync status
-    const metadata = this.metadata.get(docId);
-    if (metadata) {
-      metadata.syncStatus = SyncStatus.SYNCED;
-      metadata.lastSyncedAt = new Date();
-      this.metadata.set(docId, metadata);
-    }
-    
-    this.emit('document:sync-setup', { docId });
-  }
-
-  /**
-   * Handle online status change
-   */
-  private handleOnlineStatusChange(isOnline: boolean): void {
-    this.isOnline = isOnline;
-    console.log(`Connection status changed: ${isOnline ? 'Online' : 'Offline'}`);
-    this.emit('connection:status-changed', { isOnline });
-    
-    // Update all documents
-    for (const [docId, doc] of this.docs.entries()) {
-      const metadata = this.metadata.get(docId);
-      if (metadata) {
-        // Update sync status
-        metadata.syncStatus = isOnline ? SyncStatus.SYNCING : SyncStatus.OFFLINE;
-        this.metadata.set(docId, metadata);
-        
-        // Set up or tear down sync providers
-        if (isOnline) {
-          const awareness = this.awareness.get(docId);
-          if (awareness) {
-            this.setupSynchronization(docId, doc, awareness);
-          }
-        } else {
-          // When going offline, we don't need to tear down providers
-          // They will automatically reconnect when back online
-        }
-      }
-    }
-    
-    if (isOnline) {
-      // Sync all documents with pending changes
-      this.syncPendingChanges();
-    }
-  }
-
-  /**
-   * Sync pending changes for all documents
-   */
-  private syncPendingChanges(): void {
-    for (const [docId, metadata] of this.metadata.entries()) {
-      if (metadata.syncStatus === SyncStatus.PENDING_CHANGES) {
-        const doc = this.docs.get(docId);
-        if (doc) {
-          // Update status to syncing
-          metadata.syncStatus = SyncStatus.SYNCING;
-          this.metadata.set(docId, metadata);
-          
-          // In a real implementation, this would send the changes to the server
-          // For now, we'll just simulate a successful sync after a short delay
-          setTimeout(() => {
-            metadata.syncStatus = SyncStatus.SYNCED;
-            metadata.lastSyncedAt = new Date();
-            this.metadata.set(docId, metadata);
-            
-            this.emit('document:synced', { docId });
-          }, 1500);
-        }
-      }
-    }
-  }
-
-  /**
-   * Get a document by ID
-   */
-  public getDocument(docId: string): Y.Doc | undefined {
-    return this.docs.get(docId);
-  }
-
-  /**
-   * Get document metadata
-   */
-  public getDocumentMetadata(docId: string): CRDTDocumentMetadata | undefined {
-    return this.metadata.get(docId);
-  }
-
-  /**
-   * Update document metadata
-   */
-  public updateDocumentMetadata(docId: string, updates: Partial<Omit<CRDTDocumentMetadata, 'id' | 'createdAt' | 'createdBy'>>): CRDTDocumentMetadata | undefined {
-    const metadata = this.metadata.get(docId);
-    
-    if (!metadata) {
-      return undefined;
-    }
-    
-    const updatedMetadata: CRDTDocumentMetadata = {
-      ...metadata,
-      ...updates,
-      updatedAt: new Date()
-    };
-    
-    this.metadata.set(docId, updatedMetadata);
-    
-    this.emit('document:metadata-updated', { docId, metadata: updatedMetadata });
-    
-    return updatedMetadata;
-  }
-
+  saveDocument(docId: string): Promise<void>;
+  
   /**
    * Delete a document
    */
-  public deleteDocument(docId: string): boolean {
+  deleteDocument(docId: string): Promise<boolean>;
+  
+  /**
+   * Get all document IDs
+   */
+  getAllDocumentIds(): string[];
+  
+  /**
+   * Get document metadata
+   */
+  getDocumentMetadata(docId: string): DocumentMetadata | null;
+  
+  /**
+   * Update document metadata
+   */
+  updateDocumentMetadata(docId: string, metadata: Partial<DocumentMetadata>): Promise<void>;
+  
+  /**
+   * Get document updates
+   */
+  getUpdates(docId: string): Uint8Array | null;
+  
+  /**
+   * Apply updates to a document
+   */
+  applyUpdates(docId: string, updates: Uint8Array): void;
+  
+  /**
+   * Get document awareness
+   */
+  getAwareness(docId: string): any;
+  
+  /**
+   * Get document state vector
+   */
+  getStateVector(docId: string): Uint8Array | null;
+  
+  /**
+   * Get missing updates for a document given a state vector
+   */
+  getMissingUpdates(docId: string, stateVector: Uint8Array): Uint8Array | null;
+  
+  /**
+   * Register a change listener
+   */
+  on(event: string, listener: (...args: any[]) => void): this;
+  
+  /**
+   * Remove a change listener
+   */
+  off(event: string, listener: (...args: any[]) => void): this;
+}
+
+/**
+ * CRDT Document Manager implementation using Yjs
+ */
+export class YjsDocumentManager extends EventEmitter implements CRDTDocumentManager {
+  private storage: StorageManager;
+  private docs: Map<string, Y.Doc> = new Map();
+  private metadata: Map<string, DocumentMetadata> = new Map();
+  private awareness: Map<string, any> = new Map();
+  
+  constructor(storage: StorageManager) {
+    super();
+    this.storage = storage;
+  }
+  
+  /**
+   * Initialize the CRDT document manager
+   */
+  public async initialize(): Promise<void> {
+    console.log('Initializing CRDT document manager');
+    
+    // Load documents from storage
+    await this.loadDocuments();
+    
+    this.emit('initialized');
+  }
+  
+  /**
+   * Load documents from storage
+   */
+  private async loadDocuments(): Promise<void> {
+    // Get all document IDs
+    const docIds = await this.storage.listDocuments();
+    
+    for (const docId of docIds) {
+      try {
+        // Load document data
+        const data = await this.storage.loadDocument(docId);
+        
+        if (data) {
+          // Create Yjs document
+          const doc = new Y.Doc();
+          this.docs.set(docId, doc);
+          
+          // Load document metadata
+          const metadata = await this.storage.loadDocumentMetadata(docId);
+          
+          if (metadata) {
+            this.metadata.set(docId, metadata as DocumentMetadata);
+          } else {
+            // Create default metadata
+            const defaultMetadata: DocumentMetadata = {
+              syncStatus: SyncStatus.UNSYNCED,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              version: 1
+            };
+            
+            this.metadata.set(docId, defaultMetadata);
+            await this.storage.updateDocumentMetadata(docId, defaultMetadata);
+          }
+        }
+      } catch (error) {
+        console.error(`Error loading document ${docId}:`, error);
+      }
+    }
+  }
+  
+  /**
+   * Create a new document
+   */
+  public async createDocument(
+    docId: string, 
+    initialData?: any, 
+    metadata?: Partial<DocumentMetadata>
+  ): Promise<Y.Doc> {
+    // Check if document already exists
+    if (this.docs.has(docId)) {
+      throw new Error(`Document ${docId} already exists`);
+    }
+    
+    // Create new Yjs document
+    const doc = new Y.Doc();
+    this.docs.set(docId, doc);
+    
+    // Initialize with data if provided
+    if (initialData) {
+      const rootMap = doc.getMap();
+      
+      // Set initial data
+      if (typeof initialData === 'object' && initialData !== null) {
+        for (const [key, value] of Object.entries(initialData)) {
+          rootMap.set(key, value);
+        }
+      }
+    }
+    
+    // Create metadata
+    const defaultMetadata: DocumentMetadata = {
+      syncStatus: SyncStatus.UNSYNCED,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      version: 1,
+      ...metadata
+    };
+    
+    this.metadata.set(docId, defaultMetadata);
+    
+    // Save to storage
+    await this.saveDocument(docId);
+    
+    this.emit('document:created', { docId });
+    
+    return doc;
+  }
+  
+  /**
+   * Get a document
+   */
+  public getDocument(docId: string): any {
     const doc = this.docs.get(docId);
     
     if (!doc) {
-      return false;
+      return null;
     }
     
-    // Clean up providers
-    const providers = this.providers.get(docId);
-    if (providers) {
-      for (const [type, provider] of providers.entries()) {
-        if (type === SyncProviderType.WEBSOCKET) {
-          provider.disconnect();
-        } else if (type === SyncProviderType.WEBRTC) {
-          provider.destroy();
-        } else if (type === SyncProviderType.INDEXEDDB) {
-          provider.destroy();
-        }
-      }
-      this.providers.delete(docId);
+    // Convert Yjs document to plain object
+    return this.yDocToObject(doc);
+  }
+  
+  /**
+   * Check if a document exists
+   */
+  public async hasDocument(docId: string): Promise<boolean> {
+    return this.docs.has(docId) || await this.storage.hasDocument(docId);
+  }
+  
+  /**
+   * Save a document
+   */
+  public async saveDocument(docId: string): Promise<void> {
+    const doc = this.docs.get(docId);
+    
+    if (!doc) {
+      throw new Error(`Document ${docId} not found`);
     }
     
-    // Clean up awareness
-    const awareness = this.awareness.get(docId);
-    if (awareness) {
-      awareness.destroy();
-      this.awareness.delete(docId);
-    }
+    // Convert Yjs document to plain object
+    const data = this.yDocToObject(doc);
     
-    // Remove document and metadata
+    // Update metadata
+    const metadata = this.metadata.get(docId);
+    
+    if (metadata) {
+      metadata.updatedAt = new Date();
+      metadata.version += 1;
+      
+      // Save to storage
+      await this.storage.storeDocument(docId, data, metadata);
+      
+      this.emit('document:saved', { docId });
+    } else {
+      throw new Error(`Metadata for document ${docId} not found`);
+    }
+  }
+  
+  /**
+   * Delete a document
+   */
+  public async deleteDocument(docId: string): Promise<boolean> {
+    // Remove from memory
     this.docs.delete(docId);
     this.metadata.delete(docId);
+    this.awareness.delete(docId);
     
-    console.log(`CRDT document deleted: ${docId}`);
-    this.emit('document:deleted', { docId });
+    // Remove from storage
+    const result = await this.storage.deleteDocument(docId);
     
-    return true;
+    if (result) {
+      this.emit('document:deleted', { docId });
+    }
+    
+    return result;
   }
-
+  
   /**
    * Get all document IDs
    */
   public getAllDocumentIds(): string[] {
     return Array.from(this.docs.keys());
   }
-
+  
   /**
-   * Get documents by type
+   * Get document metadata
    */
-  public getDocumentsByType(type: CRDTDocumentType): string[] {
-    const docIds: string[] = [];
-    
-    for (const [docId, metadata] of this.metadata.entries()) {
-      if (metadata.type === type) {
-        docIds.push(docId);
-      }
-    }
-    
-    return docIds;
+  public getDocumentMetadata(docId: string): DocumentMetadata | null {
+    return this.metadata.get(docId) || null;
   }
-
+  
   /**
-   * Get documents by sync status
+   * Update document metadata
    */
-  public getDocumentsBySyncStatus(status: SyncStatus): string[] {
-    const docIds: string[] = [];
+  public async updateDocumentMetadata(docId: string, metadata: Partial<DocumentMetadata>): Promise<void> {
+    const existingMetadata = this.metadata.get(docId);
     
-    for (const [docId, metadata] of this.metadata.entries()) {
-      if (metadata.syncStatus === status) {
-        docIds.push(docId);
-      }
+    if (!existingMetadata) {
+      throw new Error(`Document ${docId} not found`);
     }
-    
-    return docIds;
-  }
-
-  /**
-   * Apply updates from a binary update
-   */
-  public applyUpdate(docId: string, update: Uint8Array): boolean {
-    const doc = this.docs.get(docId);
-    
-    if (!doc) {
-      return false;
-    }
-    
-    Y.applyUpdate(doc, update);
     
     // Update metadata
-    const metadata = this.metadata.get(docId);
-    if (metadata) {
-      metadata.updatedAt = new Date();
-      metadata.version += 1;
-      
-      if (!this.isOnline) {
-        metadata.syncStatus = SyncStatus.PENDING_CHANGES;
-      }
-      
-      this.metadata.set(docId, metadata);
-    }
+    const updatedMetadata: DocumentMetadata = {
+      ...existingMetadata,
+      ...metadata,
+      updatedAt: new Date()
+    };
     
-    this.emit('document:updated', { docId });
+    this.metadata.set(docId, updatedMetadata);
     
-    return true;
+    // Save to storage
+    await this.storage.updateDocumentMetadata(docId, updatedMetadata);
+    
+    this.emit('metadata:updated', { docId, metadata: updatedMetadata });
   }
-
+  
   /**
-   * Get binary state vector for a document
+   * Get document updates
    */
-  public getStateVector(docId: string): Uint8Array | undefined {
+  public getUpdates(docId: string): Uint8Array | null {
     const doc = this.docs.get(docId);
     
     if (!doc) {
-      return undefined;
+      return null;
     }
     
-    return Y.encodeStateVector(doc);
-  }
-
-  /**
-   * Get binary updates for a document
-   */
-  public getUpdates(docId: string, stateVector?: Uint8Array): Uint8Array | undefined {
-    const doc = this.docs.get(docId);
-    
-    if (!doc) {
-      return undefined;
-    }
-    
-    return Y.encodeStateAsUpdate(doc, stateVector);
-  }
-
-  /**
-   * Subscribe to document changes
-   */
-  public subscribeToChanges(docId: string, callback: (event: any) => void): void {
-    const doc = this.docs.get(docId);
-    
-    if (!doc) {
-      throw new Error(`Document with ID ${docId} not found`);
-    }
-    
-    // Subscribe to document updates
-    doc.on('update', (update: Uint8Array, origin: any) => {
-      callback({
-        type: 'update',
-        docId,
-        update,
-        origin
-      });
-    });
-    
-    // Subscribe to awareness updates
-    const awareness = this.awareness.get(docId);
-    if (awareness) {
-      awareness.on('change', (changes: any) => {
-        callback({
-          type: 'awareness',
-          docId,
-          changes
-        });
-      });
-    }
-  }
-
-  /**
-   * Unsubscribe from document changes
-   */
-  public unsubscribeFromChanges(docId: string, callback: (event: any) => void): void {
-    const doc = this.docs.get(docId);
-    
-    if (!doc) {
-      return;
-    }
-    
-    // Unsubscribe from document updates
-    doc.off('update', callback);
-    
-    // Unsubscribe from awareness updates
-    const awareness = this.awareness.get(docId);
-    if (awareness) {
-      awareness.off('change', callback);
-    }
-  }
-
-  /**
-   * Create a snapshot of a document
-   */
-  public createSnapshot(docId: string): Uint8Array | undefined {
-    const doc = this.docs.get(docId);
-    
-    if (!doc) {
-      return undefined;
-    }
-    
+    // Get updates
     return Y.encodeStateAsUpdate(doc);
   }
-
+  
   /**
-   * Restore a document from a snapshot
+   * Apply updates to a document
    */
-  public restoreSnapshot(docId: string, snapshot: Uint8Array): boolean {
+  public applyUpdates(docId: string, updates: Uint8Array): void {
     const doc = this.docs.get(docId);
     
     if (!doc) {
-      return false;
+      throw new Error(`Document ${docId} not found`);
     }
     
-    Y.applyUpdate(doc, snapshot);
+    // Apply updates
+    Y.applyUpdate(doc, updates);
     
-    // Update metadata
-    const metadata = this.metadata.get(docId);
-    if (metadata) {
-      metadata.updatedAt = new Date();
-      metadata.version += 1;
-      this.metadata.set(docId, metadata);
-    }
-    
-    this.emit('document:restored', { docId });
-    
-    return true;
+    this.emit('document:updated', { docId });
   }
-
+  
   /**
-   * Get a random color for collaborative editing
+   * Get document awareness
    */
-  private getRandomColor(): string {
-    const colors = [
-      '#FF0000', // Red
-      '#00FF00', // Green
-      '#0000FF', // Blue
-      '#FFFF00', // Yellow
-      '#FF00FF', // Magenta
-      '#00FFFF', // Cyan
-      '#FFA500', // Orange
-      '#800080', // Purple
-      '#008000', // Dark Green
-      '#000080', // Navy
-      '#800000', // Maroon
-      '#008080', // Teal
-    ];
+  public getAwareness(docId: string): any {
+    return this.awareness.get(docId) || null;
+  }
+  
+  /**
+   * Get document state vector
+   */
+  public getStateVector(docId: string): Uint8Array | null {
+    const doc = this.docs.get(docId);
     
-    return colors[Math.floor(Math.random() * colors.length)];
+    if (!doc) {
+      return null;
+    }
+    
+    // Get state vector
+    return Y.encodeStateVector(doc);
+  }
+  
+  /**
+   * Get missing updates for a document given a state vector
+   */
+  public getMissingUpdates(docId: string, stateVector: Uint8Array): Uint8Array | null {
+    const doc = this.docs.get(docId);
+    
+    if (!doc) {
+      return null;
+    }
+    
+    // Get missing updates
+    return Y.encodeStateAsUpdate(doc, stateVector);
+  }
+  
+  /**
+   * Convert a Yjs document to a plain JavaScript object
+   */
+  private yDocToObject(doc: Y.Doc): any {
+    const rootMap = doc.getMap();
+    const result: any = {};
+    
+    // Convert Yjs map to plain object
+    rootMap.forEach((value, key) => {
+      result[key] = this.yValueToPlainValue(value);
+    });
+    
+    return result;
+  }
+  
+  /**
+   * Convert a Yjs value to a plain JavaScript value
+   */
+  private yValueToPlainValue(value: any): any {
+    if (value instanceof Y.Map) {
+      // Convert Y.Map to plain object
+      const result: any = {};
+      
+      value.forEach((v, k) => {
+        result[k] = this.yValueToPlainValue(v);
+      });
+      
+      return result;
+    } else if (value instanceof Y.Array) {
+      // Convert Y.Array to plain array
+      return Array.from(value).map(v => this.yValueToPlainValue(v));
+    } else if (value instanceof Y.Text) {
+      // Convert Y.Text to string
+      return value.toString();
+    } else {
+      // Return primitive values as is
+      return value;
+    }
   }
 }
 
 /**
- * Create a new CRDT document manager
+ * Create a CRDT document manager
  */
-export function createCRDTDocumentManager(): CRDTDocumentManager {
-  return new CRDTDocumentManager();
+export async function createCRDTDocumentManager(
+  storage: StorageManager
+): Promise<CRDTDocumentManager> {
+  const manager = new YjsDocumentManager(storage);
+  await manager.initialize();
+  
+  return manager;
 }
