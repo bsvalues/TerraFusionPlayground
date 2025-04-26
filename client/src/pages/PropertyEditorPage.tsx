@@ -1,151 +1,169 @@
 /**
- * PropertyEditorPage
+ * Property Editor Page
  * 
- * A page for editing property data with conflict resolution.
+ * Page component for the property editor with navigation and layout.
  */
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useLocation } from 'wouter';
-import PropertyEditor from '../components/property/PropertyEditor';
+import React, { useState } from 'react';
+import { Link, useParams } from 'wouter';
+import { PropertyEditor } from '@/components/property/PropertyEditor';
+import { Button } from '@/components/ui/button';
+import { 
+  Home, 
+  ArrowLeft, 
+  Save, 
+  InfoIcon,
+  Settings
+} from 'lucide-react';
+import { 
+  Breadcrumb, 
+  BreadcrumbItem, 
+  BreadcrumbLink, 
+  BreadcrumbList, 
+  BreadcrumbPage, 
+  BreadcrumbSeparator 
+} from '@/components/ui/breadcrumb';
+import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 /**
- * PropertyEditorPage component
+ * Property editor page component
  */
-const PropertyEditorPage: React.FC = () => {
-  // Get property ID from URL
-  const [location] = useLocation();
-  const params = useParams<{ id: string }>();
-  const propertyId = params?.id || 'new';
+export default function PropertyEditorPage() {
+  // Get property ID from route params
+  const { id } = useParams();
   
-  // State for property data
-  const [property, setProperty] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  // Toast hook
+  const { toast } = useToast();
   
-  // Fetch property data
-  useEffect(() => {
-    const fetchProperty = async () => {
-      setIsLoading(true);
-      
-      try {
-        if (propertyId === 'new') {
-          // For new properties, set default values
-          setProperty({
-            id: `property-${Date.now()}`,
-            address: '',
-            owner: '',
-            value: 0,
-            lastInspection: new Date().toISOString().split('T')[0],
-            notes: '',
-            features: []
-          });
-        } else {
-          // For existing properties, fetch from API
-          const response = await fetch(`/api/properties/${propertyId}`);
-          
-          if (!response.ok) {
-            throw new Error(`Failed to fetch property: ${response.statusText}`);
-          }
-          
-          const data = await response.json();
-          setProperty(data);
-        }
-        
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Error fetching property:', err);
-        setError((err as Error).message);
-        setIsLoading(false);
-      }
-    };
-    
-    fetchProperty();
-  }, [propertyId]);
+  // Default property ID
+  const propertyId = id || 'default-property';
+  
+  // Current user ID
+  const userId = 'user-' + Math.floor(Math.random() * 1000).toString();
   
   // Handle save
-  const handleSave = async (data: any) => {
-    try {
-      console.log('Property saved:', data);
-      
-      // Here you would typically send data to API
-      // const response = await fetch(`/api/properties/${data.id}`, {
-      //   method: 'PUT',
-      //   headers: {
-      //     'Content-Type': 'application/json'
-      //   },
-      //   body: JSON.stringify(data)
-      // });
-      
-      // if (!response.ok) {
-      //   throw new Error(`Failed to save property: ${response.statusText}`);
-      // }
-    } catch (err) {
-      console.error('Error saving property:', err);
-      setError((err as Error).message);
-    }
+  const handleSave = (data: any) => {
+    console.log('Property saved:', data);
+    
+    // Show toast
+    toast({
+      title: 'Property Saved',
+      description: `Property ${data.id} has been saved successfully.`,
+      variant: 'default',
+    });
   };
   
-  // If there's an error, display it
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="p-4 border rounded-lg bg-red-50 text-red-600">
-          <h3 className="font-bold mb-2">Error</h3>
-          <p>{error}</p>
-          <button
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-  
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">
-          {propertyId === 'new' ? 'New Property' : `Edit Property: ${propertyId}`}
-        </h1>
-        <p className="text-gray-600">
-          {propertyId === 'new'
-            ? 'Create a new property with the form below.'
-            : 'Edit property details using the form below.'}
-        </p>
-      </div>
-      
-      {isLoading ? (
-        <div className="p-4 border rounded-lg bg-white shadow-sm">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+    <div className="container mx-auto py-6 max-w-5xl">
+      {/* Header */}
+      <header className="mb-6">
+        <div className="flex justify-between items-center">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/">
+                    <Home className="h-4 w-4 mr-1" />
+                    Home
+                  </Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/properties">Properties</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Edit Property</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+          
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/properties">
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Back
+              </Link>
+            </Button>
+            <Button size="sm">
+              <Save className="h-4 w-4 mr-1" />
+              Save
+            </Button>
           </div>
         </div>
-      ) : (
-        <>
-          <div className="mb-4 flex justify-between items-center">
-            <button
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-              onClick={() => window.history.back()}
-            >
-              Back
-            </button>
-            
-            <div className="text-sm text-gray-500">
-              Changes are saved automatically and synced when online.
-            </div>
-          </div>
+        
+        <h1 className="text-2xl font-bold mt-4">
+          Edit Property
+        </h1>
+        <p className="text-muted-foreground">
+          View and update property details with offline support and automatic sync.
+        </p>
+      </header>
+      
+      {/* Main content */}
+      <main>
+        <Tabs defaultValue="details">
+          <TabsList className="mb-4">
+            <TabsTrigger value="details">Property Details</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
           
-          <PropertyEditor
-            propertyId={property?.id || `property-${Date.now()}`}
-            initialData={property}
-            onSave={handleSave}
-          />
-        </>
-      )}
+          <TabsContent value="details">
+            <PropertyEditor
+              propertyId={propertyId}
+              userId={userId}
+              onSave={handleSave}
+            />
+          </TabsContent>
+          
+          <TabsContent value="history">
+            <div className="bg-muted rounded-lg p-6 min-h-[400px] flex items-center justify-center">
+              <div className="text-center">
+                <InfoIcon className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-medium mb-2">Property History</h3>
+                <p className="text-muted-foreground max-w-md">
+                  View the change history and previous versions of this property.
+                  Feature coming soon in a future update.
+                </p>
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="settings">
+            <div className="bg-muted rounded-lg p-6 min-h-[400px] flex items-center justify-center">
+              <div className="text-center">
+                <Settings className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-medium mb-2">Sync Settings</h3>
+                <p className="text-muted-foreground max-w-md">
+                  Configure synchronization settings, offline data storage, and conflict
+                  resolution preferences. Feature coming soon in a future update.
+                </p>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </main>
+      
+      {/* Footer */}
+      <footer className="mt-12 pt-6 border-t text-sm text-muted-foreground">
+        <div className="flex justify-between items-center">
+          <div>
+            <p>TerraFusion &copy; 2025</p>
+          </div>
+          <div>
+            <p>
+              User ID: <code className="bg-muted px-1 py-0.5 rounded">{userId}</code>
+              {' | '}
+              Property ID: <code className="bg-muted px-1 py-0.5 rounded">{propertyId}</code>
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
-};
-
-export default PropertyEditorPage;
+}

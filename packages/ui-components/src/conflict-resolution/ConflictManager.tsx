@@ -1,289 +1,345 @@
 /**
- * ConflictManager
+ * Conflict Manager Component
  * 
- * A component for visualizing and resolving conflicts between local and remote data.
+ * Component for visualizing and resolving conflicts between local and remote data.
  */
 
 import React, { useState, useEffect } from 'react';
-import { FieldResolution, ResolutionStrategy } from '@terrafusion/offline-sync/src/conflict-resolution';
+import { 
+  ResolutionStrategy, 
+  FieldDiff, 
+  Conflict 
+} from '@terrafusion/offline-sync/src/conflict-resolution';
 
 /**
- * ConflictManager props interface
+ * Conflict manager props interface
  */
 export interface ConflictManagerProps {
   /**
-   * Local state
+   * Conflict ID
    */
-  localState: any;
+  conflictId: string;
   
   /**
-   * Remote state
+   * Local data
    */
-  remoteState: any;
+  local: any;
+  
+  /**
+   * Remote data
+   */
+  remote: any;
+  
+  /**
+   * User ID
+   */
+  userId: string;
   
   /**
    * On resolve callback
    */
-  onResolve: (mergedState: any) => void;
-  
-  /**
-   * On cancel callback
-   */
-  onCancel: () => void;
+  onResolve: (resolved: any) => void;
 }
 
 /**
- * ConflictManager component
+ * Conflict manager component
  */
-export const ConflictManager: React.FC<ConflictManagerProps> = ({
-  localState,
-  remoteState,
-  onResolve,
-  onCancel
+const ConflictManager: React.FC<ConflictManagerProps> = ({
+  conflictId,
+  local,
+  remote,
+  userId,
+  onResolve
 }) => {
-  // Field resolutions
-  const [fieldResolutions, setFieldResolutions] = useState<Record<string, FieldResolution>>({});
+  // Active tab
+  const [activeTab, setActiveTab] = useState<'differences' | 'local' | 'remote'>('differences');
   
-  // Selected strategy
-  const [strategy, setStrategy] = useState<ResolutionStrategy>(ResolutionStrategy.FIELD_LEVEL);
+  // Field diffs
+  const [fieldDiffs, setFieldDiffs] = useState<FieldDiff[]>([]);
   
-  // Merged state
-  const [mergedState, setMergedState] = useState<any>({});
+  // Custom data
+  const [customData, setCustomData] = useState<any>(null);
   
-  // Get all fields from both states
-  const allFields = Array.from(new Set([
-    ...Object.keys(localState || {}),
-    ...Object.keys(remoteState || {})
-  ])).filter(field => field !== 'id'); // Filter out id field
+  // Selected resolution strategy
+  const [selectedStrategy, setSelectedStrategy] = useState<ResolutionStrategy>(
+    ResolutionStrategy.MERGE_FIELDS
+  );
   
-  // Initialize field resolutions
+  // Create field diffs
   useEffect(() => {
-    const initialResolutions: Record<string, FieldResolution> = {};
+    // Get all fields from both objects
+    const allFields = new Set([
+      ...Object.keys(local),
+      ...Object.keys(remote)
+    ]);
     
-    allFields.forEach(field => {
-      if (localState[field] === remoteState[field]) {
-        // If values are the same, use local
-        initialResolutions[field] = FieldResolution.LOCAL;
-      } else if (Array.isArray(localState[field]) && Array.isArray(remoteState[field])) {
-        // If both are arrays, use merge
-        initialResolutions[field] = FieldResolution.MERGE;
-      } else {
-        // Otherwise, default to local
-        initialResolutions[field] = FieldResolution.LOCAL;
+    // Create field diffs
+    const diffs: FieldDiff[] = [];
+    
+    for (const field of allFields) {
+      // Skip id field
+      if (field === 'id') {
+        continue;
       }
-    });
-    
-    setFieldResolutions(initialResolutions);
-  }, [localState, remoteState, allFields]);
-  
-  // Update merged state when field resolutions change
-  useEffect(() => {
-    const newMergedState = { ...localState };
-    
-    allFields.forEach(field => {
-      const resolution = fieldResolutions[field] || FieldResolution.LOCAL;
       
-      switch (resolution) {
-        case FieldResolution.LOCAL:
-          // Already using local value
-          break;
-        case FieldResolution.REMOTE:
-          newMergedState[field] = remoteState[field];
-          break;
-        case FieldResolution.MERGE:
-          if (Array.isArray(localState[field]) && Array.isArray(remoteState[field])) {
-            // Merge arrays
-            const combined = [...localState[field], ...remoteState[field]];
-            const deduped = Array.from(new Set(combined));
-            newMergedState[field] = deduped;
-          } else {
-            // Not arrays, use remote
-            newMergedState[field] = remoteState[field];
-          }
-          break;
-        default:
-          // Default to local
-          break;
+      const localValue = local[field];
+      const remoteValue = remote[field];
+      
+      // Check if values are different
+      if (JSON.stringify(localValue) !== JSON.stringify(remoteValue)) {
+        diffs.push({
+          field,
+          localValue,
+          remoteValue,
+          selectedValue: null
+        });
       }
-    });
+    }
     
-    setMergedState(newMergedState);
-  }, [localState, remoteState, fieldResolutions, allFields]);
+    setFieldDiffs(diffs);
+    
+    // Initialize custom data
+    setCustomData({ ...local });
+  }, [local, remote]);
   
-  // Handle field resolution change
-  const handleResolutionChange = (field: string, resolution: FieldResolution) => {
-    setFieldResolutions(prev => ({
+  // Update field selection
+  const handleFieldSelection = (field: string, value: 'local' | 'remote') => {
+    setFieldDiffs(prev => 
+      prev.map(diff => 
+        diff.field === field
+          ? { ...diff, selectedValue: value }
+          : diff
+      )
+    );
+  };
+  
+  // Update custom data
+  const handleCustomDataChange = (field: string, value: any) => {
+    setCustomData(prev => ({
       ...prev,
-      [field]: resolution
+      [field]: value
     }));
   };
   
-  // Handle strategy change
-  const handleStrategyChange = (newStrategy: ResolutionStrategy) => {
-    setStrategy(newStrategy);
-    
-    // Apply strategy immediately
-    switch (newStrategy) {
-      case ResolutionStrategy.KEEP_LOCAL:
-        setMergedState({ ...localState });
-        break;
-      case ResolutionStrategy.ACCEPT_REMOTE:
-        setMergedState({ ...remoteState });
-        break;
-      case ResolutionStrategy.AUTO_MERGE:
-        // Use current field-level merge as auto merge
-        break;
-      case ResolutionStrategy.FIELD_LEVEL:
-        // Stay with current field resolutions
-        break;
-      default:
-        // Default to field level
-        break;
-    }
-  };
-  
-  // Handle resolve
+  // Resolve conflict
   const handleResolve = () => {
-    onResolve(mergedState);
-  };
-  
-  // Determine if a field has a conflict
-  const hasConflict = (field: string): boolean => {
-    // Check if field exists in both states
-    const inLocal = field in localState;
-    const inRemote = field in remoteState;
+    let resolvedData: any;
     
-    // No conflict if only in one state
-    if (!inLocal || !inRemote) return false;
-    
-    // Check if values are different
-    if (Array.isArray(localState[field]) && Array.isArray(remoteState[field])) {
-      // For arrays, check if they're different
-      if (localState[field].length !== remoteState[field].length) return true;
+    switch (selectedStrategy) {
+      case ResolutionStrategy.USE_LOCAL:
+        resolvedData = { ...local };
+        break;
       
-      // Check if all elements are the same
-      return !localState[field].every((item: any) => remoteState[field].includes(item));
+      case ResolutionStrategy.USE_REMOTE:
+        resolvedData = { ...remote };
+        break;
+      
+      case ResolutionStrategy.USE_CUSTOM:
+        resolvedData = { ...customData };
+        break;
+      
+      case ResolutionStrategy.MERGE_FIELDS:
+        // Start with local data
+        resolvedData = { ...local };
+        
+        // Apply field selections
+        for (const fieldDiff of fieldDiffs) {
+          if (fieldDiff.selectedValue === 'remote') {
+            resolvedData[fieldDiff.field] = remote[fieldDiff.field];
+          }
+        }
+        
+        break;
+      
+      default:
+        resolvedData = { ...local };
     }
     
-    // For other values, check if they're different
-    return localState[field] !== remoteState[field];
+    // Call onResolve callback
+    onResolve(resolvedData);
   };
   
-  // Get conflict count
-  const conflictCount = allFields.filter(hasConflict).length;
+  // Format value for display
+  const formatValue = (value: any): string => {
+    if (value === null || value === undefined) {
+      return 'null';
+    }
+    
+    if (Array.isArray(value)) {
+      return `[${value.join(', ')}]`;
+    }
+    
+    if (typeof value === 'object') {
+      return JSON.stringify(value, null, 2);
+    }
+    
+    if (typeof value === 'string') {
+      return value;
+    }
+    
+    return String(value);
+  };
   
   return (
-    <div className="space-y-6">
-      <div className="bg-yellow-100 p-4 rounded-md text-yellow-700">
-        <h3 className="font-bold mb-1">Conflict Detected</h3>
-        <p>
-          {conflictCount === 0
-            ? 'No conflicts detected. You can safely resolve.'
-            : `${conflictCount} field${conflictCount === 1 ? '' : 's'} with conflicts detected. Please review and resolve the conflicts.`}
-        </p>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">Resolve Conflict</h3>
+        <div className="space-x-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('differences')}
+            className={`
+              px-3 py-1 rounded text-sm
+              ${activeTab === 'differences' 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'}
+            `}
+          >
+            Differences
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('local')}
+            className={`
+              px-3 py-1 rounded text-sm
+              ${activeTab === 'local' 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'}
+            `}
+          >
+            Local
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('remote')}
+            className={`
+              px-3 py-1 rounded text-sm
+              ${activeTab === 'remote' 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'}
+            `}
+          >
+            Remote
+          </button>
+        </div>
       </div>
       
-      <div className="space-y-4">
-        <div>
-          <h3 className="font-bold mb-2">Resolution Strategy</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <button
-              className={`p-2 border rounded ${strategy === ResolutionStrategy.KEEP_LOCAL ? 'bg-blue-100 border-blue-500' : 'hover:bg-gray-100'}`}
-              onClick={() => handleStrategyChange(ResolutionStrategy.KEEP_LOCAL)}
-            >
-              Keep Local Changes
-            </button>
+      <div className="rounded border p-4">
+        {activeTab === 'differences' && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Select which version of each field you want to keep.
+            </p>
             
-            <button
-              className={`p-2 border rounded ${strategy === ResolutionStrategy.ACCEPT_REMOTE ? 'bg-blue-100 border-blue-500' : 'hover:bg-gray-100'}`}
-              onClick={() => handleStrategyChange(ResolutionStrategy.ACCEPT_REMOTE)}
-            >
-              Accept Remote Changes
-            </button>
-            
-            <button
-              className={`p-2 border rounded ${strategy === ResolutionStrategy.AUTO_MERGE ? 'bg-blue-100 border-blue-500' : 'hover:bg-gray-100'}`}
-              onClick={() => handleStrategyChange(ResolutionStrategy.AUTO_MERGE)}
-            >
-              Auto Merge
-            </button>
-            
-            <button
-              className={`p-2 border rounded ${strategy === ResolutionStrategy.FIELD_LEVEL ? 'bg-blue-100 border-blue-500' : 'hover:bg-gray-100'}`}
-              onClick={() => handleStrategyChange(ResolutionStrategy.FIELD_LEVEL)}
-            >
-              Field-Level Resolution
-            </button>
-          </div>
-        </div>
-        
-        {strategy === ResolutionStrategy.FIELD_LEVEL && (
-          <div>
-            <h3 className="font-bold mb-2">Field-Level Resolution</h3>
-            <div className="bg-white border rounded-md">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Field</th>
-                    <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Local Value</th>
-                    <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remote Value</th>
-                    <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resolution</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {allFields.map(field => (
-                    <tr key={field} className={hasConflict(field) ? 'bg-yellow-50' : ''}>
-                      <td className="p-3 text-sm font-medium text-gray-900">{field}</td>
-                      <td className="p-3 text-sm text-gray-900">
-                        {Array.isArray(localState[field])
-                          ? localState[field].join(', ')
-                          : JSON.stringify(localState[field])}
-                      </td>
-                      <td className="p-3 text-sm text-gray-900">
-                        {Array.isArray(remoteState[field])
-                          ? remoteState[field].join(', ')
-                          : JSON.stringify(remoteState[field])}
-                      </td>
-                      <td className="p-3 text-sm text-gray-900">
-                        <select
-                          className="text-sm border rounded px-2 py-1 w-full"
-                          value={fieldResolutions[field] || FieldResolution.LOCAL}
-                          onChange={(e) => handleResolutionChange(field, e.target.value as FieldResolution)}
-                          disabled={!hasConflict(field)}
-                        >
-                          <option value={FieldResolution.LOCAL}>Keep Local</option>
-                          <option value={FieldResolution.REMOTE}>Accept Remote</option>
-                          {Array.isArray(localState[field]) && Array.isArray(remoteState[field]) && (
-                            <option value={FieldResolution.MERGE}>Merge</option>
-                          )}
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-4">
+              {fieldDiffs.map((diff) => (
+                <div key={diff.field} className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="font-medium">{diff.field}</span>
+                    <div className="space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => handleFieldSelection(diff.field, 'local')}
+                        className={`
+                          px-2 py-1 text-xs rounded
+                          ${diff.selectedValue === 'local' 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-gray-200 hover:bg-gray-300'}
+                        `}
+                      >
+                        Use Local
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleFieldSelection(diff.field, 'remote')}
+                        className={`
+                          px-2 py-1 text-xs rounded
+                          ${diff.selectedValue === 'remote' 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-gray-200 hover:bg-gray-300'}
+                        `}
+                      >
+                        Use Remote
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className={`
+                      p-2 rounded text-sm
+                      ${diff.selectedValue === 'local' ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}
+                    `}>
+                      <div className="font-medium text-xs text-muted-foreground mb-1">Local:</div>
+                      <div className="font-mono whitespace-pre-wrap">{formatValue(diff.localValue)}</div>
+                    </div>
+                    <div className={`
+                      p-2 rounded text-sm
+                      ${diff.selectedValue === 'remote' ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}
+                    `}>
+                      <div className="font-medium text-xs text-muted-foreground mb-1">Remote:</div>
+                      <div className="font-mono whitespace-pre-wrap">{formatValue(diff.remoteValue)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {fieldDiffs.length === 0 && (
+                <div className="text-center p-4 bg-gray-50 rounded">
+                  <p className="text-muted-foreground">No differences found.</p>
+                </div>
+              )}
             </div>
           </div>
         )}
         
+        {activeTab === 'local' && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This is your local version of the data.
+            </p>
+            
+            <pre className="bg-gray-50 p-4 rounded text-sm font-mono whitespace-pre-wrap">
+              {JSON.stringify(local, null, 2)}
+            </pre>
+          </div>
+        )}
+        
+        {activeTab === 'remote' && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This is the remote version of the data.
+            </p>
+            
+            <pre className="bg-gray-50 p-4 rounded text-sm font-mono whitespace-pre-wrap">
+              {JSON.stringify(remote, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+      
+      <div className="flex justify-between items-center pt-4 border-t">
         <div>
-          <h3 className="font-bold mb-2">Merged Result</h3>
-          <pre className="bg-gray-100 p-4 rounded overflow-auto">{JSON.stringify(mergedState, null, 2)}</pre>
+          <label className="flex items-center space-x-2">
+            <span className="text-sm font-medium">Resolution Strategy:</span>
+            <select
+              value={selectedStrategy}
+              onChange={(e) => setSelectedStrategy(e.target.value as ResolutionStrategy)}
+              className="border p-1 rounded text-sm"
+            >
+              <option value={ResolutionStrategy.MERGE_FIELDS}>Merge Fields</option>
+              <option value={ResolutionStrategy.USE_LOCAL}>Use Local Version</option>
+              <option value={ResolutionStrategy.USE_REMOTE}>Use Remote Version</option>
+            </select>
+          </label>
         </div>
         
-        <div className="flex space-x-4">
+        <div className="space-x-2">
           <button
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            type="button"
             onClick={handleResolve}
+            className="px-4 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            Resolve Conflicts
-          </button>
-          
-          <button
-            className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
-            onClick={onCancel}
-          >
-            Cancel
+            Resolve Conflict
           </button>
         </div>
       </div>

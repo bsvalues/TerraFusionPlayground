@@ -1,90 +1,34 @@
 /**
  * Conflict Resolution
  * 
- * Provides tools for detecting and resolving conflicts in offline data.
+ * Utilities for detecting and resolving conflicts between local and remote data.
  */
 
-import { EventEmitter } from 'events';
 import { deepEqual } from './utils';
-
-/**
- * Field resolution enumeration
- */
-export enum FieldResolution {
-  /**
-   * Keep local value
-   */
-  LOCAL = 'local',
-  
-  /**
-   * Accept remote value
-   */
-  REMOTE = 'remote',
-  
-  /**
-   * Merge values
-   */
-  MERGE = 'merge',
-  
-  /**
-   * Custom resolution
-   */
-  CUSTOM = 'custom'
-}
 
 /**
  * Resolution strategy enumeration
  */
 export enum ResolutionStrategy {
   /**
-   * Keep local data
+   * Use local version
    */
-  KEEP_LOCAL = 'keep_local',
+  USE_LOCAL = 'use_local',
   
   /**
-   * Accept remote data
+   * Use remote version
    */
-  ACCEPT_REMOTE = 'accept_remote',
+  USE_REMOTE = 'use_remote',
   
   /**
-   * Auto merge
+   * Use custom merged version
    */
-  AUTO_MERGE = 'auto_merge',
+  USE_CUSTOM = 'use_custom',
   
   /**
-   * Resolve at field level
+   * Merge field by field
    */
-  FIELD_LEVEL = 'field_level',
-  
-  /**
-   * Custom resolution
-   */
-  CUSTOM = 'custom'
-}
-
-/**
- * Conflict status enumeration
- */
-export enum ConflictStatus {
-  /**
-   * Conflict detected
-   */
-  DETECTED = 'detected',
-  
-  /**
-   * Conflict pending resolution
-   */
-  PENDING = 'pending',
-  
-  /**
-   * Conflict resolved
-   */
-  RESOLVED = 'resolved',
-  
-  /**
-   * Conflict ignored
-   */
-  IGNORED = 'ignored'
+  MERGE_FIELDS = 'merge_fields'
 }
 
 /**
@@ -97,412 +41,236 @@ export interface Conflict {
   id: string;
   
   /**
-   * Document ID
+   * Local data
    */
-  docId: string;
+  local: any;
   
   /**
-   * Local document
+   * Remote data
    */
-  localDoc: any;
+  remote: any;
   
   /**
-   * Remote document
+   * Last modified by
    */
-  remoteDoc: any;
+  lastModifiedBy: string;
   
   /**
-   * Conflict status
+   * Created at timestamp
    */
-  status: ConflictStatus | string;
+  createdAt: number;
   
   /**
-   * User ID
+   * Status
    */
-  userId: string;
+  status: 'pending' | 'resolved';
   
   /**
-   * Detected at timestamp
+   * Resolution strategy
    */
-  detectedAt: number;
+  resolutionStrategy?: ResolutionStrategy;
+  
+  /**
+   * Resolved data
+   */
+  resolvedData?: any;
+  
+  /**
+   * Resolved by
+   */
+  resolvedBy?: string;
   
   /**
    * Resolved at timestamp
    */
   resolvedAt?: number;
-  
-  /**
-   * Resolution strategy
-   */
-  resolutionStrategy?: ResolutionStrategy | string;
-  
-  /**
-   * Field resolutions
-   */
-  fieldResolutions?: Record<string, FieldResolution | string>;
-  
-  /**
-   * Resolved document
-   */
-  resolvedDoc?: any;
-  
-  /**
-   * Error if any
-   */
-  error?: Error | string;
 }
 
 /**
- * Conflict resolution result interface
+ * Field diff interface
  */
-export interface ConflictResolutionResult {
+export interface FieldDiff {
   /**
-   * Whether resolution was successful
+   * Field name
    */
-  success: boolean;
+  field: string;
   
   /**
-   * Resolved document
+   * Local value
    */
-  resolvedDoc?: any;
+  localValue: any;
   
   /**
-   * Error if any
+   * Remote value
    */
-  error?: Error | string;
+  remoteValue: any;
+  
+  /**
+   * Selected value
+   */
+  selectedValue: 'local' | 'remote' | null;
 }
+
+/**
+ * Conflict resolution handler type
+ */
+export type ConflictResolutionHandler = (
+  conflictId: string,
+  strategy: ResolutionStrategy,
+  userId: string,
+  customValue?: any
+) => Promise<boolean>;
 
 /**
  * Conflict resolution manager
  */
-export class ConflictResolutionManager extends EventEmitter {
+export class ConflictResolutionManager {
+  /**
+   * In-memory conflict storage
+   */
   private conflicts: Map<string, Conflict> = new Map();
   
   /**
-   * Initialize a new conflict resolution manager
-   */
-  constructor() {
-    super();
-  }
-  
-  /**
-   * Detect conflict
+   * Detect conflict between local and remote data
    * 
-   * @param docId Document ID
-   * @param localDoc Local document
-   * @param remoteDoc Remote document
+   * @param id Conflict ID
+   * @param local Local data
+   * @param remote Remote data
    * @param userId User ID
-   * @returns Conflict if detected
+   * @returns Conflict if detected, null otherwise
    */
-  detectConflict(docId: string, localDoc: any, remoteDoc: any, userId: string = 'anonymous'): Conflict | null {
-    // Skip if documents are equal
-    if (deepEqual(localDoc, remoteDoc)) {
+  detectConflict(id: string, local: any, remote: any, userId: string): Conflict | null {
+    // Check if data is equal
+    if (deepEqual(local, remote)) {
       return null;
     }
     
-    // Generate conflict ID
-    const conflictId = `conflict_${docId}_${Date.now()}`;
-    
     // Create conflict
     const conflict: Conflict = {
-      id: conflictId,
-      docId,
-      localDoc,
-      remoteDoc,
-      status: ConflictStatus.DETECTED,
-      userId,
-      detectedAt: Date.now()
+      id,
+      local,
+      remote,
+      lastModifiedBy: userId,
+      createdAt: Date.now(),
+      status: 'pending'
     };
     
     // Store conflict
-    this.conflicts.set(conflictId, conflict);
-    
-    // Emit event
-    this.emit('conflict:detected', conflict);
+    this.conflicts.set(id, conflict);
     
     return conflict;
   }
   
   /**
+   * Get conflict
+   * 
+   * @param id Conflict ID
+   * @returns Conflict if found, null otherwise
+   */
+  getConflict(id: string): Conflict | null {
+    return this.conflicts.get(id) || null;
+  }
+  
+  /**
    * Resolve conflict
    * 
-   * @param conflictId Conflict ID
+   * @param id Conflict ID
    * @param strategy Resolution strategy
    * @param userId User ID
-   * @param customData Custom resolution data
-   * @returns Resolution result
+   * @param customValue Custom value
+   * @returns Resolved data
    */
-  async resolveConflict(
-    conflictId: string,
-    strategy: ResolutionStrategy | string,
-    userId: string = 'anonymous',
-    customData?: any
-  ): Promise<ConflictResolutionResult> {
-    try {
-      // Get conflict
-      const conflict = this.conflicts.get(conflictId);
-      
-      if (!conflict) {
-        throw new Error(`Conflict not found: ${conflictId}`);
-      }
-      
-      // Apply resolution strategy
-      let resolvedDoc: any;
-      
-      switch (strategy) {
-        case ResolutionStrategy.KEEP_LOCAL:
-          resolvedDoc = { ...conflict.localDoc };
-          break;
-        case ResolutionStrategy.ACCEPT_REMOTE:
-          resolvedDoc = { ...conflict.remoteDoc };
-          break;
-        case ResolutionStrategy.AUTO_MERGE:
-          resolvedDoc = this.autoMerge(conflict.localDoc, conflict.remoteDoc);
-          break;
-        case ResolutionStrategy.FIELD_LEVEL:
-          resolvedDoc = this.fieldLevelMerge(conflict.localDoc, conflict.remoteDoc, conflict.fieldResolutions || {});
-          break;
-        case ResolutionStrategy.CUSTOM:
-          if (!customData) {
-            throw new Error('Custom data required for custom resolution strategy');
-          }
-          resolvedDoc = customData;
-          break;
-        default:
-          throw new Error(`Unknown resolution strategy: ${strategy}`);
-      }
-      
-      // Update conflict
-      conflict.status = ConflictStatus.RESOLVED;
-      conflict.resolvedAt = Date.now();
-      conflict.resolutionStrategy = strategy;
-      conflict.resolvedDoc = resolvedDoc;
-      
-      // Store conflict
-      this.conflicts.set(conflictId, conflict);
-      
-      // Emit event
-      this.emit('conflict:resolved', conflict);
-      
-      return {
-        success: true,
-        resolvedDoc
-      };
-    } catch (err) {
-      // Update conflict
-      const conflict = this.conflicts.get(conflictId);
-      
-      if (conflict) {
-        conflict.error = err as Error;
-        this.conflicts.set(conflictId, conflict);
-      }
-      
-      // Emit event
-      this.emit('conflict:error', {
-        conflictId,
-        error: err
-      });
-      
-      return {
-        success: false,
-        error: err as Error
-      };
-    }
-  }
-  
-  /**
-   * Auto merge
-   * 
-   * @param localDoc Local document
-   * @param remoteDoc Remote document
-   * @returns Merged document
-   */
-  private autoMerge(localDoc: any, remoteDoc: any): any {
-    // Start with local document as base
-    const mergedDoc = { ...localDoc };
-    
-    // Get all fields from both documents
-    const allFields = new Set([
-      ...Object.keys(localDoc || {}),
-      ...Object.keys(remoteDoc || {})
-    ]);
-    
-    // Apply merge rules
-    for (const field of allFields) {
-      // Skip id field
-      if (field === 'id') continue;
-      
-      const inLocal = localDoc && field in localDoc;
-      const inRemote = remoteDoc && field in remoteDoc;
-      
-      // If field only exists in remote, use remote value
-      if (!inLocal && inRemote) {
-        mergedDoc[field] = remoteDoc[field];
-        continue;
-      }
-      
-      // If field only exists in local, use local value (already there)
-      if (inLocal && !inRemote) {
-        continue;
-      }
-      
-      // If values are different, use the more recent one
-      // For now, default to remote as it's likely more recent
-      if (inLocal && inRemote && !deepEqual(localDoc[field], remoteDoc[field])) {
-        mergedDoc[field] = remoteDoc[field];
-      }
-    }
-    
-    return mergedDoc;
-  }
-  
-  /**
-   * Field level merge
-   * 
-   * @param localDoc Local document
-   * @param remoteDoc Remote document
-   * @param fieldResolutions Field resolutions
-   * @returns Merged document
-   */
-  private fieldLevelMerge(
-    localDoc: any,
-    remoteDoc: any,
-    fieldResolutions: Record<string, FieldResolution | string>
+  resolveConflict(
+    id: string,
+    strategy: ResolutionStrategy,
+    userId: string,
+    customValue?: any
   ): any {
-    // Start with local document as base
-    const mergedDoc = { ...localDoc };
-    
-    // Get all fields from both documents
-    const allFields = new Set([
-      ...Object.keys(localDoc || {}),
-      ...Object.keys(remoteDoc || {})
-    ]);
-    
-    // Apply field resolutions
-    for (const field of allFields) {
-      // Skip id field
-      if (field === 'id') continue;
-      
-      // Get resolution for field
-      const resolution = fieldResolutions[field] || FieldResolution.LOCAL;
-      
-      // Apply resolution
-      switch (resolution) {
-        case FieldResolution.LOCAL:
-          // Keep local value (already there)
-          break;
-        case FieldResolution.REMOTE:
-          // Use remote value
-          if (remoteDoc && field in remoteDoc) {
-            mergedDoc[field] = remoteDoc[field];
-          }
-          break;
-        case FieldResolution.MERGE:
-          // Merge arrays
-          if (
-            localDoc && 
-            remoteDoc && 
-            field in localDoc && 
-            field in remoteDoc && 
-            Array.isArray(localDoc[field]) && 
-            Array.isArray(remoteDoc[field])
-          ) {
-            // Merge arrays by combining and deduplicating
-            const combined = [...localDoc[field], ...remoteDoc[field]];
-            const deduped = Array.from(new Set(combined));
-            mergedDoc[field] = deduped;
-          } else {
-            // Default to remote for non-arrays
-            if (remoteDoc && field in remoteDoc) {
-              mergedDoc[field] = remoteDoc[field];
-            }
-          }
-          break;
-        default:
-          // Default to local value
-          break;
-      }
-    }
-    
-    return mergedDoc;
-  }
-  
-  /**
-   * Ignore conflict
-   * 
-   * @param conflictId Conflict ID
-   * @returns Whether conflict was ignored
-   */
-  ignoreConflict(conflictId: string): boolean {
     // Get conflict
-    const conflict = this.conflicts.get(conflictId);
+    const conflict = this.getConflict(id);
     
     if (!conflict) {
-      return false;
+      throw new Error(`Conflict ${id} not found`);
+    }
+    
+    // Resolve conflict based on strategy
+    let resolvedData: any;
+    
+    switch (strategy) {
+      case ResolutionStrategy.USE_LOCAL:
+        resolvedData = { ...conflict.local };
+        break;
+      
+      case ResolutionStrategy.USE_REMOTE:
+        resolvedData = { ...conflict.remote };
+        break;
+      
+      case ResolutionStrategy.USE_CUSTOM:
+        if (!customValue) {
+          throw new Error('Custom value is required for USE_CUSTOM strategy');
+        }
+        
+        resolvedData = { ...customValue };
+        break;
+      
+      case ResolutionStrategy.MERGE_FIELDS:
+        if (!customValue || !Array.isArray(customValue)) {
+          throw new Error('Field diffs are required for MERGE_FIELDS strategy');
+        }
+        
+        // Merge fields from local and remote
+        resolvedData = { ...conflict.local };
+        
+        for (const fieldDiff of customValue as FieldDiff[]) {
+          if (fieldDiff.selectedValue === 'remote') {
+            resolvedData[fieldDiff.field] = conflict.remote[fieldDiff.field];
+          }
+        }
+        
+        break;
+      
+      default:
+        throw new Error(`Unknown resolution strategy: ${strategy}`);
     }
     
     // Update conflict
-    conflict.status = ConflictStatus.IGNORED;
+    conflict.status = 'resolved';
+    conflict.resolutionStrategy = strategy;
+    conflict.resolvedData = resolvedData;
+    conflict.resolvedBy = userId;
+    conflict.resolvedAt = Date.now();
     
     // Store conflict
-    this.conflicts.set(conflictId, conflict);
+    this.conflicts.set(id, conflict);
     
-    // Emit event
-    this.emit('conflict:ignored', conflict);
-    
-    return true;
-  }
-  
-  /**
-   * Get conflict by ID
-   * 
-   * @param conflictId Conflict ID
-   * @returns Conflict if found
-   */
-  getConflict(conflictId: string): Conflict | null {
-    return this.conflicts.get(conflictId) || null;
-  }
-  
-  /**
-   * Get conflicts by document
-   * 
-   * @param docId Document ID
-   * @returns Array of conflicts
-   */
-  getConflictsByDocument(docId: string): Conflict[] {
-    return Array.from(this.conflicts.values())
-      .filter(conflict => conflict.docId === docId);
-  }
-  
-  /**
-   * Get conflicts by user
-   * 
-   * @param userId User ID
-   * @returns Array of conflicts
-   */
-  getConflictsByUser(userId: string): Conflict[] {
-    return Array.from(this.conflicts.values())
-      .filter(conflict => conflict.userId === userId);
-  }
-  
-  /**
-   * Get conflicts by status
-   * 
-   * @param status Conflict status
-   * @returns Array of conflicts
-   */
-  getConflictsByStatus(status: ConflictStatus | string): Conflict[] {
-    return Array.from(this.conflicts.values())
-      .filter(conflict => conflict.status === status);
+    return resolvedData;
   }
   
   /**
    * Get all conflicts
    * 
-   * @returns Array of conflicts
+   * @returns All conflicts
    */
   getAllConflicts(): Conflict[] {
     return Array.from(this.conflicts.values());
+  }
+  
+  /**
+   * Get pending conflicts
+   * 
+   * @returns Pending conflicts
+   */
+  getPendingConflicts(): Conflict[] {
+    return this.getAllConflicts().filter(conflict => conflict.status === 'pending');
+  }
+  
+  /**
+   * Get resolved conflicts
+   * 
+   * @returns Resolved conflicts
+   */
+  getResolvedConflicts(): Conflict[] {
+    return this.getAllConflicts().filter(conflict => conflict.status === 'resolved');
   }
   
   /**
@@ -510,6 +278,45 @@ export class ConflictResolutionManager extends EventEmitter {
    */
   clearConflicts(): void {
     this.conflicts.clear();
-    this.emit('conflicts:cleared');
+  }
+  
+  /**
+   * Compute field diffs between local and remote data
+   * 
+   * @param local Local data
+   * @param remote Remote data
+   * @returns Field diffs
+   */
+  computeFieldDiffs(local: any, remote: any): FieldDiff[] {
+    const fieldDiffs: FieldDiff[] = [];
+    
+    // Get all fields from both objects
+    const allFields = new Set([
+      ...Object.keys(local),
+      ...Object.keys(remote)
+    ]);
+    
+    // Compute diffs for each field
+    for (const field of allFields) {
+      // Skip 'id' field
+      if (field === 'id') {
+        continue;
+      }
+      
+      const localValue = local[field];
+      const remoteValue = remote[field];
+      
+      // Check if values are different
+      if (!deepEqual(localValue, remoteValue)) {
+        fieldDiffs.push({
+          field,
+          localValue,
+          remoteValue,
+          selectedValue: null
+        });
+      }
+    }
+    
+    return fieldDiffs;
   }
 }
