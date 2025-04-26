@@ -1,4 +1,2 @@
-// Re-export all schemas and models
-export * from './schema';
+// Export all models
 export * from './repository-schema';
-export * from './types';
