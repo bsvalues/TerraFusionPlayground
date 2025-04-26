@@ -1,97 +1,123 @@
 /**
  * usePropertyDoc Hook
  * 
- * A React hook that provides property document management with CRDT support,
- * including conflict detection and resolution.
+ * A React hook for managing property document synchronization.
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import * as Y from 'yjs';
-import { deepEqual } from 'lib0/json';
 import { CRDTDocumentManager, SyncStatus } from '../crdt-sync';
 import { ConflictResolutionManager, ResolutionStrategy } from '../conflict-resolution';
+import * as Y from 'yjs';
+import * as json from 'lib0/json';
 
 /**
- * Property document state type
+ * Property document state interface
  */
 export interface PropertyDocState {
+  /**
+   * Property ID
+   */
   id: string;
+  
+  /**
+   * Property address
+   */
   address?: string;
+  
+  /**
+   * Property owner
+   */
   owner?: string;
+  
+  /**
+   * Property value
+   */
   value?: number;
+  
+  /**
+   * Last inspection date
+   */
   lastInspection?: string;
+  
+  /**
+   * Property notes
+   */
   notes?: string;
+  
+  /**
+   * Property features
+   */
   features?: string[];
+  
+  /**
+   * Any other field
+   */
   [key: string]: any;
 }
 
 /**
- * Property document with conflict state
+ * Property document hook result interface
  */
-export interface PropertyDocWithConflict {
-  /** Shared document state (no conflicts) */
-  shared: PropertyDocState;
-  /** Local document state */
+export interface PropertyDocHookResult {
+  /**
+   * Local document state
+   */
   local: PropertyDocState;
-  /** Remote document state (if conflict exists) */
+  
+  /**
+   * Remote document state (if any)
+   */
   remote: PropertyDocState | null;
-  /** Whether there's a conflict */
-  hasConflict: boolean;
-  /** Resolve a conflict */
-  resolveConflict: (merged: PropertyDocState) => Promise<void>;
-  /** Synchronization status */
-  syncStatus: SyncStatus;
-  /** Whether the document is loading */
+  
+  /**
+   * Shared document state (merged)
+   */
+  shared: PropertyDocState;
+  
+  /**
+   * Loading state
+   */
   isLoading: boolean;
-  /** Whether there was an error loading the document */
+  
+  /**
+   * Error if any
+   */
   error: Error | null;
+  
+  /**
+   * Sync status
+   */
+  syncStatus: SyncStatus;
+  
+  /**
+   * Whether the document has a conflict
+   */
+  hasConflict: boolean;
+  
+  /**
+   * Update document locally
+   */
+  updateLocal: (data: Partial<PropertyDocState>) => Promise<void>;
+  
+  /**
+   * Sync document with remote
+   */
+  syncWithRemote: () => Promise<boolean>;
+  
+  /**
+   * Resolve conflict
+   */
+  resolveConflict: (data: PropertyDocState) => Promise<void>;
 }
 
-// Create a Yjs document instance
-const createYDoc = (docId: string) => {
-  return new Y.Doc({ guid: docId });
-};
-
-// Clone a Yjs document and apply an update
-const applyUpdateToClone = (doc: Y.Doc, update: Uint8Array): any => {
-  const clone = new Y.Doc({ guid: doc.guid });
-  Y.applyUpdate(clone, update);
-  return getStateFromYDoc(clone);
-};
-
-// Get state from a Yjs document
-const getStateFromYDoc = (doc: Y.Doc): PropertyDocState => {
-  const map = doc.getMap('data');
-  const result: PropertyDocState = { id: doc.guid };
-  
-  map.forEach((value, key) => {
-    result[key] = value;
-  });
-  
-  return result;
-};
-
-// Apply state to a Yjs document
-const applyStateToYDoc = (doc: Y.Doc, state: PropertyDocState): void => {
-  const map = doc.getMap('data');
-  
-  doc.transact(() => {
-    Object.entries(state).forEach(([key, value]) => {
-      if (key !== 'id') {
-        map.set(key, value);
-      }
-    });
-  });
-};
-
 /**
- * Hook for working with property documents with CRDT support.
+ * Property document hook
  * 
- * @param propertyId - The property ID
- * @param crdtManager - The CRDT document manager
- * @param conflictManager - The conflict resolution manager
- * @param options - Additional options
- * @returns Property document with conflict state
+ * @param propertyId Property ID
+ * @param crdtManager CRDT document manager
+ * @param conflictManager Conflict resolution manager
+ * @param options Hook options
+ * @returns Property document hook result
  */
 export function usePropertyDoc(
   propertyId: string,
@@ -99,202 +125,347 @@ export function usePropertyDoc(
   conflictManager: ConflictResolutionManager,
   options: {
     userId?: string;
-    autoResolveStrategy?: ResolutionStrategy;
+    apiEndpoint?: string;
   } = {}
-): PropertyDocWithConflict {
-  const { userId = 'anonymous', autoResolveStrategy } = options;
-  
-  // State
-  const [ydoc, setYDoc] = useState<Y.Doc | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+): PropertyDocHookResult {
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
-  const [conflict, setConflict] = useState(false);
-  const [remoteSnapshot, setRemoteSnapshot] = useState<PropertyDocState | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(SyncStatus.UNSYNCED);
+  const [localState, setLocalState] = useState<PropertyDocState>({ id: propertyId });
+  const [remoteState, setRemoteState] = useState<PropertyDocState | null>(null);
+  const [hasConflict, setHasConflict] = useState<boolean>(false);
+  const [sharedState, setSharedState] = useState<PropertyDocState>({ id: propertyId });
   
-  // Load the document
-  useEffect(() => {
-    let mounted = true;
-    
-    const loadDoc = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Check if the document exists
-        const exists = await crdtManager.hasDocument(propertyId);
-        
-        if (exists) {
-          // Get document from CRDT manager
-          const doc = await crdtManager.getDocument(propertyId);
-          
-          if (mounted) {
-            setYDoc(doc);
-            
-            // Get metadata
-            const metadata = crdtManager.getDocumentMetadata(propertyId);
-            if (metadata) {
-              setSyncStatus(metadata.syncStatus);
-            }
-            
-            setIsLoading(false);
-          }
-        } else {
-          // Create a new document
-          const doc = await crdtManager.createDocument(propertyId, { id: propertyId });
-          
-          if (mounted) {
-            setYDoc(doc);
-            setIsLoading(false);
-          }
-        }
-      } catch (err) {
-        console.error('Error loading property document:', err);
-        
-        if (mounted) {
-          setError(err as Error);
-          setIsLoading(false);
-        }
-      }
-    };
-    
-    loadDoc();
-    
-    return () => {
-      mounted = false;
-    };
-  }, [propertyId, crdtManager]);
+  const { userId = 'anonymous', apiEndpoint = '/api/sync' } = options;
   
-  // Listen for document changes
-  useEffect(() => {
-    if (!ydoc) return;
-    
-    // Observer function
-    const handleDocUpdate = () => {
-      // Check for conflicts
-      const unresolved = conflictManager.getUnresolvedConflictsForDocument(propertyId);
+  /**
+   * Load document data
+   */
+  const loadDocumentData = useCallback(async () => {
+    try {
+      setIsLoading(true);
       
-      if (unresolved.length > 0) {
-        // There are conflicts
-        setConflict(true);
-        
-        // If there's an auto-resolve strategy, use it
-        if (autoResolveStrategy) {
-          unresolved.forEach(conflict => {
-            conflictManager.resolveConflict(conflict.id, autoResolveStrategy, userId);
-          });
-        } else {
-          // Get remote state from the first conflict
-          const firstConflict = unresolved[0];
-          setRemoteSnapshot(firstConflict.remoteValue);
-        }
-      } else {
-        // No conflicts
-        setConflict(false);
-        setRemoteSnapshot(null);
+      // Check if document exists
+      const exists = await crdtManager.hasDocument(propertyId);
+      
+      if (!exists) {
+        // Create initial document
+        await crdtManager.createDocument(propertyId, {
+          id: propertyId
+        });
       }
-    };
-    
-    // Subscribe to changes
-    const observeCallback = () => {
-      handleDocUpdate();
-    };
-    
-    ydoc.on('update', observeCallback);
-    
-    // Initial check
-    handleDocUpdate();
-    
-    return () => {
-      ydoc.off('update', observeCallback);
-    };
-  }, [ydoc, propertyId, conflictManager, userId, autoResolveStrategy]);
-  
-  // Listen for sync status changes
-  useEffect(() => {
-    if (!ydoc) return;
-    
-    const handleMetadataUpdate = ({ docId, metadata }: any) => {
-      if (docId === propertyId) {
+      
+      // Get document data
+      const data = await crdtManager.getDocumentData(propertyId);
+      
+      // Set local state
+      setLocalState(data || { id: propertyId });
+      
+      // Set shared state (initially same as local)
+      setSharedState(data || { id: propertyId });
+      
+      // Get document metadata
+      const metadata = crdtManager.getDocumentMetadata(propertyId);
+      
+      if (metadata) {
         setSyncStatus(metadata.syncStatus);
       }
-    };
-    
-    crdtManager.on('metadata:updated', handleMetadataUpdate);
-    
-    return () => {
-      crdtManager.off('metadata:updated', handleMetadataUpdate);
-    };
-  }, [ydoc, propertyId, crdtManager]);
-  
-  // Subscribe to remote updates
-  useEffect(() => {
-    if (!ydoc) return;
-    
-    const handleRemoteUpdate = async ({ docId, updates }: any) => {
-      if (docId === propertyId) {
-        // Get local state
-        const localState = getStateFromYDoc(ydoc);
-        
-        // Apply update to a clone to get remote state
-        const remoteState = applyUpdateToClone(ydoc, updates);
-        
-        // Check if there's a conflict
-        if (!deepEqual(localState, remoteState)) {
-          setConflict(true);
-          setRemoteSnapshot(remoteState);
-        }
-      }
-    };
-    
-    crdtManager.on('remote:update', handleRemoteUpdate);
-    
-    return () => {
-      crdtManager.off('remote:update', handleRemoteUpdate);
-    };
-  }, [ydoc, propertyId, crdtManager]);
-  
-  // Resolve conflict
-  const resolveConflict = useCallback(async (merged: PropertyDocState) => {
-    if (!ydoc) return;
-    
-    try {
-      // Apply merged state to the Yjs document
-      applyStateToYDoc(ydoc, merged);
       
-      // Save document
-      await crdtManager.saveDocument(propertyId);
+      // Check for conflicts
+      checkForConflicts();
       
-      // Clear conflict
-      setConflict(false);
-      setRemoteSnapshot(null);
-      
-      // Push update
-      const updates = crdtManager.getUpdates(propertyId);
-      if (updates) {
-        // This would typically be done by the sync manager
-        console.log('Pushing updates to server');
-      }
-    } catch (error) {
-      console.error('Error resolving conflict:', error);
+      setIsLoading(false);
+    } catch (err) {
+      setError(err as Error);
+      setIsLoading(false);
     }
-  }, [ydoc, propertyId, crdtManager]);
+  }, [propertyId, crdtManager, conflictManager]);
   
-  // Get current state
-  const sharedState: PropertyDocState = ydoc 
-    ? getStateFromYDoc(ydoc) 
-    : { id: propertyId };
+  /**
+   * Check for conflicts
+   */
+  const checkForConflicts = useCallback(() => {
+    // Get existing conflicts
+    const conflicts = conflictManager.getConflictsByDocument(propertyId)
+      .filter(conflict => conflict.status === 'detected' || conflict.status === 'pending');
+    
+    if (conflicts.length > 0) {
+      // Use the most recent conflict
+      const latestConflict = conflicts.sort((a, b) => b.detectedAt - a.detectedAt)[0];
+      
+      // Set states
+      setLocalState(latestConflict.localDoc);
+      setRemoteState(latestConflict.remoteDoc);
+      setHasConflict(true);
+      setSyncStatus(SyncStatus.CONFLICT);
+    } else {
+      setHasConflict(false);
+    }
+  }, [propertyId, conflictManager]);
   
-  // Return document state
+  /**
+   * Update document locally
+   */
+  const updateLocal = useCallback(async (data: Partial<PropertyDocState>) => {
+    try {
+      // Get current document data
+      const currentData = await crdtManager.getDocumentData(propertyId);
+      
+      // Merge with new data
+      const newData = {
+        ...currentData,
+        ...data,
+        id: propertyId // Ensure ID doesn't change
+      };
+      
+      // Update document
+      await crdtManager.setDocumentData(propertyId, newData, {
+        userId,
+        updateMetadata: true
+      });
+      
+      // Update local state
+      setLocalState(newData);
+      
+      // Update shared state if no conflict
+      if (!hasConflict) {
+        setSharedState(newData);
+      }
+      
+      // Get document metadata
+      const metadata = crdtManager.getDocumentMetadata(propertyId);
+      
+      if (metadata) {
+        setSyncStatus(metadata.syncStatus);
+      }
+    } catch (err) {
+      setError(err as Error);
+    }
+  }, [propertyId, crdtManager, userId, hasConflict]);
+  
+  /**
+   * Sync document with remote
+   */
+  const syncWithRemote = useCallback(async () => {
+    try {
+      // Check if document exists
+      const exists = await crdtManager.hasDocument(propertyId);
+      
+      if (!exists) {
+        throw new Error(`Document not found: ${propertyId}`);
+      }
+      
+      // Update sync status
+      const metadata = crdtManager.getDocumentMetadata(propertyId);
+      
+      if (metadata) {
+        metadata.syncStatus = SyncStatus.SYNCING;
+        await crdtManager.updateDocumentMetadata(propertyId, metadata);
+        setSyncStatus(SyncStatus.SYNCING);
+      }
+      
+      // Get updates
+      const updates = crdtManager.getUpdates(propertyId);
+      
+      if (!updates) {
+        throw new Error(`No updates available for document: ${propertyId}`);
+      }
+      
+      // Send updates to server
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-Document-ID': propertyId
+        },
+        body: updates
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+      
+      // Get remote updates
+      const remoteUpdates = await response.arrayBuffer();
+      
+      if (remoteUpdates.byteLength > 0) {
+        // Get local data before applying updates
+        const localData = await crdtManager.getDocumentData(propertyId);
+        
+        // Apply remote updates
+        await crdtManager.applyUpdates(propertyId, new Uint8Array(remoteUpdates), {
+          userId,
+          origin: 'remote'
+        });
+        
+        // Get updated data
+        const updatedData = await crdtManager.getDocumentData(propertyId);
+        
+        // Check for conflicts
+        if (json.stringify(localData) !== json.stringify(updatedData)) {
+          // Detect conflict
+          const conflict = conflictManager.detectConflict(
+            propertyId,
+            localData,
+            updatedData,
+            userId
+          );
+          
+          if (conflict) {
+            // Set states
+            setLocalState(conflict.localDoc);
+            setRemoteState(conflict.remoteDoc);
+            setHasConflict(true);
+            
+            // Update metadata
+            if (metadata) {
+              metadata.syncStatus = SyncStatus.CONFLICT;
+              await crdtManager.updateDocumentMetadata(propertyId, metadata);
+              setSyncStatus(SyncStatus.CONFLICT);
+            }
+            
+            return false;
+          }
+        }
+        
+        // Update local state
+        setLocalState(updatedData);
+        
+        // Update shared state
+        setSharedState(updatedData);
+      }
+      
+      // Update metadata
+      if (metadata) {
+        metadata.syncStatus = SyncStatus.SYNCED;
+        metadata.lastSynced = Date.now();
+        await crdtManager.updateDocumentMetadata(propertyId, metadata);
+        setSyncStatus(SyncStatus.SYNCED);
+      }
+      
+      return true;
+    } catch (err) {
+      // Update error state
+      setError(err as Error);
+      
+      // Update metadata
+      const metadata = crdtManager.getDocumentMetadata(propertyId);
+      
+      if (metadata) {
+        metadata.syncStatus = SyncStatus.FAILED;
+        await crdtManager.updateDocumentMetadata(propertyId, metadata);
+        setSyncStatus(SyncStatus.FAILED);
+      }
+      
+      return false;
+    }
+  }, [propertyId, crdtManager, conflictManager, userId, apiEndpoint]);
+  
+  /**
+   * Resolve conflict
+   */
+  const resolveConflict = useCallback(async (data: PropertyDocState) => {
+    try {
+      // Get conflicts
+      const conflicts = conflictManager.getConflictsByDocument(propertyId)
+        .filter(conflict => conflict.status === 'detected' || conflict.status === 'pending');
+      
+      if (conflicts.length === 0) {
+        throw new Error('No conflict to resolve');
+      }
+      
+      // Use the most recent conflict
+      const latestConflict = conflicts.sort((a, b) => b.detectedAt - a.detectedAt)[0];
+      
+      // Resolve conflict
+      const result = await conflictManager.resolveConflict(
+        latestConflict.id,
+        ResolutionStrategy.CUSTOM,
+        userId,
+        data
+      );
+      
+      if (!result.success) {
+        throw new Error('Failed to resolve conflict');
+      }
+      
+      // Update document with resolved data
+      await crdtManager.setDocumentData(propertyId, data, {
+        userId,
+        updateMetadata: true
+      });
+      
+      // Update local state
+      setLocalState(data);
+      
+      // Update shared state
+      setSharedState(data);
+      
+      // Reset conflict state
+      setRemoteState(null);
+      setHasConflict(false);
+      
+      // Update metadata
+      const metadata = crdtManager.getDocumentMetadata(propertyId);
+      
+      if (metadata) {
+        metadata.syncStatus = SyncStatus.UNSYNCED;
+        await crdtManager.updateDocumentMetadata(propertyId, metadata);
+        setSyncStatus(SyncStatus.UNSYNCED);
+      }
+      
+      // Sync with remote
+      await syncWithRemote();
+    } catch (err) {
+      setError(err as Error);
+    }
+  }, [propertyId, crdtManager, conflictManager, userId, syncWithRemote]);
+  
+  /**
+   * Initialize
+   */
+  useEffect(() => {
+    loadDocumentData();
+    
+    // Set up observer
+    let unsubscribe: (() => void) | undefined;
+    
+    const setupObserver = async () => {
+      try {
+        unsubscribe = await crdtManager.observeDocument(propertyId, (update, origin) => {
+          // Skip updates from this client
+          if (origin === 'local') {
+            return;
+          }
+          
+          // Reload document data
+          loadDocumentData();
+        });
+      } catch (err) {
+        console.error('Failed to set up observer:', err);
+      }
+    };
+    
+    setupObserver();
+    
+    // Cleanup
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [propertyId, crdtManager, loadDocumentData]);
+  
   return {
-    shared: sharedState,
-    local: sharedState, // In a real implementation, this might differ from shared during local edits
-    remote: remoteSnapshot,
-    hasConflict: conflict,
-    resolveConflict,
-    syncStatus,
+    local: localState,
+    remote: remoteState,
+    shared: hasConflict ? localState : sharedState,
     isLoading,
-    error
+    error,
+    syncStatus,
+    hasConflict,
+    updateLocal,
+    syncWithRemote,
+    resolveConflict
   };
 }
-
-export default usePropertyDoc;
