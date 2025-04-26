@@ -125,11 +125,22 @@ export function RealUserMonitoring({
   /**
    * Get device and browser information
    */
+  /**
+   * Get detailed device, browser, and geographic information
+   * Enhanced with more segmentation data for richer analysis
+   */
   function getDeviceInfo(): Record<string, string | number | boolean> {
     const info: Record<string, string | number | boolean> = {};
     
     // Browser information
     info.userAgent = navigator.userAgent;
+    info.browserName = getBrowserName();
+    info.browserVersion = getBrowserVersion();
+    
+    // Operating system info
+    const osInfo = getOperatingSystem();
+    info.os = osInfo.name;
+    info.osVersion = osInfo.version;
     
     // Screen information
     info.screenWidth = window.screen.width;
@@ -137,6 +148,7 @@ export function RealUserMonitoring({
     info.devicePixelRatio = window.devicePixelRatio;
     info.innerWidth = window.innerWidth;
     info.innerHeight = window.innerHeight;
+    info.viewport = `${window.innerWidth}x${window.innerHeight}`;
     
     // Connection information
     const connection = (navigator as any).connection;
@@ -160,7 +172,175 @@ export function RealUserMonitoring({
       info.deviceType = 'desktop';
     }
     
+    // Geographic information based on navigator.language
+    info.language = navigator.language || 'unknown';
+    info.country = getCountryFromLocale(navigator.language);
+    info.region = getRegionFromTimezone();
+    
+    // Performance info
+    info.memoryInfo = getMemoryInfo();
+    info.hardwareConcurrency = navigator.hardwareConcurrency || 'unknown';
+    
     return info;
+  }
+  
+  /**
+   * Get browser name from user agent
+   */
+  function getBrowserName(): string {
+    const userAgent = navigator.userAgent;
+    let browserName = 'unknown';
+    
+    if (userAgent.indexOf('Firefox') > -1) {
+      browserName = 'Firefox';
+    } else if (userAgent.indexOf('SamsungBrowser') > -1) {
+      browserName = 'Samsung Browser';
+    } else if (userAgent.indexOf('Opera') > -1 || userAgent.indexOf('OPR') > -1) {
+      browserName = 'Opera';
+    } else if (userAgent.indexOf('Edg') > -1) {
+      browserName = 'Edge';
+    } else if (userAgent.indexOf('Chrome') > -1) {
+      browserName = 'Chrome';
+    } else if (userAgent.indexOf('Safari') > -1) {
+      browserName = 'Safari';
+    } else if (userAgent.indexOf('Trident') > -1) {
+      browserName = 'Internet Explorer';
+    }
+    
+    return browserName;
+  }
+  
+  /**
+   * Get browser version from user agent
+   */
+  function getBrowserVersion(): string {
+    const userAgent = navigator.userAgent;
+    const browserName = getBrowserName();
+    let version = 'unknown';
+    
+    try {
+      if (browserName === 'Firefox') {
+        version = userAgent.match(/Firefox\/([\d.]+)/)?.[1] || 'unknown';
+      } else if (browserName === 'Samsung Browser') {
+        version = userAgent.match(/SamsungBrowser\/([\d.]+)/)?.[1] || 'unknown';
+      } else if (browserName === 'Opera') {
+        version = userAgent.match(/(?:Opera|OPR)\/([\d.]+)/)?.[1] || 'unknown';
+      } else if (browserName === 'Edge') {
+        version = userAgent.match(/Edg\/([\d.]+)/)?.[1] || 'unknown';
+      } else if (browserName === 'Chrome') {
+        version = userAgent.match(/Chrome\/([\d.]+)/)?.[1] || 'unknown';
+      } else if (browserName === 'Safari') {
+        version = userAgent.match(/Version\/([\d.]+)/)?.[1] || 'unknown';
+      } else if (browserName === 'Internet Explorer') {
+        version = userAgent.match(/(?:MSIE |rv:)([\d.]+)/)?.[1] || 'unknown';
+      }
+    } catch (e) {
+      version = 'unknown';
+    }
+    
+    return version;
+  }
+  
+  /**
+   * Get operating system info from user agent
+   */
+  function getOperatingSystem(): { name: string; version: string } {
+    const userAgent = navigator.userAgent;
+    let name = 'unknown';
+    let version = 'unknown';
+    
+    try {
+      if (userAgent.indexOf('Win') !== -1) {
+        name = 'Windows';
+        if (userAgent.indexOf('Windows NT 10.0') !== -1) version = '10';
+        else if (userAgent.indexOf('Windows NT 6.3') !== -1) version = '8.1';
+        else if (userAgent.indexOf('Windows NT 6.2') !== -1) version = '8';
+        else if (userAgent.indexOf('Windows NT 6.1') !== -1) version = '7';
+        else if (userAgent.indexOf('Windows NT 6.0') !== -1) version = 'Vista';
+        else if (userAgent.indexOf('Windows NT 5.1') !== -1) version = 'XP';
+      } else if (userAgent.indexOf('Mac') !== -1) {
+        name = 'MacOS';
+        version = userAgent.match(/Mac OS X ([^)_]+)/)?.[1]?.replace(/_/g, '.') || 'unknown';
+      } else if (userAgent.indexOf('Android') !== -1) {
+        name = 'Android';
+        version = userAgent.match(/Android ([\d.]+)/)?.[1] || 'unknown';
+      } else if (userAgent.indexOf('Linux') !== -1) {
+        name = 'Linux';
+      } else if (/iPhone|iPad|iPod/.test(userAgent)) {
+        name = 'iOS';
+        version = userAgent.match(/OS ([\d_]+)/)?.[1]?.replace(/_/g, '.') || 'unknown';
+      }
+    } catch (e) {
+      name = 'unknown';
+      version = 'unknown';
+    }
+    
+    return { name, version };
+  }
+  
+  /**
+   * Get country code from locale
+   */
+  function getCountryFromLocale(locale: string = navigator.language): string {
+    try {
+      if (!locale) return 'unknown';
+      // Most locales are in the format 'en-US' where the second part is the country code
+      const parts = locale.split('-');
+      if (parts.length > 1) {
+        return parts[parts.length - 1].toUpperCase();
+      }
+      return locale.toUpperCase(); // Fallback to the locale itself
+    } catch (e) {
+      return 'unknown';
+    }
+  }
+  
+  /**
+   * Get region from timezone
+   */
+  function getRegionFromTimezone(): string {
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (!timezone) return 'unknown';
+      
+      // Extract the high-level region from the timezone
+      const timezoneRegions: Record<string, string> = {
+        'America': 'Americas',
+        'Europe': 'EMEA',
+        'Africa': 'EMEA',
+        'Asia': 'APAC',
+        'Australia': 'APAC',
+        'Pacific': 'APAC',
+        'Indian': 'APAC',
+        'Atlantic': 'EMEA'
+      };
+      
+      // Check which region the timezone belongs to
+      for (const [prefix, region] of Object.entries(timezoneRegions)) {
+        if (timezone.startsWith(prefix)) {
+          return region;
+        }
+      }
+      
+      return 'unknown';
+    } catch (e) {
+      return 'unknown';
+    }
+  }
+  
+  /**
+   * Get memory information if available
+   */
+  function getMemoryInfo(): string {
+    try {
+      const memory = (navigator as any).deviceMemory;
+      if (memory) {
+        return `${memory}GB`;
+      }
+      return 'unknown';
+    } catch (e) {
+      return 'unknown';
+    }
   }
   
   /**
@@ -370,14 +550,25 @@ export function RealUserMonitoring({
     const isOnline = navigator.onLine;
     const route = urlPath;
     
-    // Enrich tags with additional contextual data
+    // Enrich tags with additional contextual data including geo and device segmentation
     const enrichedTags = {
       ...tags,
       userRole: userRole || 'unknown',
       buildVersion: buildVersion || 'unknown',
       route,
       isOnline,
+      // Add country, region, and cohort data for segmentation
+      country: deviceInfo?.country || 'unknown',
+      region: deviceInfo?.region || 'unknown',
+      browser: deviceInfo?.browserName || 'unknown',
+      browserVersion: deviceInfo?.browserVersion || 'unknown',
+      os: deviceInfo?.os || 'unknown',
+      osVersion: deviceInfo?.osVersion || 'unknown',
+      deviceType: deviceInfo?.deviceType || 'desktop',
+      // Map any feature flags to include in the tags
       ...featureFlags,
+      // Extract experiment cohort from URL parameters if present
+      cohort: new URLSearchParams(window.location.search).get('cohort') || 'default',
     };
     
     // Process in batches if over the maximum batch size
@@ -504,7 +695,7 @@ export function RealUserMonitoring({
         const isOnline = navigator.onLine;
         const route = urlPath;
         
-        // Enrich tags with additional contextual data
+        // Enrich tags with additional contextual data including geo and device segmentation
         const enrichedTags = {
           ...tags,
           userRole: userRole || 'unknown',
@@ -512,7 +703,18 @@ export function RealUserMonitoring({
           route,
           isOnline,
           event: 'beforeunload',
+          // Add country, region, and cohort data for segmentation
+          country: deviceInfo?.country || 'unknown',
+          region: deviceInfo?.region || 'unknown',
+          browser: deviceInfo?.browserName || 'unknown',
+          browserVersion: deviceInfo?.browserVersion || 'unknown',
+          os: deviceInfo?.os || 'unknown',
+          osVersion: deviceInfo?.osVersion || 'unknown',
+          deviceType: deviceInfo?.deviceType || 'desktop',
+          // Map any feature flags to include in the tags
           ...featureFlags,
+          // Extract experiment cohort from URL parameters if present
+          cohort: new URLSearchParams(window.location.search).get('cohort') || 'default',
         };
         
         // Prepare the metrics for reporting
