@@ -282,34 +282,122 @@
         disconnectBtn.disabled = false;
         sendBtn.disabled = false;
         
-        // In a real application, you would set up the fallback communication here
-        // For example, using long polling or Server-Sent Events (SSE)
-        log('Fallback mode initiated - using polling mechanism');
+        // Set up Server-Sent Events (SSE) as fallback communication
+        log('Fallback mode initiated - connecting to SSE endpoint');
         
-        // For the demo, we'll simulate a "connection" with periodic polling
-        startFallbackPolling();
+        // Capture some data for metrics
+        const clientId = `client_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+        const currentUrl = window.location.href;
+        const currentRoute = window.location.pathname;
+        
+        // Report fallback usage to metrics endpoint
+        try {
+          fetch('/api/web-vitals/custom-event', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              metric: 'websocket_fallback_total',
+              labels: {
+                reason: 'connection_failure',
+                client_id: clientId,
+                url: currentUrl,
+                route: currentRoute
+              }
+            })
+          });
+        } catch (error) {
+          console.error('Failed to report metrics:', error);
+        }
+        
+        // Start the SSE connection
+        startSSEConnection(clientId);
       }
       
-      // Simulate polling for messages in fallback mode
+      // Connect to the Server-Sent Events endpoint
+      let eventSource = null;
+      function startSSEConnection(clientId) {
+        // Close any existing SSE connection
+        if (eventSource) {
+          eventSource.close();
+          eventSource = null;
+        }
+        
+        // Connect to the SSE endpoint with client ID
+        const sseUrl = `/api/events?clientId=${encodeURIComponent(clientId)}`;
+        log(`Connecting to SSE endpoint: ${sseUrl}`);
+        
+        try {
+          eventSource = new EventSource(sseUrl);
+          
+          // Handle successful connection
+          eventSource.onopen = () => {
+            log('SSE connection established successfully');
+          };
+          
+          // Handle incoming messages
+          eventSource.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              log(`Received (SSE): ${JSON.stringify(data, null, 2)}`);
+            } catch (error) {
+              log(`Received non-JSON SSE message: ${event.data}`);
+            }
+          };
+          
+          // Handle errors
+          eventSource.onerror = (error) => {
+            log(`SSE connection error: ${error.message || 'Unknown error'}`, true);
+            
+            // If the connection is closed, try to reconnect
+            if (eventSource.readyState === EventSource.CLOSED) {
+              log('SSE connection closed, attempting to reconnect...');
+              
+              // Wait a moment before reconnecting
+              setTimeout(() => {
+                if (usingFallback) {
+                  startSSEConnection(clientId);
+                }
+              }, 3000);
+            }
+          };
+        } catch (error) {
+          log(`Failed to connect to SSE endpoint: ${error.message}`, true);
+          
+          // Fall back to simulated polling as a last resort
+          log('Falling back to simulated polling mode');
+          startSimulatedPolling();
+        }
+      }
+      
+      // Simulate polling for messages as a last-resort fallback
       let fallbackPollInterval = null;
-      function startFallbackPolling() {
+      function startSimulatedPolling() {
         fallbackPollInterval = setInterval(() => {
-          // In a real app, you would make an HTTP request to fetch any pending messages
-          // For this demo, we'll simulate receiving messages periodically
           if (usingFallback) {
             const fallbackResponse = {
-              type: 'fallback',
-              message: 'This is a simulated message via fallback polling',
+              type: 'simulated_fallback',
+              message: 'This is a simulated message (last-resort fallback)',
               timestamp: new Date().toISOString(),
               pollingId: Math.random().toString(36).substring(2, 15)
             };
-            log(`Received (fallback): ${JSON.stringify(fallbackResponse, null, 2)}`);
+            log(`Received (simulated): ${JSON.stringify(fallbackResponse, null, 2)}`);
           }
         }, 5000);
       }
       
-      function stopFallbackPolling() {
+      function stopFallbackConnections() {
+        // Close SSE connection if active
+        if (eventSource) {
+          log('Closing SSE connection');
+          eventSource.close();
+          eventSource = null;
+        }
+        
+        // Stop simulated polling if active
         if (fallbackPollInterval) {
+          log('Stopping simulated polling');
           clearInterval(fallbackPollInterval);
           fallbackPollInterval = null;
         }
@@ -330,7 +418,7 @@
         
         if (usingFallback) {
           log('Ending fallback connection...');
-          stopFallbackPolling();
+          stopFallbackConnections();
           usingFallback = false;
           updateStatus('disconnected', 'Disconnected');
           connectBtn.disabled = false;
@@ -408,7 +496,7 @@
         if (socket) {
           socket.close();
         }
-        stopFallbackPolling();
+        stopFallbackConnections();
         if (reconnectTimer) {
           clearTimeout(reconnectTimer);
         }

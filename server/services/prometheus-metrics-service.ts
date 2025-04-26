@@ -22,6 +22,7 @@ class PrometheusMetricsService {
   private webVitalsCounter: client.Counter<string>;
   private budgetBreachCounter: client.Counter<string>;
   private httpErrorCounter: client.Counter<string>;
+  private websocketFallbackCounter: client.Counter<string>;
   
   // Labels for metrics - enhanced with geo, device, network, and page segmentation
   private readonly defaultLabels = [
@@ -128,6 +129,14 @@ class PrometheusMetricsService {
       name: 'web_vitals_http_errors_total',
       help: 'Total number of HTTP errors in Web Vitals reporting',
       labelNames: ['status_code', 'method', 'route'],
+      registers: [this.register]
+    });
+    
+    // Counter for WebSocket fallback to SSE
+    this.websocketFallbackCounter = new client.Counter({
+      name: 'websocket_fallback_total',
+      help: 'Count of WebSocket to fallback mechanism activations',
+      labelNames: ['reason', 'client_id', 'url', 'route'],
       registers: [this.register]
     });
   }
@@ -256,6 +265,26 @@ class PrometheusMetricsService {
       method,
       route
     });
+  }
+  
+  /**
+   * Record a WebSocket fallback activation.
+   * This metric helps track how often the WebSocket connection fails
+   * and the fallback mechanism (SSE) is activated.
+   */
+  public incrementCounter(
+    name: string,
+    labels: Record<string, string> = {}
+  ): void {
+    // Only handle websocket_fallback_total for now
+    if (name === 'websocket_fallback_total') {
+      this.websocketFallbackCounter.inc({
+        reason: labels.reason || 'unknown',
+        client_id: labels.client_id || 'unknown',
+        url: labels.url || 'unknown',
+        route: labels.route || 'unknown'
+      });
+    }
   }
 }
 

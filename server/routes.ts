@@ -214,6 +214,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile('websocket-test.html', { root: './public' });
   });
   
+  // Add Server-Sent Events (SSE) endpoint as WebSocket fallback
+  app.get('/api/events', (req, res) => {
+    // Set SSE headers
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*'
+    });
+    
+    // Client connection ID 
+    const clientId = req.query.clientId || `client_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    console.log(`SSE client connected: ${clientId}`);
+    
+    // Function to send messages to this client
+    const sendEvent = (data) => {
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+    
+    // Send initial connection message
+    sendEvent({
+      type: 'connection',
+      clientId,
+      message: 'Connected to SSE events stream',
+      timestamp: new Date().toISOString()
+    });
+    
+    // Add this client to a global registry of SSE clients
+    // This would be done using a proper message bus in production
+    if (!global.sseClients) {
+      global.sseClients = new Map();
+    }
+    global.sseClients.set(clientId, sendEvent);
+    
+    // Setup heartbeat to keep connection alive
+    const heartbeatInterval = setInterval(() => {
+      sendEvent({
+        type: 'heartbeat',
+        timestamp: new Date().toISOString()
+      });
+    }, 30000);  // every 30 seconds
+    
+    // Track metrics for fallback usage
+    metricsService.incrementCounter('websocket_fallback_total');
+    
+    // Cleanup when client disconnects
+    req.on('close', () => {
+      console.log(`SSE client disconnected: ${clientId}`);
+      clearInterval(heartbeatInterval);
+      if (global.sseClients) {
+        global.sseClients.delete(clientId);
+      }
+    });
+  });
+  
+  // API endpoint to send a message via SSE (for testing)
+  app.post('/api/events/broadcast', (req, res) => {
+    const message = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Missing message body' });
+    }
+    
+    // Add timestamp if not provided
+    if (!message.timestamp) {
+      message.timestamp = new Date().toISOString();
+    }
+    
+    // Broadcast to all SSE clients
+    let clientCount = 0;
+    if (global.sseClients) {
+      global.sseClients.forEach((sendEvent) => {
+        sendEvent(message);
+        clientCount++;
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      recipients: clientCount,
+      message
+    });
+  });
+  
   // Register data import routes
   app.use('/api/data-import', createDataImportRoutes(storage));
   
