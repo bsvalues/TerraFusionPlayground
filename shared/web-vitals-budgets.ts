@@ -376,3 +376,99 @@ export const performanceBudgetSets: PerformanceBudgetSet[] = [
     budgets: queuePerformanceBudgets
   }
 ];
+
+/**
+ * Helper function to get the performance budget for a given metric and device type
+ */
+export function getPerformanceBudget(
+  metricName: string, 
+  deviceType: 'desktop' | 'mobile' = 'desktop'
+): PerformanceBudget | undefined {
+  // First, find the metric in all budget sets
+  for (const budgetSet of performanceBudgetSets) {
+    // Skip if this budget set is not applicable to the device type
+    if (
+      budgetSet.category !== 'all' && 
+      budgetSet.category !== deviceType && 
+      !(budgetSet.category === 'critical')
+    ) {
+      continue;
+    }
+    
+    // Look for the metric in this budget set
+    const matchingBudget = budgetSet.budgets.find(budget => 
+      budget.metricName === metricName
+    );
+    
+    if (matchingBudget) {
+      return matchingBudget;
+    }
+  }
+  
+  // Fallback: handle specific cases that don't follow the pattern
+  if (metricName === 'FCP') {
+    // First Contentful Paint has different thresholds for mobile vs desktop
+    return {
+      metricName: 'FCP',
+      description: 'First Contentful Paint - first content rendered',
+      good: deviceType === 'mobile' ? 1800 : 1000,
+      needsImprovement: deviceType === 'mobile' ? 3000 : 2000,
+      critical: deviceType === 'mobile' ? 5000 : 4000,
+      unit: 'ms'
+    };
+  }
+  
+  if (metricName === 'TTFB') {
+    // Time to First Byte is similar for both platforms
+    return {
+      metricName: 'TTFB',
+      description: 'Time to First Byte - server response time',
+      good: 800,
+      needsImprovement: 1800,
+      critical: 2500,
+      unit: 'ms'
+    };
+  }
+  
+  return undefined;
+}
+
+/**
+ * Determine the rating of a metric value based on performance budgets
+ */
+export function getRating(
+  metricName: string, 
+  value: number, 
+  deviceType: 'desktop' | 'mobile' = 'desktop'
+): 'good' | 'needs-improvement' | 'poor' {
+  const budget = getPerformanceBudget(metricName, deviceType);
+  
+  if (!budget) {
+    // Default to "good" if we don't have a budget for this metric
+    return 'good';
+  }
+  
+  // For most metrics, lower is better
+  // But some metrics like FPS are better when higher
+  const isHigherBetter = metricName === 'MapRenderFPS' || 
+                          metricName === 'QueueProcessingRate';
+  
+  if (isHigherBetter) {
+    if (value >= budget.good) {
+      return 'good';
+    } else if (value >= budget.needsImprovement) {
+      return 'needs-improvement';
+    } else {
+      return 'poor';
+    }
+  } else {
+    // Lower is better for most metrics
+    if (value <= budget.good) {
+      return 'good';
+    } else if (value <= budget.needsImprovement) {
+      return 'needs-improvement';
+    } else {
+      return 'poor';
+    }
+  }
+}

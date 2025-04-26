@@ -1,4 +1,4 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import express, { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { randomUUID } from "crypto";
 import { WebSocketServer } from "ws";
@@ -45,6 +45,7 @@ import collaborationRoutes from "./routes/collaboration-routes";
 import extensionRoutes from "./extensions/extension-routes";
 import { registerTeamAgentRoutes } from "./routes/team-agent-routes";
 import { registerDemoRoutes } from "./routes/demo-routes";
+import { registerWebVitalsRoutes } from "./routes/web-vitals-routes";
 import aiAssistantRoutes from "./routes/ai-assistant-routes";
 import databaseConversionRoutes from "./routes/database-conversion-routes";
 import developmentPlatformRoutes from "./routes/development-platform-routes";
@@ -293,6 +294,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Workflow Optimizer routes
   app.use('/api/workflow-optimizer', workflowOptimizerRoutes);
+  
+  // Register Web Vitals routes
+  app.use('/api/web-vitals', registerWebVitalsRoutes(express.Router(), storage));
   
   // Register new Property Statistics, Assessment, and Change Tracking API routes
   app.use('/api', createPropertyApiRoutes(storage));

@@ -15,7 +15,7 @@ import { LLMService } from '../services/llm-service';
 import { logger } from '../utils/logger';
 import { ErrorHandler } from '../utils/error-handler';
 import { asyncHandler } from '../middleware/error-middleware';
-import webVitalsRoutes from './web-vitals-routes';
+import { registerWebVitalsRoutes } from './web-vitals-routes';
 
 export function createAnalyticsRoutes(
   storage: IStorage, 
@@ -26,7 +26,7 @@ export function createAnalyticsRoutes(
   const router = Router();
   
   // Mount web-vitals routes directly to make them available at /api/analytics/web-vitals/*
-  router.use('/web-vitals', webVitalsRoutes);
+  router.use('/web-vitals', registerWebVitalsRoutes(Router(), storage));
   
   // Only create the advanced analytics service if the required models are provided
   let analyticsService;

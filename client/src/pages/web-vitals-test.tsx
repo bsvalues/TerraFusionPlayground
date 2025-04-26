@@ -42,7 +42,10 @@ export default function WebVitalsTestPage() {
     mutationFn: (alertId: string) => 
       apiRequest(`/api/analytics/web-vitals/alerts/${alertId}/acknowledge`, {
         method: 'POST',
-        body: { acknowledgedBy: 'test-user' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ acknowledgedBy: 'test-user' }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/analytics/web-vitals/alerts'] });
