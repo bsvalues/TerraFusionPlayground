@@ -105,9 +105,13 @@ import {
 import { RegulatoryFramework } from "./services/risk-assessment-engine";
 import pg from 'pg';
 import { drizzle } from "drizzle-orm/node-postgres";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { 
-  webVitalsMetrics, webVitalsReports, webVitalsAggregates, webVitalsBudgets, webVitalsAlerts 
+  webVitalsMetrics, webVitalsReports, webVitalsAggregates, webVitalsBudgets, webVitalsAlerts,
+  InsertWebVitalsMetric, WebVitalsMetric, 
+  InsertWebVitalsReport, WebVitalsReport,
+  InsertWebVitalsAlert, WebVitalsAlert,
+  InsertWebVitalsBudget, WebVitalsBudget
 } from "../shared/web-vitals-schema";
 
 import {
@@ -145,6 +149,37 @@ import {
 } from '@shared/gis-schema';
 
 export interface IStorage {
+  // Web Vitals Performance Monitoring
+  saveWebVitalsMetric(data: InsertWebVitalsMetric): Promise<void>;
+  getWebVitalsMetrics(params: {
+    startDate?: Date;
+    endDate?: Date;
+    metricName?: string;
+    url?: string;
+    deviceType?: string;
+    limit?: number;
+  }): Promise<WebVitalsMetric[]>;
+  
+  saveWebVitalsReport(data: InsertWebVitalsReport): Promise<void>;
+  getWebVitalsReports(limit?: number): Promise<WebVitalsReport[]>;
+  
+  getWebVitalsAlerts(params: {
+    acknowledged?: boolean;
+    startDate?: Date;
+    endDate?: Date;
+    severity?: string;
+    limit?: number;
+  }): Promise<WebVitalsAlert[]>;
+  
+  saveWebVitalsAlert(data: InsertWebVitalsAlert): Promise<void>;
+  updateWebVitalsAlert(alertId: string, updates: Partial<WebVitalsAlert>): Promise<void>;
+  
+  getWebVitalsBudgets(params: {
+    metricName?: string;
+    urlPattern?: string;
+    active?: boolean;
+  }): Promise<WebVitalsBudget[]>;
+  
   // Property Statistics and Assessment APIs
   // Property Statistics methods
   getPropertyStatistics(timeRange: string): Promise<{
@@ -5871,6 +5906,127 @@ export class MemStorage implements IStorage {
 
 // Create a PostgreSQL implementation of the storage interface
 export class PgStorage implements IStorage {
+  // Web Vitals Performance Monitoring Methods
+  
+  async saveWebVitalsMetric(data: InsertWebVitalsMetric): Promise<void> {
+    await this.db.insert(webVitalsMetrics).values(data);
+  }
+  
+  async getWebVitalsMetrics(params: {
+    startDate?: Date;
+    endDate?: Date;
+    metricName?: string;
+    url?: string;
+    deviceType?: string;
+    limit?: number;
+  }): Promise<WebVitalsMetric[]> {
+    let query = this.db.select().from(webVitalsMetrics);
+    
+    if (params.startDate) {
+      query = query.where(sql`timestamp >= ${params.startDate}`);
+    }
+    
+    if (params.endDate) {
+      query = query.where(sql`timestamp <= ${params.endDate}`);
+    }
+    
+    if (params.metricName) {
+      query = query.where(eq(webVitalsMetrics.name, params.metricName));
+    }
+    
+    if (params.url) {
+      query = query.where(eq(webVitalsMetrics.url, params.url));
+    }
+    
+    if (params.deviceType) {
+      query = query.where(eq(webVitalsMetrics.deviceType, params.deviceType));
+    }
+    
+    query = query.orderBy(desc(webVitalsMetrics.timestamp));
+    
+    if (params.limit) {
+      query = query.limit(params.limit);
+    }
+    
+    return await query;
+  }
+  
+  async saveWebVitalsReport(data: InsertWebVitalsReport): Promise<void> {
+    await this.db.insert(webVitalsReports).values(data);
+  }
+  
+  async getWebVitalsReports(limit: number = 100): Promise<WebVitalsReport[]> {
+    return await this.db.select()
+      .from(webVitalsReports)
+      .orderBy(desc(webVitalsReports.timestamp))
+      .limit(limit);
+  }
+  
+  async getWebVitalsAlerts(params: {
+    acknowledged?: boolean;
+    startDate?: Date;
+    endDate?: Date;
+    severity?: string;
+    limit?: number;
+  }): Promise<WebVitalsAlert[]> {
+    let query = this.db.select().from(webVitalsAlerts);
+    
+    if (params.acknowledged !== undefined) {
+      query = query.where(eq(webVitalsAlerts.acknowledged, params.acknowledged));
+    }
+    
+    if (params.startDate) {
+      query = query.where(sql`detected_at >= ${params.startDate}`);
+    }
+    
+    if (params.endDate) {
+      query = query.where(sql`detected_at <= ${params.endDate}`);
+    }
+    
+    if (params.severity) {
+      query = query.where(eq(webVitalsAlerts.severity, params.severity));
+    }
+    
+    query = query.orderBy(desc(webVitalsAlerts.detectedAt));
+    
+    if (params.limit) {
+      query = query.limit(params.limit);
+    }
+    
+    return await query;
+  }
+  
+  async saveWebVitalsAlert(data: InsertWebVitalsAlert): Promise<void> {
+    await this.db.insert(webVitalsAlerts).values(data);
+  }
+  
+  async updateWebVitalsAlert(alertId: string, updates: Partial<WebVitalsAlert>): Promise<void> {
+    await this.db.update(webVitalsAlerts)
+      .set(updates)
+      .where(eq(webVitalsAlerts.id, alertId));
+  }
+  
+  async getWebVitalsBudgets(params: {
+    metricName?: string;
+    urlPattern?: string;
+    active?: boolean;
+  }): Promise<WebVitalsBudget[]> {
+    let query = this.db.select().from(webVitalsBudgets);
+    
+    if (params.metricName) {
+      query = query.where(eq(webVitalsBudgets.metricName, params.metricName));
+    }
+    
+    if (params.urlPattern) {
+      query = query.where(eq(webVitalsBudgets.urlPattern, params.urlPattern));
+    }
+    
+    if (params.active !== undefined) {
+      query = query.where(eq(webVitalsBudgets.active, params.active));
+    }
+    
+    return await query;
+  }
   private pool: pg.Pool;
   private db: any;
   // We need a reference to these in-memory maps for the PACS methods
@@ -6104,13 +6260,12 @@ export class PgStorage implements IStorage {
       aiAgents, systemActivities, mcpToolExecutionLogs, pacsModules, propertyInsightShares,
       comparableSales, comparableSalesAnalyses, comparableAnalysisEntries,
       importStaging,
+      webVitalsMetrics, webVitalsReports, webVitalsAggregates, webVitalsBudgets, webVitalsAlerts,
       // Team collaboration
       teamMembers, teamTasks, taskComments, teamCollaborationSessions, teamFeedbacks, teamKnowledgeBaseItems,
       sharedWorkflows, sharedWorkflowCollaborators, sharedWorkflowActivities, workflowSessions,
       // Development Tools
-      codeSnippets, dataVisualizations, uiComponentTemplates,
-      // Web Vitals Performance Monitoring
-      webVitalsMetrics, webVitalsReports, webVitalsAggregates, webVitalsBudgets, webVitalsAlerts
+      codeSnippets, dataVisualizations, uiComponentTemplates
     }});
     
     // Initialize in-memory maps for PACS methods

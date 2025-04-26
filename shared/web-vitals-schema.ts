@@ -107,20 +107,24 @@ export type InsertWebVitalsBudget = z.infer<typeof insertWebVitalsBudgetsSchema>
 
 /**
  * Web Vitals alerts table
- * Stores alerts when metrics exceed budgets
+ * Stores alerts when metrics exceed budgets or anomalies are detected
  */
 export const webVitalsAlerts = pgTable("web_vitals_alerts", {
   id: text("id").primaryKey(),
-  budgetId: text("budget_id").notNull().references(() => webVitalsBudgets.id),
   metricName: text("metric_name").notNull(),
-  urlPattern: text("url_pattern").notNull(),
-  currentValue: doublePrecision("current_value").notNull(),
-  thresholdValue: doublePrecision("threshold_value").notNull(),
-  percentageOverBudget: doublePrecision("percentage_over_budget").notNull(),
+  value: doublePrecision("value").notNull(),
+  threshold: doublePrecision("threshold").notNull(),
+  url: text("url").notNull(),
+  deviceType: text("device_type"),
+  sampleSize: integer("sample_size").notNull(),
+  severity: text("severity").notNull(), // low, medium, high
+  title: text("title").notNull(),
+  description: text("description").notNull(),
   detectedAt: timestamp("detected_at").defaultNow().notNull(),
   acknowledged: boolean("acknowledged").default(false),
   acknowledgedBy: text("acknowledged_by"),
-  acknowledgedAt: timestamp("acknowledged_at")
+  acknowledgedAt: timestamp("acknowledged_at"),
+  alertType: text("alert_type").default("threshold").notNull() // threshold, anomaly
 });
 
 export const insertWebVitalsAlertsSchema = createInsertSchema(webVitalsAlerts).omit({

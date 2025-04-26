@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { PerformanceBudgets, PerformanceAlerts } from '@/components/monitoring/PerformanceBudgets';
 
 interface WebVital {
   id: string;
@@ -21,12 +23,36 @@ interface WebVital {
 export default function WebVitalsTestPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isSimulatingLoad, setIsSimulatingLoad] = useState(false);
+  const queryClient = useQueryClient();
   
   // Query to fetch web vitals data
   const { data: webVitalsData, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/analytics/web-vitals'],
     refetchOnWindowFocus: false,
   });
+  
+  // Query to fetch web vitals alerts
+  const { data: alertsData, isLoading: alertsLoading } = useQuery({
+    queryKey: ['/api/analytics/web-vitals/alerts'],
+    refetchOnWindowFocus: false,
+  });
+  
+  // Mutation to acknowledge an alert
+  const acknowledgeMutation = useMutation({
+    mutationFn: (alertId: string) => 
+      apiRequest(`/api/analytics/web-vitals/alerts/${alertId}/acknowledge`, {
+        method: 'POST',
+        body: { acknowledgedBy: 'test-user' },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/analytics/web-vitals/alerts'] });
+    },
+  });
+  
+  // Handle alert acknowledgement
+  const handleAcknowledgeAlert = (alertId: string) => {
+    acknowledgeMutation.mutate(alertId);
+  };
   
   // Simulate a layout shift for CLS testing
   const simulateLayoutShift = () => {
@@ -83,6 +109,46 @@ export default function WebVitalsTestPage() {
       }
       setIsSimulatingLoad(false);
     }, 3000);
+  };
+  
+  // Simulate multiple user interactions to generate INP metrics
+  const simulateInteractions = () => {
+    const simulateClick = () => {
+      const div = document.createElement('div');
+      div.style.width = '50px';
+      div.style.height = '50px';
+      div.style.backgroundColor = 'blue';
+      div.style.position = 'fixed';
+      div.style.top = `${Math.random() * window.innerHeight}px`;
+      div.style.left = `${Math.random() * window.innerWidth}px`;
+      div.style.zIndex = '1000';
+      div.style.borderRadius = '50%';
+      
+      document.body.appendChild(div);
+      
+      // Force a layout calculation by accessing offsetHeight
+      div.offsetHeight;
+      
+      // Simulate processing delay
+      const startTime = Date.now();
+      while (Date.now() - startTime < 100) {
+        // Busy wait to block the main thread
+      }
+      
+      // Remove the element
+      setTimeout(() => {
+        if (div.parentNode) {
+          div.parentNode.removeChild(div);
+        }
+      }, 500);
+    };
+    
+    // Simulate 5 interactions with delays
+    simulateClick();
+    setTimeout(simulateClick, 1000);
+    setTimeout(simulateClick, 2000);
+    setTimeout(simulateClick, 3000);
+    setTimeout(simulateClick, 4000);
   };
   
   const getMetricStatusColor = (rating: string) => {
@@ -238,6 +304,13 @@ export default function WebVitalsTestPage() {
         </Button>
         
         <Button 
+          onClick={simulateInteractions}
+          variant="outline"
+        >
+          Simulate Interactions (INP)
+        </Button>
+        
+        <Button 
           onClick={() => {
             window.location.reload();
           }} 
@@ -258,6 +331,8 @@ export default function WebVitalsTestPage() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="details">Raw Data</TabsTrigger>
+          <TabsTrigger value="budgets">Performance Budgets</TabsTrigger>
+          <TabsTrigger value="alerts">Alerts</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="pt-4">
@@ -281,6 +356,29 @@ export default function WebVitalsTestPage() {
             <p>No metrics data available yet. Try reloading the page or simulating events.</p>
           ) : (
             renderMetricDetails(webVitalsData)
+          )}
+        </TabsContent>
+        
+        <TabsContent value="budgets" className="pt-4">
+          {isLoading ? (
+            <p>Loading metrics data...</p>
+          ) : error ? (
+            <p className="text-red-500">Error loading metrics: {(error as Error).message}</p>
+          ) : !webVitalsData || !Array.isArray(webVitalsData) || webVitalsData.length === 0 ? (
+            <p>No metrics data available yet. Try reloading the page or simulating events.</p>
+          ) : (
+            <PerformanceBudgets metrics={webVitalsData} selectedCategory="critical" />
+          )}
+        </TabsContent>
+        
+        <TabsContent value="alerts" className="pt-4">
+          {alertsLoading ? (
+            <p>Loading alerts data...</p>
+          ) : (
+            <PerformanceAlerts 
+              alerts={alertsData?.alerts || []} 
+              onAcknowledge={handleAcknowledgeAlert} 
+            />
           )}
         </TabsContent>
       </Tabs>
