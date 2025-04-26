@@ -7,6 +7,7 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 import QGISService from "./services/qgis-service";
+import { metricsService } from "./services/prometheus-metrics-service";
 import { 
   insertPropertySchema, 
   insertLandRecordSchema,
@@ -301,8 +302,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Prometheus metrics endpoint (for monitoring systems)
   app.get('/metrics', async (_req, res) => {
     try {
+      console.log('Metrics endpoint called');
+      // Debug output
+      console.log('Registry:', metricsService.getRegistry());
+      console.log('Content type:', metricsService.getRegistry().contentType);
+      
       res.set('Content-Type', metricsService.getRegistry().contentType);
-      res.end(await metricsService.getRegistry().metrics());
+      const metrics = await metricsService.getRegistry().metrics();
+      console.log('Metrics generated:', metrics ? 'success' : 'empty');
+      res.end(metrics);
     } catch (error) {
       console.error('Error generating Prometheus metrics:', error);
       res.status(500).send('Error generating metrics');
