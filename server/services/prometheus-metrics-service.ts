@@ -23,8 +23,21 @@ class PrometheusMetricsService {
   private budgetBreachCounter: client.Counter<string>;
   private httpErrorCounter: client.Counter<string>;
   
-  // Labels for metrics
-  private readonly defaultLabels = ['route', 'device_type', 'connection_type', 'build_version', 'environment'];
+  // Labels for metrics - enhanced with geo and device segmentation
+  private readonly defaultLabels = [
+    'route', 
+    'device_type', 
+    'connection_type', 
+    'build_version', 
+    'environment',
+    'country',
+    'region',
+    'browser',
+    'browser_version',
+    'os',
+    'os_version',
+    'cohort'
+  ];
 
   /**
    * Create buckets for the different metrics.
@@ -141,12 +154,21 @@ class PrometheusMetricsService {
     value: number, 
     labels: Record<string, string>
   ): void {
+    // Map all available labels with sensible defaults for segmentation
     const labelValues = {
       route: labels.route || '/',
       device_type: labels.deviceType || 'unknown',
       connection_type: labels.connectionType || 'unknown',
       build_version: labels.buildVersion || 'unknown',
-      environment: labels.environment || 'development'
+      environment: labels.environment || 'development',
+      // Enhanced segmentation data
+      country: labels.country || 'unknown',
+      region: labels.region || 'unknown',
+      browser: labels.browser || 'unknown',
+      browser_version: labels.browserVersion || 'unknown',
+      os: labels.os || 'unknown',
+      os_version: labels.osVersion || 'unknown',
+      cohort: labels.cohort || 'default'
     };
     
     // Increment the counter for this metric type
@@ -190,6 +212,7 @@ class PrometheusMetricsService {
     threshold: number,
     labels: Record<string, string>
   ): void {
+    // Map all available labels with sensible defaults for segmentation
     const labelValues = {
       metric_name: name,
       threshold: threshold.toString(),
@@ -197,7 +220,15 @@ class PrometheusMetricsService {
       device_type: labels.deviceType || 'unknown',
       connection_type: labels.connectionType || 'unknown',
       build_version: labels.buildVersion || 'unknown',
-      environment: labels.environment || 'development'
+      environment: labels.environment || 'development',
+      // Enhanced segmentation data
+      country: labels.country || 'unknown',
+      region: labels.region || 'unknown',
+      browser: labels.browser || 'unknown',
+      browser_version: labels.browserVersion || 'unknown',
+      os: labels.os || 'unknown',
+      os_version: labels.osVersion || 'unknown',
+      cohort: labels.cohort || 'default'
     };
     
     this.budgetBreachCounter.inc(labelValues);
