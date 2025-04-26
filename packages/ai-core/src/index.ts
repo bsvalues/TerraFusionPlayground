@@ -13,3 +13,6 @@ export * from './services';
 
 // Export agents
 export * from './agents';
+
+// Export health monitoring
+export * from './health';
