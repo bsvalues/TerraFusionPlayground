@@ -209,6 +209,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
+  // Serve WebSocket test page
+  app.get('/websocket-test', (req, res) => {
+    res.sendFile('websocket-test.html', { root: './public' });
+  });
+  
   // Register data import routes
   app.use('/api/data-import', createDataImportRoutes(storage));
   
