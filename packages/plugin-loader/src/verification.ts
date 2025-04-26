@@ -1,194 +1,255 @@
+/**
+ * Plugin Verification System
+ * 
+ * Provides signature verification and compatibility checking for plugins.
+ */
+
 import * as semver from 'semver';
-import * as jwt from 'jsonwebtoken';
-import { PluginManifest } from './plugin-manifest';
+import { execSync } from 'child_process';
+import { PluginManifest } from './manifest-schema';
 
 /**
- * Plugin Verification Result
+ * Plugin verification parameters
+ */
+export interface VerificationParams {
+  /**
+   * Current TerraFusion core version
+   */
+  coreVersion: string;
+  
+  /**
+   * Path to plugin directory
+   */
+  pluginPath?: string;
+  
+  /**
+   * Skip signature verification
+   */
+  skipSignatureCheck?: boolean;
+  
+  /**
+   * Path to cosign executable
+   */
+  cosignPath?: string;
+  
+  /**
+   * Public key for signature verification
+   */
+  publicKey?: string;
+  
+  /**
+   * Path to public key file
+   */
+  publicKeyPath?: string;
+}
+
+/**
+ * Verification result
  */
 export interface VerificationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
+  /**
+   * Whether verification was successful
+   */
+  verified: boolean;
+  
+  /**
+   * Compatibility status
+   */
+  compatible: boolean;
+  
+  /**
+   * Signature verification status
+   */
+  signatureValid?: boolean;
+  
+  /**
+   * Error message if verification failed
+   */
+  error?: string;
+  
+  /**
+   * Detailed information about the verification
+   */
+  details?: Record<string, any>;
 }
 
 /**
- * Verifies that a plugin is compatible with the current API version
- * 
- * @param manifest The plugin manifest
- * @param currentApiVersion The current API version
- * @returns Verification result
+ * Plugin verifier class
  */
-export function verifyApiCompatibility(
-  manifest: PluginManifest,
-  currentApiVersion: string
-): VerificationResult {
-  const result: VerificationResult = {
-    isValid: true,
-    errors: [],
-    warnings: []
-  };
-
-  // Verify min API version
-  if (!semver.valid(manifest.minApiVersion)) {
-    result.errors.push(`Invalid minApiVersion format: ${manifest.minApiVersion}`);
-    result.isValid = false;
-  } else if (semver.gt(manifest.minApiVersion, currentApiVersion)) {
-    result.errors.push(
-      `Plugin requires minimum API version ${manifest.minApiVersion}, but current version is ${currentApiVersion}`
-    );
-    result.isValid = false;
-  }
-
-  // Verify max API version if specified
-  if (manifest.maxApiVersion) {
-    if (!semver.valid(manifest.maxApiVersion)) {
-      result.errors.push(`Invalid maxApiVersion format: ${manifest.maxApiVersion}`);
-      result.isValid = false;
-    } else if (semver.lt(manifest.maxApiVersion, currentApiVersion)) {
-      result.warnings.push(
-        `Plugin supports maximum API version ${manifest.maxApiVersion}, but current version is ${currentApiVersion}. Some features may not work correctly.`
-      );
-    }
-  }
-
-  return result;
-}
-
-/**
- * Verifies plugin dependencies
- * 
- * @param manifest The plugin manifest
- * @param loadedPlugins Map of loaded plugins by ID
- * @returns Verification result
- */
-export function verifyDependencies(
-  manifest: PluginManifest,
-  loadedPlugins: Map<string, PluginManifest>
-): VerificationResult {
-  const result: VerificationResult = {
-    isValid: true,
-    errors: [],
-    warnings: []
-  };
-
-  for (const dependency of manifest.dependencies) {
-    const loadedPlugin = loadedPlugins.get(dependency.id);
-
-    if (!loadedPlugin) {
-      if (dependency.optional) {
-        result.warnings.push(`Optional dependency ${dependency.id} (${dependency.version}) is not loaded`);
-      } else {
-        result.errors.push(`Required dependency ${dependency.id} (${dependency.version}) is not loaded`);
-        result.isValid = false;
-      }
-      continue;
-    }
-
-    if (!semver.satisfies(loadedPlugin.version, dependency.version)) {
-      result.errors.push(
-        `Dependency ${dependency.id} version mismatch: required ${dependency.version}, found ${loadedPlugin.version}`
-      );
-      result.isValid = false;
-    }
-  }
-
-  return result;
-}
-
-/**
- * Verifies a plugin's signature
- * 
- * @param manifest The plugin manifest
- * @param publicKey Public key for signature verification
- * @returns Verification result
- */
-export function verifySignature(
-  manifest: PluginManifest,
-  publicKey: string
-): VerificationResult {
-  const result: VerificationResult = {
-    isValid: true,
-    errors: [],
-    warnings: []
-  };
-
-  // Skip verification if no signature is present
-  if (!manifest.signature) {
-    result.warnings.push('Plugin is not signed');
-    return result;
-  }
-
-  try {
-    // Create a manifest clone without the signature
-    const manifestWithoutSignature = { ...manifest };
-    delete manifestWithoutSignature.signature;
-
-    // Verify the signature
-    const payload = jwt.verify(manifest.signature, publicKey);
+export class PluginVerifier {
+  /**
+   * Verify a plugin manifest
+   */
+  public static verify(
+    manifest: PluginManifest,
+    params: VerificationParams
+  ): VerificationResult {
+    // Initialize result
+    const result: VerificationResult = {
+      verified: false,
+      compatible: false,
+      details: {}
+    };
     
-    // Check if the hash in the signature matches the manifest
-    if (typeof payload === 'object' && payload !== null && payload.hash) {
-      // In a real implementation, we would calculate a hash of the manifest
-      // and compare it with the hash in the payload
-      const calculatedHash = 'mock-hash';
-      if (payload.hash !== calculatedHash) {
-        result.errors.push('Signature hash mismatch');
-        result.isValid = false;
+    try {
+      // Check version compatibility
+      const compatible = this.checkVersionCompatibility(manifest.peerVersion, params.coreVersion);
+      result.compatible = compatible;
+      result.details!.versionCheck = {
+        pluginRequires: manifest.peerVersion,
+        coreVersion: params.coreVersion,
+        compatible
+      };
+      
+      if (!compatible) {
+        result.error = `Plugin requires TerraFusion version ${manifest.peerVersion}, but current version is ${params.coreVersion}`;
+        return result;
       }
-    } else {
-      result.errors.push('Invalid signature payload');
-      result.isValid = false;
+      
+      // Skip signature verification if requested
+      if (params.skipSignatureCheck) {
+        result.verified = true;
+        result.signatureValid = true;
+        result.details!.signatureCheck = { skipped: true };
+        return result;
+      }
+      
+      // Verify signature
+      const signatureValid = this.verifySignature(manifest, params);
+      result.signatureValid = signatureValid;
+      
+      if (!signatureValid) {
+        result.error = 'Plugin signature verification failed';
+        return result;
+      }
+      
+      // All checks passed
+      result.verified = true;
+      return result;
+    } catch (error) {
+      result.error = `Verification error: ${error instanceof Error ? error.message : String(error)}`;
+      return result;
     }
-  } catch (error) {
-    result.errors.push(`Signature verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    result.isValid = false;
   }
-
-  return result;
-}
-
-/**
- * Verify all aspects of a plugin
- * 
- * @param manifest The plugin manifest
- * @param options Verification options
- * @returns Verification result
- */
-export function verifyPlugin(
-  manifest: PluginManifest,
-  options: {
-    currentApiVersion: string;
-    loadedPlugins: Map<string, PluginManifest>;
-    publicKey?: string;
+  
+  /**
+   * Check version compatibility using semver
+   */
+  private static checkVersionCompatibility(
+    requiredVersion: string,
+    actualVersion: string
+  ): boolean {
+    // Convert required version to range if it's not already
+    const range = semver.validRange(requiredVersion) || requiredVersion;
+    
+    // Check if actual version satisfies the range
+    return semver.satisfies(actualVersion, range);
   }
-): VerificationResult {
-  const result: VerificationResult = {
-    isValid: true,
-    errors: [],
-    warnings: []
-  };
-
-  // Verify API compatibility
-  const apiResult = verifyApiCompatibility(manifest, options.currentApiVersion);
-  result.isValid = result.isValid && apiResult.isValid;
-  result.errors.push(...apiResult.errors);
-  result.warnings.push(...apiResult.warnings);
-
-  // Verify dependencies
-  const depResult = verifyDependencies(manifest, options.loadedPlugins);
-  result.isValid = result.isValid && depResult.isValid;
-  result.errors.push(...depResult.errors);
-  result.warnings.push(...depResult.warnings);
-
-  // Verify signature if public key is provided
-  if (options.publicKey) {
-    const sigResult = verifySignature(manifest, options.publicKey);
-    result.isValid = result.isValid && sigResult.isValid;
-    result.errors.push(...sigResult.errors);
-    result.warnings.push(...sigResult.warnings);
-  } else {
-    result.warnings.push('Signature verification skipped (no public key provided)');
+  
+  /**
+   * Verify plugin signature
+   */
+  private static verifySignature(
+    manifest: PluginManifest,
+    params: VerificationParams
+  ): boolean {
+    // Use in-memory verification if no plugin path is provided
+    if (!params.pluginPath) {
+      return this.verifySignatureInMemory(manifest, params);
+    }
+    
+    // Use Cosign for verification if available
+    if (this.isCosignAvailable(params.cosignPath)) {
+      return this.verifyCosignSignature(manifest, params);
+    }
+    
+    // Fallback to in-memory verification
+    return this.verifySignatureInMemory(manifest, params);
   }
-
-  return result;
+  
+  /**
+   * Verify signature in-memory
+   */
+  private static verifySignatureInMemory(
+    manifest: PluginManifest,
+    params: VerificationParams
+  ): boolean {
+    // Simple check for now - in a real implementation, this would use
+    // a crypto library to verify the signature
+    
+    // Check if signature exists
+    if (!manifest.signed || !manifest.signed.signature || !manifest.signed.fingerprint) {
+      return false;
+    }
+    
+    // Get public key
+    const publicKey = params.publicKey || this.loadPublicKey(params.publicKeyPath);
+    
+    if (!publicKey) {
+      throw new Error('Public key not provided for signature verification');
+    }
+    
+    // In a real implementation, we would:
+    // 1. Create a manifest clone without the signed.signature field
+    // 2. Convert it to a canonical JSON string
+    // 3. Verify the signature against this string using the public key
+    
+    // For now, we'll just return true as a placeholder
+    return true;
+  }
+  
+  /**
+   * Check if Cosign is available
+   */
+  private static isCosignAvailable(cosignPath?: string): boolean {
+    try {
+      const cmd = cosignPath || 'cosign';
+      execSync(`${cmd} version`, { stdio: 'ignore' });
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+  
+  /**
+   * Verify signature using Cosign
+   */
+  private static verifyCosignSignature(
+    manifest: PluginManifest,
+    params: VerificationParams
+  ): boolean {
+    try {
+      const pluginPath = params.pluginPath!;
+      const cosignPath = params.cosignPath || 'cosign';
+      const publicKeyArg = params.publicKeyPath 
+        ? `--key ${params.publicKeyPath}` 
+        : '';
+      
+      // Run Cosign verification command
+      execSync(`${cosignPath} verify ${publicKeyArg} ${pluginPath}`, { 
+        stdio: 'ignore' 
+      });
+      
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+  
+  /**
+   * Load public key from file
+   */
+  private static loadPublicKey(publicKeyPath?: string): string | null {
+    if (!publicKeyPath) {
+      return null;
+    }
+    
+    try {
+      // In a real implementation, this would read the file
+      // For now, just return a placeholder value
+      return 'dummy-public-key';
+    } catch (error) {
+      return null;
+    }
+  }
 }

@@ -151,9 +151,13 @@ export class LLMServiceFactory {
   public static createService(config: LLMProviderConfig): LLMService {
     switch (config.type) {
       case LLMProviderType.OPENAI:
-        throw new Error('OpenAI provider not implemented yet');
+        // Import OpenAI service dynamically
+        const { OpenAIService } = require('./providers/openai-provider');
+        return new OpenAIService(config);
       case LLMProviderType.ANTHROPIC:
-        throw new Error('Anthropic provider not implemented yet');
+        // Import Anthropic service dynamically
+        const { AnthropicService } = require('./providers/anthropic-provider');
+        return new AnthropicService(config);
       case LLMProviderType.AZURE_OPENAI:
         throw new Error('Azure OpenAI provider not implemented yet');
       case LLMProviderType.COHERE:

@@ -1,284 +1,572 @@
+/**
+ * Plugin Loader
+ * 
+ * Handles loading, unloading, and managing plugins.
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+import * as vm from 'vm';
 import { EventEmitter } from 'events';
-import { verifyPlugin, VerificationResult } from './verification';
-import { PluginManifest } from './plugin-manifest';
-import { PluginPaymentManager } from './plugin-payment';
+import { PluginManifest, validateManifest } from './manifest-schema';
+import { PluginVerifier, VerificationParams, VerificationResult } from './verification';
 
 /**
- * Event types emitted by the plugin loader
+ * Plugin loader configuration
  */
-export enum PluginLoaderEvent {
-  PLUGIN_LOADED = 'plugin:loaded',
-  PLUGIN_UNLOADED = 'plugin:unloaded',
-  PLUGIN_ERROR = 'plugin:error',
-  PLUGIN_VERIFIED = 'plugin:verified',
-}
-
-/**
- * Plugin loader options
- */
-export interface PluginLoaderOptions {
-  apiVersion: string;
+export interface PluginLoaderConfig {
+  /**
+   * Directory to load plugins from
+   */
   pluginsDir: string;
-  verificationPublicKey?: string;
-  strictMode?: boolean;
-  paymentOptions?: {
-    apiKey?: string;
-    webhookSecret?: string;
+  
+  /**
+   * Current core version for compatibility checking
+   */
+  coreVersion: string;
+  
+  /**
+   * Whether to verify plugin signatures
+   */
+  verifySignatures?: boolean;
+  
+  /**
+   * Public key for signature verification
+   */
+  publicKey?: string;
+  
+  /**
+   * Path to cosign executable
+   */
+  cosignPath?: string;
+  
+  /**
+   * Whether to load plugins in sandboxed environments
+   */
+  useSandbox?: boolean;
+  
+  /**
+   * Plugin lifecycle hooks
+   */
+  hooks?: {
+    beforeLoad?: (manifest: PluginManifest) => Promise<boolean>;
+    afterLoad?: (plugin: Plugin) => Promise<void>;
+    beforeUnload?: (plugin: Plugin) => Promise<boolean>;
+    afterUnload?: (pluginId: string) => Promise<void>;
   };
 }
 
 /**
- * Main plugin loader class that manages loading, verifying, and unloading plugins
+ * Plugin execution context
+ */
+export interface PluginContext {
+  /**
+   * Plugin ID
+   */
+  id: string;
+  
+  /**
+   * Plugin manifest
+   */
+  manifest: PluginManifest;
+  
+  /**
+   * Core API methods exposed to the plugin
+   */
+  api: Record<string, any>;
+  
+  /**
+   * Plugin configuration
+   */
+  config: Record<string, any>;
+  
+  /**
+   * Logger instance for the plugin
+   */
+  logger: {
+    info: (message: string, ...args: any[]) => void;
+    warn: (message: string, ...args: any[]) => void;
+    error: (message: string, ...args: any[]) => void;
+    debug: (message: string, ...args: any[]) => void;
+  };
+}
+
+/**
+ * Loaded plugin instance
+ */
+export interface Plugin {
+  /**
+   * Plugin ID
+   */
+  id: string;
+  
+  /**
+   * Plugin manifest
+   */
+  manifest: PluginManifest;
+  
+  /**
+   * Plugin exports
+   */
+  exports: Record<string, any>;
+  
+  /**
+   * Plugin context
+   */
+  context: PluginContext;
+  
+  /**
+   * Plugin verification result
+   */
+  verification: VerificationResult;
+  
+  /**
+   * Whether the plugin is enabled
+   */
+  enabled: boolean;
+}
+
+/**
+ * Plugin loader class
  */
 export class PluginLoader extends EventEmitter {
-  private apiVersion: string;
-  private pluginDirectory: string;
-  private strictMode: boolean;
-  private verificationPublicKey?: string;
+  private config: PluginLoaderConfig;
+  private plugins: Map<string, Plugin> = new Map();
+  private sandboxes: Map<string, vm.Context> = new Map();
+  private pluginDirectory: Map<string, string> = new Map();
   
-  private loadedPlugins: Map<string, {
-    manifest: PluginManifest;
-    exports: any;
-    instance: any;
-  }> = new Map();
-  
-  private pendingPlugins: Set<string> = new Set();
-  private paymentManager: PluginPaymentManager;
-  
-  /**
-   * Create a new plugin loader
-   * 
-   * @param options Plugin loader options
-   */
-  constructor(options: PluginLoaderOptions) {
+  constructor(config: PluginLoaderConfig) {
     super();
-    
-    this.apiVersion = options.apiVersion;
-    this.pluginDirectory = options.pluginsDir;
-    this.strictMode = options.strictMode ?? true;
-    this.verificationPublicKey = options.verificationPublicKey;
-    
-    this.paymentManager = new PluginPaymentManager(options.paymentOptions || {});
+    this.config = config;
   }
   
   /**
-   * Load a plugin from its manifest
-   * 
-   * @param manifest Plugin manifest
-   * @param userId Optional user ID for payment verification
-   * @returns Promise resolving to the loaded plugin
+   * Load all plugins from configured directory
    */
-  async loadPlugin(manifest: PluginManifest, userId?: string): Promise<any> {
-    if (this.loadedPlugins.has(manifest.id)) {
-      return this.loadedPlugins.get(manifest.id)!.exports;
+  public async loadAllPlugins(): Promise<Plugin[]> {
+    const pluginsDir = this.config.pluginsDir;
+    
+    if (!fs.existsSync(pluginsDir)) {
+      throw new Error(`Plugins directory does not exist: ${pluginsDir}`);
     }
     
-    if (this.pendingPlugins.has(manifest.id)) {
-      throw new Error(`Plugin ${manifest.id} is already being loaded`);
+    const entries = fs.readdirSync(pluginsDir, { withFileTypes: true });
+    const pluginDirs = entries.filter(entry => entry.isDirectory());
+    
+    const loadPromises = pluginDirs.map(async dir => {
+      const pluginPath = path.join(pluginsDir, dir.name);
+      return this.loadPlugin(pluginPath);
+    });
+    
+    const results = await Promise.allSettled(loadPromises);
+    const loadedPlugins: Plugin[] = [];
+    
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        loadedPlugins.push(result.value);
+      } else {
+        this.emit('error', new Error(`Failed to load plugin at ${pluginDirs[index].name}: ${result.reason}`));
+      }
+    });
+    
+    return loadedPlugins;
+  }
+  
+  /**
+   * Load a plugin from a directory
+   */
+  public async loadPlugin(pluginPath: string): Promise<Plugin> {
+    // Load and validate manifest
+    const manifestPath = path.join(pluginPath, 'manifest.json');
+    
+    if (!fs.existsSync(manifestPath)) {
+      throw new Error(`Plugin manifest not found: ${manifestPath}`);
     }
     
-    this.pendingPlugins.add(manifest.id);
-    
+    let manifestJson: any;
     try {
-      // Verify plugin compatibility and integrity
-      const verificationResult = this.verifyPlugin(manifest);
-      
-      // In strict mode, any verification errors will prevent loading
-      if (this.strictMode && !verificationResult.isValid) {
-        const errorMsg = `Plugin ${manifest.id} failed verification: ${verificationResult.errors.join(', ')}`;
-        this.emit(PluginLoaderEvent.PLUGIN_ERROR, {
-          pluginId: manifest.id,
-          error: new Error(errorMsg)
-        });
-        throw new Error(errorMsg);
-      }
-      
-      // If the plugin has payment requirements, verify the user has access
-      if (manifest.payment && manifest.payment.model !== 'free' && userId) {
-        const hasAccess = await this.paymentManager.hasActiveSubscription(manifest.id, userId);
-        if (!hasAccess) {
-          throw new Error(`User does not have an active subscription for plugin ${manifest.id}`);
-        }
-      }
-      
-      // In a real implementation, this would dynamically import the plugin module
-      // For this example, we'll just create a mock
-      const mockExports = {
-        initialize: async () => console.log(`Initializing plugin ${manifest.id}`),
-        shutdown: async () => console.log(`Shutting down plugin ${manifest.id}`),
-      };
-      
-      const mockInstance = { 
-        active: true,
-        manifest
-      };
-      
-      // Initialize the plugin
-      await mockExports.initialize();
-      
-      // Store the loaded plugin
-      this.loadedPlugins.set(manifest.id, {
-        manifest,
-        exports: mockExports,
-        instance: mockInstance
-      });
-      
-      // Emit loaded event
-      this.emit(PluginLoaderEvent.PLUGIN_LOADED, {
-        pluginId: manifest.id,
-        manifest
-      });
-      
-      return mockExports;
+      const manifestContent = fs.readFileSync(manifestPath, 'utf-8');
+      manifestJson = JSON.parse(manifestContent);
     } catch (error) {
-      this.emit(PluginLoaderEvent.PLUGIN_ERROR, {
-        pluginId: manifest.id,
-        error
-      });
-      throw error;
-    } finally {
-      this.pendingPlugins.delete(manifest.id);
+      throw new Error(`Invalid plugin manifest: ${error}`);
     }
+    
+    // Validate manifest
+    const validation = validateManifest(manifestJson);
+    if (!validation.valid) {
+      throw new Error(`Invalid plugin manifest: ${JSON.stringify(validation.errors)}`);
+    }
+    
+    const manifest = manifestJson as PluginManifest;
+    
+    // Check if plugin is already loaded
+    if (this.plugins.has(manifest.id)) {
+      throw new Error(`Plugin already loaded: ${manifest.id}`);
+    }
+    
+    // Verify plugin
+    const verificationParams: VerificationParams = {
+      coreVersion: this.config.coreVersion,
+      pluginPath,
+      skipSignatureCheck: !this.config.verifySignatures,
+      publicKey: this.config.publicKey,
+      cosignPath: this.config.cosignPath
+    };
+    
+    const verification = PluginVerifier.verify(manifest, verificationParams);
+    
+    if (!verification.verified) {
+      throw new Error(`Plugin verification failed: ${verification.error}`);
+    }
+    
+    // Run before load hook
+    if (this.config.hooks?.beforeLoad) {
+      const shouldContinue = await this.config.hooks.beforeLoad(manifest);
+      if (!shouldContinue) {
+        throw new Error(`Plugin load cancelled by beforeLoad hook: ${manifest.id}`);
+      }
+    }
+    
+    // Create plugin context
+    const context = this.createPluginContext(manifest);
+    
+    // Load plugin code
+    const mainPath = path.join(pluginPath, manifest.main);
+    
+    if (!fs.existsSync(mainPath)) {
+      throw new Error(`Plugin main file not found: ${mainPath}`);
+    }
+    
+    const pluginCode = fs.readFileSync(mainPath, 'utf-8');
+    
+    // Execute plugin code
+    let pluginExports: Record<string, any>;
+    
+    if (this.config.useSandbox) {
+      pluginExports = this.executeInSandbox(manifest.id, pluginCode, context);
+    } else {
+      pluginExports = this.executeDirectly(pluginCode, context);
+    }
+    
+    // Create plugin instance
+    const plugin: Plugin = {
+      id: manifest.id,
+      manifest,
+      exports: pluginExports,
+      context,
+      verification,
+      enabled: true
+    };
+    
+    // Store plugin
+    this.plugins.set(manifest.id, plugin);
+    this.pluginDirectory.set(manifest.id, pluginPath);
+    
+    // Run after load hook
+    if (this.config.hooks?.afterLoad) {
+      await this.config.hooks.afterLoad(plugin);
+    }
+    
+    // Emit load event
+    this.emit('pluginLoaded', plugin);
+    
+    return plugin;
   }
   
   /**
-   * Unload a plugin by ID
-   * 
-   * @param pluginId Plugin ID
-   * @returns Promise resolving when the plugin is unloaded
+   * Unload a plugin
    */
-  async unloadPlugin(pluginId: string): Promise<void> {
-    const plugin = this.loadedPlugins.get(pluginId);
+  public async unloadPlugin(pluginId: string): Promise<boolean> {
+    const plugin = this.plugins.get(pluginId);
     
     if (!plugin) {
-      throw new Error(`Plugin ${pluginId} is not loaded`);
+      return false;
     }
     
-    try {
-      // Call the plugin's shutdown method
-      await plugin.exports.shutdown();
-      
-      // Remove the plugin from the loaded map
-      this.loadedPlugins.delete(pluginId);
-      
-      // Emit unloaded event
-      this.emit(PluginLoaderEvent.PLUGIN_UNLOADED, {
-        pluginId
-      });
-    } catch (error) {
-      this.emit(PluginLoaderEvent.PLUGIN_ERROR, {
-        pluginId,
-        error
-      });
-      throw error;
+    // Run before unload hook
+    if (this.config.hooks?.beforeUnload) {
+      const shouldContinue = await this.config.hooks.beforeUnload(plugin);
+      if (!shouldContinue) {
+        return false;
+      }
     }
+    
+    // Call unload method if exists
+    if (typeof plugin.exports.unload === 'function') {
+      try {
+        await plugin.exports.unload();
+      } catch (error) {
+        this.emit('error', new Error(`Error unloading plugin ${pluginId}: ${error}`));
+      }
+    }
+    
+    // Clean up sandbox if used
+    if (this.config.useSandbox) {
+      this.sandboxes.delete(pluginId);
+    }
+    
+    // Remove plugin
+    this.plugins.delete(pluginId);
+    this.pluginDirectory.delete(pluginId);
+    
+    // Run after unload hook
+    if (this.config.hooks?.afterUnload) {
+      await this.config.hooks.afterUnload(pluginId);
+    }
+    
+    // Emit unload event
+    this.emit('pluginUnloaded', pluginId);
+    
+    return true;
   }
   
   /**
-   * Get a loaded plugin by ID
-   * 
-   * @param pluginId Plugin ID
-   * @returns The loaded plugin or undefined if not loaded
+   * Enable a plugin
    */
-  getPlugin(pluginId: string): any | undefined {
-    const plugin = this.loadedPlugins.get(pluginId);
-    return plugin ? plugin.exports : undefined;
+  public async enablePlugin(pluginId: string): Promise<boolean> {
+    const plugin = this.plugins.get(pluginId);
+    
+    if (!plugin || plugin.enabled) {
+      return false;
+    }
+    
+    // Call enable method if exists
+    if (typeof plugin.exports.enable === 'function') {
+      try {
+        await plugin.exports.enable();
+      } catch (error) {
+        this.emit('error', new Error(`Error enabling plugin ${pluginId}: ${error}`));
+        return false;
+      }
+    }
+    
+    // Update plugin state
+    plugin.enabled = true;
+    
+    // Emit enable event
+    this.emit('pluginEnabled', pluginId);
+    
+    return true;
   }
   
   /**
-   * Check if a plugin is loaded
-   * 
-   * @param pluginId Plugin ID
-   * @returns True if the plugin is loaded
+   * Disable a plugin
    */
-  isPluginLoaded(pluginId: string): boolean {
-    return this.loadedPlugins.has(pluginId);
+  public async disablePlugin(pluginId: string): Promise<boolean> {
+    const plugin = this.plugins.get(pluginId);
+    
+    if (!plugin || !plugin.enabled) {
+      return false;
+    }
+    
+    // Call disable method if exists
+    if (typeof plugin.exports.disable === 'function') {
+      try {
+        await plugin.exports.disable();
+      } catch (error) {
+        this.emit('error', new Error(`Error disabling plugin ${pluginId}: ${error}`));
+        return false;
+      }
+    }
+    
+    // Update plugin state
+    plugin.enabled = false;
+    
+    // Emit disable event
+    this.emit('pluginDisabled', pluginId);
+    
+    return true;
+  }
+  
+  /**
+   * Get a plugin by ID
+   */
+  public getPlugin(pluginId: string): Plugin | undefined {
+    return this.plugins.get(pluginId);
   }
   
   /**
    * Get all loaded plugins
-   * 
-   * @returns Map of loaded plugins by ID
    */
-  getLoadedPlugins(): Map<string, PluginManifest> {
-    const result = new Map<string, PluginManifest>();
-    
-    for (const [id, plugin] of this.loadedPlugins.entries()) {
-      result.set(id, plugin.manifest);
-    }
-    
-    return result;
+  public getAllPlugins(): Plugin[] {
+    return Array.from(this.plugins.values());
   }
   
   /**
-   * Verify a plugin against compatibility and integrity checks
-   * 
-   * @param manifest Plugin manifest
-   * @returns Verification result
+   * Check if a plugin is loaded
    */
-  private verifyPlugin(manifest: PluginManifest): VerificationResult {
-    // Get map of loaded plugins for dependency verification
-    const loadedPlugins = new Map<string, PluginManifest>();
-    
-    for (const [id, plugin] of this.loadedPlugins.entries()) {
-      loadedPlugins.set(id, plugin.manifest);
-    }
-    
-    // Perform verification
-    const result = verifyPlugin(manifest, {
-      currentApiVersion: this.apiVersion,
-      loadedPlugins,
-      publicKey: this.verificationPublicKey
-    });
-    
-    // Emit verification event
-    this.emit(PluginLoaderEvent.PLUGIN_VERIFIED, {
-      pluginId: manifest.id,
-      result
-    });
-    
-    return result;
+  public isPluginLoaded(pluginId: string): boolean {
+    return this.plugins.has(pluginId);
   }
   
   /**
-   * Create a checkout session for a paid plugin
-   * 
-   * @param pluginId Plugin ID to purchase
-   * @param userId User ID making the purchase
-   * @param successUrl URL to redirect to after successful checkout
-   * @param cancelUrl URL to redirect to if checkout is canceled
-   * @returns Promise resolving to the checkout URL
+   * Create a plugin context
    */
-  async createCheckoutSession(
-    pluginId: string,
-    userId: string,
-    successUrl: string,
-    cancelUrl: string
-  ): Promise<string> {
-    const plugin = this.loadedPlugins.get(pluginId);
+  private createPluginContext(manifest: PluginManifest): PluginContext {
+    // Create plugin API
+    const api = this.createPluginApi(manifest);
     
-    if (!plugin) {
-      throw new Error(`Plugin ${pluginId} is not loaded`);
+    // Create plugin config
+    const config = {};
+    
+    // Create logger
+    const logger = {
+      info: (message: string, ...args: any[]) => {
+        console.info(`[Plugin:${manifest.id}] ${message}`, ...args);
+      },
+      warn: (message: string, ...args: any[]) => {
+        console.warn(`[Plugin:${manifest.id}] ${message}`, ...args);
+      },
+      error: (message: string, ...args: any[]) => {
+        console.error(`[Plugin:${manifest.id}] ${message}`, ...args);
+      },
+      debug: (message: string, ...args: any[]) => {
+        console.debug(`[Plugin:${manifest.id}] ${message}`, ...args);
+      }
+    };
+    
+    return {
+      id: manifest.id,
+      manifest,
+      api,
+      config,
+      logger
+    };
+  }
+  
+  /**
+   * Create the API object exposed to plugins
+   */
+  private createPluginApi(manifest: PluginManifest): Record<string, any> {
+    // Basic API available to all plugins
+    const api: Record<string, any> = {
+      version: this.config.coreVersion,
+      events: new EventEmitter(),
+      storage: {
+        get: async (key: string) => {
+          // In a real implementation, this would use a plugin-specific storage
+          return null;
+        },
+        set: async (key: string, value: any) => {
+          // In a real implementation, this would use a plugin-specific storage
+          return true;
+        },
+        remove: async (key: string) => {
+          // In a real implementation, this would use a plugin-specific storage
+          return true;
+        }
+      }
+    };
+    
+    // Add capability-specific APIs
+    if (manifest.capabilities.includes('map-layer')) {
+      api.map = {
+        addLayer: () => {}, // Placeholder
+        removeLayer: () => {} // Placeholder
+      };
     }
     
-    if (!plugin.manifest.payment) {
-      throw new Error(`Plugin ${pluginId} is not a paid plugin`);
+    if (manifest.capabilities.includes('data-source')) {
+      api.data = {
+        registerSource: () => {}, // Placeholder
+        query: async () => {} // Placeholder
+      };
     }
     
-    return this.paymentManager.createCheckoutSession(
-      plugin.manifest,
-      userId,
-      successUrl,
-      cancelUrl
+    // Add more capability-specific APIs as needed
+    
+    return api;
+  }
+  
+  /**
+   * Execute a plugin in a sandbox
+   */
+  private executeInSandbox(
+    pluginId: string, 
+    code: string, 
+    context: PluginContext
+  ): Record<string, any> {
+    // Create sandbox context
+    const sandbox = {
+      console: {
+        log: (...args: any[]) => context.logger.info(...args),
+        info: (...args: any[]) => context.logger.info(...args),
+        warn: (...args: any[]) => context.logger.warn(...args),
+        error: (...args: any[]) => context.logger.error(...args),
+        debug: (...args: any[]) => context.logger.debug(...args)
+      },
+      setTimeout,
+      clearTimeout,
+      setInterval,
+      clearInterval,
+      context,
+      exports: {},
+      module: {
+        exports: {}
+      },
+      require: (id: string) => {
+        // In a real implementation, this would handle require access control
+        if (id === '@terrafusion/api') {
+          return context.api;
+        }
+        throw new Error(`Module access denied: ${id}`);
+      }
+    };
+    
+    // Create VM context
+    const vmContext = vm.createContext(sandbox);
+    this.sandboxes.set(pluginId, vmContext);
+    
+    // Execute code
+    const script = new vm.Script(code, { filename: `plugin:${pluginId}` });
+    script.runInContext(vmContext);
+    
+    // Return exports
+    return sandbox.module.exports;
+  }
+  
+  /**
+   * Execute a plugin directly (without sandbox)
+   */
+  private executeDirectly(
+    code: string, 
+    context: PluginContext
+  ): Record<string, any> {
+    // Create execution context
+    const sandbox = {
+      console,
+      setTimeout,
+      clearTimeout,
+      setInterval,
+      clearInterval,
+      context,
+      exports: {},
+      module: {
+        exports: {}
+      },
+      require: (id: string) => {
+        // In a real implementation, this would handle require access control
+        if (id === '@terrafusion/api') {
+          return context.api;
+        }
+        return require(id);
+      }
+    };
+    
+    // Execute code with Function constructor (less secure but simpler)
+    const fn = new Function(
+      'console', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval',
+      'context', 'exports', 'module', 'require',
+      code
     );
-  }
-  
-  /**
-   * Get the payment manager
-   * 
-   * @returns The payment manager instance
-   */
-  getPaymentManager(): PluginPaymentManager {
-    return this.paymentManager;
+    
+    fn(
+      sandbox.console, sandbox.setTimeout, sandbox.clearTimeout, 
+      sandbox.setInterval, sandbox.clearInterval,
+      sandbox.context, sandbox.exports, sandbox.module, sandbox.require
+    );
+    
+    // Return exports
+    return sandbox.module.exports;
   }
 }
