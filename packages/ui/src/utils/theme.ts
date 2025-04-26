@@ -1,86 +1,69 @@
 /**
- * TerraFusion theming utilities and interfaces
+ * Theme configuration and utilities
  */
 
-export type TerraFusionThemeVariant = 'professional' | 'tint' | 'vibrant';
-export type TerraFusionAppearance = 'light' | 'dark' | 'system';
+import { themeColors } from './colors';
 
-export interface TerraFusionTheme {
-  primary: string;
-  variant: TerraFusionThemeVariant;
-  appearance: TerraFusionAppearance;
-  radius: number;
+export interface ThemeConfig {
+  primaryColor: string;
+  secondaryColor: string;
+  backgroundColor: string;
+  textColor: string;
+  borderRadius: string;
+  fontFamily: string;
+  darkMode: boolean;
 }
 
-const DEFAULT_THEME: TerraFusionTheme = {
-  primary: '#00e5ff',
-  variant: 'professional',
-  appearance: 'system',
-  radius: 4
+// Default theme configuration
+export const defaultTheme: ThemeConfig = {
+  primaryColor: themeColors.primary[500],
+  secondaryColor: themeColors.secondary[500],
+  backgroundColor: '#ffffff',
+  textColor: themeColors.neutral[900],
+  borderRadius: '4px',
+  fontFamily: 'Inter, system-ui, sans-serif',
+  darkMode: false,
 };
 
-/**
- * Gets the current theme or the default theme if none is set
- */
-export function getCurrentTheme(): TerraFusionTheme {
-  try {
-    // Try to get the theme from localStorage
-    const storedTheme = localStorage.getItem('terraFusionTheme');
-    if (storedTheme) {
-      return JSON.parse(storedTheme) as TerraFusionTheme;
-    }
-  } catch (error) {
-    console.error('Error reading theme from localStorage:', error);
-  }
-  
-  return DEFAULT_THEME;
-}
+// Dark theme configuration
+export const darkTheme: ThemeConfig = {
+  ...defaultTheme,
+  backgroundColor: themeColors.neutral[900],
+  textColor: themeColors.neutral[100],
+  darkMode: true,
+};
 
-/**
- * Sets the current theme
- */
-export function setCurrentTheme(theme: Partial<TerraFusionTheme>): void {
-  try {
-    const currentTheme = getCurrentTheme();
-    const newTheme = { ...currentTheme, ...theme };
-    localStorage.setItem('terraFusionTheme', JSON.stringify(newTheme));
-    
-    // Dispatch a theme change event
-    window.dispatchEvent(new CustomEvent('terraFusionThemeChange', { detail: newTheme }));
-  } catch (error) {
-    console.error('Error saving theme to localStorage:', error);
-  }
-}
-
-/**
- * Generates CSS variables for the theme
- */
-export function generateThemeVariables(theme: TerraFusionTheme): Record<string, string> {
+// Function to create custom theme
+export function createTheme(options: Partial<ThemeConfig>): ThemeConfig {
   return {
-    '--tf-primary': theme.primary,
-    '--tf-radius': `${theme.radius}px`,
-    '--tf-variant': theme.variant,
-    '--tf-appearance': theme.appearance
+    ...defaultTheme,
+    ...options,
   };
 }
 
-/**
- * Applies theme variables to the document
- */
-export function applyThemeToDocument(theme: TerraFusionTheme): void {
-  const variables = generateThemeVariables(theme);
-  const root = document.documentElement;
-  
-  Object.entries(variables).forEach(([key, value]) => {
-    root.style.setProperty(key, value);
-  });
-  
-  // Apply light/dark class
-  if (theme.appearance === 'light' || (theme.appearance === 'system' && !window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    document.documentElement.classList.remove('dark');
-    document.documentElement.classList.add('light');
-  } else {
-    document.documentElement.classList.remove('light');
-    document.documentElement.classList.add('dark');
-  }
+// CSS Variables generator
+export function generateCssVariables(theme: ThemeConfig): Record<string, string> {
+  return {
+    '--primary-color': theme.primaryColor,
+    '--secondary-color': theme.secondaryColor,
+    '--background-color': theme.backgroundColor,
+    '--text-color': theme.textColor,
+    '--border-radius': theme.borderRadius,
+    '--font-family': theme.fontFamily,
+  };
+}
+
+// Generate CSS custom properties string
+export function themeToCssVariables(theme: ThemeConfig): string {
+  const variables = generateCssVariables(theme);
+  return Object.entries(variables)
+    .map(([key, value]) => `${key}: ${value};`)
+    .join('\n');
+}
+
+// Interface for theme context
+export interface ThemeContextValue {
+  theme: ThemeConfig;
+  setTheme: (theme: ThemeConfig) => void;
+  toggleDarkMode: () => void;
 }

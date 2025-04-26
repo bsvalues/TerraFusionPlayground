@@ -1,13 +1,17 @@
-// TerraFusion UI Component Library
-import './styles/index.css';
+/**
+ * TerraFusion UI Component Library
+ * 
+ * This package provides a set of reusable UI components for use across the 
+ * TerraFusion platform, organized by functional categories.
+ */
 
-// Export components by category
+// Re-export component categories
 export * from './components/data-display';
 export * from './components/layout';
 export * from './components/navigation';
 export * from './components/forms';
 
-// Export utilities
+// Re-export utility functions
 export * from './utils/classes';
 export * from './utils/colors';
 export * from './utils/theme';

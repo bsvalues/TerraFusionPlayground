@@ -1,4 +1,4 @@
-// Export all form components
+// Re-export all form components
 export * from './input';
 export * from './button';
 export * from './select';
