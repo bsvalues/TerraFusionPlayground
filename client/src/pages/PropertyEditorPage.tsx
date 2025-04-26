@@ -1,115 +1,148 @@
 /**
  * PropertyEditorPage
  * 
- * A page for editing property details, demonstrating the offline-first
- * CRDT-based conflict resolution capabilities.
+ * A page for editing property data with conflict resolution.
  */
 
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'wouter';
-import { PropertyEditor } from '../components/property/PropertyEditor';
-
-// UI Components
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState, useEffect } from 'react';
+import { useParams, useLocation } from 'wouter';
+import PropertyEditor from '../components/property/PropertyEditor';
 
 /**
- * Property Editor Page
+ * PropertyEditorPage component
  */
-export const PropertyEditorPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [readOnly, setReadOnly] = useState(false);
+const PropertyEditorPage: React.FC = () => {
+  // Get property ID from URL
+  const [location] = useLocation();
+  const params = useParams<{ id: string }>();
+  const propertyId = params?.id || 'new';
   
-  // Handle successful save
-  const handleSave = (data: any) => {
-    toast({
-      title: 'Property Saved',
-      description: 'Property details have been saved successfully.',
-      duration: 3000
-    });
+  // State for property data
+  const [property, setProperty] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Fetch property data
+  useEffect(() => {
+    const fetchProperty = async () => {
+      setIsLoading(true);
+      
+      try {
+        if (propertyId === 'new') {
+          // For new properties, set default values
+          setProperty({
+            id: `property-${Date.now()}`,
+            address: '',
+            owner: '',
+            value: 0,
+            lastInspection: new Date().toISOString().split('T')[0],
+            notes: '',
+            features: []
+          });
+        } else {
+          // For existing properties, fetch from API
+          const response = await fetch(`/api/properties/${propertyId}`);
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch property: ${response.statusText}`);
+          }
+          
+          const data = await response.json();
+          setProperty(data);
+        }
+        
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching property:', err);
+        setError((err as Error).message);
+        setIsLoading(false);
+      }
+    };
     
-    // Navigate back to property list or detail page
-    navigate(`/properties`);
+    fetchProperty();
+  }, [propertyId]);
+  
+  // Handle save
+  const handleSave = async (data: any) => {
+    try {
+      console.log('Property saved:', data);
+      
+      // Here you would typically send data to API
+      // const response = await fetch(`/api/properties/${data.id}`, {
+      //   method: 'PUT',
+      //   headers: {
+      //     'Content-Type': 'application/json'
+      //   },
+      //   body: JSON.stringify(data)
+      // });
+      
+      // if (!response.ok) {
+      //   throw new Error(`Failed to save property: ${response.statusText}`);
+      // }
+    } catch (err) {
+      console.error('Error saving property:', err);
+      setError((err as Error).message);
+    }
   };
   
-  // Handle cancel action
-  const handleCancel = () => {
-    navigate(`/properties`);
-  };
-  
-  // Handle toggle read-only mode
-  const handleToggleReadOnly = () => {
-    setReadOnly(!readOnly);
-  };
-  
-  // Handle offline test (creates a simulated conflict)
-  const simulateConflict = () => {
-    // This is a demo function that would be replaced with actual offline sync testing
-    toast({
-      title: 'Conflict Simulation',
-      description: 'This feature would create a simulated conflict for testing in a real implementation.',
-      duration: 5000
-    });
-  };
+  // If there's an error, display it
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="p-4 border rounded-lg bg-red-50 text-red-600">
+          <h3 className="font-bold mb-2">Error</h3>
+          <p>{error}</p>
+          <button
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold">
-          {readOnly ? 'View Property' : 'Edit Property'}
+          {propertyId === 'new' ? 'New Property' : `Edit Property: ${propertyId}`}
         </h1>
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            onClick={handleToggleReadOnly}
-          >
-            {readOnly ? 'Switch to Edit Mode' : 'Switch to View Mode'}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={simulateConflict}
-          >
-            Simulate Conflict
-          </Button>
-        </div>
+        <p className="text-gray-600">
+          {propertyId === 'new'
+            ? 'Create a new property with the form below.'
+            : 'Edit property details using the form below.'}
+        </p>
       </div>
       
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-sm text-muted-foreground">
-            Offline-First Property Editor with CRDT-based Conflict Resolution
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            This property editor demonstrates TerraFusion's offline-first capabilities. 
-            Changes are saved locally using IndexedDB and synchronized with the server 
-            when online. Any conflicts are automatically detected and resolved through 
-            a user-friendly interface.
-          </p>
-        </CardContent>
-      </Card>
-      
-      {id ? (
-        <PropertyEditor
-          propertyId={id}
-          onSave={handleSave}
-          onCancel={handleCancel}
-          readOnly={readOnly}
-        />
-      ) : (
-        <div className="text-center p-8">
-          <p>No property ID provided.</p>
-          <Button
-            onClick={() => navigate('/properties')}
-            className="mt-4"
-          >
-            Back to Properties
-          </Button>
+      {isLoading ? (
+        <div className="p-4 border rounded-lg bg-white shadow-sm">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          </div>
         </div>
+      ) : (
+        <>
+          <div className="mb-4 flex justify-between items-center">
+            <button
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              onClick={() => window.history.back()}
+            >
+              Back
+            </button>
+            
+            <div className="text-sm text-gray-500">
+              Changes are saved automatically and synced when online.
+            </div>
+          </div>
+          
+          <PropertyEditor
+            propertyId={property?.id || `property-${Date.now()}`}
+            initialData={property}
+            onSave={handleSave}
+          />
+        </>
       )}
     </div>
   );

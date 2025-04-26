@@ -1,149 +1,200 @@
 /**
- * PropertyEditor Component
+ * PropertyEditor
  * 
- * A component for editing property details with CRDT-based offline sync and
- * built-in conflict resolution.
+ * A component for editing property data with conflict resolution.
  */
 
 import React, { useState, useEffect } from 'react';
-import { usePropertyDoc } from '@terrafusion/offline-sync';
-import { ConflictManager } from '@terrafusion/ui-components/conflict-resolution';
-import { CRDTDocumentManager } from '@terrafusion/offline-sync/src/crdt-sync';
+
+// Import from packages
+import { usePropertyDoc } from '@terrafusion/offline-sync/src/hooks';
+import { ConflictManager } from '@terrafusion/ui-components/src/conflict-resolution';
+import { CRDTDocumentManager, SyncStatus } from '@terrafusion/offline-sync/src/crdt-sync';
 import { ConflictResolutionManager } from '@terrafusion/offline-sync/src/conflict-resolution';
-import { LocalStorageProvider } from '@terrafusion/offline-sync/src/storage';
+import { IndexedDBStorageProvider } from '@terrafusion/offline-sync/src/storage';
 
-// Placeholder for the actual form component that would be used in a real app
-import { PropertyForm } from './PropertyForm';
+// Import local components
+import PropertyForm from './PropertyForm';
 
-// Create singleton instances of required managers
-const storageProvider = new LocalStorageProvider();
-const crdtManager = new CRDTDocumentManager(storageProvider);
-const conflictManager = new ConflictResolutionManager();
-
-interface PropertyEditorProps {
+/**
+ * PropertyEditor props interface
+ */
+export interface PropertyEditorProps {
+  /**
+   * Property ID
+   */
   propertyId: string;
+  
+  /**
+   * User ID (for tracking who made changes)
+   */
   userId?: string;
-  onSave?: (data: any) => void;
-  onCancel?: () => void;
+  
+  /**
+   * API endpoint for syncing
+   */
+  apiEndpoint?: string;
+  
+  /**
+   * CRDT document manager (if not provided, one will be created)
+   */
+  crdtManager?: CRDTDocumentManager;
+  
+  /**
+   * Conflict resolution manager (if not provided, one will be created)
+   */
+  conflictManager?: ConflictResolutionManager;
+  
+  /**
+   * Storage provider (if not provided, one will be created)
+   */
+  storageProvider?: IndexedDBStorageProvider;
+  
+  /**
+   * Initial property data (optional)
+   */
+  initialData?: any;
+  
+  /**
+   * Whether the component is in read-only mode
+   */
   readOnly?: boolean;
+  
+  /**
+   * On save callback
+   */
+  onSave?: (data: any) => void;
 }
 
 /**
- * Property Editor Component
+ * PropertyEditor component
  */
 export const PropertyEditor: React.FC<PropertyEditorProps> = ({
   propertyId,
   userId = 'anonymous',
-  onSave,
-  onCancel,
-  readOnly = false
+  apiEndpoint = '/api/sync',
+  crdtManager,
+  conflictManager,
+  storageProvider,
+  initialData,
+  readOnly = false,
+  onSave
 }) => {
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // Initialize managers if needed
-  useEffect(() => {
-    const initializeManagers = async () => {
-      try {
-        // Check if document exists
-        const exists = await crdtManager.hasDocument(propertyId);
-        
-        if (!exists) {
-          // Create initial document with default data
-          await crdtManager.createDocument(propertyId, { 
-            id: propertyId,
-            address: '',
-            owner: '',
-            value: 0,
-            lastInspection: '',
-            notes: '',
-            features: []
-          });
-        }
-        
-        setIsInitialized(true);
-      } catch (error) {
-        console.error('Error initializing property editor:', error);
-      }
-    };
-
-    if (!isInitialized) {
-      initializeManagers();
-    }
-  }, [propertyId, isInitialized]);
-
-  // Use the property document hook
-  const propertyDoc = usePropertyDoc(
-    propertyId,
-    crdtManager,
-    conflictManager,
-    { userId }
+  // Set up state for managers if not provided
+  const [internalStorageProvider] = useState(() => 
+    storageProvider || new IndexedDBStorageProvider('terrafusion_property_editor')
   );
-
-  // Handle form submission
-  const handleSubmit = async (data: any) => {
-    try {
-      // Get the document
-      const doc = await crdtManager.getDocument(propertyId);
-      
-      // Apply changes
-      const map = doc.getMap('data');
-      
-      doc.transact(() => {
-        Object.entries(data).forEach(([key, value]) => {
-          if (key !== 'id') {
-            map.set(key, value);
-          }
-        });
+  
+  const [internalCrdtManager] = useState(() => 
+    crdtManager || new CRDTDocumentManager(internalStorageProvider)
+  );
+  
+  const [internalConflictManager] = useState(() => 
+    conflictManager || new ConflictResolutionManager()
+  );
+  
+  // Use our property document hook
+  const {
+    local: localState,
+    remote: remoteState,
+    shared: sharedState,
+    isLoading,
+    error,
+    syncStatus,
+    hasConflict,
+    updateLocal,
+    syncWithRemote,
+    resolveConflict
+  } = usePropertyDoc(
+    propertyId,
+    internalCrdtManager,
+    internalConflictManager,
+    {
+      userId,
+      apiEndpoint
+    }
+  );
+  
+  // Initialize with initial data if provided
+  useEffect(() => {
+    if (initialData && !isLoading && Object.keys(sharedState).length <= 1) {
+      updateLocal({
+        ...initialData,
+        id: propertyId
       });
-      
-      // Save document
-      await crdtManager.saveDocument(propertyId);
-      
-      // Call onSave callback if provided
-      if (onSave) {
-        onSave(data);
-      }
-    } catch (error) {
-      console.error('Error saving property:', error);
+    }
+  }, [initialData, propertyId, isLoading, sharedState, updateLocal]);
+  
+  // Handle form changes
+  const handleChange = async (data: any) => {
+    await updateLocal(data);
+    
+    if (onSave) {
+      onSave({
+        ...sharedState,
+        ...data
+      });
     }
   };
-
-  // Show loading state
-  if (propertyDoc.isLoading || !isInitialized) {
-    return <div className="p-4">Loading property data...</div>;
-  }
-
-  // Show error state
-  if (propertyDoc.error) {
+  
+  // Handle conflict resolution
+  const handleResolveConflict = async (mergedState: any) => {
+    await resolveConflict(mergedState);
+    
+    if (onSave) {
+      onSave(mergedState);
+    }
+  };
+  
+  // Handle sync
+  const handleSync = async () => {
+    await syncWithRemote();
+  };
+  
+  // If there's an error, display it
+  if (error) {
     return (
-      <div className="p-4 text-red-500">
-        Error loading property: {propertyDoc.error.message}
+      <div className="p-4 border rounded-lg bg-red-50 text-red-600">
+        <h3 className="font-bold mb-2">Error</h3>
+        <p>{error.message}</p>
       </div>
     );
   }
-
-  // Show conflict resolution UI if there's a conflict
-  if (propertyDoc.hasConflict && propertyDoc.remote) {
+  
+  // If we're loading, show a loading indicator
+  if (isLoading) {
     return (
-      <ConflictManager
-        localState={propertyDoc.local}
-        remoteState={propertyDoc.remote}
-        onResolve={(mergedState) => {
-          propertyDoc.resolveConflict(mergedState);
-        }}
-        onCancel={onCancel}
-      />
+      <div className="p-4 border rounded-lg bg-white shadow-sm">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
     );
   }
-
-  // Show standard property form
+  
+  // If there's a conflict, show the conflict manager
+  if (hasConflict && remoteState) {
+    return (
+      <div className="p-4 border rounded-lg bg-white shadow-sm">
+        <ConflictManager
+          localState={localState}
+          remoteState={remoteState}
+          onResolve={handleResolveConflict}
+          onCancel={() => {}}
+        />
+      </div>
+    );
+  }
+  
+  // Otherwise, show the form
   return (
     <PropertyForm
-      data={propertyDoc.shared}
-      onSubmit={handleSubmit}
-      onCancel={onCancel}
+      property={sharedState}
+      isLoading={isLoading}
       readOnly={readOnly}
-      syncStatus={propertyDoc.syncStatus}
+      syncStatus={syncStatus}
+      onChange={handleChange}
+      onSync={handleSync}
     />
   );
 };

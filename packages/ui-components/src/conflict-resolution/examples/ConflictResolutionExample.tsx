@@ -1,170 +1,125 @@
 /**
  * ConflictResolutionExample
  * 
- * An example component demonstrating how to use the conflict resolution UI.
+ * A component for demonstrating the conflict resolution UI.
  */
 
-import React, { useState, useEffect } from 'react';
-import { ConflictManager } from '../ConflictManager';
+import React, { useState } from 'react';
+
+// Import from packages
 import { PropertyDocState } from '@terrafusion/offline-sync/src/hooks/usePropertyDoc';
 import { LocalStorageProvider } from '@terrafusion/offline-sync/src/storage';
 import { CRDTDocumentManager, SyncStatus } from '@terrafusion/offline-sync/src/crdt-sync';
-import { ConflictResolutionManager, ResolutionStrategy } from '@terrafusion/offline-sync/src/conflict-resolution';
+import { 
+  ConflictResolutionManager, 
+  FieldResolution, 
+  ResolutionStrategy 
+} from '@terrafusion/offline-sync/src/conflict-resolution';
+
+// Import local components
+import { ConflictManager } from '../ConflictManager';
 
 /**
- * Example Property Document State
+ * Example property states
  */
 const exampleLocalState: PropertyDocState = {
   id: 'property-123',
-  address: '123 Main St, Local City',
-  owner: 'Local Owner',
+  address: '123 Main St',
+  owner: 'John Doe',
   value: 350000,
   lastInspection: '2025-03-15',
-  notes: 'Local notes about the property. This text was edited while offline.',
-  features: ['3 Bedrooms', '2 Bathrooms', 'Garage', 'Local Feature']
+  notes: 'Great property with recent renovations. Ready for inspection.',
+  features: ['3 bedrooms', '2 bathrooms', 'Garage', 'Garden']
 };
 
-/**
- * Example Remote Property Document State
- */
 const exampleRemoteState: PropertyDocState = {
   id: 'property-123',
-  address: '123 Main St, Server City',
-  owner: 'Remote Owner',
+  address: '123 Main Street',
+  owner: 'Jane Smith',
   value: 375000,
-  lastInspection: '2025-03-20',
-  notes: 'Remote notes about the property. This was updated on the server.',
-  features: ['3 Bedrooms', '2 Bathrooms', 'Garage', 'Remote Feature']
+  lastInspection: '2025-04-01',
+  notes: 'Property in excellent condition. New roof installed last year.',
+  features: ['3 bedrooms', '2 bathrooms', 'Garage', 'Pool']
 };
 
 /**
- * Conflict Resolution Example Component
+ * ConflictResolutionExample component
  */
 export const ConflictResolutionExample: React.FC = () => {
-  const [hasConflict, setHasConflict] = useState(true);
-  const [localState, setLocalState] = useState<PropertyDocState>(exampleLocalState);
-  const [remoteState, setRemoteState] = useState<PropertyDocState>(exampleRemoteState);
+  // Local state for the resolved property
   const [resolvedState, setResolvedState] = useState<PropertyDocState | null>(null);
-  const [strategyUsed, setStrategyUsed] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'conflict' | 'resolved'>('conflict');
   
-  // Reset the example
-  const handleReset = () => {
-    setHasConflict(true);
-    setResolvedState(null);
-    setStrategyUsed(null);
-  };
-  
-  // Handle conflict resolution
+  // Handle resolve
   const handleResolve = (mergedState: PropertyDocState) => {
     setResolvedState(mergedState);
-    setHasConflict(false);
-    setStrategyUsed('Manual Merge');
+    setViewMode('resolved');
   };
   
-  // Auto-resolve with a specific strategy
-  const autoResolve = (strategy: ResolutionStrategy) => {
-    let resolved: PropertyDocState;
-    
-    switch (strategy) {
-      case ResolutionStrategy.KEEP_LOCAL:
-        resolved = { ...localState };
-        setStrategyUsed('Keep Local');
-        break;
-      case ResolutionStrategy.ACCEPT_REMOTE:
-        resolved = { ...remoteState };
-        setStrategyUsed('Accept Remote');
-        break;
-      case ResolutionStrategy.FIELD_LEVEL:
-        // Simple field-level merge taking the most recent values
-        resolved = {
-          ...localState,
-          // Take some fields from remote to demonstrate a merge
-          value: remoteState.value,
-          lastInspection: remoteState.lastInspection,
-          features: [...new Set([...localState.features || [], ...remoteState.features || []])]
-        };
-        setStrategyUsed('Field-Level Merge');
-        break;
-      default:
-        resolved = { ...localState };
-        setStrategyUsed('Default Strategy');
-    }
-    
-    setResolvedState(resolved);
-    setHasConflict(false);
+  // Handle cancel
+  const handleCancel = () => {
+    // Just reset for the example
+    setViewMode('conflict');
+  };
+  
+  // Handle reset
+  const handleReset = () => {
+    setResolvedState(null);
+    setViewMode('conflict');
   };
   
   return (
-    <div className="p-6">
+    <div className="p-6 bg-white rounded-lg shadow-md">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-4">Conflict Resolution Demo</h2>
-        <p className="mb-4">
-          This example demonstrates how TerraFusion's conflict resolution UI works when
-          changes are made both locally and remotely to the same property.
+        <h1 className="text-2xl font-bold mb-2">Conflict Resolution Example</h1>
+        <p className="text-gray-600">
+          This example demonstrates the conflict resolution UI for property data synchronization.
         </p>
-        
-        <div className="flex flex-wrap gap-2 mb-4">
+      </div>
+      
+      {viewMode === 'resolved' && resolvedState ? (
+        <div className="space-y-6">
+          <div className="bg-green-100 p-4 rounded-md text-green-700 mb-4">
+            <h3 className="font-bold mb-2">Conflicts Resolved</h3>
+            <p>The conflicts have been successfully resolved with the following data:</p>
+          </div>
+          
+          <div className="border p-4 rounded-lg">
+            <h3 className="font-bold mb-2">Resolved Property Data</h3>
+            <pre className="bg-gray-100 p-4 rounded overflow-auto">{JSON.stringify(resolvedState, null, 2)}</pre>
+          </div>
+          
           <button
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             onClick={handleReset}
           >
-            Reset Example
+            Go Back to Conflict Example
           </button>
-          <button
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-            onClick={() => autoResolve(ResolutionStrategy.KEEP_LOCAL)}
-            disabled={!hasConflict}
-          >
-            Auto-Resolve: Keep Local
-          </button>
-          <button
-            className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-            onClick={() => autoResolve(ResolutionStrategy.ACCEPT_REMOTE)}
-            disabled={!hasConflict}
-          >
-            Auto-Resolve: Accept Remote
-          </button>
-          <button
-            className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
-            onClick={() => autoResolve(ResolutionStrategy.FIELD_LEVEL)}
-            disabled={!hasConflict}
-          >
-            Auto-Resolve: Field-Level Merge
-          </button>
-        </div>
-      </div>
-      
-      {hasConflict ? (
-        <div className="border rounded-lg overflow-hidden">
-          <div className="bg-orange-100 p-4 border-b">
-            <h3 className="text-lg font-semibold text-orange-800">Conflict Detected</h3>
-            <p className="text-orange-700">
-              Changes were made to this property both locally and on the server.
-              Please review the differences and resolve the conflict.
-            </p>
-          </div>
-          
-          <ConflictManager
-            localState={localState}
-            remoteState={remoteState}
-            onResolve={handleResolve}
-            onCancel={() => {}}
-          />
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <div className="bg-green-100 p-4 border-b">
-            <h3 className="text-lg font-semibold text-green-800">Conflict Resolved</h3>
-            <p className="text-green-700">
-              The conflict has been resolved using strategy: <strong>{strategyUsed}</strong>
-            </p>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="border p-4 rounded-lg">
+              <h3 className="font-bold mb-2">Local Changes</h3>
+              <pre className="bg-blue-50 p-4 rounded overflow-auto">{JSON.stringify(exampleLocalState, null, 2)}</pre>
+            </div>
+            
+            <div className="border p-4 rounded-lg">
+              <h3 className="font-bold mb-2">Remote Changes</h3>
+              <pre className="bg-purple-50 p-4 rounded overflow-auto">{JSON.stringify(exampleRemoteState, null, 2)}</pre>
+            </div>
           </div>
           
-          <div className="p-4">
-            <h4 className="font-semibold mb-2">Resolved Property Data:</h4>
-            <pre className="bg-gray-100 p-4 rounded overflow-auto text-sm">
-              {JSON.stringify(resolvedState, null, 2)}
-            </pre>
+          <div className="border p-4 rounded-lg">
+            <h3 className="font-bold mb-2">Conflict Resolution UI</h3>
+            <div className="mt-4">
+              <ConflictManager
+                localState={exampleLocalState}
+                remoteState={exampleRemoteState}
+                onResolve={handleResolve}
+                onCancel={handleCancel}
+              />
+            </div>
           </div>
         </div>
       )}
