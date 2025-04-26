@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { IStorage } from '../storage';
 import { WebVitalsAlertService } from '../services/web-vitals-alert-service';
+import { metricsService } from '../services/prometheus-metrics-service';
 import { 
   insertWebVitalsMetricsSchema, 
   insertWebVitalsReportsSchema 
@@ -265,6 +266,17 @@ export function registerWebVitalsRoutes(router: Router, storage: IStorage) {
     }
   });
   
+  // Expose Prometheus metrics endpoint
+  router.get('/metrics', async (_req, res) => {
+    try {
+      res.set('Content-Type', metricsService.getRegistry().contentType);
+      res.end(await metricsService.getRegistry().metrics());
+    } catch (error) {
+      console.error('Error generating metrics:', error);
+      res.status(500).send('Error generating metrics');
+    }
+  });
+  
   // Handle batch web vitals reporting
   router.post('/api/web-vitals/batch', async (req, res) => {
     try {
@@ -298,6 +310,44 @@ export function registerWebVitalsRoutes(router: Router, storage: IStorage) {
           const validatedMetric = insertWebVitalsMetricsSchema.parse(metricWithReportId);
           await storage.saveWebVitalsMetric(validatedMetric);
           savedMetrics.push(validatedMetric);
+          
+          // Record the metric in Prometheus for monitoring
+          const labels = {
+            route: metricData.url ? new URL(metricData.url).pathname : '/',
+            deviceType: metricData.deviceType || payload.deviceInfo?.deviceType || 'unknown',
+            connectionType: metricData.connectionType || (payload.deviceInfo as any)?.connectionType || 'unknown',
+            buildVersion: (payload.tags as any)?.buildVersion || 'unknown',
+            environment: (payload.tags as any)?.environment || 'development'
+          };
+          
+          // Record the metric in the appropriate histogram
+          metricsService.recordWebVital(
+            metricData.name,
+            metricData.value,
+            labels
+          );
+          
+          // Check if this metric breaches any budgets
+          // This is a simplified check; in a real implementation,
+          // you would use the WebVitalsAlertService to handle this
+          const thresholds = {
+            TTFB: 500,   // Good: < 500ms
+            FCP: 1800,   // Good: < 1.8s
+            LCP: 2500,   // Good: < 2.5s
+            FID: 100,    // Good: < 100ms
+            CLS: 0.1,    // Good: < 0.1
+            INP: 200     // Good: < 200ms
+          };
+          
+          const threshold = thresholds[metricData.name as keyof typeof thresholds];
+          if (threshold && metricData.value > threshold) {
+            metricsService.recordBudgetBreach(
+              metricData.name,
+              metricData.value,
+              threshold,
+              labels
+            );
+          }
         } catch (err) {
           console.error('Error processing metric:', err);
           // Continue with other metrics even if one fails
@@ -335,6 +385,8 @@ export function registerWebVitalsRoutes(router: Router, storage: IStorage) {
       });
     } catch (error) {
       console.error('Error saving web vitals batch:', error);
+      // Record the HTTP error in Prometheus
+      metricsService.recordHttpError(500, 'POST', '/api/web-vitals/batch');
       return res.status(500).json({ error: 'Failed to save metrics batch' });
     }
   });
