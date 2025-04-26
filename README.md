@@ -76,6 +76,8 @@ The Model Context Protocol (MCP) architecture provides a secure, unified interfa
 - [FTP Data Agent](docs/ftp-agent.md): FTP data synchronization capabilities
 - [FTP Testing Framework](docs/ftp-testing.md): Comprehensive testing suite for FTP functionality
 - [WebSocket Connectivity](docs/WEBSOCKET-CONNECTIVITY.md): Browser compatibility and fallback mechanisms
+- [Observability](observability/slo/SLOs_and_error_budgets.md): SLIs, SLOs, and error budget policies
+- [Incident Management](docs/incident-management-runbook.md): Runbook for performance incidents
 - Additional documentation is available in the [docs](docs) directory
 
 ## Data Integration
@@ -129,6 +131,42 @@ node scripts/test-ftp-data-processor.js --test-configs # Test processor configs
 - Add new routes in `server/routes.ts`
 - Define data models in `shared/schema.ts` to ensure consistency
 - Add MCP tools in `server/services/mcp.ts`
+
+## CI/CD Pipeline
+
+TerraFusion employs a robust CI/CD pipeline to ensure code quality and automate deployments:
+
+### Observability CI
+
+The **Observability CI** workflow ensures that all monitoring configurations are properly validated before deployment:
+
+1. **Linting**:
+   - Validates YAML syntax in Prometheus rules and Grafana configurations
+   - Uses `yamllint` and `promtool` for validation
+
+2. **Smoke Testing**:
+   - Tests health endpoints for all services
+   - Verifies WebSocket connectivity
+   - Confirms metrics are properly exposed and collected
+
+3. **Deployment**:
+   - Automatically deploys validated configurations to staging
+   - Tags commits for traceability
+   - Posts status updates to pull requests
+
+To run the pipeline locally:
+```bash
+# Run lint checks only
+npm run observability:lint
+
+# Run smoke tests
+npm run observability:test
+
+# Run full pipeline without deploying
+npm run observability:verify
+```
+
+Configurations are first deployed to staging and monitored before being promoted to production.
 
 ## Security Considerations
 

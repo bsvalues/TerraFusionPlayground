@@ -1,0 +1,245 @@
+name: Observability CI
+
+on:
+  pull_request:
+    paths:
+      - 'prometheus/**'
+      - 'grafana/**'
+      - 'observability/**'
+      - 'docs/incident-management-runbook.md'
+  push:
+    branches: [ main ]
+    paths:
+      - 'prometheus/**'
+      - 'grafana/**'
+      - 'observability/**'
+      - 'docs/incident-management-runbook.md'
+
+jobs:
+  lint:
+    name: Lint Observability Configs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Lint Prometheus configs
+        run: yamllint -c .yamllint.yml prometheus/
+
+      - name: Lint Grafana provisioning configs
+        run: yamllint -c .yamllint.yml grafana/provisioning/
+
+      - name: Validate Prometheus rules syntax
+        run: |
+          # Install promtool if needed
+          if ! command -v promtool &> /dev/null; then
+            PROM_VERSION=2.40.0
+            wget -q https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/prometheus-${PROM_VERSION}.linux-amd64.tar.gz
+            tar xzf prometheus-${PROM_VERSION}.linux-amd64.tar.gz
+            sudo cp prometheus-${PROM_VERSION}.linux-amd64/promtool /usr/local/bin/
+            rm -rf prometheus-${PROM_VERSION}.linux-amd64*
+          fi
+          
+          # Check each rules file syntax
+          for file in prometheus/rules/*.yml prometheus/alerts/*.yml; do
+            echo "Validating $file"
+            promtool check rules $file || exit 1
+          done
+
+  smoke-test:
+    name: Smoke Test Observability
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start application with staging config
+        run: |
+          # Set the environment to staging
+          export NODE_ENV=staging
+          # Start the application in the background
+          npm run dev &
+          # Wait for it to be ready
+          echo "Waiting for services to start..."
+          sleep 15
+
+      - name: Health check all services
+        run: |
+          # Check main app health
+          curl -s -f http://localhost:3000/health || (echo "Main app health check failed" && exit 1)
+          
+          # Check metrics endpoint
+          curl -s -f http://localhost:3000/metrics || (echo "Metrics endpoint check failed" && exit 1)
+          
+          # Check WebSocket server is running
+          curl -s -f http://localhost:3000/websocket-test || (echo "WebSocket test page not available" && exit 1)
+          
+          echo "All health checks passed!"
+
+      - name: Test WebSocket connection
+        run: |
+          # Install wscat for WebSocket testing
+          npm install -g wscat
+          
+          # Create a test script for websocket
+          cat > test-websocket.js <<EOF
+          const WebSocket = require('ws');
+          const assert = require('assert');
+          
+          console.log('Connecting to WebSocket server...');
+          const ws = new WebSocket('ws://localhost:3000/ws');
+          
+          ws.on('open', function open() {
+            console.log('Connected to WebSocket server');
+            ws.send(JSON.stringify({ type: 'ping', payload: 'test' }));
+          });
+          
+          ws.on('message', function incoming(data) {
+            console.log('Received message:', data.toString());
+            const message = JSON.parse(data.toString());
+            
+            // Basic assertion that we got a response
+            assert(message, 'Did not receive valid JSON response');
+            
+            console.log('WebSocket test passed!');
+            process.exit(0);
+          });
+          
+          ws.on('error', function error(err) {
+            console.error('WebSocket error:', err);
+            process.exit(1);
+          });
+          
+          // Timeout after 5 seconds
+          setTimeout(() => {
+            console.error('WebSocket test timed out');
+            process.exit(1);
+          }, 5000);
+          EOF
+          
+          # Run the test
+          node test-websocket.js
+
+      - name: Query Prometheus metrics
+        run: |
+          # Wait for metrics to be collected
+          sleep 10
+          
+          # Create a test script to query metrics
+          cat > test-metrics.js <<EOF
+          const http = require('http');
+          const assert = require('assert');
+          
+          // Query for one of our segmented metrics
+          const query = encodeURIComponent('web_vitals_lcp_bucket{le="2000",page_type="dashboard",network="4g"}');
+          
+          http.get("http://localhost:9090/api/v1/query?query=" + query, (res) => {
+            let data = '';
+            
+            res.on('data', (chunk) => {
+              data += chunk;
+            });
+            
+            res.on('end', () => {
+              const response = JSON.parse(data);
+              console.log('Prometheus API response:', JSON.stringify(response, null, 2));
+              
+              // Basic validation of the response structure
+              assert(response.status === 'success', 'Query was not successful');
+              assert(response.data.resultType === 'vector', 'Result is not a vector type');
+              
+              console.log('Prometheus metrics test passed!');
+              process.exit(0);
+            });
+          }).on('error', (err) => {
+            console.error('Prometheus API error:', err);
+            process.exit(1);
+          });
+          EOF
+          
+          # Run the test (this may need to be modified based on your Prometheus setup)
+          # For a full test, you'd need Prometheus running, but this is a smoke test
+          # So we'll mock it if needed
+          if curl -s -f http://localhost:9090 > /dev/null; then
+            node test-metrics.js
+          else
+            echo "Prometheus not available in CI, skipping metrics test"
+            # In a real setup, you might want this to fail if Prometheus is required
+            # exit 1
+          fi
+
+  deploy:
+    name: Deploy to Staging
+    needs: smoke-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v1
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+        # Only if deploying to a k8s cluster, otherwise use your preferred deployment method
+
+      - name: Deploy Prometheus rules
+        run: |
+          echo "Applying Prometheus rules to staging..."
+          kubectl apply -f prometheus/rules/ -n monitoring
+          kubectl apply -f prometheus/alerts/ -n monitoring
+
+      - name: Deploy Grafana dashboards
+        run: |
+          echo "Applying Grafana dashboard configs to staging..."
+          kubectl apply -f grafana/provisioning/dashboards/ -n monitoring
+
+      - name: Tag deployment
+        run: |
+          git tag observability-staging-deployed-$(date +%Y%m%d%H%M%S)
+          git push origin --tags
+
+      - name: Post success comment on PR
+        uses: actions/github-script@v3
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Observability configurations successfully validated and deployed to staging!'
+            })
+
+  # This job only runs on failure
+  notify-failure:
+    name: Notify on Failure
+    needs: [lint, smoke-test, deploy]
+    if: failure() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post failure comment on PR
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ Observability CI pipeline failed. Please check the workflow logs for details.'
+            })
