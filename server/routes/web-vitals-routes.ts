@@ -29,16 +29,34 @@ const router = Router();
  */
 router.post('/web-vitals', async (req: Request, res: Response) => {
   try {
+    console.log('Received web vitals metric:', JSON.stringify(req.body, null, 2));
+    
+    // Transform and validate using the schema
     const data = insertWebVitalsMetricsSchema.parse({
-      ...req.body,
       id: randomUUID(),
+      name: req.body.name,
+      value: Number(req.body.value),
+      delta: req.body.delta ? Number(req.body.delta) : 0,
+      rating: req.body.rating,
+      navigationType: req.body.navigationType,
+      url: req.body.url,
+      userAgent: req.body.userAgent,
+      deviceType: req.body.deviceType,
+      connectionType: req.body.connectionType,
+      effectiveConnectionType: req.body.effectiveConnectionType,
+      userId: req.body.userId,
+      sessionId: req.body.sessionId,
+      tags: req.body.tags || null
     });
     
+    console.log('Inserting web vitals metric:', JSON.stringify(data, null, 2));
     await storage.db.insert(webVitalsMetrics).values(data);
     
     res.status(201).json({ success: true, id: data.id });
   } catch (error) {
     console.error('Error storing web vitals metric:', error);
+    console.error('Error details:', error instanceof Error ? error.stack : String(error));
+    
     res.status(500).json({ 
       success: false, 
       error: 'Failed to store web vitals metric',
@@ -55,6 +73,11 @@ router.post('/web-vitals/batch', async (req: Request, res: Response) => {
   try {
     const { metrics, deviceInfo, percentiles, tags } = req.body;
     
+    console.log('Received web vitals batch request:', JSON.stringify({
+      metricsCount: metrics?.length || 0,
+      firstMetric: metrics?.[0] || null 
+    }, null, 2));
+    
     if (!metrics || !Array.isArray(metrics) || metrics.length === 0) {
       return res.status(400).json({ 
         success: false, 
@@ -62,48 +85,63 @@ router.post('/web-vitals/batch', async (req: Request, res: Response) => {
       });
     }
     
-    // Create a report record
+    // Create a report record using the schema validation
     const reportId = randomUUID();
-    const report = {
+    const reportData = insertWebVitalsReportsSchema.parse({
       id: reportId,
       url: metrics[0]?.url || '',
       metrics: metrics,
-      device_info: deviceInfo, // Convert camelCase to snake_case for DB
+      deviceInfo, // Schema will convert this to device_info
       percentiles,
       tags
-    };
+    });
     
-    await storage.db.insert(webVitalsReports).values(report);
+    console.log('Inserting web vitals report:', JSON.stringify(reportData, null, 2));
+    await storage.db.insert(webVitalsReports).values(reportData);
     
-    // Insert individual metrics with field names matching schema
-    const metricsToInsert = metrics.map((metric: any) => ({
-      id: randomUUID(),
-      name: metric.name,
-      value: metric.value,
-      delta: metric.delta || 0,
-      rating: metric.rating,
-      navigation_type: metric.navigationType, // Convert camelCase to snake_case for DB
-      url: metric.url,
-      user_agent: metric.userAgent, // Convert camelCase to snake_case for DB
-      device_type: metric.deviceType, // Convert camelCase to snake_case for DB
-      connection_type: metric.connectionType, // Convert camelCase to snake_case for DB
-      effective_connection_type: metric.effectiveConnectionType, // Convert camelCase to snake_case for DB
-      user_id: metric.userId, // Convert camelCase to snake_case for DB
-      session_id: metric.sessionId, // Convert camelCase to snake_case for DB
-      tags: metric.tags
+    // Insert individual metrics with proper schema validation
+    const metricsToInsert = await Promise.all(metrics.map(async (metric: any) => {
+      try {
+        // Use schema to validate and transform data
+        return insertWebVitalsMetricsSchema.parse({
+          id: randomUUID(),
+          name: metric.name,
+          value: metric.value,
+          delta: metric.delta || 0,
+          rating: metric.rating,
+          navigationType: metric.navigationType,
+          url: metric.url,
+          userAgent: metric.userAgent,
+          deviceType: metric.deviceType,
+          connectionType: metric.connectionType,
+          effectiveConnectionType: metric.effectiveConnectionType,
+          userId: metric.userId,
+          sessionId: metric.sessionId,
+          tags: metric.tags
+        });
+      } catch (error) {
+        console.error('Error validating metric:', metric, error);
+        return null;
+      }
     }));
     
-    if (metricsToInsert.length > 0) {
-      await storage.db.insert(webVitalsMetrics).values(metricsToInsert);
+    // Filter out any invalid metrics
+    const validMetrics = metricsToInsert.filter(metric => metric !== null);
+    
+    if (validMetrics.length > 0) {
+      console.log(`Inserting ${validMetrics.length} web vitals metrics`);
+      await storage.db.insert(webVitalsMetrics).values(validMetrics);
     }
     
     res.status(201).json({ 
       success: true, 
       reportId,
-      metricsCount: metricsToInsert.length 
+      metricsCount: validMetrics.length 
     });
   } catch (error) {
     console.error('Error storing web vitals batch:', error);
+    console.error('Error details:', error instanceof Error ? error.stack : String(error));
+    
     res.status(500).json({ 
       success: false, 
       error: 'Failed to store web vitals batch',
