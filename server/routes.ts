@@ -298,6 +298,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Web Vitals routes
   app.use('/api/web-vitals', registerWebVitalsRoutes(express.Router(), storage));
   
+  // Prometheus metrics endpoint (for monitoring systems)
+  app.get('/metrics', async (_req, res) => {
+    try {
+      res.set('Content-Type', metricsService.getRegistry().contentType);
+      res.end(await metricsService.getRegistry().metrics());
+    } catch (error) {
+      console.error('Error generating Prometheus metrics:', error);
+      res.status(500).send('Error generating metrics');
+    }
+  });
+  
   // Register new Property Statistics, Assessment, and Change Tracking API routes
   app.use('/api', createPropertyApiRoutes(storage));
   app.use('/api', createAssessmentApiRoutes(storage));
