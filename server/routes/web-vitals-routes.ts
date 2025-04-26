@@ -18,7 +18,12 @@ import {
   insertWebVitalsReportsSchema,
   insertWebVitalsAggregatesSchema,
   insertWebVitalsBudgetsSchema,
-  insertWebVitalsAlertsSchema
+  insertWebVitalsAlertsSchema,
+  InsertWebVitalsMetric,
+  InsertWebVitalsReport,
+  InsertWebVitalsAggregate,
+  InsertWebVitalsBudget,
+  InsertWebVitalsAlert
 } from '../../shared/web-vitals-schema';
 
 const router = Router();

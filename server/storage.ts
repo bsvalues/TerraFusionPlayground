@@ -60,6 +60,7 @@ import {
   schemaMappings, SchemaMapping, InsertSchemaMapping,
   conversionLogs, ConversionLog, InsertConversionLog,
   compatibilityLayers, CompatibilityLayer, InsertCompatibilityLayer,
+  // Team collaboration
   // TaxI_AI Development Platform enums
   ProjectType, ProjectLanguage, ProjectStatus, FileType, PreviewStatus,
   // Assessment Model Workbench enums
@@ -105,6 +106,9 @@ import { RegulatoryFramework } from "./services/risk-assessment-engine";
 import pg from 'pg';
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq, desc } from "drizzle-orm";
+import { 
+  webVitalsMetrics, webVitalsReports, webVitalsAggregates, webVitalsBudgets, webVitalsAlerts 
+} from "../shared/web-vitals-schema";
 
 import {
   getAllPacsModules as fetchAllPacsModules,
@@ -6104,7 +6108,9 @@ export class PgStorage implements IStorage {
       teamMembers, teamTasks, taskComments, teamCollaborationSessions, teamFeedbacks, teamKnowledgeBaseItems,
       sharedWorkflows, sharedWorkflowCollaborators, sharedWorkflowActivities, workflowSessions,
       // Development Tools
-      codeSnippets, dataVisualizations, uiComponentTemplates
+      codeSnippets, dataVisualizations, uiComponentTemplates,
+      // Web Vitals Performance Monitoring
+      webVitalsMetrics, webVitalsReports, webVitalsAggregates, webVitalsBudgets, webVitalsAlerts
     }});
     
     // Initialize in-memory maps for PACS methods
