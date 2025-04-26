@@ -1,38 +1,61 @@
+/**
+ * Global setup for E2E tests
+ * 
+ * This file runs before tests to set up the environment
+ */
+
 import { chromium, FullConfig } from '@playwright/test';
 
-/**
- * Global setup to be run before starting tests
- * - Creates global state like auth sessions
- * - Sets up shared environment
- */
 async function globalSetup(config: FullConfig) {
-  // Define base URL for test environment
   const { baseURL } = config.projects[0].use;
   
-  // Create browser and context
+  // Create a browser and context for setup tasks
   const browser = await chromium.launch();
-  const page = await browser.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
   
-  // Setup auth state if needed
-  if (process.env.E2E_AUTH === 'true') {
-    console.log('Setting up auth state for tests...');
+  // Navigate to the application
+  console.log(`Setting up test environment with baseURL: ${baseURL}`);
+  await page.goto(baseURL as string);
+  
+  // Add a test property for offline sync tests if needed
+  // This ensures we have consistent test data
+  try {
+    // Check if we're logged in, if not, log in
+    if (await page.getByRole('button', { name: 'Login' }).isVisible()) {
+      await page.getByRole('button', { name: 'Login' }).click();
+      await page.getByLabel('Username').fill('testuser');
+      await page.getByLabel('Password').fill('password123');
+      await page.getByRole('button', { name: 'Submit' }).click();
+      
+      // Wait for login to complete
+      await page.waitForSelector('.user-profile', { timeout: 5000 });
+    }
     
-    // Navigate to login page
-    await page.goto(`${baseURL}/login`);
+    // Navigate to create property page
+    await page.goto(`${baseURL}/properties/new`);
     
-    // Login with test credentials
-    await page.fill('input[name="email"]', process.env.E2E_TEST_EMAIL || 'test@example.com');
-    await page.fill('input[name="password"]', process.env.E2E_TEST_PASSWORD || 'test-password');
-    await page.click('button[type="submit"]');
+    // Create a test property for offline sync tests
+    await page.getByLabel('Property ID').fill('test-property-123');
+    await page.getByLabel('Address').fill('123 Test St');
+    await page.getByLabel('Owner').fill('John Doe');
+    await page.getByLabel('Value').fill('250000');
+    await page.getByLabel('Last Inspection').fill('2025-01-15');
+    await page.getByLabel('Features').fill('3 bedrooms, 2 baths, garage');
+    await page.getByLabel('Notes').fill('Test property');
     
-    // Wait for login to complete
-    await page.waitForNavigation();
+    // Save the property
+    await page.getByRole('button', { name: 'Save Property' }).click();
     
-    // Save authentication state
-    await page.context().storageState({ path: './tests/e2e/auth-state.json' });
+    // Wait for save confirmation
+    await page.waitForSelector('.save-confirmation', { timeout: 5000 });
+    
+    console.log('Successfully created test property for offline sync tests');
+  } catch (error) {
+    console.error('Error setting up test property:', error);
   }
   
-  // Close browser
+  // Close the browser
   await browser.close();
 }
 
