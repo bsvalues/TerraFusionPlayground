@@ -27,13 +27,30 @@ export default function WebVitalsTestPage() {
   
   // Query to fetch web vitals data
   const { data: webVitalsData, isLoading, error, refetch } = useQuery({
-    queryKey: ['/api/analytics/web-vitals'],
+    queryKey: ['/api/web-vitals/metrics'],
     refetchOnWindowFocus: false,
   });
   
   // Query to fetch web vitals alerts
   const { data: alertsData, isLoading: alertsLoading } = useQuery({
-    queryKey: ['/api/analytics/web-vitals/alerts'],
+    queryKey: ['/api/web-vitals/alerts'],
+    refetchOnWindowFocus: false,
+  });
+  
+  // Query to fetch web vitals summary
+  const { data: summaryData, isLoading: summaryLoading } = useQuery({
+    queryKey: ['/api/web-vitals/summary'],
+    refetchOnWindowFocus: false,
+  });
+  
+  // Query to fetch web vitals trends
+  const [selectedMetric, setSelectedMetric] = useState('LCP');
+  const [timeRange, setTimeRange] = useState('7d');
+  
+  const { data: trendsData, isLoading: trendsLoading } = useQuery({
+    queryKey: ['/api/web-vitals/trends', { metricName: selectedMetric, timeRange }],
+    queryFn: () => 
+      apiRequest(`/api/web-vitals/trends?metricName=${selectedMetric}&timeRange=${timeRange}`),
     refetchOnWindowFocus: false,
   });
   
