@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load and evaluate rules in this file every 'evaluation_interval' seconds
+rule_files:
+  - 'alerts/*.rules.yml'
+
+# A scrape configuration containing exactly one endpoint to scrape:
+scrape_configs:
+  - job_name: 'terrafusion'
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['terrafusion:3000']
