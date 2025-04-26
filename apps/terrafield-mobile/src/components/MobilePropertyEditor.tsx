@@ -2,13 +2,15 @@
  * Mobile Property Editor
  * 
  * Component for editing property data with offline sync and conflict resolution on mobile
+ * Includes performance monitoring for critical operations
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { usePropertyDoc } from '@terrafusion/offline-sync/src/hooks';
 import { ConflictManager } from '@terrafusion/ui-components/src/conflict-resolution';
 import { MobilePropertyForm } from './MobilePropertyForm';
+import { PerformanceProfiler, useRenderProfiling } from '../utils/performance-monitoring';
 
 /**
  * Mobile property editor props interface

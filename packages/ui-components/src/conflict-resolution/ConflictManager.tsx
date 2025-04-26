@@ -2,14 +2,16 @@
  * Conflict Manager Component
  * 
  * Component for visualizing and resolving conflicts between local and remote data.
+ * Includes performance monitoring for critical operations.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   ResolutionStrategy, 
   FieldDiff, 
   Conflict 
 } from '@terrafusion/offline-sync/src/conflict-resolution';
+import { PerformanceProfiler } from 'client/src/utils/performance-monitoring';
 
 /**
  * Conflict manager props interface
@@ -51,6 +53,9 @@ const ConflictManager: React.FC<ConflictManagerProps> = ({
   userId,
   onResolve
 }) => {
+  // Start performance timing
+  const startTime = useRef(performance.now());
+  
   // Active tab
   const [activeTab, setActiveTab] = useState<'differences' | 'local' | 'remote'>('differences');
   
@@ -60,13 +65,18 @@ const ConflictManager: React.FC<ConflictManagerProps> = ({
   // Custom data
   const [customData, setCustomData] = useState<any>(null);
   
+  // Performance metrics
+  const [diffGenerationTime, setDiffGenerationTime] = useState<number | null>(null);
+  
   // Selected resolution strategy
   const [selectedStrategy, setSelectedStrategy] = useState<ResolutionStrategy>(
     ResolutionStrategy.MERGE_FIELDS
   );
   
-  // Create field diffs
-  useEffect(() => {
+  // Compute field diffs - memoized for performance
+  const computeFieldDiffs = useCallback(() => {
+    const diffStart = performance.now();
+    
     // Get all fields from both objects
     const allFields = new Set([
       ...Object.keys(local),
@@ -96,14 +106,31 @@ const ConflictManager: React.FC<ConflictManagerProps> = ({
       }
     }
     
+    const diffEnd = performance.now();
+    setDiffGenerationTime(diffEnd - diffStart);
+    
+    return diffs;
+  }, [local, remote]);
+  
+  // Create field diffs
+  useEffect(() => {
+    // Compute diffs
+    const diffs = computeFieldDiffs();
     setFieldDiffs(diffs);
     
     // Initialize custom data
     setCustomData({ ...local });
-  }, [local, remote]);
+    
+    // Log performance
+    const totalTime = performance.now() - startTime.current;
+    console.log(`[Performance] ConflictManager for ${conflictId} initialized in ${totalTime.toFixed(2)}ms`);
+    console.log(`[Performance] Diff generation took ${diffGenerationTime ? diffGenerationTime.toFixed(2) : 'N/A'}ms for ${diffs.length} differences`);
+  }, [local, remote, conflictId, computeFieldDiffs, diffGenerationTime]);
   
-  // Update field selection
-  const handleFieldSelection = (field: string, value: 'local' | 'remote') => {
+  // Update field selection - memoized
+  const handleFieldSelection = useCallback((field: string, value: 'local' | 'remote') => {
+    const selectionStart = performance.now();
+    
     setFieldDiffs(prev => 
       prev.map(diff => 
         diff.field === field
@@ -111,18 +138,22 @@ const ConflictManager: React.FC<ConflictManagerProps> = ({
           : diff
       )
     );
-  };
+    
+    const selectionEnd = performance.now();
+    console.log(`[Performance] Field selection for ${field} took ${(selectionEnd - selectionStart).toFixed(2)}ms`);
+  }, []);
   
-  // Update custom data
-  const handleCustomDataChange = (field: string, value: any) => {
+  // Update custom data - memoized
+  const handleCustomDataChange = useCallback((field: string, value: any) => {
     setCustomData(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
   
-  // Resolve conflict
-  const handleResolve = () => {
+  // Resolve conflict - memoized
+  const handleResolve = useCallback(() => {
+    const resolveStart = performance.now();
     let resolvedData: any;
     
     switch (selectedStrategy) {
@@ -155,12 +186,15 @@ const ConflictManager: React.FC<ConflictManagerProps> = ({
         resolvedData = { ...local };
     }
     
+    const resolveEnd = performance.now();
+    console.log(`[Performance] Conflict resolution took ${(resolveEnd - resolveStart).toFixed(2)}ms`);
+    
     // Call onResolve callback
     onResolve(resolvedData);
-  };
+  }, [local, remote, customData, selectedStrategy, fieldDiffs, onResolve]);
   
-  // Format value for display
-  const formatValue = (value: any): string => {
+  // Format value for display - memoized
+  const formatValue = useCallback((value: any): string => {
     if (value === null || value === undefined) {
       return 'null';
     }
@@ -178,7 +212,7 @@ const ConflictManager: React.FC<ConflictManagerProps> = ({
     }
     
     return String(value);
-  };
+  }, []);
   
   return (
     <div className="space-y-4">
@@ -347,4 +381,11 @@ const ConflictManager: React.FC<ConflictManagerProps> = ({
   );
 };
 
-export default ConflictManager;
+// Wrap with performance profiler
+const MonitoredConflictManager: React.FC<ConflictManagerProps> = (props) => (
+  <PerformanceProfiler id={`ConflictManager-${props.conflictId}`} log={true}>
+    <ConflictManager {...props} />
+  </PerformanceProfiler>
+);
+
+export default MonitoredConflictManager;
