@@ -13,6 +13,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
     "@babel/helpers": "^7.26.10",
+    "@docusaurus/core": "^3.7.0",
+    "@docusaurus/preset-classic": "^3.7.0",
     "@google-cloud/speech": "^7.0.1",
     "@hookform/resolvers": "^3.9.1",
     "@inquirer/prompts": "^7.4.1",
