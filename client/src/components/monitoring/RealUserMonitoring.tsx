@@ -273,7 +273,14 @@ export function RealUserMonitoring({
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        return response.json();
+        // Check content type to make sure we're getting JSON back
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          return response.json();
+        } else {
+          // Just return success without parsing if it's not JSON
+          return { success: true };
+        }
       })
       .then(() => {
         // Success! Clear any tracking for this batch
@@ -534,7 +541,16 @@ export function RealUserMonitoring({
         
         // Use sendBeacon for more reliable delivery during page unload
         const blob = new Blob([JSON.stringify(reportPayload)], { type: 'application/json' });
-        navigator.sendBeacon(reportUrl, blob);
+        try {
+          navigator.sendBeacon(reportUrl, blob);
+          if (debug) {
+            console.log('Successfully sent metrics using sendBeacon');
+          }
+        } catch (error) {
+          if (debug) {
+            console.error('Error sending metrics with sendBeacon:', error);
+          }
+        }
       } else {
         // Fall back to normal send if sendBeacon is not available
         sendBatchedReport();
