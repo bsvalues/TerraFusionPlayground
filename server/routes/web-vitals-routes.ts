@@ -266,6 +266,32 @@ export function registerWebVitalsRoutes(router: Router, storage: IStorage) {
     }
   });
   
+  // Endpoint for custom metrics (like WebSocket fallback)
+  router.post('/api/web-vitals/custom-event', async (req, res) => {
+    try {
+      const { metric, labels = {} } = req.body;
+      
+      if (!metric) {
+        return res.status(400).json({ error: 'Metric name is required' });
+      }
+      
+      // Record the custom metric using the metrics service
+      metricsService.incrementCounter(metric, labels);
+      
+      // Log the event for debugging purposes
+      console.log(`Custom metric recorded: ${metric}`, labels);
+      
+      return res.status(200).json({
+        success: true,
+        metric,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error recording custom metric:', error);
+      return res.status(500).json({ error: 'Failed to record custom metric' });
+    }
+  });
+  
   // Expose Prometheus metrics endpoint
   router.get('/metrics', async (_req, res) => {
     try {

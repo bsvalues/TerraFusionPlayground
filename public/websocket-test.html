@@ -465,17 +465,39 @@
             };
             log(`Sending (fallback): ${JSON.stringify(jsonMessage)}`);
             
-            // In a real application, you would make an HTTP POST request here
-            // For this demo, simulate a successful send
-            setTimeout(() => {
+            // Make an HTTP POST request to send messages when using SSE fallback
+            fetch('/api/ws-fallback/send', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                message: jsonMessage,
+                clientId: clientId // Use the clientId from the SSE connection
+              })
+            })
+            .then(response => {
+              if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+              }
+              return response.json();
+            })
+            .then(data => {
+              log(`Message sent via HTTP fallback: ${JSON.stringify(data, null, 2)}`);
+            })
+            .catch(error => {
+              log(`Error sending message via HTTP fallback: ${error.message}`, true);
+              
+              // Simulate a response for testing when the endpoint isn't available yet
               const response = {
                 type: 'echo',
                 originalMessage: jsonMessage,
                 timestamp: new Date().toISOString(),
-                via: 'fallback'
+                via: 'fallback',
+                note: 'Simulated response (endpoint not available)'
               };
-              log(`Received (fallback): ${JSON.stringify(response, null, 2)}`);
-            }, 500);
+              log(`Received (simulated fallback): ${JSON.stringify(response, null, 2)}`);
+            });
           } catch (error) {
             log(`Error sending fallback message: ${error.message}`, true);
           }

@@ -2928,6 +2928,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.error('[WebSocket Server Error]', error);
   });
   
+  // HTTP fallback endpoint for sending messages when WebSocket is not available
+  app.post('/api/ws-fallback/send', (req, res) => {
+    try {
+      const { message, clientId } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ error: 'Message is required' });
+      }
+      
+      // Log the message
+      console.log(`[HTTP Fallback] Message received from client ${clientId}:`, message);
+      
+      // Record a metric for the HTTP fallback usage
+      metricsService.incrementCounter('websocket_fallback_total', {
+        reason: 'message_sent_via_http',
+        client_id: clientId || 'unknown',
+        url: req.originalUrl || req.url,
+        route: '/api/ws-fallback/send'
+      });
+      
+      // Echo back the message with a timestamp
+      const response = {
+        type: 'echo',
+        originalMessage: message,
+        timestamp: new Date().toISOString(),
+        via: 'http_fallback',
+        clientId
+      };
+      
+      return res.status(200).json(response);
+    } catch (error) {
+      console.error('[HTTP Fallback] Error processing message:', error);
+      return res.status(500).json({ 
+        error: 'Failed to process message',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+  
+  // Server-Sent Events (SSE) endpoint for fallback
+  app.get('/api/events', (req, res) => {
+    const clientId = req.query.clientId || `client_${Date.now()}`;
+    
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    
+    // Record metrics about using the fallback
+    metricsService.incrementCounter('websocket_fallback_total', {
+      reason: 'sse_connected',
+      client_id: clientId as string,
+      url: req.originalUrl || req.url,
+      route: '/api/events'
+    });
+    
+    console.log(`[SSE] Client connected: ${clientId}`);
+    
+    // Send an initial connection message
+    res.write(`data: ${JSON.stringify({
+      type: 'connected',
+      message: 'SSE connection established successfully',
+      clientId,
+      timestamp: new Date().toISOString()
+    })}\n\n`);
+    
+    // Set up a heartbeat to keep the connection alive
+    const heartbeatInterval = setInterval(() => {
+      res.write(`data: ${JSON.stringify({
+        type: 'heartbeat',
+        timestamp: new Date().toISOString()
+      })}\n\n`);
+    }, 30000); // Every 30 seconds
+    
+    // Clean up when the client disconnects
+    req.on('close', () => {
+      console.log(`[SSE] Client disconnected: ${clientId}`);
+      clearInterval(heartbeatInterval);
+      
+      // Record metrics about disconnection
+      metricsService.incrementCounter('websocket_fallback_total', {
+        reason: 'sse_disconnected',
+        client_id: clientId as string,
+        url: req.originalUrl || req.url,
+        route: '/api/events'
+      });
+    });
+  });
+  
   // Set up WebSocket server events
   wss.on('connection', (ws, req) => {
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;

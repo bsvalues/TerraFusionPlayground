@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSE Fallback Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1 {
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 0.5rem;
+      color: #1e3a8a;
+    }
+    .card {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      margin: 1rem 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    button:disabled {
+      background-color: #94a3b8;
+      cursor: not-allowed;
+    }
+    button.secondary {
+      background-color: #64748b;
+    }
+    button.secondary:hover {
+      background-color: #475569;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+    }
+    .status-connected .status-indicator {
+      background-color: #22c55e;
+    }
+    .status-disconnected .status-indicator {
+      background-color: #ef4444;
+    }
+    .status-connecting .status-indicator {
+      background-color: #f59e0b;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+    .logs {
+      background-color: #0f172a;
+      color: #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.875rem;
+      height: 300px;
+      overflow-y: auto;
+    }
+    .logs .error {
+      color: #f87171;
+    }
+    .logs .system {
+      color: #93c5fd;
+    }
+    .logs .incoming {
+      color: #86efac;
+    }
+    .logs .outgoing {
+      color: #fcd34d;
+    }
+    .notice {
+      background-color: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 1rem;
+      margin: 1rem 0;
+      color: #92400e;
+    }
+  </style>
+</head>
+<body>
+  <h1>SSE Fallback Test</h1>
+  
+  <div class="card">
+    <div class="status status-disconnected">
+      <div class="status-indicator"></div>
+      <span class="status-text">Disconnected</span>
+    </div>
+    
+    <div class="controls">
+      <button id="connectBtn">Connect to SSE</button>
+      <button id="disconnectBtn" disabled>Disconnect</button>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Event Log</h2>
+    <div class="logs" id="logs"></div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get DOM elements
+      const connectBtn = document.getElementById('connectBtn');
+      const disconnectBtn = document.getElementById('disconnectBtn');
+      const logContainer = document.getElementById('logs');
+      const statusContainer = document.querySelector('.status');
+      const statusText = document.querySelector('.status-text');
+      
+      // Connection state
+      let eventSource = null;
+      
+      function log(message, type = 'normal') {
+        const entry = document.createElement('div');
+        entry.className = type;
+        entry.textContent = message;
+        logContainer.appendChild(entry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+      }
+      
+      function updateStatus(status, text) {
+        statusContainer.className = `status status-${status}`;
+        statusText.textContent = text;
+      }
+      
+      function connectToSSE() {
+        updateStatus('connecting', 'Connecting...');
+        
+        const clientId = `client_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+        log(`Connecting to SSE endpoint with client ID: ${clientId}`, 'system');
+        
+        try {
+          // Close any existing connection
+          if (eventSource) {
+            eventSource.close();
+          }
+          
+          // Create a new EventSource connection
+          const sseUrl = `/api/events?clientId=${encodeURIComponent(clientId)}`;
+          eventSource = new EventSource(sseUrl);
+          
+          // Handle connection open
+          eventSource.onopen = (event) => {
+            log('SSE connection established', 'system');
+            updateStatus('connected', 'Connected');
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
+          };
+          
+          // Handle incoming messages
+          eventSource.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              log(`Received: ${JSON.stringify(data, null, 2)}`, 'incoming');
+              
+              // Handle heartbeat messages
+              if (data.type === 'heartbeat') {
+                // Quietly log heartbeats without details to keep logs clean
+                log(`Heartbeat received at ${new Date().toLocaleTimeString()}`, 'system');
+              }
+            } catch (error) {
+              log(`Error parsing message: ${error.message}\nRaw data: ${event.data}`, 'error');
+            }
+          };
+          
+          // Handle errors
+          eventSource.onerror = (error) => {
+            log(`SSE connection error: ${error.type}`, 'error');
+            
+            if (eventSource.readyState === EventSource.CLOSED) {
+              updateStatus('disconnected', 'Disconnected (Error)');
+              connectBtn.disabled = false;
+              disconnectBtn.disabled = true;
+            }
+          };
+        } catch (error) {
+          log(`Failed to connect to SSE: ${error.message}`, 'error');
+          updateStatus('disconnected', 'Connection Failed');
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+        }
+      }
+      
+      function disconnectFromSSE() {
+        if (eventSource) {
+          log('Closing SSE connection...', 'system');
+          eventSource.close();
+          eventSource = null;
+          updateStatus('disconnected', 'Disconnected');
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+        }
+      }
+      
+      // Set up event listeners
+      connectBtn.addEventListener('click', connectToSSE);
+      disconnectBtn.addEventListener('click', disconnectFromSSE);
+      
+      // Clean up on page unload
+      window.addEventListener('beforeunload', () => {
+        if (eventSource) {
+          eventSource.close();
+        }
+      });
+      
+      // Log page load
+      log('SSE Fallback Test page loaded', 'system');
+      
+      // Auto-connect if URL has ?autoconnect=true
+      if (new URLSearchParams(window.location.search).get('autoconnect') === 'true') {
+        log('Auto-connect enabled, connecting...', 'system');
+        connectBtn.click();
+      }
+    });
+  </script>
+</body>
+</html>
