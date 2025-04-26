@@ -41,6 +41,8 @@ import ClusteringDemoPage from "@/pages/clustering-demo";
 import AdvancedClusteringDemoPage from "@/pages/advanced-clustering-demo";
 // TerraFusion design system
 import TerraFusionShowcase from "@/components/design-system/TerraFusionShowcase";
+// Modern design showcase page
+import DesignShowcasePage from "@/pages/design-showcase";
 
 // Import old and new layouts
 import AppLayout from "@/layout/app-layout";
@@ -232,6 +234,13 @@ function Router() {
       <Route path="/terrafusion-showcase">
         <Layout>
           <TerraFusionShowcase />
+        </Layout>
+      </Route>
+      
+      {/* Modern Design Showcase */}
+      <Route path="/design-showcase">
+        <Layout>
+          <DesignShowcasePage />
         </Layout>
       </Route>
       
