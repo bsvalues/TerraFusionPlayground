@@ -1,159 +1,191 @@
 # TerraFusion Incident Management Runbook
 
-This document outlines the procedures for handling performance-related incidents in the TerraFusion application.
+This runbook provides standardized procedures for responding to performance alerts and incidents in the TerraFusion platform, with special focus on our new segmented Web Vitals monitoring.
 
-## Monitoring and Alerting Setup
+## Alert Types
 
-### Prometheus Alerts to PagerDuty Integration
+### Standard Web Vitals Alerts
 
-1. **Install and Configure Alertmanager**
+| Alert Name | Trigger | Priority |
+|------------|---------|----------|
+| WEBVITALS_LCP_95P_BREACH | LCP 95th percentile > 2.5s | P2 |
+| WEBVITALS_TTFB_95P_BREACH | TTFB 95th percentile > 1.0s | P2 |
+| WEBVITALS_CLS_95P_BREACH | CLS 95th percentile > 0.1 | P2 |
+| WEBVITALS_FCP_95P_BREACH | FCP 95th percentile > 1.8s | P2 |
+| WEBVITALS_FID_95P_BREACH | FID 95th percentile > 0.1s | P2 |
+| WEBVITALS_INP_95P_BREACH | INP 95th percentile > 0.2s | P2 |
 
-   Add to `prometheus/alertmanager.yml`:
+### Segmented Alerts (Network Quality)
 
-   ```yaml
-   global:
-     resolve_timeout: 5m
-     pagerduty_url: https://events.pagerduty.com/v2/enqueue
+| Alert Name | Trigger | Priority |
+|------------|---------|----------|
+| WEBVITALS_LCP_SLOW_NETWORK | LCP 95th percentile > 4.0s on slow-2g/2g/3g networks | P3 |
+| WEBVITALS_TTFB_SLOW_NETWORK | TTFB 95th percentile > 1.5s on slow-2g/2g/3g networks | P3 |
 
-   route:
-     group_by: ['alertname', 'severity']
-     group_wait: 30s
-     group_interval: 5m
-     repeat_interval: 3h
-     receiver: 'pagerduty-critical'
-     routes:
-     - match:
-         severity: page
-       receiver: 'pagerduty-critical'
-     - match:
-         severity: warning
-       receiver: 'pagerduty-warning'
+### Segmented Alerts (Page Type)
 
-   receivers:
-   - name: 'pagerduty-critical'
-     pagerduty_configs:
-     - routing_key: YOUR_PAGERDUTY_SERVICE_KEY
-       severity: critical
-       description: '{{ .CommonAnnotations.summary }}'
-       details:
-         firing: '{{ .Alerts.Firing | len }}'
-         resolved: '{{ .Alerts.Resolved | len }}'
-         summary: '{{ .CommonAnnotations.summary }}'
-         description: '{{ .CommonAnnotations.description }}'
+| Alert Name | Trigger | Priority |
+|------------|---------|----------|
+| WEBVITALS_LCP_CRITICAL_PAGE | LCP 95th percentile > 3.0s on critical pages | P2 |
+| WEBVITALS_CLS_CRITICAL_PAGE | CLS 95th percentile > 0.15 on critical pages | P2 |
+| WEBVITALS_FID_CRITICAL_PAGE | FID 95th percentile > 0.2s on critical pages | P2 |
+
+### Combined Dimension Alerts
+
+| Alert Name | Trigger | Priority |
+|------------|---------|----------|
+| WEBVITALS_LCP_CRITICAL_PAGE_SLOW_NETWORK | LCP 95th percentile > 5.0s on critical pages with slow networks | P1 |
+| WEBVITALS_MOBILE_NETWORK_EXPERIENCE | LCP 95th percentile > 4.5s on mobile devices with slow networks | P2 |
+| WEBVITALS_BUDGET_BREACH_RATE_BY_PAGE | > 20 budget breaches in 30m on critical pages | P2 |
+
+## Incident Response
+
+### Triage
+
+1. **Determine Scope and Impact**
+   - Check the alert details and determine which segment is affected
+   - For network-related alerts: Is this affecting all networks or just slow ones?
+   - For page-type alerts: Is this affecting all pages or just specific types?
+   - For combined alerts: Check the specific combination of factors
+
+2. **Assess Severity**
+   | Severity | Definition | Response Time |
+   |----------|------------|---------------|
+   | Critical (P1) | User-blocking issues on critical pages or affecting >20% of users | Immediate |
+   | High (P2) | Major performance degradation on important pages | < 2 hours |
+   | Medium (P3) | Performance issues on non-critical pages or slow networks only | < 1 day |
+   | Low (P4) | Minor degradation, limited impact | < 1 week |
+
+3. **Check Dashboard**
+   - View the [Segmented Web Vitals Dashboard](https://grafana.terrafusion.io/dashboards/webvitals_segmented) 
+   - Filter by the relevant network quality / page type mentioned in the alert
+   - Look for abrupt changes or gradual degradation
+
+### Investigation
+
+#### Network Quality Issues
+
+1. **Slow Network Investigation**
+   - Check asset sizes (especially images, JS bundles)
+   - Verify proper use of lazy loading and code splitting
+   - Check for non-essential third-party resources loading eagerly
+   - Verify network-aware loading strategies are working
+
+2. **Tools to Use**
+   - Chrome DevTools with Network Throttling set to match the affected network speed
+   - WebPageTest with custom profiles matching the network conditions
+   - Lighthouse CLI with custom throttling
+
+#### Page Type Issues
+
+1. **Critical Page Investigation**
+   - Check recent deployments affecting that page type
+   - Analyze performance budget reports
+   - Check for reports of slow API responses feeding that page type
+   - Verify if the issue is specific to certain routes within that page type
+
+2. **Tools to Use**
+   - Performance tab in Chrome DevTools
+   - Trace analysis in Grafana
+   - WebPageTest focused on the specific page type
+
+#### Combined Issues
+
+For issues affecting specific page types on specific networks:
+
+1. **Check for Low-hanging Fruit**
+   - Image optimization
+   - Critical CSS extraction
+   - Adaptive loading based on network conditions
+   - Progressive enhancement strategies
+
+2. **Check for Broken Network Detection**
+   - Verify that the Network Information API is reporting correct values
+   - Check if adaptive loading strategies are being bypassed
+
+### Resolution Actions
+
+#### Quick Fixes
+
+1. **Asset Optimization**
+   ```bash
+   # Check current asset sizes
+   npm run analyze-bundles
    
-   - name: 'pagerduty-warning'
-     pagerduty_configs:
-     - routing_key: YOUR_PAGERDUTY_SERVICE_KEY
-       severity: warning
-       description: '{{ .CommonAnnotations.summary }}'
-       details:
-         firing: '{{ .Alerts.Firing | len }}'
-         resolved: '{{ .Alerts.Resolved | len }}'
-         summary: '{{ .CommonAnnotations.summary }}'
-         description: '{{ .CommonAnnotations.description }}'
+   # Apply automatic optimizations
+   npm run optimize-for-slow-networks
    ```
 
-2. **Create PagerDuty Service**
+2. **Temporarily Disable Heavy Features for Slow Networks**
+   - Access the feature flags dashboard
+   - Set network-dependent flags for heavy features
 
-   - Log in to PagerDuty
-   - Create a new Service for TerraFusion
-   - Set up the appropriate Escalation Policy (e.g., Frontend team for Web Vitals issues)
-   - Obtain the Service Integration Key to use in the Alertmanager config
+3. **Implement or Fix Network-aware Loading**
+   ```javascript
+   // Example fix in client code
+   if (navigator.connection && 
+       ['slow-2g', '2g', '3g'].includes(navigator.connection.effectiveType)) {
+     // Use lighter alternatives
+     loadLightweightAlternative();
+   } else {
+     // Load full featured version
+     loadFullFeaturedVersion();
+   }
+   ```
 
-## On-Call Responsibilities
+#### Long-term Fixes
 
-### Primary On-Call Engineer
+1. **Implement Code Splitting for Critical Page Types**
+   ```bash
+   # Analyze current bundle split
+   npm run analyze-bundle-by-page-type
+   
+   # Implement route-based code splitting
+   # Update webpack/vite config as needed
+   ```
 
-- **Response Time**: Acknowledge alerts within 15 minutes
-- **Investigation**: Begin investigation within 30 minutes
-- **Communication**: Update status within 1 hour of acknowledgment
-- **Escalation**: Escalate to secondary on-call after 1 hour without resolution
+2. **Set Up Adaptive Loading Based on Network Quality**
+   - Implement proper handling of the Network Information API
+   - Create variants of components for different network speeds
+   - Set up fallbacks for browsers without Network Information API
 
-### Secondary On-Call Engineer
+3. **Create Specific Performance Budgets by Page Type**
+   ```bash
+   # Create performance budgets for specific page types
+   npm run create-perf-budget -- --page-type=map-view --js=250 --images=400
+   ```
 
-- **Response Time**: Acknowledge escalated incidents within 15 minutes
-- **Collaboration**: Work with primary on-call to resolve the issue
-- **Escalation**: Escalate to Engineering Manager if resolution not in progress within 30 minutes
+## Post-Incident
 
-## Incident Severity Levels
+### Documentation
 
-| Severity | Description | Example |
-|----------|-------------|---------|
-| P1 - Critical | Service is down or unusable for majority of users | LCP > 5s for 10+ minutes |
-| P2 - High | Service is degraded, affecting a significant subset of users | LCP > 3s for 10+ minutes |
-| P3 - Medium | Non-critical functionality is impaired | CLS > 0.15 for 1+ hours |
-| P4 - Low | Minor issues with minimal impact | FCP > 2s for dashboard page |
+Document the incident in the incident tracking system with the following information:
+- Alert that triggered the incident
+- Affected dimensions (network quality, page type, or both)
+- Root cause
+- Resolution steps taken
+- Long-term recommendations
 
-## Alert Response Procedures
+### Follow-up
 
-### Web Vitals Performance Issues
+1. Create or update a Performance Improvement Plan for the affected page type
+2. Schedule a performance review focusing on the affected segment
+3. Update performance budgets if needed
+4. Consider adding more granular alerts for early detection
 
-#### For LCP/TTFB Issues:
+## Reference: Dimension Values
 
-1. Check server load and response times in AWS CloudWatch
-2. Check CDN configuration and cache hit rates
-3. Review recent deployments that might have introduced heavy resources
-4. Check for failing origin servers or load balancers
+### Network Quality Values
+- `slow-2g`: Very slow connections (<70kbps)
+- `2g`: Slow connections (70-150kbps)
+- `3g`: Medium connections (150-700kbps)
+- `4g`: Fast connections (700+ kbps)
 
-#### For CLS Issues:
-
-1. Check recent UI component changes
-2. Verify image dimensions are properly constrained in CSS
-3. Check for dynamic content loading that might shift layout
-4. Review asynchronous font loading implementation
-
-#### For FID/INP Issues:
-
-1. Check JavaScript execution times in transaction monitoring
-2. Review recent JavaScript changes that might be causing main thread blocking
-3. Check for heavy third-party scripts
-4. Profile the application using Chrome DevTools Performance panel
-
-## Incident Resolution
-
-### Post-Mortem Template
-
-After resolving a P1 or P2 incident, complete a post-mortem document with:
-
-1. Incident timeline
-2. Root cause analysis
-3. Resolution steps
-4. Prevention measures
-5. Action items with assignees and due dates
-
-### Communication
-
-During an incident:
-
-1. Update the #incidents Slack channel every 30 minutes
-2. For user-facing issues, post updates to status page
-3. Notify stakeholders for incidents lasting more than 1 hour
-
-## Testing the Alert System
-
-Run a monthly test to ensure the alerting system is functioning:
-
-1. Manually trigger a test alert in Prometheus
-2. Verify PagerDuty receives and routes the alert correctly
-3. Validate that on-call engineers receive notifications
-4. Complete a mock incident response
-
-## Key Contacts
-
-| Role | Name | Contact |
-|------|------|---------|
-| Frontend Lead | TBD | TBD |
-| Backend Lead | TBD | TBD |
-| DevOps Engineer | TBD | TBD |
-| Engineering Manager | TBD | TBD |
-
-## Reference Performance Budgets
-
-| Metric | Target | Warning | Critical |
-|--------|--------|---------|----------|
-| LCP | < 2.5s | > 2.5s | > 4.0s |
-| TTFB | < 0.6s | > 0.6s | > 1.0s |
-| CLS | < 0.1 | > 0.1 | > 0.25 |
-| FID | < 100ms | > 100ms | > 300ms |
-| INP | < 200ms | > 200ms | > 500ms |
-| FCP | < 1.8s | > 1.8s | > 3.0s |
+### Page Type Values
+- `dashboard`: Main dashboard views
+- `map-view`: Map-centric pages
+- `property-details`: Property detail pages
+- `report`: Report pages
+- `settings`: Settings pages
+- `search`: Search pages
+- `editor`: Editor pages
