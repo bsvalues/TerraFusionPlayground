@@ -1,18 +1,15 @@
 /**
- * TerraFusion AI Core
+ * AI Core Package
  * 
- * This package provides the AI capabilities for the TerraFusion platform,
- * including LLM integrations, agent frameworks, and AI-driven analysis tools.
+ * Entry point for the AI Core package, which provides models,
+ * services, and agent implementations for the TerraFusion platform.
  */
 
-// Re-export agent system
-export * from './agents';
-
-// Re-export models
+// Export models
 export * from './models';
 
-// Re-export services
+// Export services
 export * from './services';
 
-// Re-export utilities
-export * from './utils';
+// Export agents
+export * from './agents';
