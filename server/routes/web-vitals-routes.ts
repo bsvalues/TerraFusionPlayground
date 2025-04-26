@@ -1,279 +1,486 @@
 /**
- * Web Vitals API Routes
+ * Web Vitals Routes
  * 
- * Routes for collecting and retrieving Web Vitals performance metrics.
+ * Endpoints for collecting and analyzing Web Vitals metrics
+ * from real users for performance monitoring.
  */
-
-import express from 'express';
-import { z } from 'zod';
+import { Router, Request, Response } from 'express';
 import { storage } from '../storage';
-import { extendStorageWithWebVitals } from '../storage-web-vitals';
+import { randomUUID } from 'crypto';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
+import { 
+  webVitalsMetrics, 
+  webVitalsReports, 
+  webVitalsAggregates, 
+  webVitalsBudgets, 
+  webVitalsAlerts,
+  insertWebVitalsMetricsSchema,
+  insertWebVitalsReportsSchema,
+  insertWebVitalsAggregatesSchema,
+  insertWebVitalsBudgetsSchema,
+  insertWebVitalsAlertsSchema
+} from '../../shared/web-vitals-schema';
 
-// Extend storage with Web Vitals methods
-const webVitalsStorage = extendStorageWithWebVitals(storage);
-
-// Create router
-const router = express.Router();
-
-// Web Vitals metric schema
-const webVitalsMetricSchema = z.object({
-  name: z.string(),
-  value: z.number(),
-  delta: z.number(),
-  id: z.string(),
-  timestamp: z.number(),
-  navigationType: z.string().optional(),
-  rating: z.enum(['good', 'needs-improvement', 'poor']).optional()
-});
-
-// Web Vitals report schema
-const webVitalsReportSchema = z.object({
-  timestamp: z.number(),
-  url: z.string(),
-  metrics: z.array(webVitalsMetricSchema),
-  percentiles: z.record(z.any()).optional(),
-  deviceInfo: z.record(z.any()).optional(),
-  tags: z.record(z.string()).optional()
-});
+const router = Router();
 
 /**
- * POST /web-vitals
- * 
- * Collect Web Vitals metrics from client.
+ * POST /api/analytics/web-vitals
+ * Store a single web vitals metric
  */
-router.post('/web-vitals', async (req, res) => {
+router.post('/web-vitals', async (req: Request, res: Response) => {
   try {
-    // Validate request body
-    const report = webVitalsReportSchema.parse(req.body);
+    const data = insertWebVitalsMetricsSchema.parse({
+      ...req.body,
+      id: randomUUID(),
+    });
     
-    // Store metrics
-    await webVitalsStorage.storeWebVitalsReport(report);
+    await storage.db.insert(webVitalsMetrics).values(data);
     
-    // Respond with success
-    res.status(200).json({ success: true });
+    res.status(201).json({ success: true, id: data.id });
   } catch (error) {
-    console.error('Error collecting Web Vitals metrics:', error);
-    
-    // Respond with error
-    res.status(400).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+    console.error('Error storing web vitals metric:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to store web vitals metric' 
     });
   }
 });
 
 /**
- * POST /web-vitals/metric
- * 
- * Collect a single Web Vitals metric from client.
+ * POST /api/analytics/web-vitals/batch
+ * Store a batch of web vitals metrics
  */
-router.post('/web-vitals/metric', async (req, res) => {
+router.post('/web-vitals/batch', async (req: Request, res: Response) => {
   try {
-    // Validate request body
-    const metric = webVitalsMetricSchema.parse(req.body);
+    const { metrics, deviceInfo, percentiles, tags } = req.body;
     
-    // Store metric
-    await webVitalsStorage.storeWebVitalsMetric(metric);
-    
-    // Respond with success
-    res.status(200).json({ success: true });
-  } catch (error) {
-    console.error('Error collecting Web Vitals metric:', error);
-    
-    // Respond with error
-    res.status(400).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-/**
- * GET /web-vitals
- * 
- * Get Web Vitals metrics.
- */
-router.get('/web-vitals', async (req, res) => {
-  try {
-    // Parse query parameters
-    const timeRange = (req.query.timeRange as string) || '24h';
-    const metricName = req.query.metric as string;
-    const limit = parseInt((req.query.limit as string) || '100', 10);
-    
-    // Get metrics
-    const metrics = await webVitalsStorage.getWebVitalsMetrics(timeRange, metricName, limit);
-    
-    // Respond with metrics
-    res.status(200).json(metrics);
-  } catch (error) {
-    console.error('Error retrieving Web Vitals metrics:', error);
-    
-    // Respond with error
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-/**
- * GET /web-vitals/summary
- * 
- * Get Web Vitals summary.
- */
-router.get('/web-vitals/summary', async (req, res) => {
-  try {
-    // Parse query parameters
-    const timeRange = (req.query.timeRange as string) || '24h';
-    
-    // Get summary
-    const summary = await webVitalsStorage.getWebVitalsSummary(timeRange);
-    
-    // Respond with summary
-    res.status(200).json(summary);
-  } catch (error) {
-    console.error('Error retrieving Web Vitals summary:', error);
-    
-    // Respond with error
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-/**
- * GET /web-vitals/aggregates
- * 
- * Get Web Vitals aggregates.
- */
-router.get('/web-vitals/aggregates', async (req, res) => {
-  try {
-    // Parse query parameters
-    const timeRange = (req.query.timeRange as string) || '24h';
-    const metricName = req.query.metric as string;
-    const urlPattern = req.query.urlPattern as string;
-    
-    // Get aggregates
-    const aggregates = await webVitalsStorage.getWebVitalsAggregates(timeRange, metricName, urlPattern);
-    
-    // Respond with aggregates
-    res.status(200).json(aggregates);
-  } catch (error) {
-    console.error('Error retrieving Web Vitals aggregates:', error);
-    
-    // Respond with error
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-/**
- * GET /web-vitals/budgets
- * 
- * Get Web Vitals performance budgets.
- */
-router.get('/web-vitals/budgets', async (req, res) => {
-  try {
-    // Get budgets
-    const budgets = await webVitalsStorage.getWebVitalsPerformanceBudgets();
-    
-    // Respond with budgets
-    res.status(200).json(budgets);
-  } catch (error) {
-    console.error('Error retrieving Web Vitals performance budgets:', error);
-    
-    // Respond with error
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-/**
- * POST /web-vitals/budgets
- * 
- * Create a Web Vitals performance budget.
- */
-router.post('/web-vitals/budgets', async (req, res) => {
-  try {
-    // Create budget
-    const budget = await webVitalsStorage.createWebVitalsPerformanceBudget(req.body);
-    
-    // Respond with budget
-    res.status(201).json(budget);
-  } catch (error) {
-    console.error('Error creating Web Vitals performance budget:', error);
-    
-    // Respond with error
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-/**
- * GET /web-vitals/alerts
- * 
- * Get Web Vitals alerts.
- */
-router.get('/web-vitals/alerts', async (req, res) => {
-  try {
-    // Parse query parameters
-    const timeRange = (req.query.timeRange as string) || '24h';
-    const acknowledged = req.query.acknowledged === 'true';
-    
-    // Get alerts
-    const alerts = await webVitalsStorage.getWebVitalsAlerts(timeRange, acknowledged);
-    
-    // Respond with alerts
-    res.status(200).json(alerts);
-  } catch (error) {
-    console.error('Error retrieving Web Vitals alerts:', error);
-    
-    // Respond with error
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-/**
- * PUT /web-vitals/alerts/:id/acknowledge
- * 
- * Acknowledge a Web Vitals alert.
- */
-router.put('/web-vitals/alerts/:id/acknowledge', async (req, res) => {
-  try {
-    // Parse parameters
-    const id = parseInt(req.params.id, 10);
-    const { userId } = req.body;
-    
-    // Validate userId
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        error: 'userId is required'
+    if (!metrics || !Array.isArray(metrics) || metrics.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No metrics provided or invalid format' 
       });
     }
     
-    // Acknowledge alert
-    await webVitalsStorage.acknowledgeWebVitalsAlert(id, userId);
+    // Create a report record
+    const reportId = randomUUID();
+    const report = {
+      id: reportId,
+      url: metrics[0]?.url || '',
+      metrics: metrics,
+      deviceInfo,
+      percentiles,
+      tags
+    };
     
-    // Respond with success
-    res.status(200).json({ success: true });
+    await storage.db.insert(webVitalsReports).values(report);
+    
+    // Insert individual metrics
+    const metricsToInsert = metrics.map((metric: any) => ({
+      id: randomUUID(),
+      name: metric.name,
+      value: metric.value,
+      delta: metric.delta || 0,
+      rating: metric.rating,
+      navigationType: metric.navigationType,
+      url: metric.url,
+      userAgent: metric.userAgent,
+      deviceType: metric.deviceType,
+      connectionType: metric.connectionType,
+      effectiveConnectionType: metric.effectiveConnectionType,
+      userId: metric.userId,
+      sessionId: metric.sessionId,
+      tags: metric.tags
+    }));
+    
+    if (metricsToInsert.length > 0) {
+      await storage.db.insert(webVitalsMetrics).values(metricsToInsert);
+    }
+    
+    res.status(201).json({ 
+      success: true, 
+      reportId,
+      metricsCount: metricsToInsert.length 
+    });
   } catch (error) {
-    console.error('Error acknowledging Web Vitals alert:', error);
+    console.error('Error storing web vitals batch:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to store web vitals batch' 
+    });
+  }
+});
+
+/**
+ * GET /api/analytics/web-vitals
+ * Get web vitals metrics
+ */
+router.get('/web-vitals', async (req: Request, res: Response) => {
+  try {
+    const { 
+      metricName, 
+      startDate, 
+      endDate, 
+      limit = 100,
+      url,
+      deviceType 
+    } = req.query;
     
-    // Respond with error
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+    let query = storage.db.select().from(webVitalsMetrics);
+    
+    // Apply filters
+    if (metricName) {
+      query = query.where(eq(webVitalsMetrics.name, metricName as string));
+    }
+    
+    if (startDate) {
+      query = query.where(gte(webVitalsMetrics.timestamp, new Date(startDate as string)));
+    }
+    
+    if (endDate) {
+      query = query.where(lte(webVitalsMetrics.timestamp, new Date(endDate as string)));
+    }
+    
+    if (url) {
+      query = query.where(eq(webVitalsMetrics.url, url as string));
+    }
+    
+    if (deviceType) {
+      query = query.where(eq(webVitalsMetrics.deviceType, deviceType as string));
+    }
+    
+    // Order by timestamp desc
+    query = query.orderBy(webVitalsMetrics.timestamp).limit(Number(limit));
+    
+    const metrics = await query;
+    
+    res.json({ 
+      success: true, 
+      count: metrics.length,
+      metrics
+    });
+  } catch (error) {
+    console.error('Error retrieving web vitals metrics:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to retrieve web vitals metrics' 
+    });
+  }
+});
+
+/**
+ * GET /api/analytics/web-vitals/summary
+ * Get web vitals summary with percentiles and distribution
+ */
+router.get('/web-vitals/summary', async (req: Request, res: Response) => {
+  try {
+    const { 
+      metricName = 'LCP', 
+      startDate, 
+      endDate, 
+      url,
+      deviceType 
+    } = req.query;
+    
+    // Build conditions array for query
+    const conditions = [];
+    
+    if (metricName) {
+      conditions.push(eq(webVitalsMetrics.name, metricName as string));
+    }
+    
+    if (startDate) {
+      conditions.push(gte(webVitalsMetrics.timestamp, new Date(startDate as string)));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(webVitalsMetrics.timestamp, new Date(endDate as string)));
+    }
+    
+    if (url) {
+      conditions.push(eq(webVitalsMetrics.url, url as string));
+    }
+    
+    if (deviceType) {
+      conditions.push(eq(webVitalsMetrics.deviceType, deviceType as string));
+    }
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    // Get metrics
+    const metrics = await storage.db.select().from(webVitalsMetrics)
+      .where(whereClause)
+      .orderBy(webVitalsMetrics.timestamp);
+    
+    if (metrics.length === 0) {
+      return res.json({ 
+        success: true, 
+        count: 0,
+        summary: null,
+        percentiles: null,
+        distribution: null
+      });
+    }
+    
+    // Calculate percentiles
+    const values = metrics.map(m => m.value).sort((a, b) => a - b);
+    const total = values.reduce((sum, value) => sum + value, 0);
+    const count = values.length;
+    const avg = total / count;
+    const median = count % 2 === 0 
+      ? (values[count/2 - 1] + values[count/2]) / 2 
+      : values[Math.floor(count/2)];
+    
+    // Calculate percentiles
+    const p75Index = Math.floor(count * 0.75);
+    const p90Index = Math.floor(count * 0.9);
+    const p95Index = Math.floor(count * 0.95);
+    const p99Index = Math.floor(count * 0.99);
+    
+    const p75 = values[p75Index];
+    const p90 = values[p90Index];
+    const p95 = values[p95Index];
+    const p99 = values[p99Index];
+    
+    // Calculate distribution (good, needs improvement, poor)
+    const distribution = {
+      good: 0,
+      needsImprovement: 0,
+      poor: 0
+    };
+    
+    metrics.forEach(metric => {
+      if (metric.rating === 'good') {
+        distribution.good++;
+      } else if (metric.rating === 'needs-improvement') {
+        distribution.needsImprovement++;
+      } else if (metric.rating === 'poor') {
+        distribution.poor++;
+      }
+    });
+    
+    const summary = {
+      metricName,
+      count,
+      min: values[0],
+      max: values[values.length - 1],
+      avg,
+      median
+    };
+    
+    const percentiles = {
+      p75,
+      p90,
+      p95,
+      p99
+    };
+    
+    // Calculate distribution percentages
+    const distributionPercentages = {
+      good: Math.round((distribution.good / count) * 100),
+      needsImprovement: Math.round((distribution.needsImprovement / count) * 100),
+      poor: Math.round((distribution.poor / count) * 100),
+      raw: distribution
+    };
+    
+    res.json({ 
+      success: true, 
+      count,
+      summary,
+      percentiles,
+      distribution: distributionPercentages
+    });
+  } catch (error) {
+    console.error('Error generating web vitals summary:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to generate web vitals summary' 
+    });
+  }
+});
+
+/**
+ * GET /api/analytics/web-vitals/aggregates
+ * Get web vitals aggregates for charting and analysis
+ */
+router.get('/web-vitals/aggregates', async (req: Request, res: Response) => {
+  try {
+    const { 
+      metricName, 
+      startDate, 
+      endDate, 
+      urlPattern,
+      deviceType 
+    } = req.query;
+    
+    let query = storage.db.select().from(webVitalsAggregates);
+    
+    // Apply filters
+    if (metricName) {
+      query = query.where(eq(webVitalsAggregates.metricName, metricName as string));
+    }
+    
+    if (startDate) {
+      query = query.where(gte(webVitalsAggregates.timestamp, new Date(startDate as string)));
+    }
+    
+    if (endDate) {
+      query = query.where(lte(webVitalsAggregates.timestamp, new Date(endDate as string)));
+    }
+    
+    if (urlPattern) {
+      query = query.where(eq(webVitalsAggregates.urlPattern, urlPattern as string));
+    }
+    
+    if (deviceType) {
+      query = query.where(eq(webVitalsAggregates.deviceType, deviceType as string));
+    }
+    
+    // Order by timestamp
+    query = query.orderBy(webVitalsAggregates.timestamp);
+    
+    const aggregates = await query;
+    
+    res.json({ 
+      success: true, 
+      count: aggregates.length,
+      aggregates
+    });
+  } catch (error) {
+    console.error('Error retrieving web vitals aggregates:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to retrieve web vitals aggregates' 
+    });
+  }
+});
+
+/**
+ * POST /api/analytics/web-vitals/budgets
+ * Create a web vitals performance budget
+ */
+router.post('/web-vitals/budgets', async (req: Request, res: Response) => {
+  try {
+    const data = insertWebVitalsBudgetsSchema.parse({
+      ...req.body,
+      id: randomUUID(),
+    });
+    
+    await storage.db.insert(webVitalsBudgets).values(data);
+    
+    res.status(201).json({ success: true, id: data.id });
+  } catch (error) {
+    console.error('Error creating web vitals budget:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to create web vitals budget' 
+    });
+  }
+});
+
+/**
+ * GET /api/analytics/web-vitals/budgets
+ * Get web vitals performance budgets
+ */
+router.get('/web-vitals/budgets', async (req: Request, res: Response) => {
+  try {
+    const { metricName, urlPattern, active } = req.query;
+    
+    let query = storage.db.select().from(webVitalsBudgets);
+    
+    // Apply filters
+    if (metricName) {
+      query = query.where(eq(webVitalsBudgets.metricName, metricName as string));
+    }
+    
+    if (urlPattern) {
+      query = query.where(eq(webVitalsBudgets.urlPattern, urlPattern as string));
+    }
+    
+    if (active !== undefined) {
+      query = query.where(eq(webVitalsBudgets.active, active === 'true'));
+    }
+    
+    const budgets = await query;
+    
+    res.json({ 
+      success: true, 
+      count: budgets.length,
+      budgets
+    });
+  } catch (error) {
+    console.error('Error retrieving web vitals budgets:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to retrieve web vitals budgets' 
+    });
+  }
+});
+
+/**
+ * GET /api/analytics/web-vitals/alerts
+ * Get web vitals alerts
+ */
+router.get('/web-vitals/alerts', async (req: Request, res: Response) => {
+  try {
+    const { acknowledged, startDate, endDate } = req.query;
+    
+    let query = storage.db.select().from(webVitalsAlerts);
+    
+    // Apply filters
+    if (acknowledged !== undefined) {
+      query = query.where(eq(webVitalsAlerts.acknowledged, acknowledged === 'true'));
+    }
+    
+    if (startDate) {
+      query = query.where(gte(webVitalsAlerts.detectedAt, new Date(startDate as string)));
+    }
+    
+    if (endDate) {
+      query = query.where(lte(webVitalsAlerts.detectedAt, new Date(endDate as string)));
+    }
+    
+    // Order by detected date desc (newest first)
+    query = query.orderBy(webVitalsAlerts.detectedAt);
+    
+    const alerts = await query;
+    
+    res.json({ 
+      success: true, 
+      count: alerts.length,
+      alerts
+    });
+  } catch (error) {
+    console.error('Error retrieving web vitals alerts:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to retrieve web vitals alerts' 
+    });
+  }
+});
+
+/**
+ * POST /api/analytics/web-vitals/alerts/:id/acknowledge
+ * Acknowledge a web vitals alert
+ */
+router.post('/web-vitals/alerts/:id/acknowledge', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { acknowledgedBy } = req.body;
+    
+    await storage.db.update(webVitalsAlerts)
+      .set({
+        acknowledged: true,
+        acknowledgedBy: acknowledgedBy || 'system',
+        acknowledgedAt: new Date(),
+      })
+      .where(eq(webVitalsAlerts.id, id));
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error acknowledging web vitals alert:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to acknowledge web vitals alert' 
     });
   }
 });

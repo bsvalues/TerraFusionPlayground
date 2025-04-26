@@ -6,6 +6,7 @@ import { ExtensionProvider } from "@/providers/extension-provider";
 import { AIAssistantProvider } from "./providers/ai-assistant-provider";
 import { ConnectionNotification } from "@/components/connection-notification";
 import { ConnectionStatusMonitor } from "@/components/connection-status-monitor";
+import { RealUserMonitoring } from "./components/monitoring/RealUserMonitoring";
 import NotFound from "@/pages/not-found";
 import OldDashboard from "@/pages/dashboard";
 import NewDashboard from "@/pages/new-dashboard";
@@ -273,6 +274,14 @@ function App() {
             <ConnectionNotification />
             <Toaster />
             <ConnectionStatusMonitor />
+            <RealUserMonitoring 
+              debug={process.env.NODE_ENV === 'development'}
+              tags={{ 
+                app: 'terrafusion',
+                version: '1.0.0',
+                environment: process.env.NODE_ENV || 'development'
+              }}
+            />
           </GISProvider>
         </AIAssistantProvider>
       </ExtensionProvider>

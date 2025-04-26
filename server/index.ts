@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import corsMiddleware from "./middleware/cors";
 import apiRequestHandler from "./middleware/api-request-handler";
+import webVitalsRoutes from "./routes/web-vitals-routes";
 
 const app = express();
 app.use(express.json());
@@ -39,6 +40,9 @@ app.use((req, res, next) => {
 
   next();
 });
+
+// Register Web Vitals routes
+app.use('/api/analytics', webVitalsRoutes);
 
 (async () => {
   const server = await registerRoutes(app);

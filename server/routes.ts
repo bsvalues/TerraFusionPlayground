@@ -526,6 +526,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Analytics routes
   app.use('/api/analytics', createAnalyticsRoutes(storage));
   
+  // Web Vitals routes will be registered separately
+  
   // Development Platform routes already registered
   
   // Note: Main health check is at the top of this file

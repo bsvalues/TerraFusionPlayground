@@ -4,8 +4,7 @@
  * Schema definitions for Web Vitals metrics tables, used for tracking performance
  * metrics from real users. Includes tables for raw metrics, aggregated metrics, and summaries.
  */
-
-import { pgTable, text, timestamp, integer, doublePrecision, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, doublePrecision, integer, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -43,7 +42,7 @@ export type InsertWebVitalsMetric = z.infer<typeof insertWebVitalsMetricsSchema>
  * Stores batched reports from clients
  */
 export const webVitalsReports = pgTable("web_vitals_reports", {
-  id: text("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   url: text("url").notNull(),
   metrics: jsonb("metrics").notNull(),
@@ -53,7 +52,6 @@ export const webVitalsReports = pgTable("web_vitals_reports", {
 });
 
 export const insertWebVitalsReportsSchema = createInsertSchema(webVitalsReports).omit({
-  id: true,
   timestamp: true
 });
 
@@ -65,7 +63,7 @@ export type InsertWebVitalsReport = z.infer<typeof insertWebVitalsReportsSchema>
  * Stores hourly aggregated metrics for faster queries
  */
 export const webVitalsAggregates = pgTable("web_vitals_aggregates", {
-  id: text("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   metricName: text("metric_name").notNull(),
   urlPattern: text("url_pattern").notNull(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
@@ -78,7 +76,6 @@ export const webVitalsAggregates = pgTable("web_vitals_aggregates", {
 });
 
 export const insertWebVitalsAggregatesSchema = createInsertSchema(webVitalsAggregates).omit({
-  id: true,
   timestamp: true
 });
 
@@ -90,7 +87,7 @@ export type InsertWebVitalsAggregate = z.infer<typeof insertWebVitalsAggregatesS
  * Stores performance budgets for different metrics and URL patterns
  */
 export const webVitalsBudgets = pgTable("web_vitals_budgets", {
-  id: text("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   metricName: text("metric_name").notNull(),
   urlPattern: text("url_pattern").notNull(),
   budget: doublePrecision("budget").notNull(),
@@ -101,7 +98,6 @@ export const webVitalsBudgets = pgTable("web_vitals_budgets", {
 });
 
 export const insertWebVitalsBudgetsSchema = createInsertSchema(webVitalsBudgets).omit({
-  id: true,
   createdAt: true,
   updatedAt: true
 });
@@ -114,7 +110,7 @@ export type InsertWebVitalsBudget = z.infer<typeof insertWebVitalsBudgetsSchema>
  * Stores alerts when metrics exceed budgets
  */
 export const webVitalsAlerts = pgTable("web_vitals_alerts", {
-  id: text("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   budgetId: text("budget_id").notNull().references(() => webVitalsBudgets.id),
   metricName: text("metric_name").notNull(),
   urlPattern: text("url_pattern").notNull(),
@@ -128,10 +124,7 @@ export const webVitalsAlerts = pgTable("web_vitals_alerts", {
 });
 
 export const insertWebVitalsAlertsSchema = createInsertSchema(webVitalsAlerts).omit({
-  id: true,
   detectedAt: true,
-  acknowledged: true,
-  acknowledgedBy: true,
   acknowledgedAt: true
 });
 
