@@ -23,7 +23,7 @@ class PrometheusMetricsService {
   private budgetBreachCounter: client.Counter<string>;
   private httpErrorCounter: client.Counter<string>;
   
-  // Labels for metrics - enhanced with geo and device segmentation
+  // Labels for metrics - enhanced with geo, device, network, and page segmentation
   private readonly defaultLabels = [
     'route', 
     'device_type', 
@@ -36,7 +36,10 @@ class PrometheusMetricsService {
     'browser_version',
     'os',
     'os_version',
-    'cohort'
+    'cohort',
+    // New high-ROI segmentation dimensions
+    'network',
+    'page_type'
   ];
 
   /**
@@ -168,7 +171,10 @@ class PrometheusMetricsService {
       browser_version: labels.browserVersion || 'unknown',
       os: labels.os || 'unknown',
       os_version: labels.osVersion || 'unknown',
-      cohort: labels.cohort || 'default'
+      cohort: labels.cohort || 'default',
+      // New high-ROI segmentation dimensions
+      network: labels.network || 'unknown',
+      page_type: labels.pageType || 'unknown'
     };
     
     // Increment the counter for this metric type
@@ -228,7 +234,10 @@ class PrometheusMetricsService {
       browser_version: labels.browserVersion || 'unknown',
       os: labels.os || 'unknown',
       os_version: labels.osVersion || 'unknown',
-      cohort: labels.cohort || 'default'
+      cohort: labels.cohort || 'default',
+      // New high-ROI segmentation dimensions
+      network: labels.network || 'unknown',
+      page_type: labels.pageType || 'unknown'
     };
     
     this.budgetBreachCounter.inc(labelValues);

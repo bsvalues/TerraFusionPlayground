@@ -311,13 +311,24 @@ export function registerWebVitalsRoutes(router: Router, storage: IStorage) {
           await storage.saveWebVitalsMetric(validatedMetric);
           savedMetrics.push(validatedMetric);
           
-          // Record the metric in Prometheus for monitoring
+          // Record the metric in Prometheus for monitoring with enhanced segmentation
           const labels = {
             route: metricData.url ? new URL(metricData.url).pathname : '/',
             deviceType: metricData.deviceType || payload.deviceInfo?.deviceType || 'unknown',
             connectionType: metricData.connectionType || (payload.deviceInfo as any)?.connectionType || 'unknown',
             buildVersion: (payload.tags as any)?.buildVersion || 'unknown',
-            environment: (payload.tags as any)?.environment || 'development'
+            environment: (payload.tags as any)?.environment || 'development',
+            // Enhanced segmentation data
+            country: (payload.tags as any)?.country || 'unknown',
+            region: (payload.tags as any)?.region || 'unknown',
+            browser: (payload.tags as any)?.browser || 'unknown',
+            browser_version: (payload.tags as any)?.browserVersion || 'unknown',
+            os: (payload.tags as any)?.os || 'unknown',
+            os_version: (payload.tags as any)?.osVersion || 'unknown',
+            // New high-ROI segmentation
+            network: metricData.effectiveConnectionType || (payload.tags as any)?.network || 'unknown',
+            cohort: (payload.tags as any)?.cohort || 'default',
+            pageType: (payload.tags as any)?.pageType || 'unknown'
           };
           
           // Record the metric in the appropriate histogram
@@ -341,6 +352,7 @@ export function registerWebVitalsRoutes(router: Router, storage: IStorage) {
           
           const threshold = thresholds[metricData.name as keyof typeof thresholds];
           if (threshold && metricData.value > threshold) {
+            // Use the same enhanced labels for budget breaches for consistent analysis
             metricsService.recordBudgetBreach(
               metricData.name,
               metricData.value,
