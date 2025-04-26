@@ -550,7 +550,7 @@ export function RealUserMonitoring({
     const isOnline = navigator.onLine;
     const route = urlPath;
     
-    // Enrich tags with additional contextual data including geo and device segmentation
+    // Enrich tags with additional contextual data including geo, device, and network segmentation
     const enrichedTags = {
       ...tags,
       userRole: userRole || 'unknown',
@@ -565,10 +565,15 @@ export function RealUserMonitoring({
       os: deviceInfo?.os || 'unknown',
       osVersion: deviceInfo?.osVersion || 'unknown',
       deviceType: deviceInfo?.deviceType || 'desktop',
+      // Add network connection quality data
+      network: (deviceInfo as any)?.effectiveConnectionType || 'unknown',
+      connectionType: (deviceInfo as any)?.connectionType || 'unknown',
       // Map any feature flags to include in the tags
       ...featureFlags,
       // Extract experiment cohort from URL parameters if present
       cohort: new URLSearchParams(window.location.search).get('cohort') || 'default',
+      // Extract page type from document or derive from pathname
+      pageType: document.body.dataset.pageType || window.location.pathname.split('/')[1] || 'home',
     };
     
     // Process in batches if over the maximum batch size
@@ -695,7 +700,7 @@ export function RealUserMonitoring({
         const isOnline = navigator.onLine;
         const route = urlPath;
         
-        // Enrich tags with additional contextual data including geo and device segmentation
+        // Enrich tags with additional contextual data including geo, device, and network segmentation
         const enrichedTags = {
           ...tags,
           userRole: userRole || 'unknown',
@@ -711,10 +716,15 @@ export function RealUserMonitoring({
           os: deviceInfo?.os || 'unknown',
           osVersion: deviceInfo?.osVersion || 'unknown',
           deviceType: deviceInfo?.deviceType || 'desktop',
+          // Add network connection quality data
+          network: (deviceInfo as any)?.effectiveConnectionType || 'unknown',
+          connectionType: (deviceInfo as any)?.connectionType || 'unknown',
           // Map any feature flags to include in the tags
           ...featureFlags,
           // Extract experiment cohort from URL parameters if present
           cohort: new URLSearchParams(window.location.search).get('cohort') || 'default',
+          // Extract page type from document or derive from pathname
+          pageType: document.body.dataset.pageType || window.location.pathname.split('/')[1] || 'home',
         };
         
         // Prepare the metrics for reporting
