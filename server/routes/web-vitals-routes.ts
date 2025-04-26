@@ -41,7 +41,8 @@ router.post('/web-vitals', async (req: Request, res: Response) => {
     console.error('Error storing web vitals metric:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to store web vitals metric' 
+      error: 'Failed to store web vitals metric',
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -67,28 +68,28 @@ router.post('/web-vitals/batch', async (req: Request, res: Response) => {
       id: reportId,
       url: metrics[0]?.url || '',
       metrics: metrics,
-      deviceInfo,
+      device_info: deviceInfo, // Convert camelCase to snake_case for DB
       percentiles,
       tags
     };
     
     await storage.db.insert(webVitalsReports).values(report);
     
-    // Insert individual metrics
+    // Insert individual metrics with field names matching schema
     const metricsToInsert = metrics.map((metric: any) => ({
       id: randomUUID(),
       name: metric.name,
       value: metric.value,
       delta: metric.delta || 0,
       rating: metric.rating,
-      navigationType: metric.navigationType,
+      navigation_type: metric.navigationType, // Convert camelCase to snake_case for DB
       url: metric.url,
-      userAgent: metric.userAgent,
-      deviceType: metric.deviceType,
-      connectionType: metric.connectionType,
-      effectiveConnectionType: metric.effectiveConnectionType,
-      userId: metric.userId,
-      sessionId: metric.sessionId,
+      user_agent: metric.userAgent, // Convert camelCase to snake_case for DB
+      device_type: metric.deviceType, // Convert camelCase to snake_case for DB
+      connection_type: metric.connectionType, // Convert camelCase to snake_case for DB
+      effective_connection_type: metric.effectiveConnectionType, // Convert camelCase to snake_case for DB
+      user_id: metric.userId, // Convert camelCase to snake_case for DB
+      session_id: metric.sessionId, // Convert camelCase to snake_case for DB
       tags: metric.tags
     }));
     
@@ -105,7 +106,8 @@ router.post('/web-vitals/batch', async (req: Request, res: Response) => {
     console.error('Error storing web vitals batch:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to store web vitals batch' 
+      error: 'Failed to store web vitals batch',
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -145,7 +147,7 @@ router.get('/web-vitals', async (req: Request, res: Response) => {
     }
     
     if (deviceType) {
-      query = query.where(eq(webVitalsMetrics.deviceType, deviceType as string));
+      query = query.where(eq(webVitalsMetrics.device_type, deviceType as string));
     }
     
     // Order by timestamp desc
@@ -201,7 +203,7 @@ router.get('/web-vitals/summary', async (req: Request, res: Response) => {
     }
     
     if (deviceType) {
-      conditions.push(eq(webVitalsMetrics.deviceType, deviceType as string));
+      conditions.push(eq(webVitalsMetrics.device_type, deviceType as string));
     }
     
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -332,7 +334,7 @@ router.get('/web-vitals/aggregates', async (req: Request, res: Response) => {
     }
     
     if (deviceType) {
-      query = query.where(eq(webVitalsAggregates.deviceType, deviceType as string));
+      query = query.where(eq(webVitalsAggregates.device_type, deviceType as string));
     }
     
     // Order by timestamp
