@@ -1,268 +1,173 @@
 /**
- * Conflict Resolution Example
+ * ConflictResolutionExample
  * 
- * An example component that demonstrates how to use the conflict resolution components
- * in a real application.
+ * An example component demonstrating how to use the conflict resolution UI.
  */
 
 import React, { useState, useEffect } from 'react';
-import { createStorageManager } from '@terrafusion/offline-sync/src/storage';
-import { 
-  createConflictResolutionManager, 
-  ConflictType, 
-  ResolutionStrategy 
-} from '@terrafusion/offline-sync/src/conflict-resolution';
-import { createCRDTDocumentManager } from '@terrafusion/offline-sync/src/crdt-sync';
 import { ConflictManager } from '../ConflictManager';
-import { ConflictBadge } from '../ConflictBadge';
+import { PropertyDocState } from '@terrafusion/offline-sync/src/hooks/usePropertyDoc';
+import { LocalStorageProvider } from '@terrafusion/offline-sync/src/storage';
+import { CRDTDocumentManager, SyncStatus } from '@terrafusion/offline-sync/src/crdt-sync';
+import { ConflictResolutionManager, ResolutionStrategy } from '@terrafusion/offline-sync/src/conflict-resolution';
 
-// Mock sample data - In a real app, this would come from your app's state
-const SAMPLE_USER = {
-  id: 'user-1',
-  name: 'John Doe',
-  role: 'Field Inspector'
-};
-
-// Sample property data with conflict
-const SAMPLE_PROPERTY_LOCAL = {
+/**
+ * Example Property Document State
+ */
+const exampleLocalState: PropertyDocState = {
   id: 'property-123',
-  address: '123 Main St',
-  owner: 'Jane Smith',
-  value: 450000,
+  address: '123 Main St, Local City',
+  owner: 'Local Owner',
+  value: 350000,
   lastInspection: '2025-03-15',
-  notes: 'Property in good condition',
-  features: ['garage', 'porch', 'basement']
-};
-
-const SAMPLE_PROPERTY_REMOTE = {
-  id: 'property-123',
-  address: '123 Main Street', // Modified
-  owner: 'Jane Smith-Johnson', // Modified
-  value: 475000, // Modified
-  lastInspection: '2025-04-05', // Modified
-  notes: 'Property in good condition, new roof installed',
-  features: ['garage', 'porch', 'basement', 'new roof'] // Modified
+  notes: 'Local notes about the property. This text was edited while offline.',
+  features: ['3 Bedrooms', '2 Bathrooms', 'Garage', 'Local Feature']
 };
 
 /**
- * Example component
+ * Example Remote Property Document State
+ */
+const exampleRemoteState: PropertyDocState = {
+  id: 'property-123',
+  address: '123 Main St, Server City',
+  owner: 'Remote Owner',
+  value: 375000,
+  lastInspection: '2025-03-20',
+  notes: 'Remote notes about the property. This was updated on the server.',
+  features: ['3 Bedrooms', '2 Bathrooms', 'Garage', 'Remote Feature']
+};
+
+/**
+ * Conflict Resolution Example Component
  */
 export const ConflictResolutionExample: React.FC = () => {
-  // State for managers
-  const [storage, setStorage] = useState<any>(null);
-  const [crdtManager, setCrdtManager] = useState<any>(null);
-  const [conflictManager, setConflictManager] = useState<any>(null);
-  const [isReady, setIsReady] = useState(false);
-  const [propertyData, setPropertyData] = useState(SAMPLE_PROPERTY_LOCAL);
+  const [hasConflict, setHasConflict] = useState(true);
+  const [localState, setLocalState] = useState<PropertyDocState>(exampleLocalState);
+  const [remoteState, setRemoteState] = useState<PropertyDocState>(exampleRemoteState);
+  const [resolvedState, setResolvedState] = useState<PropertyDocState | null>(null);
+  const [strategyUsed, setStrategyUsed] = useState<string | null>(null);
   
-  // Initialize managers
-  useEffect(() => {
-    const init = async () => {
-      // In a real app, you'd initialize these with your app's configuration
-      const storageManager = await createStorageManager();
-      const crdtDocManager = await createCRDTDocumentManager(storageManager);
-      const conflictResManager = createConflictResolutionManager(crdtDocManager, storageManager);
-      
-      // Store the managers
-      setStorage(storageManager);
-      setCrdtManager(crdtDocManager);
-      setConflictManager(conflictResManager);
-      
-      // Initialize and create sample documents
-      await crdtDocManager.initialize();
-      await conflictResManager.initialize();
-      
-      // Create a sample document with conflicts
-      if (!(await crdtDocManager.hasDocument('property-123'))) {
-        await crdtDocManager.createDocument('property-123', SAMPLE_PROPERTY_LOCAL);
-      }
-      
-      // Simulate some conflicts
-      simulateConflicts(conflictResManager);
-      
-      setIsReady(true);
-    };
-    
-    init();
-  }, []);
-  
-  // Simulate conflicts for the example
-  const simulateConflicts = (manager: any) => {
-    // In a real app, these conflicts would be detected by the CRDT system
-    // Here we're manually creating them for demonstration purposes
-    
-    // Address conflict
-    manager.detectConflicts(
-      'property-123',
-      SAMPLE_PROPERTY_LOCAL.address,
-      SAMPLE_PROPERTY_REMOTE.address,
-      'address'
-    );
-    
-    // Owner conflict
-    manager.detectConflicts(
-      'property-123',
-      SAMPLE_PROPERTY_LOCAL.owner,
-      SAMPLE_PROPERTY_REMOTE.owner,
-      'owner'
-    );
-    
-    // Value conflict
-    manager.detectConflicts(
-      'property-123',
-      SAMPLE_PROPERTY_LOCAL.value,
-      SAMPLE_PROPERTY_REMOTE.value,
-      'value'
-    );
-    
-    // Last inspection conflict
-    manager.detectConflicts(
-      'property-123',
-      SAMPLE_PROPERTY_LOCAL.lastInspection,
-      SAMPLE_PROPERTY_REMOTE.lastInspection,
-      'lastInspection'
-    );
-    
-    // Notes conflict
-    manager.detectConflicts(
-      'property-123',
-      SAMPLE_PROPERTY_LOCAL.notes,
-      SAMPLE_PROPERTY_REMOTE.notes,
-      'notes'
-    );
-    
-    // Features conflict
-    manager.detectConflicts(
-      'property-123',
-      SAMPLE_PROPERTY_LOCAL.features,
-      SAMPLE_PROPERTY_REMOTE.features,
-      'features'
-    );
+  // Reset the example
+  const handleReset = () => {
+    setHasConflict(true);
+    setResolvedState(null);
+    setStrategyUsed(null);
   };
   
   // Handle conflict resolution
-  const handleConflictResolved = () => {
-    // In a real app, this would update your app's state after conflicts are resolved
-    console.log('Conflict resolved!');
-    
-    // Reload the property data
-    if (crdtManager) {
-      const updatedData = crdtManager.getDocument('property-123');
-      if (updatedData) {
-        setPropertyData(updatedData);
-      }
-    }
+  const handleResolve = (mergedState: PropertyDocState) => {
+    setResolvedState(mergedState);
+    setHasConflict(false);
+    setStrategyUsed('Manual Merge');
   };
   
-  if (!isReady) {
-    return (
-      <div className="p-8 text-center">
-        <p>Initializing conflict resolution system...</p>
-      </div>
-    );
-  }
+  // Auto-resolve with a specific strategy
+  const autoResolve = (strategy: ResolutionStrategy) => {
+    let resolved: PropertyDocState;
+    
+    switch (strategy) {
+      case ResolutionStrategy.KEEP_LOCAL:
+        resolved = { ...localState };
+        setStrategyUsed('Keep Local');
+        break;
+      case ResolutionStrategy.ACCEPT_REMOTE:
+        resolved = { ...remoteState };
+        setStrategyUsed('Accept Remote');
+        break;
+      case ResolutionStrategy.FIELD_LEVEL:
+        // Simple field-level merge taking the most recent values
+        resolved = {
+          ...localState,
+          // Take some fields from remote to demonstrate a merge
+          value: remoteState.value,
+          lastInspection: remoteState.lastInspection,
+          features: [...new Set([...localState.features || [], ...remoteState.features || []])]
+        };
+        setStrategyUsed('Field-Level Merge');
+        break;
+      default:
+        resolved = { ...localState };
+        setStrategyUsed('Default Strategy');
+    }
+    
+    setResolvedState(resolved);
+    setHasConflict(false);
+  };
   
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <header className="mb-8">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-800">Property Details</h1>
-          
-          {/* Conflict manager with badge */}
-          {conflictManager && (
-            <ConflictManager
-              conflictManager={conflictManager}
-              userId={SAMPLE_USER.id}
-              documentId="property-123"
-              autoOpenModal={false}
-            >
-              <button
-                className="ml-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                onClick={handleConflictResolved}
-              >
-                Reload After Resolution
-              </button>
-            </ConflictManager>
-          )}
-        </div>
+    <div className="p-6">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold mb-4">Conflict Resolution Demo</h2>
+        <p className="mb-4">
+          This example demonstrates how TerraFusion's conflict resolution UI works when
+          changes are made both locally and remotely to the same property.
+        </p>
         
-        <div className="mt-2 flex items-center text-gray-600">
-          <span className="mr-4">User: {SAMPLE_USER.name}</span>
-          <span>Role: {SAMPLE_USER.role}</span>
-        </div>
-      </header>
-      
-      <div className="bg-white shadow-md rounded-lg p-6 mb-8">
-        <h2 className="text-xl font-bold mb-4 text-gray-800">
-          Property Information
-          {conflictManager && (
-            <ConflictBadge
-              count={conflictManager.getUnresolvedConflictsForDocument('property-123').length}
-              className="ml-2"
-            />
-          )}
-        </h2>
-        
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">Property ID</label>
-            <div className="p-2 bg-gray-50 rounded">{propertyData.id}</div>
-          </div>
-          
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">Address</label>
-            <div className="p-2 bg-gray-50 rounded">{propertyData.address}</div>
-          </div>
-          
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">Owner</label>
-            <div className="p-2 bg-gray-50 rounded">{propertyData.owner}</div>
-          </div>
-          
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">Assessed Value</label>
-            <div className="p-2 bg-gray-50 rounded">${propertyData.value.toLocaleString()}</div>
-          </div>
-          
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">Last Inspection</label>
-            <div className="p-2 bg-gray-50 rounded">{propertyData.lastInspection}</div>
-          </div>
-          
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">Notes</label>
-            <div className="p-2 bg-gray-50 rounded">{propertyData.notes}</div>
-          </div>
-          
-          <div className="col-span-2">
-            <label className="block text-gray-700 font-medium mb-1">Features</label>
-            <div className="p-2 bg-gray-50 rounded">
-              <div className="flex flex-wrap gap-2">
-                {propertyData.features.map((feature: string) => (
-                  <span 
-                    key={feature}
-                    className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                  >
-                    {feature}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            onClick={handleReset}
+          >
+            Reset Example
+          </button>
+          <button
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+            onClick={() => autoResolve(ResolutionStrategy.KEEP_LOCAL)}
+            disabled={!hasConflict}
+          >
+            Auto-Resolve: Keep Local
+          </button>
+          <button
+            className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+            onClick={() => autoResolve(ResolutionStrategy.ACCEPT_REMOTE)}
+            disabled={!hasConflict}
+          >
+            Auto-Resolve: Accept Remote
+          </button>
+          <button
+            className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+            onClick={() => autoResolve(ResolutionStrategy.FIELD_LEVEL)}
+            disabled={!hasConflict}
+          >
+            Auto-Resolve: Field-Level Merge
+          </button>
         </div>
       </div>
       
-      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm text-gray-600">
-        <p>
-          <strong>In a real application:</strong> The conflict resolution system would automatically
-          detect conflicts when syncing offline changes with the server. This example manually creates
-          conflicts for demonstration purposes.
-        </p>
-        <p className="mt-2">
-          Click on the conflict badge to open the resolution dialog. After resolving conflicts,
-          click the "Reload After Resolution" button to see the updated data.
-        </p>
-      </div>
+      {hasConflict ? (
+        <div className="border rounded-lg overflow-hidden">
+          <div className="bg-orange-100 p-4 border-b">
+            <h3 className="text-lg font-semibold text-orange-800">Conflict Detected</h3>
+            <p className="text-orange-700">
+              Changes were made to this property both locally and on the server.
+              Please review the differences and resolve the conflict.
+            </p>
+          </div>
+          
+          <ConflictManager
+            localState={localState}
+            remoteState={remoteState}
+            onResolve={handleResolve}
+            onCancel={() => {}}
+          />
+        </div>
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <div className="bg-green-100 p-4 border-b">
+            <h3 className="text-lg font-semibold text-green-800">Conflict Resolved</h3>
+            <p className="text-green-700">
+              The conflict has been resolved using strategy: <strong>{strategyUsed}</strong>
+            </p>
+          </div>
+          
+          <div className="p-4">
+            <h4 className="font-semibold mb-2">Resolved Property Data:</h4>
+            <pre className="bg-gray-100 p-4 rounded overflow-auto text-sm">
+              {JSON.stringify(resolvedState, null, 2)}
+            </pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
