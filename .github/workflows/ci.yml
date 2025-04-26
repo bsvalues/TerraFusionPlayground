@@ -1,112 +1,19 @@
-name: TerraFusion CI
+name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, develop]
 
 jobs:
-  build:
-    name: Build and Test
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Run linting
-        run: npm run lint
-      
-      - name: Run type checking
-        run: npm run typecheck
-      
-      - name: Run tests
-        run: npm run test
-      
-      - name: Build application
-        run: npm run build
-
-  security-scan-zap:
-    name: TerraFusion Security Scan - ZAP
-    needs: build
-    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
-    uses: ./.github/workflows/zap.yml
+  lint:
+    uses: ./.github/workflows/reusable-lint.yml
     with:
-      target_url: 'https://staging.terrafusion.ai'
-      scan_type: 'baseline'
-      fail_on_high: false
-  
-  security-scan-trivy:
-    name: TerraFusion Security Scan - Trivy
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      
-      - name: Run Trivy vulnerability scanner (dependencies)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'table'
-          severity: 'CRITICAL,HIGH'
-          output: 'trivy-results-deps.txt'
-      
-      - name: Run Trivy vulnerability scanner (code)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'config'
-          scan-ref: '.'
-          format: 'sarif'
-          severity: 'CRITICAL,HIGH'
-          output: 'trivy-results-code.sarif'
-      
-      - name: Upload Trivy Scan Results
-        uses: actions/upload-artifact@v3
-        with:
-          name: trivy-scan-results
-          path: |
-            trivy-results-deps.txt
-            trivy-results-code.sarif
-          retention-days: 30
-      
-      - name: Upload SARIF report
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: 'trivy-results-code.sarif'
+      paths: '**/*.{ts,tsx,js,jsx,py}'
 
-  deploy:
-    name: Deploy to Staging
-    needs: [build, security-scan-trivy]
-    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
-    runs-on: ubuntu-latest
-    environment: staging
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Build application
-        run: npm run build
-      
-      - name: Deploy to staging
-        run: echo "Deploying to staging environment..."
-        # Add your actual deployment steps here
+  test:
+    uses: ./.github/workflows/reusable-test.yml
+
+  security-scan:
+    uses: ./.github/workflows/reusable-scan.yml

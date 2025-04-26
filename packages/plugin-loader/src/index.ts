@@ -1,5 +1,5 @@
-// Export all plugin loader components
-export * from './manifest-schema';
-export * from './verification';
+// Export public plugin-loader API
+export * from './plugin-manifest';
 export * from './plugin-loader';
 export * from './plugin-payment';
+export * from './verification';

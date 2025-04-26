@@ -1,161 +1,199 @@
-import { PluginManifest } from './manifest-schema';
+import { PluginManifest, PluginPricingModel } from './plugin-manifest';
+import Stripe from 'stripe';
 
-export interface PluginPurchaseMetadata {
-  pluginId: string;
-  userId: string;
-  purchaseDate: Date;
-  expirationDate?: Date;
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
-  stripeCheckoutSessionId?: string;
-  status: 'active' | 'expired' | 'cancelled' | 'trial';
-}
-
-export interface PluginPaymentProvider {
-  /**
-   * Check if a user has access to a premium plugin
-   */
-  hasAccess(pluginId: string, userId: string): Promise<boolean>;
-  
-  /**
-   * Get a checkout URL for purchasing a plugin
-   */
-  getCheckoutUrl(pluginId: string, userId: string, returnUrl: string): Promise<string>;
-  
-  /**
-   * Process a webhook from the payment provider
-   */
-  processWebhook(event: any): Promise<void>;
-  
-  /**
-   * Get all premium plugins a user has access to
-   */
-  getUserPremiumPlugins(userId: string): Promise<string[]>;
+/**
+ * Subscription status for paid plugins
+ */
+export enum SubscriptionStatus {
+  ACTIVE = 'active',
+  PAST_DUE = 'past_due',
+  UNPAID = 'unpaid',
+  CANCELED = 'canceled',
+  INCOMPLETE = 'incomplete',
+  INCOMPLETE_EXPIRED = 'incomplete_expired',
+  TRIALING = 'trialing',
+  PAUSED = 'paused'
 }
 
 /**
- * Implementation of the plugin payment provider that integrates with Stripe
- * In a real application, this would interact with an actual Stripe account
+ * Payment record for a plugin
  */
-export class StripePluginPaymentProvider implements PluginPaymentProvider {
-  private purchases: Map<string, PluginPurchaseMetadata> = new Map();
-  private pluginPrices: Map<string, string> = new Map(); // pluginId -> stripePriceId
+export interface PluginPaymentRecord {
+  userId: string;
+  pluginId: string;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  status: SubscriptionStatus;
+  currentPeriodEnd?: Date;
+  cancelAtPeriodEnd: boolean;
+  trialEnd?: Date;
+}
+
+/**
+ * Handles plugin payments and subscriptions
+ */
+export class PluginPaymentManager {
+  private stripe: Stripe | null = null;
   
   /**
-   * In a real app, you'd inject your DB layer and Stripe client
+   * Initialize the payment manager
+   * 
+   * @param options Stripe configuration options
    */
-  constructor(
-    private apiKey: string,
-    private webhookSecret: string
-  ) {}
+  constructor(private options: {
+    apiKey?: string;
+    webhookSecret?: string;
+  }) {
+    if (options.apiKey) {
+      this.stripe = new Stripe(options.apiKey, {
+        apiVersion: '2023-10-16',
+      });
+    }
+  }
   
   /**
-   * Check if a user has access to a premium plugin
+   * Check if a user has an active subscription for a plugin
+   * 
+   * @param pluginId Plugin ID
+   * @param userId User ID
+   * @returns Promise resolving to true if the user has access
    */
-  async hasAccess(pluginId: string, userId: string): Promise<boolean> {
-    const key = `${pluginId}:${userId}`;
-    const purchase = this.purchases.get(key);
+  async hasActiveSubscription(pluginId: string, userId: string): Promise<boolean> {
+    // In a real implementation, this would query the database for payment records
+    // and check the subscription status
+    console.log(`Checking subscription for plugin ${pluginId} and user ${userId}`);
+    return true; // Mock implementation always returns true
+  }
+  
+  /**
+   * Create a checkout session for a plugin
+   * 
+   * @param plugin Plugin manifest
+   * @param userId User ID
+   * @param successUrl URL to redirect to after successful checkout
+   * @param cancelUrl URL to redirect to if checkout is canceled
+   * @returns Promise resolving to the checkout URL
+   */
+  async createCheckoutSession(
+    plugin: PluginManifest,
+    userId: string,
+    successUrl: string,
+    cancelUrl: string
+  ): Promise<string> {
+    if (!this.stripe) {
+      throw new Error('Stripe is not initialized');
+    }
     
-    if (!purchase) {
+    if (!plugin.payment) {
+      throw new Error('Plugin does not have payment information');
+    }
+    
+    if (!plugin.payment.stripePriceId) {
+      throw new Error('Plugin does not have a Stripe price ID');
+    }
+    
+    // In a real implementation, this would create a Stripe checkout session
+    // and return the checkout URL
+    console.log(`Creating checkout session for plugin ${plugin.id}, user ${userId}`);
+    
+    // Mock implementation returning a fake URL
+    return `https://checkout.stripe.com/c/pay/${Math.random().toString(36).substring(2, 15)}`;
+  }
+  
+  /**
+   * Cancel a subscription for a plugin
+   * 
+   * @param pluginId Plugin ID
+   * @param userId User ID
+   * @param cancelImmediately Whether to cancel immediately or at period end
+   * @returns Promise resolving to true if canceled successfully
+   */
+  async cancelSubscription(
+    pluginId: string,
+    userId: string,
+    cancelImmediately: boolean = false
+  ): Promise<boolean> {
+    if (!this.stripe) {
+      throw new Error('Stripe is not initialized');
+    }
+    
+    // In a real implementation, this would cancel the Stripe subscription
+    console.log(`Canceling subscription for plugin ${pluginId}, user ${userId}, immediate: ${cancelImmediately}`);
+    
+    // Mock implementation
+    return true;
+  }
+  
+  /**
+   * Resume a canceled subscription
+   * 
+   * @param pluginId Plugin ID
+   * @param userId User ID
+   * @returns Promise resolving to true if resumed successfully
+   */
+  async resumeSubscription(pluginId: string, userId: string): Promise<boolean> {
+    if (!this.stripe) {
+      throw new Error('Stripe is not initialized');
+    }
+    
+    // In a real implementation, this would resume the Stripe subscription
+    console.log(`Resuming subscription for plugin ${pluginId}, user ${userId}`);
+    
+    // Mock implementation
+    return true;
+  }
+  
+  /**
+   * Handles Stripe webhook events
+   * 
+   * @param rawBody Raw request body from Stripe webhook
+   * @param signature Stripe signature header
+   * @returns Promise resolving to true if handled successfully
+   */
+  async handleWebhook(rawBody: string, signature: string): Promise<boolean> {
+    if (!this.stripe || !this.options.webhookSecret) {
+      throw new Error('Stripe or webhook secret is not initialized');
+    }
+    
+    try {
+      // In a real implementation, this would verify and process the webhook event
+      console.log('Processing webhook event');
+      
+      // Mock implementation
+      return true;
+    } catch (error) {
+      console.error('Error processing webhook event', error);
       return false;
     }
-    
-    // Check if the purchase is still active
-    if (purchase.status === 'active') {
-      // Check for expiration if applicable
-      if (purchase.expirationDate && purchase.expirationDate < new Date()) {
-        purchase.status = 'expired';
-        this.purchases.set(key, purchase);
-        return false;
-      }
-      return true;
-    }
-    
-    return false;
   }
   
   /**
-   * Get a checkout URL for purchasing a plugin
+   * Get payment-related information for a plugin
+   * 
+   * @param plugin Plugin manifest
+   * @param userId User ID
+   * @returns Payment information including subscription status
    */
-  async getCheckoutUrl(pluginId: string, userId: string, returnUrl: string): Promise<string> {
-    // In a real app, you'd use the Stripe API to create a checkout session
-    // For this example, we'll just return a mock URL
-    const mockSessionId = `cs_${Math.random().toString(36).substring(2, 10)}`;
-    return `https://checkout.stripe.com/pay/${mockSessionId}?return_url=${encodeURIComponent(returnUrl)}`;
-  }
-  
-  /**
-   * Process a webhook from Stripe
-   */
-  async processWebhook(event: any): Promise<void> {
-    // In a real app, you'd verify the webhook signature with Stripe
-    // and update your database accordingly
+  async getPluginPaymentInfo(
+    plugin: PluginManifest,
+    userId: string
+  ): Promise<{
+    pricingModel: PluginPricingModel;
+    price?: number;
+    currency?: string;
+    subscriptionStatus?: SubscriptionStatus;
+    trialEnd?: Date;
+    currentPeriodEnd?: Date;
+    cancelAtPeriodEnd?: boolean;
+  }> {
+    // In a real implementation, this would query the database for payment records
+    console.log(`Getting payment info for plugin ${plugin.id}, user ${userId}`);
     
-    if (event.type === 'checkout.session.completed') {
-      const { pluginId, userId } = event.data.object.metadata;
-      const key = `${pluginId}:${userId}`;
-      
-      // Create a new purchase record
-      const purchase: PluginPurchaseMetadata = {
-        pluginId,
-        userId,
-        purchaseDate: new Date(),
-        stripeCustomerId: event.data.object.customer,
-        stripeSubscriptionId: event.data.object.subscription,
-        stripeCheckoutSessionId: event.data.object.id,
-        status: 'active'
-      };
-      
-      // Store the purchase
-      this.purchases.set(key, purchase);
-    } else if (event.type === 'customer.subscription.deleted') {
-      // Handle subscription cancellation
-      const subscriptionId = event.data.object.id;
-      
-      // Find the purchase with this subscription ID
-      for (const [key, purchase] of this.purchases.entries()) {
-        if (purchase.stripeSubscriptionId === subscriptionId) {
-          purchase.status = 'cancelled';
-          this.purchases.set(key, purchase);
-          break;
-        }
-      }
-    }
-  }
-  
-  /**
-   * Get all premium plugins a user has access to
-   */
-  async getUserPremiumPlugins(userId: string): Promise<string[]> {
-    const userPlugins: string[] = [];
-    
-    for (const [key, purchase] of this.purchases.entries()) {
-      if (purchase.userId === userId && purchase.status === 'active') {
-        // Check expiration
-        if (purchase.expirationDate && purchase.expirationDate < new Date()) {
-          purchase.status = 'expired';
-          this.purchases.set(key, purchase);
-          continue;
-        }
-        
-        userPlugins.push(purchase.pluginId);
-      }
-    }
-    
-    return userPlugins;
-  }
-  
-  /**
-   * Register a plugin with a Stripe price
-   */
-  registerPluginPrice(pluginId: string, stripePriceId: string): void {
-    this.pluginPrices.set(pluginId, stripePriceId);
-  }
-  
-  /**
-   * Get the Stripe price ID for a plugin
-   */
-  getPluginPriceId(pluginId: string): string | undefined {
-    return this.pluginPrices.get(pluginId);
+    // Mock implementation
+    return {
+      pricingModel: plugin.payment?.model || 'free',
+      price: plugin.payment?.price,
+      currency: plugin.payment?.currency,
+    };
   }
 }
