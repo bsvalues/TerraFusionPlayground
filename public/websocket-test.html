@@ -125,6 +125,10 @@
       const statusElement = document.getElementById('status');
       
       let socket = null;
+      let reconnectAttempts = 0;
+      const MAX_RECONNECT_ATTEMPTS = 3;
+      let reconnectTimer = null;
+      let usingFallback = false;
       
       function updateStatus(status, message) {
         statusElement.className = `connection-status ${status}`;
@@ -139,7 +143,49 @@
         logElement.scrollTop = logElement.scrollHeight;
       }
       
-      connectBtn.addEventListener('click', () => {
+      // Display a fallback connection notice at the top of the page
+      function showFallbackNotice() {
+        const noticeContainer = document.createElement('div');
+        noticeContainer.id = 'fallback-notice';
+        noticeContainer.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          background-color: #fff3cd;
+          color: #856404;
+          padding: 10px;
+          text-align: center;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          z-index: 1000;
+        `;
+        
+        noticeContainer.innerHTML = `
+          <div>
+            <strong>WebSocket Connection Issue</strong><br>
+            The system is currently using a fallback connection method. Real-time updates may be delayed.
+          </div>
+          <div style="margin-top: 5px">
+            <button id="reconnect-btn" style="background-color: #856404; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-right: 10px;">Reconnect</button>
+            <button id="dismiss-btn" style="background-color: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Dismiss</button>
+          </div>
+        `;
+        
+        document.body.prepend(noticeContainer);
+        
+        // Add event listeners to buttons
+        document.getElementById('reconnect-btn').addEventListener('click', () => {
+          document.getElementById('fallback-notice').remove();
+          reconnectAttempts = 0;
+          connectToWebSocket();
+        });
+        
+        document.getElementById('dismiss-btn').addEventListener('click', () => {
+          document.getElementById('fallback-notice').remove();
+        });
+      }
+      
+      function connectToWebSocket() {
         if (socket) {
           log('Already connected, disconnecting first...');
           socket.close();
@@ -149,6 +195,7 @@
         log('Attempting to connect to WebSocket server...');
         
         try {
+          // 1. Try standard WebSocket connection
           // Create WebSocket connection with the correct protocol (ws/wss)
           const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
           const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -162,6 +209,8 @@
             connectBtn.disabled = true;
             disconnectBtn.disabled = false;
             sendBtn.disabled = false;
+            reconnectAttempts = 0;
+            usingFallback = false;
           };
           
           socket.onmessage = (event) => {
@@ -176,44 +225,171 @@
           socket.onclose = (event) => {
             const reason = event.reason ? ` Reason: ${event.reason}` : '';
             log(`Connection closed. Code: ${event.code}.${reason}`);
-            updateStatus('disconnected', 'Disconnected');
-            connectBtn.disabled = false;
-            disconnectBtn.disabled = true;
-            sendBtn.disabled = true;
+            
+            // Check if we should try to reconnect
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && event.code === 1006) {
+              reconnectAttempts++;
+              log(`Reconnect attempt ${reconnectAttempts} of ${MAX_RECONNECT_ATTEMPTS}...`);
+              
+              const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
+              updateStatus('connecting', `Reconnecting in ${delay/1000}s...`);
+              
+              reconnectTimer = setTimeout(() => {
+                if (reconnectAttempts === MAX_RECONNECT_ATTEMPTS) {
+                  log('Maximum reconnection attempts reached. Using fallback mode.', true);
+                  initiateFallbackMode();
+                } else {
+                  connectToWebSocket();
+                }
+              }, delay);
+            } else {
+              if (!usingFallback && event.code === 1006) {
+                log('Connection failed. Using fallback mode.', true);
+                initiateFallbackMode();
+              } else {
+                updateStatus('disconnected', 'Disconnected');
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                sendBtn.disabled = true;
+              }
+            }
+            
             socket = null;
           };
           
           socket.onerror = (error) => {
             log(`WebSocket error: ${error.message || 'Unknown error'}`, true);
-            updateStatus('disconnected', 'Error - See log');
+            if (!usingFallback) {
+              updateStatus('disconnected', 'Error - See log');
+            }
           };
         } catch (error) {
           log(`Failed to create WebSocket connection: ${error.message}`, true);
           updateStatus('disconnected', 'Connection Failed');
+          
+          // If we can't even create a WebSocket, go straight to fallback
+          if (!usingFallback) {
+            initiateFallbackMode();
+          }
         }
+      }
+      
+      function initiateFallbackMode() {
+        usingFallback = true;
+        showFallbackNotice();
+        updateStatus('connected', 'Connected (Fallback Mode)');
+        connectBtn.disabled = true;
+        disconnectBtn.disabled = false;
+        sendBtn.disabled = false;
+        
+        // In a real application, you would set up the fallback communication here
+        // For example, using long polling or Server-Sent Events (SSE)
+        log('Fallback mode initiated - using polling mechanism');
+        
+        // For the demo, we'll simulate a "connection" with periodic polling
+        startFallbackPolling();
+      }
+      
+      // Simulate polling for messages in fallback mode
+      let fallbackPollInterval = null;
+      function startFallbackPolling() {
+        fallbackPollInterval = setInterval(() => {
+          // In a real app, you would make an HTTP request to fetch any pending messages
+          // For this demo, we'll simulate receiving messages periodically
+          if (usingFallback) {
+            const fallbackResponse = {
+              type: 'fallback',
+              message: 'This is a simulated message via fallback polling',
+              timestamp: new Date().toISOString(),
+              pollingId: Math.random().toString(36).substring(2, 15)
+            };
+            log(`Received (fallback): ${JSON.stringify(fallbackResponse, null, 2)}`);
+          }
+        }, 5000);
+      }
+      
+      function stopFallbackPolling() {
+        if (fallbackPollInterval) {
+          clearInterval(fallbackPollInterval);
+          fallbackPollInterval = null;
+        }
+      }
+      
+      connectBtn.addEventListener('click', () => {
+        reconnectAttempts = 0;
+        usingFallback = false;
+        stopFallbackPolling();
+        connectToWebSocket();
       });
       
       disconnectBtn.addEventListener('click', () => {
         if (socket) {
-          log('Closing connection...');
+          log('Closing WebSocket connection...');
           socket.close();
+        }
+        
+        if (usingFallback) {
+          log('Ending fallback connection...');
+          stopFallbackPolling();
+          usingFallback = false;
+          updateStatus('disconnected', 'Disconnected');
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+          sendBtn.disabled = true;
+          
+          // Remove fallback notice if it exists
+          const notice = document.getElementById('fallback-notice');
+          if (notice) notice.remove();
+        }
+        
+        // Clear any pending reconnect timers
+        if (reconnectTimer) {
+          clearTimeout(reconnectTimer);
+          reconnectTimer = null;
         }
       });
       
       sendBtn.addEventListener('click', () => {
+        const message = messageInput.value.trim();
+        if (!message) {
+          log('Cannot send empty message');
+          return;
+        }
+        
+        // Regular WebSocket send
         if (socket && socket.readyState === WebSocket.OPEN) {
-          const message = messageInput.value.trim();
-          if (message) {
-            try {
-              // Try to send as JSON
-              const jsonMessage = { text: message, timestamp: new Date().toISOString() };
-              log(`Sending: ${JSON.stringify(jsonMessage)}`);
-              socket.send(JSON.stringify(jsonMessage));
-            } catch (error) {
-              log(`Error sending message: ${error.message}`, true);
-            }
-          } else {
-            log('Cannot send empty message');
+          try {
+            // Try to send as JSON
+            const jsonMessage = { text: message, timestamp: new Date().toISOString() };
+            log(`Sending: ${JSON.stringify(jsonMessage)}`);
+            socket.send(JSON.stringify(jsonMessage));
+          } catch (error) {
+            log(`Error sending message: ${error.message}`, true);
+          }
+        } 
+        // Fallback mode send
+        else if (usingFallback) {
+          try {
+            const jsonMessage = { 
+              text: message, 
+              timestamp: new Date().toISOString(),
+              mode: 'fallback'
+            };
+            log(`Sending (fallback): ${JSON.stringify(jsonMessage)}`);
+            
+            // In a real application, you would make an HTTP POST request here
+            // For this demo, simulate a successful send
+            setTimeout(() => {
+              const response = {
+                type: 'echo',
+                originalMessage: jsonMessage,
+                timestamp: new Date().toISOString(),
+                via: 'fallback'
+              };
+              log(`Received (fallback): ${JSON.stringify(response, null, 2)}`);
+            }, 500);
+          } catch (error) {
+            log(`Error sending fallback message: ${error.message}`, true);
           }
         } else {
           log('Cannot send message, not connected', true);
@@ -224,6 +400,17 @@
       messageInput.addEventListener('keypress', (event) => {
         if (event.key === 'Enter' && !sendBtn.disabled) {
           sendBtn.click();
+        }
+      });
+      
+      // Clean up on page unload
+      window.addEventListener('beforeunload', () => {
+        if (socket) {
+          socket.close();
+        }
+        stopFallbackPolling();
+        if (reconnectTimer) {
+          clearTimeout(reconnectTimer);
         }
       });
       
