@@ -289,6 +289,20 @@ function App() {
                 version: '1.0.0',
                 environment: process.env.NODE_ENV || 'development'
               }}
+              includeDeviceInfo={true}
+              reportInterval={15000}
+              maxBatchSize={50}
+              enableRetries={true}
+              maxRetryAttempts={3}
+              collectOnBeforeUnload={true}
+              buildVersion="1.0.0"
+              featureFlags={{
+                offlineSync: true,
+                crdt: true,
+                conflictResolution: true,
+                newUI: true
+              }}
+              samplingRate={1.0}
             />
           </GISProvider>
         </AIAssistantProvider>
