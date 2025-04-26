@@ -2831,19 +2831,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add a simple WebSocket server on a distinct path (/ws)
   const wss = new WebSocketServer({ 
     server: httpServer, 
-    path: '/ws' 
+    path: '/ws',
+    // Add options to help with secure connections
+    clientTracking: true,
+    perMessageDeflate: true
   });
   
   console.log('Simple WebSocket server created on path: /ws');
   
+  // Handle errors at the server level
+  wss.on('error', (error) => {
+    console.error('[WebSocket Server Error]', error);
+  });
+  
   // Set up WebSocket server events
-  wss.on('connection', (ws) => {
-    console.log('WebSocket client connected to /ws');
+  wss.on('connection', (ws, req) => {
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    console.log(`WebSocket client connected to /ws from ${clientIp}`);
+    
+    // Setup heartbeat to detect dead connections
+    (ws as any).isAlive = true;
+    ws.on('pong', () => {
+      (ws as any).isAlive = true;
+    });
     
     ws.on('message', (message) => {
       try {
+        console.log('Received raw message:', message.toString());
         const parsedMessage = JSON.parse(message.toString());
-        console.log('Received message:', parsedMessage);
+        console.log('Parsed message:', parsedMessage);
         
         // Echo the message back with a timestamp
         ws.send(JSON.stringify({
@@ -2853,19 +2869,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
       } catch (error) {
         console.error('Error handling WebSocket message:', error);
+        // Send error message back to client
+        try {
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: `Error processing message: ${error.message}`,
+            timestamp: new Date().toISOString()
+          }));
+        } catch (sendError) {
+          console.error('Error sending error message:', sendError);
+        }
       }
     });
     
-    ws.on('close', () => {
-      console.log('WebSocket client disconnected from /ws');
+    ws.on('error', (error) => {
+      console.error(`WebSocket client error: ${error.message}`);
+    });
+    
+    ws.on('close', (code, reason) => {
+      console.log(`WebSocket client disconnected from /ws. Code: ${code}, Reason: ${reason || 'No reason provided'}`);
     });
     
     // Send welcome message
-    ws.send(JSON.stringify({
-      type: 'welcome',
-      message: 'Connected to TerraFusion WebSocket server',
-      timestamp: new Date().toISOString()
-    }));
+    try {
+      ws.send(JSON.stringify({
+        type: 'welcome',
+        message: 'Connected to TerraFusion WebSocket server',
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error) {
+      console.error('Error sending welcome message:', error);
+    }
   });
   
   // Debug upgrade requests before they're handled by the WebSocket server
