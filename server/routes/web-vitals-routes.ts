@@ -198,11 +198,8 @@ router.get('/web-vitals', async (req: Request, res: Response) => {
     
     const metrics = await query;
     
-    res.json({ 
-      success: true, 
-      count: metrics.length,
-      metrics
-    });
+    // Return just the metrics array for simple consumption by the client
+    res.json(metrics);
   } catch (error) {
     console.error('Error retrieving web vitals metrics:', error);
     res.status(500).json({ 
