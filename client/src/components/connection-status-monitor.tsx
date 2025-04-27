@@ -45,8 +45,8 @@ export const ConnectionStatusMonitor: React.FC<ConnectionStatusMonitorProps> = (
   pollInterval = 60000,
   showNotifications = true,
   autoReconnect = true,
-  wsUrl,
-  socketIoUrl
+  wsUrl = '',
+  socketIoUrl = ''
 }) => {
   const { toast } = useToast();
   const [globalStatus, setGlobalStatus] = useState<ConnectionStatus>('disconnected');

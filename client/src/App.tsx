@@ -4,8 +4,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { ExtensionProvider } from "@/providers/extension-provider";
 import { AIAssistantProvider } from "./providers/ai-assistant-provider";
-import { ConnectionNotification } from "@/components/connection-notification";
-import { ConnectionStatusMonitor } from "@/components/connection-status-monitor";
+// import { ConnectionNotification } from "@/components/connection-notification";
+// import { ConnectionStatusMonitor } from "@/components/connection-status-monitor";
 import { RealUserMonitoring } from "./components/monitoring/RealUserMonitoring";
 import NotFound from "@/pages/not-found";
 import OldDashboard from "@/pages/dashboard";
@@ -279,9 +279,8 @@ function App() {
         <AIAssistantProvider>
           <GISProvider>
             <Router />
-            <ConnectionNotification />
+            {/* Skip ConnectionNotification and ConnectionStatusMonitor for now */}
             <Toaster />
-            <ConnectionStatusMonitor />
             <RealUserMonitoring 
               debug={process.env.NODE_ENV === 'development'}
               tags={{ 

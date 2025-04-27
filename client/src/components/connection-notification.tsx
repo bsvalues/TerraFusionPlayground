@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Toaster } from '@/components/ui/toaster';
+import React, { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { ToastAction } from '@/components/ui/toast';
 import { ConnectionStatus, TransportType } from './connection-status-badge';
+import { Wifi, WifiOff, AlertTriangle, RefreshCw } from 'lucide-react';
 
 export interface ConnectionNotificationProps {
   /**
@@ -72,98 +71,111 @@ export const ConnectionNotification: React.FC<ConnectionNotificationProps> = ({
   const [prevTransport, setPrevTransport] = useState<TransportType>(transport);
   const [hasShownFallbackNotification, setHasShownFallbackNotification] = useState(false);
   
+  // Track status changes and show notifications
   useEffect(() => {
-    // Handle status change notifications
-    if (showToast && status !== prevStatus) {
+    if (!showToast || status === prevStatus) return;
+    
+    // Don't show notification for initial status
+    if (prevStatus !== status) {
       switch (status) {
         case 'connected':
           toast({
-            title: "Connected",
-            description: `Successfully connected to the server via ${transport === 'websocket' ? 'WebSocket' : 'HTTP polling'}.`,
-            variant: "default",
-            duration: toastDuration,
+            title: 'Connected',
+            description: 'Connection to the server has been established.',
+            duration: toastDuration
           });
           break;
         case 'connecting':
-          // Only show if we're coming from disconnected or error, not on initial load
           if (prevStatus === 'disconnected' || prevStatus === 'error') {
             toast({
-              title: "Reconnecting...",
-              description: "Attempting to re-establish connection to the server.",
-              // Use default variant as secondary is not available in the toast component
-              duration: toastDuration,
+              title: 'Connecting',
+              description: 'Attempting to connect to the server...',
+              duration: toastDuration
             });
           }
           break;
         case 'disconnected':
-          toast({
-            title: "Disconnected",
-            description: "Connection to the server has been lost. Retrying...",
-            variant: "destructive",
-            duration: toastDuration,
-            action: onReconnect ? (
-              <ToastAction altText="Try again" onClick={onReconnect}>
-                Reconnect
-              </ToastAction>
-            ) : undefined,
-          });
+          if (prevStatus === 'connected') {
+            toast({
+              title: 'Disconnected',
+              description: 'Connection to the server has been lost. Will attempt to reconnect...',
+              duration: toastDuration,
+              action: onReconnect ? (
+                <button 
+                  onClick={onReconnect}
+                  className="inline-flex items-center rounded bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-800 hover:bg-gray-200"
+                >
+                  <RefreshCw className="mr-1 h-3 w-3" />
+                  Reconnect
+                </button>
+              ) : undefined
+            });
+          }
           break;
         case 'error':
           toast({
-            title: "Connection Error",
-            description: "Failed to connect to the server. Check your network connection.",
-            variant: "destructive",
+            title: 'Connection Error',
+            description: 'Failed to connect to the server. Please check your network connection.',
             duration: toastDuration,
             action: onReconnect ? (
-              <ToastAction altText="Try again" onClick={onReconnect}>
-                Retry
-              </ToastAction>
-            ) : undefined,
+              <button 
+                onClick={onReconnect}
+                className="inline-flex items-center rounded bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-800 hover:bg-gray-200"
+              >
+                <RefreshCw className="mr-1 h-3 w-3" />
+                Reconnect
+              </button>
+            ) : undefined
           });
           break;
       }
-      
-      setPrevStatus(status);
     }
     
-    // Handle transport fallback notification
-    if (showFallbackNotification && 
-        transport !== prevTransport && 
-        transport === 'polling' && 
-        !hasShownFallbackNotification) {
+    setPrevStatus(status);
+  }, [status, prevStatus, onReconnect, showToast, toast, toastDuration]);
+  
+  // Track transport changes (WebSocket to polling fallback)
+  useEffect(() => {
+    if (
+      !showFallbackNotification || 
+      transport === prevTransport || 
+      hasShownFallbackNotification
+    ) return;
+    
+    if (transport === 'polling' && prevTransport === 'websocket') {
       toast({
-        title: "WebSocket Unavailable",
-        description: "Using HTTP polling fallback. Some real-time features may be limited.",
-        // Using default variant since warning is not available
-        duration: 7000,
+        title: 'Using Fallback Connection',
+        description: 'WebSocket connection not available. Using HTTP polling as fallback, which may affect performance.',
+        duration: toastDuration * 1.5 // Longer duration for important fallback notice
       });
       
+      // Only show this once per session
       setHasShownFallbackNotification(true);
     }
     
     setPrevTransport(transport);
-  }, [status, transport, showToast, showFallbackNotification, prevStatus, 
-      prevTransport, hasShownFallbackNotification, toast, toastDuration, onReconnect]);
+  }, [transport, prevTransport, showFallbackNotification, hasShownFallbackNotification, toast, toastDuration]);
   
-  // Show reconnection attempts notification
+  // Show reconnection attempt notifications
   useEffect(() => {
-    if (showReconnectionAttempts && 
-        reconnectCount > 0 && 
-        (status === 'connecting' || status === 'disconnected')) {
-      
-      // Only show every 3 attempts to not overwhelm the user
-      if (reconnectCount % 3 === 0) {
-        toast({
-          title: "Connection Unstable",
-          description: `Made ${reconnectCount} attempt${reconnectCount !== 1 ? 's' : ''} to reconnect. Still trying...`,
-          // Using default variant since warning is not available
-          duration: toastDuration,
-        });
-      }
+    if (!showReconnectionAttempts || reconnectCount === 0) return;
+    
+    // Only show for specific thresholds to avoid toast spam
+    const shouldNotify = [1, 3, 5, 10].includes(reconnectCount);
+    
+    if (shouldNotify) {
+      toast({
+        title: `Reconnection Attempt ${reconnectCount}`,
+        description: reconnectCount >= 5 
+          ? 'Still having trouble connecting. Please check your network connection.' 
+          : 'Attempting to reconnect to the server...',
+        duration: toastDuration
+      });
     }
-  }, [reconnectCount, showReconnectionAttempts, status, toast, toastDuration]);
+  }, [reconnectCount, showReconnectionAttempts, toast, toastDuration]);
   
-  return <Toaster />;
+  // This component doesn't render anything visible
+  return null;
 };
 
 export default ConnectionNotification;
