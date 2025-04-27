@@ -1,19 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { AlertCircle, AlertTriangle, CheckCircle, RefreshCw, WifiOff } from "lucide-react";
 
 /**
  * WebSocket Test Component
  * 
  * This component tests WebSocket connectivity with the server by:
- * 1. Establishing a connection
- * 2. Sending test messages
- * 3. Displaying received messages
+ * 1. Establishing a connection via raw WebSocket and Socket.IO
+ * 2. Sending test messages through both connection types
+ * 3. Displaying received messages and connection status
+ * 4. Demonstrating fallback behavior when WebSocket fails
  */
 const WebSocketTest: React.FC = () => {
+  // Native WebSocket state
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<string[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const socket = useRef<WebSocket | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  
+  // Socket.IO state
+  const [socketIOConnected, setSocketIOConnected] = useState(false);
+  const [socketIOMessages, setSocketIOMessages] = useState<string[]>([]);
+  const [socketIOInputMessage, setSocketIOInputMessage] = useState('');
+  const socketIO = useRef<Socket | null>(null);
+  const [socketIOStatus, setSocketIOStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  const [usingPolling, setUsingPolling] = useState(false);
   
   // Connect to WebSocket server
   useEffect(() => {
@@ -201,83 +216,368 @@ const WebSocketTest: React.FC = () => {
     }
   };
   
+  // Socket.IO connection handling
+  const connectSocketIO = () => {
+    try {
+      setSocketIOStatus('connecting');
+      
+      addSocketIOMessage(`Initializing Socket.IO connection...`);
+      
+      // Initialize Socket.IO connection
+      const socketUrl = window.location.origin;
+      const path = '/api/agents/socket.io';
+      
+      addSocketIOMessage(`Connecting to ${socketUrl} with path: ${path}`);
+      
+      // Create Socket.IO instance
+      socketIO.current = io(socketUrl, {
+        path: path,
+        transports: ['websocket', 'polling'], // Try WebSocket first, then fall back to polling
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 10000
+      });
+      
+      // Connection event handlers
+      socketIO.current.on('connect', () => {
+        setSocketIOConnected(true);
+        setSocketIOStatus('connected');
+        addSocketIOMessage(`Socket.IO connection established successfully`);
+        addSocketIOMessage(`Connection ID: ${socketIO.current?.id}`);
+        
+        // Check transport type
+        const transport = socketIO.current?.io?.engine?.transport?.name;
+        setUsingPolling(transport === 'polling');
+        addSocketIOMessage(`Transport method: ${transport}`);
+      });
+      
+      socketIO.current.on('connect_error', (error) => {
+        setSocketIOStatus('error');
+        addSocketIOMessage(`Socket.IO connection error: ${error.message}`);
+      });
+      
+      socketIO.current.on('disconnect', (reason) => {
+        setSocketIOConnected(false);
+        setSocketIOStatus('disconnected');
+        addSocketIOMessage(`Socket.IO disconnected: ${reason}`);
+      });
+      
+      socketIO.current.on('reconnect_attempt', (attemptNumber) => {
+        addSocketIOMessage(`Socket.IO reconnection attempt ${attemptNumber}...`);
+      });
+      
+      socketIO.current.on('reconnect', (attemptNumber) => {
+        setSocketIOConnected(true);
+        setSocketIOStatus('connected');
+        addSocketIOMessage(`Socket.IO reconnected after ${attemptNumber} attempts`);
+        
+        // Check if reconnected with polling fallback
+        const transport = socketIO.current?.io?.engine?.transport?.name;
+        setUsingPolling(transport === 'polling');
+        addSocketIOMessage(`Reconnected using transport: ${transport}`);
+      });
+      
+      // Listen for messages
+      socketIO.current.on('message', (data) => {
+        addSocketIOMessage(`Received message: ${JSON.stringify(data, null, 2)}`);
+      });
+      
+      // Listen for echo response
+      socketIO.current.on('echo', (data) => {
+        addSocketIOMessage(`Received echo: ${JSON.stringify(data, null, 2)}`);
+      });
+      
+    } catch (error) {
+      setSocketIOStatus('error');
+      addSocketIOMessage(`Error initializing Socket.IO: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+  
+  const disconnectSocketIO = () => {
+    if (socketIO.current) {
+      socketIO.current.disconnect();
+      addSocketIOMessage('Disconnected from Socket.IO server');
+    }
+  };
+  
+  const sendSocketIOMessage = () => {
+    if (socketIO.current && socketIOConnected) {
+      const message = {
+        type: 'message',
+        content: socketIOInputMessage,
+        timestamp: new Date().toISOString()
+      };
+      
+      socketIO.current.emit('message', message);
+      addSocketIOMessage(`Sent: ${JSON.stringify(message, null, 2)}`);
+      setSocketIOInputMessage('');
+    } else {
+      addSocketIOMessage('Cannot send message: Socket.IO is not connected');
+    }
+  };
+  
+  const sendSocketIOPing = () => {
+    if (socketIO.current && socketIOConnected) {
+      const message = {
+        type: 'ping',
+        timestamp: Date.now()
+      };
+      
+      socketIO.current.emit('ping', message);
+      addSocketIOMessage(`Sent ping: ${JSON.stringify(message, null, 2)}`);
+    } else {
+      addSocketIOMessage('Cannot send ping: Socket.IO is not connected');
+    }
+  };
+  
+  const addSocketIOMessage = (message: string) => {
+    setSocketIOMessages(prev => [...prev, message]);
+  };
+  
+  const clearSocketIOMessages = () => {
+    setSocketIOMessages([]);
+  };
+  
+  const getSocketIOStatusColor = () => {
+    switch (socketIOStatus) {
+      case 'connected': return 'text-emerald-500';
+      case 'connecting': return 'text-amber-500';
+      case 'disconnected': return 'text-slate-500';
+      case 'error': return 'text-rose-500';
+      default: return 'text-slate-500';
+    }
+  };
+  
+  // Cleanup Socket.IO on unmount
+  useEffect(() => {
+    return () => {
+      if (socketIO.current) {
+        socketIO.current.disconnect();
+      }
+    };
+  }, []);
+
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">WebSocket Test</h1>
+      <h1 className="text-2xl font-bold mb-4">Real-time Connection Testing</h1>
+      <p className="text-sm text-gray-600 mb-6">
+        Compare direct WebSocket connections with Socket.IO (which provides automatic fallback to HTTP polling)
+      </p>
       
-      <div className="flex items-center mb-4">
-        <span className="mr-2">Status:</span>
-        <span className={`font-bold ${getStatusColor()}`}>
-          {connectionStatus.toUpperCase()}
-        </span>
-      </div>
-      
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={connect}
-          disabled={connected}
-          className="px-4 py-2 bg-teal-600 text-white rounded disabled:opacity-50"
-        >
-          Connect
-        </button>
+      <Tabs defaultValue="websocket" className="w-full mb-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="websocket">
+            Native WebSocket
+            <Badge variant={connectionStatus === 'connected' ? 'default' : connectionStatus === 'error' ? 'destructive' : 'secondary'} 
+              className="ml-2">
+              {connectionStatus}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="socketio">
+            Socket.IO
+            <Badge variant={socketIOStatus === 'connected' ? 'default' : socketIOStatus === 'error' ? 'destructive' : 'secondary'} 
+              className="ml-2">
+              {socketIOStatus}
+            </Badge>
+            {usingPolling && socketIOConnected && (
+              <Badge variant="outline" className="ml-2 bg-yellow-50 text-yellow-800 border-yellow-200">
+                Polling
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
         
-        <button
-          onClick={disconnect}
-          disabled={!connected}
-          className="px-4 py-2 bg-rose-600 text-white rounded disabled:opacity-50"
-        >
-          Disconnect
-        </button>
+        <TabsContent value="websocket">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <span>WebSocket Connection</span>
+                <span className={`ml-2 inline-flex h-3 w-3 rounded-full ${
+                  connectionStatus === 'connected' ? 'bg-green-500' : 
+                  connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 
+                  connectionStatus === 'error' ? 'bg-red-500' : 
+                  'bg-gray-500'
+                }`} />
+              </CardTitle>
+              <CardDescription>
+                Direct WebSocket connection using the native WebSocket API
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={connect}
+                  disabled={connected}
+                  className="px-4 py-2 bg-teal-600 text-white rounded disabled:opacity-50"
+                >
+                  Connect
+                </button>
+                
+                <button
+                  onClick={disconnect}
+                  disabled={!connected}
+                  className="px-4 py-2 bg-rose-600 text-white rounded disabled:opacity-50"
+                >
+                  Disconnect
+                </button>
+                
+                <button
+                  onClick={sendPing}
+                  disabled={!connected}
+                  className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+                >
+                  Send Ping
+                </button>
+                
+                <button
+                  onClick={clearMessages}
+                  className="px-4 py-2 bg-slate-600 text-white rounded"
+                >
+                  Clear Log
+                </button>
+              </div>
+              
+              <div className="mb-4">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    placeholder="Type a message to send..."
+                    className="flex-1 px-4 py-2 border border-slate-300 rounded"
+                  />
+                  
+                  <button
+                    onClick={sendMessage}
+                    disabled={!connected || !inputMessage.trim()}
+                    className="px-4 py-2 bg-teal-600 text-white rounded disabled:opacity-50"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+              
+              <div className="border border-slate-300 rounded p-4 h-96 overflow-y-auto bg-slate-50">
+                <h2 className="text-lg font-semibold mb-2">Message Log</h2>
+                {messages.length === 0 ? (
+                  <p className="text-slate-500">No messages yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {messages.map((message, index) => (
+                      <pre key={index} className="whitespace-pre-wrap bg-white p-2 rounded border border-slate-200 text-sm">
+                        {message}
+                      </pre>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
         
-        <button
-          onClick={sendPing}
-          disabled={!connected}
-          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-        >
-          Send Ping
-        </button>
-        
-        <button
-          onClick={clearMessages}
-          className="px-4 py-2 bg-slate-600 text-white rounded"
-        >
-          Clear Messages
-        </button>
-      </div>
+        <TabsContent value="socketio">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <span>Socket.IO Connection</span>
+                <span className={`ml-2 inline-flex h-3 w-3 rounded-full ${
+                  socketIOStatus === 'connected' ? 'bg-green-500' : 
+                  socketIOStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 
+                  socketIOStatus === 'error' ? 'bg-red-500' : 
+                  'bg-gray-500'
+                }`} />
+                {usingPolling && socketIOConnected && (
+                  <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800 border border-yellow-200">
+                    Using Polling Fallback
+                  </span>
+                )}
+              </CardTitle>
+              <CardDescription>
+                Socket.IO connection with automatic fallback to HTTP polling
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={connectSocketIO}
+                  disabled={socketIOConnected}
+                  className="px-4 py-2 bg-teal-600 text-white rounded disabled:opacity-50"
+                >
+                  Connect
+                </button>
+                
+                <button
+                  onClick={disconnectSocketIO}
+                  disabled={!socketIOConnected}
+                  className="px-4 py-2 bg-rose-600 text-white rounded disabled:opacity-50"
+                >
+                  Disconnect
+                </button>
+                
+                <button
+                  onClick={sendSocketIOPing}
+                  disabled={!socketIOConnected}
+                  className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+                >
+                  Send Ping
+                </button>
+                
+                <button
+                  onClick={clearSocketIOMessages}
+                  className="px-4 py-2 bg-slate-600 text-white rounded"
+                >
+                  Clear Log
+                </button>
+              </div>
+              
+              <div className="mb-4">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={socketIOInputMessage}
+                    onChange={(e) => setSocketIOInputMessage(e.target.value)}
+                    placeholder="Type a message to send..."
+                    className="flex-1 px-4 py-2 border border-slate-300 rounded"
+                  />
+                  
+                  <button
+                    onClick={sendSocketIOMessage}
+                    disabled={!socketIOConnected || !socketIOInputMessage.trim()}
+                    className="px-4 py-2 bg-teal-600 text-white rounded disabled:opacity-50"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+              
+              <div className="border border-slate-300 rounded p-4 h-96 overflow-y-auto bg-slate-50">
+                <h2 className="text-lg font-semibold mb-2">Message Log</h2>
+                {socketIOMessages.length === 0 ? (
+                  <p className="text-slate-500">No messages yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {socketIOMessages.map((message, index) => (
+                      <pre key={index} className="whitespace-pre-wrap bg-white p-2 rounded border border-slate-200 text-sm">
+                        {message}
+                      </pre>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
       
-      <div className="mb-4">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Type a message to send..."
-            className="flex-1 px-4 py-2 border border-slate-300 rounded"
-          />
-          
-          <button
-            onClick={sendMessage}
-            disabled={!connected || !inputMessage.trim()}
-            className="px-4 py-2 bg-teal-600 text-white rounded disabled:opacity-50"
-          >
-            Send
-          </button>
-        </div>
-      </div>
-      
-      <div className="border border-slate-300 rounded p-4 h-96 overflow-y-auto bg-slate-50">
-        <h2 className="text-lg font-semibold mb-2">Message Log</h2>
-        {messages.length === 0 ? (
-          <p className="text-slate-500">No messages yet</p>
-        ) : (
-          <div className="space-y-2">
-            {messages.map((message, index) => (
-              <pre key={index} className="whitespace-pre-wrap bg-white p-2 rounded border border-slate-200 text-sm">
-                {message}
-              </pre>
-            ))}
-          </div>
-        )}
+      <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-md">
+        <h3 className="text-lg font-medium text-blue-800 mb-2">Connection Testing Guide</h3>
+        <ul className="list-disc list-inside space-y-2 text-blue-700">
+          <li>The <strong>Native WebSocket</strong> tab demonstrates direct WebSocket connections which may fail in certain environments</li>
+          <li>The <strong>Socket.IO</strong> tab shows the more robust approach with automatic fallback to HTTP polling when WebSockets aren't available</li>
+          <li>Both provide the same functionality but Socket.IO handles connection failures more gracefully</li>
+          <li>Note that Socket.IO will display a "Polling" indicator when it falls back to HTTP long-polling mode</li>
+        </ul>
       </div>
     </div>
   );
