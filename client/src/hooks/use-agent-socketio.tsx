@@ -1,302 +1,445 @@
-/**
- * Agent Socket.IO Hook
- * 
- * This hook provides access to the agent Socket.IO service for React components.
- * It allows components to connect to the agent system, send messages, and 
- * receive real-time updates.
- * 
- * Enhanced with connection metrics tracking and resilient connectivity features.
- */
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ConnectionStatus, TransportType } from '@/components/connection-status-badge';
+import { ConnectionMetrics } from '@/components/connection-health-metrics';
+import { io, Socket } from 'socket.io-client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { agentSocketIOService, ConnectionStatus } from '../services/agent-socketio-service';
-import { connectionMetricsService, ConnectionMetrics } from '../services/connection-metrics';
+interface UseSocketIOOptions {
+  /**
+   * URL for the Socket.IO connection
+   */
+  url: string;
+  
+  /**
+   * Path for the Socket.IO connection
+   * @default "/socket.io"
+   */
+  path?: string;
+  
+  /**
+   * Initial connection status
+   * @default 'disconnected'
+   */
+  initialStatus?: ConnectionStatus;
+  
+  /**
+   * Maximum number of reconnection attempts
+   * @default 5
+   */
+  maxReconnectAttempts?: number;
+  
+  /**
+   * Reconnection delay in milliseconds
+   * @default 1000
+   */
+  reconnectDelay?: number;
+  
+  /**
+   * Automatically try to reconnect on disconnect
+   * @default true
+   */
+  autoReconnect?: boolean;
+  
+  /**
+   * Events to listen for
+   * @example [{ name: 'message', handler: (data) => console.log(data) }]
+   */
+  events?: Array<{ name: string, handler: (data: any) => void }>;
+  
+  /**
+   * Namespace to connect to
+   * @default "/"
+   */
+  namespace?: string;
+  
+  /**
+   * Callback when connection is established
+   */
+  onConnect?: (socket: Socket) => void;
+  
+  /**
+   * Callback when connection is lost
+   */
+  onDisconnect?: (reason: string) => void;
+  
+  /**
+   * Callback when a reconnection attempt is made
+   */
+  onReconnectAttempt?: (attempt: number) => void;
+  
+  /**
+   * Callback when reconnection is successful
+   */
+  onReconnect?: (attempt: number) => void;
+  
+  /**
+   * Callback when an error occurs
+   */
+  onError?: (error: Error) => void;
+  
+  /**
+   * Additional Socket.IO options
+   */
+  socketOptions?: any;
+}
+
+interface UseSocketIOResult {
+  /**
+   * Current connection status
+   */
+  status: ConnectionStatus;
+  
+  /**
+   * Socket.IO instance (if available)
+   */
+  socket: Socket | null;
+  
+  /**
+   * Send a message through Socket.IO
+   */
+  emit: (event: string, data: any) => void;
+  
+  /**
+   * Force a reconnection attempt
+   */
+  reconnect: () => void;
+  
+  /**
+   * Manually disconnect
+   */
+  disconnect: () => void;
+  
+  /**
+   * Connection metrics
+   */
+  metrics: ConnectionMetrics;
+  
+  /**
+   * Type of transport being used (websocket or polling)
+   */
+  transport: TransportType;
+}
 
 /**
- * Hook to use agent Socket.IO service
+ * Custom hook for managing Socket.IO connections.
  * 
- * @returns Socket.IO service hook interface
+ * This hook provides a managed Socket.IO connection with automatic
+ * reconnection, metrics tracking, and status management. It detects
+ * when Socket.IO falls back to polling and updates the transport type.
  */
-export function useAgentSocketIO() {
-  const [isConnected, setIsConnected] = useState(agentSocketIOService.isConnected());
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(
-    agentSocketIOService.getConnectionStatus()
-  );
-  const [isPolling, setIsPolling] = useState(agentSocketIOService.isUsingFallback());
-  const [lastMessage, setLastMessage] = useState<any>(null);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [connectionMetrics, setConnectionMetrics] = useState<ConnectionMetrics>(
-    connectionMetricsService.getMetrics()
-  );
+export const useAgentSocketIO = (options: UseSocketIOOptions): UseSocketIOResult => {
+  const {
+    url,
+    path = '/socket.io',
+    initialStatus = 'disconnected',
+    maxReconnectAttempts = 5,
+    reconnectDelay = 1000,
+    autoReconnect = true,
+    events = [],
+    namespace = '/',
+    onConnect,
+    onDisconnect,
+    onReconnectAttempt,
+    onReconnect,
+    onError,
+    socketOptions = {}
+  } = options;
   
-  // Connect to agent system
-  const connect = useCallback(async () => {
+  const [status, setStatus] = useState<ConnectionStatus>(initialStatus);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [transport, setTransport] = useState<TransportType>('websocket');
+  const reconnectAttempts = useRef(0);
+  
+  // Metrics
+  const [metrics, setMetrics] = useState<ConnectionMetrics>({
+    latency: 0,
+    uptime: 0,
+    messageCount: 0,
+    reconnectCount: 0,
+    lastMessageTime: null,
+    failedAttempts: 0,
+    transportType: 'websocket'
+  });
+  
+  // Track connection start time
+  const connectionStartTime = useRef<Date | null>(null);
+  
+  // Track ping/pong for latency calculation
+  const lastPingTime = useRef<number>(0);
+  const pingInterval = useRef<NodeJS.Timeout | null>(null);
+  
+  // Initialize Socket.IO connection
+  const initSocket = useCallback(() => {
     try {
-      await agentSocketIOService.connect();
-      return true;
-    } catch (error) {
-      console.error('Error connecting to agent system:', error);
-      return false;
-    }
-  }, []);
-  
-  // Disconnect from agent system
-  const disconnect = useCallback(() => {
-    agentSocketIOService.disconnect();
-  }, []);
-  
-  // Send message to agent
-  const sendAgentMessage = useCallback(async (recipientId: string, message: any) => {
-    try {
-      return await agentSocketIOService.sendAgentMessage(recipientId, message);
-    } catch (error) {
-      console.error('Error sending agent message:', error);
-      throw error;
-    }
-  }, []);
-  
-  // Send action request
-  const sendActionRequest = useCallback(async (targetAgent: string, action: string, params: any = {}) => {
-    try {
-      return await agentSocketIOService.sendActionRequest(targetAgent, action, params);
-    } catch (error) {
-      console.error('Error sending action request:', error);
-      throw error;
-    }
-  }, []);
-  
-  // Add event listener
-  const addEventListener = useCallback((eventName: string, listener: (data: any) => void) => {
-    agentSocketIOService.on(eventName, listener);
-    
-    // Return removal function
-    return () => {
-      agentSocketIOService.off(eventName, listener);
-    };
-  }, []);
-  
-  // Remove event listener
-  const removeEventListener = useCallback((eventName: string, listener: (data: any) => void) => {
-    agentSocketIOService.off(eventName, listener);
-  }, []);
-  
-  // Effect to set up connection status listener
-  useEffect(() => {
-    // Listen for connection status changes
-    const removeListener = agentSocketIOService.onConnectionStatusChange((status) => {
-      setConnectionStatus(status);
-      setIsConnected(status === ConnectionStatus.CONNECTED);
+      setStatus('connecting');
       
-      // Also update polling status, as it often changes with connection status
-      setIsPolling(agentSocketIOService.isUsingFallback());
-      
-      // Record status change in metrics
-      connectionMetricsService.recordStatusChange(status);
-      setConnectionMetrics(connectionMetricsService.getMetrics());
-    });
-    
-    // Handle generic message event
-    const messageHandler = (message: any) => {
-      setLastMessage(message);
-      setMessages((prev) => [...prev, message]);
-      
-      // Check for fallback mode notifications
-      if (message.type === 'notification' && 
-          message.message && 
-          message.message.includes('fallback')) {
-        setIsPolling(agentSocketIOService.isUsingFallback());
-        
-        // Record fallback activation in metrics
-        connectionMetricsService.recordFallbackActivated();
-        setConnectionMetrics(connectionMetricsService.getMetrics());
+      // Close existing socket if any
+      if (socket) {
+        socket.disconnect();
       }
-    };
-    
-    agentSocketIOService.on('message', messageHandler);
-    
-    // Set up periodic polling status check
-    const pollingStatusInterval = setInterval(() => {
-      const currentPollingStatus = agentSocketIOService.isUsingFallback();
-      if (currentPollingStatus !== isPolling) {
-        setIsPolling(currentPollingStatus);
+      
+      // Create Socket.IO instance
+      const socketInstance = io(`${url}${namespace}`, {
+        path,
+        reconnection: autoReconnect,
+        reconnectionAttempts: maxReconnectAttempts,
+        reconnectionDelay: reconnectDelay,
+        timeout: 10000,
+        ...socketOptions
+      });
+      
+      // Connect event
+      socketInstance.on('connect', () => {
+        setStatus('connected');
+        reconnectAttempts.current = 0;
+        connectionStartTime.current = new Date();
         
-        // Record fallback status change in metrics
-        if (currentPollingStatus) {
-          connectionMetricsService.recordFallbackActivated();
-        } else {
-          connectionMetricsService.recordFallbackDeactivated();
+        // Determine transport type
+        const currentTransport = socketInstance.io.engine.transport.name as 'websocket' | 'polling';
+        setTransport(currentTransport === 'websocket' ? 'websocket' : 'polling');
+        
+        // Update metrics
+        setMetrics(prev => ({
+          ...prev,
+          uptime: 100,
+          transportType: currentTransport === 'websocket' ? 'websocket' : 'polling'
+        }));
+        
+        // Start ping interval for latency measurement
+        if (pingInterval.current) {
+          clearInterval(pingInterval.current);
         }
-        setConnectionMetrics(connectionMetricsService.getMetrics());
-      }
-    }, 2000);
-    
-    // Set up periodic metrics refresh
-    const metricsRefreshInterval = setInterval(() => {
-      setConnectionMetrics(connectionMetricsService.getMetrics());
-    }, 5000);
-    
-    // Clean up
-    return () => {
-      removeListener();
-      agentSocketIOService.off('message', messageHandler);
-      clearInterval(pollingStatusInterval);
-      clearInterval(metricsRefreshInterval);
-    };
-  }, [isPolling]);
-  
-  // Return values and functions
-  return useMemo(() => ({
-    isConnected,
-    connectionStatus,
-    isPolling,
-    clientId: agentSocketIOService.getClientId(),
-    lastMessage,
-    messages,
-    connect,
-    disconnect,
-    sendAgentMessage,
-    sendActionRequest,
-    addEventListener,
-    removeEventListener,
-    // Also export the connection status enum values
-    connectionStatuses: ConnectionStatus,
-    // Connection metrics data for monitoring
-    connectionMetrics
-  }), [
-    isConnected,
-    connectionStatus,
-    isPolling,
-    lastMessage,
-    messages,
-    connect,
-    disconnect,
-    sendAgentMessage,
-    sendActionRequest,
-    addEventListener,
-    removeEventListener,
-    connectionMetrics
-  ]);
-}
-
-/**
- * Connection status indicator component for the agent Socket.IO service
- * Provides enhanced visual feedback about connection state
- */
-export function ConnectionStatusIndicator({ 
-  className = '',
-  showDetails = false,
-  variant = 'default'
-}: { 
-  className?: string,
-  showDetails?: boolean,
-  variant?: 'default' | 'compact' | 'expanded' 
-}) {
-  const { connectionStatus, connectionStatuses, isPolling, connectionMetrics } = useAgentSocketIO();
-  
-  // Determine status color and text
-  const getStatusInfo = () => {
-    switch (connectionStatus) {
-      case ConnectionStatus.CONNECTED:
-        return { 
-          color: 'bg-green-500', 
-          textColor: 'text-green-700',
-          borderColor: 'border-green-200',
-          bgColor: 'bg-green-50',
-          text: 'Connected',
-          icon: '✓',
-          animate: false
-        };
-      case ConnectionStatus.CONNECTING:
-        return { 
-          color: 'bg-yellow-500', 
-          textColor: 'text-yellow-700',
-          borderColor: 'border-yellow-200',
-          bgColor: 'bg-yellow-50',
-          text: 'Connecting',
-          icon: '⟳',
-          animate: true
-        };
-      case ConnectionStatus.DISCONNECTED:
-        return { 
-          color: 'bg-gray-500', 
-          textColor: 'text-gray-700',
-          borderColor: 'border-gray-200',
-          bgColor: 'bg-gray-50',
-          text: 'Disconnected',
-          icon: '⚠',
-          animate: false
-        };
-      case ConnectionStatus.ERRORED:
-        return { 
-          color: 'bg-red-500', 
-          textColor: 'text-red-700',
-          borderColor: 'border-red-200',
-          bgColor: 'bg-red-50',
-          text: 'Error',
-          icon: '!',
-          animate: false
-        };
-      default:
-        return { 
-          color: 'bg-gray-500', 
-          textColor: 'text-gray-700',
-          borderColor: 'border-gray-200',
-          bgColor: 'bg-gray-50',
-          text: 'Unknown',
-          icon: '?',
-          animate: false
-        };
-    }
-  };
-  
-  const { color, textColor, borderColor, bgColor, text, icon, animate } = getStatusInfo();
-  
-  if (variant === 'compact') {
-    return (
-      <div className={`inline-flex items-center ${className}`} title={`${text}${isPolling ? ' (Fallback Mode)' : ''}`}>
-        <div className={`w-2.5 h-2.5 rounded-full ${color} ${animate ? 'animate-pulse' : ''}`} />
-      </div>
-    );
-  }
-  
-  if (variant === 'expanded') {
-    return (
-      <div className={`${className} ${borderColor} ${bgColor} border rounded-md p-2 flex flex-col`}>
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${color} ${animate ? 'animate-pulse' : ''}`} />
-          <span className={`text-xs font-medium ${textColor}`}>
-            {text}
-            {isPolling && <span className="ml-1 px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-[10px]">Fallback</span>}
-          </span>
-        </div>
         
-        {showDetails && connectionMetrics && (
-          <div className="text-[10px] text-gray-500 mt-1 pl-5">
-            <div>Reconnections: {connectionMetrics.totalReconnectAttempts}</div>
-            <div>Fallback activations: {connectionMetrics.totalFallbackActivations}</div>
-            <div>Last event: {
-              connectionMetrics.connectionEvents.length > 0 
-                ? new Date(connectionMetrics.connectionEvents[connectionMetrics.connectionEvents.length - 1].timestamp).toLocaleTimeString() 
-                : 'None'
-            }</div>
-          </div>
-        )}
-      </div>
-    );
-  }
+        pingInterval.current = setInterval(() => {
+          lastPingTime.current = Date.now();
+          socketInstance.emit('ping');
+        }, 30000); // Ping every 30 seconds
+        
+        if (onConnect) {
+          onConnect(socketInstance);
+        }
+      });
+      
+      // Transport change event
+      socketInstance.io.engine.on('upgrade', (transport) => {
+        const newTransport = transport.name as 'websocket' | 'polling';
+        setTransport(newTransport === 'websocket' ? 'websocket' : 'polling');
+        
+        setMetrics(prev => ({
+          ...prev,
+          transportType: newTransport === 'websocket' ? 'websocket' : 'polling'
+        }));
+      });
+      
+      // Disconnect event
+      socketInstance.on('disconnect', (reason) => {
+        setStatus('disconnected');
+        connectionStartTime.current = null;
+        
+        // Clear ping interval
+        if (pingInterval.current) {
+          clearInterval(pingInterval.current);
+          pingInterval.current = null;
+        }
+        
+        if (onDisconnect) {
+          onDisconnect(reason);
+        }
+      });
+      
+      // Reconnect attempt event
+      socketInstance.io.on('reconnect_attempt', (attempt) => {
+        setStatus('connecting');
+        reconnectAttempts.current = attempt;
+        
+        // Update metrics
+        setMetrics(prev => ({
+          ...prev,
+          reconnectCount: prev.reconnectCount + 1
+        }));
+        
+        if (onReconnectAttempt) {
+          onReconnectAttempt(attempt);
+        }
+      });
+      
+      // Reconnect event
+      socketInstance.io.on('reconnect', (attempt) => {
+        setStatus('connected');
+        connectionStartTime.current = new Date();
+        
+        if (onReconnect) {
+          onReconnect(attempt);
+        }
+      });
+      
+      // Reconnect error event
+      socketInstance.io.on('reconnect_error', (error) => {
+        // Update metrics
+        setMetrics(prev => ({
+          ...prev,
+          failedAttempts: prev.failedAttempts + 1
+        }));
+        
+        if (onError) {
+          onError(error);
+        }
+      });
+      
+      // Reconnect failed event
+      socketInstance.io.on('reconnect_failed', () => {
+        setStatus('error');
+        
+        // Update metrics
+        setMetrics(prev => ({
+          ...prev,
+          failedAttempts: prev.failedAttempts + 1,
+          uptime: 0
+        }));
+      });
+      
+      // Error event
+      socketInstance.on('error', (error) => {
+        // Update metrics
+        setMetrics(prev => ({
+          ...prev,
+          failedAttempts: prev.failedAttempts + 1
+        }));
+        
+        if (onError) {
+          onError(error);
+        }
+      });
+      
+      // Listen for pong event for latency calculation
+      socketInstance.on('pong', () => {
+        const latency = Date.now() - lastPingTime.current;
+        
+        setMetrics(prev => ({
+          ...prev,
+          latency
+        }));
+      });
+      
+      // Register custom event listeners
+      events.forEach(({ name, handler }) => {
+        socketInstance.on(name, (data) => {
+          // Update metrics for any message received
+          setMetrics(prev => ({
+            ...prev,
+            messageCount: prev.messageCount + 1,
+            lastMessageTime: new Date()
+          }));
+          
+          handler(data);
+        });
+      });
+      
+      setSocket(socketInstance);
+    } catch (error) {
+      setStatus('error');
+      console.error('Error initializing Socket.IO:', error);
+      
+      // Update metrics
+      setMetrics(prev => ({
+        ...prev,
+        failedAttempts: prev.failedAttempts + 1,
+        uptime: 0
+      }));
+      
+      if (onError && error instanceof Error) {
+        onError(error);
+      }
+    }
+  }, [
+    url, namespace, path, socketOptions, autoReconnect, maxReconnectAttempts, 
+    reconnectDelay, events, socket, onConnect, onDisconnect, onReconnectAttempt, 
+    onReconnect, onError
+  ]);
   
-  // Default variant
-  return (
-    <div className={`flex items-center space-x-2 ${className}`}>
-      <div className={`w-3 h-3 rounded-full ${color} ${animate ? 'animate-pulse' : ''}`} />
-      <span className={`text-xs ${textColor}`}>
-        {text}
-        {isPolling && (
-          <span className="ml-1 px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-[10px]">
-            Fallback Mode
-          </span>
-        )}
-      </span>
-    </div>
-  );
-}
+  // Emit event
+  const emit = useCallback((event: string, data: any) => {
+    if (socket && socket.connected) {
+      socket.emit(event, data);
+      return true;
+    }
+    return false;
+  }, [socket]);
+  
+  // Manual reconnect
+  const reconnect = useCallback(() => {
+    if (socket) {
+      socket.connect();
+    } else {
+      initSocket();
+    }
+  }, [socket, initSocket]);
+  
+  // Manual disconnect
+  const disconnect = useCallback(() => {
+    if (socket) {
+      socket.disconnect();
+    }
+    
+    if (pingInterval.current) {
+      clearInterval(pingInterval.current);
+      pingInterval.current = null;
+    }
+    
+    setStatus('disconnected');
+  }, [socket]);
+  
+  // Initialize on mount
+  useEffect(() => {
+    initSocket();
+    
+    // Clean up on unmount
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+      
+      if (pingInterval.current) {
+        clearInterval(pingInterval.current);
+      }
+    };
+  }, [initSocket]);
+  
+  // Calculate uptime
+  useEffect(() => {
+    if (status === 'connected' && connectionStartTime.current) {
+      const calculateUptime = () => {
+        if (!connectionStartTime.current) return;
+        
+        const now = new Date();
+        const uptimeMs = now.getTime() - connectionStartTime.current.getTime();
+        
+        // For demo purposes, we'll use a max uptime of 1 hour to make the percentage meaningful
+        const maxUptimeMs = 60 * 60 * 1000; // 1 hour
+        const uptimePercentage = Math.min(100, (uptimeMs / maxUptimeMs) * 100);
+        
+        setMetrics(prev => ({
+          ...prev,
+          uptime: Math.round(uptimePercentage)
+        }));
+      };
+      
+      // Calculate immediately and then every minute
+      calculateUptime();
+      const uptimeInterval = setInterval(calculateUptime, 60000);
+      
+      return () => clearInterval(uptimeInterval);
+    }
+  }, [status]);
+  
+  return {
+    status,
+    socket,
+    emit,
+    reconnect,
+    disconnect,
+    metrics,
+    transport
+  };
+};
+
+export default useAgentSocketIO;

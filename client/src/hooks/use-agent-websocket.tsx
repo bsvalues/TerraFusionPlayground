@@ -1,191 +1,387 @@
-/**
- * Agent WebSocket Hook
- * 
- * This hook provides a React interface for the agent communication service (Socket.IO),
- * allowing components to easily connect to agents, send messages, and
- * receive real-time updates.
- * 
- * Note: This has been updated to use Socket.IO instead of raw WebSockets
- * for better reliability, especially in environments like Replit where
- * WebSockets may have connection issues.
- */
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ConnectionStatus, TransportType } from '@/components/connection-status-badge';
+import { ConnectionMetrics } from '@/components/connection-health-metrics';
 
-import { useState, useEffect, useCallback } from 'react';
-// Use the Socket.IO service instead of WebSockets
-import { agentSocketIOService, ConnectionStatus as SocketIOConnectionStatus } from '@/services/agent-socketio-service';
-import { useToast } from '@/hooks/use-toast';
-
-// Map Socket.IO connection status to our existing connection status type for backward compatibility
-export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'errored';
-
-// Helper function to convert Socket.IO connection status to our ConnectionStatus type
-const mapConnectionStatus = (status: SocketIOConnectionStatus): ConnectionStatus => {
-  switch (status) {
-    case SocketIOConnectionStatus.CONNECTED:
-      return 'connected';
-    case SocketIOConnectionStatus.CONNECTING:
-      return 'connecting';
-    case SocketIOConnectionStatus.DISCONNECTED:
-      return 'disconnected';
-    case SocketIOConnectionStatus.ERRORED:
-      return 'errored';
-    default:
-      return 'disconnected';
-  }
-};
-
-type MessageHandler = (message: any) => void;
-
-interface UseAgentWebSocketProps {
-  autoConnect?: boolean;
-  showToasts?: boolean;
+interface UseWebSocketOptions {
+  /**
+   * URL for the WebSocket connection
+   */
+  url: string;
+  
+  /**
+   * Initial connection status
+   * @default 'disconnected'
+   */
+  initialStatus?: ConnectionStatus;
+  
+  /**
+   * Maximum number of reconnection attempts
+   * @default 5
+   */
+  maxReconnectAttempts?: number;
+  
+  /**
+   * Reconnection delay in milliseconds (will be increased exponentially)
+   * @default 1000
+   */
+  reconnectDelay?: number;
+  
+  /**
+   * Automatically try to reconnect on disconnect
+   * @default true
+   */
+  autoReconnect?: boolean;
+  
+  /**
+   * Protocol to be used (e.g., 'v1.0.0')
+   */
+  protocols?: string | string[];
+  
+  /**
+   * Callback when a message is received
+   */
+  onMessage?: (event: MessageEvent) => void;
+  
+  /**
+   * Callback when connection is opened
+   */
+  onOpen?: (event: Event) => void;
+  
+  /**
+   * Callback when connection is closed
+   */
+  onClose?: (event: CloseEvent) => void;
+  
+  /**
+   * Callback when an error occurs
+   */
+  onError?: (event: Event) => void;
 }
 
-interface UseAgentWebSocketResult {
-  connectionStatus: ConnectionStatus;
-  connect: () => Promise<boolean>;
+interface UseWebSocketResult {
+  /**
+   * Current connection status
+   */
+  status: ConnectionStatus;
+  
+  /**
+   * WebSocket instance (if available)
+   */
+  socket: WebSocket | null;
+  
+  /**
+   * Send a message through the WebSocket
+   */
+  sendMessage: (data: string | ArrayBufferLike | Blob | ArrayBufferView) => void;
+  
+  /**
+   * Force a reconnection attempt
+   */
+  reconnect: () => void;
+  
+  /**
+   * Manually disconnect the WebSocket
+   */
   disconnect: () => void;
-  sendAgentMessage: (recipientId: string, message: any) => Promise<string>;
-  sendActionRequest: (targetAgent: string, action: string, params?: any) => Promise<string>;
-  on: (type: string, handler: MessageHandler) => () => void;
-  off: (type: string, handler: MessageHandler) => void;
+  
+  /**
+   * Connection metrics
+   */
+  metrics: ConnectionMetrics;
+  
+  /**
+   * Type of transport being used
+   */
+  transport: TransportType;
 }
 
 /**
- * Hook for interacting with agent WebSocket service
+ * Custom hook for managing WebSocket connections.
+ * 
+ * This hook provides a managed WebSocket connection with automatic
+ * reconnection, metrics tracking, and status management.
  */
-export function useAgentWebSocket({
-  autoConnect = true,
-  showToasts = false,
-}: UseAgentWebSocketProps = {}): UseAgentWebSocketResult {
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(
-    mapConnectionStatus(agentSocketIOService.getConnectionStatus())
-  );
-  const { toast } = useToast();
-
-  // Connect to the Socket.IO server
-  const connect = useCallback(async (): Promise<boolean> => {
+export const useAgentWebSocket = (options: UseWebSocketOptions): UseWebSocketResult => {
+  const {
+    url,
+    initialStatus = 'disconnected',
+    maxReconnectAttempts = 5,
+    reconnectDelay = 1000,
+    autoReconnect = true,
+    protocols,
+    onMessage,
+    onOpen,
+    onClose,
+    onError
+  } = options;
+  
+  const [status, setStatus] = useState<ConnectionStatus>(initialStatus);
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const reconnectAttempts = useRef(0);
+  const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [transport, setTransport] = useState<TransportType>('websocket');
+  
+  // Metrics
+  const [metrics, setMetrics] = useState<ConnectionMetrics>({
+    latency: 0,
+    uptime: 0,
+    messageCount: 0,
+    reconnectCount: 0,
+    lastMessageTime: null,
+    failedAttempts: 0,
+    transportType: 'websocket'
+  });
+  
+  // Track connection start time
+  const connectionStartTime = useRef<Date | null>(null);
+  
+  // Track ping/pong for latency calculation
+  const lastPingTime = useRef<number>(0);
+  const pingInterval = useRef<NodeJS.Timeout | null>(null);
+  
+  // Connect to WebSocket
+  const connect = useCallback(() => {
     try {
-      return await agentSocketIOService.connect();
+      // Close existing socket if any
+      if (socket) {
+        socket.close();
+      }
+      
+      setStatus('connecting');
+      
+      // Create new WebSocket
+      const newSocket = protocols 
+        ? new WebSocket(url, protocols) 
+        : new WebSocket(url);
+      
+      newSocket.onopen = (event) => {
+        setStatus('connected');
+        reconnectAttempts.current = 0;
+        connectionStartTime.current = new Date();
+        setTransport('websocket');
+        
+        // Start ping interval for latency measurement
+        if (pingInterval.current) {
+          clearInterval(pingInterval.current);
+        }
+        
+        pingInterval.current = setInterval(() => {
+          if (newSocket.readyState === WebSocket.OPEN) {
+            lastPingTime.current = Date.now();
+            newSocket.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 30000); // Ping every 30 seconds
+        
+        // Update metrics
+        setMetrics(prev => ({
+          ...prev,
+          latency: 0,
+          uptime: 100,
+          transportType: 'websocket'
+        }));
+        
+        // Call user callback
+        if (onOpen) {
+          onOpen(event);
+        }
+      };
+      
+      newSocket.onclose = (event) => {
+        setStatus('disconnected');
+        connectionStartTime.current = null;
+        
+        // Clear ping interval
+        if (pingInterval.current) {
+          clearInterval(pingInterval.current);
+          pingInterval.current = null;
+        }
+        
+        // Call user callback
+        if (onClose) {
+          onClose(event);
+        }
+        
+        // Attempt to reconnect if auto-reconnect is enabled
+        if (autoReconnect && reconnectAttempts.current < maxReconnectAttempts) {
+          const delay = reconnectDelay * Math.pow(1.5, reconnectAttempts.current);
+          reconnectAttempts.current++;
+          
+          // Update metrics
+          setMetrics(prev => ({
+            ...prev,
+            reconnectCount: prev.reconnectCount + 1,
+            uptime: 0
+          }));
+          
+          if (reconnectTimeout.current) {
+            clearTimeout(reconnectTimeout.current);
+          }
+          
+          reconnectTimeout.current = setTimeout(() => {
+            connect();
+          }, delay);
+        } else if (reconnectAttempts.current >= maxReconnectAttempts) {
+          setStatus('error');
+          
+          // Update metrics
+          setMetrics(prev => ({
+            ...prev,
+            failedAttempts: prev.failedAttempts + 1,
+            uptime: 0
+          }));
+        }
+      };
+      
+      newSocket.onerror = (event) => {
+        // We don't set status here as the onclose will be called after this
+        
+        // Call user callback
+        if (onError) {
+          onError(event);
+        }
+        
+        // Update metrics
+        setMetrics(prev => ({
+          ...prev,
+          failedAttempts: prev.failedAttempts + 1
+        }));
+      };
+      
+      newSocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          // Handle pong messages for latency calculation
+          if (data.type === 'pong') {
+            const latency = Date.now() - lastPingTime.current;
+            setMetrics(prev => ({
+              ...prev,
+              latency
+            }));
+          }
+        } catch (e) {
+          // Not JSON or doesn't have type field, ignore
+        }
+        
+        // Update metrics
+        setMetrics(prev => ({
+          ...prev,
+          messageCount: prev.messageCount + 1,
+          lastMessageTime: new Date()
+        }));
+        
+        // Call user callback
+        if (onMessage) {
+          onMessage(event);
+        }
+      };
+      
+      setSocket(newSocket);
     } catch (error) {
-      console.error('Error connecting to agent Socket.IO:', error);
-      if (showToasts) {
-        toast({
-          title: 'Connection Error',
-          description: 'Failed to connect to agent system. Some features may be unavailable.',
-          variant: 'destructive',
-        });
-      }
-      return false;
+      setStatus('error');
+      console.error('Error connecting to WebSocket:', error);
+      
+      // Update metrics
+      setMetrics(prev => ({
+        ...prev,
+        failedAttempts: prev.failedAttempts + 1,
+        uptime: 0
+      }));
     }
-  }, [showToasts, toast]);
-
-  // Disconnect from the Socket.IO server
-  const disconnect = useCallback((): void => {
-    agentSocketIOService.disconnect();
-  }, []);
-
-  // Send a message to an agent
-  const sendAgentMessage = useCallback(
-    async (recipientId: string, message: any): Promise<string> => {
-      try {
-        return await agentSocketIOService.sendAgentMessage(recipientId, message);
-      } catch (error) {
-        console.error('Error sending agent message:', error);
-        if (showToasts) {
-          toast({
-            title: 'Message Error',
-            description: 'Failed to send message to agent. Please try again.',
-            variant: 'destructive',
-          });
-        }
-        throw error;
-      }
-    },
-    [showToasts, toast]
-  );
-
-  // Send an action request to an agent
-  const sendActionRequest = useCallback(
-    async (targetAgent: string, action: string, params: any = {}): Promise<string> => {
-      try {
-        return await agentSocketIOService.sendActionRequest(targetAgent, action, params);
-      } catch (error) {
-        console.error('Error sending action request:', error);
-        if (showToasts) {
-          toast({
-            title: 'Action Error',
-            description: `Failed to request action "${action}" from agent. Please try again.`,
-            variant: 'destructive',
-          });
-        }
-        throw error;
-      }
-    },
-    [showToasts, toast]
-  );
-
-  // Register a handler for a specific message type
-  const on = useCallback(
-    (type: string, handler: MessageHandler): (() => void) => {
-      return agentSocketIOService.on(type, handler);
-    },
-    []
-  );
-
-  // Remove a handler for a specific message type
-  const off = useCallback(
-    (type: string, handler: MessageHandler): void => {
-      agentSocketIOService.off(type, handler);
-    },
-    []
-  );
-
-  // Set up connection status listener and auto-connect
-  useEffect(() => {
-    // Listen for connection status changes and map to our ConnectionStatus type
-    const unsubscribe = agentSocketIOService.onConnectionStatusChange((status) => {
-      setConnectionStatus(mapConnectionStatus(status));
-    });
-
-    // Auto-connect if enabled
-    if (autoConnect) {
-      connect().catch(error => {
-        console.error('Auto-connect failed:', error);
-      });
+  }, [url, protocols, socket, autoReconnect, maxReconnectAttempts, reconnectDelay, onOpen, onClose, onMessage, onError]);
+  
+  // Send message
+  const sendMessage = useCallback((data: string | ArrayBufferLike | Blob | ArrayBufferView) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(data);
+      return true;
     }
-
-    // Listen for notification messages and show toasts
-    let notificationUnsubscribe: (() => void) | null = null;
+    return false;
+  }, [socket]);
+  
+  // Manual reconnect
+  const reconnect = useCallback(() => {
+    // Reset reconnect attempts to give full reconnection attempts
+    reconnectAttempts.current = 0;
+    connect();
+  }, [connect]);
+  
+  // Manual disconnect
+  const disconnect = useCallback(() => {
+    if (socket) {
+      socket.close();
+    }
     
-    if (showToasts) {
-      notificationUnsubscribe = agentSocketIOService.on('notification', (message: any) => {
-        if (message.level && message.title && message.message) {
-          toast({
-            title: message.title,
-            description: message.message,
-            variant: message.level === 'error' ? 'destructive' : 'default',
-          });
-        }
-      });
+    if (reconnectTimeout.current) {
+      clearTimeout(reconnectTimeout.current);
+      reconnectTimeout.current = null;
     }
-
-    // Clean up event listeners on unmount
+    
+    if (pingInterval.current) {
+      clearInterval(pingInterval.current);
+      pingInterval.current = null;
+    }
+    
+    setStatus('disconnected');
+    setSocket(null);
+  }, [socket]);
+  
+  // Connect on mount
+  useEffect(() => {
+    connect();
+    
+    // Clean up on unmount
     return () => {
-      unsubscribe();
-      if (notificationUnsubscribe) {
-        notificationUnsubscribe();
+      if (socket) {
+        socket.close();
+      }
+      
+      if (reconnectTimeout.current) {
+        clearTimeout(reconnectTimeout.current);
+      }
+      
+      if (pingInterval.current) {
+        clearInterval(pingInterval.current);
       }
     };
-  }, [autoConnect, connect, showToasts, toast]);
-
+  }, [connect, url]); // Only re-run if url changes
+  
+  // Calculate uptime
+  useEffect(() => {
+    if (status === 'connected' && connectionStartTime.current) {
+      const calculateUptime = () => {
+        if (!connectionStartTime.current) return;
+        
+        const now = new Date();
+        const uptimeMs = now.getTime() - connectionStartTime.current.getTime();
+        
+        // For demo purposes, we'll use a max uptime of 1 hour to make the percentage meaningful
+        const maxUptimeMs = 60 * 60 * 1000; // 1 hour
+        const uptimePercentage = Math.min(100, (uptimeMs / maxUptimeMs) * 100);
+        
+        setMetrics(prev => ({
+          ...prev,
+          uptime: Math.round(uptimePercentage)
+        }));
+      };
+      
+      // Calculate immediately and then every minute
+      calculateUptime();
+      const uptimeInterval = setInterval(calculateUptime, 60000);
+      
+      return () => clearInterval(uptimeInterval);
+    }
+  }, [status]);
+  
   return {
-    connectionStatus,
-    connect,
+    status,
+    socket,
+    sendMessage,
+    reconnect,
     disconnect,
-    sendAgentMessage,
-    sendActionRequest,
-    on,
-    off,
+    metrics,
+    transport
   };
-}
+};
+
+export default useAgentWebSocket;

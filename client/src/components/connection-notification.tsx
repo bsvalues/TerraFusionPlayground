@@ -1,105 +1,169 @@
+import React, { useState, useEffect } from 'react';
+import { Toaster } from '@/components/ui/toaster';
+import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import { ConnectionStatus, TransportType } from './connection-status-badge';
+
+export interface ConnectionNotificationProps {
+  /**
+   * Current connection status
+   */
+  status: ConnectionStatus;
+  
+  /**
+   * Transport method being used
+   */
+  transport: TransportType;
+  
+  /**
+   * Whether to show a toast notification when status changes
+   * @default true
+   */
+  showToast?: boolean;
+  
+  /**
+   * Whether to show a toast when fallback to polling occurs
+   * @default true
+   */
+  showFallbackNotification?: boolean;
+  
+  /**
+   * Whether to show reconnection attempts
+   * @default true
+   */
+  showReconnectionAttempts?: boolean;
+  
+  /**
+   * Number of reconnection attempts
+   */
+  reconnectCount?: number;
+  
+  /**
+   * Function to manually attempt reconnection
+   */
+  onReconnect?: () => void;
+  
+  /**
+   * Custom toast duration in milliseconds
+   * @default 5000 (5 seconds)
+   */
+  toastDuration?: number;
+}
+
 /**
- * Connection Notification Component
+ * A component that shows connection status notifications
  * 
- * This component displays a notification when the application is using 
- * fallback mode (REST API polling) instead of WebSockets.
+ * This component uses the toast system to display notifications
+ * when connection status changes, helping users understand
+ * what's happening with their connection to the server.
  */
-
-import { useAgentSocketIO } from "@/hooks/use-agent-socketio";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { AlertCircle, WifiOff, RotateCw } from "lucide-react";
-import { useState, useEffect } from "react";
-
-export function ConnectionNotification() {
-  const { 
-    isPolling,
-    connect,
-    connectionStatus,
-    connectionStatuses
-  } = useAgentSocketIO();
+export const ConnectionNotification: React.FC<ConnectionNotificationProps> = ({
+  status,
+  transport,
+  showToast = true,
+  showFallbackNotification = true,
+  showReconnectionAttempts = true,
+  reconnectCount = 0,
+  onReconnect,
+  toastDuration = 5000
+}) => {
+  const { toast } = useToast();
+  const [prevStatus, setPrevStatus] = useState<ConnectionStatus>(status);
+  const [prevTransport, setPrevTransport] = useState<TransportType>(transport);
+  const [hasShownFallbackNotification, setHasShownFallbackNotification] = useState(false);
   
-  const [showAlert, setShowAlert] = useState(false);
-  
-  // Only show the alert after the app has been in polling mode for a bit
-  // to avoid showing it during normal initial connection process
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
-    if (isPolling) {
-      timeoutId = setTimeout(() => {
-        setShowAlert(true);
-      }, 3000);
-    } else {
-      setShowAlert(false);
+    // Handle status change notifications
+    if (showToast && status !== prevStatus) {
+      switch (status) {
+        case 'connected':
+          toast({
+            title: "Connected",
+            description: `Successfully connected to the server via ${transport === 'websocket' ? 'WebSocket' : 'HTTP polling'}.`,
+            variant: "default",
+            duration: toastDuration,
+          });
+          break;
+        case 'connecting':
+          // Only show if we're coming from disconnected or error, not on initial load
+          if (prevStatus === 'disconnected' || prevStatus === 'error') {
+            toast({
+              title: "Reconnecting...",
+              description: "Attempting to re-establish connection to the server.",
+              // Use default variant as secondary is not available in the toast component
+              duration: toastDuration,
+            });
+          }
+          break;
+        case 'disconnected':
+          toast({
+            title: "Disconnected",
+            description: "Connection to the server has been lost. Retrying...",
+            variant: "destructive",
+            duration: toastDuration,
+            action: onReconnect ? (
+              <ToastAction altText="Try again" onClick={onReconnect}>
+                Reconnect
+              </ToastAction>
+            ) : undefined,
+          });
+          break;
+        case 'error':
+          toast({
+            title: "Connection Error",
+            description: "Failed to connect to the server. Check your network connection.",
+            variant: "destructive",
+            duration: toastDuration,
+            action: onReconnect ? (
+              <ToastAction altText="Try again" onClick={onReconnect}>
+                Retry
+              </ToastAction>
+            ) : undefined,
+          });
+          break;
+      }
+      
+      setPrevStatus(status);
     }
     
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+    // Handle transport fallback notification
+    if (showFallbackNotification && 
+        transport !== prevTransport && 
+        transport === 'polling' && 
+        !hasShownFallbackNotification) {
+      toast({
+        title: "WebSocket Unavailable",
+        description: "Using HTTP polling fallback. Some real-time features may be limited.",
+        // Using default variant since warning is not available
+        duration: 7000,
+      });
+      
+      setHasShownFallbackNotification(true);
+    }
+    
+    setPrevTransport(transport);
+  }, [status, transport, showToast, showFallbackNotification, prevStatus, 
+      prevTransport, hasShownFallbackNotification, toast, toastDuration, onReconnect]);
+  
+  // Show reconnection attempts notification
+  useEffect(() => {
+    if (showReconnectionAttempts && 
+        reconnectCount > 0 && 
+        (status === 'connecting' || status === 'disconnected')) {
+      
+      // Only show every 3 attempts to not overwhelm the user
+      if (reconnectCount % 3 === 0) {
+        toast({
+          title: "Connection Unstable",
+          description: `Made ${reconnectCount} attempt${reconnectCount !== 1 ? 's' : ''} to reconnect. Still trying...`,
+          // Using default variant since warning is not available
+          duration: toastDuration,
+        });
       }
-    };
-  }, [isPolling]);
+    }
+  }, [reconnectCount, showReconnectionAttempts, status, toast, toastDuration]);
   
-  // Don't show anything if not in polling mode
-  if (!showAlert) {
-    return null;
-  }
-  
-  return (
-    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 max-w-md z-50 shadow-lg animate-in fade-in slide-in-from-top-4 duration-300">
-      <Alert 
-        variant="destructive" 
-        className="bg-white border border-red-200 text-red-800"
-      >
-        <div className="flex items-start">
-          <WifiOff className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <AlertTitle className="text-red-800 flex items-center">
-              <span>WebSocket Connection Issue</span>
-              <span className="inline-flex h-2 w-2 bg-red-500 rounded-full ml-2 animate-pulse"></span>
-            </AlertTitle>
-            <AlertDescription className="text-red-700">
-              <p className="mt-1">
-                The system is currently using a fallback connection method. 
-                Real-time updates may be delayed.
-              </p>
-              <div className="text-xs text-red-700/70 mt-1">
-                <span>Last attempt: {new Date().toLocaleTimeString()}</span>
-              </div>
-              <div className="flex items-center mt-2 gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="bg-white border-red-300 hover:bg-red-50 text-red-700 flex items-center gap-1"
-                  onClick={() => connect()}
-                  disabled={connectionStatus === connectionStatuses.CONNECTING}
-                >
-                  {connectionStatus === connectionStatuses.CONNECTING ? (
-                    <>
-                      <RotateCw className="h-3.5 w-3.5 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <RotateCw className="h-3.5 w-3.5" />
-                      Reconnect
-                    </>
-                  )}
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-red-700 hover:bg-red-50 hover:text-red-800"
-                  onClick={() => setShowAlert(false)}
-                >
-                  Dismiss
-                </Button>
-              </div>
-            </AlertDescription>
-          </div>
-        </div>
-      </Alert>
-    </div>
-  );
-}
+  return <Toaster />;
+};
+
+export default ConnectionNotification;

@@ -1,90 +1,163 @@
-/**
- * Connection Status Monitor Component
- * 
- * This component provides monitoring and visualization of connection status.
- * It includes both basic status information as well as detailed metrics
- * for monitoring connection health and fallback status.
- */
-
-import { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAgentWebSocket } from '@/hooks/use-agent-websocket';
 import { useAgentSocketIO } from '@/hooks/use-agent-socketio';
-import { ConnectionHealthMetrics } from './connection-health-metrics';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { BarChart, LayoutDashboard, X } from 'lucide-react';
+import { ConnectionStatus, TransportType } from './connection-status-badge';
+import { useToast } from '@/hooks/use-toast';
 
-export function ConnectionStatusMonitor() {
-  const [showMonitor, setShowMonitor] = useState(false);
-  const { connect, connectionStatus, connectionStatuses, isPolling } = useAgentSocketIO();
-
-  // Only render a button to toggle monitor when needed
-  if (!showMonitor) {
-    return (
-      <div className="fixed bottom-4 right-4 z-50">
-        <Button 
-          onClick={() => setShowMonitor(true)} 
-          variant="outline" 
-          size="sm"
-          className="flex items-center space-x-1 bg-white shadow-md dark:bg-slate-800"
-        >
-          <BarChart className="h-4 w-4" />
-          <span className="hidden sm:inline">
-            Connection Monitor
-          </span>
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed bottom-4 right-4 z-50 w-80 shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <Card className="border border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-700">
-        <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm font-medium flex items-center">
-            <LayoutDashboard className="h-4 w-4 mr-2" />
-            Connection Monitor
-          </CardTitle>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-7 w-7 p-0"
-            onClick={() => setShowMonitor(false)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </CardHeader>
-        <CardContent className="p-3 pt-2">
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="text-xs">
-                <div className="text-muted-foreground">Status:</div>
-                <div className="font-medium">
-                  {connectionStatus}
-                </div>
-              </div>
-              <div className="text-xs">
-                <div className="text-muted-foreground">Mode:</div>
-                <div className="font-medium">
-                  {isPolling ? 'Fallback (REST)' : 'WebSocket'}
-                </div>
-              </div>
-            </div>
-            
-            {connectionStatus !== connectionStatuses.CONNECTED && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full text-xs h-7"
-                onClick={() => connect()}
-              >
-                Attempt Reconnection
-              </Button>
-            )}
-            
-            <ConnectionHealthMetrics />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+interface ConnectionStatusMonitorProps {
+  /**
+   * Polling interval in milliseconds for health checks
+   * @default 60000 (1 minute)
+   */
+  pollInterval?: number;
+  
+  /**
+   * Whether to show notifications for connection changes
+   * @default true
+   */
+  showNotifications?: boolean;
+  
+  /**
+   * Whether to automatically attempt reconnection on error
+   * @default true
+   */
+  autoReconnect?: boolean;
+  
+  /**
+   * WebSocket URL to use for health checks
+   * If not provided, will use current origin with /ws path
+   */
+  wsUrl?: string;
+  
+  /**
+   * Socket.IO URL to use for fallback
+   * If not provided, will use current origin
+   */
+  socketIoUrl?: string;
 }
+
+/**
+ * A hidden component that monitors connection status and maintains
+ * connectivity to the server. This component provides real-time
+ * status updates and handles reconnection logic.
+ */
+export const ConnectionStatusMonitor: React.FC<ConnectionStatusMonitorProps> = ({
+  pollInterval = 60000,
+  showNotifications = true,
+  autoReconnect = true,
+  wsUrl,
+  socketIoUrl
+}) => {
+  const { toast } = useToast();
+  const [globalStatus, setGlobalStatus] = useState<ConnectionStatus>('disconnected');
+  const [globalTransport, setGlobalTransport] = useState<TransportType>('websocket');
+  
+  // Determine WebSocket URL if not provided
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const defaultWsUrl = `${protocol}//${window.location.host}/ws`;
+  const effectiveWsUrl = wsUrl || defaultWsUrl;
+  
+  // Determine Socket.IO URL if not provided
+  const defaultSocketIoUrl = window.location.origin;
+  const effectiveSocketIoUrl = socketIoUrl || defaultSocketIoUrl;
+  
+  // WebSocket connection for health monitoring
+  const { 
+    status: wsStatus, 
+    transport: wsTransport,
+    metrics: wsMetrics
+  } = useAgentWebSocket({
+    url: effectiveWsUrl,
+    autoReconnect,
+    onMessage: (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'health' || data.type === 'status') {
+          // Process health/status updates if needed
+        }
+      } catch (e) {
+        // Not JSON or doesn't have expected format
+      }
+    }
+  });
+  
+  // Socket.IO connection as fallback
+  const {
+    status: socketIoStatus,
+    transport: socketIoTransport,
+    metrics: socketIoMetrics
+  } = useAgentSocketIO({
+    url: effectiveSocketIoUrl,
+    autoReconnect,
+    events: [
+      {
+        name: 'health',
+        handler: (data) => {
+          // Process health updates if needed
+        }
+      },
+      {
+        name: 'status',
+        handler: (data) => {
+          // Process status updates if needed
+        }
+      }
+    ]
+  });
+  
+  // Update global status based on WebSocket and Socket.IO status
+  useEffect(() => {
+    // Priority order: WebSocket > Socket.IO
+    if (wsStatus === 'connected') {
+      setGlobalStatus('connected');
+      setGlobalTransport('websocket');
+    } else if (socketIoStatus === 'connected') {
+      setGlobalStatus('connected');
+      setGlobalTransport(socketIoTransport);
+    } else if (wsStatus === 'connecting' || socketIoStatus === 'connecting') {
+      setGlobalStatus('connecting');
+    } else if (wsStatus === 'error' && socketIoStatus === 'error') {
+      setGlobalStatus('error');
+    } else {
+      setGlobalStatus('disconnected');
+    }
+  }, [wsStatus, socketIoStatus, socketIoTransport]);
+  
+  // Send periodic health check ping
+  useEffect(() => {
+    if (pollInterval <= 0) return;
+    
+    const sendHealthCheck = () => {
+      // Try WebSocket first, then Socket.IO if WebSocket is not connected
+      if (wsStatus === 'connected') {
+        // Do nothing, the connection itself serves as the health check
+      } else if (socketIoStatus === 'connected') {
+        // Do nothing, the connection itself serves as the health check
+      }
+    };
+    
+    // Immediately send health check and then set interval
+    sendHealthCheck();
+    const intervalId = setInterval(sendHealthCheck, pollInterval);
+    
+    return () => clearInterval(intervalId);
+  }, [wsStatus, socketIoStatus, pollInterval]);
+  
+  // Notify on transport type changes (e.g., WebSocket to polling)
+  useEffect(() => {
+    if (!showNotifications) return;
+    
+    if (globalTransport === 'polling' && globalStatus === 'connected') {
+      toast({
+        title: 'Using fallback connection',
+        description: 'Your connection is using HTTP polling instead of WebSockets, which may impact performance.',
+        duration: 5000,
+      });
+    }
+  }, [globalTransport, globalStatus, showNotifications, toast]);
+  
+  // This component doesn't render anything visible
+  return null;
+};
+
+export default ConnectionStatusMonitor;
