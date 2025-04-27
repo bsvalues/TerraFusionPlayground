@@ -226,6 +226,9 @@
       let messageCounter = { sent: 0, received: 0, attempts: 0, reconnects: 0 };
       let clientId = null;
       let connectionMode = null;
+      let reconnectInterval = null;
+      let reconnectAttempt = 0;
+      let maxReconnectDelay = 30000; // 30 seconds max
       
       // Utility functions
       function updateConnectionStatus(connected, mode, details = '') {
@@ -321,6 +324,20 @@
           socket.onopen = function() {
             updateConnectionStatus(true, 'WebSocket', `Connected to ${wsUrl}`);
             addMessageToLog('WebSocket connection established', 'info');
+            
+            // Reset reconnect attempt counter and clear interval
+            reconnectAttempt = 0;
+            if (reconnectInterval) {
+              clearInterval(reconnectInterval);
+              reconnectInterval = null;
+            }
+            
+            // If we were previously using SSE, close it
+            if (eventSource) {
+              addMessageToLog('WebSocket reconnected, closing SSE fallback', 'info');
+              eventSource.close();
+              eventSource = null;
+            }
           };
           
           socket.onmessage = function(event) {
@@ -346,10 +363,19 @@
           
           socket.onclose = function(event) {
             updateConnectionStatus(false);
+            
             if (event.wasClean) {
               addMessageToLog(`WebSocket closed cleanly, code=${event.code}, reason=${event.reason}`, 'info');
             } else {
               addMessageToLog('WebSocket connection died', 'error');
+              
+              // Only auto-fallback to SSE if we're not already connected via SSE
+              if (connectionMode !== 'SSE') {
+                fallbackToSSE();
+              } else if (!reconnectInterval) {
+                // If already on SSE but no reconnect scheduled, schedule WebSocket reconnect
+                scheduleWebSocketReconnect();
+              }
             }
           };
         } catch (error) {
@@ -419,11 +445,42 @@
         }
       }
       
+      function calculateReconnectDelay() {
+        // Exponential backoff with a maximum delay of maxReconnectDelay
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), maxReconnectDelay);
+        reconnectAttempt++;
+        return delay;
+      }
+      
+      function scheduleWebSocketReconnect() {
+        if (reconnectInterval) {
+          clearInterval(reconnectInterval);
+        }
+        
+        const delay = calculateReconnectDelay();
+        addMessageToLog(`Scheduling WebSocket reconnect in ${delay/1000} seconds (attempt ${reconnectAttempt})`, 'info');
+        
+        reconnectInterval = setInterval(() => {
+          if (connectionMode !== 'WebSocket') {
+            addMessageToLog('Attempting to reconnect WebSocket...', 'info');
+            connectWebSocket();
+          } else {
+            // Clear interval if we're already connected via WebSocket
+            clearInterval(reconnectInterval);
+            reconnectInterval = null;
+            reconnectAttempt = 0;
+          }
+        }, delay);
+      }
+      
       function fallbackToSSE() {
         addMessageToLog('WebSocket failed, falling back to SSE', 'info');
         messageCounter.reconnects++;
         reconnectionCount.textContent = messageCounter.reconnects;
         connectSSE();
+        
+        // Schedule WebSocket reconnection attempts
+        scheduleWebSocketReconnect();
       }
       
       function sendMessage() {
