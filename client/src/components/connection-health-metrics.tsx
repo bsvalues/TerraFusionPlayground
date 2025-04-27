@@ -59,29 +59,90 @@ export function ConnectionHealthMetrics() {
     <div className="space-y-3">
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-medium">Connection Health</p>
-          <p className="text-xs font-medium">{healthScore}%</p>
+          <p className="text-xs font-medium flex items-center">
+            <span>Connection Health</span>
+            <span className={`ml-2 inline-flex h-2.5 w-2.5 rounded-full ${
+              healthScore > 80 ? 'bg-green-500' : 
+              healthScore > 50 ? 'bg-yellow-500' : 
+              'bg-red-500'
+            } ${isPolling ? '' : 'animate-pulse'}`}></span>
+          </p>
+          <p className={`text-xs font-medium ${
+            healthScore > 80 ? 'text-green-600' : 
+            healthScore > 50 ? 'text-yellow-600' : 
+            'text-red-600'
+          }`}>{healthScore}%</p>
         </div>
-        <Progress value={healthScore} className="h-1.5" />
+        <Progress 
+          value={healthScore} 
+          className={`h-1.5 ${
+            healthScore > 80 ? 'bg-green-100' : 
+            healthScore > 50 ? 'bg-yellow-100' : 
+            'bg-red-100'
+          }`} 
+        />
+        <div className="text-[10px] text-muted-foreground mt-0.5">
+          {isPolling ? 
+            'Using fallback mode (polling)' : 
+            'WebSocket connection active'
+          }
+        </div>
       </div>
       
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <div>
-          <div className="text-muted-foreground">Reconnect Attempts:</div>
-          <div className="font-medium">{totalReconnectAttempts}</div>
+        <div className="border rounded p-1.5 bg-slate-50">
+          <div className="text-muted-foreground text-[10px]">Reconnect Attempts:</div>
+          <div className="font-medium flex items-center justify-between">
+            <span>{totalReconnectAttempts}</span>
+            {totalReconnectAttempts > 0 && (
+              <span className={`text-[10px] px-1 rounded ${
+                totalReconnectAttempts > 10 ? 'bg-red-100 text-red-800' :
+                totalReconnectAttempts > 5 ? 'bg-yellow-100 text-yellow-800' :
+                'bg-blue-100 text-blue-800'
+              }`}>
+                {totalReconnectAttempts > 10 ? 'high' : 
+                 totalReconnectAttempts > 5 ? 'medium' : 'low'}
+              </span>
+            )}
+          </div>
         </div>
-        <div>
-          <div className="text-muted-foreground">Fallback Activations:</div>
-          <div className="font-medium">{totalFallbackActivations}</div>
+        <div className="border rounded p-1.5 bg-slate-50">
+          <div className="text-muted-foreground text-[10px]">Fallback Activations:</div>
+          <div className="font-medium flex items-center justify-between">
+            <span>{totalFallbackActivations}</span>
+            {isPolling && <span className="text-[10px] px-1 rounded bg-yellow-100 text-yellow-800">active</span>}
+          </div>
         </div>
-        <div>
-          <div className="text-muted-foreground">Total Errors:</div>
-          <div className="font-medium">{totalErrors}</div>
+        <div className="border rounded p-1.5 bg-slate-50">
+          <div className="text-muted-foreground text-[10px]">Total Errors:</div>
+          <div className="font-medium flex items-center justify-between">
+            <span>{totalErrors}</span>
+            {totalErrors > 0 && (
+              <span className={`text-[10px] px-1 rounded ${
+                totalErrors > 10 ? 'bg-red-100 text-red-800' :
+                totalErrors > 5 ? 'bg-yellow-100 text-yellow-800' :
+                'bg-blue-100 text-blue-800'
+              }`}>
+                {totalErrors > 10 ? 'high' : 
+                 totalErrors > 5 ? 'medium' : 'low'}
+              </span>
+            )}
+          </div>
         </div>
-        <div>
-          <div className="text-muted-foreground">Avg. Reconnect Time:</div>
-          <div className="font-medium">
-            {averageReconnectTime ? `${averageReconnectTime.toFixed(0)}ms` : 'N/A'}
+        <div className="border rounded p-1.5 bg-slate-50">
+          <div className="text-muted-foreground text-[10px]">Avg. Reconnect Time:</div>
+          <div className="font-medium flex items-center justify-between">
+            <span>{averageReconnectTime ? `${averageReconnectTime.toFixed(0)}ms` : 'N/A'}</span>
+            {averageReconnectTime && (
+              <span className={`text-[10px] px-1 rounded ${
+                averageReconnectTime > 3000 ? 'bg-red-100 text-red-800' :
+                averageReconnectTime > 1000 ? 'bg-yellow-100 text-yellow-800' :
+                'bg-green-100 text-green-800'
+              }`}>
+                {averageReconnectTime > 3000 ? 'slow' : 
+                 averageReconnectTime > 1000 ? 'medium' : 'fast'}
+              </span>
+            )}
           </div>
         </div>
       </div>

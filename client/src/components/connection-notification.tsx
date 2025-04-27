@@ -47,44 +47,59 @@ export function ConnectionNotification() {
   }
   
   return (
-    <Alert 
-      variant="destructive" 
-      className="fixed top-4 left-1/2 transform -translate-x-1/2 max-w-md z-50 bg-white border border-red-200 text-red-800 shadow-lg animate-in fade-in slide-in-from-top-4 duration-300"
-    >
-      <div className="flex items-start">
-        <WifiOff className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <AlertTitle className="text-red-800">
-            WebSocket Connection Issue
-          </AlertTitle>
-          <AlertDescription className="text-red-700">
-            <p className="mt-1">
-              The system is currently using a fallback connection method. 
-              Real-time updates may be delayed.
-            </p>
-            <div className="flex items-center mt-2 gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="bg-white border-red-300 hover:bg-red-50 text-red-700 flex items-center gap-1"
-                onClick={() => connect()}
-                disabled={connectionStatus === connectionStatuses.CONNECTING}
-              >
-                <RotateCw className="h-3.5 w-3.5" />
-                Reconnect
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-red-700 hover:bg-red-50 hover:text-red-800"
-                onClick={() => setShowAlert(false)}
-              >
-                Dismiss
-              </Button>
-            </div>
-          </AlertDescription>
+    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 max-w-md z-50 shadow-lg animate-in fade-in slide-in-from-top-4 duration-300">
+      <Alert 
+        variant="destructive" 
+        className="bg-white border border-red-200 text-red-800"
+      >
+        <div className="flex items-start">
+          <WifiOff className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <AlertTitle className="text-red-800 flex items-center">
+              <span>WebSocket Connection Issue</span>
+              <span className="inline-flex h-2 w-2 bg-red-500 rounded-full ml-2 animate-pulse"></span>
+            </AlertTitle>
+            <AlertDescription className="text-red-700">
+              <p className="mt-1">
+                The system is currently using a fallback connection method. 
+                Real-time updates may be delayed.
+              </p>
+              <div className="text-xs text-red-700/70 mt-1">
+                <span>Last attempt: {new Date().toLocaleTimeString()}</span>
+              </div>
+              <div className="flex items-center mt-2 gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="bg-white border-red-300 hover:bg-red-50 text-red-700 flex items-center gap-1"
+                  onClick={() => connect()}
+                  disabled={connectionStatus === connectionStatuses.CONNECTING}
+                >
+                  {connectionStatus === connectionStatuses.CONNECTING ? (
+                    <>
+                      <RotateCw className="h-3.5 w-3.5 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCw className="h-3.5 w-3.5" />
+                      Reconnect
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-red-700 hover:bg-red-50 hover:text-red-800"
+                  onClick={() => setShowAlert(false)}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </AlertDescription>
+          </div>
         </div>
-      </div>
-    </Alert>
+      </Alert>
+    </div>
   );
 }

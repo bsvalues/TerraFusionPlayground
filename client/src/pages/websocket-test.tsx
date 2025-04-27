@@ -39,7 +39,9 @@ const WebSocketTest: React.FC = () => {
       socket.current.onopen = () => {
         setConnected(true);
         setConnectionStatus('connected');
-        addMessage('WebSocket connection established');
+        addMessage('WebSocket connection established successfully');
+        // Add more detailed information
+        addMessage(`Connected to: ${wsUrl}`);
       };
       
       socket.current.onmessage = (event) => {
@@ -47,19 +49,89 @@ const WebSocketTest: React.FC = () => {
           const message = JSON.parse(event.data);
           addMessage(`Received: ${JSON.stringify(message, null, 2)}`);
         } catch (error) {
-          addMessage(`Received non-JSON message: ${event.data}`);
+          // Enhanced error handling for non-JSON responses
+          try {
+            // Check if starts with HTML - this could indicate we're getting a webpage instead of a proper WebSocket response
+            if (event.data.toString().trim().startsWith('<')) {
+              addMessage(`ERROR: Received HTML instead of WebSocket data. This typically means the WebSocket endpoint is incorrect or not available.`);
+              addMessage(`Raw data: ${event.data.toString().substring(0, 100)}...`);
+            } else {
+              addMessage(`Received non-JSON message: ${event.data}`);
+            }
+          } catch (parseError) {
+            addMessage(`Failed to parse message: ${error}`);
+          }
         }
       };
       
       socket.current.onclose = (event) => {
         setConnected(false);
         setConnectionStatus('disconnected');
-        addMessage(`WebSocket connection closed: ${event.code} - ${event.reason || 'No reason provided'}`);
+        
+        // More helpful messaging based on close code
+        let closeReason = '';
+        switch (event.code) {
+          case 1000:
+            closeReason = 'Normal closure';
+            break;
+          case 1001:
+            closeReason = 'Endpoint going away (server shutdown)';
+            break;
+          case 1002:
+            closeReason = 'Protocol error';
+            break;
+          case 1003:
+            closeReason = 'Unsupported data';
+            break;
+          case 1006:
+            closeReason = 'Abnormal closure (connection lost)';
+            break;
+          case 1007:
+            closeReason = 'Invalid frame payload data';
+            break;
+          case 1008:
+            closeReason = 'Policy violation';
+            break;
+          case 1009:
+            closeReason = 'Message too big';
+            break;
+          case 1010:
+            closeReason = 'Missing extension';
+            break;
+          case 1011:
+            closeReason = 'Internal server error';
+            break;
+          case 1012:
+            closeReason = 'Service restart';
+            break;
+          case 1013:
+            closeReason = 'Try again later';
+            break;
+          case 1014:
+            closeReason = 'Bad gateway';
+            break;
+          case 1015:
+            closeReason = 'TLS handshake failure';
+            break;
+          default:
+            closeReason = `Unknown (${event.code})`;
+        }
+        
+        addMessage(`WebSocket connection closed: ${closeReason}${event.reason ? ` - ${event.reason}` : ''}`);
+        
+        // Provide reconnection guidance
+        addMessage('You can try reconnecting by clicking the Connect button.');
       };
       
       socket.current.onerror = (error) => {
         setConnectionStatus('error');
-        addMessage(`WebSocket error occurred: ${JSON.stringify(error)}`);
+        
+        // Enhanced error information
+        addMessage(`WebSocket error occurred: ${error}`);
+        addMessage('Common causes: incorrect WebSocket URL, server not running, network issues, or CORS restrictions');
+        
+        // Suggestion for fallback mode
+        addMessage('Recommendation: The application should fall back to HTTP polling if WebSocket connection fails');
       };
     } catch (error) {
       setConnectionStatus('error');

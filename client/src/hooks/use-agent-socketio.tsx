@@ -180,34 +180,122 @@ export function useAgentSocketIO() {
 
 /**
  * Connection status indicator component for the agent Socket.IO service
+ * Provides enhanced visual feedback about connection state
  */
-export function ConnectionStatusIndicator({ className = '' }: { className?: string }) {
-  const { connectionStatus, connectionStatuses, isPolling } = useAgentSocketIO();
+export function ConnectionStatusIndicator({ 
+  className = '',
+  showDetails = false,
+  variant = 'default'
+}: { 
+  className?: string,
+  showDetails?: boolean,
+  variant?: 'default' | 'compact' | 'expanded' 
+}) {
+  const { connectionStatus, connectionStatuses, isPolling, connectionMetrics } = useAgentSocketIO();
   
   // Determine status color and text
   const getStatusInfo = () => {
     switch (connectionStatus) {
       case ConnectionStatus.CONNECTED:
-        return { color: 'bg-green-500', text: 'Connected' };
+        return { 
+          color: 'bg-green-500', 
+          textColor: 'text-green-700',
+          borderColor: 'border-green-200',
+          bgColor: 'bg-green-50',
+          text: 'Connected',
+          icon: '✓',
+          animate: false
+        };
       case ConnectionStatus.CONNECTING:
-        return { color: 'bg-yellow-500', text: 'Connecting' };
+        return { 
+          color: 'bg-yellow-500', 
+          textColor: 'text-yellow-700',
+          borderColor: 'border-yellow-200',
+          bgColor: 'bg-yellow-50',
+          text: 'Connecting',
+          icon: '⟳',
+          animate: true
+        };
       case ConnectionStatus.DISCONNECTED:
-        return { color: 'bg-gray-500', text: 'Disconnected' };
+        return { 
+          color: 'bg-gray-500', 
+          textColor: 'text-gray-700',
+          borderColor: 'border-gray-200',
+          bgColor: 'bg-gray-50',
+          text: 'Disconnected',
+          icon: '⚠',
+          animate: false
+        };
       case ConnectionStatus.ERRORED:
-        return { color: 'bg-red-500', text: 'Error' };
+        return { 
+          color: 'bg-red-500', 
+          textColor: 'text-red-700',
+          borderColor: 'border-red-200',
+          bgColor: 'bg-red-50',
+          text: 'Error',
+          icon: '!',
+          animate: false
+        };
       default:
-        return { color: 'bg-gray-500', text: 'Unknown' };
+        return { 
+          color: 'bg-gray-500', 
+          textColor: 'text-gray-700',
+          borderColor: 'border-gray-200',
+          bgColor: 'bg-gray-50',
+          text: 'Unknown',
+          icon: '?',
+          animate: false
+        };
     }
   };
   
-  const { color, text } = getStatusInfo();
+  const { color, textColor, borderColor, bgColor, text, icon, animate } = getStatusInfo();
   
+  if (variant === 'compact') {
+    return (
+      <div className={`inline-flex items-center ${className}`} title={`${text}${isPolling ? ' (Fallback Mode)' : ''}`}>
+        <div className={`w-2.5 h-2.5 rounded-full ${color} ${animate ? 'animate-pulse' : ''}`} />
+      </div>
+    );
+  }
+  
+  if (variant === 'expanded') {
+    return (
+      <div className={`${className} ${borderColor} ${bgColor} border rounded-md p-2 flex flex-col`}>
+        <div className="flex items-center space-x-2">
+          <div className={`w-3 h-3 rounded-full ${color} ${animate ? 'animate-pulse' : ''}`} />
+          <span className={`text-xs font-medium ${textColor}`}>
+            {text}
+            {isPolling && <span className="ml-1 px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-[10px]">Fallback</span>}
+          </span>
+        </div>
+        
+        {showDetails && connectionMetrics && (
+          <div className="text-[10px] text-gray-500 mt-1 pl-5">
+            <div>Reconnections: {connectionMetrics.totalReconnectAttempts}</div>
+            <div>Fallback activations: {connectionMetrics.totalFallbackActivations}</div>
+            <div>Last event: {
+              connectionMetrics.connectionEvents.length > 0 
+                ? new Date(connectionMetrics.connectionEvents[connectionMetrics.connectionEvents.length - 1].timestamp).toLocaleTimeString() 
+                : 'None'
+            }</div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // Default variant
   return (
     <div className={`flex items-center space-x-2 ${className}`}>
-      <div className={`w-3 h-3 rounded-full ${color}`} />
-      <span className="text-xs">
+      <div className={`w-3 h-3 rounded-full ${color} ${animate ? 'animate-pulse' : ''}`} />
+      <span className={`text-xs ${textColor}`}>
         {text}
-        {isPolling && ' (Fallback Mode)'}
+        {isPolling && (
+          <span className="ml-1 px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-[10px]">
+            Fallback Mode
+          </span>
+        )}
       </span>
     </div>
   );

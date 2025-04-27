@@ -190,22 +190,25 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         const isSecure = window.location.protocol === 'https:';
         const path = '/api/agents/socket.io';
         
-        // Construct base URL
-        const baseUrl = isSecure ? 'https://' : 'http://';
-        const wsUrl = `${baseUrl}${host}`;
-
-        // Log connection attempt
-        console.log(`[Agent SocketIO] Attempting to connect to: ${wsUrl} with path ${path}`);
-
-
-        // Use the current host for both dev and prod
+        // Construct base URL - use origin for consistency
         const socketUrl = window.location.origin;
 
+        // Log connection attempt with improved details
+        console.log(`[Agent SocketIO] Attempting to connect to: ${socketUrl} with path ${path}`);
+        
+        // Add debugging to help diagnose issues
+        console.log(`[Agent SocketIO] Connection details:`, {
+          url: socketUrl,
+          path,
+          protocol: window.location.protocol,
+          host: window.location.host,
+          origin: window.location.origin
+        });
 
         // Create Socket.IO instance with robust configuration
         this.socket = io(socketUrl, {
           path: path,
-          transports: ['polling', 'websocket'], // Start with polling, upgrade to WebSocket
+          transports: ['websocket', 'polling'], // Try WebSocket first, then fall back to polling
           reconnection: true,
           reconnectionAttempts: this.maxReconnectAttempts,
           reconnectionDelay: 1000,
