@@ -181,7 +181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.join(process.cwd(), 'public', 'sse-test.html'));
   });
   
-  app.get('/websocket-test', (req, res) => {
+  app.get('/websocket-test-static', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'public', 'websocket-test.html'));
   });
   
@@ -189,8 +189,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.join(process.cwd(), 'public', 'websocket-test.html'));
   });
   
-  // Also serve the test page from root path for direct access
-  app.get('/', (req, res) => {
+  // Also serve the test page from an alternate path for direct access
+  app.get('/ws-test', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'public', 'websocket-test.html'));
   });
   
