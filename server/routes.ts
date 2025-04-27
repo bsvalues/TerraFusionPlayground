@@ -1,11 +1,12 @@
 import express, { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { randomUUID } from "crypto";
-import { WebSocketServer } from "ws";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
+import path from "path";
 import QGISService from "./services/qgis-service";
 import { metricsService } from "./services/prometheus-metrics-service";
 import { 
@@ -175,6 +176,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Define API routes
   const apiRouter = app.route("/api");
   
+  // Serve HTML test files directly from public directory
+  app.get('/sse-test', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'public', 'sse-test.html'));
+  });
+  
+  app.get('/websocket-test', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'public', 'websocket-test.html'));
+  });
+  
   // Add health check endpoint
   app.get('/api/health', (req, res) => {
     res.json({
@@ -209,10 +219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
-  // Serve WebSocket test page
-  app.get('/websocket-test', (req, res) => {
-    res.sendFile('websocket-test.html', { root: './public' });
-  });
+  // Note: Already have a WebSocket test route at line ~184
   
   // Add Server-Sent Events (SSE) endpoint as WebSocket fallback
   app.get('/api/events', (req, res) => {
@@ -3034,12 +3041,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const parsedMessage = JSON.parse(message.toString());
         console.log('Parsed message:', parsedMessage);
         
-        // Echo the message back with a timestamp
-        ws.send(JSON.stringify({
-          type: 'echo',
-          originalMessage: parsedMessage,
-          timestamp: new Date().toISOString()
-        }));
+        // Enhanced echo behavior to handle our test page
+        if (parsedMessage.action === 'echo') {
+          ws.send(JSON.stringify({
+            type: 'echo',
+            message: parsedMessage.message,
+            received: parsedMessage,
+            timestamp: new Date().toISOString()
+          }));
+        } else {
+          // Standard echo for other messages
+          ws.send(JSON.stringify({
+            type: 'echo',
+            originalMessage: parsedMessage,
+            timestamp: new Date().toISOString()
+          }));
+        }
       } catch (error) {
         console.error('Error handling WebSocket message:', error);
         // Send error message back to client
@@ -3066,10 +3083,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Send welcome message
     try {
       ws.send(JSON.stringify({
-        type: 'welcome',
-        message: 'Connected to TerraFusion WebSocket server',
+        type: 'info',
+        message: 'Welcome to TerraFusion WebSocket Server',
         timestamp: new Date().toISOString()
       }));
+      
+      // Set up ping interval to detect closed connections
+      const pingInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'ping',
+            timestamp: new Date().toISOString()
+          }));
+        } else {
+          clearInterval(pingInterval);
+        }
+      }, 30000); // 30 seconds
+      
+      // Clear interval on close
+      ws.on('close', () => clearInterval(pingInterval));
+      
     } catch (error) {
       console.error('Error sending welcome message:', error);
     }
