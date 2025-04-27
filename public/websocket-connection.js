@@ -598,3 +598,8 @@ if (typeof window !== 'undefined') {
 
 // Export for ES modules
 export default ConnectionManager;
+
+// Export for CommonJS (Node.js)
+if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+  module.exports = ConnectionManager;
+}

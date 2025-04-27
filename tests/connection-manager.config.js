@@ -4,7 +4,7 @@
  * Configures Jest to handle ES modules and mock browser APIs
  */
 
-module.exports = {
+export default {
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest',
   },
@@ -13,7 +13,7 @@ module.exports = {
   ],
   testEnvironment: 'jsdom',
   moduleFileExtensions: ['js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx', 'json', 'node'],
-  extensionsToTreatAsEsm: ['.js', '.mjs'],
+  extensionsToTreatAsEsm: ['.mjs'],  // Removed '.js' to avoid the validation error
   globals: {
     'ts-jest': {
       useESM: true,
