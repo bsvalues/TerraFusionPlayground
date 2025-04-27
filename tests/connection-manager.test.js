@@ -1,751 +1,368 @@
 /**
  * Connection Manager Tests
  * 
- * Tests WebSocket connection logic with auto-reconnect and SSE fallback
+ * Tests for the WebSocket Connection Manager with focus on:
+ * 1. Backoff algorithm verification
+ * 2. WebSocket to SSE fallback transitions
+ * 3. UI state indicator transitions
+ * 4. "Early success" cancellation during backoff
  */
 
-// Mock WebSocket and EventSource globals
-class MockWebSocket {
-  constructor(url) {
-    this.url = url;
-    this.readyState = 0; // CONNECTING
-    this.CONNECTING = 0;
-    this.OPEN = 1;
-    this.CLOSING = 2;
-    this.CLOSED = 3;
-    
-    // Callbacks
-    this.onopen = null;
-    this.onmessage = null;
-    this.onerror = null;
-    this.onclose = null;
-    
-    // Spy properties
-    this.sentMessages = [];
-    
-    // Auto-connect by default (can be overridden in tests)
-    setTimeout(() => this.mockConnect(), 0);
-  }
-  
-  mockConnect() {
-    this.readyState = this.OPEN;
-    if (this.onopen) this.onopen({ target: this });
-  }
-  
-  mockDisconnect(wasClean = true, code = 1000, reason = 'Normal closure') {
-    this.readyState = this.CLOSED;
-    if (this.onclose) this.onclose({ 
-      target: this,
-      wasClean,
-      code,
-      reason
-    });
-  }
-  
-  mockError(message = 'WebSocket error') {
-    if (this.onerror) this.onerror({ 
-      target: this,
-      message
-    });
-  }
-  
-  mockReceiveMessage(data) {
-    if (this.onmessage) this.onmessage({
-      target: this,
-      data: typeof data === 'object' ? JSON.stringify(data) : data
-    });
-  }
-  
-  send(data) {
-    this.sentMessages.push(data);
-  }
-  
-  close() {
-    this.readyState = this.CLOSING;
-    setTimeout(() => {
-      this.readyState = this.CLOSED;
-      if (this.onclose) this.onclose({
-        target: this,
-        wasClean: true,
-        code: 1000,
-        reason: 'Normal closure'
-      });
-    }, 0);
-  }
-}
+// Mock WebSocket, EventSource and DOM elements
+global.WebSocket = jest.fn().mockImplementation(() => ({
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+  send: jest.fn(),
+  close: jest.fn(),
+  OPEN: 1, // WebSocket.OPEN constant
+  readyState: 0, // initially connecting
+  onopen: null,
+  onclose: null,
+  onerror: null,
+  onmessage: null
+}));
 
-class MockEventSource {
-  constructor(url) {
-    this.url = url;
-    
-    // Callbacks
-    this.onopen = null;
-    this.onmessage = null;
-    this.onerror = null;
-    
-    // Spy properties
-    this.closed = false;
-    
-    // Auto-connect by default (can be overridden in tests)
-    setTimeout(() => this.mockConnect(), 0);
-  }
-  
-  mockConnect() {
-    if (this.onopen) this.onopen({ target: this });
-  }
-  
-  mockReceiveMessage(data) {
-    if (this.onmessage) this.onmessage({
-      target: this,
-      data: typeof data === 'object' ? JSON.stringify(data) : data
-    });
-  }
-  
-  mockError(message = 'EventSource error') {
-    if (this.onerror) this.onerror({ 
-      target: this,
-      message
-    });
-  }
-  
-  close() {
-    this.closed = true;
-  }
-}
+global.EventSource = jest.fn().mockImplementation(() => ({
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+  close: jest.fn(),
+  onopen: null,
+  onerror: null,
+  onmessage: null
+}));
 
-// Mock DOM elements for UI indicators
-const createMockDom = () => {
-  // Create mock DOM elements
-  document.body.innerHTML = `
-    <div id="status-indicator" class="status-indicator disconnected">
-      <span class="status-icon">🔴</span>
-      <span id="connection-status">Disconnected</span>
-    </div>
-    <div id="connection-details"></div>
-    <div id="message-log"></div>
-    <input id="message-input" disabled />
-    <button id="send-button" disabled>Send</button>
-    <button id="connect-button">Connect</button>
-    <button id="disconnect-button" disabled>Disconnect</button>
-    <button id="connect-sse-button">Use SSE</button>
-    <div id="connection-metrics">
-      <div class="metric">Messages sent: <span id="sent-count">0</span></div>
-      <div class="metric">Messages received: <span id="received-count">0</span></div>
-      <div class="metric">Connection attempts: <span id="connection-attempts">0</span></div>
-      <div class="metric">Reconnections: <span id="reconnection-count">0</span></div>
-    </div>
-  `;
-  
-  // Return references to DOM elements
-  return {
-    statusIndicator: document.getElementById('status-indicator'),
-    connectionStatus: document.getElementById('connection-status'),
-    connectionDetails: document.getElementById('connection-details'),
-    messageLog: document.getElementById('message-log'),
-    messageInput: document.getElementById('message-input'),
-    sendButton: document.getElementById('send-button'),
-    connectButton: document.getElementById('connect-button'),
-    disconnectButton: document.getElementById('disconnect-button'),
-    connectSSEButton: document.getElementById('connect-sse-button'),
-    sentCount: document.getElementById('sent-count'),
-    receivedCount: document.getElementById('received-count'),
-    connectionAttempts: document.getElementById('connection-attempts'),
-    reconnectionCount: document.getElementById('reconnection-count')
+// Mock DOM elements
+const mockDomElements = () => {
+  const elements = {
+    statusIndicator: {
+      classList: {
+        add: jest.fn(),
+        remove: jest.fn()
+      },
+      querySelector: jest.fn().mockReturnValue({
+        textContent: ''
+      })
+    },
+    connectionStatus: {
+      textContent: ''
+    },
+    connectionDetails: {
+      textContent: ''
+    },
+    messageLog: {
+      appendChild: jest.fn(),
+      scrollTop: 0,
+      scrollHeight: 100
+    },
+    messageInput: {
+      value: '',
+      disabled: false
+    },
+    sendButton: {
+      disabled: false,
+      addEventListener: jest.fn()
+    },
+    connectButton: {
+      disabled: false,
+      addEventListener: jest.fn()
+    },
+    disconnectButton: {
+      disabled: false,
+      addEventListener: jest.fn()
+    },
+    connectSSEButton: {
+      disabled: false,
+      addEventListener: jest.fn()
+    },
+    sentCount: {
+      textContent: '0'
+    },
+    receivedCount: {
+      textContent: '0'
+    },
+    connectionAttempts: {
+      textContent: '0'
+    },
+    reconnectionCount: {
+      textContent: '0'
+    }
   };
+
+  // Setup document.getElementById to return our mock elements
+  global.document = {
+    getElementById: jest.fn(id => {
+      // Map from ID to element
+      const elementMapping = {
+        'status-indicator': elements.statusIndicator,
+        'connection-status': elements.connectionStatus,
+        'connection-details': elements.connectionDetails,
+        'message-log': elements.messageLog,
+        'message-input': elements.messageInput,
+        'send-button': elements.sendButton,
+        'connect-button': elements.connectButton,
+        'disconnect-button': elements.disconnectButton,
+        'connect-sse-button': elements.connectSSEButton,
+        'sent-count': elements.sentCount,
+        'received-count': elements.receivedCount,
+        'connection-attempts': elements.connectionAttempts,
+        'reconnection-count': elements.reconnectionCount
+      };
+      
+      return elementMapping[id] || null;
+    }),
+    createElement: jest.fn(type => {
+      // Simple mock for created elements
+      return {
+        className: '',
+        textContent: '',
+        appendChild: jest.fn()
+      };
+    }),
+    createTextNode: jest.fn(text => ({ text }))
+  };
+
+  // Setup window.location for WebSocket URL construction
+  global.window = {
+    location: {
+      protocol: 'https:',
+      host: 'example.com'
+    }
+  };
+
+  return elements;
 };
 
-// Setup and teardown functions
-const setupConnectionScript = () => {
-  // Load script with connection logic
-  document.body.innerHTML += '<script id="connection-script" src="/websocket-test.js"></script>';
-};
+// Import the ConnectionManager
+// Note: In a real test, you'd use proper module imports
+const ConnectionManager = require('../public/websocket-connection.js');
 
-describe('Connection Manager', () => {
-  let originalWebSocket;
-  let originalEventSource;
-  let originalSetInterval;
-  let originalClearInterval;
-  let originalSetTimeout;
-  let originalClearTimeout;
-  let mockWebSocketInstances = [];
-  let mockEventSourceInstances = [];
-  let intervals = [];
-  let timeouts = [];
-  let domElements;
-  
-  beforeAll(() => {
-    // Store original globals
-    originalWebSocket = global.WebSocket;
-    originalEventSource = global.EventSource;
-    originalSetInterval = global.setInterval;
-    originalClearInterval = global.clearInterval;
-    originalSetTimeout = global.setTimeout;
-    originalClearTimeout = global.clearTimeout;
-    
-    // Mock setInterval/setTimeout for controlling time
-    global.setInterval = jest.fn((callback, delay) => {
-      const id = intervals.length;
-      intervals.push({ callback, delay, id });
-      return id;
-    });
-    
-    global.clearInterval = jest.fn(id => {
-      if (intervals[id]) {
-        intervals[id].cleared = true;
-      }
-    });
-    
-    global.setTimeout = jest.fn((callback, delay) => {
-      const id = timeouts.length;
-      timeouts.push({ callback, delay, id });
-      return id;
-    });
-    
-    global.clearTimeout = jest.fn(id => {
-      if (timeouts[id]) {
-        timeouts[id].cleared = true;
-      }
-    });
-    
-    // Mock WebSocket
-    global.WebSocket = jest.fn(url => {
-      const instance = new MockWebSocket(url);
-      mockWebSocketInstances.push(instance);
-      return instance;
-    });
-    
-    // Add WebSocket constants
-    global.WebSocket.CONNECTING = 0;
-    global.WebSocket.OPEN = 1;
-    global.WebSocket.CLOSING = 2;
-    global.WebSocket.CLOSED = 3;
-    
-    // Mock EventSource
-    global.EventSource = jest.fn(url => {
-      const instance = new MockEventSource(url);
-      mockEventSourceInstances.push(instance);
-      return instance;
-    });
-  });
-  
-  afterAll(() => {
-    // Restore original globals
-    global.WebSocket = originalWebSocket;
-    global.EventSource = originalEventSource;
-    global.setInterval = originalSetInterval;
-    global.clearInterval = originalClearInterval;
-    global.setTimeout = originalSetTimeout;
-    global.clearTimeout = originalClearTimeout;
-  });
+describe('ConnectionManager', () => {
+  let connectionManager;
+  let mockElements;
   
   beforeEach(() => {
-    // Reset mocks and counters
-    jest.clearAllMocks();
-    mockWebSocketInstances = [];
-    mockEventSourceInstances = [];
-    intervals = [];
-    timeouts = [];
+    jest.useFakeTimers();
     
-    // Setup DOM and load connection script
-    domElements = createMockDom();
+    // Reset WebSocket mock
+    global.WebSocket.mockClear();
+    global.EventSource.mockClear();
+    
+    // Setup DOM mocks
+    mockElements = mockDomElements();
+    
+    // Create ConnectionManager with test configuration
+    connectionManager = new ConnectionManager({
+      initialReconnectDelay: 1000,
+      maxReconnectDelay: 30000,
+      reconnectBackoffFactor: 2,
+      autoConnect: false, // Don't auto-connect in tests
+      debug: true
+    });
   });
   
   afterEach(() => {
-    // Clean up DOM
-    document.body.innerHTML = '';
+    jest.useRealTimers();
   });
   
-  /**
-   * Helper to advance timers and run pending timeouts/intervals
-   */
-  const advanceTimers = (ms) => {
-    // Process timeouts that should trigger
-    timeouts.forEach((timeout, id) => {
-      if (!timeout.cleared && timeout.delay <= ms) {
-        timeout.callback();
-        timeout.cleared = true;
-      }
+  describe('Backoff Algorithm', () => {
+    test('should calculate correct backoff delays', () => {
+      // Directly test the backoff calculation
+      connectionManager.reconnectAttempt = 0;
+      expect(connectionManager.calculateReconnectDelay()).toBe(1000); // 1s
+      
+      connectionManager.reconnectAttempt = 1;
+      expect(connectionManager.calculateReconnectDelay()).toBe(2000); // 2s
+      
+      connectionManager.reconnectAttempt = 2;
+      expect(connectionManager.calculateReconnectDelay()).toBe(4000); // 4s
+      
+      connectionManager.reconnectAttempt = 3;
+      expect(connectionManager.calculateReconnectDelay()).toBe(8000); // 8s
+      
+      connectionManager.reconnectAttempt = 4;
+      expect(connectionManager.calculateReconnectDelay()).toBe(16000); // 16s
+      
+      // Test max delay capping
+      connectionManager.reconnectAttempt = 10; // This would be 1024s without the cap
+      expect(connectionManager.calculateReconnectDelay()).toBe(30000); // Capped at 30s
     });
     
-    // Process intervals that should trigger (possibly multiple times)
-    intervals.forEach((interval, id) => {
-      if (!interval.cleared) {
-        const iterations = Math.floor(ms / interval.delay);
-        for (let i = 0; i < iterations; i++) {
-          interval.callback();
-        }
-      }
+    test('should schedule reconnects with increasing delays', () => {
+      // Setup initial state
+      connectionManager.reconnectAttempt = 0;
+      
+      // Trigger first reconnect
+      connectionManager.scheduleWebSocketReconnect();
+      
+      // Advance timer by exactly 1000ms (first delay)
+      jest.advanceTimersByTime(1000);
+      expect(global.WebSocket).toHaveBeenCalledTimes(1);
+      
+      // Simulate connection failure
+      const firstSocket = global.WebSocket.mock.instances[0];
+      firstSocket.onclose({ wasClean: false });
+      
+      // Should have scheduled second reconnect
+      expect(connectionManager.reconnectAttempt).toBe(1);
+      
+      // Advance timer by another 2000ms (second delay)
+      jest.advanceTimersByTime(2000);
+      expect(global.WebSocket).toHaveBeenCalledTimes(2);
+      
+      // Simulate another failure
+      const secondSocket = global.WebSocket.mock.instances[1];
+      secondSocket.onclose({ wasClean: false });
+      
+      // Should have scheduled third reconnect
+      expect(connectionManager.reconnectAttempt).toBe(2);
+      
+      // Advance timer by another 4000ms (third delay)
+      jest.advanceTimersByTime(4000);
+      expect(global.WebSocket).toHaveBeenCalledTimes(3);
     });
-  };
-  
-  /**
-   * Helper to run the connection script logic
-   */
-  /**
-   * Helper to create and initialize a ConnectionManager for testing
-   */
-  const createConnectionManager = () => {
-    // Import the ConnectionManager class 
-    // In a real test setup, we would properly import the module 
-    window.setupConnection = () => {
-      // DOM Elements
-      const statusIndicator = document.getElementById('status-indicator');
-      const connectionStatus = document.getElementById('connection-status');
-      const connectionDetails = document.getElementById('connection-details');
-      const messageInput = document.getElementById('message-input');
-      const sendButton = document.getElementById('send-button');
-      const connectButton = document.getElementById('connect-button');
-      const disconnectButton = document.getElementById('disconnect-button');
-      const connectSSEButton = document.getElementById('connect-sse-button');
-      const messageLog = document.getElementById('message-log');
-      const sentCount = document.getElementById('sent-count');
-      const receivedCount = document.getElementById('received-count');
-      const connectionAttempts = document.getElementById('connection-attempts');
-      const reconnectionCount = document.getElementById('reconnection-count');
-      
-      // Variables
-      let socket = null;
-      let eventSource = null;
-      let messageCounter = { sent: 0, received: 0, attempts: 0, reconnects: 0 };
-      let clientId = null;
-      let connectionMode = null;
-      let reconnectInterval = null;
-      let reconnectAttempt = 0;
-      let maxReconnectDelay = 30000; // 30 seconds max
-      
-      // Utility functions
-      function updateConnectionStatus(connected, mode, details = '') {
-        // Reset all classes
-        statusIndicator.classList.remove('connected', 'disconnected', 'reconnecting');
-        
-        if (connected) {
-          // Set connected state
-          statusIndicator.classList.add('connected');
-          const statusIcon = statusIndicator.querySelector('.status-icon');
-          statusIcon.textContent = '🟢';
-          connectionStatus.textContent = `Connected (${mode})`;
-          messageInput.disabled = false;
-          sendButton.disabled = false;
-          disconnectButton.disabled = false;
-          connectButton.disabled = true;
-          connectSSEButton.disabled = true;
-          connectionMode = mode;
-        } else if (reconnectInterval) {
-          // Set reconnecting state
-          statusIndicator.classList.add('reconnecting');
-          const statusIcon = statusIndicator.querySelector('.status-icon');
-          statusIcon.textContent = '🟡';
-          connectionStatus.textContent = 'Reconnecting...';
-          messageInput.disabled = true;
-          sendButton.disabled = true;
-          disconnectButton.disabled = false;
-          connectButton.disabled = false;
-          connectSSEButton.disabled = false;
-          connectionMode = null;
-        } else {
-          // Set disconnected state
-          statusIndicator.classList.add('disconnected');
-          const statusIcon = statusIndicator.querySelector('.status-icon');
-          statusIcon.textContent = '🔴';
-          connectionStatus.textContent = 'Disconnected';
-          messageInput.disabled = true;
-          sendButton.disabled = true;
-          disconnectButton.disabled = true;
-          connectButton.disabled = false;
-          connectSSEButton.disabled = false;
-          connectionMode = null;
-        }
-        connectionDetails.textContent = details;
-      }
-      
-      function addMessageToLog(message, type, direction = null) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type}`;
-        messageLog.appendChild(messageDiv);
-      }
-      
-      // Connection functions
-      function connectWebSocket() {
-        if (socket) {
-          socket.close();
-        }
-        
-        messageCounter.attempts++;
-        connectionAttempts.textContent = messageCounter.attempts;
-        
-        try {
-          const wsUrl = `ws://localhost/ws`;
-          
-          addMessageToLog(`Attempting to connect to WebSocket: ${wsUrl}`, 'info');
-          socket = new WebSocket(wsUrl);
-          
-          socket.onopen = function() {
-            updateConnectionStatus(true, 'WebSocket', `Connected to ${wsUrl}`);
-            addMessageToLog('WebSocket connection established', 'info');
-            
-            // Reset reconnect attempt counter and clear interval
-            reconnectAttempt = 0;
-            if (reconnectInterval) {
-              clearInterval(reconnectInterval);
-              reconnectInterval = null;
-            }
-            
-            // If we were previously using SSE, close it
-            if (eventSource) {
-              addMessageToLog('WebSocket reconnected, closing SSE fallback', 'info');
-              eventSource.close();
-              eventSource = null;
-            }
-          };
-          
-          socket.onmessage = function(event) {
-            try {
-              const data = JSON.parse(event.data);
-              addMessageToLog(data, 'received', 'received');
-            } catch (error) {
-              addMessageToLog(`Received raw message: ${event.data}`, 'received', 'received');
-            }
-          };
-          
-          socket.onerror = function(error) {
-            addMessageToLog(`WebSocket error: ${error.message || 'Unknown error'}`, 'error');
-            fallbackToSSE();
-          };
-          
-          socket.onclose = function(event) {
-            updateConnectionStatus(false);
-            
-            if (event.wasClean) {
-              addMessageToLog(`WebSocket closed cleanly, code=${event.code}, reason=${event.reason}`, 'info');
-            } else {
-              addMessageToLog('WebSocket connection died', 'error');
-              
-              // Only auto-fallback to SSE if we're not already connected via SSE
-              if (connectionMode !== 'SSE') {
-                fallbackToSSE();
-              } else if (!reconnectInterval) {
-                // If already on SSE but no reconnect scheduled, schedule WebSocket reconnect
-                scheduleWebSocketReconnect();
-              }
-            }
-          };
-        } catch (error) {
-          addMessageToLog(`WebSocket connection error: ${error.message}`, 'error');
-          fallbackToSSE();
-        }
-      }
-      
-      function connectSSE() {
-        if (eventSource) {
-          eventSource.close();
-        }
-        
-        if (socket) {
-          socket.close();
-          socket = null;
-        }
-        
-        messageCounter.attempts++;
-        connectionAttempts.textContent = messageCounter.attempts;
-        
-        try {
-          clientId = `client_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-          const sseUrl = `/api/events?clientId=${clientId}`;
-          
-          addMessageToLog(`Attempting to connect to SSE: ${sseUrl}`, 'info');
-          eventSource = new EventSource(sseUrl);
-          
-          eventSource.onopen = function() {
-            updateConnectionStatus(true, 'SSE', `Connected to ${sseUrl}`);
-            addMessageToLog('SSE connection established', 'info');
-            messageCounter.reconnects++;
-            reconnectionCount.textContent = messageCounter.reconnects;
-          };
-          
-          eventSource.onmessage = function(event) {
-            try {
-              const data = JSON.parse(event.data);
-              addMessageToLog(data, 'received', 'received');
-            } catch (error) {
-              addMessageToLog(`Received raw SSE message: ${event.data}`, 'received', 'received');
-            }
-          };
-          
-          eventSource.onerror = function(error) {
-            addMessageToLog(`SSE error: ${error.message || 'Unknown error'}`, 'error');
-            eventSource.close();
-            updateConnectionStatus(false);
-          };
-        } catch (error) {
-          addMessageToLog(`SSE connection error: ${error.message}`, 'error');
-          updateConnectionStatus(false);
-        }
-      }
-      
-      function calculateReconnectDelay() {
-        // Exponential backoff with a maximum delay of maxReconnectDelay
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), maxReconnectDelay);
-        reconnectAttempt++;
-        return delay;
-      }
-      
-      function scheduleWebSocketReconnect() {
-        if (reconnectInterval) {
-          clearInterval(reconnectInterval);
-        }
-        
-        const delay = calculateReconnectDelay();
-        addMessageToLog(`Scheduling WebSocket reconnect in ${delay/1000} seconds (attempt ${reconnectAttempt})`, 'info');
-        
-        // Update UI to show reconnecting state
-        updateConnectionStatus(false);
-        
-        reconnectInterval = setInterval(() => {
-          if (connectionMode !== 'WebSocket') {
-            addMessageToLog('Attempting to reconnect WebSocket...', 'info');
-            connectWebSocket();
-          } else {
-            // Clear interval if we're already connected via WebSocket
-            clearInterval(reconnectInterval);
-            reconnectInterval = null;
-            reconnectAttempt = 0;
-          }
-        }, delay);
-      }
-      
-      function fallbackToSSE() {
-        addMessageToLog('WebSocket failed, falling back to SSE', 'info');
-        messageCounter.reconnects++;
-        reconnectionCount.textContent = messageCounter.reconnects;
-        connectSSE();
-        
-        // Schedule WebSocket reconnection attempts
-        scheduleWebSocketReconnect();
-      }
-      
-      // Event Listeners
-      connectButton.addEventListener('click', connectWebSocket);
-      connectSSEButton.addEventListener('click', connectSSE);
-      
-      disconnectButton.addEventListener('click', function() {
-        if (socket) {
-          socket.close();
-          socket = null;
-        }
-        
-        if (eventSource) {
-          eventSource.close();
-          eventSource = null;
-        }
-        
-        updateConnectionStatus(false);
-        addMessageToLog('Disconnected by user', 'info');
-      });
-      
-      // Initialize page
-      addMessageToLog('WebSocket Test Page loaded', 'info');
-      
-      // Expose functions for testing
-      return {
-        connectWebSocket,
-        connectSSE,
-        fallbackToSSE,
-        scheduleWebSocketReconnect,
-        calculateReconnectDelay,
-        updateConnectionStatus,
-        getState: () => ({
-          socket,
-          eventSource,
-          messageCounter,
-          clientId,
-          connectionMode,
-          reconnectInterval,
-          reconnectAttempt,
-          maxReconnectDelay
-        })
-      };
-    };
-    
-    // Return the connection manager functions
-    return window.setupConnection();
-  };
-  
-  // Tests
-  test('should initially show disconnected state', () => {
-    const connectionManager = loadAndInitConnectionScript();
-    
-    expect(domElements.statusIndicator.classList.contains('disconnected')).toBe(true);
-    expect(domElements.statusIndicator.querySelector('.status-icon').textContent).toBe('🔴');
-    expect(domElements.connectionStatus.textContent).toBe('Disconnected');
   });
   
-  test('should connect to WebSocket successfully', () => {
-    const connectionManager = loadAndInitConnectionScript();
+  describe('WebSocket to SSE Fallback', () => {
+    test('should fallback to SSE when WebSocket fails', () => {
+      // Connect the WebSocket
+      connectionManager.connectWebSocket();
+      expect(global.WebSocket).toHaveBeenCalledTimes(1);
+      
+      // Simulate WebSocket error
+      const socket = global.WebSocket.mock.instances[0];
+      socket.onerror({ message: 'Connection failed' });
+      
+      // Should have initialized EventSource
+      expect(global.EventSource).toHaveBeenCalledTimes(1);
+      
+      // Verify that connection status was updated
+      expect(mockElements.connectionStatus.textContent).toBe('Disconnected');
+    });
     
-    // Trigger connection
-    connectionManager.connectWebSocket();
-    
-    // Get latest WebSocket instance
-    const ws = mockWebSocketInstances[mockWebSocketInstances.length - 1];
-    
-    // Simulate successful connection
-    ws.mockConnect();
-    
-    // Assert status is updated
-    expect(domElements.statusIndicator.classList.contains('connected')).toBe(true);
-    expect(domElements.statusIndicator.classList.contains('disconnected')).toBe(false);
-    expect(domElements.statusIndicator.querySelector('.status-icon').textContent).toBe('🟢');
-    expect(domElements.connectionStatus.textContent).toBe('Connected (WebSocket)');
-    
-    // Assert input and buttons are updated
-    expect(domElements.messageInput.disabled).toBe(false);
-    expect(domElements.sendButton.disabled).toBe(false);
-    expect(domElements.disconnectButton.disabled).toBe(false);
-    expect(domElements.connectButton.disabled).toBe(true);
-    expect(domElements.connectSSEButton.disabled).toBe(true);
+    test('should retry WebSocket while connected via SSE', () => {
+      // Connect and fail WebSocket
+      connectionManager.connectWebSocket();
+      const socket = global.WebSocket.mock.instances[0];
+      socket.onerror({ message: 'Connection failed' });
+      
+      // Connect SSE successfully
+      const eventSource = global.EventSource.mock.instances[0];
+      eventSource.onopen();
+      
+      // Verify that connection mode is SSE
+      expect(connectionManager.connectionMode).toBe('SSE');
+      
+      // Advance timer to trigger WebSocket reconnect
+      jest.advanceTimersByTime(1000);
+      
+      // Verify that a new WebSocket attempt was made
+      expect(global.WebSocket).toHaveBeenCalledTimes(2);
+    });
   });
   
-  test('should fallback to SSE when WebSocket fails', () => {
-    const connectionManager = loadAndInitConnectionScript();
+  describe('UI State Transitions', () => {
+    test('should update UI for connected state', () => {
+      // Connect successfully
+      connectionManager.connectWebSocket();
+      const socket = global.WebSocket.mock.instances[0];
+      socket.onopen();
+      
+      // Verify UI updates
+      expect(mockElements.statusIndicator.classList.add).toHaveBeenCalledWith('connected');
+      expect(mockElements.statusIndicator.querySelector().textContent).toBe('🟢');
+      expect(mockElements.connectionStatus.textContent).toBe('Connected (WebSocket)');
+      
+      // Verify button states
+      expect(mockElements.messageInput.disabled).toBe(false);
+      expect(mockElements.sendButton.disabled).toBe(false);
+      expect(mockElements.disconnectButton.disabled).toBe(false);
+      expect(mockElements.connectButton.disabled).toBe(true);
+      expect(mockElements.connectSSEButton.disabled).toBe(true);
+    });
     
-    // Trigger connection
-    connectionManager.connectWebSocket();
+    test('should update UI for reconnecting state', () => {
+      // Connect and then fail connection
+      connectionManager.connectWebSocket();
+      const socket = global.WebSocket.mock.instances[0];
+      socket.onclose({ wasClean: false });
+      
+      // Verify UI updates for reconnecting state
+      expect(mockElements.statusIndicator.classList.add).toHaveBeenCalledWith('reconnecting');
+      expect(mockElements.statusIndicator.querySelector().textContent).toBe('🟡');
+      expect(mockElements.connectionStatus.textContent).toBe('Reconnecting...');
+      
+      // Verify button states
+      expect(mockElements.messageInput.disabled).toBe(true);
+      expect(mockElements.sendButton.disabled).toBe(true);
+      expect(mockElements.disconnectButton.disabled).toBe(false);
+      expect(mockElements.connectButton.disabled).toBe(false);
+      expect(mockElements.connectSSEButton.disabled).toBe(false);
+    });
     
-    // Get latest WebSocket instance
-    const ws = mockWebSocketInstances[mockWebSocketInstances.length - 1];
-    
-    // Simulate error and close
-    ws.mockError('Connection failed');
-    ws.mockDisconnect(false, 1006, 'Abnormal closure');
-    
-    // Assert SSE connection is attempted
-    expect(mockEventSourceInstances.length).toBe(1);
-    
-    // Get latest EventSource instance
-    const es = mockEventSourceInstances[mockEventSourceInstances.length - 1];
-    
-    // Simulate successful SSE connection
-    es.mockConnect();
-    
-    // Assert status is updated
-    expect(domElements.statusIndicator.classList.contains('connected')).toBe(true);
-    expect(domElements.statusIndicator.classList.contains('disconnected')).toBe(false);
-    expect(domElements.statusIndicator.querySelector('.status-icon').textContent).toBe('🟢');
-    expect(domElements.connectionStatus.textContent).toBe('Connected (SSE)');
+    test('should update UI for disconnected state', () => {
+      // Connect and then disconnect cleanly
+      connectionManager.connectWebSocket();
+      const socket = global.WebSocket.mock.instances[0];
+      socket.onopen();
+      connectionManager.disconnect();
+      
+      // Verify UI updates for disconnected state
+      expect(mockElements.statusIndicator.classList.add).toHaveBeenCalledWith('disconnected');
+      expect(mockElements.statusIndicator.querySelector().textContent).toBe('🔴');
+      expect(mockElements.connectionStatus.textContent).toBe('Disconnected');
+      
+      // Verify button states
+      expect(mockElements.messageInput.disabled).toBe(true);
+      expect(mockElements.sendButton.disabled).toBe(true);
+      expect(mockElements.disconnectButton.disabled).toBe(true);
+      expect(mockElements.connectButton.disabled).toBe(false);
+      expect(mockElements.connectSSEButton.disabled).toBe(false);
+    });
   });
   
-  test('should show reconnecting state during WebSocket reconnection attempts', () => {
-    const connectionManager = loadAndInitConnectionScript();
+  describe('Early Success Cancellation', () => {
+    test('should cancel reconnect timer on successful connection', () => {
+      // Start with failed connection that schedules reconnect
+      connectionManager.connectWebSocket();
+      const firstSocket = global.WebSocket.mock.instances[0];
+      firstSocket.onclose({ wasClean: false });
+      
+      // Verify reconnect is scheduled
+      expect(connectionManager.reconnectInterval).not.toBeNull();
+      
+      // Manually connect again before timer expires
+      connectionManager.connectWebSocket();
+      const secondSocket = global.WebSocket.mock.instances[1];
+      secondSocket.onopen();
+      
+      // Verify reconnect timer was cleared
+      expect(connectionManager.reconnectInterval).toBeNull();
+      expect(connectionManager.reconnectAttempt).toBe(0);
+    });
     
-    // Trigger connection
-    connectionManager.connectWebSocket();
-    
-    // Get latest WebSocket instance
-    const ws = mockWebSocketInstances[mockWebSocketInstances.length - 1];
-    
-    // Simulate error and close
-    ws.mockError('Connection failed');
-    ws.mockDisconnect(false, 1006, 'Abnormal closure');
-    
-    // Assert SSE connection is attempted and successful
-    const es = mockEventSourceInstances[mockEventSourceInstances.length - 1];
-    es.mockConnect();
-    
-    // Get the reconnect interval delay
-    const reconnectDelay = connectionManager.calculateReconnectDelay();
-    
-    // Advance time just before the reconnect would happen
-    advanceTimers(reconnectDelay - 10);
-    
-    // Assert we're in reconnecting state
-    expect(domElements.statusIndicator.classList.contains('reconnecting')).toBe(true);
-    expect(domElements.statusIndicator.querySelector('.status-icon').textContent).toBe('🟡');
-    expect(domElements.connectionStatus.textContent).toBe('Reconnecting...');
-    
-    // Complete the timer
-    advanceTimers(20); // 10 ms more to trigger the interval
-    
-    // Assert a new WebSocket connection attempt is made
-    expect(mockWebSocketInstances.length).toBe(2);
-  });
-  
-  test('should use exponential backoff for reconnection attempts', () => {
-    const connectionManager = loadAndInitConnectionScript();
-    
-    // Set the initial reconnect attempt value
-    connectionManager.getState().reconnectAttempt = 0;
-    
-    // Calculate delays for each attempt
-    const delay1 = connectionManager.calculateReconnectDelay(); // 1000ms (2^0 * 1000)
-    const delay2 = connectionManager.calculateReconnectDelay(); // 2000ms (2^1 * 1000)
-    const delay3 = connectionManager.calculateReconnectDelay(); // 4000ms (2^2 * 1000)
-    const delay4 = connectionManager.calculateReconnectDelay(); // 8000ms (2^3 * 1000)
-    
-    // Assert exponential increase
-    expect(delay1).toBe(1000);
-    expect(delay2).toBe(2000);
-    expect(delay3).toBe(4000);
-    expect(delay4).toBe(8000);
-  });
-  
-  test('should cancel reconnection attempts when WebSocket reconnects', () => {
-    const connectionManager = loadAndInitConnectionScript();
-    
-    // Trigger connection
-    connectionManager.connectWebSocket();
-    
-    // Get latest WebSocket instance
-    const ws = mockWebSocketInstances[mockWebSocketInstances.length - 1];
-    
-    // Simulate error and close
-    ws.mockError('Connection failed');
-    ws.mockDisconnect(false, 1006, 'Abnormal closure');
-    
-    // Get SSE connection
-    const es = mockEventSourceInstances[mockEventSourceInstances.length - 1];
-    es.mockConnect();
-    
-    // Ensure reconnect is scheduled
-    const state = connectionManager.getState();
-    expect(state.reconnectInterval).not.toBeNull();
-    
-    // Advance time to trigger the first reconnect attempt
-    advanceTimers(1000);
-    
-    // Get the new WebSocket instance
-    const ws2 = mockWebSocketInstances[mockWebSocketInstances.length - 1];
-    
-    // Simulate successful connection
-    ws2.mockConnect();
-    
-    // Assert reconnect interval is cleared
-    const updatedState = connectionManager.getState();
-    expect(updatedState.reconnectInterval).toBeNull();
-    expect(updatedState.reconnectAttempt).toBe(0);
-    
-    // Assert SSE connection is closed
-    expect(es.closed).toBe(true);
-  });
-  
-  test('should disconnect cleanly when user clicks disconnect button', () => {
-    const connectionManager = loadAndInitConnectionScript();
-    
-    // Trigger connection
-    connectionManager.connectWebSocket();
-    
-    // Get latest WebSocket instance
-    const ws = mockWebSocketInstances[mockWebSocketInstances.length - 1];
-    ws.mockConnect();
-    
-    // Simulate user clicking disconnect button
-    domElements.disconnectButton.click();
-    
-    // Assert status is updated
-    expect(domElements.statusIndicator.classList.contains('disconnected')).toBe(true);
-    expect(domElements.statusIndicator.querySelector('.status-icon').textContent).toBe('🔴');
-    expect(domElements.connectionStatus.textContent).toBe('Disconnected');
-    
-    // Assert WebSocket is closed
-    expect(ws.readyState).toBe(ws.CLOSING);
+    test('should close SSE connection when WebSocket succeeds', () => {
+      // Connect, fail WebSocket, connect SSE
+      connectionManager.connectWebSocket();
+      const socket = global.WebSocket.mock.instances[0];
+      socket.onerror({ message: 'Connection failed' });
+      
+      // Connect SSE successfully
+      const eventSource = global.EventSource.mock.instances[0];
+      eventSource.onopen();
+      
+      // Verify that connection mode is SSE
+      expect(connectionManager.connectionMode).toBe('SSE');
+      
+      // Simulate WebSocket reconnect success after SSE fallback
+      jest.advanceTimersByTime(1000);
+      const secondSocket = global.WebSocket.mock.instances[1];
+      secondSocket.onopen();
+      
+      // Verify that EventSource was closed
+      expect(eventSource.close).toHaveBeenCalled();
+      
+      // Verify that connection mode switched to WebSocket
+      expect(connectionManager.connectionMode).toBe('WebSocket');
+    });
   });
 });
