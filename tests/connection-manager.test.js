@@ -58,6 +58,33 @@ describe('ConnectionManager', () => {
       reconnect: true
     });
     
+    // Instead of using mock timers, let's override the setTimeout and clearTimeout
+    // This will avoid the unref() issue
+    global.setTimeout = jest.fn((callback, delay) => {
+      return { 
+        callback, 
+        delay,
+        unref: jest.fn() // Add the unref method
+      };
+    });
+    
+    global.clearTimeout = jest.fn();
+    
+    // Manual timer advancement function - replaces jest.advanceTimersByTime
+    global.runTimer = (delay) => {
+      // Find all timers with this delay
+      const timers = global.setTimeout.mock.results
+        .map(res => res.value)
+        .filter(timer => timer.delay === delay);
+      
+      // Execute their callbacks
+      timers.forEach(timer => {
+        if (timer.callback) {
+          timer.callback();
+        }
+      });
+    };
+    
     // Mock WebSocket
     global.WebSocket = jest.fn().mockImplementation(() => {
       return {
@@ -85,9 +112,6 @@ describe('ConnectionManager', () => {
         CLOSED: 2
       };
     });
-    
-    // Mock timers
-    jest.useFakeTimers();
   });
 
   // Test 1: Backoff algorithm verification
@@ -102,7 +126,7 @@ describe('ConnectionManager', () => {
     
     // Check first backoff (should be 1000ms)
     expect(setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 1000);
-    jest.advanceTimersByTime(1000);
+    global.runTimer(1000);
     
     // Simulate second connection failure
     const wsInstance2 = global.WebSocket.mock.results[1].value;
@@ -111,7 +135,7 @@ describe('ConnectionManager', () => {
     
     // Check second backoff (should be 2000ms)
     expect(setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 2000);
-    jest.advanceTimersByTime(2000);
+    global.runTimer(2000);
     
     // Simulate third connection failure
     const wsInstance3 = global.WebSocket.mock.results[2].value;
@@ -120,7 +144,7 @@ describe('ConnectionManager', () => {
     
     // Check third backoff (should be 4000ms)
     expect(setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 4000);
-    jest.advanceTimersByTime(4000);
+    global.runTimer(4000);
     
     // Simulate fourth connection failure
     const wsInstance4 = global.WebSocket.mock.results[3].value;
@@ -144,7 +168,7 @@ describe('ConnectionManager', () => {
       
       // Advance time to trigger next retry
       const backoffTime = 1000 * Math.pow(2, i);
-      jest.advanceTimersByTime(backoffTime);
+      global.runTimer(backoffTime);
     }
     
     // Check that SSE connection was attempted
@@ -179,7 +203,8 @@ describe('ConnectionManager', () => {
     
     // Advance timer to trigger max retries
     for (let i = 0; i < connectionManager.config.maxRetries; i++) {
-      jest.advanceTimersByTime(1000 * Math.pow(2, i));
+      const backoffTime = 1000 * Math.pow(2, i);
+      global.runTimer(backoffTime);
     }
     
     // Simulate SSE connection failure
@@ -215,7 +240,7 @@ describe('ConnectionManager', () => {
     expect(connectionManager.getState().mode).toBe('websocket');
     
     // Advance timer to when the scheduled reconnection would happen
-    jest.advanceTimersByTime(1000);
+    global.runTimer(1000);
     
     // Verify we're still in the same connected state (reconnection was cancelled)
     expect(connectionManager.getState().connected).toBe(true);
