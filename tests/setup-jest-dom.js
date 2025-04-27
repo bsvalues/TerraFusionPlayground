@@ -4,8 +4,6 @@
  * This file sets up global browser objects that are used by the ConnectionManager
  */
 
-// Using export syntax to make this an ESM module
-
 // Mock WebSocket class
 global.WebSocket = class WebSocket {
   constructor() {

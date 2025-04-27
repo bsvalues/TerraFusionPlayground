@@ -4,7 +4,8 @@
  * Configures Jest to handle ES modules and mock browser APIs
  */
 
-export default {
+/** @type {import('jest').Config} */
+const config = {
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest',
   },
@@ -13,16 +14,13 @@ export default {
   ],
   testEnvironment: 'jsdom',
   moduleFileExtensions: ['js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx', 'json', 'node'],
-  extensionsToTreatAsEsm: ['.mjs'],  // Removed '.js' to avoid the validation error
-  globals: {
-    'ts-jest': {
-      useESM: true,
-    },
-  },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  rootDir: process.cwd(),
   setupFiles: ['<rootDir>/tests/setup-jest-dom.js'],
-  testMatch: ['**/tests/connection-manager-esm.test.js'],
+  testMatch: ['**/tests/connection-manager.test.js'],
   verbose: true
 };
+
+module.exports = config;

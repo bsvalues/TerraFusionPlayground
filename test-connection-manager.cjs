@@ -6,11 +6,11 @@
 
 console.log('Running ConnectionManager tests...');
 
-import { execSync } from 'child_process';
+const { execSync } = require('child_process');
 
 try {
   // Run Jest with our custom configuration
-  execSync('npx jest --config tests/connection-manager.config.js', { stdio: 'inherit' });
+  execSync('npx jest --config tests/connection-manager.config.cjs', { stdio: 'inherit' });
   console.log('Tests completed successfully');
 } catch (error) {
   console.error('Tests failed with error:', error.message);
