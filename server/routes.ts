@@ -3036,7 +3036,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up WebSocket server events
   wss.on('connection', (ws, req) => {
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    console.log(`WebSocket client connected to /ws from ${clientIp}`);
+    console.log(`[WebSocket Server] Client connected to /ws from ${clientIp}`);
+    
+    // Send welcome message
+    ws.send(JSON.stringify({
+      type: 'system',
+      message: 'Welcome to TerraFusion WebSocket Server',
+      timestamp: new Date().toISOString(),
+      status: 'connected',
+      transport: 'websocket',
+      endpoint: '/ws'
+    }));
     
     // Setup heartbeat to detect dead connections
     (ws as any).isAlive = true;
@@ -3044,27 +3054,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       (ws as any).isAlive = true;
     });
     
+    // Record connection metrics
+    metricsService.incrementCounter('websocket_connections_total', {
+      path: '/ws',
+      client_ip: typeof clientIp === 'string' ? clientIp : 'unknown'
+    });
+    
     ws.on('message', (message) => {
       try {
-        console.log('Received raw message:', message.toString());
+        console.log('[WebSocket Server] Received raw message:', message.toString());
         const parsedMessage = JSON.parse(message.toString());
-        console.log('Parsed message:', parsedMessage);
+        console.log('[WebSocket Server] Parsed message:', parsedMessage);
         
-        // Enhanced echo behavior to handle our test page
-        if (parsedMessage.action === 'echo') {
+        // Handle ping messages specifically
+        if (parsedMessage.type === 'ping') {
           ws.send(JSON.stringify({
-            type: 'echo',
-            message: parsedMessage.message,
-            received: parsedMessage,
-            timestamp: new Date().toISOString()
+            type: 'pong',
+            timestamp: Date.now(),
+            originalTimestamp: parsedMessage.timestamp,
+            latency: Date.now() - (parsedMessage.timestamp || Date.now())
           }));
-        } else {
-          // Standard echo for other messages
-          ws.send(JSON.stringify({
-            type: 'echo',
-            originalMessage: parsedMessage,
-            timestamp: new Date().toISOString()
-          }));
+          return;
+        }
+        
+        // Handle different message types
+        switch (parsedMessage.type) {
+          case 'message':
+            // Echo back regular messages
+            ws.send(JSON.stringify({
+              type: 'message',
+              content: parsedMessage.content,
+              echo: true,
+              timestamp: new Date().toISOString()
+            }));
+            break;
+            
+          case 'echo':
+            // Echo back with same structure
+            ws.send(JSON.stringify({
+              type: 'echo',
+              message: parsedMessage.message,
+              received: parsedMessage,
+              timestamp: new Date().toISOString()
+            }));
+            break;
+            
+          default:
+            // General echo for unhandled message types
+            ws.send(JSON.stringify({
+              type: 'echo',
+              originalMessage: parsedMessage,
+              timestamp: new Date().toISOString()
+            }));
         }
       } catch (error) {
         console.error('Error handling WebSocket message:', error);
@@ -3089,15 +3130,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`WebSocket client disconnected from /ws. Code: ${code}, Reason: ${reason || 'No reason provided'}`);
     });
     
-    // Send welcome message
-    try {
-      ws.send(JSON.stringify({
-        type: 'info',
-        message: 'Welcome to TerraFusion WebSocket Server',
-        timestamp: new Date().toISOString()
-      }));
-      
-      // Set up ping interval to detect closed connections
+    // Set up ping interval to detect closed connections
+    try {      
       const pingInterval = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({
@@ -3113,7 +3147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ws.on('close', () => clearInterval(pingInterval));
       
     } catch (error) {
-      console.error('Error sending welcome message:', error);
+      console.error('Error setting up ping interval:', error);
     }
   });
   
