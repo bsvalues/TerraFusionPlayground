@@ -185,6 +185,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.join(process.cwd(), 'public', 'websocket-test.html'));
   });
   
+  app.get('/websocket-test.html', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'public', 'websocket-test.html'));
+  });
+  
+  // Also serve the test page from root path for direct access
+  app.get('/', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'public', 'websocket-test.html'));
+  });
+  
   // Add health check endpoint
   app.get('/api/health', (req, res) => {
     res.json({
