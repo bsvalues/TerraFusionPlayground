@@ -33,6 +33,13 @@ const WebSocketTest: React.FC = () => {
       const wsUrl = `${protocol}//${window.location.host}/ws`;
       
       addMessage(`Connecting to ${wsUrl}...`);
+      addMessage(`Tip: If direct WebSocket connection fails, the application will use Socket.IO with polling fallback.`);
+      
+      let connectionTimer = setTimeout(() => {
+        if (socket.current?.readyState !== WebSocket.OPEN) {
+          addMessage('Connection taking longer than expected. May fall back to HTTP polling...');
+        }
+      }, 2000);
       
       socket.current = new WebSocket(wsUrl);
       
