@@ -596,7 +596,5 @@ if (typeof window !== 'undefined') {
   window.ConnectionManager = ConnectionManager;
 }
 
-// Export for module usage
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = ConnectionManager;
-}
+// Export for ES modules
+export default ConnectionManager;

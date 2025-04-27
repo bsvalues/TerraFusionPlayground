@@ -6,7 +6,7 @@
 
 // Import ConnectionManager (mocked for this test)
 // In a real setup, we would use proper imports
-const ConnectionManager = require('../public/websocket-connection.js');
+import ConnectionManager from '../public/websocket-connection.js';
 
 describe('ConnectionManager', () => {
   let originalWebSocket;

@@ -4,7 +4,7 @@
  * This script runs the tests for the WebSocket Connection Manager
  */
 
-const { exec } = require('child_process');
+import { exec } from 'child_process';
 
 // Run Jest with the specific test file
 const runTests = () => {
