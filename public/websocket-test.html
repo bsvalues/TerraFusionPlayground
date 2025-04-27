@@ -32,13 +32,31 @@
       gap: 10px;
     }
     .status-indicator {
-      width: 15px;
-      height: 15px;
-      border-radius: 50%;
-      background-color: #e74c3c;
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .status-indicator.disconnected {
+      background-color: #ffe6e6;
+      color: #e74c3c;
+      border: 1px solid #e74c3c;
     }
     .status-indicator.connected {
-      background-color: #2ecc71;
+      background-color: #e6ffe6;
+      color: #2ecc71;
+      border: 1px solid #2ecc71;
+    }
+    .status-indicator.reconnecting {
+      background-color: #fff9e6;
+      color: #f39c12;
+      border: 1px solid #f39c12;
+    }
+    .status-icon {
+      font-size: 18px;
+      margin-right: 8px;
     }
     .input-group {
       display: flex;
@@ -172,8 +190,10 @@
     <div class="card">
       <h2>Connection Status</h2>
       <div class="connection-status">
-        <div id="status-indicator" class="status-indicator"></div>
-        <span id="connection-status">Disconnected</span>
+        <div id="status-indicator" class="status-indicator disconnected">
+          <span class="status-icon">🔴</span>
+          <span id="connection-status">Disconnected</span>
+        </div>
       </div>
       <div id="connection-details"></div>
       <div id="connection-metrics">
@@ -232,8 +252,14 @@
       
       // Utility functions
       function updateConnectionStatus(connected, mode, details = '') {
+        // Reset all classes
+        statusIndicator.classList.remove('connected', 'disconnected', 'reconnecting');
+        
         if (connected) {
+          // Set connected state
           statusIndicator.classList.add('connected');
+          const statusIcon = statusIndicator.querySelector('.status-icon');
+          statusIcon.textContent = '🟢';
           connectionStatus.textContent = `Connected (${mode})`;
           messageInput.disabled = false;
           sendButton.disabled = false;
@@ -241,8 +267,23 @@
           connectButton.disabled = true;
           connectSSEButton.disabled = true;
           connectionMode = mode;
+        } else if (reconnectInterval) {
+          // Set reconnecting state
+          statusIndicator.classList.add('reconnecting');
+          const statusIcon = statusIndicator.querySelector('.status-icon');
+          statusIcon.textContent = '🟡';
+          connectionStatus.textContent = 'Reconnecting...';
+          messageInput.disabled = true;
+          sendButton.disabled = true;
+          disconnectButton.disabled = false;
+          connectButton.disabled = false;
+          connectSSEButton.disabled = false;
+          connectionMode = null;
         } else {
-          statusIndicator.classList.remove('connected');
+          // Set disconnected state
+          statusIndicator.classList.add('disconnected');
+          const statusIcon = statusIndicator.querySelector('.status-icon');
+          statusIcon.textContent = '🔴';
           connectionStatus.textContent = 'Disconnected';
           messageInput.disabled = true;
           sendButton.disabled = true;
@@ -459,6 +500,9 @@
         
         const delay = calculateReconnectDelay();
         addMessageToLog(`Scheduling WebSocket reconnect in ${delay/1000} seconds (attempt ${reconnectAttempt})`, 'info');
+        
+        // Update UI to show reconnecting state
+        updateConnectionStatus(false);
         
         reconnectInterval = setInterval(() => {
           if (connectionMode !== 'WebSocket') {
