@@ -160,4 +160,4 @@ export const ConnectionStatusMonitor: React.FC<ConnectionStatusMonitorProps> = (
   return null;
 };
 
-export default ConnectionStatusMonitor;
+// Using named export only for consistency
