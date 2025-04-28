@@ -956,6 +956,12 @@ export interface IStorage {
   updateAgentExperiencePriority(experienceId: string, priority: number): Promise<AgentExperience | null>;
   markAgentExperienceAsUsed(experienceId: string): Promise<AgentExperience | null>;
   
+  // Agent Health Monitoring methods
+  getAgentHealthByAgentId(agentId: string): Promise<AgentHealth | null>;
+  getAllAgentHealth(): Promise<AgentHealth[]>;
+  createAgentHealth(health: AgentHealth): Promise<AgentHealth>;
+  updateAgentHealth(health: AgentHealth): Promise<AgentHealth>;
+  
   // Learning Updates methods
   createLearningUpdate(update: InsertLearningUpdate): Promise<LearningUpdate>;
   getLearningUpdateById(updateId: string): Promise<LearningUpdate | null>;
