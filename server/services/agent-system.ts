@@ -338,11 +338,36 @@ export class AgentSystem {
     const agentStatuses = {};
     
     for (const [name, agent] of this.agents.entries()) {
-      agentStatuses[name] = agent.getStatus();
+      // Safety check for getStatus method
+      try {
+        if (agent && typeof agent.getStatus === 'function') {
+          agentStatuses[name] = agent.getStatus();
+        } else {
+          // Fallback for agents that don't implement getStatus
+          agentStatuses[name] = {
+            id: typeof agent.id !== 'undefined' ? agent.id : (typeof agent.agentId !== 'undefined' ? agent.agentId : name),
+            name: typeof agent.name !== 'undefined' ? agent.name : name,
+            isActive: typeof agent.isActive !== 'undefined' ? agent.isActive : false,
+            lastActivity: typeof agent.lastActivity !== 'undefined' ? agent.lastActivity : null,
+            performanceScore: typeof agent.performanceScore !== 'undefined' ? agent.performanceScore : 0
+          };
+          console.log(`Created fallback status for agent ${name} due to missing getStatus method`);
+        }
+      } catch (error) {
+        console.error(`Error getting status for agent ${name}:`, error);
+        agentStatuses[name] = {
+          id: name,
+          name: name,
+          error: 'Failed to get status',
+          isActive: false,
+          lastActivity: null,
+          performanceScore: 0
+        };
+      }
     }
     
     // Include replay buffer statistics in the system status
-    const replayBufferStats = this.replayBuffer.getBufferStats();
+    const replayBufferStats = this.replayBuffer ? this.replayBuffer.getBufferStats() : { size: 0, maxSize: 0 };
     
     // Safely get command structure information with error handling
     let commandStructureInfo = {};
