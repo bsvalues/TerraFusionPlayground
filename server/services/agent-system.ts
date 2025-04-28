@@ -285,6 +285,44 @@ export class AgentSystem {
   }
   
   /**
+   * Get agent status by ID
+   */
+  public getAgentStatus(agentId: string): any {
+    // Check if agent exists
+    const agent = this.agents.get(agentId);
+    if (!agent) return null;
+    
+    // Get agent status with safety check
+    try {
+      if (agent && typeof agent.getStatus === 'function') {
+        return agent.getStatus();
+      } else {
+        // Fallback if getStatus method is not available
+        console.log(`Agent ${agentId} does not have getStatus method, using fallback status`);
+        return {
+          id: typeof agent.id !== 'undefined' ? agent.id : (typeof agent.agentId !== 'undefined' ? agent.agentId : agentId),
+          name: typeof agent.name !== 'undefined' ? agent.name : agentId,
+          isActive: typeof agent.isActive !== 'undefined' ? agent.isActive : false,
+          lastActivity: typeof agent.lastActivity !== 'undefined' ? agent.lastActivity : null,
+          performanceScore: typeof agent.performanceScore !== 'undefined' ? agent.performanceScore : 0,
+          initialized: true
+        };
+      }
+    } catch (error) {
+      console.error(`Error getting status for agent ${agentId}:`, error);
+      return {
+        id: agentId,
+        name: agentId,
+        error: 'Failed to get status',
+        isActive: false,
+        lastActivity: null,
+        performanceScore: 0,
+        initialized: false
+      };
+    }
+  }
+  
+  /**
    * Start all agents
    */
   public async startAllAgents(): Promise<void> {
