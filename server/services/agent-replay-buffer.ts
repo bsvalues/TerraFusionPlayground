@@ -229,7 +229,7 @@ export class AgentReplayBufferService {
 
       // Use weighted random sampling based on priority
       const sampledExperiences: AgentExperience[] = [];
-      const totalPriority = allExperiences.reduce((sum, item) => sum + item.priority, 0);
+      let totalPriority = allExperiences.reduce((sum, item) => sum + item.priority, 0);
 
       for (let i = 0; i < batchSize; i++) {
         // Generate random value in range [0, totalPriority)
