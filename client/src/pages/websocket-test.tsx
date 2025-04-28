@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { InfoIcon, AlertTriangle, RefreshCw, Send } from "lucide-react";
-import { ConnectionStatusBadge } from "@/components/connection-status-badge";
-import { ConnectionHealthMetrics } from "@/components/connection-health-metrics";
-import { ConnectionNotification } from "@/components/connection-notification";
-import useAgentWebSocket from "@/hooks/use-agent-websocket";
-import useAgentSocketIO from "@/hooks/use-agent-socketio";
-import { ConnectionStatus, TransportType } from "@/components/connection-status-badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
+import { ConnectionStatusBadge } from '@/components/connection-status-badge';
+import { ConnectionHealthMetrics } from '@/components/connection-health-metrics';
+import { ConnectionStatus, TransportType } from '@/components/connection-status-badge';
 
 /**
  * WebSocket Test Page
@@ -23,409 +15,331 @@ import { ConnectionStatus, TransportType } from "@/components/connection-status-
  * connection types, and displays status, messages, and metrics.
  */
 export const WebSocketTest: React.FC = () => {
-  // Common state
-  const [activeTab, setActiveTab] = useState("websocket");
-  const [serverUrl, setServerUrl] = useState(window.location.origin);
-  const [socketIoPath, setSocketIoPath] = useState("/socket.io");
-  const [messageInput, setMessageInput] = useState("");
+  // State for WebSocket
+  const [wsStatus, setWsStatus] = useState<ConnectionStatus>('disconnected');
+  const [wsTransport] = useState<TransportType>('websocket');
+  const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
+  const [wsMessage, setWsMessage] = useState('');
   const [receivedMessages, setReceivedMessages] = useState<{time: Date, content: string, type: 'received' | 'sent'}[]>([]);
   
-  // WebSocket state
-  const [wsPath, setWsPath] = useState("/ws");
-  
-  // Socket.IO state
-  const [namespace, setNamespace] = useState("/");
-  const [event, setEvent] = useState("message");
-  
-  // WebSocket connection
-  const wsUrl = `${serverUrl.replace(/^http/, 'ws')}${wsPath}`;
-  const { 
-    status: wsStatus, 
-    socket: wsSocket, 
-    sendMessage: wsSendMessage,
-    reconnect: wsReconnect,
-    metrics: wsMetrics,
-    transport: wsTransport
-  } = useAgentWebSocket({
-    url: wsUrl,
-    onMessage: (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        addMessage({
-          time: new Date(),
-          content: JSON.stringify(data, null, 2),
-          type: 'received'
-        });
-      } catch (e) {
-        // If it's not JSON, display as plain text
-        addMessage({
-          time: new Date(),
-          content: event.data,
-          type: 'received'
-        });
-      }
-    }
+  // WebSocket metrics
+  const [wsMetrics, setWsMetrics] = useState({
+    latency: 0,
+    uptime: 0,
+    messageCount: 0,
+    reconnectCount: 0,
+    lastMessageTime: null as Date | null,
+    failedAttempts: 0,
+    transportType: 'websocket' as TransportType
   });
   
-  // Socket.IO connection
-  const { 
-    status: socketIoStatus, 
-    socket: socketIoSocket,
-    emit: socketIoEmit,
-    reconnect: socketIoReconnect,
-    metrics: socketIoMetrics,
-    transport: socketIoTransport
-  } = useAgentSocketIO({
-    url: serverUrl,
-    path: socketIoPath,
-    namespace,
-    events: [
-      { 
-        name: 'message', 
-        handler: (data) => {
+  // Connect to WebSocket
+  const connectWebSocket = () => {
+    try {
+      setWsStatus('connecting');
+      
+      // Determine WebSocket URL
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      
+      console.log(`Attempting to connect to WebSocket server at ${wsUrl}`);
+      
+      const ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('WebSocket connection established');
+        setWsStatus('connected');
+        setWsConnection(ws);
+        
+        // Update metrics
+        setWsMetrics(prev => ({
+          ...prev,
+          uptime: 100,
+          reconnectCount: prev.reconnectCount,
+          failedAttempts: 0
+        }));
+        
+        // Send initial ping to measure latency
+        sendPing(ws);
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('WebSocket message received:', data);
+          
+          // Handle ping response for latency calculation
+          if (data.type === 'pong' && data.originalTimestamp) {
+            const latency = Date.now() - data.originalTimestamp;
+            setWsMetrics(prev => ({
+              ...prev,
+              latency,
+              messageCount: prev.messageCount + 1,
+              lastMessageTime: new Date()
+            }));
+          }
+          
+          // Add message to received messages
           addMessage({
             time: new Date(),
-            content: typeof data === 'object' ? JSON.stringify(data, null, 2) : data.toString(),
+            content: JSON.stringify(data),
+            type: 'received'
+          });
+        } catch (e) {
+          console.error('Error parsing WebSocket message:', e);
+          
+          // Still add raw message to list
+          addMessage({
+            time: new Date(),
+            content: typeof event.data === 'string' ? event.data : 'Binary data received',
             type: 'received'
           });
         }
-      }
-    ]
-  });
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setWsStatus('error');
+        
+        // Update metrics
+        setWsMetrics(prev => ({
+          ...prev,
+          uptime: 0,
+          failedAttempts: prev.failedAttempts + 1
+        }));
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket connection closed');
+        setWsStatus('disconnected');
+        setWsConnection(null);
+        
+        // Update metrics
+        setWsMetrics(prev => ({
+          ...prev,
+          uptime: 0
+        }));
+      };
+      
+      return ws;
+    } catch (error) {
+      console.error('Error connecting to WebSocket:', error);
+      setWsStatus('error');
+      
+      // Update metrics
+      setWsMetrics(prev => ({
+        ...prev,
+        uptime: 0,
+        failedAttempts: prev.failedAttempts + 1
+      }));
+      
+      return null;
+    }
+  };
   
-  // Helper to add a message to the list
+  // Disconnect WebSocket
+  const disconnectWebSocket = () => {
+    if (wsConnection) {
+      wsConnection.close();
+      setWsConnection(null);
+      setWsStatus('disconnected');
+    }
+  };
+  
+  // Send a message via WebSocket
+  const sendWebSocketMessage = () => {
+    if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
+      console.error('WebSocket is not connected');
+      return;
+    }
+    
+    if (!wsMessage.trim()) return;
+    
+    const messageObj = {
+      type: 'message',
+      content: wsMessage,
+      timestamp: Date.now()
+    };
+    
+    wsConnection.send(JSON.stringify(messageObj));
+    
+    // Add sent message to the list
+    addMessage({
+      time: new Date(),
+      content: JSON.stringify(messageObj),
+      type: 'sent'
+    });
+    
+    // Update metrics
+    setWsMetrics(prev => ({
+      ...prev,
+      messageCount: prev.messageCount + 1
+    }));
+    
+    // Clear input
+    setWsMessage('');
+  };
+  
+  // Send ping to measure latency
+  const sendPing = (ws: WebSocket) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    
+    const ping = {
+      type: 'ping',
+      timestamp: Date.now()
+    };
+    
+    ws.send(JSON.stringify(ping));
+  };
+  
+  // Add message to the list
   const addMessage = (message: {time: Date, content: string, type: 'received' | 'sent'}) => {
-    setReceivedMessages(prev => [...prev, message].slice(-100)); // Keep only latest 100 messages
+    setReceivedMessages(prev => [...prev, message].slice(-50)); // Keep last 50 messages
   };
   
-  // Send message via WebSocket
-  const handleSendWsMessage = () => {
-    if (wsSocket && messageInput.trim()) {
-      try {
-        // Try to parse as JSON, but send as string if it fails
-        const jsonMessage = JSON.parse(messageInput);
-        wsSendMessage(JSON.stringify(jsonMessage));
-        addMessage({
-          time: new Date(),
-          content: JSON.stringify(jsonMessage, null, 2),
-          type: 'sent'
-        });
-      } catch (e) {
-        // Send as plain text
-        wsSendMessage(messageInput);
-        addMessage({
-          time: new Date(),
-          content: messageInput,
-          type: 'sent'
-        });
-      }
-      setMessageInput("");
-    }
-  };
+  // Ping every 30 seconds to update latency
+  useEffect(() => {
+    if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) return;
+    
+    const intervalId = setInterval(() => {
+      sendPing(wsConnection);
+    }, 30000);
+    
+    return () => clearInterval(intervalId);
+  }, [wsConnection]);
   
-  // Send message via Socket.IO
-  const handleSendSocketIoMessage = () => {
-    if (socketIoSocket && messageInput.trim()) {
-      try {
-        // Try to parse as JSON
-        const jsonMessage = JSON.parse(messageInput);
-        socketIoEmit(event, jsonMessage);
-        addMessage({
-          time: new Date(),
-          content: `${event}: ${JSON.stringify(jsonMessage, null, 2)}`,
-          type: 'sent'
-        });
-      } catch (e) {
-        // Send as plain text
-        socketIoEmit(event, messageInput);
-        addMessage({
-          time: new Date(),
-          content: `${event}: ${messageInput}`,
-          type: 'sent'
-        });
-      }
-      setMessageInput("");
-    }
-  };
-  
-  // Get the active status and transport based on tab
+  // Return active status
   const getActiveStatus = (): ConnectionStatus => {
-    return activeTab === "websocket" ? wsStatus : socketIoStatus;
+    return wsStatus;
   };
   
+  // Return active transport
   const getActiveTransport = (): TransportType => {
-    return activeTab === "websocket" ? wsTransport : socketIoTransport;
+    return wsTransport;
   };
   
   return (
-    <div className="container py-10">
-      <h1 className="text-3xl font-bold mb-6">WebSocket Connection Test</h1>
+    <div className="container mx-auto py-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">WebSocket Testing</h1>
+        <p className="text-gray-500">
+          This page allows you to test WebSocket connections and view real-time connection information.
+        </p>
+      </div>
       
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-        <div className="space-y-6">
-          {/* Connection Settings */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left column - Controls */}
+        <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Connection Settings</CardTitle>
-              <CardDescription>Configure your WebSocket or Socket.IO connection</CardDescription>
+              <CardTitle className="text-xl flex items-center">
+                Connection Controls
+                <ConnectionStatusBadge 
+                  status={getActiveStatus()} 
+                  transport={getActiveTransport()} 
+                  className="ml-auto"
+                />
+              </CardTitle>
+              <CardDescription>
+                Connect and send messages to the WebSocket server
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="websocket" value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="mb-4">
-                  <TabsTrigger value="websocket">
-                    WebSocket
-                    <ConnectionStatusBadge 
-                      status={wsStatus} 
-                      transport={wsTransport}
-                      showText={false}
-                      size="sm"
-                      className="ml-2"
-                    />
-                  </TabsTrigger>
-                  <TabsTrigger value="socketio">
-                    Socket.IO
-                    <ConnectionStatusBadge 
-                      status={socketIoStatus} 
-                      transport={socketIoTransport}
-                      showText={false}
-                      size="sm"
-                      className="ml-2"
-                    />
-                  </TabsTrigger>
-                </TabsList>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex space-x-2">
+                  <Button 
+                    onClick={connectWebSocket}
+                    disabled={wsStatus === 'connected' || wsStatus === 'connecting'}
+                    className="w-full"
+                  >
+                    Connect
+                  </Button>
+                  <Button 
+                    onClick={disconnectWebSocket}
+                    disabled={wsStatus !== 'connected'}
+                    variant="destructive"
+                    className="w-full"
+                  >
+                    Disconnect
+                  </Button>
+                </div>
                 
-                <TabsContent value="websocket" className="space-y-4">
-                  <div className="grid gap-4">
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">Server URL</label>
-                      <Input 
-                        value={serverUrl} 
-                        onChange={(e) => setServerUrl(e.target.value)} 
-                        placeholder="Server URL (e.g. http://localhost:3000)"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Will be converted to WebSocket URL (ws:// or wss://)
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">WebSocket Path</label>
-                      <Input 
-                        value={wsPath} 
-                        onChange={(e) => setWsPath(e.target.value)} 
-                        placeholder="WebSocket path (e.g. /ws)"
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-sm font-medium">Connection Status: </span>
-                        <ConnectionStatusBadge status={wsStatus} transport={wsTransport} />
-                      </div>
-                      <Button 
-                        onClick={wsReconnect}
-                        disabled={wsStatus === 'connected'}
-                        size="sm"
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Reconnect
-                      </Button>
-                    </div>
-                  </div>
-                </TabsContent>
+                <Separator className="my-2" />
                 
-                <TabsContent value="socketio" className="space-y-4">
-                  <div className="grid gap-4">
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">Server URL</label>
-                      <Input 
-                        value={serverUrl} 
-                        onChange={(e) => setServerUrl(e.target.value)} 
-                        placeholder="Server URL (e.g. http://localhost:3000)"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Socket.IO Path</label>
-                        <Input 
-                          value={socketIoPath} 
-                          onChange={(e) => setSocketIoPath(e.target.value)} 
-                          placeholder="Socket.IO path (e.g. /socket.io)"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Namespace</label>
-                        <Input 
-                          value={namespace} 
-                          onChange={(e) => setNamespace(e.target.value)} 
-                          placeholder="Namespace (e.g. /)"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">Event Name</label>
-                      <Input 
-                        value={event} 
-                        onChange={(e) => setEvent(e.target.value)} 
-                        placeholder="Event name (e.g. message)"
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-sm font-medium">Connection Status: </span>
-                        <ConnectionStatusBadge status={socketIoStatus} transport={socketIoTransport} />
-                      </div>
-                      <Button 
-                        onClick={socketIoReconnect}
-                        disabled={socketIoStatus === 'connected'}
-                        size="sm"
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Reconnect
-                      </Button>
-                    </div>
-                    
-                    {socketIoTransport === 'polling' && (
-                      <Alert className="bg-yellow-50 border-yellow-200">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Using HTTP Polling</AlertTitle>
-                        <AlertDescription>
-                          Socket.IO is currently using HTTP long polling instead of WebSockets. 
-                          This may impact performance for real-time communication.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                  </div>
-                </TabsContent>
-              </Tabs>
+                <div className="flex space-x-2">
+                  <Input 
+                    value={wsMessage}
+                    onChange={(e) => setWsMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    disabled={wsStatus !== 'connected'}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') sendWebSocketMessage();
+                    }}
+                  />
+                  <Button 
+                    onClick={sendWebSocketMessage}
+                    disabled={wsStatus !== 'connected' || !wsMessage.trim()}
+                    variant="secondary"
+                  >
+                    Send
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="text-sm text-gray-500 mt-2">
+                <p>Status: {wsStatus}</p>
+                <p>Transport: {wsTransport}</p>
+                <p>Messages: {wsMetrics.messageCount}</p>
+                <p>Latency: {wsMetrics.latency > 0 ? `${wsMetrics.latency}ms` : 'N/A'}</p>
+              </div>
             </CardContent>
           </Card>
           
-          {/* Message Exchange */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Message Exchange</CardTitle>
-              <CardDescription>Send and receive messages through the active connection</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Message</label>
-                <Textarea 
-                  value={messageInput} 
-                  onChange={(e) => setMessageInput(e.target.value)} 
-                  placeholder={`Enter message (plain text or JSON) to send via ${activeTab === "websocket" ? "WebSocket" : "Socket.IO"}`}
-                  rows={3}
-                />
-              </div>
-              
-              <div className="flex justify-end">
-                <Button 
-                  onClick={activeTab === "websocket" ? handleSendWsMessage : handleSendSocketIoMessage}
-                  disabled={(activeTab === "websocket" && wsStatus !== 'connected') || 
-                            (activeTab === "socketio" && socketIoStatus !== 'connected') ||
-                            !messageInput.trim()}
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Send Message
-                </Button>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium mb-1 block">Messages</label>
-                <Card className="border border-gray-200">
-                  <ScrollArea className="h-[300px] w-full rounded-md">
-                    <div className="p-4 space-y-3">
-                      {receivedMessages.length === 0 ? (
-                        <div className="text-center text-muted-foreground p-4">
-                          <InfoIcon className="h-5 w-5 mx-auto mb-2" />
-                          <p>No messages yet. Connect and send a message to start.</p>
-                        </div>
-                      ) : (
-                        receivedMessages.map((msg, i) => (
-                          <div key={i} className={`p-3 rounded-md ${msg.type === 'received' ? 'bg-gray-50' : 'bg-blue-50'}`}>
-                            <div className="flex justify-between mb-1">
-                              <Badge variant={msg.type === 'received' ? 'outline' : 'default'}>
-                                {msg.type === 'received' ? 'Received' : 'Sent'}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {msg.time.toLocaleTimeString()}
-                              </span>
-                            </div>
-                            <pre className="text-xs whitespace-pre-wrap overflow-auto">{msg.content}</pre>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </ScrollArea>
-                </Card>
-              </div>
-            </CardContent>
-          </Card>
+          <ConnectionHealthMetrics 
+            status={wsStatus}
+            metrics={wsMetrics}
+          />
         </div>
         
-        {/* Connection Metrics */}
-        <div className="space-y-6">
-          <ConnectionHealthMetrics 
-            status={getActiveStatus()} 
-            metrics={activeTab === "websocket" ? wsMetrics : socketIoMetrics}
-            title={`${activeTab === "websocket" ? "WebSocket" : "Socket.IO"} Health`}
-          />
-          
-          <Card>
+        {/* Middle and right columns - Message log and additional info */}
+        <div className="lg:col-span-2">
+          <Card className="h-full">
             <CardHeader>
-              <CardTitle className="text-lg">Connection Guide</CardTitle>
+              <CardTitle className="text-xl">Message Log</CardTitle>
+              <CardDescription>
+                Real-time messages between client and server
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h3 className="font-medium mb-1">WebSocket Testing</h3>
-                <p className="text-sm text-muted-foreground">
-                  Test native WebSocket connections with automatic reconnection, metrics, and message exchange.
-                </p>
-              </div>
-              
-              <div>
-                <h3 className="font-medium mb-1">Socket.IO Testing</h3>
-                <p className="text-sm text-muted-foreground">
-                  Test Socket.IO connections with automatic fallback to HTTP long polling if WebSockets are unavailable.
-                </p>
-              </div>
-              
-              <div>
-                <h3 className="font-medium mb-1">Connection States</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <ConnectionStatusBadge status="connected" />
-                    <p className="text-xs text-muted-foreground mt-1">Successfully connected</p>
+            <CardContent>
+              <div className="h-[500px] overflow-y-auto border rounded-md p-4 bg-gray-50">
+                {receivedMessages.length === 0 ? (
+                  <div className="text-center text-gray-400 py-8">
+                    No messages yet. Connect to the WebSocket server and send a message.
                   </div>
-                  <div>
-                    <ConnectionStatusBadge status="connecting" />
-                    <p className="text-xs text-muted-foreground mt-1">Connection in progress</p>
-                  </div>
-                  <div>
-                    <ConnectionStatusBadge status="disconnected" />
-                    <p className="text-xs text-muted-foreground mt-1">Not connected</p>
-                  </div>
-                  <div>
-                    <ConnectionStatusBadge status="error" />
-                    <p className="text-xs text-muted-foreground mt-1">Connection failed</p>
-                  </div>
-                </div>
+                ) : (
+                  receivedMessages.map((message, index) => (
+                    <div 
+                      key={index} 
+                      className={`my-2 p-3 rounded-md ${
+                        message.type === 'sent' 
+                          ? 'bg-blue-50 ml-12 border-l-4 border-blue-400' 
+                          : 'bg-gray-100 mr-12 border-l-4 border-gray-400'
+                      }`}
+                    >
+                      <div className="text-xs text-gray-500 mb-1">
+                        {message.time.toLocaleTimeString()} - {message.type === 'sent' ? 'Sent' : 'Received'}
+                      </div>
+                      <div className="text-sm whitespace-pre-wrap break-words">
+                        {message.content}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
-      
-      <ConnectionNotification 
-        status={getActiveStatus()}
-        transport={getActiveTransport()}
-        reconnectCount={activeTab === "websocket" ? wsMetrics.reconnectCount : socketIoMetrics.reconnectCount}
-        onReconnect={activeTab === "websocket" ? wsReconnect : socketIoReconnect}
-      />
     </div>
   );
 };

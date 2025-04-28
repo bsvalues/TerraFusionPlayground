@@ -2,17 +2,18 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ConnectionStatus, TransportType } from '@/components/connection-status-badge';
 import { ConnectionMetrics } from '@/components/connection-health-metrics';
 
-interface UseWebSocketOptions {
+interface UseAgentWebSocketProps {
   /**
-   * URL for the WebSocket connection
+   * WebSocket URL to connect to
+   * If not provided, will use current origin with /ws path
    */
-  url: string;
+  url?: string;
   
   /**
-   * Initial connection status
-   * @default 'disconnected'
+   * Whether to automatically reconnect on disconnect
+   * @default true
    */
-  initialStatus?: ConnectionStatus;
+  autoReconnect?: boolean;
   
   /**
    * Maximum number of reconnection attempts
@@ -21,107 +22,65 @@ interface UseWebSocketOptions {
   maxReconnectAttempts?: number;
   
   /**
-   * Reconnection delay in milliseconds (will be increased exponentially)
+   * Base delay between reconnection attempts in milliseconds
+   * Will increase with backoff factor on each attempt
    * @default 1000
    */
   reconnectDelay?: number;
   
   /**
-   * Automatically try to reconnect on disconnect
-   * @default true
+   * Backoff factor for reconnect delay
+   * @default 1.5
    */
-  autoReconnect?: boolean;
+  backoffFactor?: number;
   
   /**
-   * Protocol to be used (e.g., 'v1.0.0')
-   */
-  protocols?: string | string[];
-  
-  /**
-   * Callback when a message is received
+   * Handler for incoming messages
    */
   onMessage?: (event: MessageEvent) => void;
   
   /**
-   * Callback when connection is opened
+   * Handler for connection open
    */
   onOpen?: (event: Event) => void;
   
   /**
-   * Callback when connection is closed
+   * Handler for connection close
    */
   onClose?: (event: CloseEvent) => void;
   
   /**
-   * Callback when an error occurs
+   * Handler for connection error
    */
   onError?: (event: Event) => void;
 }
 
-interface UseWebSocketResult {
-  /**
-   * Current connection status
-   */
-  status: ConnectionStatus;
-  
-  /**
-   * WebSocket instance (if available)
-   */
-  socket: WebSocket | null;
-  
-  /**
-   * Send a message through the WebSocket
-   */
-  sendMessage: (data: string | ArrayBufferLike | Blob | ArrayBufferView) => void;
-  
-  /**
-   * Force a reconnection attempt
-   */
-  reconnect: () => void;
-  
-  /**
-   * Manually disconnect the WebSocket
-   */
-  disconnect: () => void;
-  
-  /**
-   * Connection metrics
-   */
-  metrics: ConnectionMetrics;
-  
-  /**
-   * Type of transport being used
-   */
-  transport: TransportType;
-}
-
 /**
- * Custom hook for managing WebSocket connections.
+ * Hook for managing WebSocket connections to agent services
  * 
- * This hook provides a managed WebSocket connection with automatic
- * reconnection, metrics tracking, and status management.
+ * This hook provides a consistent way to manage WebSocket connections
+ * across the application, with built-in reconnection logic, status
+ * tracking, and connection metrics.
  */
-export const useAgentWebSocket = (options: UseWebSocketOptions): UseWebSocketResult => {
-  const {
-    url,
-    initialStatus = 'disconnected',
-    maxReconnectAttempts = 5,
-    reconnectDelay = 1000,
-    autoReconnect = true,
-    protocols,
-    onMessage,
-    onOpen,
-    onClose,
-    onError
-  } = options;
+export const useAgentWebSocket = ({
+  url,
+  autoReconnect = true,
+  maxReconnectAttempts = 5,
+  reconnectDelay = 1000,
+  backoffFactor = 1.5,
+  onMessage,
+  onOpen,
+  onClose,
+  onError
+}: UseAgentWebSocketProps) => {
+  // WebSocket state
+  const [status, setStatus] = useState<ConnectionStatus>('disconnected');
+  const [transport] = useState<TransportType>('websocket');
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectAttemptRef = useRef<number>(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  const [status, setStatus] = useState<ConnectionStatus>(initialStatus);
-  const [socket, setSocket] = useState<WebSocket | null>(null);
-  const reconnectAttempts = useRef(0);
-  const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
-  const [transport, setTransport] = useState<TransportType>('websocket');
-  
-  // Metrics
+  // Track connection metrics
   const [metrics, setMetrics] = useState<ConnectionMetrics>({
     latency: 0,
     uptime: 0,
@@ -132,255 +91,297 @@ export const useAgentWebSocket = (options: UseWebSocketOptions): UseWebSocketRes
     transportType: 'websocket'
   });
   
-  // Track connection start time
-  const connectionStartTime = useRef<Date | null>(null);
+  // Track connection start time for uptime calculation
+  const connectionStartTimeRef = useRef<number | null>(null);
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastPingTimestampRef = useRef<number | null>(null);
   
-  // Track ping/pong for latency calculation
-  const lastPingTime = useRef<number>(0);
-  const pingInterval = useRef<NodeJS.Timeout | null>(null);
+  // Determine actual WebSocket URL
+  const getWebSocketUrl = useCallback(() => {
+    if (url) return url;
+    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}/ws`;
+  }, [url]);
   
-  // Connect to WebSocket
-  const connect = useCallback(() => {
-    try {
-      // Close existing socket if any
-      if (socket) {
-        socket.close();
+  // Update metrics periodically
+  useEffect(() => {
+    const updateUptimeMetrics = () => {
+      if (status === 'connected' && connectionStartTimeRef.current) {
+        const uptimeMs = Date.now() - connectionStartTimeRef.current;
+        const uptimeSeconds = uptimeMs / 1000;
+        
+        // Calculate uptime percentage (max 100)
+        const uptimePercentage = Math.min(100, uptimeSeconds / 60 * 100);
+        
+        setMetrics(prev => ({
+          ...prev,
+          uptime: Math.floor(uptimePercentage)
+        }));
+      }
+    };
+    
+    const intervalId = setInterval(updateUptimeMetrics, 1000);
+    
+    return () => clearInterval(intervalId);
+  }, [status]);
+  
+  // Send ping to measure latency
+  const sendPing = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        const pingMessage = {
+          type: 'ping',
+          timestamp: Date.now()
+        };
+        
+        lastPingTimestampRef.current = pingMessage.timestamp;
+        wsRef.current.send(JSON.stringify(pingMessage));
+      } catch (error) {
+        console.error('Error sending ping:', error);
+      }
+    }
+  }, []);
+  
+  // Clean up existing connection
+  const cleanupWebSocket = useCallback(() => {
+    if (wsRef.current) {
+      wsRef.current.onopen = null;
+      wsRef.current.onclose = null;
+      wsRef.current.onerror = null;
+      wsRef.current.onmessage = null;
+      
+      if (wsRef.current.readyState === WebSocket.OPEN || 
+          wsRef.current.readyState === WebSocket.CONNECTING) {
+        wsRef.current.close();
       }
       
+      wsRef.current = null;
+    }
+    
+    // Clear any reconnection timeouts
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    
+    // Clear ping interval
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+    }
+    
+    connectionStartTimeRef.current = null;
+  }, []);
+  
+  // Set up a new WebSocket connection
+  const setupWebSocket = useCallback(() => {
+    cleanupWebSocket();
+    
+    try {
       setStatus('connecting');
       
-      // Create new WebSocket
-      const newSocket = protocols 
-        ? new WebSocket(url, protocols) 
-        : new WebSocket(url);
+      const wsUrl = getWebSocketUrl();
+      console.log(`Connecting to WebSocket at ${wsUrl}`);
       
-      newSocket.onopen = (event) => {
+      wsRef.current = new WebSocket(wsUrl);
+      
+      wsRef.current.onopen = (event) => {
+        console.log('WebSocket connection established');
         setStatus('connected');
-        reconnectAttempts.current = 0;
-        connectionStartTime.current = new Date();
-        setTransport('websocket');
+        reconnectAttemptRef.current = 0;
+        connectionStartTimeRef.current = Date.now();
         
-        // Start ping interval for latency measurement
-        if (pingInterval.current) {
-          clearInterval(pingInterval.current);
-        }
+        // Start ping interval
+        pingIntervalRef.current = setInterval(sendPing, 30000);
         
-        pingInterval.current = setInterval(() => {
-          if (newSocket.readyState === WebSocket.OPEN) {
-            lastPingTime.current = Date.now();
-            newSocket.send(JSON.stringify({ type: 'ping' }));
-          }
-        }, 30000); // Ping every 30 seconds
+        // Send initial ping
+        sendPing();
         
         // Update metrics
         setMetrics(prev => ({
           ...prev,
-          latency: 0,
-          uptime: 100,
-          transportType: 'websocket'
+          uptime: 1, // start at 1% 
+          failedAttempts: 0
         }));
         
-        // Call user callback
+        // Call user-provided onOpen handler
         if (onOpen) {
           onOpen(event);
         }
       };
       
-      newSocket.onclose = (event) => {
+      wsRef.current.onclose = (event) => {
+        console.log(`WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason || 'No reason provided'}`);
         setStatus('disconnected');
-        connectionStartTime.current = null;
         
-        // Clear ping interval
-        if (pingInterval.current) {
-          clearInterval(pingInterval.current);
-          pingInterval.current = null;
-        }
+        // Update metrics
+        setMetrics(prev => ({
+          ...prev,
+          uptime: 0
+        }));
         
-        // Call user callback
-        if (onClose) {
-          onClose(event);
-        }
-        
-        // Attempt to reconnect if auto-reconnect is enabled
-        if (autoReconnect && reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = reconnectDelay * Math.pow(1.5, reconnectAttempts.current);
-          reconnectAttempts.current++;
+        // Handle reconnection if auto-reconnect is enabled
+        if (autoReconnect && reconnectAttemptRef.current < maxReconnectAttempts) {
+          const delay = reconnectDelay * Math.pow(backoffFactor, reconnectAttemptRef.current);
+          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttemptRef.current + 1}/${maxReconnectAttempts})`);
           
-          // Update metrics
-          setMetrics(prev => ({
-            ...prev,
-            reconnectCount: prev.reconnectCount + 1,
-            uptime: 0
-          }));
-          
-          if (reconnectTimeout.current) {
-            clearTimeout(reconnectTimeout.current);
-          }
-          
-          reconnectTimeout.current = setTimeout(() => {
-            connect();
+          reconnectTimeoutRef.current = setTimeout(() => {
+            reconnectAttemptRef.current++;
+            
+            // Update metrics
+            setMetrics(prev => ({
+              ...prev,
+              reconnectCount: prev.reconnectCount + 1
+            }));
+            
+            setupWebSocket();
           }, delay);
-        } else if (reconnectAttempts.current >= maxReconnectAttempts) {
+        } else if (reconnectAttemptRef.current >= maxReconnectAttempts) {
+          console.log('Maximum reconnection attempts reached');
           setStatus('error');
           
           // Update metrics
           setMetrics(prev => ({
             ...prev,
-            failedAttempts: prev.failedAttempts + 1,
-            uptime: 0
+            failedAttempts: prev.failedAttempts + 1
           }));
+        }
+        
+        // Call user-provided onClose handler
+        if (onClose) {
+          onClose(event);
         }
       };
       
-      newSocket.onerror = (event) => {
-        // We don't set status here as the onclose will be called after this
-        
-        // Call user callback
-        if (onError) {
-          onError(event);
-        }
+      wsRef.current.onerror = (event) => {
+        console.error('WebSocket error:', event);
         
         // Update metrics
         setMetrics(prev => ({
           ...prev,
           failedAttempts: prev.failedAttempts + 1
         }));
+        
+        // Don't set status to error here, let onclose handle it
+        // since error is almost always followed by close
+        
+        // Call user-provided onError handler
+        if (onError) {
+          onError(event);
+        }
       };
       
-      newSocket.onmessage = (event) => {
+      wsRef.current.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           
-          // Handle pong messages for latency calculation
-          if (data.type === 'pong') {
-            const latency = Date.now() - lastPingTime.current;
+          // Handle pong response for latency calculation
+          if (data.type === 'pong' && data.originalTimestamp && lastPingTimestampRef.current) {
+            const latency = Date.now() - data.originalTimestamp;
+            
             setMetrics(prev => ({
               ...prev,
-              latency
+              latency,
+              messageCount: prev.messageCount + 1,
+              lastMessageTime: new Date()
+            }));
+          } else {
+            // Count other messages too
+            setMetrics(prev => ({
+              ...prev,
+              messageCount: prev.messageCount + 1,
+              lastMessageTime: new Date()
             }));
           }
-        } catch (e) {
-          // Not JSON or doesn't have type field, ignore
-        }
-        
-        // Update metrics
-        setMetrics(prev => ({
-          ...prev,
-          messageCount: prev.messageCount + 1,
-          lastMessageTime: new Date()
-        }));
-        
-        // Call user callback
-        if (onMessage) {
-          onMessage(event);
+          
+          // Call user-provided onMessage handler
+          if (onMessage) {
+            onMessage(event);
+          }
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
+          
+          // Still count the message
+          setMetrics(prev => ({
+            ...prev,
+            messageCount: prev.messageCount + 1,
+            lastMessageTime: new Date()
+          }));
+          
+          // Call user-provided onMessage handler
+          if (onMessage) {
+            onMessage(event);
+          }
         }
       };
-      
-      setSocket(newSocket);
     } catch (error) {
+      console.error('Error creating WebSocket:', error);
       setStatus('error');
-      console.error('Error connecting to WebSocket:', error);
       
       // Update metrics
       setMetrics(prev => ({
         ...prev,
-        failedAttempts: prev.failedAttempts + 1,
-        uptime: 0
+        failedAttempts: prev.failedAttempts + 1
       }));
     }
-  }, [url, protocols, socket, autoReconnect, maxReconnectAttempts, reconnectDelay, onOpen, onClose, onMessage, onError]);
+  }, [
+    cleanupWebSocket, 
+    getWebSocketUrl, 
+    onOpen, 
+    onClose, 
+    onError, 
+    onMessage, 
+    sendPing, 
+    autoReconnect, 
+    maxReconnectAttempts, 
+    reconnectDelay, 
+    backoffFactor
+  ]);
   
-  // Send message
-  const sendMessage = useCallback((data: string | ArrayBufferLike | Blob | ArrayBufferView) => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(data);
-      return true;
-    }
-    return false;
-  }, [socket]);
-  
-  // Manual reconnect
+  // Function to manually reconnect
   const reconnect = useCallback(() => {
-    // Reset reconnect attempts to give full reconnection attempts
-    reconnectAttempts.current = 0;
-    connect();
-  }, [connect]);
+    reconnectAttemptRef.current = 0;
+    setupWebSocket();
+  }, [setupWebSocket]);
   
-  // Manual disconnect
-  const disconnect = useCallback(() => {
-    if (socket) {
-      socket.close();
+  // Send message to the WebSocket
+  const send = useCallback((message: string | object) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      console.error('WebSocket is not connected');
+      return false;
     }
     
-    if (reconnectTimeout.current) {
-      clearTimeout(reconnectTimeout.current);
-      reconnectTimeout.current = null;
+    try {
+      const messageString = typeof message === 'string' 
+        ? message 
+        : JSON.stringify(message);
+        
+      wsRef.current.send(messageString);
+      return true;
+    } catch (error) {
+      console.error('Error sending message:', error);
+      return false;
     }
-    
-    if (pingInterval.current) {
-      clearInterval(pingInterval.current);
-      pingInterval.current = null;
-    }
-    
-    setStatus('disconnected');
-    setSocket(null);
-  }, [socket]);
+  }, []);
   
-  // Connect on mount
+  // Set up WebSocket on hook mount
   useEffect(() => {
-    connect();
+    setupWebSocket();
     
     // Clean up on unmount
     return () => {
-      if (socket) {
-        socket.close();
-      }
-      
-      if (reconnectTimeout.current) {
-        clearTimeout(reconnectTimeout.current);
-      }
-      
-      if (pingInterval.current) {
-        clearInterval(pingInterval.current);
-      }
+      cleanupWebSocket();
     };
-  }, [connect, url]); // Only re-run if url changes
-  
-  // Calculate uptime
-  useEffect(() => {
-    if (status === 'connected' && connectionStartTime.current) {
-      const calculateUptime = () => {
-        if (!connectionStartTime.current) return;
-        
-        const now = new Date();
-        const uptimeMs = now.getTime() - connectionStartTime.current.getTime();
-        
-        // For demo purposes, we'll use a max uptime of 1 hour to make the percentage meaningful
-        const maxUptimeMs = 60 * 60 * 1000; // 1 hour
-        const uptimePercentage = Math.min(100, (uptimeMs / maxUptimeMs) * 100);
-        
-        setMetrics(prev => ({
-          ...prev,
-          uptime: Math.round(uptimePercentage)
-        }));
-      };
-      
-      // Calculate immediately and then every minute
-      calculateUptime();
-      const uptimeInterval = setInterval(calculateUptime, 60000);
-      
-      return () => clearInterval(uptimeInterval);
-    }
-  }, [status]);
+  }, [setupWebSocket, cleanupWebSocket]);
   
   return {
     status,
-    socket,
-    sendMessage,
-    reconnect,
-    disconnect,
+    transport,
     metrics,
-    transport
+    send,
+    reconnect,
+    close: cleanupWebSocket
   };
 };
 
