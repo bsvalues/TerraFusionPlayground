@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Wifi, Clock, ArrowRightLeft, RefreshCw, AlertTriangle } from 'lucide-react';
 import { ConnectionStatus, TransportType } from './connection-status-badge';
-import ConnectionStatusBadge from './connection-status-badge';
+import { ConnectionStatusBadge } from './connection-status-badge';
 import { cn } from '@/lib/utils';
 
 export interface ConnectionMetrics {
@@ -230,4 +230,4 @@ export const ConnectionHealthMetrics: React.FC<ConnectionHealthMetricsProps> = (
   );
 };
 
-export default ConnectionHealthMetrics;
+// Export the component as a named export instead of default

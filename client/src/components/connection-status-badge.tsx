@@ -19,7 +19,7 @@ interface ConnectionStatusBadgeProps {
   transport?: TransportType;
   
   /**
-   * Whether to include a text label
+   * Whether to show status text alongside the icon
    * @default true
    */
   showText?: boolean;
@@ -31,25 +31,25 @@ interface ConnectionStatusBadgeProps {
   size?: 'sm' | 'md' | 'lg';
   
   /**
-   * Custom CSS class
+   * Additional class names
    */
   className?: string;
 }
 
 /**
- * A badge that displays the current connection status
+ * Connection Status Badge Component
  * 
  * This component shows a visual indicator for the connection status
  * (connected, connecting, disconnected, or error) with an appropriate
  * icon and color.
  */
-const ConnectionStatusBadge: React.FC<ConnectionStatusBadgeProps> = ({
+export function ConnectionStatusBadge({
   status,
   transport = 'websocket',
   showText = true,
   size = 'md',
   className
-}) => {
+}: ConnectionStatusBadgeProps) {
   const getStatusDetails = () => {
     switch (status) {
       case 'connected':
@@ -133,6 +133,4 @@ const ConnectionStatusBadge: React.FC<ConnectionStatusBadgeProps> = ({
       {showText && <span>{text}</span>}
     </Badge>
   );
-};
-
-export default ConnectionStatusBadge;
+}

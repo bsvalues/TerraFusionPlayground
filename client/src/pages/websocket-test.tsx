@@ -8,11 +8,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { InfoIcon, AlertTriangle, RefreshCw, Send } from "lucide-react";
-import ConnectionStatusBadge from "@/components/connection-status-badge";
-import ConnectionHealthMetrics from "@/components/connection-health-metrics";
-import ConnectionNotification from "@/components/connection-notification";
-import { useAgentWebSocket } from "@/hooks/use-agent-websocket";
-import { useAgentSocketIO } from "@/hooks/use-agent-socketio";
+import { ConnectionStatusBadge } from "@/components/connection-status-badge";
+import { ConnectionHealthMetrics } from "@/components/connection-health-metrics";
+import { ConnectionNotification } from "@/components/connection-notification";
+import useAgentWebSocket from "@/hooks/use-agent-websocket";
+import useAgentSocketIO from "@/hooks/use-agent-socketio";
 import { ConnectionStatus, TransportType } from "@/components/connection-status-badge";
 
 /**
@@ -22,7 +22,7 @@ import { ConnectionStatus, TransportType } from "@/components/connection-status-
  * native WebSockets and Socket.IO. It includes controls for both 
  * connection types, and displays status, messages, and metrics.
  */
-const WebSocketTestPage: React.FC = () => {
+export const WebSocketTest: React.FC = () => {
   // Common state
   const [activeTab, setActiveTab] = useState("websocket");
   const [serverUrl, setServerUrl] = useState(window.location.origin);
@@ -430,4 +430,4 @@ const WebSocketTestPage: React.FC = () => {
   );
 };
 
-export default WebSocketTestPage;
+export default WebSocketTest;
