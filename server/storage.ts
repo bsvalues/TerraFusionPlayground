@@ -10016,6 +10016,28 @@ export class PgStorage implements IStorage {
     
     return updatedResult;
   }
+  
+  // Agent Health Monitoring methods
+  private agentHealthRecords: Map<string, AgentHealth> = new Map();
+  
+  async getAgentHealthByAgentId(agentId: string): Promise<AgentHealth | null> {
+    const health = this.agentHealthRecords.get(agentId);
+    return health || null;
+  }
+  
+  async getAllAgentHealth(): Promise<AgentHealth[]> {
+    return Array.from(this.agentHealthRecords.values());
+  }
+  
+  async createAgentHealth(health: AgentHealth): Promise<AgentHealth> {
+    this.agentHealthRecords.set(health.agentId, health);
+    return health;
+  }
+  
+  async updateAgentHealth(health: AgentHealth): Promise<AgentHealth> {
+    this.agentHealthRecords.set(health.agentId, health);
+    return health;
+  }
 }
 
 // Use database storage instead of in-memory
