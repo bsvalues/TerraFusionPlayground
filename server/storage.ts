@@ -148,6 +148,9 @@ import {
   SpatialEvent, InsertSpatialEvent
 } from '@shared/gis-schema';
 
+// Import Agent Health types from agent-health-monitoring-service
+import { AgentHealth } from './services/agent-health-monitoring-service';
+
 export interface IStorage {
   // Web Vitals Performance Monitoring
   saveWebVitalsMetric(data: InsertWebVitalsMetric): Promise<void>;
