@@ -9,10 +9,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   WebSocketConnectionManager, 
   WebSocketOptions, 
-  ConnectionState, 
+  ConnectionState as InternalConnectionState, 
   WebSocketMessage 
 } from '../services/websocket-connection-manager';
 import { logger } from '../utils/logger';
+
+// Re-export ConnectionState for components using this hook
+export { ConnectionState } from '../services/websocket-connection-manager';
 
 // Minimal interface for WebSocket message
 interface WebSocketMessageEvent {
@@ -23,7 +26,7 @@ interface WebSocketMessageEvent {
 // Return type for useWebSocket hook
 interface UseWebSocketReturn {
   // Connection state
-  connectionState: ConnectionState;
+  connectionState: InternalConnectionState;
   
   // Last received message
   lastMessage: WebSocketMessageEvent | null;
@@ -42,7 +45,7 @@ interface UseWebSocketReturn {
   
   // Get connection status and statistics
   getStatus: () => {
-    state: ConnectionState;
+    state: InternalConnectionState;
     stats: {
       messagesReceived: number;
       messagesSent: number;
@@ -72,7 +75,7 @@ export function useWebSocket(
   dependencies: any[] = []
 ): UseWebSocketReturn {
   // State for connection status and last message
-  const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
+  const [connectionState, setConnectionState] = useState<InternalConnectionState>(InternalConnectionState.DISCONNECTED);
   const [lastMessage, setLastMessage] = useState<WebSocketMessageEvent | null>(null);
   
   // Use ref for WebSocketConnectionManager to persist across renders
@@ -109,16 +112,16 @@ export function useWebSocket(
       
       // Log state changes
       switch (state) {
-        case ConnectionState.CONNECTED:
+        case InternalConnectionState.CONNECTED:
           logger.info('WebSocket connected');
           break;
-        case ConnectionState.DISCONNECTED:
+        case InternalConnectionState.DISCONNECTED:
           logger.info('WebSocket disconnected');
           break;
-        case ConnectionState.RECONNECTING:
+        case InternalConnectionState.RECONNECTING:
           logger.info('WebSocket reconnecting...');
           break;
-        case ConnectionState.ERROR:
+        case InternalConnectionState.ERROR:
           logger.warn('WebSocket error');
           break;
         default:
@@ -185,7 +188,7 @@ export function useWebSocket(
   const getStatus = useCallback(() => {
     if (!managerRef.current) {
       return {
-        state: ConnectionState.DISCONNECTED,
+        state: InternalConnectionState.DISCONNECTED,
         stats: {
           messagesReceived: 0,
           messagesSent: 0,
@@ -243,7 +246,7 @@ export function WebSocketProvider({
     
     // Set up event handlers
     manager.onStateChange((state) => {
-      setIsConnected(state === ConnectionState.CONNECTED);
+      setIsConnected(state === InternalConnectionState.CONNECTED);
     });
     
     // Connect
