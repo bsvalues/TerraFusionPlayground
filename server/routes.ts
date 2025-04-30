@@ -199,6 +199,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.join(process.cwd(), 'public', 'websocket-test.html'));
   });
   
+  // Enhanced WebSocket diagnostic tool with advanced troubleshooting capabilities
+  app.get('/enhanced-websocket-test', (req, res) => {
+    res.sendFile(path.resolve('./enhanced-websocket-test.html'));
+  });
+  
+  // Robust WebSocket test page with advanced connection management
+  app.get('/robust-websocket-test', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'robust-websocket-test.html'));
+  });
+  
   // Add health check endpoint
   app.get('/api/health', (req, res) => {
     res.json({
@@ -2933,23 +2943,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add detailed logging to catch WebSocket issues
   console.log('[WebSocket Debug] Setting up WebSocket server for agent system');
   
-  // Add a simple WebSocket server on a distinct path (/ws)
+  // Add a robust WebSocket server on a distinct path (/ws)
   const wss = new WebSocketServer({ 
     server: httpServer, 
     path: '/ws',
     // Add options to help with secure connections
     clientTracking: true,
-    perMessageDeflate: true,
+    perMessageDeflate: {
+      zlibDeflateOptions: {
+        // See zlib defaults
+        chunkSize: 1024,
+        memLevel: 7,
+        level: 3
+      },
+      zlibInflateOptions: {
+        chunkSize: 10 * 1024
+      },
+      // Below options specified as default values
+      concurrencyLimit: 10, // Limits zlib concurrency for performance
+      threshold: 1024 // Size (in bytes) below which messages should not be compressed
+    },
     // Increase max payload size to handle larger messages
     maxPayload: 1024 * 1024, // 1MB
     // Set explicit timeout values
-    handshakeTimeout: 15000, // 15 seconds
+    handshakeTimeout: 30000, // 30 seconds - increase timeout for slow connections
     // Add verifyClient handler with proper CORS validation
     verifyClient: (info, callback) => {
       try {
         // Log verification attempt for debugging
         console.log('[WebSocket Debug] Verifying client connection to /ws');
         console.log('[WebSocket Debug] Origin:', info.origin);
+        console.log('[WebSocket Debug] Upgrade request for path:', info.req.url);
+        console.log('[WebSocket Debug] Headers:', JSON.stringify(info.req.headers, null, 2));
         
         // Accept all connections at this stage, but log for debugging
         if (callback) {
