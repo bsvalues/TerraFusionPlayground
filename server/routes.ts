@@ -241,6 +241,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.join(process.cwd(), 'robust-websocket-test.html'));
   });
   
+  // Resilient connection test page with automatic fallbacks
+  app.get('/resilient-connection-test', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'resilient-connection-test.html'));
+  });
+  
   // Add health check endpoint
   app.get('/api/health', (req, res) => {
     res.json({
@@ -276,6 +281,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Note: Already have a WebSocket test route at line ~184
+  
+  // Add WebSocket HTTP fallback endpoint
+  app.post('/api/ws-fallback/send', (req, res) => {
+    const message = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Missing message body' });
+    }
+    
+    // Add timestamp if not provided
+    if (!message.timestamp) {
+      message.timestamp = new Date().toISOString();
+    }
+    
+    // Add a processingInfo object to the response
+    const processingInfo = {
+      receivedAt: new Date().toISOString(),
+      processedVia: 'HTTP_FALLBACK',
+      serverTime: new Date().toISOString(),
+      requestId: `req_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`
+    };
+    
+    // Process the message - in a real implementation, this would integrate with your
+    // WebSocket message processing logic
+    const response = {
+      success: true,
+      message: {
+        ...message,
+        echo: true,
+        processingInfo
+      }
+    };
+    
+    // If there's a clientId and there are SSE clients connected, also send via SSE
+    if (message.clientId && global.sseClients && global.sseClients.has(message.clientId)) {
+      const sendEvent = global.sseClients.get(message.clientId);
+      sendEvent({
+        type: 'ws_fallback_message',
+        data: message,
+        timestamp: new Date().toISOString(),
+        processingInfo
+      });
+    }
+    
+    // Track metrics for fallback usage
+    metricsService.incrementCounter('websocket_http_fallback_total');
+    
+    // Send response
+    res.json(response);
+  });
   
   // Add Server-Sent Events (SSE) endpoint as WebSocket fallback
   app.get('/api/events', (req, res) => {
