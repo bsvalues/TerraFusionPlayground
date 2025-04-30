@@ -236,6 +236,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.join(process.cwd(), 'dual-websocket-test.html'));
   });
   
+  // Robust WebSocket test page with advanced diagnostics and fallbacks
+  app.get('/robust-websocket-test', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'robust-websocket-test.html'));
+  });
+  
   // Add health check endpoint
   app.get('/api/health', (req, res) => {
     res.json({
