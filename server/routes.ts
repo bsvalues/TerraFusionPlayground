@@ -2953,24 +2953,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     path: '/ws',
     // Add options to help with secure connections
     clientTracking: true,
-    perMessageDeflate: {
-      zlibDeflateOptions: {
-        // See zlib defaults
-        chunkSize: 1024,
-        memLevel: 7,
-        level: 3
-      },
-      zlibInflateOptions: {
-        chunkSize: 10 * 1024
-      },
-      // Below options specified as default values
-      concurrencyLimit: 10, // Limits zlib concurrency for performance
-      threshold: 1024 // Size (in bytes) below which messages should not be compressed
-    },
+    // Disable perMessageDeflate which can cause issues with some proxies
+    perMessageDeflate: false,
     // Increase max payload size to handle larger messages
     maxPayload: 1024 * 1024, // 1MB
-    // Set explicit timeout values
-    handshakeTimeout: 30000, // 30 seconds - increase timeout for slow connections
+    // Set explicit timeout values - increased for better reliability
+    handshakeTimeout: 60000, // 60 seconds - increased timeout for slow connections
     // Add verifyClient handler with proper CORS validation
     verifyClient: (info, callback) => {
       try {
@@ -3124,123 +3112,276 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
-  // Set up WebSocket server events
+  // Set up WebSocket server events with enhanced connection handling
   wss.on('connection', (ws, req) => {
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    console.log(`[WebSocket Server] Client connected to /ws from ${clientIp}`);
+    const clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Send welcome message
-    ws.send(JSON.stringify({
-      type: 'system',
-      message: 'Welcome to TerraFusion WebSocket Server',
-      timestamp: new Date().toISOString(),
-      status: 'connected',
-      transport: 'websocket',
-      endpoint: '/ws'
-    }));
+    console.log(`[WebSocket Server] Client ${clientId} connected to /ws from ${clientIp}`);
     
-    // Setup heartbeat to detect dead connections
+    // Set client metadata
+    (ws as any).clientId = clientId;
+    (ws as any).clientIp = clientIp;
+    (ws as any).connectionTime = Date.now();
+    (ws as any).lastActivity = Date.now();
     (ws as any).isAlive = true;
+    
+    // Try to send welcome message with careful error handling
+    try {
+      ws.send(JSON.stringify({
+        type: 'system',
+        message: 'Welcome to TerraFusion WebSocket Server',
+        timestamp: new Date().toISOString(),
+        status: 'connected',
+        clientId: clientId,
+        transport: 'websocket',
+        endpoint: '/ws'
+      }));
+      
+      // Send keepalive interval information to client
+      ws.send(JSON.stringify({
+        type: 'config',
+        keepaliveInterval: 20000,  // 20 seconds - tell client to expect pings every 20s
+        reconnectStrategy: {
+          initialDelay: 1000,
+          maxDelay: 30000,
+          multiplier: 1.5,
+          maxAttempts: 10
+        },
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error) {
+      console.error(`[WebSocket Server] Error sending welcome message to ${clientId}:`, error);
+      // Don't terminate connection here - it might be a temporary issue
+    }
+    
+    // Setup heartbeat to detect dead connections using built-in ping/pong
     ws.on('pong', () => {
+      // Update isAlive status when pong received
       (ws as any).isAlive = true;
+      (ws as any).lastActivity = Date.now();
+      console.log(`[WebSocket Server] Received pong from client ${clientId}`);
     });
     
     // Record connection metrics
     metricsService.incrementCounter('websocket_connections_total', {
       path: '/ws',
-      client_ip: typeof clientIp === 'string' ? clientIp : 'unknown'
+      client_ip: typeof clientIp === 'string' ? clientIp : 'unknown',
+      client_id: clientId
     });
     
+    // Handle messages with comprehensive error handling
     ws.on('message', (message) => {
       try {
-        console.log('[WebSocket Server] Received raw message:', message.toString());
-        const parsedMessage = JSON.parse(message.toString());
-        console.log('[WebSocket Server] Parsed message:', parsedMessage);
+        // Update activity timestamp
+        (ws as any).lastActivity = Date.now();
         
-        // Handle ping messages specifically
-        if (parsedMessage.type === 'ping') {
-          ws.send(JSON.stringify({
-            type: 'pong',
-            timestamp: Date.now(),
-            originalTimestamp: parsedMessage.timestamp,
-            latency: Date.now() - (parsedMessage.timestamp || Date.now())
-          }));
+        // Attempt to log the raw message (safely)
+        let messageStr;
+        try {
+          messageStr = message.toString();
+          // Truncate excessive logs
+          const logMessage = messageStr.length > 200 ? messageStr.substring(0, 200) + '...' : messageStr;
+          console.log(`[WebSocket Server] Received message from ${clientId}:`, logMessage);
+        } catch (logError) {
+          console.error(`[WebSocket Server] Error converting message to string for ${clientId}:`, logError);
+          messageStr = '{}'; // Fallback to empty object
+        }
+        
+        // Parse the message with error handling
+        let parsedMessage;
+        try {
+          parsedMessage = JSON.parse(messageStr);
+        } catch (parseError) {
+          console.error(`[WebSocket Server] Error parsing message from ${clientId}:`, parseError);
+          // Send parse error to client
+          safelySendMessage(ws, {
+            type: 'error',
+            error: 'parse_error',
+            message: 'Failed to parse message as JSON',
+            originalMessage: messageStr.length > 100 ? messageStr.substring(0, 100) + '...' : messageStr,
+            timestamp: new Date().toISOString()
+          });
           return;
         }
         
-        // Handle different message types
-        switch (parsedMessage.type) {
-          case 'message':
-            // Echo back regular messages
-            ws.send(JSON.stringify({
-              type: 'message',
-              content: parsedMessage.content,
-              echo: true,
-              timestamp: new Date().toISOString()
-            }));
-            break;
+        // Handle application-level heartbeat/ping messages
+        if (parsedMessage.type === 'ping') {
+          safelySendMessage(ws, {
+            type: 'pong',
+            timestamp: Date.now(),
+            originalTimestamp: parsedMessage.timestamp,
+            latency: Date.now() - (parsedMessage.timestamp || Date.now()),
+            clientId: clientId
+          });
+          return;
+        }
+        
+        // Handle different message types with better error handling
+        try {
+          switch (parsedMessage.type) {
+            case 'message':
+              // Echo back regular messages
+              safelySendMessage(ws, {
+                type: 'message',
+                content: parsedMessage.content,
+                echo: true,
+                timestamp: new Date().toISOString(),
+                clientId: clientId
+              });
+              break;
+              
+            case 'echo':
+              // Echo back with same structure
+              safelySendMessage(ws, {
+                type: 'echo',
+                message: parsedMessage.message,
+                received: parsedMessage,
+                timestamp: new Date().toISOString(),
+                clientId: clientId
+              });
+              break;
             
-          case 'echo':
-            // Echo back with same structure
-            ws.send(JSON.stringify({
-              type: 'echo',
-              message: parsedMessage.message,
-              received: parsedMessage,
-              timestamp: new Date().toISOString()
-            }));
-            break;
-            
-          default:
-            // General echo for unhandled message types
-            ws.send(JSON.stringify({
-              type: 'echo',
-              originalMessage: parsedMessage,
-              timestamp: new Date().toISOString()
-            }));
+            case 'heartbeat':
+              // Respond to client-initiated heartbeats
+              safelySendMessage(ws, {
+                type: 'heartbeat_ack',
+                timestamp: new Date().toISOString(),
+                clientId: clientId
+              });
+              break;
+              
+            default:
+              // General echo for unhandled message types
+              safelySendMessage(ws, {
+                type: 'echo',
+                originalMessage: parsedMessage,
+                timestamp: new Date().toISOString(),
+                clientId: clientId
+              });
+          }
+        } catch (handlingError) {
+          console.error(`[WebSocket Server] Error handling message type '${parsedMessage.type}' from ${clientId}:`, handlingError);
+          safelySendMessage(ws, {
+            type: 'error',
+            error: 'processing_error',
+            message: `Error processing message: ${handlingError.message}`,
+            timestamp: new Date().toISOString(),
+            clientId: clientId
+          });
         }
       } catch (error) {
-        console.error('Error handling WebSocket message:', error);
-        // Send error message back to client
+        console.error(`[WebSocket Server] Unexpected error processing message from ${clientId}:`, error);
+        // Try to send error notification to client
         try {
           ws.send(JSON.stringify({
             type: 'error',
-            message: `Error processing message: ${error.message}`,
-            timestamp: new Date().toISOString()
+            error: 'server_error',
+            message: 'An unexpected server error occurred',
+            timestamp: new Date().toISOString(),
+            clientId: clientId
           }));
         } catch (sendError) {
-          console.error('Error sending error message:', sendError);
+          console.error(`[WebSocket Server] Failed to send error response to ${clientId}:`, sendError);
         }
       }
     });
     
+    // Enhanced error handler with detailed logging
     ws.on('error', (error) => {
-      console.error(`WebSocket client error: ${error.message}`);
-    });
-    
-    ws.on('close', (code, reason) => {
-      console.log(`WebSocket client disconnected from /ws. Code: ${code}, Reason: ${reason || 'No reason provided'}`);
-    });
-    
-    // Set up ping interval to detect closed connections
-    try {      
-      const pingInterval = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            type: 'ping',
-            timestamp: new Date().toISOString()
-          }));
-        } else {
-          clearInterval(pingInterval);
-        }
-      }, 30000); // 30 seconds
+      console.error(`[WebSocket Server] Client ${clientId} error:`, error);
       
-      // Clear interval on close
-      ws.on('close', () => clearInterval(pingInterval));
+      // Record error metric with more detail
+      metricsService.incrementCounter('websocket_client_errors_total', {
+        client_id: clientId,
+        client_ip: typeof clientIp === 'string' ? clientIp : 'unknown',
+        error_type: error.name || 'Unknown',
+        error_message: error.message || 'No message',
+        path: '/ws'
+      });
+      
+      // Don't terminate here - let the connection close naturally to avoid abrupt termination
+    });
+    
+    // Better close handler with detailed logging
+    ws.on('close', (code, reason) => {
+      const reasonText = reason ? reason.toString() : 'No reason provided';
+      console.log(`[WebSocket Server] Client ${clientId} disconnected. Code: ${code}, Reason: ${reasonText}`);
+      
+      // Record disconnect metric with more context
+      metricsService.incrementCounter('websocket_disconnections_total', {
+        client_id: clientId,
+        close_code: code.toString(),
+        close_reason: reasonText.substring(0, 100), // Truncate long reasons
+        client_ip: typeof clientIp === 'string' ? clientIp : 'unknown',
+        path: '/ws',
+        duration_seconds: Math.floor((Date.now() - ((ws as any).connectionTime || Date.now())) / 1000)
+      });
+      
+      // Cleanup any remaining intervals (just to be safe)
+      clearInterval((ws as any).pingInterval);
+    });
+    
+    // Set up more frequent ping interval with more robust error handling
+    try {
+      // Set up a more robust ping mechanism using internal ping frames
+      (ws as any).pingInterval = setInterval(() => {
+        // Skip if connection is no longer open
+        if (ws.readyState !== WebSocket.OPEN) {
+          clearInterval((ws as any).pingInterval);
+          return;
+        }
+        
+        // Check if the client is still responding to pings
+        if ((ws as any).isAlive === false) {
+          console.log(`[WebSocket Server] Client ${clientId} not responding to pings, terminating`);
+          clearInterval((ws as any).pingInterval);
+          return ws.terminate();
+        }
+        
+        // Mark as not alive, expecting the pong event to set it back to true
+        (ws as any).isAlive = false;
+        
+        // Try to ping the client using WebSocket built-in ping frame
+        try {
+          console.log(`[WebSocket Server] Sending ping to client ${clientId}`);
+          ws.ping(Buffer.from(JSON.stringify({ timestamp: Date.now(), clientId })));
+          
+          // Also send an application-level ping message for clients that need it
+          safelySendMessage(ws, {
+            type: 'ping',
+            timestamp: Date.now(),
+            clientId: clientId
+          });
+        } catch (pingError) {
+          console.error(`[WebSocket Server] Error sending ping to ${clientId}:`, pingError);
+          // If we can't send a ping, the connection is likely dead
+          clearInterval((ws as any).pingInterval);
+          ws.terminate();
+        }
+      }, 20000); // Every 20 seconds
       
     } catch (error) {
-      console.error('Error setting up ping interval:', error);
+      console.error(`[WebSocket Server] Error setting up ping interval for ${clientId}:`, error);
     }
   });
+  
+  // Helper function for safely sending messages
+  function safelySendMessage(ws: WebSocket, message: any) {
+    if (ws.readyState !== WebSocket.OPEN) {
+      console.log(`[WebSocket Server] Cannot send message, connection not open. Client: ${(ws as any).clientId || 'unknown'}`);
+      return false;
+    }
+    
+    try {
+      const messageString = JSON.stringify(message);
+      ws.send(messageString);
+      return true;
+    } catch (error) {
+      console.error(`[WebSocket Server] Error sending message to ${(ws as any).clientId || 'unknown'}:`, error);
+      return false;
+    }
+  }
   
   // Debug upgrade requests before they're handled by the WebSocket server
   // This should come BEFORE initializing the WebSocket services to ensure 
