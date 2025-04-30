@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enhanced WebSocket Connection Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.5;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+    }
+    .controls {
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #f5f5f5;
+      border-radius: 5px;
+    }
+    button {
+      padding: 8px 16px;
+      margin-right: 10px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background-color: #fff;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #f0f0f0;
+    }
+    button.primary {
+      background-color: #0078d7;
+      color: white;
+      border-color: #0067b8;
+    }
+    button.primary:hover {
+      background-color: #0067b8;
+    }
+    button.danger {
+      background-color: #d83b01;
+      color: white;
+      border-color: #c23601;
+    }
+    button.danger:hover {
+      background-color: #c23601;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .message-input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    .status {
+      padding: 10px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+    .status-connected {
+      background-color: #dff6dd;
+      color: #107c10;
+    }
+    .status-connecting {
+      background-color: #f0f6ff;
+      color: #0078d7;
+    }
+    .status-disconnected {
+      background-color: #ffecea;
+      color: #d83b01;
+    }
+    .status-error {
+      background-color: #ffd2d2;
+      color: #d80101;
+    }
+    .log-container {
+      margin-top: 20px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #f9f9f9;
+      padding: 10px;
+      height: 400px;
+      overflow-y: auto;
+      font-family: 'Consolas', 'Courier New', monospace;
+    }
+    .log-entry {
+      margin-bottom: 5px;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .log-info {
+      color: #0078d7;
+    }
+    .log-error {
+      color: #d83b01;
+    }
+    .log-success {
+      color: #107c10;
+    }
+    .log-warning {
+      color: #ca8f04;
+    }
+    .log-debug {
+      color: #666;
+    }
+    .log-time {
+      color: #666;
+      font-size: 12px;
+      margin-right: 8px;
+    }
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .stat-box {
+      flex: 1;
+      min-width: 120px;
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+    }
+    .endpoints {
+      display: flex;
+      margin-bottom: 10px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .endpoint-btn {
+      font-size: 13px;
+      padding: 5px 10px;
+    }
+    .active {
+      background-color: #0078d7 !important;
+      color: white !important;
+    }
+    .options-panel {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f8f8f8;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .option-group {
+      margin-bottom: 10px;
+    }
+    .option-label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+    }
+    .option-input {
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      width: 100px;
+    }
+    .option-checkbox {
+      margin-right: 5px;
+    }
+    .connection-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .advanced-options-toggle {
+      color: #0078d7;
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+      display: inline-block;
+    }
+    .tab-container {
+      margin-top: 20px;
+    }
+    .tab-buttons {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+    }
+    .tab-button {
+      padding: 10px 15px;
+      border: none;
+      background: none;
+      font-size: 16px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-right: 10px;
+    }
+    .tab-button.active {
+      border-bottom: 2px solid #0078d7;
+      color: #0078d7;
+      background: none;
+    }
+    .tab-content {
+      padding: 15px 0;
+    }
+    .hidden {
+      display: none;
+    }
+    .help-text {
+      font-size: 13px;
+      color: #666;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Enhanced WebSocket Connection Test</h1>
+  
+  <div class="tab-container">
+    <div class="tab-buttons">
+      <button id="tab-main" class="tab-button active">WebSocket Tester</button>
+      <button id="tab-diagnostics" class="tab-button">Connection Diagnostics</button>
+      <button id="tab-options" class="tab-button">Advanced Options</button>
+    </div>
+    
+    <div id="content-main" class="tab-content">
+      <div class="status" id="connectionStatus">Connection status: Disconnected</div>
+      
+      <div class="stats">
+        <div class="stat-box">
+          <div class="stat-value" id="connectCount">0</div>
+          <div class="stat-label">Connections</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="messageCount">0</div>
+          <div class="stat-label">Messages Sent</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="responseCount">0</div>
+          <div class="stat-label">Responses</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="errorCount">0</div>
+          <div class="stat-label">Errors</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="avgLatency">-</div>
+          <div class="stat-label">Avg Latency (ms)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="reconnectCount">0</div>
+          <div class="stat-label">Reconnects</div>
+        </div>
+      </div>
+      
+      <div class="controls">
+        <div class="endpoints">
+          <button id="ws-endpoint" class="endpoint-btn active">/ws</button>
+          <button id="collaboration-endpoint" class="endpoint-btn">/api/collaboration/ws</button>
+          <button id="agents-endpoint" class="endpoint-btn">/api/agents/ws</button>
+          <button id="team-endpoint" class="endpoint-btn">/api/team/ws</button>
+          <button id="custom-endpoint" class="endpoint-btn">Custom...</button>
+        </div>
+        
+        <div>
+          <button id="connectBtn" class="primary">Connect</button>
+          <button id="disconnectBtn" disabled>Disconnect</button>
+          <button id="clearLogBtn">Clear Log</button>
+        </div>
+        
+        <div style="margin-top: 10px;">
+          <input type="text" id="messageInput" class="message-input" placeholder="Type a message to send..." disabled />
+          <button id="sendBtn" disabled>Send Message</button>
+          <button id="pingBtn" disabled>Send Ping</button>
+          <button id="multiPingBtn" disabled>Ping (10x)</button>
+        </div>
+      </div>
+      
+      <div class="log-container" id="logContainer"></div>
+    </div>
+    
+    <div id="content-diagnostics" class="tab-content hidden">
+      <h2>Connection Diagnostics</h2>
+      
+      <div class="option-group">
+        <div class="option-label">Run Connection Tests</div>
+        <button id="runNetworkTestBtn" class="primary">Run Network Test</button>
+        <button id="runEndpointTestBtn">Test All Endpoints</button>
+        <button id="checkServerBtn">Check Server Status</button>
+      </div>
+      
+      <div class="option-group">
+        <div class="option-label">WebSocket Troubleshooting</div>
+        <button id="testFallbackBtn">Test HTTP Fallback</button>
+        <button id="testSseBtn">Test SSE Connection</button>
+      </div>
+      
+      <div id="diagnosticResults" class="log-container" style="height: 300px; margin-top: 20px;">
+        <div class="log-entry log-info">Run diagnostics tests to see results here.</div>
+      </div>
+    </div>
+    
+    <div id="content-options" class="tab-content hidden">
+      <h2>Advanced WebSocket Options</h2>
+      
+      <div class="connection-options">
+        <div class="option-group">
+          <div class="option-label">Auto Reconnect</div>
+          <label>
+            <input type="checkbox" id="optionAutoReconnect" class="option-checkbox" checked>
+            Enable automatic reconnection
+          </label>
+          <div class="help-text">Automatically attempt to reconnect if connection is lost</div>
+        </div>
+        
+        <div class="option-group">
+          <div class="option-label">Max Reconnect Attempts</div>
+          <input type="number" id="optionMaxReconnects" class="option-input" value="5" min="1" max="50">
+          <div class="help-text">Maximum number of reconnection attempts</div>
+        </div>
+        
+        <div class="option-group">
+          <div class="option-label">Reconnect Delay (ms)</div>
+          <input type="number" id="optionReconnectDelay" class="option-input" value="1000" min="100" max="10000" step="100">
+          <div class="help-text">Base delay between reconnection attempts</div>
+        </div>
+        
+        <div class="option-group">
+          <div class="option-label">Backoff Factor</div>
+          <input type="number" id="optionBackoffFactor" class="option-input" value="1.5" min="1" max="5" step="0.1">
+          <div class="help-text">Multiplier for increasing reconnect delay</div>
+        </div>
+        
+        <div class="option-group">
+          <div class="option-label">Ping Interval (ms)</div>
+          <input type="number" id="optionPingInterval" class="option-input" value="30000" min="1000" max="300000" step="1000">
+          <div class="help-text">Time between automatic ping messages</div>
+        </div>
+        
+        <div class="option-group">
+          <div class="option-label">Connection Timeout (ms)</div>
+          <input type="number" id="optionConnectTimeout" class="option-input" value="5000" min="1000" max="30000" step="1000">
+          <div class="help-text">Timeout for connection attempts</div>
+        </div>
+      </div>
+      
+      <div class="option-group" style="margin-top: 20px;">
+        <div class="option-label">Protocol Options</div>
+        <label>
+          <input type="checkbox" id="optionUseBinaryType" class="option-checkbox">
+          Set binaryType to 'arraybuffer'
+        </label>
+        <div class="help-text">May help with binary data transmission</div>
+        
+        <label style="display: block; margin-top: 10px;">
+          <input type="checkbox" id="optionAddHeaders" class="option-checkbox">
+          Use custom headers (via URL params)
+        </label>
+        <div class="help-text">Headers are limited in WebSocket - we'll simulate via URL parameters</div>
+      </div>
+      
+      <div class="option-group" style="margin-top: 20px;">
+        <div class="option-label">Fallback Options</div>
+        <label>
+          <input type="checkbox" id="optionEnableFallback" class="option-checkbox" checked>
+          Enable HTTP fallback
+        </label>
+        <div class="help-text">If WebSocket fails, try HTTP long-polling</div>
+        
+        <label style="display: block; margin-top: 10px;">
+          <input type="checkbox" id="optionEnableSseFallback" class="option-checkbox" checked>
+          Enable SSE fallback
+        </label>
+        <div class="help-text">If WebSocket fails, try Server-Sent Events</div>
+      </div>
+      
+      <button id="applyOptionsBtn" class="primary" style="margin-top: 20px;">Apply Options</button>
+    </div>
+  </div>
+  
+  <script>
+    // State
+    let socket = null;
+    let currentEndpoint = '/ws';
+    let messagesSent = 0;
+    let messagesReceived = 0;
+    let connectionsCount = 0;
+    let errorsCount = 0;
+    let reconnectsCount = 0;
+    let latencies = [];
+    let pingSentTime = null;
+    let autoReconnect = true;
+    let reconnectAttempts = 0;
+    let reconnectTimeout = null;
+    let pingInterval = null;
+    let connectionTimeout = null;
+    
+    // Options (with defaults)
+    const options = {
+      autoReconnect: true,
+      maxReconnects: 5,
+      reconnectDelay: 1000,
+      backoffFactor: 1.5,
+      pingInterval: 30000,
+      connectTimeout: 5000,
+      useBinaryType: false,
+      addHeaders: false,
+      enableFallback: true,
+      enableSseFallback: true
+    };
+    
+    // DOM Elements
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const clearLogBtn = document.getElementById('clearLogBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const pingBtn = document.getElementById('pingBtn');
+    const multiPingBtn = document.getElementById('multiPingBtn');
+    const messageInput = document.getElementById('messageInput');
+    const logContainer = document.getElementById('logContainer');
+    const connectionStatus = document.getElementById('connectionStatus');
+    const connectCountEl = document.getElementById('connectCount');
+    const messageCountEl = document.getElementById('messageCount');
+    const responseCountEl = document.getElementById('responseCount');
+    const errorCountEl = document.getElementById('errorCount');
+    const avgLatencyEl = document.getElementById('avgLatency');
+    const reconnectCountEl = document.getElementById('reconnectCount');
+    
+    // Tab elements
+    const tabMain = document.getElementById('tab-main');
+    const tabDiagnostics = document.getElementById('tab-diagnostics');
+    const tabOptions = document.getElementById('tab-options');
+    const contentMain = document.getElementById('content-main');
+    const contentDiagnostics = document.getElementById('content-diagnostics');
+    const contentOptions = document.getElementById('content-options');
+    
+    // Diagnostic elements
+    const runNetworkTestBtn = document.getElementById('runNetworkTestBtn');
+    const runEndpointTestBtn = document.getElementById('runEndpointTestBtn');
+    const checkServerBtn = document.getElementById('checkServerBtn');
+    const testFallbackBtn = document.getElementById('testFallbackBtn');
+    const testSseBtn = document.getElementById('testSseBtn');
+    const diagnosticResults = document.getElementById('diagnosticResults');
+    
+    // Options elements
+    const optionAutoReconnect = document.getElementById('optionAutoReconnect');
+    const optionMaxReconnects = document.getElementById('optionMaxReconnects');
+    const optionReconnectDelay = document.getElementById('optionReconnectDelay');
+    const optionBackoffFactor = document.getElementById('optionBackoffFactor');
+    const optionPingInterval = document.getElementById('optionPingInterval');
+    const optionConnectTimeout = document.getElementById('optionConnectTimeout');
+    const optionUseBinaryType = document.getElementById('optionUseBinaryType');
+    const optionAddHeaders = document.getElementById('optionAddHeaders');
+    const optionEnableFallback = document.getElementById('optionEnableFallback');
+    const optionEnableSseFallback = document.getElementById('optionEnableSseFallback');
+    const applyOptionsBtn = document.getElementById('applyOptionsBtn');
+    
+    // Tab switching
+    tabMain.addEventListener('click', () => switchTab('main'));
+    tabDiagnostics.addEventListener('click', () => switchTab('diagnostics'));
+    tabOptions.addEventListener('click', () => switchTab('options'));
+    
+    function switchTab(tabId) {
+      // Reset all tab buttons and content
+      [tabMain, tabDiagnostics, tabOptions].forEach(tab => tab.classList.remove('active'));
+      [contentMain, contentDiagnostics, contentOptions].forEach(content => content.classList.add('hidden'));
+      
+      // Activate the selected tab
+      switch (tabId) {
+        case 'main':
+          tabMain.classList.add('active');
+          contentMain.classList.remove('hidden');
+          break;
+        case 'diagnostics':
+          tabDiagnostics.classList.add('active');
+          contentDiagnostics.classList.remove('hidden');
+          break;
+        case 'options':
+          tabOptions.classList.add('active');
+          contentOptions.classList.remove('hidden');
+          break;
+      }
+    }
+    
+    // Apply connection options
+    applyOptionsBtn.addEventListener('click', () => {
+      options.autoReconnect = optionAutoReconnect.checked;
+      options.maxReconnects = parseInt(optionMaxReconnects.value);
+      options.reconnectDelay = parseInt(optionReconnectDelay.value);
+      options.backoffFactor = parseFloat(optionBackoffFactor.value);
+      options.pingInterval = parseInt(optionPingInterval.value);
+      options.connectTimeout = parseInt(optionConnectTimeout.value);
+      options.useBinaryType = optionUseBinaryType.checked;
+      options.addHeaders = optionAddHeaders.checked;
+      options.enableFallback = optionEnableFallback.checked;
+      options.enableSseFallback = optionEnableSseFallback.checked;
+      
+      log(`Connection options updated:
+autoReconnect: ${options.autoReconnect}
+maxReconnects: ${options.maxReconnects}
+reconnectDelay: ${options.reconnectDelay}ms
+backoffFactor: ${options.backoffFactor}
+pingInterval: ${options.pingInterval}ms
+connectTimeout: ${options.connectTimeout}ms`, 'info');
+      
+      // Switch back to main tab
+      switchTab('main');
+    });
+    
+    // Endpoint buttons
+    const endpointBtns = {
+      'ws': document.getElementById('ws-endpoint'),
+      'collaboration': document.getElementById('collaboration-endpoint'),
+      'agents': document.getElementById('agents-endpoint'),
+      'team': document.getElementById('team-endpoint'),
+      'custom': document.getElementById('custom-endpoint')
+    };
+    
+    // Attach event listeners to endpoint buttons
+    for (const [key, btn] of Object.entries(endpointBtns)) {
+      btn.addEventListener('click', () => {
+        for (const otherBtn of Object.values(endpointBtns)) {
+          otherBtn.classList.remove('active');
+        }
+        btn.classList.add('active');
+        
+        switch (key) {
+          case 'ws':
+            currentEndpoint = '/ws';
+            break;
+          case 'collaboration':
+            currentEndpoint = '/api/collaboration/ws';
+            break;
+          case 'agents':
+            currentEndpoint = '/api/agents/ws';
+            break;
+          case 'team':
+            currentEndpoint = '/api/team/ws';
+            break;
+          case 'custom':
+            const customPath = prompt('Enter custom WebSocket path (starting with /):', '/ws');
+            if (customPath) {
+              currentEndpoint = customPath;
+            }
+            break;
+        }
+        
+        log(`Endpoint changed to: ${currentEndpoint}`, 'info');
+      });
+    }
+    
+    // Connect to WebSocket
+    connectBtn.addEventListener('click', connectWebSocket);
+    
+    // Disconnect WebSocket
+    disconnectBtn.addEventListener('click', () => {
+      if (socket) {
+        autoReconnect = false; // Disable auto-reconnect on manual disconnect
+        socket.close();
+        socket = null;
+        updateConnectionStatus('disconnected');
+        log('WebSocket disconnected manually', 'info');
+      }
+    });
+    
+    // Clear log
+    clearLogBtn.addEventListener('click', () => {
+      logContainer.innerHTML = '';
+      log('Log cleared', 'info');
+    });
+    
+    // Send message
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+    
+    // Send ping
+    pingBtn.addEventListener('click', () => sendPing());
+    
+    // Send multiple pings
+    multiPingBtn.addEventListener('click', () => {
+      for (let i = 0; i < 10; i++) {
+        setTimeout(() => {
+          sendPing(`ping-${i+1}`);
+        }, i * 500);
+      }
+    });
+    
+    // Diagnostic test buttons
+    runNetworkTestBtn.addEventListener('click', runNetworkTest);
+    runEndpointTestBtn.addEventListener('click', testAllEndpoints);
+    checkServerBtn.addEventListener('click', checkServerStatus);
+    testFallbackBtn.addEventListener('click', testHttpFallback);
+    testSseBtn.addEventListener('click', testSseConnection);
+    
+    // Function to connect to WebSocket with enhanced error handling
+    function connectWebSocket() {
+      if (socket) {
+        logDiagnostic('Already connected, disconnecting first...', 'info');
+        socket.close();
+        socket = null;
+      }
+      
+      updateConnectionStatus('connecting');
+      updateButtonState(false);
+      
+      try {
+        // Get the protocol and host
+        const protocol = location.protocol.startsWith('https') ? 'wss:' : 'ws:';
+        
+        // Construct the WebSocket URL
+        let wsURL = `${protocol}//${location.host}${currentEndpoint}`;
+        
+        // Add custom parameters if needed
+        if (options.addHeaders) {
+          const params = new URLSearchParams();
+          params.append('client_id', `web_client_${Date.now()}`);
+          params.append('client_version', '1.0.0');
+          wsURL += `?${params.toString()}`;
+        }
+        
+        log(`Connecting to ${wsURL}...`, 'info');
+        
+        // Set up connection timeout
+        connectionTimeout = setTimeout(() => {
+          if (socket && socket.readyState !== WebSocket.OPEN) {
+            log('Connection timeout reached', 'error');
+            if (socket) {
+              try {
+                socket.close();
+              } catch (e) {
+                console.error('Error closing socket on timeout:', e);
+              }
+            }
+            socket = null;
+            updateConnectionStatus('error');
+            updateButtonState(true);
+            
+            // Try fallback mechanisms if enabled
+            if (options.enableFallback) {
+              log('Connection timeout - trying HTTP fallback...', 'warning');
+              testHttpFallback();
+            }
+          }
+        }, options.connectTimeout);
+        
+        // Create WebSocket connection
+        socket = new WebSocket(wsURL);
+        reconnectAttempts = 0;
+        autoReconnect = options.autoReconnect;
+        
+        // Set binary type if configured
+        if (options.useBinaryType) {
+          socket.binaryType = 'arraybuffer';
+          log('Setting WebSocket binaryType to arraybuffer', 'debug');
+        }
+        
+        socket.addEventListener('open', (event) => {
+          clearTimeout(connectionTimeout);
+          updateConnectionStatus('connected');
+          updateButtonState(true);
+          log('WebSocket connection established', 'success');
+          connectionsCount++;
+          connectCountEl.textContent = connectionsCount;
+          
+          // Start ping interval
+          if (pingInterval) {
+            clearInterval(pingInterval);
+          }
+          
+          pingInterval = setInterval(() => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+              sendPing('heartbeat');
+            }
+          }, options.pingInterval);
+        });
+        
+        socket.addEventListener('message', (event) => {
+          messagesReceived++;
+          responseCountEl.textContent = messagesReceived;
+          
+          try {
+            const data = JSON.parse(event.data);
+            
+            // Check if this is a ping response
+            if (data.type === 'pong' && pingSentTime) {
+              const latency = Date.now() - pingSentTime;
+              latencies.push(latency);
+              // Keep only the last 50 latency measurements
+              if (latencies.length > 50) {
+                latencies.shift();
+              }
+              
+              // Calculate average latency
+              const avgLatency = Math.round(latencies.reduce((sum, val) => sum + val, 0) / latencies.length);
+              avgLatencyEl.textContent = avgLatency;
+              
+              log(`Received pong: Latency ${latency}ms`, 'success');
+            } else {
+              log(`Received: ${JSON.stringify(data, null, 2)}`, 'success');
+            }
+          } catch (e) {
+            log(`Received (raw): ${event.data}`, 'success');
+          }
+        });
+        
+        socket.addEventListener('error', (event) => {
+          log(`WebSocket error occurred`, 'error');
+          console.error('WebSocket error:', event);
+          errorsCount++;
+          errorCountEl.textContent = errorsCount;
+        });
+        
+        socket.addEventListener('close', (event) => {
+          clearTimeout(connectionTimeout);
+          clearInterval(pingInterval);
+          
+          const codeInfo = getWebSocketCloseCodeInfo(event.code);
+          log(`WebSocket closed: Code ${event.code} (${codeInfo.name}) - ${event.reason || 'No reason provided'}`, 'error');
+          log(`Close description: ${codeInfo.description}`, 'info');
+          
+          socket = null;
+          updateConnectionStatus('disconnected');
+          updateButtonState(true, false);
+          
+          // Enhanced handling for abnormal closures (code 1006)
+          if (event.code === 1006) {
+            log('Detected abnormal closure (Code 1006) - this usually indicates network issues, proxy problems, or server issues', 'warning');
+            logDiagnostic('WebSocket connection failed with Code 1006 (Abnormal Closure)', 'error');
+            logDiagnostic('Possible causes:', 'info');
+            logDiagnostic('1. Network connectivity issues or firewalls', 'info');
+            logDiagnostic('2. Proxy server interrupting WebSocket connection', 'info');
+            logDiagnostic('3. Server closing connection without proper close frame', 'info');
+            logDiagnostic('4. Load balancer timeout or configuration issue', 'info');
+            
+            // Special handling for code 1006
+            // Try more aggressive reconnect strategy
+            if (autoReconnect && reconnectAttempts < options.maxReconnects) {
+              reconnectAttempts++;
+              reconnectsCount++;
+              reconnectCountEl.textContent = reconnectsCount;
+              
+              // Use a shorter delay for the first couple attempts with 1006
+              const useShortDelay = reconnectAttempts <= 2;
+              const delay = useShortDelay ? 500 : Math.min(options.reconnectDelay * Math.pow(options.backoffFactor, reconnectAttempts - 1), 10000);
+              
+              log(`Attempting to reconnect in ${Math.round(delay)}ms (Attempt ${reconnectAttempts}/${options.maxReconnects})...`, 'info');
+              
+              clearTimeout(reconnectTimeout);
+              reconnectTimeout = setTimeout(connectWebSocket, delay);
+            } 
+            // If we've reached max reconnect attempts, try fallback methods
+            else if (reconnectAttempts >= options.maxReconnects) {
+              log('Maximum reconnection attempts reached', 'error');
+              
+              if (options.enableFallback) {
+                log('Trying HTTP fallback mechanism...', 'warning');
+                testHttpFallback();
+              }
+              
+              if (options.enableSseFallback) {
+                log('Trying SSE fallback mechanism...', 'warning');
+                testSseConnection();
+              }
+            }
+          } 
+          // Handle other close codes
+          else if (autoReconnect && event.code !== 1000 && event.code !== 1001) {
+            // For non-normal closures
+            reconnectAttempts++;
+            reconnectsCount++;
+            reconnectCountEl.textContent = reconnectsCount;
+            
+            const delay = Math.min(options.reconnectDelay * Math.pow(options.backoffFactor, reconnectAttempts - 1), 10000);
+            
+            log(`Attempting to reconnect in ${Math.round(delay)}ms (Attempt ${reconnectAttempts}/${options.maxReconnects})...`, 'info');
+            
+            clearTimeout(reconnectTimeout);
+            reconnectTimeout = setTimeout(connectWebSocket, delay);
+          }
+        });
+      } catch (error) {
+        clearTimeout(connectionTimeout);
+        log(`Error creating WebSocket: ${error.message}`, 'error');
+        updateConnectionStatus('error');
+        updateButtonState(true, false);
+        errorsCount++;
+        errorCountEl.textContent = errorsCount;
+      }
+    }
+    
+    // Function to send a message
+    function sendMessage() {
+      const message = messageInput.value.trim();
+      if (!message) return;
+      
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        log('WebSocket is not connected', 'error');
+        return;
+      }
+      
+      try {
+        const messageObj = {
+          type: 'message',
+          content: message,
+          timestamp: Date.now()
+        };
+        
+        socket.send(JSON.stringify(messageObj));
+        log(`Sent: ${JSON.stringify(messageObj, null, 2)}`, 'info');
+        
+        messageInput.value = '';
+        messagesSent++;
+        messageCountEl.textContent = messagesSent;
+      } catch (error) {
+        log(`Error sending message: ${error.message}`, 'error');
+        errorsCount++;
+        errorCountEl.textContent = errorsCount;
+      }
+    }
+    
+    // Function to send a ping
+    function sendPing(identifier = '') {
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        log('WebSocket is not connected', 'error');
+        return;
+      }
+      
+      try {
+        const pingObj = {
+          type: 'ping',
+          timestamp: Date.now(),
+          id: identifier || `ping-${Date.now()}`
+        };
+        
+        pingSentTime = Date.now();
+        socket.send(JSON.stringify(pingObj));
+        log(`Sent ping: ${JSON.stringify(pingObj, null, 2)}`, 'info');
+        
+        messagesSent++;
+        messageCountEl.textContent = messagesSent;
+      } catch (error) {
+        log(`Error sending ping: ${error.message}`, 'error');
+        errorsCount++;
+        errorCountEl.textContent = errorsCount;
+      }
+    }
+    
+    // Function to log messages
+    function log(message, type = 'info') {
+      const logEntry = document.createElement('div');
+      logEntry.classList.add('log-entry', `log-${type}`);
+      
+      const time = new Date().toLocaleTimeString();
+      logEntry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+      
+      logContainer.appendChild(logEntry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+    
+    // Function to log diagnostic messages
+    function logDiagnostic(message, type = 'info') {
+      const logEntry = document.createElement('div');
+      logEntry.classList.add('log-entry', `log-${type}`);
+      
+      const time = new Date().toLocaleTimeString();
+      logEntry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+      
+      diagnosticResults.appendChild(logEntry);
+      diagnosticResults.scrollTop = diagnosticResults.scrollHeight;
+    }
+    
+    // Function to update connection status
+    function updateConnectionStatus(status) {
+      connectionStatus.className = 'status';
+      
+      switch (status) {
+        case 'connected':
+          connectionStatus.classList.add('status-connected');
+          connectionStatus.textContent = 'Connection status: Connected';
+          break;
+        case 'connecting':
+          connectionStatus.classList.add('status-connecting');
+          connectionStatus.textContent = 'Connection status: Connecting...';
+          break;
+        case 'error':
+          connectionStatus.classList.add('status-error');
+          connectionStatus.textContent = 'Connection status: Error - Connection Failed';
+          break;
+        case 'disconnected':
+        default:
+          connectionStatus.classList.add('status-disconnected');
+          connectionStatus.textContent = 'Connection status: Disconnected';
+          break;
+      }
+    }
+    
+    // Function to update button states
+    function updateButtonState(isActive, isConnected = true) {
+      connectBtn.disabled = isConnected;
+      disconnectBtn.disabled = !isConnected;
+      sendBtn.disabled = !isActive;
+      pingBtn.disabled = !isActive;
+      multiPingBtn.disabled = !isActive;
+      messageInput.disabled = !isActive;
+    }
+    
+    // Function to get the WebSocket close code information
+    function getWebSocketCloseCodeInfo(code) {
+      const codeMap = {
+        1000: { 
+          name: 'CLOSE_NORMAL', 
+          description: 'Normal closure; the connection successfully completed its purpose' 
+        },
+        1001: { 
+          name: 'CLOSE_GOING_AWAY', 
+          description: 'Client is leaving (browser tab closing, page navigation, etc.)' 
+        },
+        1002: { 
+          name: 'CLOSE_PROTOCOL_ERROR', 
+          description: 'Protocol error, connection terminated due to malformed frame or other protocol violation' 
+        },
+        1003: { 
+          name: 'CLOSE_UNSUPPORTED', 
+          description: 'Unsupported data received; server/client cannot process the data type that was received' 
+        },
+        1005: { 
+          name: 'CLOSE_NO_STATUS', 
+          description: 'Reserved status; indicates no status code was provided even though one was expected' 
+        },
+        1006: { 
+          name: 'CLOSE_ABNORMAL', 
+          description: 'Abnormal closure; connection was closed without a proper closing handshake' 
+        },
+        1007: { 
+          name: 'CLOSE_INVALID_DATA', 
+          description: 'Invalid frame payload data; message contains inconsistent or invalid data' 
+        },
+        1008: { 
+          name: 'CLOSE_POLICY_VIOLATION', 
+          description: 'Policy violation; message received violates policy' 
+        },
+        1009: { 
+          name: 'CLOSE_TOO_LARGE', 
+          description: 'Message too large; data size exceeds limits' 
+        },
+        1010: { 
+          name: 'CLOSE_MANDATORY_EXTENSION', 
+          description: 'Client expected server to negotiate extension(s), but server didn\'t' 
+        },
+        1011: { 
+          name: 'CLOSE_SERVER_ERROR', 
+          description: 'Server encountered an error and cannot continue processing the connection' 
+        },
+        1012: { 
+          name: 'CLOSE_SERVICE_RESTART', 
+          description: 'Server is restarting' 
+        },
+        1013: { 
+          name: 'CLOSE_TRY_AGAIN_LATER', 
+          description: 'Server temporarily cannot process request, try again later' 
+        },
+        1015: { 
+          name: 'CLOSE_TLS_HANDSHAKE_FAIL', 
+          description: 'TLS handshake failure' 
+        }
+      };
+      
+      return codeMap[code] || { 
+        name: 'UNKNOWN', 
+        description: `Unknown close code (${code})` 
+      };
+    }
+    
+    // Network diagnostic test
+    function runNetworkTest() {
+      logDiagnostic('Running network connectivity test...', 'info');
+      
+      // Test basic HTTP connectivity
+      fetch('/api/health', { method: 'GET' })
+        .then(response => {
+          if (response.ok) {
+            logDiagnostic('✅ HTTP connectivity test passed', 'success');
+            return response.json();
+          } else {
+            logDiagnostic(`❌ HTTP connectivity test failed: ${response.status} ${response.statusText}`, 'error');
+            throw new Error(`HTTP request failed: ${response.status}`);
+          }
+        })
+        .then(data => {
+          logDiagnostic(`Server health endpoint response: ${JSON.stringify(data)}`, 'debug');
+        })
+        .catch(error => {
+          logDiagnostic(`Error testing HTTP connectivity: ${error.message}`, 'error');
+        });
+      
+      // Test WebSocket connectivity to root path
+      logDiagnostic('Testing WebSocket connectivity...', 'info');
+      let testSocket = null;
+      
+      try {
+        const protocol = location.protocol.startsWith('https') ? 'wss:' : 'ws:';
+        const wsURL = `${protocol}//${location.host}/ws`;
+        
+        logDiagnostic(`Connecting to test WebSocket at ${wsURL}`, 'debug');
+        
+        testSocket = new WebSocket(wsURL);
+        
+        let socketTestTimeout = setTimeout(() => {
+          logDiagnostic('❌ WebSocket connection test timed out after 5 seconds', 'error');
+          if (testSocket && testSocket.readyState !== WebSocket.CLOSED) {
+            testSocket.close();
+          }
+        }, 5000);
+        
+        testSocket.addEventListener('open', () => {
+          clearTimeout(socketTestTimeout);
+          logDiagnostic('✅ WebSocket connectivity test passed', 'success');
+          
+          // Send a test ping message
+          try {
+            testSocket.send(JSON.stringify({
+              type: 'ping',
+              timestamp: Date.now(),
+              isTest: true
+            }));
+            logDiagnostic('Sent test ping message', 'debug');
+          } catch (e) {
+            logDiagnostic(`Error sending test message: ${e.message}`, 'error');
+          }
+          
+          // Close after a short delay
+          setTimeout(() => {
+            if (testSocket && testSocket.readyState === WebSocket.OPEN) {
+              testSocket.close();
+              logDiagnostic('Test WebSocket connection closed', 'debug');
+            }
+          }, 2000);
+        });
+        
+        testSocket.addEventListener('message', (event) => {
+          logDiagnostic(`Received response from test socket: ${event.data}`, 'success');
+        });
+        
+        testSocket.addEventListener('error', () => {
+          clearTimeout(socketTestTimeout);
+          logDiagnostic('❌ WebSocket connectivity test failed with error', 'error');
+        });
+        
+        testSocket.addEventListener('close', (event) => {
+          clearTimeout(socketTestTimeout);
+          if (event.wasClean) {
+            logDiagnostic(`Test socket closed cleanly, code=${event.code}, reason=${event.reason || 'No reason provided'}`, 'debug');
+          } else {
+            logDiagnostic(`❌ Test socket closed abnormally, code=${event.code}`, 'error');
+          }
+        });
+      } catch (error) {
+        logDiagnostic(`❌ Error creating test WebSocket: ${error.message}`, 'error');
+      }
+      
+      // Test network characteristics
+      logDiagnostic('Testing network characteristics...', 'info');
+      
+      const startTime = Date.now();
+      fetch('/api/health')
+        .then(() => {
+          const latency = Date.now() - startTime;
+          logDiagnostic(`Network latency: ${latency}ms`, 'info');
+          
+          if (latency < 100) {
+            logDiagnostic('✅ Excellent network latency (<100ms)', 'success');
+          } else if (latency < 300) {
+            logDiagnostic('✅ Good network latency (<300ms)', 'success');
+          } else if (latency < 1000) {
+            logDiagnostic('⚠️ Moderate network latency (<1000ms)', 'warning');
+          } else {
+            logDiagnostic('❌ High network latency (>1000ms)', 'error');
+          }
+        })
+        .catch(error => {
+          logDiagnostic(`Error testing latency: ${error.message}`, 'error');
+        });
+        
+      // Test CORS headers
+      logDiagnostic('Testing CORS configuration...', 'info');
+      fetch('/api/health', {
+        method: 'GET',
+        headers: {
+          'Origin': location.origin
+        }
+      })
+      .then(response => {
+        const accessControlHeader = response.headers.get('Access-Control-Allow-Origin');
+        
+        if (accessControlHeader) {
+          logDiagnostic(`✅ CORS headers present: Access-Control-Allow-Origin: ${accessControlHeader}`, 'success');
+        } else {
+          logDiagnostic('⚠️ No CORS headers detected - may affect cross-origin WebSockets', 'warning');
+        }
+      })
+      .catch(error => {
+        logDiagnostic(`Error testing CORS: ${error.message}`, 'error');
+      });
+    }
+    
+    // Test all WebSocket endpoints
+    function testAllEndpoints() {
+      const endpoints = ['/ws', '/api/collaboration/ws', '/api/agents/ws', '/api/team/ws'];
+      
+      logDiagnostic('Testing all WebSocket endpoints...', 'info');
+      
+      // Test each endpoint
+      endpoints.forEach((endpoint, index) => {
+        setTimeout(() => {
+          logDiagnostic(`Testing endpoint: ${endpoint}`, 'info');
+          
+          try {
+            const protocol = location.protocol.startsWith('https') ? 'wss:' : 'ws:';
+            const wsURL = `${protocol}//${location.host}${endpoint}`;
+            
+            const testSocket = new WebSocket(wsURL);
+            
+            let socketTestTimeout = setTimeout(() => {
+              logDiagnostic(`❌ Connection to ${endpoint} timed out after 5 seconds`, 'error');
+              if (testSocket && testSocket.readyState !== WebSocket.CLOSED) {
+                testSocket.close();
+              }
+            }, 5000);
+            
+            testSocket.addEventListener('open', () => {
+              clearTimeout(socketTestTimeout);
+              logDiagnostic(`✅ Successfully connected to ${endpoint}`, 'success');
+              
+              // Close after a short delay
+              setTimeout(() => {
+                if (testSocket && testSocket.readyState === WebSocket.OPEN) {
+                  testSocket.close();
+                }
+              }, 1000);
+            });
+            
+            testSocket.addEventListener('error', () => {
+              clearTimeout(socketTestTimeout);
+              logDiagnostic(`❌ Failed to connect to ${endpoint}`, 'error');
+            });
+            
+            testSocket.addEventListener('close', (event) => {
+              clearTimeout(socketTestTimeout);
+              logDiagnostic(`Connection to ${endpoint} closed with code ${event.code}`, 'debug');
+            });
+          } catch (error) {
+            logDiagnostic(`❌ Error testing ${endpoint}: ${error.message}`, 'error');
+          }
+        }, index * 2000); // Stagger tests to avoid overwhelming the server
+      });
+    }
+    
+    // Check server status
+    function checkServerStatus() {
+      logDiagnostic('Checking server status...', 'info');
+      
+      fetch('/api/health')
+        .then(response => {
+          if (response.ok) {
+            logDiagnostic('✅ Server is responding to HTTP requests', 'success');
+            return response.json();
+          } else {
+            logDiagnostic(`❌ Server returned error status: ${response.status} ${response.statusText}`, 'error');
+            throw new Error(`HTTP request failed: ${response.status}`);
+          }
+        })
+        .then(data => {
+          logDiagnostic(`Server health response: ${JSON.stringify(data)}`, 'info');
+        })
+        .catch(error => {
+          logDiagnostic(`❌ Error checking server status: ${error.message}`, 'error');
+        });
+        
+      // Check websocket services
+      fetch('/api/system/status')
+        .then(response => response.json())
+        .then(data => {
+          if (data.websocket && data.websocket.status === 'up') {
+            logDiagnostic('✅ WebSocket service is reported as operational', 'success');
+          } else {
+            logDiagnostic('⚠️ WebSocket service status is unknown or down', 'warning');
+          }
+        })
+        .catch(error => {
+          logDiagnostic(`Error checking service status: ${error.message}`, 'error');
+        });
+    }
+    
+    // Test HTTP fallback
+    function testHttpFallback() {
+      logDiagnostic('Testing HTTP fallback mechanism...', 'info');
+      
+      // Try sending a message via HTTP fallback
+      fetch('/api/ws-fallback/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: 'Test message via HTTP fallback',
+          clientId: `client_${Date.now()}`
+        })
+      })
+      .then(response => {
+        if (response.ok) {
+          logDiagnostic('✅ HTTP fallback endpoint is available', 'success');
+          return response.json();
+        } else {
+          logDiagnostic(`❌ HTTP fallback returned error: ${response.status} ${response.statusText}`, 'error');
+          throw new Error('HTTP fallback request failed');
+        }
+      })
+      .then(data => {
+        logDiagnostic(`HTTP fallback response: ${JSON.stringify(data)}`, 'info');
+      })
+      .catch(error => {
+        logDiagnostic(`❌ Error testing HTTP fallback: ${error.message}`, 'error');
+      });
+    }
+    
+    // Test SSE Connection
+    function testSseConnection() {
+      logDiagnostic('Testing Server-Sent Events (SSE) fallback connection...', 'info');
+      
+      // Clean up any existing SSE connection
+      if (window.evtSource) {
+        window.evtSource.close();
+        window.evtSource = null;
+      }
+      
+      try {
+        const clientId = `client_${Date.now()}`;
+        const evtSource = new EventSource(`/api/events?clientId=${clientId}`);
+        window.evtSource = evtSource;
+        
+        logDiagnostic(`SSE connection attempted with clientId: ${clientId}`, 'info');
+        
+        let messageReceived = false;
+        let connectionTimeout = setTimeout(() => {
+          if (!messageReceived) {
+            logDiagnostic('❌ SSE connection test timed out - no message received', 'error');
+            evtSource.close();
+          }
+        }, 5000);
+        
+        evtSource.onopen = () => {
+          logDiagnostic('✅ SSE connection established', 'success');
+        };
+        
+        evtSource.onerror = (error) => {
+          clearTimeout(connectionTimeout);
+          logDiagnostic(`❌ SSE connection error: ${JSON.stringify(error)}`, 'error');
+          evtSource.close();
+        };
+        
+        evtSource.onmessage = (event) => {
+          clearTimeout(connectionTimeout);
+          messageReceived = true;
+          logDiagnostic(`✅ SSE message received: ${event.data}`, 'success');
+          
+          // Close the connection after receiving the first message
+          setTimeout(() => {
+            evtSource.close();
+            logDiagnostic('SSE test connection closed', 'info');
+          }, 1000);
+        };
+        
+        // Listen for specific event types
+        evtSource.addEventListener('heartbeat', (event) => {
+          logDiagnostic(`SSE heartbeat received: ${event.data}`, 'debug');
+        });
+      } catch (error) {
+        logDiagnostic(`❌ Error creating SSE connection: ${error.message}`, 'error');
+      }
+    }
+    
+    // Initialize the page
+    log('WebSocket Test Tool initialized', 'info');
+    log(`Available WebSocket endpoints:
+- /ws (Simple WebSocket server)
+- /api/collaboration/ws (Collaboration WebSocket)
+- /api/agents/ws (Agent System WebSocket)
+- /api/team/ws (Team Collaboration)`, 'info');
+  </script>
+</body>
+</html>
