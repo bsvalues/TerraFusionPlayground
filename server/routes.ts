@@ -231,6 +231,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.join(process.cwd(), 'enhanced-websocket-test.html'));
   });
   
+  // Dual WebSocket test page for comparing connections
+  app.get('/dual-websocket-test', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'dual-websocket-test.html'));
+  });
+  
   // Add health check endpoint
   app.get('/api/health', (req, res) => {
     res.json({
@@ -2979,6 +2984,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     logLevel: 'debug',
     clientTracking: true
   });
+  
+  // Initialize the simple WebSocket server on a different path for testing
+  logger.info('[WebSocket] Initializing SimpleWebSocketServer on path: /ws-simple');
+  const simpleWebSocketServer = new SimpleWebSocketServer();
+  simpleWebSocketServer.initialize(httpServer, '/ws-simple');
   
   // Register handlers for the main WebSocket server
   mainWebSocketServer.on('ping', (message, clientId, client) => {
