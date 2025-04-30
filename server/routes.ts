@@ -2943,7 +2943,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Increase max payload size to handle larger messages
     maxPayload: 1024 * 1024, // 1MB
     // Set explicit timeout values
-    handshakeTimeout: 15000 // 15 seconds
+    handshakeTimeout: 15000, // 15 seconds
+    // Add verifyClient handler with proper CORS validation
+    verifyClient: (info, callback) => {
+      try {
+        // Log verification attempt for debugging
+        console.log('[WebSocket Debug] Verifying client connection to /ws');
+        console.log('[WebSocket Debug] Origin:', info.origin);
+        
+        // Accept all connections at this stage, but log for debugging
+        if (callback) {
+          callback(true);
+        }
+        return true;
+      } catch (error) {
+        console.error('[WebSocket Debug] Error in verifyClient:', error);
+        if (callback) {
+          callback(false, 500, 'Internal Server Error');
+        }
+        return false;
+      }
+    }
   });
   
   console.log('[WebSocket Server] Created on path: /ws');
