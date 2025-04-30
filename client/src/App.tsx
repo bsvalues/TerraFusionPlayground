@@ -35,6 +35,7 @@ import VoiceCommandSettingsPage from "@/pages/voice-command-settings-page";
 import DatabaseConversionPage from "@/pages/database-conversion-page";
 import ExampleDashboard from "@/pages/example-dashboard";
 import WebSocketTest from "@/pages/websocket-test";
+import RobustWebSocketTest from "@/pages/robust-websocket-test";
 import WebVitalsTestPage from "@/pages/web-vitals-test";
 // Import the modularized GIS components
 import { GISHub as GISHubPage, Terrain3DDemo as Terrain3DDemoPage, GISProvider } from "@/modules/gis";
@@ -225,10 +226,16 @@ function Router() {
         </Layout>
       </Route>
 
-      {/* WebSocket Test Page */}
+      {/* WebSocket Test Pages */}
       <Route path="/websocket-test">
         <Layout>
           <WebSocketTest />
+        </Layout>
+      </Route>
+      
+      <Route path="/robust-websocket-test">
+        <Layout>
+          <RobustWebSocketTest />
         </Layout>
       </Route>
 
