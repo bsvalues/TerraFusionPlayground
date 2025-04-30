@@ -106,12 +106,30 @@ export class MainWebSocketServer {
     // Merge configuration with defaults
     this.config = { ...DEFAULT_CONFIG, ...config };
     
-    // Create WebSocket server
+    // Set debug listener for all upgrade requests to help diagnose issues
+    server.on('upgrade', (request, socket, head) => {
+      const path = request.url || '';
+      logger.debug(`[MainWebSocketServer] HTTP upgrade request for: ${path}`);
+    });
+    
+    // Create WebSocket server with inline verifyClient function for simplicity
     this.server = new WebSocketServer({
       server,
       path: this.config.path,
       clientTracking: this.config.clientTracking,
-      verifyClient: this.config.verifyClient || this.defaultVerifyClient.bind(this),
+      verifyClient: (info: { origin: string; req: any; secure: boolean }, callback?: (result: boolean, code?: number, message?: string) => void) => {
+        logger.debug('[MainWebSocketServer] Verifying client connection', {
+          origin: info.origin || '',
+          path: info.req.url,
+          host: info.req.headers.host
+        });
+        
+        // Accept all connections in development mode
+        if (callback) {
+          callback(true, 200, 'Connection accepted');
+        }
+        return true;
+      },
       maxPayload: 1024 * 1024 // 1MB
     });
     

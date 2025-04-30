@@ -190,6 +190,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.join(process.cwd(), 'websocket-connection-test.html'));
   });
   
+  // Simple WebSocket test page with improved diagnostics
+  app.get('/simple-ws-test', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'simple-ws-test.html'));
+  });
+  
   // Static WebSocket test page from public directory
   app.get('/websocket-test-static', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'public', 'websocket-test.html'));
@@ -213,6 +218,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Robust WebSocket test page with advanced connection management
   app.get('/robust-websocket-test', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'robust-websocket-test.html'));
+  });
+  
+  // Simple WebSocket test page with basic functionality
+  app.get('/simple-ws-test', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'simple-ws-test.html'));
+  });
+  
+  // Enhanced WebSocket test page with advanced diagnostics
+  app.get('/enhanced-websocket-test', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'enhanced-websocket-test.html'));
   });
   
   // Add health check endpoint
@@ -2952,6 +2967,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize our enhanced main WebSocket server
   logger.info('[WebSocket] Initializing MainWebSocketServer on path: /ws');
   const mainWebSocketServer = MainWebSocketServer.getInstance();
+  
+  // Set maximum listeners to prevent warning
+  httpServer.setMaxListeners(20);
+
   mainWebSocketServer.initialize(httpServer, {
     path: '/ws',
     heartbeatInterval: 30000, // 30 seconds
@@ -2959,6 +2978,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     logLevel: 'debug',
     clientTracking: true
   });
+  
+  // Register handlers for the main WebSocket server
+  mainWebSocketServer.on('ping', (message, clientId, client) => {
+    logger.debug('[WebSocket] Received ping message', { clientId });
+    mainWebSocketServer.sendToClient(clientId, {
+      type: 'pong',
+      timestamp: message.timestamp,
+      serverTime: Date.now()
+    });
+  });
+  
+  mainWebSocketServer.on('message', (message, clientId, client) => {
+    logger.debug('[WebSocket] Received general message', { clientId, messageType: 'message' });
+    // Echo the message back for testing
+    mainWebSocketServer.sendToClient(clientId, {
+      type: 'echo',
+      originalMessage: message,
+      serverTime: Date.now()
+    });
+  });
+  
+  mainWebSocketServer.on('echo', (message, clientId, client) => {
+    logger.debug('[WebSocket] Received echo request', { clientId });
+    // Enhanced echo with additional server info
+    mainWebSocketServer.sendToClient(clientId, {
+      type: 'echo-response',
+      originalMessage: message.message || message,
+      serverTime: Date.now(),
+      serverInfo: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        serverUptime: process.uptime()
+      }
+    });
+  });
+  
+  // Default handler for any message type
+  mainWebSocketServer.onAny((message, clientId, client) => {
+    logger.debug('[WebSocket] Connection activity', { 
+      clientId, 
+      messageType: message.type || 'unknown',
+      timestamp: new Date().toISOString()
+    });
+    
+    // Track metrics
+    metricsService.incrementCounter('websocket_messages_total', {
+      message_type: message.type || 'unknown'
+    });
+  });
+  
+  // Add debug logging for WebSocket connections
+  httpServer.on('upgrade', (request, socket, head) => {
+    const { pathname } = new URL(request.url || '', `http://${request.headers.host}`);
+    logger.debug(`[WebSocket] Upgrade request received for path: ${pathname}`);
+    console.log(`[WebSocket Debug] Upgrade request for path: ${pathname}`);
+  });
+  
   logger.info('[WebSocket] MainWebSocketServer initialized successfully');
   
   // Create a legacy WebSocket server for compatibility with existing code
