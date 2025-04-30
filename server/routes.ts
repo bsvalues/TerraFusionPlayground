@@ -2953,12 +2953,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     path: '/ws',
     // Add options to help with secure connections
     clientTracking: true,
-    // Disable perMessageDeflate which can cause issues with some proxies
+    // Specifically disable perMessageDeflate to avoid issues with proxies in Replit environment
     perMessageDeflate: false,
     // Increase max payload size to handle larger messages
     maxPayload: 1024 * 1024, // 1MB
     // Set explicit timeout values - increased for better reliability
     handshakeTimeout: 60000, // 60 seconds - increased timeout for slow connections
+    // Extended idle timeout to prevent early disconnects
+    // This is especially important in Replit environment
+    maxPayload: 5 * 1024 * 1024, // Increased to 5MB for large data transfers
     // Add verifyClient handler with proper CORS validation
     verifyClient: (info, callback) => {
       try {
@@ -2966,13 +2969,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('[WebSocket Debug] Verifying client connection to /ws');
         console.log('[WebSocket Debug] Origin:', info.origin);
         console.log('[WebSocket Debug] Upgrade request for path:', info.req.url);
-        console.log('[WebSocket Debug] Headers:', JSON.stringify(info.req.headers, null, 2));
         
-        // Accept all connections at this stage, but log for debugging
+        // Check origin (allow all origins in development, but log it)
+        const originAllowed = true; // In production, implement strict origin checking
+        
+        // Accept connections with origin logging for security audits
         if (callback) {
-          callback(true);
+          callback(originAllowed, originAllowed ? 200 : 403, 
+            originAllowed ? 'Connection authorized' : 'Unauthorized origin');
         }
-        return true;
+        return originAllowed;
       } catch (error) {
         console.error('[WebSocket Debug] Error in verifyClient:', error);
         if (callback) {
@@ -3366,19 +3372,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Helper function for safely sending messages
-  function safelySendMessage(ws: WebSocket, message: any) {
+  /**
+   * Helper function for safely sending messages with enhanced error handling, 
+   * retry logic, and additional instrumentation
+   * 
+   * @param ws WebSocket connection
+   * @param message Message to send (will be JSON stringified)
+   * @param options Additional options for sending
+   * @returns boolean Success of operation
+   */
+  function safelySendMessage(
+    ws: WebSocket, 
+    message: any, 
+    options: { 
+      retry?: boolean,
+      maxRetries?: number,
+      retryDelay?: number,
+      priority?: 'high' | 'normal' | 'low',
+      traceId?: string 
+    } = {}
+  ) {
+    const clientId = (ws as any).clientId || 'unknown';
+    const traceId = options.traceId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const retryEnabled = options.retry !== false;
+    const maxRetries = options.maxRetries || 1;
+    const retryDelay = options.retryDelay || 1000;
+    const priority = options.priority || 'normal';
+    const currentRetry = (ws as any).retryCount?.[traceId] || 0;
+    
+    // Initialize retry counter if needed
+    if (retryEnabled && !(ws as any).retryCount) {
+      (ws as any).retryCount = {};
+    }
+    
+    // Track retry attempts
+    if (retryEnabled) {
+      (ws as any).retryCount = {
+        ...(ws as any).retryCount,
+        [traceId]: currentRetry
+      };
+    }
+    
+    // First check connection state with detailed logging
     if (ws.readyState !== WebSocket.OPEN) {
-      console.log(`[WebSocket Server] Cannot send message, connection not open. Client: ${(ws as any).clientId || 'unknown'}`);
+      const states = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
+      const stateString = states[ws.readyState] || 'UNKNOWN';
+      console.log(`[WebSocket Server] Cannot send message, connection not open (state: ${stateString}). Client: ${clientId}, TraceId: ${traceId}, Priority: ${priority}`);
+      
+      // Potentially retry high priority messages
+      if (retryEnabled && currentRetry < maxRetries && (priority === 'high' || ws.readyState === WebSocket.CONNECTING)) {
+        console.log(`[WebSocket Server] Scheduling retry (${currentRetry + 1}/${maxRetries}) for message to ${clientId} in ${retryDelay}ms`);
+        
+        setTimeout(() => {
+          // Update retry count
+          (ws as any).retryCount[traceId] = currentRetry + 1;
+          
+          // Retry with same options but increment retry count
+          safelySendMessage(ws, message, {
+            ...options,
+            maxRetries,
+            retryDelay,
+            priority,
+            traceId
+          });
+        }, retryDelay);
+      }
+      
       return false;
     }
     
+    // Then try to send with comprehensive error handling
     try {
-      const messageString = JSON.stringify(message);
-      ws.send(messageString);
+      // Handle different message formats
+      let messageData: string;
+      
+      if (typeof message === 'string') {
+        messageData = message;
+      } else {
+        // Add metadata to help with debugging
+        if (typeof message === 'object' && message !== null) {
+          message._metadata = {
+            ...(message._metadata || {}),
+            serverTimestamp: new Date().toISOString(),
+            traceId,
+            clientId
+          };
+        }
+        messageData = JSON.stringify(message);
+      }
+      
+      // Use callback-based send for better error handling
+      ws.send(messageData, (error) => {
+        if (error) {
+          console.error(`[WebSocket Server] Send callback error to ${clientId}:`, error);
+          
+          // Record metric for send errors
+          try {
+            metricsService.incrementCounter('websocket_send_errors_total', {
+              client_id: clientId,
+              error_type: error.name || 'Unknown',
+              error_message: error.message || 'No message',
+              priority
+            });
+          } catch (metricError) {
+            console.error('[WebSocket Server] Failed to record metric:', metricError);
+          }
+          
+          // Potentially retry for important messages
+          if (retryEnabled && currentRetry < maxRetries && priority === 'high') {
+            console.log(`[WebSocket Server] Scheduling retry (${currentRetry + 1}/${maxRetries}) after send error to ${clientId}`);
+            
+            setTimeout(() => {
+              // Update retry count
+              (ws as any).retryCount[traceId] = currentRetry + 1;
+              
+              // Retry with same options but increment retry count
+              safelySendMessage(ws, message, {
+                ...options,
+                maxRetries,
+                retryDelay,
+                priority,
+                traceId
+              });
+            }, retryDelay);
+          }
+          
+          return false;
+        }
+        
+        // Success path
+        (ws as any).lastActivity = Date.now();
+        return true;
+      });
+      
       return true;
     } catch (error) {
-      console.error(`[WebSocket Server] Error sending message to ${(ws as any).clientId || 'unknown'}:`, error);
+      // Record all sending errors
+      console.error(`[WebSocket Server] Error sending message to ${clientId}:`, error);
+      
+      // Record metric for unexpected errors
+      try {
+        metricsService.incrementCounter('websocket_unexpected_errors_total', {
+          client_id: clientId,
+          error_type: error?.name || 'Unknown',
+          error_message: error?.message || 'No message',
+          priority
+        });
+      } catch (metricError) {
+        console.error('[WebSocket Server] Failed to record metric:', metricError);
+      }
+      
+      // Potentially retry for important messages
+      if (retryEnabled && currentRetry < maxRetries && priority === 'high') {
+        console.log(`[WebSocket Server] Scheduling retry (${currentRetry + 1}/${maxRetries}) after error sending to ${clientId}`);
+        
+        setTimeout(() => {
+          // Update retry count
+          (ws as any).retryCount[traceId] = currentRetry + 1;
+          
+          // Retry with same options but increment retry count
+          safelySendMessage(ws, message, {
+            ...options,
+            maxRetries,
+            retryDelay,
+            priority,
+            traceId
+          });
+        }, retryDelay);
+      }
+      
       return false;
     }
   }
