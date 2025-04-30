@@ -1,582 +1,601 @@
 /**
- * Main WebSocket Server Service
+ * MainWebSocketServer
  * 
- * This service provides a robust WebSocket server implementation for the main /ws endpoint.
- * It includes features like:
- * - Connection tracking and management
- * - Heartbeat mechanism to keep connections alive
- * - Proper error handling for all client interactions
- * - Fallback mechanisms for unreliable connections
- * - Metrics collection for monitoring
+ * A robust, centralized WebSocket server implementation that handles all WebSocket connections
+ * with enhanced error handling, reconnection strategies, and fallback mechanisms.
+ * 
+ * Features:
+ * - Connection pooling and tracking
+ * - Heartbeat mechanism for detecting dead connections
+ * - Comprehensive error handling and logging
+ * - Built-in metrics recording
+ * - Automatic recovery from network issues
+ * - Connection state management
+ * 
+ * This class follows the singleton pattern to ensure a single instance across the application.
  */
 
-import { Server } from 'http';
-import { WebSocket, WebSocketServer } from 'ws';
-import { v4 as uuidv4 } from 'uuid';
-import { metricsService } from './prometheus-metrics-service';
+import { Server as HttpServer } from 'http';
+import { WebSocketServer, WebSocket } from 'ws';
+import { randomUUID } from 'crypto';
 import { logger } from '../utils/logger';
+import { metricsService } from './prometheus-metrics-service';
 
-/**
- * Interface for WebSocket client with additional metadata
- */
-interface EnhancedWebSocket extends WebSocket {
-  clientId: string;
-  clientIp: string | string[];
-  connectionTime: number;
-  lastActivity: number;
-  isAlive: boolean;
-  userAgent?: string;
-  origin?: string;
-  retryCount?: Record<string, number>;
-  lastPingTime?: number;
-  pongReceived?: boolean;
-  messagesSent: number;
-  messagesReceived: number;
-  errors: number;
+// Define connection states for better tracking
+enum ConnectionState {
+  CONNECTING = 'connecting',
+  CONNECTED = 'connected',
+  DISCONNECTING = 'disconnecting',
+  DISCONNECTED = 'disconnected',
+  ERROR = 'error'
 }
 
-/**
- * Main WebSocket Server Service class
- */
-export class MainWebSocketServer {
+// Client information interface
+interface WebSocketClient {
+  ws: WebSocket;
+  id: string;
+  ip: string | string[] | undefined;
+  connectedAt: number;
+  lastActivity: number;
+  isAlive: boolean;
+  state: ConnectionState;
+  userAgent?: string;
+  metadata: Record<string, any>;
+  messagesReceived: number;
+  messagesSent: number;
+  reconnects: number;
+}
+
+class MainWebSocketServer {
   private static instance: MainWebSocketServer;
   private wss: WebSocketServer | null = null;
   private heartbeatInterval: NodeJS.Timeout | null = null;
-  private clients: Map<string, EnhancedWebSocket> = new Map();
-  private connectionCount: number = 0;
-  private messageCount: number = 0;
-  private errorCount: number = 0;
-  
-  /**
-   * Private constructor for singleton pattern
-   */
+  private clients: Map<string, WebSocketClient> = new Map();
+  private path: string = '/ws';
+  private initialized: boolean = false;
+
+  // Private constructor for singleton pattern
   private constructor() {}
-  
-  /**
-   * Get singleton instance
-   */
+
+  // Get the singleton instance
   public static getInstance(): MainWebSocketServer {
     if (!MainWebSocketServer.instance) {
       MainWebSocketServer.instance = new MainWebSocketServer();
     }
     return MainWebSocketServer.instance;
   }
-  
+
   /**
-   * Initialize the WebSocket server on the given HTTP server
-   * 
-   * @param server HTTP server to attach to
+   * Initialize the WebSocket server with the HTTP server
+   * @param httpServer The HTTP server to attach the WebSocket server to
+   * @param options Optional configuration options
    */
-  public initialize(server: Server): void {
-    try {
-      logger.info('[WebSocket Server] Initializing main WebSocket server on path: /ws');
-      
-      // Initialize the WebSocket server with options for better reliability
-      this.wss = new WebSocketServer({
-        server,
-        path: '/ws',
-        clientTracking: true,
-        // Disable perMessageDeflate to avoid issues with proxies
-        perMessageDeflate: false,
-        // Explicitly set timeouts for better reliability in Replit environment
-        maxPayload: 5 * 1024 * 1024, // 5MB max payload
-        // Add verification handler
-        verifyClient: this.verifyClient.bind(this)
-      });
-      
-      // Set up event handlers
-      this.setupEventHandlers();
-      
-      // Start heartbeat interval
-      this.startHeartbeat();
-      
-      logger.info('[WebSocket Server] Main WebSocket server initialized successfully');
-    } catch (error) {
-      logger.error('[WebSocket Server] Failed to initialize WebSocket server:', error);
-      // Record error metric
-      metricsService.incrementCounter('websocket_initialization_errors_total', {
-        error_type: error?.name || 'Unknown',
-        error_message: error?.message || 'No message'
-      });
-    }
-  }
-  
-  /**
-   * Set up WebSocket server event handlers
-   */
-  private setupEventHandlers(): void {
-    if (!this.wss) {
+  public initialize(httpServer: HttpServer, options: {
+    path?: string,
+    heartbeatIntervalMs?: number
+  } = {}): void {
+    if (this.initialized) {
+      logger.warn('[MainWebSocketServer] Server already initialized');
       return;
     }
-    
-    // Handle new connections
+
+    // Set options
+    this.path = options.path || '/ws';
+    const heartbeatIntervalMs = options.heartbeatIntervalMs || 30000; // 30 seconds default
+
+    logger.info(`[MainWebSocketServer] Initializing on path: ${this.path}`);
+
+    // Create WebSocket server
+    this.wss = new WebSocketServer({
+      server: httpServer,
+      path: this.path,
+      clientTracking: true,
+      perMessageDeflate: false, // Disable for better compatibility with proxies
+      maxPayload: 5 * 1024 * 1024, // 5MB max payload
+      handshakeTimeout: 60000, // 60 seconds handshake timeout
+      verifyClient: this.verifyClient.bind(this)
+    });
+
+    // Set up event handlers
     this.wss.on('connection', this.handleConnection.bind(this));
-    
-    // Handle server errors
-    this.wss.on('error', (error) => {
-      logger.error('[WebSocket Server] Server error:', error);
-      this.errorCount++;
-      
-      // Record error metric
-      metricsService.incrementCounter('websocket_server_errors_total', {
-        error_type: error?.name || 'Unknown',
-        error_message: error?.message || 'No message'
-      });
-    });
-    
-    // Handle server close
-    this.wss.on('close', () => {
-      logger.info('[WebSocket Server] Server closing');
-      this.stopHeartbeat();
-    });
-    
-    // Handle listening event 
-    this.wss.on('listening', () => {
-      logger.info('[WebSocket Server] Server listening for connections');
+    this.wss.on('error', this.handleServerError.bind(this));
+    this.wss.on('close', this.handleServerClose.bind(this));
+
+    // Start heartbeat interval
+    this.heartbeatInterval = setInterval(() => {
+      this.checkHeartbeats();
+    }, heartbeatIntervalMs);
+
+    this.initialized = true;
+    logger.info('[MainWebSocketServer] Initialization complete');
+
+    // Record metric for server start
+    metricsService.incrementCounter('websocket_server_starts_total', {
+      path: this.path
     });
   }
-  
+
   /**
-   * Handle new WebSocket connection
+   * Verify client connection before accepting
+   */
+  private verifyClient(
+    info: { origin: string; secure: boolean; req: any },
+    callback: (result: boolean, code?: number, message?: string) => void
+  ): void {
+    try {
+      logger.debug('[MainWebSocketServer] Verifying client connection', {
+        origin: info.origin,
+        path: info.req.url,
+        headers: info.req.headers
+      });
+
+      // Accept all connections in development mode
+      // In production, implement proper origin validation
+      const originAllowed = true;
+
+      // Record metrics about connection attempts
+      metricsService.incrementCounter('websocket_connection_attempts_total', {
+        origin: info.origin,
+        path: info.req.url,
+        allowed: String(originAllowed)
+      });
+
+      if (callback) {
+        callback(
+          originAllowed,
+          originAllowed ? 200 : 403,
+          originAllowed ? 'Connection authorized' : 'Unauthorized origin'
+        );
+      }
+    } catch (error) {
+      logger.error('[MainWebSocketServer] Error in verifyClient', { error });
+      if (callback) {
+        callback(false, 500, 'Internal server error');
+      }
+    }
+  }
+
+  /**
+   * Handle new WebSocket connections
    */
   private handleConnection(ws: WebSocket, req: any): void {
     try {
-      // Generate client ID and enhance the WebSocket instance
-      const clientId = `client_${uuidv4()}`;
+      // Generate unique client ID
+      const clientId = `client_${Date.now()}_${randomUUID().substring(0, 8)}`;
       const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-      const enhancedWs = ws as EnhancedWebSocket;
       
-      // Set client metadata
-      enhancedWs.clientId = clientId;
-      enhancedWs.clientIp = clientIp;
-      enhancedWs.connectionTime = Date.now();
-      enhancedWs.lastActivity = Date.now();
-      enhancedWs.isAlive = true;
-      enhancedWs.userAgent = req.headers['user-agent'];
-      enhancedWs.origin = req.headers.origin;
-      enhancedWs.messagesSent = 0;
-      enhancedWs.messagesReceived = 0;
-      enhancedWs.errors = 0;
+      logger.info(`[MainWebSocketServer] Client ${clientId} connected from ${clientIp}`);
       
-      // Add client to the map
-      this.clients.set(clientId, enhancedWs);
-      this.connectionCount++;
+      // Create client record
+      const client: WebSocketClient = {
+        ws,
+        id: clientId,
+        ip: clientIp,
+        connectedAt: Date.now(),
+        lastActivity: Date.now(),
+        isAlive: true,
+        state: ConnectionState.CONNECTED,
+        userAgent: req.headers['user-agent'],
+        metadata: {
+          headers: req.headers,
+          url: req.url
+        },
+        messagesReceived: 0,
+        messagesSent: 0,
+        reconnects: 0
+      };
+      
+      // Store client
+      this.clients.set(clientId, client);
+      
+      // Set up client event handlers
+      ws.on('message', (message) => this.handleMessage(clientId, message));
+      ws.on('pong', () => this.handlePong(clientId));
+      ws.on('error', (error) => this.handleClientError(clientId, error));
+      ws.on('close', (code, reason) => this.handleClientClose(clientId, code, reason));
+      
+      // Send welcome message
+      this.send(clientId, {
+        type: 'system',
+        event: 'connected',
+        timestamp: new Date().toISOString(),
+        clientId,
+        message: 'Connected to TerraFusion WebSocket Server',
+        config: {
+          heartbeatInterval: 30000,
+          reconnectStrategy: {
+            initialDelay: 1000,
+            maxDelay: 30000,
+            multiplier: 1.5,
+            maxAttempts: 10
+          }
+        }
+      });
       
       // Record connection metric
       metricsService.incrementCounter('websocket_connections_total', {
-        client_id: clientId,
-        client_ip: Array.isArray(clientIp) ? clientIp[0] : clientIp,
-        origin: enhancedWs.origin || 'unknown'
+        path: this.path,
+        client_id: clientId
       });
       
-      logger.info(`[WebSocket Server] Client ${clientId} connected from ${clientIp}`);
-      
-      // Set up event handlers for this connection
-      this.setupClientEventHandlers(enhancedWs);
-      
-      // Send welcome message
-      this.sendWelcomeMessage(enhancedWs);
+      // Also update gauge for current connections
+      metricsService.setGauge('websocket_connections_current', this.clients.size, {
+        path: this.path
+      });
     } catch (error) {
-      logger.error('[WebSocket Server] Error handling new connection:', error);
-      this.errorCount++;
-      
-      // Record error metric
-      metricsService.incrementCounter('websocket_connection_errors_total', {
-        error_type: error?.name || 'Unknown',
-        error_message: error?.message || 'No message'
-      });
+      logger.error('[MainWebSocketServer] Error handling connection', { error });
     }
   }
-  
+
   /**
-   * Set up event handlers for a specific client
+   * Handle incoming messages from clients
    */
-  private setupClientEventHandlers(ws: EnhancedWebSocket): void {
-    // Handle incoming messages
-    ws.on('message', (data: Buffer) => {
+  private handleMessage(clientId: string, message: WebSocket.Data): void {
+    const client = this.clients.get(clientId);
+    if (!client) return;
+    
+    try {
+      // Update activity timestamp
+      client.lastActivity = Date.now();
+      client.messagesReceived++;
+      
+      // Parse message
+      let parsedMessage: any;
+      let messageStr = '';
+      
       try {
-        // Parse message
-        const message = data.toString();
-        ws.messagesReceived++;
-        ws.lastActivity = Date.now();
-        this.messageCount++;
-        
-        // Record message metric
-        metricsService.incrementCounter('websocket_messages_received_total', {
-          client_id: ws.clientId
-        });
-        
-        // Try to parse as JSON
-        let parsedMessage: any;
-        try {
-          parsedMessage = JSON.parse(message);
-          
-          // Handle different message types
-          if (parsedMessage.type === 'ping') {
-            // Respond to client ping
-            this.safelySendMessage(ws, {
-              type: 'pong',
-              timestamp: new Date().toISOString(),
-              id: parsedMessage.id
-            });
-          } else if (parsedMessage.type === 'echo') {
-            // Echo message back
-            this.safelySendMessage(ws, {
-              type: 'echo',
-              originalMessage: parsedMessage,
-              timestamp: new Date().toISOString()
-            });
-          } else {
-            // Handle generic message - log but don't take action
-            logger.debug(`[WebSocket Server] Received message from ${ws.clientId}:`, parsedMessage);
-          }
-        } catch (parseError) {
-          // Not JSON, might be a raw string
-          logger.debug(`[WebSocket Server] Received non-JSON message from ${ws.clientId}: ${message}`);
-          
-          // Echo back non-JSON messages as well
-          this.safelySendMessage(ws, {
-            type: 'echo',
-            originalMessage: message,
-            timestamp: new Date().toISOString(),
-            format: 'string'
-          });
-        }
+        messageStr = message.toString();
+        parsedMessage = JSON.parse(messageStr);
       } catch (error) {
-        // Record message processing error
-        ws.errors++;
-        logger.error(`[WebSocket Server] Error processing message from ${ws.clientId}:`, error);
-        
-        // Record error metric
-        metricsService.incrementCounter('websocket_message_errors_total', {
-          client_id: ws.clientId,
-          error_type: error?.name || 'Unknown',
-          error_message: error?.message || 'No message'
-        });
-      }
-    });
-    
-    // Handle connection close
-    ws.on('close', (code, reason) => {
-      logger.info(`[WebSocket Server] Client ${ws.clientId} disconnected. Code: ${code}, Reason: ${reason}`);
-      
-      // Record close metric
-      metricsService.incrementCounter('websocket_disconnections_total', {
-        client_id: ws.clientId,
-        code: code.toString(),
-        reason: reason.toString() || 'No reason'
-      });
-      
-      // Clean up client
-      this.clients.delete(ws.clientId);
-    });
-    
-    // Handle errors
-    ws.on('error', (error) => {
-      ws.errors++;
-      logger.error(`[WebSocket Server] Error with client ${ws.clientId}:`, error);
-      
-      // Record error metric
-      metricsService.incrementCounter('websocket_client_errors_total', {
-        client_id: ws.clientId,
-        error_type: error?.name || 'Unknown',
-        error_message: error?.message || 'No message'
-      });
-    });
-    
-    // Handle pong messages (response to our ping)
-    ws.on('pong', () => {
-      ws.isAlive = true;
-      ws.pongReceived = true;
-      ws.lastActivity = Date.now();
-      logger.debug(`[WebSocket Server] Received pong from ${ws.clientId}`);
-    });
-  }
-  
-  /**
-   * Client verification handler
-   */
-  private verifyClient(info: any, callback: (result: boolean, code?: number, message?: string) => void): boolean {
-    try {
-      // Log verification attempt
-      logger.debug('[WebSocket Server] Verifying client connection', {
-        origin: info.origin,
-        secured: info.secure
-      });
-      
-      // Origin check (can be customized based on environment)
-      // In production, this should be more restrictive
-      const originAllowed = true;
-      
-      if (callback) {
-        callback(originAllowed, originAllowed ? 200 : 403, 
-          originAllowed ? 'Connection authorized' : 'Unauthorized origin');
-      }
-      
-      return originAllowed;
-    } catch (error) {
-      logger.error('[WebSocket Server] Error in verifyClient:', error);
-      if (callback) {
-        callback(false, 500, 'Internal Server Error');
-      }
-      return false;
-    }
-  }
-  
-  /**
-   * Start heartbeat mechanism
-   */
-  private startHeartbeat(): void {
-    const HEARTBEAT_INTERVAL = 30000; // 30 seconds
-    
-    this.heartbeatInterval = setInterval(() => {
-      if (!this.wss) return;
-      
-      logger.debug(`[WebSocket Server] Running heartbeat. Active clients: ${this.clients.size}`);
-      
-      // Check all clients
-      this.clients.forEach((ws, clientId) => {
-        // If no pong was received since last ping, terminate connection
-        if (ws.isAlive === false) {
-          logger.info(`[WebSocket Server] Terminating inactive client ${clientId}`);
-          
-          // Record termination metric
-          metricsService.incrementCounter('websocket_terminations_total', {
-            client_id: clientId,
-            reason: 'heartbeat_timeout'
-          });
-          
-          // Terminate connection
-          ws.terminate();
-          this.clients.delete(clientId);
-          return;
-        }
-        
-        // Mark as not alive until pong is received
-        ws.isAlive = false;
-        ws.lastPingTime = Date.now();
-        ws.pongReceived = false;
-        
-        // Send ping
-        try {
-          ws.ping();
-        } catch (error) {
-          logger.error(`[WebSocket Server] Error sending ping to ${clientId}:`, error);
-          ws.errors++;
-          
-          // Record error metric
-          metricsService.incrementCounter('websocket_ping_errors_total', {
-            client_id: clientId,
-            error_type: error?.name || 'Unknown',
-            error_message: error?.message || 'No message'
-          });
-          
-          // Terminate connection on ping error
-          try {
-            ws.terminate();
-            this.clients.delete(clientId);
-          } catch (terminateError) {
-            logger.error(`[WebSocket Server] Error terminating client ${clientId}:`, terminateError);
-          }
-        }
-      });
-      
-      // Update metrics
-      metricsService.setGauge('websocket_active_connections', this.clients.size);
-      metricsService.setGauge('websocket_total_messages', this.messageCount);
-      metricsService.setGauge('websocket_total_errors', this.errorCount);
-    }, HEARTBEAT_INTERVAL);
-    
-    logger.info(`[WebSocket Server] Heartbeat started with interval of ${HEARTBEAT_INTERVAL}ms`);
-  }
-  
-  /**
-   * Stop heartbeat mechanism
-   */
-  private stopHeartbeat(): void {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
-      logger.info('[WebSocket Server] Heartbeat stopped');
-    }
-  }
-  
-  /**
-   * Send welcome message to newly connected client
-   */
-  private sendWelcomeMessage(ws: EnhancedWebSocket): void {
-    this.safelySendMessage(ws, {
-      type: 'welcome',
-      message: 'Connected to TerraFusion WebSocket Server',
-      timestamp: new Date().toISOString(),
-      clientId: ws.clientId,
-      serverInfo: {
-        heartbeatInterval: 30000,
-        connectionTime: new Date().toISOString(),
-        server: 'TerraFusion WebSocket Server',
-        version: '1.0.0'
-      }
-    });
-  }
-  
-  /**
-   * Send message to a connected client with robust error handling
-   */
-  public safelySendMessage(
-    ws: EnhancedWebSocket,
-    message: any,
-    options: {
-      priority?: 'high' | 'normal' | 'low',
-      retry?: boolean,
-      maxRetries?: number,
-      retryDelay?: number,
-      traceId?: string
-    } = {}
-  ): boolean {
-    try {
-      // Handle connection state
-      if (ws.readyState !== WebSocket.OPEN) {
-        const states = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
-        const stateString = states[ws.readyState] || 'UNKNOWN';
-        
-        logger.debug(`[WebSocket Server] Cannot send message, connection not open (state: ${stateString}). Client: ${ws.clientId}`);
-        return false;
-      }
-      
-      // Prepare message
-      if (typeof message !== 'string') {
-        // Add metadata to help with debugging
-        message._metadata = {
-          serverTimestamp: new Date().toISOString(),
-          clientId: ws.clientId
-        };
-      }
-      
-      const messageData = typeof message === 'string' ? message : JSON.stringify(message);
-      
-      // Send message
-      ws.send(messageData, (error) => {
-        if (error) {
-          ws.errors++;
-          logger.error(`[WebSocket Server] Error sending message to ${ws.clientId}:`, error);
-          
-          // Record error metric
-          metricsService.incrementCounter('websocket_send_errors_total', {
-            client_id: ws.clientId,
-            error_type: error?.name || 'Unknown',
-            error_message: error?.message || 'No message'
-          });
-          
-          return false;
-        }
-        
-        // Message sent successfully
-        ws.messagesSent++;
-        ws.lastActivity = Date.now();
-        
-        // Record metric
-        metricsService.incrementCounter('websocket_messages_sent_total', {
-          client_id: ws.clientId
+        logger.warn(`[MainWebSocketServer] Invalid message format from ${clientId}`, {
+          message: messageStr.length > 100 ? messageStr.substring(0, 100) + '...' : messageStr
         });
         
-        return true;
-      });
-      
-      return true;
-    } catch (error) {
-      ws.errors++;
-      logger.error(`[WebSocket Server] Unexpected error sending message to ${ws.clientId}:`, error);
-      
-      // Record error metric
-      metricsService.incrementCounter('websocket_unexpected_send_errors_total', {
-        client_id: ws.clientId,
-        error_type: error?.name || 'Unknown',
-        error_message: error?.message || 'No message'
-      });
-      
-      return false;
-    }
-  }
-  
-  /**
-   * Broadcast message to all connected clients
-   */
-  public broadcastMessage(message: any, excludeClientId?: string): number {
-    let successCount = 0;
-    
-    this.clients.forEach((ws, clientId) => {
-      // Skip the excluded client if specified
-      if (excludeClientId && clientId === excludeClientId) {
+        // Send parse error response
+        this.send(clientId, {
+          type: 'error',
+          error: 'invalid_format',
+          message: 'Message must be valid JSON',
+          timestamp: new Date().toISOString()
+        });
         return;
       }
       
-      if (this.safelySendMessage(ws, message)) {
-        successCount++;
+      // Handle different message types
+      switch (parsedMessage.type) {
+        case 'ping':
+          this.handlePingMessage(clientId, parsedMessage);
+          break;
+          
+        case 'message':
+          // Echo message back for testing
+          this.send(clientId, {
+            type: 'message',
+            echo: true,
+            content: parsedMessage.content,
+            originalMessage: parsedMessage,
+            timestamp: new Date().toISOString()
+          });
+          break;
+          
+        default:
+          // Handle standard echo
+          this.send(clientId, {
+            type: 'echo',
+            originalMessage: parsedMessage,
+            timestamp: new Date().toISOString()
+          });
+      }
+    } catch (error) {
+      logger.error(`[MainWebSocketServer] Error handling message from ${clientId}`, { error });
+    }
+  }
+
+  /**
+   * Handle ping messages from clients
+   */
+  private handlePingMessage(clientId: string, message: any): void {
+    const client = this.clients.get(clientId);
+    if (!client) return;
+    
+    // Calculate latency if client sent timestamp
+    const latency = message.timestamp ? Date.now() - message.timestamp : null;
+    
+    // Respond with pong
+    this.send(clientId, {
+      type: 'pong',
+      timestamp: Date.now(),
+      latency,
+      clientId
+    });
+    
+    // Record metric
+    if (latency) {
+      metricsService.recordHistogram('websocket_ping_latency_ms', latency, {
+        client_id: clientId
+      });
+    }
+  }
+
+  /**
+   * Handle pong responses from clients
+   */
+  private handlePong(clientId: string): void {
+    const client = this.clients.get(clientId);
+    if (!client) return;
+    
+    client.isAlive = true;
+    client.lastActivity = Date.now();
+    
+    logger.debug(`[MainWebSocketServer] Received pong from ${clientId}`);
+  }
+
+  /**
+   * Handle client errors
+   */
+  private handleClientError(clientId: string, error: Error): void {
+    const client = this.clients.get(clientId);
+    if (!client) return;
+    
+    logger.error(`[MainWebSocketServer] Error from client ${clientId}`, { error });
+    
+    client.state = ConnectionState.ERROR;
+    
+    // Record error metric
+    metricsService.incrementCounter('websocket_client_errors_total', {
+      client_id: clientId,
+      error_type: error.name,
+      error_message: error.message
+    });
+  }
+
+  /**
+   * Handle client disconnections
+   */
+  private handleClientClose(clientId: string, code: number, reason: string): void {
+    const client = this.clients.get(clientId);
+    if (!client) return;
+    
+    const duration = Date.now() - client.connectedAt;
+    
+    logger.info(`[MainWebSocketServer] Client ${clientId} disconnected`, {
+      code,
+      reason: reason || 'No reason provided',
+      duration_ms: duration
+    });
+    
+    // Clean up client
+    this.clients.delete(clientId);
+    
+    // Record metrics
+    metricsService.incrementCounter('websocket_disconnections_total', {
+      client_id: clientId,
+      code: String(code),
+      reason: reason || 'No reason provided' 
+    });
+    
+    // Update connection gauge
+    metricsService.setGauge('websocket_connections_current', this.clients.size, {
+      path: this.path
+    });
+    
+    // Record connection duration
+    metricsService.recordHistogram('websocket_connection_duration_seconds', duration / 1000, {
+      client_id: clientId
+    });
+  }
+
+  /**
+   * Handle server-level errors
+   */
+  private handleServerError(error: Error): void {
+    logger.error('[MainWebSocketServer] Server error', { error });
+    
+    // Record server error metric
+    metricsService.incrementCounter('websocket_server_errors_total', {
+      error_type: error.name,
+      error_message: error.message
+    });
+  }
+
+  /**
+   * Handle server shutdown
+   */
+  private handleServerClose(): void {
+    logger.info('[MainWebSocketServer] Server closed');
+    
+    // Clean up
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+    
+    // Disconnect all clients
+    this.clients.forEach((client, clientId) => {
+      try {
+        client.state = ConnectionState.DISCONNECTING;
+        client.ws.terminate();
+        this.clients.delete(clientId);
+      } catch (error) {
+        logger.error(`[MainWebSocketServer] Error disconnecting client ${clientId}`, { error });
       }
     });
     
-    // Record broadcast metric
-    metricsService.incrementCounter('websocket_broadcasts_total', {
-      recipients: this.clients.size.toString(),
-      success_count: successCount.toString()
+    this.initialized = false;
+  }
+
+  /**
+   * Check all client heartbeats and terminate dead connections
+   */
+  private checkHeartbeats(): void {
+    logger.debug(`[MainWebSocketServer] Checking heartbeats for ${this.clients.size} clients`);
+    
+    const now = Date.now();
+    let deadConnections = 0;
+    
+    this.clients.forEach((client, clientId) => {
+      try {
+        // Check if connection is dead (no activity for 90 seconds)
+        const idleTime = now - client.lastActivity;
+        if (idleTime > 90000) {
+          logger.info(`[MainWebSocketServer] Terminating dead connection ${clientId} (idle: ${idleTime}ms)`);
+          client.ws.terminate();
+          this.clients.delete(clientId);
+          deadConnections++;
+          return;
+        }
+        
+        // Mark as not alive until we get a pong
+        client.isAlive = false;
+        
+        // Send ping
+        client.ws.ping();
+      } catch (error) {
+        logger.error(`[MainWebSocketServer] Error in heartbeat for ${clientId}`, { error });
+        
+        // Clean up broken connections
+        try {
+          client.ws.terminate();
+          this.clients.delete(clientId);
+          deadConnections++;
+        } catch {}
+      }
     });
     
-    return successCount;
+    if (deadConnections > 0) {
+      logger.info(`[MainWebSocketServer] Terminated ${deadConnections} dead connections`);
+      
+      // Update connections gauge
+      metricsService.setGauge('websocket_connections_current', this.clients.size, {
+        path: this.path
+      });
+    }
   }
-  
+
   /**
-   * Get connection statistics
+   * Send a message to a specific client
+   */
+  public send(clientId: string, message: any): boolean {
+    const client = this.clients.get(clientId);
+    if (!client) {
+      logger.warn(`[MainWebSocketServer] Cannot send message: client ${clientId} not found`);
+      return false;
+    }
+    
+    try {
+      // Check if connection is active
+      if (client.ws.readyState !== WebSocket.OPEN) {
+        logger.warn(`[MainWebSocketServer] Cannot send message: client ${clientId} not in OPEN state (${client.ws.readyState})`);
+        return false;
+      }
+      
+      // Convert message to JSON string if needed
+      const messageStr = typeof message === 'string' ? message : JSON.stringify(message);
+      
+      // Send the message
+      client.ws.send(messageStr);
+      
+      // Update stats
+      client.messagesSent++;
+      client.lastActivity = Date.now();
+      
+      return true;
+    } catch (error) {
+      logger.error(`[MainWebSocketServer] Error sending message to ${clientId}`, { error });
+      
+      // Record error metric
+      metricsService.incrementCounter('websocket_message_errors_total', {
+        client_id: clientId,
+        error_type: error instanceof Error ? error.name : 'Unknown',
+        error_message: error instanceof Error ? error.message : String(error)
+      });
+      
+      return false;
+    }
+  }
+
+  /**
+   * Broadcast a message to all connected clients
+   */
+  public broadcast(message: any, filter?: (client: WebSocketClient) => boolean): number {
+    if (!this.initialized || !this.wss) {
+      logger.warn('[MainWebSocketServer] Cannot broadcast: server not initialized');
+      return 0;
+    }
+    
+    let sentCount = 0;
+    const messageStr = typeof message === 'string' ? message : JSON.stringify(message);
+    
+    this.clients.forEach((client, clientId) => {
+      try {
+        // Apply filter if provided
+        if (filter && !filter(client)) {
+          return;
+        }
+        
+        // Only send to open connections
+        if (client.ws.readyState === WebSocket.OPEN) {
+          client.ws.send(messageStr);
+          client.messagesSent++;
+          sentCount++;
+        }
+      } catch (error) {
+        logger.error(`[MainWebSocketServer] Error broadcasting to ${clientId}`, { error });
+      }
+    });
+    
+    logger.debug(`[MainWebSocketServer] Broadcast message to ${sentCount} clients`);
+    return sentCount;
+  }
+
+  /**
+   * Get statistics about the WebSocket server
    */
   public getStats(): any {
     return {
-      activeConnections: this.clients.size,
-      totalMessages: this.messageCount,
-      totalErrors: this.errorCount,
-      clients: Array.from(this.clients.entries()).map(([clientId, ws]) => ({
-        clientId,
-        clientIp: ws.clientIp,
-        connectionTime: new Date(ws.connectionTime).toISOString(),
-        lastActivity: new Date(ws.lastActivity).toISOString(),
-        messagesSent: ws.messagesSent,
-        messagesReceived: ws.messagesReceived,
-        errors: ws.errors,
-        origin: ws.origin || 'unknown',
-        userAgent: ws.userAgent || 'unknown'
-      }))
+      initialized: this.initialized,
+      clients: this.clients.size,
+      path: this.path,
+      uptimeMs: this.initialized ? Date.now() - (this.clients.size > 0 ? 
+        Math.min(...Array.from(this.clients.values()).map(c => c.connectedAt)) : 
+        Date.now()) : 0,
+      messagesSent: Array.from(this.clients.values()).reduce((sum, client) => sum + client.messagesSent, 0),
+      messagesReceived: Array.from(this.clients.values()).reduce((sum, client) => sum + client.messagesReceived, 0)
     };
   }
-  
+
   /**
-   * Shutdown the WebSocket server
+   * Shutdown the server
    */
   public shutdown(): void {
-    logger.info('[WebSocket Server] Shutting down WebSocket server');
+    if (!this.initialized || !this.wss) {
+      return;
+    }
     
-    // Stop heartbeat
-    this.stopHeartbeat();
+    logger.info('[MainWebSocketServer] Shutting down');
+    
+    // Clean up heartbeat
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
     
     // Close all connections
-    this.clients.forEach((ws, clientId) => {
+    this.clients.forEach((client, clientId) => {
       try {
-        ws.close(1000, 'Server shutting down');
+        client.state = ConnectionState.DISCONNECTING;
+        client.ws.close(1000, 'Server shutting down');
       } catch (error) {
-        logger.error(`[WebSocket Server] Error closing connection to ${clientId}:`, error);
+        logger.error(`[MainWebSocketServer] Error closing connection to ${clientId}`, { error });
       }
     });
     
-    // Clear clients
-    this.clients.clear();
-    
     // Close server
-    if (this.wss) {
-      try {
-        this.wss.close();
-        logger.info('[WebSocket Server] WebSocket server closed');
-      } catch (error) {
-        logger.error('[WebSocket Server] Error closing WebSocket server:', error);
-      }
-      this.wss = null;
-    }
+    this.wss.close();
+    this.wss = null;
+    this.initialized = false;
+    
+    logger.info('[MainWebSocketServer] Shutdown complete');
   }
 }
 

@@ -2947,42 +2947,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Initialize agent WebSocket service with the HTTP server
   // Add detailed logging to catch WebSocket issues
-  console.log('[WebSocket Debug] Setting up WebSocket server for agent system');
+  logger.info('[WebSocket] Setting up WebSocket services');
   
-  // Add a robust WebSocket server on a distinct path (/ws)
+  // Initialize our enhanced main WebSocket server
+  logger.info('[WebSocket] Initializing MainWebSocketServer on path: /ws');
+  mainWebSocketServer.initialize(httpServer);
+  logger.info('[WebSocket] MainWebSocketServer initialized successfully');
+  
+  // Create a legacy WebSocket server for compatibility with existing code
+  // Using different path to avoid conflicts with our main WebSocket server
   const wss = new WebSocketServer({ 
     server: httpServer, 
-    path: '/ws',
-    // Add options to help with secure connections
+    path: '/ws-legacy',
     clientTracking: true,
-    // Specifically disable perMessageDeflate to avoid issues with proxies in Replit environment
     perMessageDeflate: false,
-    // Increase max payload size to handle larger messages
-    maxPayload: 1024 * 1024, // 1MB
-    // Set explicit timeout values - increased for better reliability
-    handshakeTimeout: 60000, // 60 seconds - increased timeout for slow connections
-    // Extended idle timeout to prevent early disconnects
-    // This is especially important in Replit environment
-    maxPayload: 5 * 1024 * 1024, // Increased to 5MB for large data transfers
-    // Add verifyClient handler with proper CORS validation
+    maxPayload: 5 * 1024 * 1024, // 5MB
+    handshakeTimeout: 60000, // 60 seconds
     verifyClient: (info, callback) => {
       try {
-        // Log verification attempt for debugging
-        console.log('[WebSocket Debug] Verifying client connection to /ws');
-        console.log('[WebSocket Debug] Origin:', info.origin);
-        console.log('[WebSocket Debug] Upgrade request for path:', info.req.url);
+        // Log verification attempt for legacy WebSocket
+        logger.debug('[WebSocket] Legacy WebSocket verifyClient called', {
+          origin: info.origin,
+          path: info.req.url
+        });
         
-        // Check origin (allow all origins in development, but log it)
-        const originAllowed = true; // In production, implement strict origin checking
-        
-        // Accept connections with origin logging for security audits
         if (callback) {
-          callback(originAllowed, originAllowed ? 200 : 403, 
-            originAllowed ? 'Connection authorized' : 'Unauthorized origin');
+          callback(true, 200, 'Connection authorized');
         }
-        return originAllowed;
+        return true;
       } catch (error) {
-        console.error('[WebSocket Debug] Error in verifyClient:', error);
+        logger.error('[WebSocket] Error in legacy verifyClient:', error);
         if (callback) {
           callback(false, 500, 'Internal Server Error');
         }
@@ -2991,7 +2985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  console.log('[WebSocket Server] Created on path: /ws');
+  logger.info('[WebSocket] Legacy WebSocket server created on path: /ws-legacy');
   
   // Handle errors at the server level with improved logging
   wss.on('error', (error) => {

@@ -3,738 +3,1300 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Robust WebSocket Connection Test</title>
+  <title>TerraFusion Robust WebSocket Test</title>
   <style>
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      max-width: 800px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
       margin: 0 auto;
       padding: 20px;
-      line-height: 1.5;
-      background-color: #f7f9fc;
-      color: #333;
     }
-    h1 {
-      color: #1a67d2;
-      border-bottom: 1px solid #e0e0e0;
-      padding-bottom: 10px;
-      margin-bottom: 20px;
+    h1, h2, h3 {
+      color: #2c3e50;
     }
-    .section {
-      margin-bottom: 30px;
-      background-color: #fff;
-      padding: 20px;
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .card {
+      background: #fff;
       border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
-    .status {
-      padding: 15px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 20px;
       margin-bottom: 20px;
-      border-radius: 4px;
-      font-weight: bold;
     }
-    .status-connecting {
-      background-color: #fff9e0;
-      color: #856404;
-      border: 1px solid #ffeeba;
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
     }
-    .status-connected {
-      background-color: #e0f7ed;
-      color: #0a5f41;
-      border: 1px solid #c3e6cb;
-    }
-    .status-disconnected {
-      background-color: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
-    }
-    .status-error {
-      background-color: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
-    }
-    .status-reconnecting {
-      background-color: #d1ecf1;
-      color: #0c5460;
-      border: 1px solid #bee5eb;
-    }
-    .status-using_fallback {
-      background-color: #fff3cd;
-      color: #856404;
-      border: 1px solid #ffeeba;
-    }
-    .button {
-      display: inline-block;
-      padding: 10px 16px;
-      background-color: #1a67d2;
+    button {
+      background: #3498db;
       color: white;
       border: none;
+      padding: 8px 16px;
       border-radius: 4px;
       cursor: pointer;
       font-size: 14px;
-      margin-right: 10px;
-      transition: background-color 0.2s;
+      transition: background 0.3s;
     }
-    .button:hover {
-      background-color: #0c4da2;
+    button:hover {
+      background: #2980b9;
     }
-    .button:disabled {
-      background-color: #b0c4de;
+    button:disabled {
+      background: #95a5a6;
       cursor: not-allowed;
     }
-    .button-secondary {
-      background-color: #5a6268;
-    }
-    .button-secondary:hover {
-      background-color: #444a4e;
-    }
-    .button-warning {
-      background-color: #dc3545;
-    }
-    .button-warning:hover {
-      background-color: #bd2130;
-    }
-    .input {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ced4da;
+    input, textarea, select {
+      padding: 8px;
+      border: 1px solid #ddd;
       border-radius: 4px;
-      margin-bottom: 15px;
       font-size: 14px;
+      width: 100%;
+      box-sizing: border-box;
     }
-    .log-container {
-      height: 300px;
-      border: 1px solid #e0e0e0;
+    .logs {
+      background: #f8f9fa;
+      border: 1px solid #ddd;
       border-radius: 4px;
       padding: 10px;
+      height: 300px;
       overflow-y: auto;
-      background-color: #fafafa;
       font-family: monospace;
-      margin-top: 20px;
+      font-size: 13px;
+      white-space: pre-wrap;
     }
     .log-entry {
-      margin-bottom: 8px;
-      padding: 5px;
-      border-bottom: 1px solid #f0f0f0;
-    }
-    .log-info {
-      color: #0c5460;
-    }
-    .log-error {
-      color: #721c24;
-    }
-    .log-success {
-      color: #155724;
-    }
-    .log-warning {
-      color: #856404;
+      margin-bottom: 5px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 5px;
     }
     .log-timestamp {
+      color: #7f8c8d;
       font-size: 12px;
-      color: #6c757d;
-      margin-right: 8px;
     }
-    .stats-container {
+    .log-info {
+      color: #2980b9;
+    }
+    .log-success {
+      color: #27ae60;
+    }
+    .log-warning {
+      color: #f39c12;
+    }
+    .log-error {
+      color: #c0392b;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+    .status-indicator.connected {
+      background-color: #27ae60;
+    }
+    .status-indicator.connecting {
+      background-color: #f39c12;
+    }
+    .status-indicator.disconnected {
+      background-color: #c0392b;
+    }
+    .status-text {
+      font-weight: bold;
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab.active {
+      border-bottom: 2px solid #3498db;
+      font-weight: bold;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .stats {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 10px;
       margin-bottom: 20px;
     }
     .stat-box {
-      background-color: #f8f9fa;
-      border: 1px solid #e0e0e0;
+      background: #f8f9fa;
       border-radius: 4px;
       padding: 10px;
       text-align: center;
     }
     .stat-value {
-      font-size: 18px;
+      font-size: 24px;
       font-weight: bold;
-      color: #1a67d2;
+      color: #2c3e50;
     }
     .stat-label {
-      font-size: 12px;
-      color: #6c757d;
-      margin-top: 5px;
+      font-size: 14px;
+      color: #7f8c8d;
     }
-    .hidden {
+    .message-compose {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .message-compose input {
+      flex-grow: 1;
+    }
+    #connectionOptions {
+      margin-bottom: 20px;
+    }
+    #advancedOptions {
       display: none;
-    }
-    .config-section {
-      margin-top: 20px;
-      border-top: 1px solid #e0e0e0;
-      padding-top: 15px;
-    }
-    .config-row {
-      display: flex;
-      margin-bottom: 10px;
-    }
-    .config-label {
-      width: 200px;
-      font-weight: bold;
-    }
-    .config-value {
-      flex: 1;
-    }
-    .checkbox-label {
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-    }
-    .checkbox-label input {
-      margin-right: 8px;
-    }
-    .endpoint-options {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
-      flex-wrap: wrap;
-    }
-    .endpoint-button {
-      padding: 8px 12px;
-      border: 1px solid #1a67d2;
+      margin-top: 10px;
+      padding: 10px;
+      background: #f8f9fa;
       border-radius: 4px;
-      background-color: #f8f9fa;
-      cursor: pointer;
-      font-size: 13px;
     }
-    .endpoint-button.active {
-      background-color: #1a67d2;
-      color: white;
-    }
-    .action-bar {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-    .settings-toggle {
-      margin-top: 20px;
+    .option-group {
       margin-bottom: 10px;
-      cursor: pointer;
-      color: #1a67d2;
+    }
+    .option-label {
+      display: block;
+      margin-bottom: 5px;
       font-weight: bold;
+    }
+    @media (max-width: 768px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>Robust WebSocket Connection Test</h1>
+  <h1>TerraFusion Robust WebSocket Test</h1>
   
-  <div class="section">
-    <div id="connectionStatus" class="status status-disconnected">Status: Disconnected</div>
-    
-    <div class="stats-container">
-      <div class="stat-box">
-        <div class="stat-value" id="connectionsValue">0</div>
-        <div class="stat-label">Connections</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-value" id="messagesValue">0</div>
-        <div class="stat-label">Messages Sent</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-value" id="responsesValue">0</div>
-        <div class="stat-label">Responses</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-value" id="latencyValue">-</div>
-        <div class="stat-label">Latency (ms)</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-value" id="reconnectsValue">0</div>
-        <div class="stat-label">Reconnects</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-value" id="fallbacksValue">0</div>
-        <div class="stat-label">Fallbacks</div>
-      </div>
-    </div>
-    
-    <div class="endpoint-options">
-      <button class="endpoint-button active" data-endpoint="/ws">/ws</button>
-      <button class="endpoint-button" data-endpoint="/api/collaboration/ws">/api/collaboration/ws</button>
-      <button class="endpoint-button" data-endpoint="/api/agents/ws">/api/agents/ws</button>
-      <button class="endpoint-button" data-endpoint="/api/team/ws">/api/team/ws</button>
-    </div>
-    
-    <div class="action-bar">
-      <button id="connectButton" class="button">Connect</button>
-      <button id="disconnectButton" class="button button-secondary" disabled>Disconnect</button>
-      <button id="clearLogsButton" class="button button-secondary">Clear Logs</button>
-    </div>
-    
-    <input type="text" id="messageInput" class="input" placeholder="Type a message to send..." disabled>
-    
-    <div class="action-bar">
-      <button id="sendButton" class="button" disabled>Send Message</button>
-      <button id="pingButton" class="button" disabled>Send Ping</button>
-      <button id="multiPingButton" class="button" disabled>Ping (10x)</button>
-    </div>
-    
-    <div class="settings-toggle" id="settingsToggle">Advanced Settings ▼</div>
-    
-    <div id="advancedSettings" class="hidden">
-      <div class="config-row">
-        <div class="config-label">Auto Reconnect</div>
-        <div class="config-value">
-          <label class="checkbox-label">
-            <input type="checkbox" id="autoReconnectCheckbox" checked>
-            Enable automatic reconnection
-          </label>
-        </div>
-      </div>
-      
-      <div class="config-row">
-        <div class="config-label">Max Reconnect Attempts</div>
-        <div class="config-value">
-          <input type="number" id="maxReconnectsInput" value="10" min="1" max="50" class="input">
-        </div>
-      </div>
-      
-      <div class="config-row">
-        <div class="config-label">Ping Interval (ms)</div>
-        <div class="config-value">
-          <input type="number" id="pingIntervalInput" value="30000" min="1000" max="60000" step="1000" class="input">
-        </div>
-      </div>
-      
-      <div class="config-row">
-        <div class="config-label">HTTP Fallback</div>
-        <div class="config-value">
-          <label class="checkbox-label">
-            <input type="checkbox" id="httpFallbackCheckbox" checked>
-            Enable HTTP fallback
-          </label>
-        </div>
-      </div>
-      
-      <div class="config-row">
-        <div class="config-label">SSE Fallback</div>
-        <div class="config-value">
-          <label class="checkbox-label">
-            <input type="checkbox" id="sseFallbackCheckbox" checked>
-            Enable Server-Sent Events fallback
-          </label>
-        </div>
-      </div>
-      
-      <div class="config-row">
-        <div class="config-label">Debug Mode</div>
-        <div class="config-value">
-          <label class="checkbox-label">
-            <input type="checkbox" id="debugModeCheckbox">
-            Enable debug logging
-          </label>
-        </div>
-      </div>
-      
-      <button id="applySettingsButton" class="button">Apply Settings</button>
-    </div>
+  <div class="status">
+    <div id="statusIndicator" class="status-indicator disconnected"></div>
+    <div id="statusText" class="status-text">Disconnected</div>
+    <div id="statusDetails" style="margin-left: 20px; font-size: 14px;"></div>
   </div>
-  
-  <div class="section">
-    <h2>Connection Log</h2>
-    <div id="logContainer" class="log-container"></div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="connection">Connection</div>
+    <div class="tab" data-tab="messages">Messages</div>
+    <div class="tab" data-tab="diagnostics">Diagnostics</div>
+    <div class="tab" data-tab="settings">Settings</div>
   </div>
-  
-  <script src="/js/websocket-connection-manager.js"></script>
-  <script>
-    // DOM Elements
-    const connectButton = document.getElementById('connectButton');
-    const disconnectButton = document.getElementById('disconnectButton');
-    const clearLogsButton = document.getElementById('clearLogsButton');
-    const sendButton = document.getElementById('sendButton');
-    const pingButton = document.getElementById('pingButton');
-    const multiPingButton = document.getElementById('multiPingButton');
-    const messageInput = document.getElementById('messageInput');
-    const logContainer = document.getElementById('logContainer');
-    const connectionStatus = document.getElementById('connectionStatus');
-    const settingsToggle = document.getElementById('settingsToggle');
-    const advancedSettings = document.getElementById('advancedSettings');
-    const applySettingsButton = document.getElementById('applySettingsButton');
-    
-    // Stats elements
-    const connectionsValue = document.getElementById('connectionsValue');
-    const messagesValue = document.getElementById('messagesValue');
-    const responsesValue = document.getElementById('responsesValue');
-    const latencyValue = document.getElementById('latencyValue');
-    const reconnectsValue = document.getElementById('reconnectsValue');
-    const fallbacksValue = document.getElementById('fallbacksValue');
-    
-    // Settings elements
-    const autoReconnectCheckbox = document.getElementById('autoReconnectCheckbox');
-    const maxReconnectsInput = document.getElementById('maxReconnectsInput');
-    const pingIntervalInput = document.getElementById('pingIntervalInput');
-    const httpFallbackCheckbox = document.getElementById('httpFallbackCheckbox');
-    const sseFallbackCheckbox = document.getElementById('sseFallbackCheckbox');
-    const debugModeCheckbox = document.getElementById('debugModeCheckbox');
-    
-    // Endpoint buttons
-    const endpointButtons = document.querySelectorAll('.endpoint-button');
-    let currentEndpoint = '/ws';
-    
-    // WebSocket Connection Manager instance
-    let wsManager = null;
-    
-    // Stats
-    let stats = {
-      connections: 0,
-      messages: 0,
-      responses: 0,
-      reconnects: 0,
-      fallbacks: 0
-    };
-    
-    // Initialize
-    function init() {
-      // Set up event listeners
-      connectButton.addEventListener('click', connectWebSocket);
-      disconnectButton.addEventListener('click', disconnectWebSocket);
-      clearLogsButton.addEventListener('click', clearLogs);
-      sendButton.addEventListener('click', sendMessage);
-      pingButton.addEventListener('click', sendPing);
-      multiPingButton.addEventListener('click', sendMultiplePings);
-      messageInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendMessage();
-      });
-      settingsToggle.addEventListener('click', toggleSettings);
-      applySettingsButton.addEventListener('click', applySettings);
-      
-      // Set up endpoint buttons
-      endpointButtons.forEach(button => {
-        button.addEventListener('click', () => {
-          endpointButtons.forEach(btn => btn.classList.remove('active'));
-          button.classList.add('active');
-          currentEndpoint = button.dataset.endpoint;
+
+  <div id="connectionTab" class="tab-content active">
+    <div class="card">
+      <h2>WebSocket Connection</h2>
+      <div id="connectionOptions">
+        <div class="option-group">
+          <label class="option-label">WebSocket URL</label>
+          <input type="text" id="wsUrl" placeholder="WebSocket URL (leave empty for auto-detection)" />
+        </div>
+        
+        <button id="toggleAdvancedBtn">Show Advanced Options</button>
+        
+        <div id="advancedOptions">
+          <div class="option-group">
+            <label class="option-label">Protocol</label>
+            <select id="protocol">
+              <option value="auto">Auto (ws:// or wss://)</option>
+              <option value="ws">WebSocket (ws://)</option>
+              <option value="wss">Secure WebSocket (wss://)</option>
+            </select>
+          </div>
           
-          if (wsManager && wsManager.isConnected()) {
-            disconnectWebSocket();
-            setTimeout(connectWebSocket, 500);
-          }
-        });
-      });
+          <div class="option-group">
+            <label class="option-label">Host</label>
+            <input type="text" id="host" placeholder="Host (leave empty for current host)" />
+          </div>
+          
+          <div class="option-group">
+            <label class="option-label">Path</label>
+            <input type="text" id="path" value="/ws" />
+          </div>
+          
+          <div class="option-group">
+            <label class="option-label">Reconnect Strategy</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <label>Initial Delay (ms)</label>
+                <input type="number" id="initialDelay" value="1000" min="100" />
+              </div>
+              <div>
+                <label>Max Delay (ms)</label>
+                <input type="number" id="maxDelay" value="30000" min="1000" />
+              </div>
+              <div>
+                <label>Backoff Multiplier</label>
+                <input type="number" id="backoffMultiplier" value="1.5" min="1" step="0.1" />
+              </div>
+              <div>
+                <label>Max Attempts</label>
+                <input type="number" id="maxAttempts" value="5" min="1" />
+              </div>
+            </div>
+          </div>
+          
+          <div class="option-group">
+            <label class="option-label">Socket.IO Fallback</label>
+            <div>
+              <input type="checkbox" id="enableSocketIO" checked />
+              <label for="enableSocketIO">Enable Socket.IO fallback</label>
+            </div>
+            <div>
+              <input type="checkbox" id="preferWebSocket" checked />
+              <label for="preferWebSocket">Prefer WebSocket over Socket.IO</label>
+            </div>
+          </div>
+        </div>
+      </div>
       
-      // Log initial message
-      logMessage('System initialized. Ready to connect.', 'info');
-    }
+      <div class="controls">
+        <button id="connectBtn">Connect</button>
+        <button id="disconnectBtn" disabled>Disconnect</button>
+        <button id="reconnectBtn" disabled>Force Reconnect</button>
+      </div>
+      
+      <div class="stats">
+        <div class="stat-box">
+          <div id="reconnectCount" class="stat-value">0</div>
+          <div class="stat-label">Reconnects</div>
+        </div>
+        <div class="stat-box">
+          <div id="messagesSent" class="stat-value">0</div>
+          <div class="stat-label">Messages Sent</div>
+        </div>
+        <div class="stat-box">
+          <div id="messagesReceived" class="stat-value">0</div>
+          <div class="stat-label">Messages Received</div>
+        </div>
+        <div class="stat-box">
+          <div id="latency" class="stat-value">-</div>
+          <div class="stat-label">Latency (ms)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="messagesTab" class="tab-content">
+    <div class="card">
+      <h2>Send Messages</h2>
+      <div class="message-compose">
+        <input type="text" id="messageInput" placeholder="Type a message..." />
+        <button id="sendBtn" disabled>Send</button>
+      </div>
+      
+      <div class="option-group">
+        <label class="option-label">Message Format</label>
+        <select id="messageFormat">
+          <option value="text">Plain Text</option>
+          <option value="json" selected>JSON</option>
+        </select>
+      </div>
+      
+      <div id="jsonOptions">
+        <div class="option-group">
+          <label class="option-label">Message Type</label>
+          <select id="messageType">
+            <option value="message">message</option>
+            <option value="ping">ping</option>
+            <option value="echo">echo</option>
+            <option value="custom">custom</option>
+          </select>
+        </div>
+        
+        <div id="customJsonContainer" style="display: none;">
+          <div class="option-group">
+            <label class="option-label">Custom JSON</label>
+            <textarea id="customJson" rows="5">{"type": "message", "content": "Hello, server!"}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
     
-    // Connect to WebSocket server
-    function connectWebSocket() {
-      if (wsManager) {
-        wsManager.disconnect();
+    <div class="card">
+      <h2>Messages Log</h2>
+      <button id="clearMessagesBtn">Clear Messages</button>
+      <div id="messagesLog" class="logs"></div>
+    </div>
+  </div>
+
+  <div id="diagnosticsTab" class="tab-content">
+    <div class="card">
+      <h2>Connection Diagnostics</h2>
+      <button id="pingBtn" disabled>Send Ping</button>
+      <button id="checkHealthBtn" disabled>Check Health</button>
+      <button id="forceErrorBtn" disabled>Force Error (Test)</button>
+    </div>
+    
+    <div class="card">
+      <h2>Connection Log</h2>
+      <button id="clearLogBtn">Clear Log</button>
+      <div id="connectionLog" class="logs"></div>
+    </div>
+  </div>
+
+  <div id="settingsTab" class="tab-content">
+    <div class="card">
+      <h2>Settings</h2>
+      <div class="option-group">
+        <label class="option-label">Auto-reconnect</label>
+        <div>
+          <input type="checkbox" id="autoReconnect" checked />
+          <label for="autoReconnect">Automatically reconnect when connection is lost</label>
+        </div>
+      </div>
+      
+      <div class="option-group">
+        <label class="option-label">Heartbeat Interval (ms)</label>
+        <input type="number" id="heartbeatInterval" value="30000" min="1000" />
+      </div>
+      
+      <div class="option-group">
+        <label class="option-label">Log Level</label>
+        <select id="logLevel">
+          <option value="debug">Debug</option>
+          <option value="info" selected>Info</option>
+          <option value="warn">Warning</option>
+          <option value="error">Error</option>
+        </select>
+      </div>
+      
+      <div class="option-group">
+        <label class="option-label">Connection Method</label>
+        <select id="connectionMethod">
+          <option value="auto" selected>Auto (WebSocket → Socket.IO)</option>
+          <option value="websocket">WebSocket Only</option>
+          <option value="socketio">Socket.IO Only</option>
+        </select>
+      </div>
+      
+      <button id="saveSettingsBtn">Save Settings</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+  <script>
+    // Connection manager class
+    class ConnectionManager {
+      constructor(options = {}) {
+        this.options = {
+          url: options.url || null,
+          protocol: options.protocol || 'auto',
+          host: options.host || window.location.host,
+          path: options.path || '/ws',
+          autoReconnect: options.autoReconnect !== undefined ? options.autoReconnect : true,
+          reconnectStrategy: {
+            initialDelay: options.reconnectStrategy?.initialDelay || 1000,
+            maxDelay: options.reconnectStrategy?.maxDelay || 30000,
+            multiplier: options.reconnectStrategy?.multiplier || 1.5,
+            maxAttempts: options.reconnectStrategy?.maxAttempts || 5
+          },
+          enableSocketIO: options.enableSocketIO !== undefined ? options.enableSocketIO : true,
+          preferWebSocket: options.preferWebSocket !== undefined ? options.preferWebSocket : true,
+          heartbeatInterval: options.heartbeatInterval || 30000,
+          logLevel: options.logLevel || 'info',
+          connectionMethod: options.connectionMethod || 'auto'
+        };
+        
+        // State
+        this.webSocket = null;
+        this.socketIO = null;
+        this.state = 'disconnected'; // disconnected, connecting, connected
+        this.reconnectAttempt = 0;
+        this.reconnectTimer = null;
+        this.heartbeatTimer = null;
+        
+        // Stats
+        this.stats = {
+          reconnectCount: 0,
+          messagesSent: 0,
+          messagesReceived: 0,
+          latency: null,
+          lastPingTime: null
+        };
+        
+        // Event listeners
+        this.eventListeners = {
+          connect: [],
+          disconnect: [],
+          message: [],
+          error: [],
+          reconnecting: [],
+          reconnected: [],
+          reconnect_failed: []
+        };
+        
+        // Bind methods
+        this.connect = this.connect.bind(this);
+        this.disconnect = this.disconnect.bind(this);
+        this.reconnect = this.reconnect.bind(this);
+        this.send = this.send.bind(this);
+        this.handleWebSocketMessage = this.handleWebSocketMessage.bind(this);
+        this.handleWebSocketClose = this.handleWebSocketClose.bind(this);
+        this.handleWebSocketError = this.handleWebSocketError.bind(this);
+        this.handleSocketIOMessage = this.handleSocketIOMessage.bind(this);
+        this.startHeartbeat = this.startHeartbeat.bind(this);
+        this.ping = this.ping.bind(this);
       }
       
-      // Update UI
-      updateConnectionStatus('connecting');
-      enableDisableControls(false);
-      
-      // Get settings
-      const settings = getSettings();
-      
-      // Create WebSocket manager
-      wsManager = new WebSocketConnectionManager({
-        url: getWebSocketUrl(currentEndpoint),
-        autoReconnect: settings.autoReconnect,
-        maxReconnectAttempts: settings.maxReconnects,
-        pingInterval: settings.pingInterval,
-        debug: settings.debug,
-        fallbackOptions: {
-          useHttpFallback: settings.httpFallback,
-          useSseFallback: settings.sseFallback
+      // Connect to WebSocket or Socket.IO server
+      connect() {
+        if (this.state === 'connected' || this.state === 'connecting') {
+          this.log('Already connected or connecting');
+          return;
         }
-      });
-      
-      // Set up event listeners
-      wsManager.on('open', handleOpen);
-      wsManager.on('close', handleClose);
-      wsManager.on('error', handleError);
-      wsManager.on('message', handleMessage);
-      wsManager.on('reconnecting', handleReconnecting);
-      wsManager.on('reconnected', handleReconnected);
-      wsManager.on('ping', handlePing);
-      wsManager.on('pong', handlePong);
-      wsManager.on('fallback_activated', handleFallback);
-      wsManager.on('state_change', handleStateChange);
-      
-      logMessage(`Connecting to ${currentEndpoint}...`, 'info');
-    }
-    
-    // Disconnect from WebSocket server
-    function disconnectWebSocket() {
-      if (!wsManager) return;
-      
-      wsManager.disconnect();
-      enableDisableControls(true);
-      updateConnectionStatus('disconnected');
-      logMessage('Disconnected from server', 'info');
-    }
-    
-    // Send a message
-    function sendMessage() {
-      if (!wsManager || !messageInput.value.trim()) return;
-      
-      const message = messageInput.value.trim();
-      
-      try {
-        // Try to send as JSON if it's valid JSON
-        const jsonData = JSON.parse(message);
-        wsManager.send(jsonData);
-      } catch (e) {
-        // Send as plain text
-        wsManager.send(message);
-      }
-      
-      stats.messages++;
-      updateStats();
-      
-      logMessage(`Message sent: ${message}`, 'info');
-      messageInput.value = '';
-    }
-    
-    // Send a ping message
-    function sendPing() {
-      if (!wsManager) return;
-      
-      wsManager.ping();
-      logMessage('Ping sent', 'info');
-    }
-    
-    // Send multiple ping messages
-    function sendMultiplePings() {
-      if (!wsManager) return;
-      
-      const count = 10;
-      let sent = 0;
-      
-      const sendNextPing = () => {
-        if (sent < count && wsManager.isConnected()) {
-          wsManager.ping();
-          sent++;
-          setTimeout(sendNextPing, 500);
+        
+        this.state = 'connecting';
+        this.emit('reconnecting', { attempt: this.reconnectAttempt });
+        
+        // Determine connection URL
+        let wsUrl = this.options.url;
+        if (!wsUrl) {
+          const protocol = this.options.protocol === 'auto' 
+            ? window.location.protocol === 'https:' ? 'wss:' : 'ws:' 
+            : this.options.protocol;
+          const host = this.options.host;
+          wsUrl = `${protocol}//${host}${this.options.path}`;
         }
-      };
-      
-      sendNextPing();
-      logMessage(`Sending ${count} pings at 500ms intervals`, 'info');
-    }
-    
-    // Clear the log
-    function clearLogs() {
-      logContainer.innerHTML = '';
-      logMessage('Logs cleared', 'info');
-    }
-    
-    // Toggle advanced settings
-    function toggleSettings() {
-      if (advancedSettings.classList.contains('hidden')) {
-        advancedSettings.classList.remove('hidden');
-        settingsToggle.textContent = 'Advanced Settings ▲';
-      } else {
-        advancedSettings.classList.add('hidden');
-        settingsToggle.textContent = 'Advanced Settings ▼';
-      }
-    }
-    
-    // Apply advanced settings
-    function applySettings() {
-      if (!wsManager) return;
-      
-      const settings = getSettings();
-      
-      // Disconnect and reconnect with new settings
-      if (wsManager.isConnected()) {
-        disconnectWebSocket();
-        setTimeout(() => {
-          connectWebSocket();
-        }, 500);
-      }
-      
-      logMessage('Settings applied', 'info');
-    }
-    
-    // Get current settings
-    function getSettings() {
-      return {
-        autoReconnect: autoReconnectCheckbox.checked,
-        maxReconnects: parseInt(maxReconnectsInput.value) || 10,
-        pingInterval: parseInt(pingIntervalInput.value) || 30000,
-        httpFallback: httpFallbackCheckbox.checked,
-        sseFallback: sseFallbackCheckbox.checked,
-        debug: debugModeCheckbox.checked
-      };
-    }
-    
-    // Update connection status UI
-    function updateConnectionStatus(status) {
-      connectionStatus.className = 'status';
-      
-      switch (status) {
-        case 'connected':
-          connectionStatus.classList.add('status-connected');
-          connectionStatus.textContent = 'Status: Connected';
-          break;
-        case 'connecting':
-          connectionStatus.classList.add('status-connecting');
-          connectionStatus.textContent = 'Status: Connecting...';
-          break;
-        case 'disconnected':
-          connectionStatus.classList.add('status-disconnected');
-          connectionStatus.textContent = 'Status: Disconnected';
-          break;
-        case 'error':
-          connectionStatus.classList.add('status-error');
-          connectionStatus.textContent = 'Status: Error';
-          break;
-        case 'reconnecting':
-          connectionStatus.classList.add('status-reconnecting');
-          connectionStatus.textContent = 'Status: Reconnecting...';
-          break;
-        case 'using_fallback':
-          connectionStatus.classList.add('status-using_fallback');
-          connectionStatus.textContent = 'Status: Using Fallback';
-          break;
-        default:
-          connectionStatus.classList.add('status-disconnected');
-          connectionStatus.textContent = 'Status: Unknown';
-      }
-    }
-    
-    // Enable/disable UI controls based on connection state
-    function enableDisableControls(isDisconnected) {
-      connectButton.disabled = !isDisconnected;
-      disconnectButton.disabled = isDisconnected;
-      sendButton.disabled = isDisconnected;
-      pingButton.disabled = isDisconnected;
-      multiPingButton.disabled = isDisconnected;
-      messageInput.disabled = isDisconnected;
-      
-      if (isDisconnected) {
-        endpointButtons.forEach(button => button.classList.remove('disabled'));
-      } else {
-        endpointButtons.forEach(button => {
-          if (!button.classList.contains('active')) {
-            button.classList.add('disabled');
+        
+        let socketIOUrl = null;
+        if (this.options.enableSocketIO) {
+          socketIOUrl = `${window.location.protocol}//${this.options.host}`;
+        }
+        
+        this.log(`Connecting to WebSocket at ${wsUrl}`);
+        
+        // Choose connection method based on settings
+        if (this.options.connectionMethod === 'auto' || this.options.connectionMethod === 'websocket') {
+          // Try WebSocket first if preferred
+          if (this.options.preferWebSocket || this.options.connectionMethod === 'websocket') {
+            this.connectWebSocket(wsUrl);
+            
+            // Set up Socket.IO as fallback if enabled
+            if (this.options.enableSocketIO && this.options.connectionMethod === 'auto') {
+              this.log(`Connecting to Socket.IO at ${socketIOUrl}`);
+              this.connectSocketIO(socketIOUrl);
+            }
+          } else if (this.options.enableSocketIO) {
+            // Connect to Socket.IO first if preferred
+            this.log(`Connecting to Socket.IO at ${socketIOUrl}`);
+            this.connectSocketIO(socketIOUrl);
+            
+            // Not setting up WebSocket as fallback here because Socket.IO will handle reconnection
           }
-        });
-      }
-    }
-    
-    // Update statistics display
-    function updateStats() {
-      connectionsValue.textContent = stats.connections;
-      messagesValue.textContent = stats.messages;
-      responsesValue.textContent = stats.responses;
-      reconnectsValue.textContent = stats.reconnects;
-      fallbacksValue.textContent = stats.fallbacks;
-    }
-    
-    // Add a message to the log
-    function logMessage(message, type = 'info', data = null) {
-      const entry = document.createElement('div');
-      entry.className = `log-entry log-${type}`;
-      
-      const timestamp = document.createElement('span');
-      timestamp.className = 'log-timestamp';
-      timestamp.textContent = new Date().toLocaleTimeString();
-      
-      entry.appendChild(timestamp);
-      entry.appendChild(document.createTextNode(message));
-      
-      if (data) {
-        const details = document.createElement('pre');
-        details.style.marginTop = '5px';
-        details.style.fontSize = '12px';
-        details.style.whiteSpace = 'pre-wrap';
-        details.textContent = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
-        entry.appendChild(details);
+        } else if (this.options.connectionMethod === 'socketio' && this.options.enableSocketIO) {
+          // Socket.IO only
+          this.log(`Connecting to Socket.IO at ${socketIOUrl}`);
+          this.connectSocketIO(socketIOUrl);
+        }
       }
       
-      logContainer.appendChild(entry);
-      logContainer.scrollTop = logContainer.scrollHeight;
-    }
-    
-    // Get WebSocket URL based on current location and endpoint
-    function getWebSocketUrl(endpoint) {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${protocol}//${window.location.host}${endpoint}`;
-    }
-    
-    // Event handlers
-    function handleOpen(event) {
-      updateConnectionStatus('connected');
-      enableDisableControls(false);
-      stats.connections++;
-      updateStats();
-      logMessage('WebSocket connected', 'success');
-    }
-    
-    function handleClose(event) {
-      updateConnectionStatus('disconnected');
-      enableDisableControls(true);
-      logMessage(`WebSocket closed: Code ${event.code} - ${event.reason || 'No reason provided'}`, 'warning');
-    }
-    
-    function handleError(error) {
-      updateConnectionStatus('error');
-      logMessage(`WebSocket error: ${error.message || 'Unknown error'}`, 'error');
-    }
-    
-    function handleMessage(event) {
-      stats.responses++;
-      updateStats();
-      
-      let messageData = event.data;
-      let displayData = messageData;
-      
-      // If it's an object, it's already parsed
-      if (typeof messageData === 'object') {
-        displayData = JSON.stringify(messageData, null, 2);
-      } else {
-        // Try to parse as JSON for display
+      // Connect to WebSocket server
+      connectWebSocket(url) {
         try {
-          displayData = JSON.stringify(JSON.parse(messageData), null, 2);
-        } catch (e) {
-          // Not JSON, use as-is
+          this.webSocket = new WebSocket(url);
+          
+          this.webSocket.onopen = () => {
+            this.log('WebSocket connection opened');
+            this.state = 'connected';
+            this.reconnectAttempt = 0;
+            this.startHeartbeat();
+            
+            // Disconnect Socket.IO if connected
+            if (this.socketIO) {
+              this.log('Disconnecting Socket.IO');
+              this.socketIO.disconnect();
+            }
+            
+            this.emit('connect', { transport: 'websocket', url });
+          };
+          
+          this.webSocket.onmessage = this.handleWebSocketMessage;
+          this.webSocket.onclose = this.handleWebSocketClose;
+          this.webSocket.onerror = this.handleWebSocketError;
+        } catch (error) {
+          this.log('WebSocket error:', error);
+          this.emit('error', { error, transport: 'websocket' });
+          
+          // If auto reconnect is enabled, try again
+          if (this.options.autoReconnect && this.reconnectAttempt < this.options.reconnectStrategy.maxAttempts) {
+            this.scheduleReconnect();
+          } else if (this.reconnectAttempt >= this.options.reconnectStrategy.maxAttempts) {
+            this.log('Maximum reconnection attempts reached');
+            this.emit('reconnect_failed');
+          }
         }
       }
       
-      logMessage('Message received', 'success', displayData);
+      // Connect to Socket.IO server
+      connectSocketIO(url) {
+        if (!this.options.enableSocketIO) {
+          return;
+        }
+        
+        try {
+          this.socketIO = io(url);
+          
+          this.socketIO.on('connect', () => {
+            this.log('Socket.IO connection opened');
+            
+            // Only update state if WebSocket is not connected
+            if (!this.webSocket || this.webSocket.readyState !== WebSocket.OPEN) {
+              this.state = 'connected';
+              this.reconnectAttempt = 0;
+              this.startHeartbeat();
+              this.emit('connect', { transport: 'socketio', url });
+            }
+          });
+          
+          this.socketIO.on('message', this.handleSocketIOMessage);
+          
+          this.socketIO.on('disconnect', (reason) => {
+            this.log(`Socket.IO disconnected: ${reason}`);
+            
+            // Only emit disconnect if WebSocket is not connected
+            if (!this.webSocket || this.webSocket.readyState !== WebSocket.OPEN) {
+              this.state = 'disconnected';
+              this.emit('disconnect', { reason, transport: 'socketio' });
+              
+              // Let Socket.IO handle reconnection
+            }
+          });
+          
+          this.socketIO.on('error', (error) => {
+            this.log('Socket.IO connection error:', error);
+            this.emit('error', { error, transport: 'socketio' });
+          });
+        } catch (error) {
+          this.log('Socket.IO error:', error);
+          this.emit('error', { error, transport: 'socketio' });
+        }
+      }
+      
+      // Handle WebSocket messages
+      handleWebSocketMessage(event) {
+        this.stats.messagesReceived++;
+        
+        let message;
+        try {
+          message = JSON.parse(event.data);
+        } catch (error) {
+          message = event.data;
+        }
+        
+        // Calculate latency if this is a pong response
+        if (message && message.type === 'pong' && this.stats.lastPingTime) {
+          this.stats.latency = Date.now() - this.stats.lastPingTime;
+          this.stats.lastPingTime = null;
+        }
+        
+        this.emit('message', { message, transport: 'websocket', raw: event.data });
+      }
+      
+      // Handle Socket.IO messages
+      handleSocketIOMessage(message) {
+        this.stats.messagesReceived++;
+        this.emit('message', { message, transport: 'socketio' });
+      }
+      
+      // Handle WebSocket close
+      handleWebSocketClose(event) {
+        this.log(`WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason || 'No reason provided'}`);
+        
+        // Only update state if Socket.IO is not connected
+        if (!this.socketIO || !this.socketIO.connected) {
+          this.state = 'disconnected';
+          this.emit('disconnect', { code: event.code, reason: event.reason, transport: 'websocket' });
+        }
+        
+        // Clear heartbeat
+        if (this.heartbeatTimer) {
+          clearInterval(this.heartbeatTimer);
+          this.heartbeatTimer = null;
+        }
+        
+        // Attempt to reconnect if enabled
+        if (this.options.autoReconnect && this.reconnectAttempt < this.options.reconnectStrategy.maxAttempts) {
+          this.scheduleReconnect();
+        } else if (this.reconnectAttempt >= this.options.reconnectStrategy.maxAttempts) {
+          this.log('Maximum reconnection attempts reached');
+          this.emit('reconnect_failed');
+        }
+      }
+      
+      // Handle WebSocket errors
+      handleWebSocketError(error) {
+        this.log('WebSocket error:', error);
+        this.emit('error', { error, transport: 'websocket' });
+      }
+      
+      // Schedule reconnection attempt
+      scheduleReconnect() {
+        if (this.reconnectTimer) {
+          clearTimeout(this.reconnectTimer);
+        }
+        
+        this.reconnectAttempt++;
+        const delay = Math.min(
+          this.options.reconnectStrategy.initialDelay * Math.pow(this.options.reconnectStrategy.multiplier, this.reconnectAttempt - 1),
+          this.options.reconnectStrategy.maxDelay
+        );
+        
+        this.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempt}/${this.options.reconnectStrategy.maxAttempts})`);
+        this.emit('reconnecting', { attempt: this.reconnectAttempt, delay });
+        
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnect();
+        }, delay);
+      }
+      
+      // Reconnect immediately
+      reconnect() {
+        this.disconnect();
+        this.stats.reconnectCount++;
+        this.connect();
+      }
+      
+      // Disconnect from server
+      disconnect() {
+        this.state = 'disconnected';
+        
+        // Clear timers
+        if (this.reconnectTimer) {
+          clearTimeout(this.reconnectTimer);
+          this.reconnectTimer = null;
+        }
+        
+        if (this.heartbeatTimer) {
+          clearInterval(this.heartbeatTimer);
+          this.heartbeatTimer = null;
+        }
+        
+        // Close WebSocket connection
+        if (this.webSocket) {
+          try {
+            if (this.webSocket.readyState === WebSocket.OPEN || this.webSocket.readyState === WebSocket.CONNECTING) {
+              this.webSocket.close();
+            }
+          } catch (error) {
+            this.log('Error closing WebSocket:', error);
+          }
+          this.webSocket = null;
+        }
+        
+        // Close Socket.IO connection
+        if (this.socketIO) {
+          try {
+            this.socketIO.disconnect();
+          } catch (error) {
+            this.log('Error disconnecting Socket.IO:', error);
+          }
+          this.socketIO = null;
+        }
+      }
+      
+      // Send a message to the server
+      send(message) {
+        if (this.state !== 'connected') {
+          this.log('Cannot send message: not connected');
+          return false;
+        }
+        
+        try {
+          // Prepare message
+          const data = typeof message === 'string' ? message : JSON.stringify(message);
+          
+          // Try to send via WebSocket first if connected
+          if (this.webSocket && this.webSocket.readyState === WebSocket.OPEN) {
+            this.webSocket.send(data);
+            this.stats.messagesSent++;
+            return true;
+          } else if (this.socketIO && this.socketIO.connected) {
+            // Fall back to Socket.IO if WebSocket is not available
+            this.socketIO.emit('message', message);
+            this.stats.messagesSent++;
+            return true;
+          } else {
+            this.log('Cannot send message: no active connections');
+            return false;
+          }
+        } catch (error) {
+          this.log('Error sending message:', error);
+          this.emit('error', { error, context: 'send' });
+          return false;
+        }
+      }
+      
+      // Send a ping message to measure latency
+      ping() {
+        this.stats.lastPingTime = Date.now();
+        return this.send({
+          type: 'ping',
+          timestamp: this.stats.lastPingTime
+        });
+      }
+      
+      // Start heartbeat to keep connection alive
+      startHeartbeat() {
+        if (this.heartbeatTimer) {
+          clearInterval(this.heartbeatTimer);
+        }
+        
+        this.heartbeatTimer = setInterval(() => {
+          this.ping();
+        }, this.options.heartbeatInterval);
+      }
+      
+      // Add event listener
+      on(event, callback) {
+        if (this.eventListeners[event]) {
+          this.eventListeners[event].push(callback);
+        }
+        return this;
+      }
+      
+      // Remove event listener
+      off(event, callback) {
+        if (this.eventListeners[event]) {
+          this.eventListeners[event] = this.eventListeners[event].filter(cb => cb !== callback);
+        }
+        return this;
+      }
+      
+      // Emit event
+      emit(event, data) {
+        if (this.eventListeners[event]) {
+          this.eventListeners[event].forEach(callback => {
+            try {
+              callback(data);
+            } catch (error) {
+              console.error(`Error in ${event} event handler:`, error);
+            }
+          });
+        }
+      }
+      
+      // Log message with specified level
+      log(message, ...args) {
+        const timestamp = Date.now();
+        const levels = { debug: 0, info: 1, warn: 2, error: 3 };
+        const currentLevel = levels[this.options.logLevel] || 1;
+        
+        let level = 'info';
+        
+        // Try to determine log level from the message
+        if (message.toLowerCase().includes('error')) {
+          level = 'error';
+        } else if (message.toLowerCase().includes('warn')) {
+          level = 'warn';
+        } else if (message.toLowerCase().includes('debug')) {
+          level = 'debug';
+        }
+        
+        // Only log if level is greater than or equal to current level
+        if (levels[level] >= currentLevel) {
+          console[level](message, ...args);
+          this.emit('log', { timestamp, level, message, args });
+        }
+      }
+      
+      // Update connection options
+      updateOptions(options) {
+        const needReconnect = options.url !== this.options.url || 
+                           options.protocol !== this.options.protocol ||
+                           options.host !== this.options.host ||
+                           options.path !== this.options.path ||
+                           options.connectionMethod !== this.options.connectionMethod;
+        
+        // Merge options
+        this.options = { ...this.options, ...options };
+        
+        // Reconnect if necessary connection parameters changed
+        if (needReconnect && this.state === 'connected') {
+          this.log('Connection parameters changed, reconnecting...');
+          this.reconnect();
+        }
+        
+        // Update heartbeat interval if connected
+        if (this.state === 'connected' && this.heartbeatTimer) {
+          this.log('Updating heartbeat interval');
+          clearInterval(this.heartbeatTimer);
+          this.startHeartbeat();
+        }
+      }
+      
+      // Get connection state and stats
+      getState() {
+        return {
+          state: this.state,
+          transport: this.webSocket && this.webSocket.readyState === WebSocket.OPEN ? 'websocket' : 
+                 this.socketIO && this.socketIO.connected ? 'socketio' : null,
+          reconnectAttempt: this.reconnectAttempt,
+          stats: this.stats,
+          options: this.options
+        };
+      }
     }
-    
-    function handleReconnecting(data) {
-      updateConnectionStatus('reconnecting');
-      stats.reconnects++;
-      updateStats();
-      logMessage(`Reconnecting (Attempt ${data.attempt}/${data.max})...`, 'warning');
+
+    // UI Controller
+    class UIController {
+      constructor() {
+        // Connection manager
+        this.connectionManager = null;
+        
+        // Tab navigation
+        this.setupTabs();
+        
+        // Connection options
+        this.setupConnectionOptions();
+        
+        // Connection buttons
+        this.setupConnectionButtons();
+        
+        // Message sending
+        this.setupMessageSending();
+        
+        // Diagnostics buttons
+        this.setupDiagnostics();
+        
+        // Settings
+        this.setupSettings();
+        
+        // Create connection manager
+        this.createConnectionManager();
+        
+        // Initialize logs
+        this.connectionLogs = [];
+        this.messageLogs = [];
+      }
+      
+      setupTabs() {
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        tabs.forEach(tab => {
+          tab.addEventListener('click', () => {
+            const tabName = tab.getAttribute('data-tab');
+            
+            // Update active tab
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            // Show active content
+            tabContents.forEach(content => {
+              content.classList.remove('active');
+              if (content.id === `${tabName}Tab`) {
+                content.classList.add('active');
+              }
+            });
+          });
+        });
+      }
+      
+      setupConnectionOptions() {
+        // Toggle advanced options
+        const toggleAdvancedBtn = document.getElementById('toggleAdvancedBtn');
+        const advancedOptions = document.getElementById('advancedOptions');
+        
+        toggleAdvancedBtn.addEventListener('click', () => {
+          const isVisible = advancedOptions.style.display === 'block';
+          advancedOptions.style.display = isVisible ? 'none' : 'block';
+          toggleAdvancedBtn.textContent = isVisible ? 'Show Advanced Options' : 'Hide Advanced Options';
+        });
+        
+        // Setup message format
+        const messageFormat = document.getElementById('messageFormat');
+        const jsonOptions = document.getElementById('jsonOptions');
+        const messageType = document.getElementById('messageType');
+        const customJsonContainer = document.getElementById('customJsonContainer');
+        
+        messageFormat.addEventListener('change', () => {
+          jsonOptions.style.display = messageFormat.value === 'json' ? 'block' : 'none';
+        });
+        
+        messageType.addEventListener('change', () => {
+          customJsonContainer.style.display = messageType.value === 'custom' ? 'block' : 'none';
+        });
+      }
+      
+      setupConnectionButtons() {
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const reconnectBtn = document.getElementById('reconnectBtn');
+        
+        connectBtn.addEventListener('click', () => {
+          this.getConnectionOptions();
+          this.connectionManager.connect();
+        });
+        
+        disconnectBtn.addEventListener('click', () => {
+          this.connectionManager.disconnect();
+        });
+        
+        reconnectBtn.addEventListener('click', () => {
+          this.connectionManager.reconnect();
+        });
+      }
+      
+      setupMessageSending() {
+        const sendBtn = document.getElementById('sendBtn');
+        const messageInput = document.getElementById('messageInput');
+        const messageFormat = document.getElementById('messageFormat');
+        const messageType = document.getElementById('messageType');
+        const customJson = document.getElementById('customJson');
+        const clearMessagesBtn = document.getElementById('clearMessagesBtn');
+        
+        sendBtn.addEventListener('click', () => {
+          const content = messageInput.value.trim();
+          if (!content) return;
+          
+          let message;
+          if (messageFormat.value === 'text') {
+            message = content;
+          } else {
+            // JSON format
+            if (messageType.value === 'custom') {
+              try {
+                message = JSON.parse(customJson.value);
+              } catch (error) {
+                this.logMessage('error', 'Invalid JSON:', error.message);
+                return;
+              }
+            } else if (messageType.value === 'ping') {
+              message = {
+                type: 'ping',
+                timestamp: Date.now()
+              };
+            } else if (messageType.value === 'echo') {
+              message = {
+                type: 'echo',
+                message: content,
+                timestamp: Date.now()
+              };
+            } else {
+              message = {
+                type: messageType.value,
+                content,
+                timestamp: Date.now()
+              };
+            }
+          }
+          
+          const success = this.connectionManager.send(message);
+          if (success) {
+            this.logMessage('info', 'Sent:', typeof message === 'string' ? message : JSON.stringify(message, null, 2));
+            messageInput.value = '';
+          } else {
+            this.logMessage('error', 'Failed to send message');
+          }
+        });
+        
+        // Allow Enter key to send
+        messageInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            sendBtn.click();
+          }
+        });
+        
+        // Clear messages button
+        clearMessagesBtn.addEventListener('click', () => {
+          this.messageLogs = [];
+          document.getElementById('messagesLog').innerHTML = '';
+        });
+      }
+      
+      setupDiagnostics() {
+        const pingBtn = document.getElementById('pingBtn');
+        const checkHealthBtn = document.getElementById('checkHealthBtn');
+        const forceErrorBtn = document.getElementById('forceErrorBtn');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        
+        pingBtn.addEventListener('click', () => {
+          this.connectionManager.ping();
+          this.logConnection('info', 'Sending ping to server');
+        });
+        
+        checkHealthBtn.addEventListener('click', () => {
+          this.connectionManager.send({
+            type: 'health_check',
+            timestamp: Date.now()
+          });
+          this.logConnection('info', 'Sent health check request');
+        });
+        
+        forceErrorBtn.addEventListener('click', () => {
+          // Send an invalid message to test error handling
+          try {
+            const circularObj = {};
+            circularObj.self = circularObj;
+            this.connectionManager.send(circularObj);
+          } catch (error) {
+            this.logConnection('error', 'Forced error:', error.message);
+          }
+        });
+        
+        clearLogBtn.addEventListener('click', () => {
+          this.connectionLogs = [];
+          document.getElementById('connectionLog').innerHTML = '';
+        });
+      }
+      
+      setupSettings() {
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        
+        saveSettingsBtn.addEventListener('click', () => {
+          const settings = {
+            autoReconnect: document.getElementById('autoReconnect').checked,
+            heartbeatInterval: parseInt(document.getElementById('heartbeatInterval').value, 10),
+            logLevel: document.getElementById('logLevel').value,
+            connectionMethod: document.getElementById('connectionMethod').value
+          };
+          
+          this.connectionManager.updateOptions(settings);
+          this.logConnection('info', 'Settings updated');
+        });
+      }
+      
+      getConnectionOptions() {
+        const wsUrl = document.getElementById('wsUrl').value;
+        const protocol = document.getElementById('protocol').value;
+        const host = document.getElementById('host').value;
+        const path = document.getElementById('path').value;
+        const initialDelay = parseInt(document.getElementById('initialDelay').value, 10);
+        const maxDelay = parseInt(document.getElementById('maxDelay').value, 10);
+        const backoffMultiplier = parseFloat(document.getElementById('backoffMultiplier').value);
+        const maxAttempts = parseInt(document.getElementById('maxAttempts').value, 10);
+        const enableSocketIO = document.getElementById('enableSocketIO').checked;
+        const preferWebSocket = document.getElementById('preferWebSocket').checked;
+        
+        const options = {
+          url: wsUrl || null,
+          protocol,
+          host: host || window.location.host,
+          path,
+          reconnectStrategy: {
+            initialDelay,
+            maxDelay,
+            multiplier: backoffMultiplier,
+            maxAttempts
+          },
+          enableSocketIO,
+          preferWebSocket
+        };
+        
+        this.connectionManager.updateOptions(options);
+        return options;
+      }
+      
+      createConnectionManager() {
+        // Initialize with default options
+        this.connectionManager = new ConnectionManager();
+        
+        // Set up event listeners
+        this.connectionManager.on('connect', (data) => {
+          this.updateConnectionStatus('connected');
+          this.logConnection('success', `Connected via ${data.transport}`);
+          this.enableButtons(true);
+        });
+        
+        this.connectionManager.on('disconnect', (data) => {
+          this.updateConnectionStatus('disconnected');
+          this.logConnection('error', `Disconnected. ${data.reason ? `Reason: ${data.reason}` : ''}`);
+          this.enableButtons(false);
+        });
+        
+        this.connectionManager.on('reconnecting', (data) => {
+          this.updateConnectionStatus('connecting');
+          this.logConnection('warning', `Reconnecting... Attempt ${data.attempt}/${this.connectionManager.options.reconnectStrategy.maxAttempts}`);
+        });
+        
+        this.connectionManager.on('reconnected', () => {
+          this.updateConnectionStatus('connected');
+          this.logConnection('success', 'Reconnected successfully');
+          this.enableButtons(true);
+        });
+        
+        this.connectionManager.on('reconnect_failed', () => {
+          this.updateConnectionStatus('disconnected');
+          this.logConnection('error', 'Reconnection failed after maximum attempts');
+          this.enableButtons(false);
+        });
+        
+        this.connectionManager.on('message', (data) => {
+          this.logMessage('success', 'Received:', typeof data.message === 'string' ? data.message : JSON.stringify(data.message, null, 2));
+          this.updateStats();
+        });
+        
+        this.connectionManager.on('error', (data) => {
+          const errorMessage = data.error.message || 'Unknown error';
+          this.logConnection('error', `Error (${data.transport || data.context || 'unknown'}): ${errorMessage}`);
+        });
+        
+        this.connectionManager.on('log', (data) => {
+          // This is just for forwarding internal logs to the UI
+          // We don't need to do anything here because we already log directly from the UI
+        });
+        
+        // Update stats periodically
+        setInterval(() => {
+          this.updateStats();
+        }, 1000);
+      }
+      
+      updateConnectionStatus(status) {
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const statusDetails = document.getElementById('statusDetails');
+        
+        statusIndicator.className = `status-indicator ${status}`;
+        
+        switch (status) {
+          case 'connected':
+            statusText.textContent = 'Connected';
+            statusDetails.textContent = `via ${this.connectionManager.getState().transport || 'unknown'}`;
+            break;
+          case 'connecting':
+            statusText.textContent = 'Connecting...';
+            statusDetails.textContent = `Attempt ${this.connectionManager.reconnectAttempt}/${this.connectionManager.options.reconnectStrategy.maxAttempts}`;
+            break;
+          case 'disconnected':
+            statusText.textContent = 'Disconnected';
+            statusDetails.textContent = '';
+            break;
+        }
+      }
+      
+      enableButtons(connected) {
+        document.getElementById('connectBtn').disabled = connected;
+        document.getElementById('disconnectBtn').disabled = !connected;
+        document.getElementById('reconnectBtn').disabled = !connected;
+        document.getElementById('sendBtn').disabled = !connected;
+        document.getElementById('pingBtn').disabled = !connected;
+        document.getElementById('checkHealthBtn').disabled = !connected;
+        document.getElementById('forceErrorBtn').disabled = !connected;
+      }
+      
+      updateStats() {
+        const stats = this.connectionManager.getState().stats;
+        
+        document.getElementById('reconnectCount').textContent = stats.reconnectCount;
+        document.getElementById('messagesSent').textContent = stats.messagesSent;
+        document.getElementById('messagesReceived').textContent = stats.messagesReceived;
+        document.getElementById('latency').textContent = stats.latency !== null ? stats.latency : '-';
+      }
+      
+      logConnection(level, message, ...args) {
+        const timestamp = new Date().toISOString();
+        const log = { timestamp, level, message, args };
+        
+        this.connectionLogs.push(log);
+        this.renderConnectionLogs();
+      }
+      
+      logMessage(level, message, ...args) {
+        const timestamp = new Date().toISOString();
+        const log = { timestamp, level, message, args };
+        
+        this.messageLogs.push(log);
+        this.renderMessageLogs();
+      }
+      
+      renderConnectionLogs() {
+        const logElement = document.getElementById('connectionLog');
+        logElement.innerHTML = '';
+        
+        for (const log of this.connectionLogs.slice(-100)) {
+          const logEntry = document.createElement('div');
+          logEntry.className = `log-entry log-${log.level}`;
+          
+          const timestamp = document.createElement('span');
+          timestamp.className = 'log-timestamp';
+          timestamp.textContent = log.timestamp.split('T')[1].split('.')[0] + ' - ';
+          
+          const message = document.createElement('span');
+          message.textContent = log.message;
+          
+          logEntry.appendChild(timestamp);
+          logEntry.appendChild(message);
+          
+          if (log.args && log.args.length > 0) {
+            const args = document.createElement('div');
+            args.className = 'log-args';
+            args.textContent = log.args.map(arg => 
+              typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+            ).join(' ');
+            logEntry.appendChild(args);
+          }
+          
+          logElement.appendChild(logEntry);
+        }
+        
+        logElement.scrollTop = logElement.scrollHeight;
+      }
+      
+      renderMessageLogs() {
+        const logElement = document.getElementById('messagesLog');
+        logElement.innerHTML = '';
+        
+        for (const log of this.messageLogs.slice(-100)) {
+          const logEntry = document.createElement('div');
+          logEntry.className = `log-entry log-${log.level}`;
+          
+          const timestamp = document.createElement('span');
+          timestamp.className = 'log-timestamp';
+          timestamp.textContent = log.timestamp.split('T')[1].split('.')[0] + ' - ';
+          
+          const message = document.createElement('span');
+          message.textContent = log.message;
+          
+          logEntry.appendChild(timestamp);
+          logEntry.appendChild(message);
+          
+          if (log.args && log.args.length > 0) {
+            const args = document.createElement('pre');
+            args.className = 'log-args';
+            args.textContent = log.args.map(arg => 
+              typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+            ).join(' ');
+            logEntry.appendChild(args);
+          }
+          
+          logElement.appendChild(logEntry);
+        }
+        
+        logElement.scrollTop = logElement.scrollHeight;
+      }
+      
+      start() {
+        this.logConnection('info', 'WebSocket Connection Test Tool initialized');
+        this.logConnection('info', `Available WebSocket endpoints: ${window.location.hostname}${document.getElementById('path').value}`);
+      }
     }
-    
-    function handleReconnected(event) {
-      updateConnectionStatus('connected');
-      enableDisableControls(false);
-      logMessage('Reconnected to server', 'success');
-    }
-    
-    function handlePing(data) {
-      logMessage(`Ping sent at ${new Date(data.timestamp).toLocaleTimeString()}`, 'info');
-    }
-    
-    function handlePong(data) {
-      latencyValue.textContent = data.latency;
-      logMessage(`Pong received - Latency: ${data.latency}ms`, 'success');
-    }
-    
-    function handleFallback(data) {
-      updateConnectionStatus('using_fallback');
-      stats.fallbacks++;
-      updateStats();
-      logMessage(`Fallback activated: ${data.type}`, 'warning');
-    }
-    
-    function handleStateChange(data) {
-      logMessage(`Connection state changed: ${data.oldState} -> ${data.newState}`, 'info');
-    }
-    
-    // Initialize the application
-    init();
+
+    // Initialize UI
+    const ui = new UIController();
+    ui.start();
   </script>
 </body>
 </html>
