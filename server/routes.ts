@@ -181,27 +181,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.join(process.cwd(), 'public', 'sse-test.html'));
   });
   
-  // WebSocket test page for DevOps diagnostics
+  // WebSocket test pages - Standardized path resolution for all test pages
+  
+  // Main WebSocket test page 
   app.get('/websocket-test', (req, res) => {
-    res.sendFile(path.resolve('./websocket-connection-test.html'));
+    res.sendFile(path.join(process.cwd(), 'websocket-connection-test.html'));
   });
   
+  // Static WebSocket test page from public directory
   app.get('/websocket-test-static', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'public', 'websocket-test.html'));
   });
   
+  // Direct file access via .html extension
   app.get('/websocket-test.html', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'public', 'websocket-test.html'));
   });
   
-  // Also serve the test page from an alternate path for direct access
+  // Shorter path alias for direct access
   app.get('/ws-test', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'public', 'websocket-test.html'));
   });
   
   // Enhanced WebSocket diagnostic tool with advanced troubleshooting capabilities
   app.get('/enhanced-websocket-test', (req, res) => {
-    res.sendFile(path.resolve('./enhanced-websocket-test.html'));
+    res.sendFile(path.join(process.cwd(), 'enhanced-websocket-test.html'));
   });
   
   // Robust WebSocket test page with advanced connection management
