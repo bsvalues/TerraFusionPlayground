@@ -805,7 +805,7 @@ export class BSBCmasterLeadAgent extends ComponentLeadAgent {
       schemaRegistryVersion: this.schemaRegistry.version || 'none',
       integrationState: this.integrationState,
       lastUpdated: new Date().toISOString(),
-      capabilities: this.capabilities.map(c => c.name)
+      capabilities: Array.from(this.capabilities.keys())
     };
   }
 }
