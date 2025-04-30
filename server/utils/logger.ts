@@ -1,142 +1,95 @@
 /**
- * Logging Utility
+ * Enhanced logger utility
  * 
- * Provides structured logging for the application with severity levels,
- * component tagging, and optional metadata.
+ * Provides structured logging capabilities with different log levels
+ * and standardized formatting for better debugging and monitoring.
  */
 
-export enum LogLevel {
-  DEBUG = 'debug',
-  INFO = 'info',
-  WARN = 'warn',
-  ERROR = 'error',
-  CRITICAL = 'critical'
+// Define log levels
+enum LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3
 }
 
-interface LogOptions {
-  component?: string;
-  metadata?: Record<string, any>;
-  timestamp?: Date;
-}
+// Define global log level - can be adjusted based on environment
+const CURRENT_LOG_LEVEL = process.env.NODE_ENV === 'production' ? LogLevel.INFO : LogLevel.DEBUG;
 
-export class Logger {
-  private static instance: Logger;
-  private isProduction: boolean;
-  
-  private constructor() {
-    this.isProduction = process.env.NODE_ENV === 'production';
-  }
-  
-  public static getInstance(): Logger {
-    if (!Logger.instance) {
-      Logger.instance = new Logger();
-    }
-    return Logger.instance;
-  }
-  
-  /**
-   * Log a message with the specified level
-   */
-  public log(level: LogLevel, message: string, options: LogOptions = {}): void {
-    const timestamp = options.timestamp || new Date();
-    const component = options.component || 'app';
-    const metadata = options.metadata || {};
-    
-    const logEntry = {
-      timestamp: timestamp.toISOString(),
-      level,
-      component,
-      message,
-      ...metadata
-    };
-    
-    // In production, we would send to a logging service
-    // For now, we just log to console with appropriate method
-    switch (level) {
-      case LogLevel.DEBUG:
-        if (!this.isProduction) {
-          console.debug(JSON.stringify(logEntry));
-        }
-        break;
-      case LogLevel.INFO:
-        console.info(JSON.stringify(logEntry));
-        break;
-      case LogLevel.WARN:
-        console.warn(JSON.stringify(logEntry));
-        break;
-      case LogLevel.ERROR:
-      case LogLevel.CRITICAL:
-        console.error(JSON.stringify(logEntry));
-        break;
-    }
-    
-    // For critical errors in production, we might want to notify
-    if (level === LogLevel.CRITICAL && this.isProduction) {
-      // Implement critical error notification
-      // This could be an email, SMS, or monitoring service alert
-    }
-  }
-  
+/**
+ * Simple logger utility with support for different log levels and structured output
+ */
+class Logger {
   /**
    * Log a debug message
    */
-  public debug(message: string, options: LogOptions = {}): void {
-    this.log(LogLevel.DEBUG, message, options);
+  public debug(message: string, data?: any): void {
+    if (CURRENT_LOG_LEVEL <= LogLevel.DEBUG) {
+      this.log('debug', message, data);
+    }
   }
   
   /**
    * Log an info message
    */
-  public info(message: string, options: LogOptions = {}): void {
-    this.log(LogLevel.INFO, message, options);
+  public info(message: string, data?: any): void {
+    if (CURRENT_LOG_LEVEL <= LogLevel.INFO) {
+      this.log('info', message, data);
+    }
   }
   
   /**
    * Log a warning message
    */
-  public warn(message: string, options: LogOptions = {}): void {
-    this.log(LogLevel.WARN, message, options);
+  public warn(message: string, data?: any): void {
+    if (CURRENT_LOG_LEVEL <= LogLevel.WARN) {
+      this.log('warn', message, data);
+    }
   }
   
   /**
    * Log an error message
    */
-  public error(message: string, options: LogOptions = {}): void {
-    this.log(LogLevel.ERROR, message, options);
+  public error(message: string, error?: any): void {
+    if (CURRENT_LOG_LEVEL <= LogLevel.ERROR) {
+      this.log('error', message, error);
+    }
   }
   
   /**
-   * Log a critical error message
+   * Internal method to log a message with consistent format
    */
-  public critical(message: string, options: LogOptions = {}): void {
-    this.log(LogLevel.CRITICAL, message, options);
-  }
-  
-  /**
-   * Log an error object with context
-   */
-  public logError(error: unknown, component: string, metadata: Record<string, any> = {}): void {
-    let message = 'An error occurred';
-    let level = LogLevel.ERROR;
+  private log(level: string, message: string, data?: any): void {
+    const timestamp = new Date().toISOString();
+    const component = 'app';
     
-    if (error instanceof Error) {
-      message = error.message;
-      // Include stack trace in development
-      if (!this.isProduction) {
-        metadata.stack = error.stack;
-      }
-    } else if (typeof error === 'string') {
-      message = error;
+    // Create structured log object
+    const logObject = {
+      timestamp,
+      level,
+      component,
+      message: data ? { component: 'logger', message, ...data } : message
+    };
+    
+    // Log to console with appropriate level
+    switch (level) {
+      case 'debug':
+        console.debug(JSON.stringify(logObject));
+        break;
+      case 'info':
+        console.info(JSON.stringify(logObject));
+        break;
+      case 'warn':
+        console.warn(JSON.stringify(logObject));
+        break;
+      case 'error':
+        console.error(JSON.stringify(logObject));
+        break;
+      default:
+        console.log(JSON.stringify(logObject));
     }
-    
-    // Determine if it's a critical error based on metadata or error type
-    if (metadata.critical) {
-      level = LogLevel.CRITICAL;
-    }
-    
-    this.log(level, message, { component, metadata });
   }
 }
 
-// Export a singleton instance
-export const logger = Logger.getInstance();
+// Export singleton instance
+export const logger = new Logger();
