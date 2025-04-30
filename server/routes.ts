@@ -2934,14 +2934,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     path: '/ws',
     // Add options to help with secure connections
     clientTracking: true,
-    perMessageDeflate: true
+    perMessageDeflate: true,
+    // Increase max payload size to handle larger messages
+    maxPayload: 1024 * 1024, // 1MB
+    // Set explicit timeout values
+    handshakeTimeout: 15000 // 15 seconds
   });
   
-  console.log('Simple WebSocket server created on path: /ws');
+  console.log('[WebSocket Server] Created on path: /ws');
   
-  // Handle errors at the server level
+  // Handle errors at the server level with improved logging
   wss.on('error', (error) => {
     console.error('[WebSocket Server Error]', error);
+    // Record error metric
+    metricsService.incrementCounter('websocket_server_errors_total', {
+      error_type: error.name || 'Unknown',
+      error_message: error.message || 'No message',
+      path: '/ws'
+    });
+  });
+  
+  // Implement server-level heartbeat to terminate dead connections
+  const pingAllClients = () => {
+    wss.clients.forEach((ws) => {
+      if ((ws as any).isAlive === false) {
+        console.log('[WebSocket Server] Terminating dead connection');
+        return ws.terminate();
+      }
+      
+      (ws as any).isAlive = false;
+      try {
+        ws.ping();
+      } catch (err) {
+        console.error('[WebSocket Server] Error pinging client:', err);
+        ws.terminate();
+      }
+    });
+  };
+  
+  // Run heartbeat every 30 seconds
+  const heartbeatInterval = setInterval(pingAllClients, 30000);
+  
+  // Clean up interval when server closes
+  wss.on('close', () => {
+    clearInterval(heartbeatInterval);
+    console.log('[WebSocket Server] Server closed, heartbeat stopped');
   });
   
   // HTTP fallback endpoint for sending messages when WebSocket is not available
