@@ -10,6 +10,7 @@ import path from "path";
 import QGISService from "./services/qgis-service";
 import { metricsService } from "./services/prometheus-metrics-service";
 import { MainWebSocketServer } from "./services/main-websocket-server";
+import { SimpleWebSocketServer } from "./services/simple-websocket-server";
 import { logger } from "./utils/logger";
 import { 
   insertPropertySchema, 
