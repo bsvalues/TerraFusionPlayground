@@ -181,6 +181,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.join(process.cwd(), 'public', 'sse-test.html'));
   });
   
+  // WebSocket test page for DevOps diagnostics
+  app.get('/websocket-test', (req, res) => {
+    res.sendFile(path.resolve('./websocket-connection-test.html'));
+  });
+  
   app.get('/websocket-test-static', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'public', 'websocket-test.html'));
   });

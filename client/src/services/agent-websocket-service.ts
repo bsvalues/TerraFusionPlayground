@@ -247,11 +247,19 @@ export class AgentWebSocketService {
   }
 
   /**
-   * Handle WebSocket close event
+   * Handle WebSocket close event with enhanced diagnostics and recovery
    */
   private handleSocketClose(event: CloseEvent, reject: (reason: any) => void): void {
-    console.log(`WebSocket connection closed: ${event.code} - ${event.reason}`);
+    // Log detailed close information with code meanings
+    const codeInfo = this.getWebSocketCloseCodeInfo(event.code);
+    console.log(`[Agent WebSocket] Connection closed: ${event.code} (${codeInfo.name}) - ${event.reason || 'No reason provided'}`);
+    console.log(`[Agent WebSocket] Close code description: ${codeInfo.description}`);
+    console.log(`[Agent WebSocket] Connection was ${event.wasClean ? 'clean' : 'abnormal'}`);
+    
+    // Stop keeping the connection alive
     this.stopPingInterval();
+    
+    // Update connection status
     this.updateConnectionStatus('disconnected');
     
     // Clear connection timeout if it exists
@@ -260,28 +268,204 @@ export class AgentWebSocketService {
       this.connectionTimeout = null;
     }
     
-    // Attempt to reconnect if not a clean close
-    if (event.code !== 1000 && event.code !== 1001) {
-      this.attemptReconnect();
+    // Log detailed diagnostics about the connection state
+    this.dispatchMessage({
+      type: 'connection_status',
+      status: 'disconnected',
+      closeEvent: {
+        code: event.code,
+        reason: event.reason,
+        wasClean: event.wasClean,
+        name: codeInfo.name,
+        description: codeInfo.description
+      },
+      timestamp: new Date().toISOString()
+    });
+    
+    // Handle different close codes appropriately
+    switch (event.code) {
+      case 1000: // Normal closure
+        console.log('[Agent WebSocket] Normal closure, not attempting reconnect');
+        break;
+        
+      case 1001: // Going away (page refresh/navigation)
+        console.log('[Agent WebSocket] Page unloading, not attempting reconnect');
+        break;
+        
+      case 1002: // Protocol error
+      case 1003: // Unsupported data
+      case 1007: // Invalid frame payload data
+      case 1008: // Policy violation
+      case 1010: // Mandatory extension missing
+        // For these errors, try to reconnect a limited number of times with increasing delays
+        console.log(`[Agent WebSocket] Protocol-level error (${event.code}), attempting controlled reconnect`);
+        this.attemptReconnect();
+        break;
+        
+      case 1006: // Abnormal closure
+        // This is the most common issue in real-world deployments
+        console.log('[Agent WebSocket] Abnormal closure detected (1006), multiple reconnect strategy');
+        
+        // For abnormal closures, try aggressive reconnection strategy
+        // We'll try with shorter delays first, then fall back to polling if needed
+        if (this.reconnectAttempts < 2) {
+          // Quick reconnect for first couple of attempts (500ms)
+          setTimeout(() => {
+            this.reconnectAttempts++;
+            this.connect().catch(() => {
+              // If still failing after quick reconnect, try regular reconnect
+              this.attemptReconnect();
+            });
+          }, 500);
+        } else {
+          // Regular reconnect with exponential backoff
+          this.attemptReconnect();
+        }
+        break;
+        
+      case 1011: // Server error
+      case 1012: // Server restart
+      case 1013: // Try again later
+        // For server-side issues, try reconnect with longer delays
+        console.log(`[Agent WebSocket] Server-side issue (${event.code}), delayed reconnect with backoff`);
+        this.reconnectDelay = Math.min(this.reconnectDelay * 2, 10000); // Increase delay up to 10 seconds
+        this.attemptReconnect();
+        break;
+        
+      case 1015: // TLS handshake failure
+        // For TLS errors, we may need to fall back to HTTP polling
+        console.log('[Agent WebSocket] TLS handshake failed, switching to fallback');
+        this.initPollingFallback();
+        break;
+        
+      default:
+        // For unknown close codes, attempt regular reconnect
+        console.log(`[Agent WebSocket] Unknown close code (${event.code}), attempting reconnect`);
+        this.attemptReconnect();
     }
     
-    // Use fallback mechanism for non-clean closes
-    if (event.code !== 1000 && event.code !== 1001) {
+    // For all non-normal closures, consider fallback if reconnect attempts are high
+    if (event.code !== 1000 && event.code !== 1001 && this.reconnectAttempts >= this.maxReconnectAttempts - 1) {
+      console.log('[Agent WebSocket] Approaching max reconnect attempts, preparing fallback');
       this.initPollingFallback();
     }
     
-    reject(new Error(`WebSocket connection closed: ${event.code} - ${event.reason}`));
+    reject(new Error(`WebSocket connection closed: ${event.code} - ${event.reason || 'No reason provided'}`));
+  }
+  
+  /**
+   * Get information about WebSocket close codes
+   */
+  private getWebSocketCloseCodeInfo(code: number): { name: string, description: string } {
+    const codeMap: Record<number, { name: string, description: string }> = {
+      1000: { 
+        name: 'CLOSE_NORMAL', 
+        description: 'Normal closure; the connection successfully completed its purpose' 
+      },
+      1001: { 
+        name: 'CLOSE_GOING_AWAY', 
+        description: 'Client is leaving (browser tab closing, page navigation, etc.)' 
+      },
+      1002: { 
+        name: 'CLOSE_PROTOCOL_ERROR', 
+        description: 'Protocol error, connection terminated due to malformed frame or other protocol violation' 
+      },
+      1003: { 
+        name: 'CLOSE_UNSUPPORTED', 
+        description: 'Unsupported data received; server/client cannot process the data type that was received' 
+      },
+      1005: { 
+        name: 'CLOSE_NO_STATUS', 
+        description: 'Reserved status; indicates no status code was provided even though one was expected' 
+      },
+      1006: { 
+        name: 'CLOSE_ABNORMAL', 
+        description: 'Abnormal closure; connection was closed without a proper closing handshake' 
+      },
+      1007: { 
+        name: 'CLOSE_INVALID_DATA', 
+        description: 'Invalid frame payload data; message contains inconsistent or invalid data' 
+      },
+      1008: { 
+        name: 'CLOSE_POLICY_VIOLATION', 
+        description: 'Policy violation; message received violates policy' 
+      },
+      1009: { 
+        name: 'CLOSE_TOO_LARGE', 
+        description: 'Message too large; data size exceeds limits' 
+      },
+      1010: { 
+        name: 'CLOSE_MANDATORY_EXTENSION', 
+        description: 'Client expected server to negotiate extension(s), but server didn\'t' 
+      },
+      1011: { 
+        name: 'CLOSE_SERVER_ERROR', 
+        description: 'Server encountered an error and cannot continue processing the connection' 
+      },
+      1012: { 
+        name: 'CLOSE_SERVICE_RESTART', 
+        description: 'Server is restarting' 
+      },
+      1013: { 
+        name: 'CLOSE_TRY_AGAIN_LATER', 
+        description: 'Server temporarily cannot process request, try again later' 
+      },
+      1015: { 
+        name: 'CLOSE_TLS_HANDSHAKE_FAIL', 
+        description: 'TLS handshake failed' 
+      }
+    };
+    
+    return codeMap[code] || { 
+      name: 'CLOSE_UNKNOWN', 
+      description: `Unknown close code (${code})` 
+    };
   }
 
   /**
    * Handle WebSocket error event
    */
   private handleSocketError(error: Event, reject: (reason: any) => void): void {
-    console.error('WebSocket error:', error);
+    // Log detailed error information
+    console.error('[Agent WebSocket] Connection error:', error);
+    
+    // Additional diagnostics information
+    console.log('[Agent WebSocket] Browser info:', navigator.userAgent);
+    console.log('[Agent WebSocket] Connection attempts:', this.reconnectAttempts);
+    console.log('[Agent WebSocket] Current status:', this.connectionStatus);
+    
+    // Update connection status
     this.updateConnectionStatus('errored');
     
-    // Initialize polling fallback if WebSocket fails
-    this.initPollingFallback();
+    // Record error for monitoring
+    this.dispatchMessage({
+      type: 'connection_error',
+      error: error.toString(),
+      timestamp: new Date().toISOString(),
+      reconnectAttempts: this.reconnectAttempts
+    });
+    
+    // Immediately attempt to reconnect with a shorter initial delay for errors
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      const quickRetryDelay = 1000; // 1 second for first reconnect after error
+      console.log(`[Agent WebSocket] Quick error recovery attempt in ${quickRetryDelay}ms`);
+      
+      setTimeout(() => {
+        this.reconnectAttempts++;
+        this.connect().catch(err => {
+          console.log('[Agent WebSocket] Quick reconnect failed:', err);
+          
+          // Initialize polling fallback if immediate reconnect fails
+          if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            this.initPollingFallback();
+          }
+        });
+      }, quickRetryDelay);
+    } else {
+      // Initialize polling fallback if WebSocket fails after retries
+      console.log('[Agent WebSocket] Max reconnect attempts reached, switching to fallback');
+      this.initPollingFallback();
+    }
     
     reject(error);
   }
@@ -523,32 +707,99 @@ export class AgentWebSocketService {
   }
 
   /**
-   * Attempt to reconnect to the WebSocket server
+   * Attempt to reconnect to the WebSocket server with enhanced strategy
    */
   private attemptReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log('Maximum reconnect attempts reached, giving up');
+      console.log('[Agent WebSocket] Maximum reconnect attempts reached, switching to fallback');
+      
+      // Initialize polling fallback when max reconnects are exhausted
+      this.initPollingFallback();
+      
+      // Notify about connection failure and fallback
+      this.dispatchMessage({
+        type: 'connection_status',
+        status: 'fallback_mode',
+        attempts: this.reconnectAttempts,
+        message: 'Switched to API polling after WebSocket reconnection failed',
+        timestamp: new Date().toISOString()
+      });
+      
       return;
     }
     
     this.reconnectAttempts++;
-    const delay = Math.min(30000, this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1));
     
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    // Implement exponential backoff with jitter for better connection dispersion
+    // Base delay: 2 seconds, max delay: 30 seconds
+    const baseDelay = this.reconnectDelay;
+    const exponentialPart = baseDelay * Math.pow(1.5, this.reconnectAttempts - 1);
+    const jitter = Math.random() * 1000; // Add up to 1 second of random jitter
+    const delay = Math.min(30000, exponentialPart + jitter);
+    
+    console.log(`[Agent WebSocket] Attempting to reconnect in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    
+    // Update connection status to show reconnecting
+    this.updateConnectionStatus('connecting');
+    
+    // Dispatch reconnect attempt message
+    this.dispatchMessage({
+      type: 'connection_status',
+      status: 'reconnecting',
+      attempt: this.reconnectAttempts,
+      maxAttempts: this.maxReconnectAttempts,
+      nextAttemptIn: Math.round(delay),
+      timestamp: new Date().toISOString()
+    });
     
     setTimeout(() => {
-      if (this.socket?.readyState === WebSocket.CLOSED) {
-        console.log('Attempting reconnection...');
+      if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
+        console.log(`[Agent WebSocket] Executing reconnection attempt ${this.reconnectAttempts}`);
+        
+        // Close any existing socket to ensure clean state
+        if (this.socket) {
+          try {
+            this.socket.close();
+          } catch (err) {
+            console.error('[Agent WebSocket] Error closing existing socket:', err);
+          }
+          this.socket = null;
+        }
+        
         this.connect()
           .then(success => {
             if (success) {
-              console.log('Reconnection successful');
+              console.log('[Agent WebSocket] Reconnection successful');
+              
+              // Dispatch reconnect success message
+              this.dispatchMessage({
+                type: 'connection_status',
+                status: 'reconnected',
+                attempts: this.reconnectAttempts,
+                timestamp: new Date().toISOString()
+              });
+              
+              // Reset the reconnect counter on success
+              this.reconnectAttempts = 0;
             } else {
-              console.log('Reconnection failed');
+              console.log('[Agent WebSocket] Reconnection attempt failed');
+              
+              // If not at max attempts, try again recursively
+              if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                this.attemptReconnect();
+              }
             }
           })
           .catch(error => {
-            console.error('Error during reconnection:', error);
+            console.error('[Agent WebSocket] Error during reconnection:', error);
+            
+            // If not at max attempts, try again after error
+            if (this.reconnectAttempts < this.maxReconnectAttempts) {
+              this.attemptReconnect();
+            } else {
+              // Initialize polling fallback after all retries fail
+              this.initPollingFallback();
+            }
           });
       }
     }, delay);
