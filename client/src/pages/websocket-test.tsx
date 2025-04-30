@@ -1,435 +1,284 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { ConnectionStatusBadge } from '@/components/connection-status-badge';
-import { ConnectionHealthMetrics } from '@/components/connection-health-metrics';
-import { ConnectionStatus, TransportType } from '@/components/connection-status-badge';
-import { useAgentWebSocket } from '@/hooks/use-agent-websocket';
-import { useAgentSocketIO } from '@/hooks/use-agent-socketio';
-
 /**
  * WebSocket Test Page
  * 
- * This page provides a way to test WebSocket connections with both
- * native WebSockets and Socket.IO. It includes controls for both 
- * connection types, and displays status, messages, and metrics.
+ * A page for testing WebSocket connections with our new WebSocket implementation.
+ * Provides UI for connecting to WebSocket server, sending messages, and viewing
+ * connection status and received messages.
  */
-export const WebSocketTest: React.FC = () => {
-  // Tab state
-  const [activeTab, setActiveTab] = useState('websocket');
+
+import { useState, useEffect } from 'react';
+import { useWebSocket, ConnectionState } from '../hooks/use-websocket';
+
+// A simple message input component
+const MessageInput = ({ 
+  onSend,
+  disabled
+}: { 
+  onSend: (message: string) => void; 
+  disabled: boolean;
+}) => {
+  const [message, setMessage] = useState('');
   
-  // Message state
-  const [wsMessage, setWsMessage] = useState('');
-  const [socketioMessage, setSocketioMessage] = useState('');
-  const [receivedMessages, setReceivedMessages] = useState<{
-    time: Date, 
-    content: string, 
-    type: 'received' | 'sent',
-    connectionType: 'websocket' | 'socketio'
-  }[]>([]);
-  
-  // Setup WebSocket connection using our hook
-  const { 
-    status: wsStatus,
-    transport: wsTransport,
-    metrics: wsMetrics,
-    send: wsSend,
-    reconnect: wsReconnect,
-    close: wsClose
-  } = useAgentWebSocket({
-    autoReconnect: true,
-    maxReconnectAttempts: 5,
-    onMessage: (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        // Add message to received messages
-        addMessage({
-          time: new Date(),
-          content: JSON.stringify(data, null, 2),
-          type: 'received',
-          connectionType: 'websocket'
-        });
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-        
-        // Still add raw message to list
-        addMessage({
-          time: new Date(),
-          content: typeof event.data === 'string' ? event.data : 'Binary data received',
-          type: 'received',
-          connectionType: 'websocket'
-        });
-      }
-    }
-  });
-  
-  // Setup Socket.IO connection using our hook
-  const { 
-    status: socketioStatus,
-    transport: socketioTransport,
-    metrics: socketioMetrics,
-    send: socketioSend,
-    reconnect: socketioReconnect,
-    close: socketioClose
-  } = useAgentSocketIO({
-    url: `${window.location.origin}/socket.io`,
-    autoReconnect: true,
-    events: [
-      {
-        name: 'message',
-        handler: (data) => {
-          addMessage({
-            time: new Date(),
-            content: JSON.stringify(data, null, 2),
-            type: 'received',
-            connectionType: 'socketio'
-          });
-        }
-      },
-      {
-        name: 'pong',
-        handler: (data) => {
-          addMessage({
-            time: new Date(),
-            content: JSON.stringify(data, null, 2),
-            type: 'received',
-            connectionType: 'socketio'
-          });
-        }
-      }
-    ]
-  });
-  
-  // Send WebSocket message
-  const sendWebSocketMessage = () => {
-    if (!wsMessage.trim()) return;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim()) return;
     
-    const messageObj = {
-      type: 'message',
-      content: wsMessage,
-      timestamp: Date.now()
-    };
-    
-    const success = wsSend(messageObj);
-    
-    if (success) {
-      // Add sent message to the list
-      addMessage({
-        time: new Date(),
-        content: JSON.stringify(messageObj, null, 2),
-        type: 'sent',
-        connectionType: 'websocket'
-      });
-      
-      // Clear input
-      setWsMessage('');
-    }
+    onSend(message);
+    setMessage('');
   };
-  
-  // Send Socket.IO message
-  const sendSocketIOMessage = () => {
-    if (!socketioMessage.trim()) return;
-    
-    const messageObj = {
-      content: socketioMessage,
-      timestamp: Date.now()
-    };
-    
-    const success = socketioSend('message', messageObj);
-    
-    if (success) {
-      // Add sent message to the list
-      addMessage({
-        time: new Date(),
-        content: JSON.stringify(messageObj, null, 2),
-        type: 'sent',
-        connectionType: 'socketio'
-      });
-      
-      // Clear input
-      setSocketioMessage('');
-    }
-  };
-  
-  // Add message to the list
-  const addMessage = (message: {
-    time: Date, 
-    content: string, 
-    type: 'received' | 'sent',
-    connectionType: 'websocket' | 'socketio'
-  }) => {
-    setReceivedMessages(prev => [...prev, message].slice(-50)); // Keep last 50 messages
-  };
-  
-  // Filter messages by connection type
-  const filteredMessages = receivedMessages.filter(
-    message => message.connectionType === activeTab
-  );
   
   return (
-    <div className="container mx-auto py-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Connection Testing</h1>
-        <p className="text-gray-500 mb-4">
-          This page allows you to test different connection types and view real-time connection information.
-        </p>
+    <form onSubmit={handleSubmit} className="flex gap-2 mt-4">
+      <input
+        type="text"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Type a message..."
+        disabled={disabled}
+        className="flex-1 px-4 py-2 border border-gray-300 rounded-md"
+      />
+      <button
+        type="submit"
+        disabled={disabled || !message.trim()}
+        className="px-4 py-2 bg-blue-500 text-white rounded-md disabled:bg-gray-300"
+      >
+        Send
+      </button>
+    </form>
+  );
+};
+
+// Connection status indicator component
+const ConnectionStatus = ({ state }: { state: ConnectionState }) => {
+  const getStatusColor = () => {
+    switch (state) {
+      case ConnectionState.CONNECTED:
+        return 'bg-green-500';
+      case ConnectionState.CONNECTING:
+      case ConnectionState.RECONNECTING:
+        return 'bg-yellow-500';
+      case ConnectionState.ERROR:
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+  
+  const getStatusText = () => {
+    switch (state) {
+      case ConnectionState.CONNECTED:
+        return 'Connected';
+      case ConnectionState.CONNECTING:
+        return 'Connecting...';
+      case ConnectionState.RECONNECTING:
+        return 'Reconnecting...';
+      case ConnectionState.ERROR:
+        return 'Error';
+      default:
+        return 'Disconnected';
+    }
+  };
+  
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`w-3 h-3 rounded-full ${getStatusColor()}`}></div>
+      <span>{getStatusText()}</span>
+    </div>
+  );
+};
+
+// Message log component
+const MessageLog = ({ messages }: { messages: any[] }) => {
+  if (messages.length === 0) {
+    return <div className="text-gray-500 italic">No messages yet</div>;
+  }
+  
+  return (
+    <div className="overflow-y-auto max-h-80 border border-gray-200 rounded-md p-4">
+      {messages.map((msg, index) => (
+        <div key={index} className="mb-2 pb-2 border-b border-gray-100 last:border-0">
+          <div className="flex justify-between text-sm">
+            <span className="font-semibold">{msg.type || 'message'}</span>
+            <span className="text-gray-500 text-xs">
+              {new Date(msg.timestamp || Date.now()).toLocaleTimeString()}
+            </span>
+          </div>
+          <pre className="text-sm whitespace-pre-wrap bg-gray-50 p-2 rounded mt-1">
+            {JSON.stringify(msg, null, 2)}
+          </pre>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Main WebSocket test component
+const WebSocketTestPage = () => {
+  // Store received messages
+  const [messages, setMessages] = useState<any[]>([]);
+  
+  // Stats for display
+  const [stats, setStats] = useState({
+    messagesReceived: 0,
+    messagesSent: 0,
+    reconnects: 0,
+    latency: null as number | null
+  });
+  
+  // Use our WebSocket hook
+  const {
+    connectionState,
+    lastMessage,
+    sendMessage,
+    connect,
+    disconnect,
+    reconnect,
+    getStatus
+  } = useWebSocket(
+    undefined, // Auto-detect URL
+    {
+      path: '/ws',
+      autoReconnect: true,
+      reconnectStrategy: {
+        initialDelay: 1000,
+        maxDelay: 30000,
+        multiplier: 1.5,
+        maxAttempts: 10
+      },
+      heartbeatInterval: 30000
+    },
+    true, // Auto-connect on page load
+  );
+  
+  // Update messages when we receive a new one
+  useEffect(() => {
+    if (lastMessage) {
+      setMessages(prev => [...prev, lastMessage]);
+    }
+  }, [lastMessage]);
+  
+  // Update stats periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const status = getStatus();
+      setStats({
+        messagesReceived: status.stats.messagesReceived,
+        messagesSent: status.stats.messagesSent,
+        reconnects: status.stats.reconnects,
+        latency: status.stats.lastLatency
+      });
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [getStatus]);
+  
+  // Handle sending a message
+  const handleSendMessage = (messageText: string) => {
+    sendMessage({
+      type: 'message',
+      content: messageText,
+      timestamp: Date.now()
+    });
+  };
+  
+  // Handle sending a ping
+  const handleSendPing = () => {
+    sendMessage({
+      type: 'ping',
+      timestamp: Date.now()
+    });
+  };
+  
+  // Clear messages
+  const clearMessages = () => {
+    setMessages([]);
+  };
+  
+  return (
+    <div className="container mx-auto p-6 max-w-4xl">
+      <h1 className="text-3xl font-bold mb-6">WebSocket Connection Test</h1>
+      
+      {/* Connection status and controls */}
+      <div className="bg-white rounded-md shadow-md p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <ConnectionStatus state={connectionState} />
+          
+          <div className="flex gap-2">
+            <button
+              onClick={connect}
+              disabled={connectionState === ConnectionState.CONNECTED || connectionState === ConnectionState.CONNECTING}
+              className="px-4 py-2 bg-green-500 text-white rounded-md disabled:bg-gray-300"
+            >
+              Connect
+            </button>
+            <button
+              onClick={disconnect}
+              disabled={connectionState === ConnectionState.DISCONNECTED}
+              className="px-4 py-2 bg-red-500 text-white rounded-md disabled:bg-gray-300"
+            >
+              Disconnect
+            </button>
+            <button
+              onClick={reconnect}
+              disabled={connectionState === ConnectionState.CONNECTING || connectionState === ConnectionState.RECONNECTING}
+              className="px-4 py-2 bg-yellow-500 text-white rounded-md disabled:bg-gray-300"
+            >
+              Reconnect
+            </button>
+          </div>
+        </div>
         
-        <Tabs defaultValue="websocket" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="websocket" className="flex items-center justify-center">
-              WebSocket
-              <Badge variant={wsStatus === 'connected' ? 'default' : 'secondary'} className="ml-2">
-                {wsStatus === 'connected' ? 'Connected' : wsStatus}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="socketio" className="flex items-center justify-center">
-              Socket.IO
-              <Badge variant={socketioStatus === 'connected' ? 'default' : 'secondary'} className="ml-2">
-                {socketioStatus === 'connected' ? 'Connected' : socketioStatus}
-              </Badge>
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="websocket" className="mt-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left column - Controls */}
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl flex items-center">
-                      WebSocket Controls
-                      <ConnectionStatusBadge 
-                        status={wsStatus} 
-                        transport={wsTransport} 
-                        className="ml-auto"
-                      />
-                    </CardTitle>
-                    <CardDescription>
-                      Connect and send messages to the WebSocket server
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex space-x-2">
-                        <Button 
-                          onClick={wsReconnect}
-                          disabled={wsStatus === 'connected' || wsStatus === 'connecting'}
-                          className="w-full"
-                        >
-                          Connect
-                        </Button>
-                        <Button 
-                          onClick={wsClose}
-                          disabled={wsStatus !== 'connected'}
-                          variant="destructive"
-                          className="w-full"
-                        >
-                          Disconnect
-                        </Button>
-                      </div>
-                      
-                      <Separator className="my-2" />
-                      
-                      <div className="flex space-x-2">
-                        <Input 
-                          value={wsMessage}
-                          onChange={(e) => setWsMessage(e.target.value)}
-                          placeholder="Type a message..."
-                          disabled={wsStatus !== 'connected'}
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter') sendWebSocketMessage();
-                          }}
-                        />
-                        <Button 
-                          onClick={sendWebSocketMessage}
-                          disabled={wsStatus !== 'connected' || !wsMessage.trim()}
-                          variant="secondary"
-                        >
-                          Send
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="text-sm text-gray-500 mt-2">
-                      <p>Status: {wsStatus}</p>
-                      <p>Transport: {wsTransport}</p>
-                      <p>Messages: {wsMetrics.messageCount}</p>
-                      <p>Latency: {wsMetrics.latency > 0 ? `${wsMetrics.latency}ms` : 'N/A'}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <ConnectionHealthMetrics 
-                  status={wsStatus}
-                  metrics={wsMetrics}
-                />
-              </div>
-              
-              {/* Middle and right columns - Message log */}
-              <div className="lg:col-span-2">
-                <Card className="h-full">
-                  <CardHeader>
-                    <CardTitle className="text-xl">WebSocket Messages</CardTitle>
-                    <CardDescription>
-                      Real-time messages between client and server
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[500px] overflow-y-auto border rounded-md p-4 bg-gray-50">
-                      {filteredMessages.length === 0 ? (
-                        <div className="text-center text-gray-400 py-8">
-                          No messages yet. Connect to the WebSocket server and send a message.
-                        </div>
-                      ) : (
-                        filteredMessages.map((message, index) => (
-                          <div 
-                            key={index} 
-                            className={`my-2 p-3 rounded-md ${
-                              message.type === 'sent' 
-                                ? 'bg-blue-50 ml-12 border-l-4 border-blue-400' 
-                                : 'bg-gray-100 mr-12 border-l-4 border-gray-400'
-                            }`}
-                          >
-                            <div className="text-xs text-gray-500 mb-1">
-                              {message.time.toLocaleTimeString()} - {message.type === 'sent' ? 'Sent' : 'Received'}
-                            </div>
-                            <div className="text-sm whitespace-pre-wrap break-words">
-                              {message.content}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="socketio" className="mt-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left column - Controls */}
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl flex items-center">
-                      Socket.IO Controls
-                      <ConnectionStatusBadge 
-                        status={socketioStatus} 
-                        transport={socketioTransport} 
-                        className="ml-auto"
-                      />
-                    </CardTitle>
-                    <CardDescription>
-                      Connect and send messages to the Socket.IO server
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex space-x-2">
-                        <Button 
-                          onClick={socketioReconnect}
-                          disabled={socketioStatus === 'connected' || socketioStatus === 'connecting'}
-                          className="w-full"
-                        >
-                          Connect
-                        </Button>
-                        <Button 
-                          onClick={socketioClose}
-                          disabled={socketioStatus !== 'connected'}
-                          variant="destructive"
-                          className="w-full"
-                        >
-                          Disconnect
-                        </Button>
-                      </div>
-                      
-                      <Separator className="my-2" />
-                      
-                      <div className="flex space-x-2">
-                        <Input 
-                          value={socketioMessage}
-                          onChange={(e) => setSocketioMessage(e.target.value)}
-                          placeholder="Type a message..."
-                          disabled={socketioStatus !== 'connected'}
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter') sendSocketIOMessage();
-                          }}
-                        />
-                        <Button 
-                          onClick={sendSocketIOMessage}
-                          disabled={socketioStatus !== 'connected' || !socketioMessage.trim()}
-                          variant="secondary"
-                        >
-                          Send
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="text-sm text-gray-500 mt-2">
-                      <p>Status: {socketioStatus}</p>
-                      <p>Transport: {socketioTransport}</p>
-                      <p>Messages: {socketioMetrics.messageCount}</p>
-                      <p>Latency: {socketioMetrics.latency > 0 ? `${socketioMetrics.latency}ms` : 'N/A'}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <ConnectionHealthMetrics 
-                  status={socketioStatus}
-                  metrics={socketioMetrics}
-                />
-              </div>
-              
-              {/* Middle and right columns - Message log */}
-              <div className="lg:col-span-2">
-                <Card className="h-full">
-                  <CardHeader>
-                    <CardTitle className="text-xl">Socket.IO Messages</CardTitle>
-                    <CardDescription>
-                      Real-time messages between client and server
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[500px] overflow-y-auto border rounded-md p-4 bg-gray-50">
-                      {filteredMessages.length === 0 ? (
-                        <div className="text-center text-gray-400 py-8">
-                          No messages yet. Connect to the Socket.IO server and send a message.
-                        </div>
-                      ) : (
-                        filteredMessages.map((message, index) => (
-                          <div 
-                            key={index} 
-                            className={`my-2 p-3 rounded-md ${
-                              message.type === 'sent' 
-                                ? 'bg-blue-50 ml-12 border-l-4 border-blue-400' 
-                                : 'bg-gray-100 mr-12 border-l-4 border-gray-400'
-                            }`}
-                          >
-                            <div className="text-xs text-gray-500 mb-1">
-                              {message.time.toLocaleTimeString()} - {message.type === 'sent' ? 'Sent' : 'Received'}
-                            </div>
-                            <div className="text-sm whitespace-pre-wrap break-words">
-                              {message.content}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4 mb-4">
+          <div className="bg-gray-100 p-3 rounded-md">
+            <div className="text-sm text-gray-500">Messages Received</div>
+            <div className="text-xl font-bold">{stats.messagesReceived}</div>
+          </div>
+          <div className="bg-gray-100 p-3 rounded-md">
+            <div className="text-sm text-gray-500">Messages Sent</div>
+            <div className="text-xl font-bold">{stats.messagesSent}</div>
+          </div>
+          <div className="bg-gray-100 p-3 rounded-md">
+            <div className="text-sm text-gray-500">Reconnects</div>
+            <div className="text-xl font-bold">{stats.reconnects}</div>
+          </div>
+          <div className="bg-gray-100 p-3 rounded-md">
+            <div className="text-sm text-gray-500">Latency</div>
+            <div className="text-xl font-bold">{stats.latency ? `${stats.latency}ms` : 'N/A'}</div>
+          </div>
+        </div>
+        
+        {/* Send message form */}
+        <MessageInput 
+          onSend={handleSendMessage} 
+          disabled={connectionState !== ConnectionState.CONNECTED} 
+        />
+        
+        {/* Additional actions */}
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={handleSendPing}
+            disabled={connectionState !== ConnectionState.CONNECTED}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md disabled:bg-gray-300"
+          >
+            Send Ping
+          </button>
+          <button
+            onClick={clearMessages}
+            className="px-4 py-2 bg-gray-500 text-white rounded-md"
+          >
+            Clear Messages
+          </button>
+        </div>
+      </div>
+      
+      {/* Message log */}
+      <div className="bg-white rounded-md shadow-md p-6">
+        <h2 className="text-xl font-bold mb-4">Messages</h2>
+        <MessageLog messages={messages} />
       </div>
     </div>
   );
 };
 
-export default WebSocketTest;
+export default WebSocketTestPage;

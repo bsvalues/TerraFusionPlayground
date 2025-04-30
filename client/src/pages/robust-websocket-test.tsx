@@ -1,343 +1,528 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ConnectionStatusBadge } from '@/components/connection-status-badge';
-import { RobustWebSocketManager, ConnectionState, TransportType, MessagePriority } from '@/services/robust-websocket-manager';
-
 /**
  * Robust WebSocket Test Page
  * 
- * This page demonstrates the enhanced WebSocket manager with improved reliability,
- * reconnection handling, and error recovery capabilities.
+ * A more advanced page for testing WebSocket connections with comprehensive
+ * configuration options, diagnostics, and logging capabilities.
  */
-export const RobustWebSocketTest: React.FC = () => {
-  // WebSocket manager instance
-  const wsManagerRef = useRef<RobustWebSocketManager | null>(null);
-  
-  // State hooks
-  const [connected, setConnected] = useState(false);
-  const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
-  const [transportType, setTransportType] = useState<TransportType>(TransportType.UNKNOWN);
-  const [message, setMessage] = useState('');
-  const [latency, setLatency] = useState<number>(0);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const [messagesSent, setMessagesSent] = useState(0);
-  const [messagesReceived, setMessagesReceived] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const [messages, setMessages] = useState<{type: 'sent' | 'received', content: string, timestamp: Date}[]>([]);
 
-  // Initialize WebSocket manager
-  useEffect(() => {
-    // Create WebSocket manager instance
-    wsManagerRef.current = new RobustWebSocketManager({
-      url: `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`,
-      autoReconnect: true,
-      maxReconnectAttempts: 10,
-      reconnectInterval: 1000,
-      fallbackPolling: true,
-      debug: true
-    });
-    
-    // Set up event handlers
-    const wsManager = wsManagerRef.current;
-    
-    // Connection state change handler
-    wsManager.on('state_change', (data: any) => {
-      setConnectionState(data.state);
-      setTransportType(data.transportType);
-      
-      if (data.state === ConnectionState.CONNECTED) {
-        setConnected(true);
-        setError(null);
-      } else if (data.state === ConnectionState.DISCONNECTED || data.state === ConnectionState.ERROR) {
-        setConnected(false);
-      }
-    });
-    
-    // Error handler
-    wsManager.on('error', (error: any) => {
-      setError(`Connection error: ${error.message || 'Unknown error'}`);
-    });
-    
-    // Message handler
-    wsManager.on('message', (data: any) => {
-      try {
-        // Handle different message types
-        if (typeof data === 'string') {
-          try {
-            const parsedData = JSON.parse(data);
-            addMessage('received', JSON.stringify(parsedData, null, 2));
-          } catch {
-            addMessage('received', data);
-          }
-        } else {
-          addMessage('received', JSON.stringify(data, null, 2));
-        }
-        
-        // Update stats
-        setMessagesReceived(prev => prev + 1);
-      } catch (error) {
-        console.error('Error handling message:', error);
-      }
-    });
-    
-    // Pong handler for latency
-    wsManager.on('pong', (data: any) => {
-      if (data && data.latency) {
-        setLatency(data.latency);
-      }
-    });
-    
-    // Reconnect handler
-    wsManager.on('reconnect', (data: any) => {
-      setReconnectAttempts(data.attempt || 0);
-    });
-    
-    // Update stats periodically
-    const updateStatsInterval = setInterval(() => {
-      if (wsManager) {
-        const stats = wsManager.getStats();
-        setLatency(stats.averageLatency);
-        setMessagesSent(stats.messagesSent);
-        setMessagesReceived(stats.messagesReceived);
-        setReconnectAttempts(stats.reconnectAttempts);
-      }
-    }, 1000);
-    
-    // Clean up on unmount
-    return () => {
-      clearInterval(updateStatsInterval);
-      
-      if (wsManager) {
-        wsManager.disconnect();
-      }
-    };
-  }, []);
-  
-  // Add message to the list
-  const addMessage = (type: 'sent' | 'received', content: string) => {
-    setMessages(prev => [
-      ...prev,
-      {
-        type,
-        content,
-        timestamp: new Date()
-      }
-    ].slice(-50)); // Keep only the last 50 messages
-  };
-  
-  // Send message
-  const sendMessage = () => {
-    if (!message.trim() || !wsManagerRef.current) return;
-    
-    try {
-      // Create message object
-      const messageObj = {
-        type: 'message',
-        content: message,
-        timestamp: Date.now()
-      };
-      
-      // Send message
-      wsManagerRef.current.send(messageObj, {
-        priority: MessagePriority.NORMAL
-      });
-      
-      // Add to messages list
-      addMessage('sent', JSON.stringify(messageObj, null, 2));
-      
-      // Update sent count
-      setMessagesSent(prev => prev + 1);
-      
-      // Clear input
-      setMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setError(`Failed to send message: ${(error as Error).message}`);
-    }
-  };
-  
-  // Connect
-  const connect = () => {
-    if (wsManagerRef.current) {
-      wsManagerRef.current.connect();
-    }
-  };
-  
-  // Disconnect
-  const disconnect = () => {
-    if (wsManagerRef.current) {
-      wsManagerRef.current.disconnect();
-    }
-  };
-  
-  // Send ping
-  const sendPing = () => {
-    if (wsManagerRef.current) {
-      const pingMessage = {
-        type: 'ping',
-        timestamp: Date.now()
-      };
-      
-      wsManagerRef.current.send(pingMessage);
-      addMessage('sent', JSON.stringify(pingMessage, null, 2));
-    }
-  };
-  
-  // Get badge color based on connection state
-  const getBadgeVariant = () => {
-    switch (connectionState) {
+import { useState, useEffect, useRef } from 'react';
+import { useWebSocket, ConnectionState } from '../hooks/use-websocket';
+import { logger } from '../utils/logger';
+
+// Connection status display component
+const ConnectionStatus = ({ state }: { state: ConnectionState }) => {
+  const getColorClass = () => {
+    switch(state) {
       case ConnectionState.CONNECTED:
-        return 'default';
+        return 'bg-green-500';
       case ConnectionState.CONNECTING:
+        return 'bg-blue-500';
       case ConnectionState.RECONNECTING:
-        return 'secondary';
-      case ConnectionState.USING_FALLBACK:
-        return 'warning';
+        return 'bg-yellow-500';
       case ConnectionState.ERROR:
-        return 'destructive';
+        return 'bg-red-500';
       default:
-        return 'outline';
+        return 'bg-gray-500';
+    }
+  };
+  
+  const getStatusText = () => {
+    switch(state) {
+      case ConnectionState.CONNECTED:
+        return 'Connected';
+      case ConnectionState.CONNECTING:
+        return 'Connecting...';
+      case ConnectionState.RECONNECTING:
+        return 'Reconnecting...';
+      case ConnectionState.ERROR:
+        return 'Error';
+      default:
+        return 'Disconnected';
     }
   };
   
   return (
-    <div className="container mx-auto py-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Robust WebSocket Test</h1>
-        <p className="text-gray-500 mb-4">
-          Testing enhanced WebSocket communication with improved reliability and error handling
-        </p>
+    <div className="flex items-center space-x-2">
+      <div className={`w-3 h-3 rounded-full ${getColorClass()}`}></div>
+      <span className="font-medium">{getStatusText()}</span>
+    </div>
+  );
+};
+
+// Configuration form for WebSocket connection
+const ConnectionConfig = ({ 
+  onConnect, 
+  disabled 
+}: { 
+  onConnect: (config: any) => void;
+  disabled: boolean;
+}) => {
+  const [config, setConfig] = useState({
+    url: '',
+    path: '/ws',
+    autoReconnect: true,
+    reconnectStrategy: {
+      initialDelay: 1000,
+      maxDelay: 30000,
+      multiplier: 1.5,
+      maxAttempts: 10
+    },
+    heartbeatInterval: 30000,
+    useHttpFallback: true
+  });
+  
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onConnect(config);
+  };
+  
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-1">WebSocket URL</label>
+        <input 
+          type="text"
+          value={config.url}
+          onChange={(e) => setConfig({...config, url: e.target.value})}
+          placeholder="Leave empty for auto-detection"
+          className="w-full p-2 border rounded"
+        />
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column - Controls */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl flex items-center">
-                WebSocket Controls
-                <Badge className="ml-auto" variant={getBadgeVariant()}>
-                  {connectionState}
-                </Badge>
-              </CardTitle>
-              <CardDescription>
-                Connect and send messages to the WebSocket server
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex space-x-2">
-                  <Button 
-                    onClick={connect}
-                    disabled={connected || connectionState === ConnectionState.CONNECTING}
-                    className="w-full"
-                  >
-                    Connect
-                  </Button>
-                  <Button 
-                    onClick={disconnect}
-                    disabled={!connected}
-                    variant="destructive"
-                    className="w-full"
-                  >
-                    Disconnect
-                  </Button>
-                </div>
-                
-                <Separator className="my-2" />
-                
-                <div className="flex space-x-2">
-                  <Input 
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    disabled={!connected}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') sendMessage();
-                    }}
-                  />
-                  <Button 
-                    onClick={sendMessage}
-                    disabled={!connected || !message.trim()}
-                    variant="secondary"
-                  >
-                    Send
-                  </Button>
-                </div>
-                
-                <div className="flex space-x-2 mt-2">
-                  <Button 
-                    onClick={sendPing}
-                    disabled={!connected}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    Send Ping
-                  </Button>
-                </div>
-              </div>
+      <div>
+        <label className="block text-sm font-medium mb-1">WebSocket Path</label>
+        <input 
+          type="text"
+          value={config.path}
+          onChange={(e) => setConfig({...config, path: e.target.value})}
+          className="w-full p-2 border rounded"
+        />
+      </div>
+      
+      <div className="flex items-center">
+        <input 
+          type="checkbox"
+          id="autoReconnect"
+          checked={config.autoReconnect}
+          onChange={(e) => setConfig({...config, autoReconnect: e.target.checked})}
+          className="mr-2"
+        />
+        <label htmlFor="autoReconnect" className="text-sm font-medium">Auto Reconnect</label>
+      </div>
+      
+      <div className="flex items-center">
+        <input 
+          type="checkbox"
+          id="useHttpFallback"
+          checked={config.useHttpFallback}
+          onChange={(e) => setConfig({...config, useHttpFallback: e.target.checked})}
+          className="mr-2"
+        />
+        <label htmlFor="useHttpFallback" className="text-sm font-medium">Use HTTP Fallback</label>
+      </div>
+      
+      <button 
+        type="button" 
+        onClick={() => setShowAdvanced(!showAdvanced)}
+        className="text-blue-500 text-sm"
+      >
+        {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options'}
+      </button>
+      
+      {showAdvanced && (
+        <div className="space-y-4 p-4 bg-gray-50 rounded-md">
+          <div>
+            <label className="block text-sm font-medium mb-1">Heartbeat Interval (ms)</label>
+            <input 
+              type="number"
+              value={config.heartbeatInterval}
+              onChange={(e) => setConfig({...config, heartbeatInterval: parseInt(e.target.value)})}
+              className="w-full p-2 border rounded"
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Initial Delay (ms)</label>
+              <input 
+                type="number"
+                value={config.reconnectStrategy.initialDelay}
+                onChange={(e) => setConfig({
+                  ...config, 
+                  reconnectStrategy: {
+                    ...config.reconnectStrategy,
+                    initialDelay: parseInt(e.target.value)
+                  }
+                })}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Max Delay (ms)</label>
+              <input 
+                type="number"
+                value={config.reconnectStrategy.maxDelay}
+                onChange={(e) => setConfig({
+                  ...config, 
+                  reconnectStrategy: {
+                    ...config.reconnectStrategy,
+                    maxDelay: parseInt(e.target.value)
+                  }
+                })}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Backoff Multiplier</label>
+              <input 
+                type="number"
+                step="0.1"
+                value={config.reconnectStrategy.multiplier}
+                onChange={(e) => setConfig({
+                  ...config, 
+                  reconnectStrategy: {
+                    ...config.reconnectStrategy,
+                    multiplier: parseFloat(e.target.value)
+                  }
+                })}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Max Attempts</label>
+              <input 
+                type="number"
+                value={config.reconnectStrategy.maxAttempts}
+                onChange={(e) => setConfig({
+                  ...config, 
+                  reconnectStrategy: {
+                    ...config.reconnectStrategy,
+                    maxAttempts: parseInt(e.target.value)
+                  }
+                })}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <button 
+        type="submit"
+        disabled={disabled}
+        className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-blue-300"
+      >
+        Connect
+      </button>
+    </form>
+  );
+};
+
+// WebSocket message composer
+const MessageComposer = ({
+  onSend,
+  disabled
+}: {
+  onSend: (message: any) => void;
+  disabled: boolean;
+}) => {
+  const [messageType, setMessageType] = useState('message');
+  const [messageContent, setMessageContent] = useState('');
+  const [customJson, setCustomJson] = useState('{"type": "custom", "content": "Hello, server!"}');
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (messageType === 'custom') {
+      try {
+        const customMessage = JSON.parse(customJson);
+        onSend(customMessage);
+      } catch (error) {
+        logger.error('Invalid JSON', error);
+        alert('Invalid JSON format');
+      }
+    } else if (messageType === 'ping') {
+      onSend({
+        type: 'ping',
+        timestamp: Date.now()
+      });
+    } else if (messageType === 'binary') {
+      // Create a binary message
+      const encoder = new TextEncoder();
+      const binaryData = encoder.encode(messageContent);
+      onSend(binaryData);
+    } else {
+      onSend({
+        type: messageType,
+        content: messageContent,
+        timestamp: Date.now()
+      });
+    }
+    
+    // Clear input
+    setMessageContent('');
+  };
+  
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-1">Message Type</label>
+        <select 
+          value={messageType}
+          onChange={(e) => setMessageType(e.target.value)}
+          className="w-full p-2 border rounded"
+          disabled={disabled}
+        >
+          <option value="message">Regular Message</option>
+          <option value="ping">Ping</option>
+          <option value="echo">Echo</option>
+          <option value="binary">Binary Data</option>
+          <option value="custom">Custom JSON</option>
+        </select>
+      </div>
+      
+      {messageType === 'custom' ? (
+        <div>
+          <label className="block text-sm font-medium mb-1">Custom JSON</label>
+          <textarea 
+            value={customJson}
+            onChange={(e) => setCustomJson(e.target.value)}
+            className="w-full p-2 border rounded font-mono text-sm h-32"
+            disabled={disabled}
+          />
+        </div>
+      ) : messageType !== 'ping' && (
+        <div>
+          <label className="block text-sm font-medium mb-1">Message Content</label>
+          <input 
+            type="text"
+            value={messageContent}
+            onChange={(e) => setMessageContent(e.target.value)}
+            className="w-full p-2 border rounded"
+            disabled={disabled}
+          />
+        </div>
+      )}
+      
+      <button 
+        type="submit"
+        disabled={disabled || (messageType !== 'ping' && messageType !== 'custom' && !messageContent)}
+        className="px-4 py-2 bg-green-500 text-white rounded disabled:bg-green-300"
+      >
+        Send Message
+      </button>
+    </form>
+  );
+};
+
+// Message log display
+const MessageLog = ({ messages }: { messages: any[] }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    // Scroll to bottom when messages change
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [messages]);
+  
+  if (messages.length === 0) {
+    return <div className="text-gray-500 italic p-4">No messages yet</div>;
+  }
+  
+  return (
+    <div ref={containerRef} className="overflow-y-auto h-96 border rounded">
+      {messages.map((msg, idx) => (
+        <div key={idx} className="border-b p-3 hover:bg-gray-50">
+          <div className="flex justify-between items-center mb-1">
+            <span className="font-medium">{msg.type || 'unknown'}</span>
+            <span className="text-xs text-gray-500">
+              {new Date(msg.timestamp || Date.now()).toLocaleTimeString()}
+            </span>
+          </div>
+          <pre className="text-sm overflow-x-auto bg-gray-100 p-2 rounded">
+            {typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg.toString()}
+          </pre>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Connection statistics display
+const ConnectionStats = ({ stats }: { stats: any }) => {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="bg-gray-100 p-3 rounded">
+        <div className="text-gray-500 text-sm">Messages Sent</div>
+        <div className="text-xl font-bold">{stats.messagesSent}</div>
+      </div>
+      <div className="bg-gray-100 p-3 rounded">
+        <div className="text-gray-500 text-sm">Messages Received</div>
+        <div className="text-xl font-bold">{stats.messagesReceived}</div>
+      </div>
+      <div className="bg-gray-100 p-3 rounded">
+        <div className="text-gray-500 text-sm">Reconnections</div>
+        <div className="text-xl font-bold">{stats.reconnects}</div>
+      </div>
+      <div className="bg-gray-100 p-3 rounded">
+        <div className="text-gray-500 text-sm">Latency</div>
+        <div className="text-xl font-bold">{stats.latency ? `${stats.latency}ms` : 'N/A'}</div>
+      </div>
+    </div>
+  );
+};
+
+// Main component
+const RobustWebSocketTest = () => {
+  // State
+  const [config, setConfig] = useState({
+    url: '',
+    path: '/ws',
+    autoReconnect: true,
+    reconnectStrategy: {
+      initialDelay: 1000,
+      maxDelay: 30000,
+      multiplier: 1.5,
+      maxAttempts: 10
+    },
+    heartbeatInterval: 30000,
+    useHttpFallback: true
+  });
+  
+  const [messages, setMessages] = useState<any[]>([]);
+  const [useWebSocketHook, setUseWebSocketHook] = useState(false);
+  const [stats, setStats] = useState({
+    messagesSent: 0,
+    messagesReceived: 0,
+    reconnects: 0,
+    latency: null as number | null
+  });
+  
+  // WebSocket hook
+  const {
+    connectionState,
+    lastMessage,
+    sendMessage,
+    connect,
+    disconnect,
+    reconnect,
+    getStatus
+  } = useWebSocket(
+    config.url,
+    config,
+    useWebSocketHook
+  );
+  
+  // Update messages when new messages arrive
+  useEffect(() => {
+    if (lastMessage) {
+      setMessages(prev => [...prev, lastMessage]);
+    }
+  }, [lastMessage]);
+  
+  // Update stats periodically
+  useEffect(() => {
+    if (!useWebSocketHook) return;
+    
+    const interval = setInterval(() => {
+      const status = getStatus();
+      setStats({
+        messagesSent: status.stats.messagesSent,
+        messagesReceived: status.stats.messagesReceived,
+        reconnects: status.stats.reconnects,
+        latency: status.stats.lastLatency
+      });
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [getStatus, useWebSocketHook]);
+  
+  // Handle connect button
+  const handleConnect = (newConfig: any) => {
+    setConfig(newConfig);
+    setUseWebSocketHook(true);
+  };
+  
+  // Handle send message
+  const handleSendMessage = (message: any) => {
+    sendMessage(message);
+  };
+  
+  // Handle clear messages
+  const handleClearMessages = () => {
+    setMessages([]);
+  };
+  
+  return (
+    <div className="container mx-auto p-6 max-w-6xl">
+      <h1 className="text-3xl font-bold mb-6">Robust WebSocket Test</h1>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left column - Connection & Controls */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold mb-4">Connection</h2>
+            
+            <div className="flex justify-between items-center mb-6">
+              <ConnectionStatus state={connectionState} />
               
-              <div className="text-sm text-gray-500 mt-4 space-y-1">
-                <p><span className="font-semibold">Status:</span> {connectionState}</p>
-                <p><span className="font-semibold">Transport:</span> {transportType}</p>
-                <p><span className="font-semibold">Latency:</span> {latency > 0 ? `${latency}ms` : 'N/A'}</p>
-                <p><span className="font-semibold">Reconnect Attempts:</span> {reconnectAttempts}</p>
-                <p><span className="font-semibold">Messages Sent:</span> {messagesSent}</p>
-                <p><span className="font-semibold">Messages Received:</span> {messagesReceived}</p>
+              <div className="space-x-2">
+                <button 
+                  onClick={disconnect}
+                  disabled={!useWebSocketHook || connectionState === ConnectionState.DISCONNECTED}
+                  className="px-3 py-1 bg-red-500 text-white rounded text-sm disabled:bg-red-300"
+                >
+                  Disconnect
+                </button>
+                <button 
+                  onClick={reconnect}
+                  disabled={!useWebSocketHook || connectionState === ConnectionState.CONNECTING || connectionState === ConnectionState.RECONNECTING}
+                  className="px-3 py-1 bg-yellow-500 text-white rounded text-sm disabled:bg-yellow-300"
+                >
+                  Reconnect
+                </button>
               </div>
-              
-              {error && (
-                <Alert variant="destructive" className="mt-4">
-                  <AlertTitle>Error</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+            
+            {useWebSocketHook ? (
+              <ConnectionStats stats={stats} />
+            ) : (
+              <ConnectionConfig 
+                onConnect={handleConnect}
+                disabled={useWebSocketHook}
+              />
+            )}
+          </div>
+          
+          {useWebSocketHook && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Send Message</h2>
+              <MessageComposer 
+                onSend={handleSendMessage}
+                disabled={connectionState !== ConnectionState.CONNECTED}
+              />
+            </div>
+          )}
         </div>
         
         {/* Right column - Messages */}
-        <div className="lg:col-span-2">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="text-xl">WebSocket Messages</CardTitle>
-              <CardDescription>
-                Real-time messages between client and server
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[500px] overflow-y-auto border rounded-md p-4 bg-gray-50">
-                {messages.length === 0 ? (
-                  <div className="text-center text-gray-400 py-8">
-                    No messages yet. Connect to the WebSocket server and send a message.
-                  </div>
-                ) : (
-                  messages.map((msg, index) => (
-                    <div 
-                      key={index} 
-                      className={`my-2 p-3 rounded-md ${
-                        msg.type === 'sent' 
-                          ? 'bg-blue-50 ml-12 border-l-4 border-blue-400' 
-                          : 'bg-gray-100 mr-12 border-l-4 border-gray-400'
-                      }`}
-                    >
-                      <div className="text-xs text-gray-500 mb-1">
-                        {msg.timestamp.toLocaleTimeString()} - {msg.type === 'sent' ? 'Sent' : 'Received'}
-                      </div>
-                      <div className="text-sm whitespace-pre-wrap break-words font-mono">
-                        {msg.content}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Messages</h2>
+            <button 
+              onClick={handleClearMessages}
+              className="px-3 py-1 bg-gray-500 text-white rounded text-sm"
+            >
+              Clear
+            </button>
+          </div>
+          <MessageLog messages={messages} />
         </div>
       </div>
     </div>

@@ -1,186 +1,180 @@
 /**
- * Enhanced logger utility
+ * Server-side logging utility
  * 
- * Provides structured logging capabilities with different log levels
- * and standardized formatting for better debugging and monitoring.
- * 
- * Features:
- * - Multiple log levels (DEBUG, INFO, WARN, ERROR)
- * - Component-based logging
- * - Structured output in JSON format
- * - Configurable via environment variables
- * - Support for WebSocket specific logging
- * - Error object handling
+ * A centralized logging system with consistent formatting,
+ * configurable log levels, and structured log output.
  */
 
 // Define log levels
-enum LogLevel {
+export enum LogLevel {
   DEBUG = 0,
   INFO = 1,
   WARN = 2,
-  ERROR = 3
+  ERROR = 3,
+  NONE = 4
 }
 
-// Define global log levels - can be adjusted based on environment
-const CURRENT_LOG_LEVEL = process.env.NODE_ENV === 'production' ? LogLevel.INFO : LogLevel.DEBUG;
+// Map log level strings to numeric values
+const LOG_LEVEL_MAP: Record<string, LogLevel> = {
+  'debug': LogLevel.DEBUG,
+  'info': LogLevel.INFO,
+  'warn': LogLevel.WARN,
+  'error': LogLevel.ERROR,
+  'none': LogLevel.NONE
+};
 
-// Configure WebSocket specific logging
-const WS_DEBUG_ENABLED = process.env.WS_DEBUG === 'true' || process.env.NODE_ENV !== 'production';
+// Default log level
+const DEFAULT_LOG_LEVEL = process.env.NODE_ENV === 'production' ? LogLevel.INFO : LogLevel.DEBUG;
 
 /**
- * Enhanced logger utility with support for different log levels, structured output,
- * and specialized WebSocket logging capabilities.
+ * Logger class with support for different log levels and structured output
  */
 class Logger {
+  private level: LogLevel;
+  
+  /**
+   * Create a new logger instance
+   */
+  constructor() {
+    this.level = this.getLogLevelFromEnv();
+  }
+  
+  /**
+   * Set the current log level
+   * @param level Log level to set
+   */
+  public setLevel(level: LogLevel | string): void {
+    if (typeof level === 'string') {
+      const levelValue = LOG_LEVEL_MAP[level.toLowerCase()];
+      if (levelValue !== undefined) {
+        this.level = levelValue;
+      }
+    } else if (typeof level === 'number' && level >= LogLevel.DEBUG && level <= LogLevel.NONE) {
+      this.level = level;
+    }
+  }
+  
+  /**
+   * Get the current log level
+   */
+  public getLevel(): LogLevel {
+    return this.level;
+  }
+  
   /**
    * Log a debug message
-   * @param message The message to log
-   * @param data Optional additional data to include
+   * @param message Message to log
+   * @param data Additional data to include
    */
-  public debug(message: string, data?: any): void {
-    if (CURRENT_LOG_LEVEL <= LogLevel.DEBUG) {
+  public debug(message: string | object, data?: any): void {
+    if (this.level <= LogLevel.DEBUG) {
       this.log('debug', message, data);
     }
   }
   
   /**
-   * Log an info message
-   * @param message The message to log
-   * @param data Optional additional data to include
+   * Log an informational message
+   * @param message Message to log
+   * @param data Additional data to include
    */
-  public info(message: string, data?: any): void {
-    if (CURRENT_LOG_LEVEL <= LogLevel.INFO) {
+  public info(message: string | object, data?: any): void {
+    if (this.level <= LogLevel.INFO) {
       this.log('info', message, data);
     }
   }
   
   /**
    * Log a warning message
-   * @param message The message to log
-   * @param data Optional additional data to include
+   * @param message Message to log
+   * @param data Additional data to include
    */
-  public warn(message: string, data?: any): void {
-    if (CURRENT_LOG_LEVEL <= LogLevel.WARN) {
+  public warn(message: string | object, data?: any): void {
+    if (this.level <= LogLevel.WARN) {
       this.log('warn', message, data);
     }
   }
   
   /**
    * Log an error message
-   * @param message The message to log
-   * @param error Optional error object or data to include
+   * @param message Message to log
+   * @param error Error object or additional data
    */
-  public error(message: string, error?: any): void {
-    if (CURRENT_LOG_LEVEL <= LogLevel.ERROR) {
-      this.log('error', message, error);
-    }
-  }
-
-  /**
-   * Log a WebSocket specific debug message - only if WebSocket debugging is enabled
-   * @param message The message to log
-   * @param data Optional additional data to include
-   */
-  public wsDebug(message: string, data?: any): void {
-    if (WS_DEBUG_ENABLED && CURRENT_LOG_LEVEL <= LogLevel.DEBUG) {
-      this.log('debug', message, { ...data, component: 'WebSocket' });
-    }
-  }
-
-  /**
-   * Log a WebSocket specific info message
-   * @param message The message to log
-   * @param data Optional additional data to include
-   */
-  public wsInfo(message: string, data?: any): void {
-    if (CURRENT_LOG_LEVEL <= LogLevel.INFO) {
-      this.log('info', message, { ...data, component: 'WebSocket' });
-    }
-  }
-
-  /**
-   * Log a WebSocket specific warning message
-   * @param message The message to log
-   * @param data Optional additional data to include
-   */
-  public wsWarn(message: string, data?: any): void {
-    if (CURRENT_LOG_LEVEL <= LogLevel.WARN) {
-      this.log('warn', message, { ...data, component: 'WebSocket' });
-    }
-  }
-
-  /**
-   * Log a WebSocket specific error message
-   * @param message The message to log
-   * @param error Optional error object or data to include
-   */
-  public wsError(message: string, error?: any): void {
-    if (CURRENT_LOG_LEVEL <= LogLevel.ERROR) {
-      const errorData = this.formatError(error);
-      this.log('error', message, { ...errorData, component: 'WebSocket' });
+  public error(message: string | object, error?: any): void {
+    if (this.level <= LogLevel.ERROR) {
+      // Format error object if provided
+      let formattedError = error;
+      
+      if (error instanceof Error) {
+        formattedError = {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        };
+      }
+      
+      this.log('error', message, formattedError);
     }
   }
   
   /**
-   * Format an error object for logging
-   * @param error The error to format
-   * @returns Formatted error object
+   * Internal method to log a message with consistent formatting
+   * @param level Log level
+   * @param message Message to log
+   * @param data Additional data
    */
-  private formatError(error: any): any {
-    if (!error) return {};
-    
-    if (error instanceof Error) {
-      return { 
-        errorName: error.name,
-        errorMessage: error.message,
-        stack: error.stack?.split('\n').slice(0, 5).join('\n') // Include first 5 lines of stack
-      };
-    }
-    
-    return { error };
-  }
-  
-  /**
-   * Internal method to log a message with consistent format
-   * @param level The log level
-   * @param message The message to log
-   * @param data Optional additional data to include
-   */
-  private log(level: string, message: string, data?: any): void {
+  private log(level: string, message: string | object, data?: any): void {
     const timestamp = new Date().toISOString();
-    const component = data?.component || 'app';
     
-    // Remove component from data if it exists to avoid duplication
-    if (data?.component) {
-      const { component, ...rest } = data;
-      data = rest;
-    }
-    
-    // Create structured log object
-    const logObject = {
+    // Structure the log entry
+    const logEntry: any = {
       timestamp,
       level,
-      component,
-      message: data ? { message, ...data } : message
+      component: 'app'
     };
     
-    // Log to console with appropriate level
+    // Handle message formatting
+    if (typeof message === 'string') {
+      logEntry.message = message;
+      if (data !== undefined) {
+        logEntry.data = data;
+      }
+    } else {
+      logEntry.message = message;
+    }
+    
+    // Format for console output
+    const consoleOutput = JSON.stringify(logEntry);
+    
+    // Output to appropriate console method
     switch (level) {
       case 'debug':
-        console.debug(JSON.stringify(logObject));
+        console.debug(consoleOutput);
         break;
       case 'info':
-        console.info(JSON.stringify(logObject));
+        console.info(consoleOutput);
         break;
       case 'warn':
-        console.warn(JSON.stringify(logObject));
+        console.warn(consoleOutput);
         break;
       case 'error':
-        console.error(JSON.stringify(logObject));
+        console.error(consoleOutput);
         break;
       default:
-        console.log(JSON.stringify(logObject));
+        console.log(consoleOutput);
     }
+  }
+  
+  /**
+   * Get log level from environment variable
+   */
+  private getLogLevelFromEnv(): LogLevel {
+    const envLevel = process.env.LOG_LEVEL;
+    
+    if (envLevel && LOG_LEVEL_MAP[envLevel.toLowerCase()] !== undefined) {
+      return LOG_LEVEL_MAP[envLevel.toLowerCase()];
+    }
+    
+    return DEFAULT_LOG_LEVEL;
   }
 }
 

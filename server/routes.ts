@@ -9,7 +9,7 @@ import { z } from "zod";
 import path from "path";
 import QGISService from "./services/qgis-service";
 import { metricsService } from "./services/prometheus-metrics-service";
-import { mainWebSocketServer } from "./services/main-websocket-server";
+import { MainWebSocketServer } from "./services/main-websocket-server";
 import { logger } from "./utils/logger";
 import { 
   insertPropertySchema, 
@@ -2951,7 +2951,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Initialize our enhanced main WebSocket server
   logger.info('[WebSocket] Initializing MainWebSocketServer on path: /ws');
-  mainWebSocketServer.initialize(httpServer);
+  const mainWebSocketServer = MainWebSocketServer.getInstance();
+  mainWebSocketServer.initialize(httpServer, {
+    path: '/ws',
+    heartbeatInterval: 30000, // 30 seconds
+    heartbeatTimeout: 60000,  // 60 seconds
+    logLevel: 'debug',
+    clientTracking: true
+  });
   logger.info('[WebSocket] MainWebSocketServer initialized successfully');
   
   // Create a legacy WebSocket server for compatibility with existing code
