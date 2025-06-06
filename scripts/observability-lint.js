@@ -42,7 +42,7 @@ const COLORS = {
 // Counters for summary
 let errorCount = 0;
 let warningCount = 0;
-let fixedCount = 0;
+const fixedCount = 0;
 
 // Arguments
 const args = process.argv.slice(2);

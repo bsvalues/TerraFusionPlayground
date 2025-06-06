@@ -10,6 +10,57 @@ import { IStorage } from '../../../storage';
 import { BaseGISAgent } from './base-gis-agent';
 import { sql } from 'drizzle-orm';
 import { db } from '../../../db';
+import { AgentConfig, AgentCapability } from '../../agents/base-agent';
+
+interface GISLayer {
+  id: number;
+  name: string;
+  description: string | null;
+  type: string;
+  format: string | null;
+  spatialReference: string | null;
+  source: string | null;
+  url: string | null;
+  apiKey: string | null;
+  metadata: unknown;
+  table_name: string;
+  feature_count: number;
+  userId: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface IntersectionParams {
+  sourceLayerId: number;
+  targetLayerId: number;
+  options?: Record<string, unknown>;
+}
+
+interface BufferParams {
+  layerId: number;
+  distance: number;
+  options?: Record<string, unknown>;
+}
+
+interface SpatialOverlayParams {
+  sourceLayerId: number;
+  targetLayerId: number;
+  operation: 'union' | 'difference' | 'symmetric_difference';
+  options?: Record<string, unknown>;
+}
+
+interface NearestNeighborParams {
+  layerId: number;
+  targetLayerId?: number;
+  maxDistance?: number;
+  maxResults?: number;
+}
+
+interface GeoJSONConversionParams {
+  geoJSON: Record<string, unknown>;
+  tableName: string;
+  options?: Record<string, unknown>;
+}
 
 /**
  * Create a Spatial Query Agent
@@ -17,152 +68,99 @@ import { db } from '../../../db';
  * @returns A new SpatialQueryAgent instance
  */
 export function createSpatialQueryAgent(storage: IStorage) {
-  // Generate a unique ID for this agent instance
   const agentId = `spatial-query-agent-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`;
-
   return new SpatialQueryAgent(storage, agentId);
 }
 
 class SpatialQueryAgent extends BaseGISAgent {
   constructor(storage: IStorage, agentId: string) {
-    // First call super with basic config, then we'll add capabilities after constructor
-    const config = {
-      id: agentId,
-      name: 'Spatial Query Agent',
-      description:
-        'Processes spatial operations like intersections, buffering, and overlays using PostGIS',
-      capabilities: [],
-      permissions: ['gis:read', 'gis:write', 'gis:analyze'],
-    };
-
-    super(storage, config);
-
-    // Now add the capabilities after super() has been called
-    this.config.capabilities = [
+    const capabilities: AgentCapability[] = [
       {
         name: 'performIntersection',
         description: 'Find the intersection between two geometries or layers',
-        parameters: {
-          sourceLayerId: { type: 'number', description: 'ID of the source layer' },
-          targetLayerId: { type: 'number', description: 'ID of the target layer' },
-          options: {
-            type: 'object',
-            optional: true,
-            description: 'Additional options for the intersection operation',
-          },
-        },
-        handler: this.performIntersection.bind(this),
+        handler: async (params: IntersectionParams) => {
+          return this.performIntersection(params);
+        }
       },
       {
         name: 'createBuffer',
         description: 'Create a buffer around geometries',
-        parameters: {
-          layerId: { type: 'number', description: 'ID of the layer to buffer' },
-          distance: {
-            type: 'number',
-            description: "Buffer distance in the layer's unit of measure",
-          },
-          options: {
-            type: 'object',
-            optional: true,
-            description: 'Additional options for the buffer operation',
-          },
-        },
-        handler: this.createBuffer.bind(this),
+        handler: async (params: BufferParams) => {
+          return this.createBuffer(params);
+        }
       },
       {
         name: 'performSpatialOverlay',
         description: 'Perform a spatial overlay operation (union, difference, etc.)',
-        parameters: {
-          sourceLayerId: { type: 'number', description: 'ID of the source layer' },
-          targetLayerId: { type: 'number', description: 'ID of the target layer' },
-          operation: {
-            type: 'string',
-            enum: ['union', 'difference', 'symmetric_difference'],
-            description: 'Type of overlay operation',
-          },
-          options: {
-            type: 'object',
-            optional: true,
-            description: 'Additional options for the overlay operation',
-          },
-        },
-        handler: this.performSpatialOverlay.bind(this),
+        handler: async (params: SpatialOverlayParams) => {
+          return this.performSpatialOverlay(params);
+        }
       },
       {
         name: 'nearestNeighborAnalysis',
         description: 'Find nearest neighbors for points in a layer',
-        parameters: {
-          layerId: { type: 'number', description: 'ID of the layer containing points' },
-          targetLayerId: {
-            type: 'number',
-            optional: true,
-            description: 'Optional target layer to find neighbors from',
-          },
-          maxDistance: {
-            type: 'number',
-            optional: true,
-            description: 'Maximum distance to search for neighbors',
-          },
-          maxResults: {
-            type: 'number',
-            optional: true,
-            description: 'Maximum number of results per point',
-          },
-        },
-        handler: this.nearestNeighborAnalysis.bind(this),
+        handler: async (params: NearestNeighborParams) => {
+          return this.nearestNeighborAnalysis(params);
+        }
       },
       {
         name: 'convertGeoJSONToSQL',
         description: 'Convert GeoJSON to PostGIS SQL queries',
-        parameters: {
-          geoJSON: { type: 'object', description: 'GeoJSON object to convert' },
-          tableName: { type: 'string', description: 'Target table name' },
-          options: {
-            type: 'object',
-            optional: true,
-            description: 'Additional options for the conversion',
-          },
-        },
-        handler: this.convertGeoJSONToSQL.bind(this),
-      },
+        handler: async (params: GeoJSONConversionParams) => {
+          return this.convertGeoJSONToSQL(params);
+        }
+      }
     ];
+
+    const config: AgentConfig = {
+      id: agentId,
+      name: 'Spatial Query Agent',
+      description: 'Processes spatial operations like intersections, buffering, and overlays using PostGIS',
+      capabilities,
+      permissions: ['gis:read', 'gis:write', 'gis:analyze']
+    };
+
+    super(storage, config);
   }
 
-  /**
-   * Initialize the agent
-   */
   public async initialize(): Promise<void> {
     try {
-      await this.baseInitialize();
-
-      // Log the initialization
       await this.createAgentMessage({
-        type: 'INFO',
-        content: `Agent ${this.name} (${this.agentId}) initialized`,
-        agentId: this.agentId,
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Agent Initialization',
+        content: `Agent ${this.name} (${this.agentId}) initialized successfully`,
+        status: 'completed'
       });
 
-      console.log(`Spatial Query Agent (${this.agentId}) initialized successfully`);
+      await this.updateStatus('active', 100);
     } catch (error) {
-      console.error(`Error initializing Spatial Query Agent:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error initializing Spatial Query Agent:', errorMessage);
+      
+      await this.createAgentMessage({
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'ERROR',
+        subject: 'Agent Initialization Failed',
+        content: `Failed to initialize agent: ${errorMessage}`,
+        status: 'error'
+      });
+
+      await this.updateStatus('error', 0);
       throw error;
     }
   }
 
-  /**
-   * Find the intersection between two geometries or layers
-   */
-  private async performIntersection(params: any): Promise<any> {
+  private async performIntersection(params: IntersectionParams): Promise<Record<string, unknown>> {
     try {
       const { sourceLayerId, targetLayerId, options = {} } = params;
 
-      // Validate parameters
       if (!sourceLayerId || !targetLayerId) {
         throw new Error('Source and target layer IDs are required');
       }
 
-      // Get the source and target layers
       const sourceLayer = await this.storage.getGISLayer(sourceLayerId);
       const targetLayer = await this.storage.getGISLayer(targetLayerId);
 
@@ -170,16 +168,16 @@ class SpatialQueryAgent extends BaseGISAgent {
         throw new Error('One or both layers do not exist');
       }
 
-      // Log the operation
       await this.createAgentMessage({
-        type: 'INFO',
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Spatial Operation',
         content: `Performing intersection between layers ${sourceLayer.name} and ${targetLayer.name}`,
-        agentId: this.agentId,
-        metadata: { sourceLayerId, targetLayerId, options },
+        status: 'completed',
+        metadata: { sourceLayerId, targetLayerId, options }
       });
 
-      // Perform intersection using PostGIS
-      // Note: This would typically involve a JOIN with ST_Intersects and ST_Intersection
       const result = await db.execute(sql`
         SELECT 
           source.id as source_id, 
@@ -192,9 +190,6 @@ class SpatialQueryAgent extends BaseGISAgent {
           ST_Intersects(source.geometry, target.geometry)
       `);
 
-      // Processing and format conversion would happen here
-      // This is a simplified implementation
-
       return {
         success: true,
         message: `Successfully performed intersection between layers ${sourceLayer.name} and ${targetLayer.name}`,
@@ -204,108 +199,95 @@ class SpatialQueryAgent extends BaseGISAgent {
         metadata: {
           count: result.rows.length,
           operation: 'intersection',
-          timestamp: new Date(),
-        },
+          timestamp: new Date().toISOString()
+        }
       };
     } catch (error) {
-      console.error(`Error in performIntersection:`, error);
-
-      // Log the error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error in performIntersection:', errorMessage);
+      
       await this.createAgentMessage({
-        type: 'ERROR',
-        content: `Error performing intersection: ${error.message}`,
-        agentId: this.agentId,
-        metadata: { error: error.message, params },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'ERROR',
+        subject: 'Spatial Operation Failed',
+        content: `Intersection operation failed: ${errorMessage}`,
+        status: 'error',
+        metadata: { params }
       });
 
       throw error;
     }
   }
 
-  /**
-   * Create a buffer around geometries in a layer
-   */
-  private async createBuffer(params: any): Promise<any> {
+  private async createBuffer(params: BufferParams): Promise<Record<string, unknown>> {
     try {
       const { layerId, distance, options = {} } = params;
 
-      // Validate parameters
       if (!layerId || distance === undefined) {
         throw new Error('Layer ID and distance are required');
       }
 
-      // Get the layer
       const layer = await this.storage.getGISLayer(layerId);
-
       if (!layer) {
         throw new Error('Layer does not exist');
       }
 
-      // Log the operation
       await this.createAgentMessage({
-        type: 'INFO',
-        content: `Creating buffer of distance ${distance} around geometries in layer ${layer.name}`,
-        agentId: this.agentId,
-        metadata: { layerId, distance, options },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Spatial Operation',
+        content: `Creating buffer of distance ${distance} around layer ${layer.name}`,
+        status: 'completed',
+        metadata: { layerId, distance, options }
       });
 
-      // Create buffer using PostGIS
       const result = await db.execute(sql`
         SELECT 
           id,
-          ST_AsGeoJSON(ST_Buffer(geometry, ${distance}, 'quad_segs=${options.quadSegs || 8}')) as buffered_geom
+          ST_AsGeoJSON(ST_Buffer(geometry, ${distance})) as buffered_geom
         FROM 
           ${sql.identifier(layer.table_name)}
       `);
 
       return {
         success: true,
-        message: `Successfully created buffer around geometries in layer ${layer.name}`,
+        message: `Successfully created buffer around layer ${layer.name}`,
         layer: layer.name,
-        distance,
         results: result.rows,
         metadata: {
           count: result.rows.length,
           operation: 'buffer',
-          timestamp: new Date(),
-        },
+          timestamp: new Date().toISOString()
+        }
       };
     } catch (error) {
-      console.error(`Error in createBuffer:`, error);
-
-      // Log the error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error in createBuffer:', errorMessage);
+      
       await this.createAgentMessage({
-        type: 'ERROR',
-        content: `Error creating buffer: ${error.message}`,
-        agentId: this.agentId,
-        metadata: { error: error.message, params },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'ERROR',
+        subject: 'Spatial Operation Failed',
+        content: `Buffer operation failed: ${errorMessage}`,
+        status: 'error',
+        metadata: { params }
       });
 
       throw error;
     }
   }
 
-  /**
-   * Perform a spatial overlay operation (union, difference, etc.)
-   */
-  private async performSpatialOverlay(params: any): Promise<any> {
+  private async performSpatialOverlay(params: SpatialOverlayParams): Promise<Record<string, unknown>> {
     try {
       const { sourceLayerId, targetLayerId, operation, options = {} } = params;
 
-      // Validate parameters
       if (!sourceLayerId || !targetLayerId || !operation) {
         throw new Error('Source layer ID, target layer ID, and operation are required');
       }
 
-      // Validate operation
-      const validOperations = ['union', 'difference', 'symmetric_difference'];
-      if (!validOperations.includes(operation)) {
-        throw new Error(
-          `Invalid operation: ${operation}. Must be one of: ${validOperations.join(', ')}`
-        );
-      }
-
-      // Get the source and target layers
       const sourceLayer = await this.storage.getGISLayer(sourceLayerId);
       const targetLayer = await this.storage.getGISLayer(targetLayerId);
 
@@ -313,34 +295,36 @@ class SpatialQueryAgent extends BaseGISAgent {
         throw new Error('One or both layers do not exist');
       }
 
-      // Log the operation
       await this.createAgentMessage({
-        type: 'INFO',
-        content: `Performing ${operation} overlay between layers ${sourceLayer.name} and ${targetLayer.name}`,
-        agentId: this.agentId,
-        metadata: { sourceLayerId, targetLayerId, operation, options },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Spatial Operation',
+        content: `Performing ${operation} between layers ${sourceLayer.name} and ${targetLayer.name}`,
+        status: 'completed',
+        metadata: { sourceLayerId, targetLayerId, operation, options }
       });
 
-      // Map operation to PostGIS function
-      let pgisFunction: string;
+      let overlayFunction;
       switch (operation) {
         case 'union':
-          pgisFunction = 'ST_Union';
+          overlayFunction = 'ST_Union';
           break;
         case 'difference':
-          pgisFunction = 'ST_Difference';
+          overlayFunction = 'ST_Difference';
           break;
         case 'symmetric_difference':
-          pgisFunction = 'ST_SymDifference';
+          overlayFunction = 'ST_SymDifference';
           break;
+        default:
+          throw new Error(`Unsupported operation: ${operation}`);
       }
 
-      // Perform overlay using PostGIS
       const result = await db.execute(sql`
         SELECT 
-          source.id as source_id, 
+          source.id as source_id,
           target.id as target_id,
-          ST_AsGeoJSON(${sql.raw(pgisFunction)}(source.geometry, target.geometry)) as result_geom
+          ST_AsGeoJSON(${sql.identifier(overlayFunction)}(source.geometry, target.geometry)) as overlay_geom
         FROM 
           ${sql.identifier(sourceLayer.table_name)} source,
           ${sql.identifier(targetLayer.table_name)} target
@@ -353,238 +337,189 @@ class SpatialQueryAgent extends BaseGISAgent {
         message: `Successfully performed ${operation} between layers ${sourceLayer.name} and ${targetLayer.name}`,
         sourceLayer: sourceLayer.name,
         targetLayer: targetLayer.name,
-        operation,
         results: result.rows,
         metadata: {
           count: result.rows.length,
           operation,
-          timestamp: new Date(),
-        },
+          timestamp: new Date().toISOString()
+        }
       };
     } catch (error) {
-      console.error(`Error in performSpatialOverlay:`, error);
-
-      // Log the error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error in performSpatialOverlay:', errorMessage);
+      
       await this.createAgentMessage({
-        type: 'ERROR',
-        content: `Error performing spatial overlay: ${error.message}`,
-        agentId: this.agentId,
-        metadata: { error: error.message, params },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'ERROR',
+        subject: 'Spatial Operation Failed',
+        content: `Overlay operation failed: ${errorMessage}`,
+        status: 'error',
+        metadata: { params }
       });
 
       throw error;
     }
   }
 
-  /**
-   * Find nearest neighbors for points in a layer
-   */
-  private async nearestNeighborAnalysis(params: any): Promise<any> {
+  private async nearestNeighborAnalysis(params: NearestNeighborParams): Promise<Record<string, unknown>> {
     try {
-      const { layerId, targetLayerId, maxDistance = 1000, maxResults = 5 } = params;
+      const { layerId, targetLayerId, maxDistance, maxResults = 1 } = params;
 
-      // Validate parameters
       if (!layerId) {
         throw new Error('Layer ID is required');
       }
 
-      // Get the layer
       const layer = await this.storage.getGISLayer(layerId);
-
       if (!layer) {
         throw new Error('Layer does not exist');
       }
 
-      // Get target layer if specified
-      let targetLayer;
-      if (targetLayerId) {
-        targetLayer = await this.storage.getGISLayer(targetLayerId);
-        if (!targetLayer) {
-          throw new Error('Target layer does not exist');
-        }
+      const targetLayer = targetLayerId ? await this.storage.getGISLayer(targetLayerId) : layer;
+      if (!targetLayer) {
+        throw new Error('Target layer does not exist');
       }
 
-      // Log the operation
       await this.createAgentMessage({
-        type: 'INFO',
-        content: targetLayer
-          ? `Finding nearest neighbors between layers ${layer.name} and ${targetLayer.name}`
-          : `Finding nearest neighbors within layer ${layer.name}`,
-        agentId: this.agentId,
-        metadata: { layerId, targetLayerId, maxDistance, maxResults },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Spatial Analysis',
+        content: `Performing nearest neighbor analysis on layer ${layer.name}`,
+        status: 'completed',
+        metadata: { layerId, targetLayerId, maxDistance, maxResults }
       });
 
-      let result;
+      const distanceClause = maxDistance ? sql`AND ST_DWithin(source.geometry, target.geometry, ${maxDistance})` : sql``;
+      const limitClause = sql`LIMIT ${maxResults}`;
 
-      if (targetLayer) {
-        // Find nearest neighbors between two layers
-        result = await db.execute(sql`
+      const result = await db.execute(sql`
+        WITH ranked_neighbors AS (
           SELECT 
-            source.id as source_id, 
+            source.id as source_id,
             target.id as target_id,
-            ST_Distance(source.geometry, target.geometry) as distance
+            ST_Distance(source.geometry, target.geometry) as distance,
+            ROW_NUMBER() OVER (PARTITION BY source.id ORDER BY ST_Distance(source.geometry, target.geometry)) as rank
           FROM 
             ${sql.identifier(layer.table_name)} source,
             ${sql.identifier(targetLayer.table_name)} target
           WHERE 
-            ST_DWithin(source.geometry, target.geometry, ${maxDistance})
-          ORDER BY 
-            source.id, distance
-          LIMIT 
-            ${maxResults * layer.feature_count || 1000}
-        `);
-      } else {
-        // Find nearest neighbors within the same layer
-        result = await db.execute(sql`
-          SELECT 
-            a.id as source_id, 
-            b.id as target_id,
-            ST_Distance(a.geometry, b.geometry) as distance
-          FROM 
-            ${sql.identifier(layer.table_name)} a,
-            ${sql.identifier(layer.table_name)} b
-          WHERE 
-            a.id <> b.id AND
-            ST_DWithin(a.geometry, b.geometry, ${maxDistance})
-          ORDER BY 
-            a.id, distance
-          LIMIT 
-            ${maxResults * layer.feature_count || 1000}
-        `);
-      }
+            source.id != target.id
+            ${distanceClause}
+        )
+        SELECT 
+          source_id,
+          target_id,
+          distance
+        FROM 
+          ranked_neighbors
+        WHERE 
+          rank <= ${maxResults}
+        ORDER BY 
+          source_id, distance
+      `);
 
       return {
         success: true,
-        message: targetLayer
-          ? `Successfully found nearest neighbors between layers ${layer.name} and ${targetLayer.name}`
-          : `Successfully found nearest neighbors within layer ${layer.name}`,
-        sourceLayer: layer.name,
-        targetLayer: targetLayer?.name,
+        message: `Successfully performed nearest neighbor analysis on layer ${layer.name}`,
+        layer: layer.name,
+        targetLayer: targetLayer.name,
         results: result.rows,
         metadata: {
           count: result.rows.length,
           operation: 'nearest_neighbor',
-          maxDistance,
-          maxResults,
-          timestamp: new Date(),
-        },
+          timestamp: new Date().toISOString()
+        }
       };
     } catch (error) {
-      console.error(`Error in nearestNeighborAnalysis:`, error);
-
-      // Log the error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error in nearestNeighborAnalysis:', errorMessage);
+      
       await this.createAgentMessage({
-        type: 'ERROR',
-        content: `Error performing nearest neighbor analysis: ${error.message}`,
-        agentId: this.agentId,
-        metadata: { error: error.message, params },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'ERROR',
+        subject: 'Spatial Analysis Failed',
+        content: `Nearest neighbor analysis failed: ${errorMessage}`,
+        status: 'error',
+        metadata: { params }
       });
 
       throw error;
     }
   }
 
-  /**
-   * Convert GeoJSON to PostGIS SQL queries
-   */
-  private async convertGeoJSONToSQL(params: any): Promise<any> {
+  private async convertGeoJSONToSQL(params: GeoJSONConversionParams): Promise<Record<string, unknown>> {
     try {
       const { geoJSON, tableName, options = {} } = params;
 
-      // Validate parameters
       if (!geoJSON || !tableName) {
         throw new Error('GeoJSON and table name are required');
       }
 
-      // Log the operation
       await this.createAgentMessage({
-        type: 'INFO',
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Data Conversion',
         content: `Converting GeoJSON to SQL for table ${tableName}`,
-        agentId: this.agentId,
-        metadata: { tableName, options },
+        status: 'completed',
+        metadata: { tableName, options }
       });
 
-      // Extract features from GeoJSON
-      const features = geoJSON.features || [];
-
-      if (features.length === 0) {
-        throw new Error('No features found in GeoJSON');
-      }
-
-      // Generate SQL statements for each feature
-      const sqlStatements = features.map((feature, index) => {
-        // Get properties
-        const properties = feature.properties || {};
-
-        // Create property columns and values
-        const propertyColumns = Object.keys(properties);
-        const propertyValues = Object.values(properties);
-
-        // Generate SQL insert statement
-        return `
-          INSERT INTO ${tableName} (
-            id, 
-            ${propertyColumns.join(', ')}, 
-            geometry
-          ) VALUES (
-            ${options.idStart || 1} + ${index}, 
-            ${propertyValues.map(v => (typeof v === 'string' ? `'${v}'` : v)).join(', ')}, 
-            ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}')
-          );
-        `;
-      });
-
-      // Create table creation SQL if requested
-      let createTableSQL = '';
-      if (options.createTable) {
-        // Sample first feature to get properties
-        const sampleFeature = features[0];
-        const properties = sampleFeature.properties || {};
-
-        // Generate column definitions
-        const columnDefs = Object.entries(properties).map(([key, value]) => {
-          let type = 'text';
-          if (typeof value === 'number') {
-            type = Number.isInteger(value) ? 'integer' : 'float';
-          } else if (typeof value === 'boolean') {
-            type = 'boolean';
-          }
-          return `${key} ${type}`;
-        });
-
-        // Generate create table statement
-        createTableSQL = `
-          CREATE TABLE ${tableName} (
-            id SERIAL PRIMARY KEY,
-            ${columnDefs.join(',\n            ')},
-            geometry GEOMETRY(GEOMETRY, 4326)
-          );
-          CREATE INDEX ${tableName}_geom_idx ON ${tableName} USING GIST (geometry);
-        `;
-      }
+      // This is a simplified implementation
+      // In a real implementation, you would need to handle different geometry types,
+      // coordinate systems, and other GeoJSON properties
+      const sql = `
+        INSERT INTO ${tableName} (geometry, properties)
+        VALUES (
+          ST_GeomFromGeoJSON(${JSON.stringify(geoJSON.geometry)}),
+          ${JSON.stringify(geoJSON.properties)}
+        )
+      `;
 
       return {
         success: true,
         message: `Successfully converted GeoJSON to SQL for table ${tableName}`,
-        createTableSQL,
-        insertSQL: sqlStatements,
+        sql,
         metadata: {
-          featureCount: features.length,
           operation: 'geojson_to_sql',
-          timestamp: new Date(),
-        },
+          timestamp: new Date().toISOString()
+        }
       };
     } catch (error) {
-      console.error(`Error in convertGeoJSONToSQL:`, error);
-
-      // Log the error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error in convertGeoJSONToSQL:', errorMessage);
+      
       await this.createAgentMessage({
-        type: 'ERROR',
-        content: `Error converting GeoJSON to SQL: ${error.message}`,
-        agentId: this.agentId,
-        metadata: { error: error.message, params },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'ERROR',
+        subject: 'Data Conversion Failed',
+        content: `GeoJSON to SQL conversion failed: ${errorMessage}`,
+        status: 'error',
+        metadata: { params }
       });
 
+      throw error;
+    }
+  }
+
+  public async shutdown(): Promise<void> {
+    try {
+      await this.createAgentMessage({
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Agent Shutdown',
+        content: `Agent ${this.name} (${this.agentId}) shutting down`,
+        status: 'completed'
+      });
+
+      await this.updateStatus('inactive', 0);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error shutting down Spatial Query Agent:', errorMessage);
       throw error;
     }
   }

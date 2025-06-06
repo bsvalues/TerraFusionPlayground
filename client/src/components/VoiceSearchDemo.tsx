@@ -7,7 +7,6 @@ export function VoiceSearchDemo() {
   const [searchResults, setSearchResults] = useState<SearchParams | null>(null);
 
   const handleSearch = (params: SearchParams) => {
-    console.log('Search params:', params);
     setSearchResults(params);
 
     // Here you would typically trigger an actual search using these parameters

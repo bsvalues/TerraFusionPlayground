@@ -25,11 +25,6 @@ export async function createTestEmailAccount(): Promise<{
     const testAccount = await nodemailer.createTestAccount();
 
     // Log information about the test account
-    console.log('Created test email account:');
-    console.log('User:', testAccount.user);
-    console.log('Password:', testAccount.pass);
-    console.log('SMTP Host:', 'smtp.ethereal.email');
-
     // Create a transport with the generated credentials and send a test email
     const testTransport = nodemailer.createTransport({
       host: 'smtp.ethereal.email',
@@ -52,8 +47,6 @@ export async function createTestEmailAccount(): Promise<{
 
     const msgUrl = nodemailer.getTestMessageUrl(info);
     const previewUrl = typeof msgUrl === 'string' ? msgUrl : null;
-    console.log('Test email sent. Preview URL:', previewUrl || 'No preview URL available');
-
     return {
       user: testAccount.user,
       pass: testAccount.pass,
@@ -77,8 +70,6 @@ async function initializeTransporter() {
 
   // Create a test account if in development/test mode
   if (process.env.NODE_ENV !== 'production') {
-    console.log('Creating test email account for development environment');
-
     try {
       // Generate test SMTP service account from ethereal.email
       const testAccount = await nodemailer.createTestAccount();
@@ -95,16 +86,12 @@ async function initializeTransporter() {
       });
 
       // Output that we're using a test account
-      console.log('Using Ethereal Email test account for email delivery');
-      console.log('Test account username:', testAccount.user);
-      console.log('Emails will not be delivered to real recipients, but can be viewed online.');
-    } catch (err) {
+      } catch (err) {
       console.error('Failed to create test account. Falling back to dummy transport:', err);
 
       // If we fail to create a test account, create a dummy transport that logs emails
       transporter = {
         sendMail: (mailOptions: nodemailer.SendMailOptions) => {
-          console.log('EMAIL WOULD BE SENT', mailOptions);
           return Promise.resolve({
             messageId: 'dummy-message-id',
             envelope: { from: mailOptions.from as string, to: mailOptions.to as string },
@@ -173,16 +160,9 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     if (process.env.NODE_ENV !== 'production' && info.messageId) {
       const msgUrl = nodemailer.getTestMessageUrl(info);
       const previewUrl = typeof msgUrl === 'string' ? msgUrl : null;
-      console.log('Email sent (preview):', previewUrl || 'No preview URL available');
-      console.log('--------------------');
-      console.log('Email Details:');
-      console.log('To:', options.to);
-      console.log('Subject:', options.subject);
-      console.log('Preview URL:', previewUrl || 'Not available');
-      console.log('--------------------');
-    } else {
-      console.log('Email sent:', info.messageId);
-    }
+      :', previewUrl || 'No preview URL available');
+      } else {
+      }
 
     return true;
   } catch (error) {
@@ -235,3 +215,4 @@ export async function sendPropertyInsightShareEmail(
     html: htmlContent,
   });
 }
+

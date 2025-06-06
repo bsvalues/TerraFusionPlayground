@@ -74,19 +74,13 @@ export class QGISService {
    * Initialize the QGIS service
    */
   public async initialize(): Promise<void> {
-    console.log('Initializing QGIS Service...');
-
     try {
       // Load all projects
       await this.loadProjects();
-      console.log(`Loaded ${this.projects.size} QGIS projects`);
-
       // Initialize cache
       if (this.config.enableOfflineMode) {
         await this.initializeCache();
       }
-
-      console.log('QGIS Service initialized successfully');
     } catch (error) {
       console.error('Failed to initialize QGIS Service:', error);
       throw error;
@@ -159,11 +153,10 @@ export class QGISService {
       // Save project metadata to database
       // For development purposes, we'll just handle in-memory
       // In a production environment, this would save to the database
-      console.log(`Loaded QGIS project: ${assessmentProject.title}`);
 
-      // Log the layers
+      // Log the layers for debugging
       for (const layer of assessmentProject.layers) {
-        console.log(`  - Layer: ${layer.name} (${layer.type})`);
+        console.log(`Loaded layer: ${layer.name} (${layer.type})`);
       }
     } catch (error) {
       console.error('Failed to load QGIS projects:', error);
@@ -177,7 +170,6 @@ export class QGISService {
   private async initializeCache(): Promise<void> {
     // In a real implementation, this would pre-cache feature data
     // For this demo, we'll just log that caching is enabled
-    console.log('QGIS feature caching enabled');
   }
 
   /**
@@ -480,7 +472,6 @@ export class QGISService {
   ): Promise<Buffer | null> {
     // In a real implementation, this would use the QGIS Server WMS GetMap request
     // For now, we return null
-    console.log(`Export map requested for project ${projectId} in ${format} format`);
     return null;
   }
 
@@ -490,7 +481,6 @@ export class QGISService {
   public async performSpatialQuery(projectId: string, query: any): Promise<any[]> {
     // In a real implementation, this would use QGIS processing algorithms
     // For now, we return an empty array
-    console.log(`Spatial query requested for project ${projectId}`);
     return [];
   }
 

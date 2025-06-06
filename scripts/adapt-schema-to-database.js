@@ -23,7 +23,7 @@ async function adaptSchemaToDB() {
     }
 
     // Read the current schema
-    let schemaContent = fs.readFileSync(schemaPath, 'utf8');
+    const schemaContent = fs.readFileSync(schemaPath, 'utf8');
 
     // Replace development_projects table with dev_projects
     let updatedContent = schemaContent.replace(

@@ -76,7 +76,6 @@ export class MCPService {
   private async initializeCoreTools(): Promise<void> {
     try {
       await this.registerCoreTools();
-      console.log('Core MCP tools initialized successfully');
     } catch (error: any) {
       console.error('Error initializing core MCP tools:', error.message);
     }

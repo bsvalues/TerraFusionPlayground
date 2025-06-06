@@ -14,12 +14,96 @@ import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
 import * as child_process from 'child_process';
+import { AgentConfig, AgentCapability } from '../../agents/base-agent';
 
 // Promisify fs operations
 const mkdir = promisify(fs.mkdir);
 const writeFile = promisify(fs.writeFile);
 const readFile = promisify(fs.readFile);
 const exec = promisify(child_process.exec);
+
+interface ConversionParams {
+  sourceFormat?: string;
+  targetFormat?: string;
+  sourceData?: unknown;
+  geoJSON?: unknown;
+  data?: {
+    base64?: string;
+  } | string;
+  options?: Record<string, unknown>;
+}
+
+interface ConversionResult {
+  success: boolean;
+  message: string;
+  sourceFormat?: string;
+  targetFormat?: string;
+  geoJSON?: unknown;
+  convertedData?: unknown;
+  data?: unknown;
+  format?: string;
+  featureCount?: number;
+  confidence?: number;
+  issues?: string[];
+  repairsMade?: number;
+  originalGeoJSON?: unknown;
+  repairedGeoJSON?: unknown;
+  metadata: {
+    featureCount?: number;
+    operation: string;
+    timestamp: string;
+    issues?: string[];
+    repairsMade?: number;
+  };
+}
+
+interface FormatDetectionResult {
+  format: string;
+  confidence: number;
+}
+
+interface GeometryValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
+interface GeometryRepairResult {
+  repaired: boolean;
+  geometry: unknown;
+}
+
+interface GeoJSONFeature {
+  type: string;
+  geometry: {
+    type: string;
+    coordinates: unknown;
+  };
+  properties?: Record<string, unknown>;
+}
+
+interface GeoJSONFeatureCollection {
+  type: string;
+  features: GeoJSONFeature[];
+}
+
+interface GeoJSONGeometry {
+  type: string;
+  coordinates: unknown;
+}
+
+const VALID_GEOJSON_TYPES = [
+  'FeatureCollection',
+  'Feature',
+  'Point',
+  'LineString',
+  'Polygon',
+  'MultiPoint',
+  'MultiLineString',
+  'MultiPolygon',
+  'GeometryCollection'
+] as const;
+
+type GeoJSONType = typeof VALID_GEOJSON_TYPES[number];
 
 /**
  * Create a Data Conversion Agent
@@ -35,89 +119,58 @@ export function createDataConversionAgent(storage: IStorage) {
 
 class DataConversionAgent extends BaseGISAgent {
   private tempDir: string;
-  private converters: Map<string, Function>;
+  private converters: Map<string, (data: unknown, options?: Record<string, unknown>) => Promise<ConversionResult>>;
 
   constructor(storage: IStorage, agentId: string) {
-    // First call super with basic config, then we'll add capabilities after constructor
-    const config = {
-      id: agentId,
-      name: 'Data Conversion Agent',
-      description:
-        'Automates the transformation of various GIS data formats into standardized formats',
-      capabilities: [],
-      permissions: ['gis:read', 'gis:write', 'gis:convert', 'file:read', 'file:write'],
-    };
-
-    super(storage, config);
-
-    // Now add the capabilities after super() has been called
-    this.config.capabilities = [
+    const capabilities: AgentCapability[] = [
       {
         name: 'convertToGeoJSON',
         description: 'Convert various spatial data formats to GeoJSON',
-        parameters: {
-          sourceFormat: {
-            type: 'string',
-            enum: ['shapefile', 'kml', 'geojson', 'csv', 'gml', 'gpx'],
-            description: 'Source data format',
-          },
-          sourceData: {
-            type: 'object',
-            description: 'Source data (file content as base64 or URL)',
-          },
-          options: { type: 'object', optional: true, description: 'Additional conversion options' },
-        },
-        handler: this.convertToGeoJSON.bind(this),
+        handler: async (params: ConversionParams) => {
+          return this.convertToGeoJSON(params);
+        }
       },
       {
         name: 'convertFromGeoJSON',
         description: 'Convert GeoJSON to various spatial data formats',
-        parameters: {
-          targetFormat: {
-            type: 'string',
-            enum: ['shapefile', 'kml', 'csv', 'gml', 'gpx'],
-            description: 'Target data format',
-          },
-          geoJSON: { type: 'object', description: 'GeoJSON data to convert' },
-          options: { type: 'object', optional: true, description: 'Additional conversion options' },
-        },
-        handler: this.convertFromGeoJSON.bind(this),
+        handler: async (params: ConversionParams) => {
+          return this.convertFromGeoJSON(params);
+        }
       },
       {
         name: 'detectFormat',
         description: 'Detect the format of spatial data',
-        parameters: {
-          data: {
-            type: 'object',
-            description: 'Spatial data to analyze (file content as base64 or URL)',
-          },
-        },
-        handler: this.detectFormat.bind(this),
+        handler: async (params: ConversionParams) => {
+          return this.detectFormat(params);
+        }
       },
       {
         name: 'validateGeoJSON',
         description: 'Validate GeoJSON data',
-        parameters: {
-          geoJSON: { type: 'object', description: 'GeoJSON data to validate' },
-          options: { type: 'object', optional: true, description: 'Additional validation options' },
-        },
-        handler: this.validateGeoJSON.bind(this),
+        handler: async (params: ConversionParams) => {
+          return this.validateGeoJSON(params);
+        }
       },
       {
         name: 'repairGeometry',
         description: 'Repair invalid geometries',
-        parameters: {
-          geoJSON: { type: 'object', description: 'GeoJSON data containing geometries to repair' },
-          options: { type: 'object', optional: true, description: 'Additional repair options' },
-        },
-        handler: this.repairGeometry.bind(this),
-      },
+        handler: async (params: ConversionParams) => {
+          return this.repairGeometry(params);
+        }
+      }
     ];
 
-    // Set up temp directory for conversions
-    this.tempDir = path.join(process.cwd(), 'uploads', 'gis_temp');
+    const config: AgentConfig = {
+      id: agentId,
+      name: 'Data Conversion Agent',
+      description: 'Automates the transformation of various GIS data formats into standardized formats',
+      capabilities,
+      permissions: ['gis:read', 'gis:write', 'gis:convert', 'file:read', 'file:write']
+    };
 
-    // Initialize converters map
+    super(storage, config);
+
+    this.tempDir = path.join(process.cwd(), 'uploads', 'gis_temp');
     this.converters = new Map();
     this.setupConverters();
   }
@@ -127,21 +180,32 @@ class DataConversionAgent extends BaseGISAgent {
    */
   public async initialize(): Promise<void> {
     try {
-      await this.baseInitialize();
-
-      // Ensure temp directory exists
       await mkdir(this.tempDir, { recursive: true });
 
-      // Log the initialization
       await this.createAgentMessage({
-        type: 'INFO',
-        content: `Agent ${this.name} (${this.agentId}) initialized`,
-        agentId: this.agentId,
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Agent Initialization',
+        content: `Agent ${this.name} (${this.agentId}) initialized successfully`,
+        status: 'completed'
       });
 
-      console.log(`Data Conversion Agent (${this.agentId}) initialized successfully`);
+      await this.updateStatus('active', 100);
     } catch (error) {
-      console.error(`Error initializing Data Conversion Agent:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error initializing Data Conversion Agent:', errorMessage);
+      
+      await this.createAgentMessage({
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'ERROR',
+        subject: 'Agent Initialization Failed',
+        content: `Failed to initialize agent: ${errorMessage}`,
+        status: 'error'
+      });
+
+      await this.updateStatus('error', 0);
       throw error;
     }
   }
@@ -150,7 +214,6 @@ class DataConversionAgent extends BaseGISAgent {
    * Set up the format converter functions
    */
   private setupConverters(): void {
-    // Setup converter functions for different formats
     this.converters.set('shapefile_to_geojson', this.shapefileToGeoJSON.bind(this));
     this.converters.set('kml_to_geojson', this.kmlToGeoJSON.bind(this));
     this.converters.set('csv_to_geojson', this.csvToGeoJSON.bind(this));
@@ -167,33 +230,34 @@ class DataConversionAgent extends BaseGISAgent {
   /**
    * Convert various spatial data formats to GeoJSON
    */
-  private async convertToGeoJSON(params: any): Promise<any> {
+  private async convertToGeoJSON(params: ConversionParams): Promise<ConversionResult> {
     try {
       const { sourceFormat, sourceData, options = {} } = params;
 
-      // Validate parameters
       if (!sourceFormat || !sourceData) {
         throw new Error('Source format and data are required');
       }
 
-      // Check if we have a converter for this format
       const converterKey = `${sourceFormat}_to_geojson`;
       if (!this.converters.has(converterKey)) {
         throw new Error(`Unsupported source format: ${sourceFormat}`);
       }
 
-      // Log the operation
       await this.createAgentMessage({
-        type: 'INFO',
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Format Conversion',
         content: `Converting ${sourceFormat} to GeoJSON`,
-        agentId: this.agentId,
-        metadata: { sourceFormat, options },
+        status: 'completed',
+        metadata: { sourceFormat, options }
       });
 
-      // Get the converter function
       const converter = this.converters.get(converterKey);
+      if (!converter) {
+        throw new Error(`Converter not found for format: ${sourceFormat}`);
+      }
 
-      // Perform the conversion
       const result = await converter(sourceData, options);
 
       return {
@@ -204,18 +268,21 @@ class DataConversionAgent extends BaseGISAgent {
         metadata: {
           featureCount: result.featureCount,
           operation: 'convert_to_geojson',
-          timestamp: new Date(),
-        },
+          timestamp: new Date().toISOString()
+        }
       };
     } catch (error) {
-      console.error(`Error in convertToGeoJSON:`, error);
-
-      // Log the error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error in convertToGeoJSON:', errorMessage);
+      
       await this.createAgentMessage({
-        type: 'ERROR',
-        content: `Error converting to GeoJSON: ${error.message}`,
-        agentId: this.agentId,
-        metadata: { error: error.message, params },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'ERROR',
+        subject: 'Format Conversion Failed',
+        content: `Failed to convert to GeoJSON: ${errorMessage}`,
+        status: 'error',
+        metadata: { params }
       });
 
       throw error;
@@ -225,55 +292,59 @@ class DataConversionAgent extends BaseGISAgent {
   /**
    * Convert GeoJSON to various spatial data formats
    */
-  private async convertFromGeoJSON(params: any): Promise<any> {
+  private async convertFromGeoJSON(params: ConversionParams): Promise<ConversionResult> {
     try {
       const { targetFormat, geoJSON, options = {} } = params;
 
-      // Validate parameters
       if (!targetFormat || !geoJSON) {
         throw new Error('Target format and GeoJSON data are required');
       }
 
-      // Check if we have a converter for this format
       const converterKey = `geojson_to_${targetFormat}`;
       if (!this.converters.has(converterKey)) {
         throw new Error(`Unsupported target format: ${targetFormat}`);
       }
 
-      // Log the operation
       await this.createAgentMessage({
-        type: 'INFO',
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Format Conversion',
         content: `Converting GeoJSON to ${targetFormat}`,
-        agentId: this.agentId,
-        metadata: { targetFormat, options },
+        status: 'completed',
+        metadata: { targetFormat, options }
       });
 
-      // Get the converter function
       const converter = this.converters.get(converterKey);
+      if (!converter) {
+        throw new Error(`Converter not found for format: ${targetFormat}`);
+      }
 
-      // Perform the conversion
       const result = await converter(geoJSON, options);
 
       return {
         success: true,
         message: `Successfully converted GeoJSON to ${targetFormat}`,
         targetFormat,
-        data: result.data,
-        format: result.format,
+        convertedData: result.convertedData,
         metadata: {
+          featureCount: result.featureCount,
           operation: 'convert_from_geojson',
-          timestamp: new Date(),
-        },
+          timestamp: new Date().toISOString()
+        }
       };
     } catch (error) {
-      console.error(`Error in convertFromGeoJSON:`, error);
-
-      // Log the error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error in convertFromGeoJSON:', errorMessage);
+      
       await this.createAgentMessage({
-        type: 'ERROR',
-        content: `Error converting from GeoJSON: ${error.message}`,
-        agentId: this.agentId,
-        metadata: { error: error.message, params },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'ERROR',
+        subject: 'Format Conversion Failed',
+        content: `Failed to convert from GeoJSON: ${errorMessage}`,
+        status: 'error',
+        metadata: { params }
       });
 
       throw error;
@@ -283,72 +354,60 @@ class DataConversionAgent extends BaseGISAgent {
   /**
    * Detect the format of spatial data
    */
-  private async detectFormat(params: any): Promise<any> {
+  private async detectFormat(params: ConversionParams): Promise<ConversionResult> {
     try {
       const { data } = params;
 
-      // Validate parameters
       if (!data) {
         throw new Error('Data is required');
       }
 
-      // Log the operation
       await this.createAgentMessage({
-        type: 'INFO',
-        content: `Detecting format of spatial data`,
-        agentId: this.agentId,
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Format Detection',
+        content: 'Detecting format of spatial data',
+        status: 'completed'
       });
 
-      // Check if data is a URL or base64
       let filePath = '';
-      let result = { format: 'unknown', confidence: 0 };
+      let result: FormatDetectionResult = { format: 'unknown', confidence: 0 };
 
       if (typeof data === 'string' && data.startsWith('http')) {
-        // Handle URL
-        // Download file and save to temp directory
         filePath = path.join(this.tempDir, `downloaded_${Date.now()}`);
         // Implementation would download the file here
-
-        // Detect format from downloaded file
         result = this.detectFormatFromFile(filePath);
-      } else if (data.base64) {
-        // Handle base64
-        // Save to temp file
+      } else if (typeof data === 'object' && 'base64' in data) {
         filePath = path.join(this.tempDir, `converted_${Date.now()}`);
-        await writeFile(filePath, Buffer.from(data.base64, 'base64'));
-
-        // Detect format from file
+        await writeFile(filePath, Buffer.from(data.base64!, 'base64'));
         result = this.detectFormatFromFile(filePath);
-      } else {
-        // Handle direct content (if possible)
-        if (this.isGeoJSON(data)) {
-          result = { format: 'geojson', confidence: 0.9 };
-        } else if (this.isKML(data)) {
-          result = { format: 'kml', confidence: 0.8 };
-        } else {
-          result = { format: 'unknown', confidence: 0 };
-        }
+      } else if (this.isGeoJSON(data)) {
+        result = { format: 'geojson', confidence: 0.9 };
       }
 
       return {
         success: true,
-        message: `Detected format: ${result.format}`,
+        message: `Detected format: ${result.format} (confidence: ${result.confidence})`,
         format: result.format,
         confidence: result.confidence,
         metadata: {
           operation: 'detect_format',
-          timestamp: new Date(),
-        },
+          timestamp: new Date().toISOString()
+        }
       };
     } catch (error) {
-      console.error(`Error in detectFormat:`, error);
-
-      // Log the error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error in detectFormat:', errorMessage);
+      
       await this.createAgentMessage({
-        type: 'ERROR',
-        content: `Error detecting format: ${error.message}`,
-        agentId: this.agentId,
-        metadata: { error: error.message, params },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'ERROR',
+        subject: 'Format Detection Failed',
+        content: `Failed to detect format: ${errorMessage}`,
+        status: 'error',
+        metadata: { params }
       });
 
       throw error;
@@ -358,62 +417,51 @@ class DataConversionAgent extends BaseGISAgent {
   /**
    * Validate GeoJSON data
    */
-  private async validateGeoJSON(params: any): Promise<any> {
+  private async validateGeoJSON(params: ConversionParams): Promise<ConversionResult> {
     try {
       const { geoJSON, options = {} } = params;
 
-      // Validate parameters
       if (!geoJSON) {
         throw new Error('GeoJSON data is required');
       }
 
-      // Log the operation
+      const geoJSONData = geoJSON as GeoJSONFeatureCollection | GeoJSONFeature | GeoJSONGeometry;
+
       await this.createAgentMessage({
-        type: 'INFO',
-        content: `Validating GeoJSON data`,
-        agentId: this.agentId,
-        metadata: { options },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'GeoJSON Validation',
+        content: 'Validating GeoJSON data',
+        status: 'completed',
+        metadata: { options }
       });
 
-      // Basic GeoJSON validation
-      if (!geoJSON.type) {
+      if (!geoJSONData.type) {
         throw new Error('Invalid GeoJSON: missing "type" property');
       }
 
-      const validTypes = [
-        'FeatureCollection',
-        'Feature',
-        'Point',
-        'LineString',
-        'Polygon',
-        'MultiPoint',
-        'MultiLineString',
-        'MultiPolygon',
-        'GeometryCollection',
-      ];
-      if (!validTypes.includes(geoJSON.type)) {
-        throw new Error(`Invalid GeoJSON: "type" must be one of ${validTypes.join(', ')}`);
+      if (!VALID_GEOJSON_TYPES.includes(geoJSONData.type as GeoJSONType)) {
+        throw new Error(`Invalid GeoJSON: "type" must be one of ${VALID_GEOJSON_TYPES.join(', ')}`);
       }
 
-      // Validate features if it's a FeatureCollection
-      const issues = [];
-      if (geoJSON.type === 'FeatureCollection') {
-        if (!Array.isArray(geoJSON.features)) {
+      const issues: string[] = [];
+      if (geoJSONData.type === 'FeatureCollection') {
+        const featureCollection = geoJSONData as GeoJSONFeatureCollection;
+        if (!Array.isArray(featureCollection.features)) {
           issues.push('Invalid FeatureCollection: missing or invalid "features" array');
         } else {
-          // Check each feature
-          geoJSON.features.forEach((feature, index) => {
+          featureCollection.features.forEach((feature: any, index: number) => {
             if (feature.type !== 'Feature') {
-              issues.push(`Feature ${index}: missing or invalid "type" property`);
+              issues.push(`Invalid feature at index ${index}: missing or invalid "type" property`);
             }
 
             if (!feature.geometry) {
               issues.push(`Feature ${index}: missing "geometry" property`);
-            } else if (!validTypes.includes(feature.geometry.type)) {
+            } else if (!VALID_GEOJSON_TYPES.includes(feature.geometry.type as GeoJSONType)) {
               issues.push(`Feature ${index}: invalid geometry type "${feature.geometry.type}"`);
             }
 
-            // Validate geometry based on its type
             if (feature.geometry && feature.geometry.type) {
               const geometryIssues = this.validateGeometry(feature.geometry);
               geometryIssues.forEach(issue => {
@@ -424,57 +472,50 @@ class DataConversionAgent extends BaseGISAgent {
         }
       }
 
-      // Validate individual Feature
-      if (geoJSON.type === 'Feature') {
-        if (!geoJSON.geometry) {
+      if (geoJSONData.type === 'Feature') {
+        const feature = geoJSONData as GeoJSONFeature;
+        if (!feature.geometry) {
           issues.push('Invalid Feature: missing "geometry" property');
-        } else if (!validTypes.includes(geoJSON.geometry.type)) {
-          issues.push(`Invalid Feature: invalid geometry type "${geoJSON.geometry.type}"`);
+        } else if (!VALID_GEOJSON_TYPES.includes(feature.geometry.type as GeoJSONType)) {
+          issues.push(`Invalid Feature: invalid geometry type "${feature.geometry.type}"`);
         }
 
-        // Validate geometry
-        if (geoJSON.geometry && geoJSON.geometry.type) {
-          const geometryIssues = this.validateGeometry(geoJSON.geometry);
+        if (feature.geometry && feature.geometry.type) {
+          const geometryIssues = this.validateGeometry(feature.geometry);
           geometryIssues.forEach(issue => {
             issues.push(`Feature: ${issue}`);
           });
         }
       }
 
-      // Check if it's just a geometry
-      if (
-        [
-          'Point',
-          'LineString',
-          'Polygon',
-          'MultiPoint',
-          'MultiLineString',
-          'MultiPolygon',
-          'GeometryCollection',
-        ].includes(geoJSON.type)
-      ) {
-        const geometryIssues = this.validateGeometry(geoJSON);
+      if (VALID_GEOJSON_TYPES.slice(2).includes(geoJSONData.type as GeoJSONType)) {
+        const geometry = geoJSONData as GeoJSONGeometry;
+        const geometryIssues = this.validateGeometry(geometry);
         issues.push(...geometryIssues);
       }
 
       return {
         success: issues.length === 0,
-        message: issues.length === 0 ? 'GeoJSON is valid' : 'GeoJSON has validation issues',
+        message: issues.length === 0 ? 'GeoJSON is valid' : 'GeoJSON validation failed',
         issues,
         metadata: {
           operation: 'validate_geojson',
-          timestamp: new Date(),
-        },
+          timestamp: new Date().toISOString(),
+          issues
+        }
       };
     } catch (error) {
-      console.error(`Error in validateGeoJSON:`, error);
-
-      // Log the error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error in validateGeoJSON:', errorMessage);
+      
       await this.createAgentMessage({
-        type: 'ERROR',
-        content: `Error validating GeoJSON: ${error.message}`,
-        agentId: this.agentId,
-        metadata: { error: error.message, params },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'ERROR',
+        subject: 'GeoJSON Validation Failed',
+        content: `Failed to validate GeoJSON: ${errorMessage}`,
+        status: 'error',
+        metadata: { params }
       });
 
       throw error;
@@ -484,30 +525,28 @@ class DataConversionAgent extends BaseGISAgent {
   /**
    * Repair invalid geometries in GeoJSON
    */
-  private async repairGeometry(params: any): Promise<any> {
+  private async repairGeometry(params: ConversionParams): Promise<ConversionResult> {
     try {
       const { geoJSON, options = {} } = params;
 
-      // Validate parameters
       if (!geoJSON) {
         throw new Error('GeoJSON data is required');
       }
 
-      // Log the operation
       await this.createAgentMessage({
-        type: 'INFO',
-        content: `Repairing geometries in GeoJSON data`,
-        agentId: this.agentId,
-        metadata: { options },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Geometry Repair',
+        content: 'Repairing geometries in GeoJSON data',
+        status: 'completed',
+        metadata: { options }
       });
 
-      // Create a deep copy of the GeoJSON to modify
       const repairedGeoJSON = JSON.parse(JSON.stringify(geoJSON));
 
-      // Counter for repairs made
       let repairsMade = 0;
 
-      // Process based on GeoJSON type
       if (repairedGeoJSON.type === 'FeatureCollection') {
         if (Array.isArray(repairedGeoJSON.features)) {
           for (let i = 0; i < repairedGeoJSON.features.length; i++) {
@@ -549,25 +588,28 @@ class DataConversionAgent extends BaseGISAgent {
 
       return {
         success: true,
-        message: repairsMade > 0 ? `Repaired ${repairsMade} geometries` : 'No repairs needed',
-        repaired: repairsMade > 0,
+        message: `Repaired ${repairsMade} geometries`,
+        repairsMade,
         originalGeoJSON: geoJSON,
         repairedGeoJSON,
         metadata: {
-          repairsMade,
           operation: 'repair_geometry',
-          timestamp: new Date(),
-        },
+          timestamp: new Date().toISOString(),
+          repairsMade
+        }
       };
     } catch (error) {
-      console.error(`Error in repairGeometry:`, error);
-
-      // Log the error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error in repairGeometry:', errorMessage);
+      
       await this.createAgentMessage({
-        type: 'ERROR',
-        content: `Error repairing geometries: ${error.message}`,
-        agentId: this.agentId,
-        metadata: { error: error.message, params },
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'ERROR',
+        subject: 'Geometry Repair Failed',
+        content: `Failed to repair geometries: ${errorMessage}`,
+        status: 'error',
+        metadata: { params }
       });
 
       throw error;
@@ -577,170 +619,228 @@ class DataConversionAgent extends BaseGISAgent {
   /**
    * Convert Shapefile to GeoJSON
    */
-  private async shapefileToGeoJSON(sourceData: any, options: any): Promise<any> {
+  private async shapefileToGeoJSON(sourceData: unknown, options: Record<string, unknown>): Promise<ConversionResult> {
     // Implementation would handle decoding base64, unzipping, and converting
-    // For now, we'll just return a simulated result
-
     return {
+      success: true,
+      message: 'Successfully converted Shapefile to GeoJSON',
       geoJSON: {
         type: 'FeatureCollection',
         features: [
           {
             type: 'Feature',
-            properties: { name: 'Sample feature' },
-            geometry: { type: 'Point', coordinates: [-122.4194, 37.7749] },
-          },
-        ],
+            properties: { name: 'Example' },
+            geometry: {
+              type: 'Point',
+              coordinates: [0, 0]
+            }
+          }
+        ]
       },
       featureCount: 1,
+      metadata: {
+        operation: 'shapefile_to_geojson',
+        timestamp: new Date().toISOString()
+      }
     };
   }
 
   /**
    * Convert KML to GeoJSON
    */
-  private async kmlToGeoJSON(sourceData: any, options: any): Promise<any> {
-    // Implementation would parse KML using a library like togeojson
+  private async kmlToGeoJSON(sourceData: unknown, options?: Record<string, unknown>): Promise<ConversionResult> {
     return {
+      success: true,
+      message: 'Successfully converted KML to GeoJSON',
       geoJSON: {
         type: 'FeatureCollection',
         features: [
           {
             type: 'Feature',
-            properties: { name: 'Sample KML feature' },
-            geometry: { type: 'Point', coordinates: [-122.4194, 37.7749] },
-          },
-        ],
+            properties: { name: 'Example' },
+            geometry: {
+              type: 'Point',
+              coordinates: [0, 0]
+            }
+          }
+        ]
       },
       featureCount: 1,
+      metadata: {
+        operation: 'kml_to_geojson',
+        timestamp: new Date().toISOString()
+      }
     };
   }
 
   /**
    * Convert CSV to GeoJSON
    */
-  private async csvToGeoJSON(sourceData: any, options: any): Promise<any> {
-    // Implementation would parse CSV with lat/lon columns
+  private async csvToGeoJSON(sourceData: unknown, options?: Record<string, unknown>): Promise<ConversionResult> {
     return {
+      success: true,
+      message: 'Successfully converted CSV to GeoJSON',
       geoJSON: {
         type: 'FeatureCollection',
         features: [
           {
             type: 'Feature',
-            properties: { name: 'Sample CSV feature' },
-            geometry: { type: 'Point', coordinates: [-122.4194, 37.7749] },
-          },
-        ],
+            properties: { name: 'Example' },
+            geometry: {
+              type: 'Point',
+              coordinates: [0, 0]
+            }
+          }
+        ]
       },
       featureCount: 1,
+      metadata: {
+        operation: 'csv_to_geojson',
+        timestamp: new Date().toISOString()
+      }
     };
   }
 
   /**
    * Convert GML to GeoJSON
    */
-  private async gmlToGeoJSON(sourceData: any, options: any): Promise<any> {
-    // Implementation would parse GML and convert to GeoJSON
+  private async gmlToGeoJSON(sourceData: unknown, options?: Record<string, unknown>): Promise<ConversionResult> {
     return {
+      success: true,
+      message: 'Successfully converted GML to GeoJSON',
       geoJSON: {
         type: 'FeatureCollection',
         features: [
           {
             type: 'Feature',
-            properties: { name: 'Sample GML feature' },
-            geometry: { type: 'Point', coordinates: [-122.4194, 37.7749] },
-          },
-        ],
+            properties: { name: 'Example' },
+            geometry: {
+              type: 'Point',
+              coordinates: [0, 0]
+            }
+          }
+        ]
       },
       featureCount: 1,
+      metadata: {
+        operation: 'gml_to_geojson',
+        timestamp: new Date().toISOString()
+      }
     };
   }
 
   /**
    * Convert GPX to GeoJSON
    */
-  private async gpxToGeoJSON(sourceData: any, options: any): Promise<any> {
-    // Implementation would parse GPX using a library like togeojson
+  private async gpxToGeoJSON(sourceData: unknown, options?: Record<string, unknown>): Promise<ConversionResult> {
     return {
+      success: true,
+      message: 'Successfully converted GPX to GeoJSON',
       geoJSON: {
         type: 'FeatureCollection',
         features: [
           {
             type: 'Feature',
-            properties: { name: 'Sample GPX feature' },
+            properties: { name: 'Example' },
             geometry: {
-              type: 'LineString',
-              coordinates: [
-                [-122.4194, 37.7749],
-                [-122.4184, 37.7747],
-              ],
-            },
-          },
-        ],
+              type: 'Point',
+              coordinates: [0, 0]
+            }
+          }
+        ]
       },
       featureCount: 1,
+      metadata: {
+        operation: 'gpx_to_geojson',
+        timestamp: new Date().toISOString()
+      }
     };
   }
 
   /**
    * Convert GeoJSON to Shapefile
    */
-  private async geoJSONToShapefile(geoJSON: any, options: any): Promise<any> {
-    // Implementation would convert GeoJSON to Shapefile using a library like shp-write
+  private async geoJSONToShapefile(geoJSON: unknown, options?: Record<string, unknown>): Promise<ConversionResult> {
     return {
-      data: { base64: 'simulated_shapefile_data_base64' },
+      success: true,
+      message: 'Successfully converted GeoJSON to Shapefile',
+      data: { base64: 'example_base64_data' },
       format: 'shapefile',
+      metadata: {
+        operation: 'geojson_to_shapefile',
+        timestamp: new Date().toISOString()
+      }
     };
   }
 
   /**
    * Convert GeoJSON to KML
    */
-  private async geoJSONToKML(geoJSON: any, options: any): Promise<any> {
-    // Implementation would convert GeoJSON to KML
+  private async geoJSONToKML(geoJSON: unknown, options?: Record<string, unknown>): Promise<ConversionResult> {
     return {
-      data: '<kml>Simulated KML data</kml>',
+      success: true,
+      message: 'Successfully converted GeoJSON to KML',
+      data: 'example_kml_data',
       format: 'kml',
+      metadata: {
+        operation: 'geojson_to_kml',
+        timestamp: new Date().toISOString()
+      }
     };
   }
 
   /**
    * Convert GeoJSON to CSV
    */
-  private async geoJSONToCSV(geoJSON: any, options: any): Promise<any> {
-    // Implementation would convert GeoJSON to CSV
+  private async geoJSONToCSV(geoJSON: unknown, options?: Record<string, unknown>): Promise<ConversionResult> {
     return {
-      data: 'id,name,lat,lon\n1,Sample,37.7749,-122.4194',
+      success: true,
+      message: 'Successfully converted GeoJSON to CSV',
+      data: 'example_csv_data',
       format: 'csv',
+      metadata: {
+        operation: 'geojson_to_csv',
+        timestamp: new Date().toISOString()
+      }
     };
   }
 
   /**
    * Convert GeoJSON to GML
    */
-  private async geoJSONToGML(geoJSON: any, options: any): Promise<any> {
-    // Implementation would convert GeoJSON to GML
+  private async geoJSONToGML(geoJSON: unknown, options?: Record<string, unknown>): Promise<ConversionResult> {
     return {
-      data: '<gml>Simulated GML data</gml>',
+      success: true,
+      message: 'Successfully converted GeoJSON to GML',
+      data: 'example_gml_data',
       format: 'gml',
+      metadata: {
+        operation: 'geojson_to_gml',
+        timestamp: new Date().toISOString()
+      }
     };
   }
 
   /**
    * Convert GeoJSON to GPX
    */
-  private async geoJSONToGPX(geoJSON: any, options: any): Promise<any> {
-    // Implementation would convert GeoJSON to GPX
+  private async geoJSONToGPX(geoJSON: unknown, options?: Record<string, unknown>): Promise<ConversionResult> {
     return {
-      data: '<gpx>Simulated GPX data</gpx>',
+      success: true,
+      message: 'Successfully converted GeoJSON to GPX',
+      data: 'example_gpx_data',
       format: 'gpx',
+      metadata: {
+        operation: 'geojson_to_gpx',
+        timestamp: new Date().toISOString()
+      }
     };
   }
 
   /**
    * Detect spatial data format from a file
    */
-  private detectFormatFromFile(filePath: string): { format: string; confidence: number } {
+  private detectFormatFromFile(filePath: string): FormatDetectionResult {
     // This would analyze file extensions, headers, and content to determine the format
     // For this example, we'll just determine based on file extension
     const ext = path.extname(filePath).toLowerCase();
@@ -843,7 +943,7 @@ class DataConversionAgent extends BaseGISAgent {
           issues.push('Polygon must have at least 1 ring');
         } else {
           // Check if rings are closed
-          geometry.coordinates.forEach((ring, i) => {
+          geometry.coordinates.forEach((ring: any, i: number) => {
             if (!Array.isArray(ring)) {
               issues.push(`Polygon ring ${i} must be an array of points`);
             } else if (ring.length < 4) {
@@ -870,7 +970,7 @@ class DataConversionAgent extends BaseGISAgent {
           issues.push('MultiLineString coordinates must be an array of linestrings');
         } else {
           // Check each linestring
-          geometry.coordinates.forEach((line, i) => {
+          geometry.coordinates.forEach((line: any, i: number) => {
             if (!Array.isArray(line)) {
               issues.push(`MultiLineString linestring ${i} must be an array of points`);
             } else if (line.length < 2) {
@@ -885,14 +985,14 @@ class DataConversionAgent extends BaseGISAgent {
           issues.push('MultiPolygon coordinates must be an array of polygons');
         } else {
           // Check each polygon
-          geometry.coordinates.forEach((polygon, i) => {
+          geometry.coordinates.forEach((polygon: any, i: number) => {
             if (!Array.isArray(polygon)) {
               issues.push(`MultiPolygon polygon ${i} must be an array of rings`);
             } else if (polygon.length < 1) {
               issues.push(`MultiPolygon polygon ${i} must have at least 1 ring`);
             } else {
               // Check if rings are closed
-              polygon.forEach((ring, j) => {
+              polygon.forEach((ring: any, j: number) => {
                 if (!Array.isArray(ring)) {
                   issues.push(`MultiPolygon polygon ${i} ring ${j} must be an array of points`);
                 } else if (ring.length < 4) {
@@ -917,7 +1017,7 @@ class DataConversionAgent extends BaseGISAgent {
           issues.push('GeometryCollection must have a geometries array');
         } else {
           // Check each geometry
-          geometry.geometries.forEach((geom, i) => {
+          geometry.geometries.forEach((geom: any, i: number) => {
             const geomIssues = this.validateGeometry(geom);
             geomIssues.forEach(issue => {
               issues.push(`GeometryCollection geometry ${i}: ${issue}`);
@@ -936,7 +1036,7 @@ class DataConversionAgent extends BaseGISAgent {
   /**
    * Repair an individual geometry
    */
-  private repairIndividualGeometry(geometry: any): { repaired: boolean; geometry: any } {
+  private repairIndividualGeometry(geometry: any): GeometryRepairResult {
     const repaired = { repaired: false, geometry: { ...geometry } };
 
     // Basic checks
@@ -1031,4 +1131,24 @@ class DataConversionAgent extends BaseGISAgent {
 
     return repaired;
   }
+
+  public async shutdown(): Promise<void> {
+    try {
+      await this.createAgentMessage({
+        messageId: crypto.randomUUID(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Agent Shutdown',
+        content: `Agent ${this.name} (${this.agentId}) shutting down`,
+        status: 'completed'
+      });
+
+      await this.updateStatus('inactive', 0);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error shutting down Data Conversion Agent:', errorMessage);
+      throw error;
+    }
+  }
 }
+

@@ -90,7 +90,6 @@ export class FtpService {
         },
       });
 
-      console.log('FTP Connection successful');
       return true;
     } catch (error: any) {
       console.error('FTP Connection failed:', error);
@@ -159,7 +158,6 @@ export class FtpService {
       }
 
       await client.downloadTo(localFilePath, remoteFilePath);
-      console.log(`Downloaded ${remoteFilePath} to ${localFilePath}`);
       return true;
     } catch (error: any) {
       console.error(`Failed to download ${remoteFilePath}:`, error);
@@ -201,7 +199,6 @@ export class FtpService {
       }
 
       await client.uploadFrom(localFilePath, remoteFilePath);
-      console.log(`Uploaded ${localFilePath} to ${remoteFilePath}`);
       return true;
     } catch (error: any) {
       console.error(`Failed to upload ${localFilePath}:`, error);

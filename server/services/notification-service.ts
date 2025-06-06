@@ -73,8 +73,6 @@ export class NotificationService {
 
     // Handle connections
     this.wss.on('connection', (ws: WebSocket, req) => {
-      console.log('New client connected to notification service');
-
       // Send initial connection acknowledgment
       try {
         ws.send(
@@ -103,8 +101,6 @@ export class NotificationService {
             const userId = data.userId;
             if (userId) {
               this.clients.set(userId, ws);
-              console.log(`Client authenticated with user ID: ${userId}`);
-
               // Send unread notifications
               const userNotifications = this.notifications.get(userId) || [];
               const unreadNotifications = userNotifications.filter(n => !n.isRead);
@@ -139,7 +135,6 @@ export class NotificationService {
 
       // Handle disconnections
       ws.on('close', () => {
-        console.log('Client disconnected from notification service');
         // Remove client from the map (find by value)
         // Convert to array for iteration to avoid MapIterator issue
         Array.from(this.clients.entries()).forEach(([userId, client]) => {
@@ -159,8 +154,6 @@ export class NotificationService {
         );
       }
     });
-
-    console.log('Notification service initialized');
   }
 
   /**

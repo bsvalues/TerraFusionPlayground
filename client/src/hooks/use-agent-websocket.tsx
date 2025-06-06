@@ -184,12 +184,9 @@ export const useAgentWebSocket = ({
       setStatus('connecting');
 
       const wsUrl = getWebSocketUrl();
-      console.log(`Connecting to WebSocket at ${wsUrl}`);
-
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = event => {
-        console.log('WebSocket connection established');
         setStatus('connected');
         reconnectAttemptRef.current = 0;
         connectionStartTimeRef.current = Date.now();
@@ -214,9 +211,6 @@ export const useAgentWebSocket = ({
       };
 
       wsRef.current.onclose = event => {
-        console.log(
-          `WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason || 'No reason provided'}`
-        );
         setStatus('disconnected');
 
         // Update metrics
@@ -228,9 +222,6 @@ export const useAgentWebSocket = ({
         // Handle reconnection if auto-reconnect is enabled
         if (autoReconnect && reconnectAttemptRef.current < maxReconnectAttempts) {
           const delay = reconnectDelay * Math.pow(backoffFactor, reconnectAttemptRef.current);
-          console.log(
-            `Attempting to reconnect in ${delay}ms (attempt ${reconnectAttemptRef.current + 1}/${maxReconnectAttempts})`
-          );
 
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttemptRef.current++;
@@ -244,7 +235,6 @@ export const useAgentWebSocket = ({
             setupWebSocket();
           }, delay);
         } else if (reconnectAttemptRef.current >= maxReconnectAttempts) {
-          console.log('Maximum reconnection attempts reached');
           setStatus('error');
 
           // Update metrics

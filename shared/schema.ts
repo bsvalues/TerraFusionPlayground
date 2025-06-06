@@ -642,6 +642,7 @@ export enum WorkflowOptimizationPriority {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
+  CRITICAL = 'critical',
 }
 
 // Workflow Optimization Requests - Stores requests for workflow optimizations
@@ -3853,3 +3854,24 @@ export const insertAgentLearningModelSchema = createInsertSchema(agentLearningMo
 
 export type AgentLearningModel = typeof agentLearningModels.$inferSelect;
 export type InsertAgentLearningModel = z.infer<typeof insertAgentLearningModelSchema>;
+
+export interface InsertTask {
+  id?: string;
+  title: string;
+  description?: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+  assignedTo?: number;
+  dueDate?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface EconomicIndicator {
+  id: string;
+  name: string;
+  value: number;
+  region: string;
+  date: Date;
+  source: string;
+}

@@ -101,13 +101,9 @@ export default function PropertyStoryPage() {
 
   // Debug log
   useEffect(() => {
-    console.log('PropertyStoryPage component rendered');
-
     // Immediately fetch properties without letting the component be unmounted
     apiRequest('/api/properties')
-      .then(data => {
-        console.log('Properties fetched successfully:', data.length);
-      })
+      .then(data => {})
       .catch(error => {
         console.error('Error fetching properties:', error);
       });

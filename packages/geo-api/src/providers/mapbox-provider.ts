@@ -35,8 +35,7 @@ export class MapboxProvider implements MapProvider {
     options: Partial<MapViewport> = {}
   ): Promise<void> {
     // In a real implementation, this would create a mapboxgl.Map instance
-    console.log(
-      `Initializing Mapbox with token ${this.token.substring(0, 5)}... in container`,
+    }... in container`,
       container
     );
 
@@ -65,7 +64,6 @@ export class MapboxProvider implements MapProvider {
    */
   async addLayer(layer: MapLayer): Promise<void> {
     // In a real implementation, this would call mapboxgl.Map.addLayer
-    console.log(`Adding layer: ${layer.id}`);
     this.layers.set(layer.id, layer);
 
     // If the layer has a GeoJSON source, add it as a source
@@ -82,7 +80,6 @@ export class MapboxProvider implements MapProvider {
    */
   async removeLayer(layerId: string): Promise<void> {
     // In a real implementation, this would call mapboxgl.Map.removeLayer
-    console.log(`Removing layer: ${layerId}`);
     this.layers.delete(layerId);
     this.sources.delete(layerId);
 
@@ -102,8 +99,7 @@ export class MapboxProvider implements MapProvider {
     const layer = this.layers.get(layerId);
     if (layer) {
       layer.visibility = visibility;
-      console.log(`Setting ${layerId} visibility to ${visibility}`);
-    }
+      }
 
     return Promise.resolve();
   }
@@ -115,7 +111,7 @@ export class MapboxProvider implements MapProvider {
    */
   async setViewport(viewport: Partial<MapViewport>, animate: boolean = true): Promise<void> {
     // In a real implementation, this would update the map's viewport
-    console.log(`Setting viewport: ${JSON.stringify(viewport)}, animate: ${animate}`);
+    }, animate: ${animate}`);
     this.mapInstance.viewport = {
       ...this.mapInstance.viewport,
       ...viewport,
@@ -134,8 +130,6 @@ export class MapboxProvider implements MapProvider {
     layerIds?: string[]
   ): Promise<GeoJSONFeature[]> {
     // In a real implementation, this would query features at the point
-    console.log(`Querying features at point ${point} for layers ${layerIds || 'all'}`);
-
     // Mock implementation returning empty results
     return Promise.resolve([]);
   }
@@ -150,8 +144,6 @@ export class MapboxProvider implements MapProvider {
     layerIds?: string[]
   ): Promise<FeatureQueryResult[]> {
     // In a real implementation, this would query features in the bounds
-    console.log(`Querying features in bounds ${bounds} for layers ${layerIds || 'all'}`);
-
     // Mock implementation returning empty results
     return Promise.resolve([]);
   }
@@ -166,8 +158,6 @@ export class MapboxProvider implements MapProvider {
     featureCollection: GeoJSONFeatureCollection
   ): Promise<void> {
     // In a real implementation, this would update the source data
-    console.log(`Updating ${featureCollection.features.length} features in layer ${layerId}`);
-
     if (this.sources.has(layerId)) {
       this.sources.set(layerId, featureCollection);
     }
@@ -185,8 +175,7 @@ export class MapboxProvider implements MapProvider {
     handler: (e: MapFeatureEvent) => void
   ): void {
     // In a real implementation, this would register event handlers
-    console.log(`Registering handler for ${event} event`);
-  }
+    }
 
   /**
    * Remove an event handler
@@ -198,17 +187,16 @@ export class MapboxProvider implements MapProvider {
     handler: (e: MapFeatureEvent) => void
   ): void {
     // In a real implementation, this would remove event handlers
-    console.log(`Removing handler for ${event} event`);
-  }
+    }
 
   /**
    * Clean up resources when disposing of the map
    */
   dispose(): void {
     // In a real implementation, this would clean up the map instance
-    console.log('Disposing of Mapbox provider');
     this.layers.clear();
     this.sources.clear();
     this.mapInstance = null;
   }
 }
+

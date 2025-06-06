@@ -293,8 +293,6 @@ export default function GeospatialStorytellingWizard() {
     setIsCreating(true);
 
     try {
-      console.log('Creating geospatial story:', data);
-
       // In a real implementation, this would send the data to a backend API
       // to create and store the story
 

@@ -154,7 +154,6 @@ export class ContributionWorkflowManager extends EventEmitter {
    * Initialize the contribution workflow manager
    */
   public initialize(): void {
-    console.log('Initializing contribution workflow manager');
     this.emit('initialized');
   }
 
@@ -182,7 +181,7 @@ export class ContributionWorkflowManager extends EventEmitter {
 
     this.contributions.set(id, newContribution);
 
-    console.log(`Contribution created: ${newContribution.title} (${newContribution.id})`);
+    `);
     this.emit('contribution:created', newContribution);
 
     return newContribution;
@@ -210,7 +209,7 @@ export class ContributionWorkflowManager extends EventEmitter {
 
     this.contributions.set(id, updatedContribution);
 
-    console.log(`Contribution updated: ${updatedContribution.title} (${updatedContribution.id})`);
+    `);
     this.emit('contribution:updated', updatedContribution);
 
     return updatedContribution;
@@ -238,7 +237,6 @@ export class ContributionWorkflowManager extends EventEmitter {
     });
 
     if (updatedContribution) {
-      console.log(`Contribution submitted: ${updatedContribution.title}`);
       this.emit('contribution:submitted', updatedContribution);
 
       // Automatically start quality checks and security scans
@@ -268,7 +266,6 @@ export class ContributionWorkflowManager extends EventEmitter {
     });
 
     if (updatedContribution) {
-      console.log(`Reviewers assigned to contribution: ${updatedContribution.title}`);
       this.emit('contribution:reviewers-assigned', {
         contribution: updatedContribution,
         reviewerIds,
@@ -299,7 +296,6 @@ export class ContributionWorkflowManager extends EventEmitter {
       contribution.reviews.push(newReview);
       contribution.updatedAt = new Date();
 
-      console.log(`Review created for contribution: ${contribution.title}`);
       this.emit('review:created', { contribution, review: newReview });
     }
 
@@ -336,7 +332,6 @@ export class ContributionWorkflowManager extends EventEmitter {
     if (contribution) {
       contribution.updatedAt = new Date();
 
-      console.log(`Comment added to review for contribution: ${contribution.title}`);
       this.emit('review:comment-added', { contribution, review, comment: newComment });
     }
 
@@ -361,9 +356,6 @@ export class ContributionWorkflowManager extends EventEmitter {
     if (contribution) {
       contribution.updatedAt = new Date();
 
-      console.log(
-        `Review completed for contribution: ${contribution.title} - Decision: ${decision}`
-      );
       this.emit('review:completed', { contribution, review });
 
       // Check if all reviews are completed
@@ -430,8 +422,6 @@ export class ContributionWorkflowManager extends EventEmitter {
       return;
     }
 
-    console.log(`Running quality checks for contribution: ${contribution.title}`);
-
     // In a real implementation, this would run actual quality checks
     // For demonstration, we'll simulate the checks
 
@@ -461,7 +451,6 @@ export class ContributionWorkflowManager extends EventEmitter {
 
     this.updateContribution(id, { qualityChecks: checks });
 
-    console.log(`Quality checks completed for contribution: ${contribution.title}`);
     this.emit('contribution:quality-checks-completed', { contribution, checks });
   }
 
@@ -475,8 +464,6 @@ export class ContributionWorkflowManager extends EventEmitter {
       console.error(`Contribution not found: ${id}`);
       return;
     }
-
-    console.log(`Running security scans for contribution: ${contribution.title}`);
 
     // In a real implementation, this would run actual security scans
     // For demonstration, we'll simulate the scans
@@ -522,7 +509,6 @@ export class ContributionWorkflowManager extends EventEmitter {
 
     this.updateContribution(id, { securityScans: scans });
 
-    console.log(`Security scans completed for contribution: ${contribution.title}`);
     this.emit('contribution:security-scans-completed', { contribution, scans });
   }
 
@@ -545,8 +531,6 @@ export class ContributionWorkflowManager extends EventEmitter {
       return null;
     }
 
-    console.log(`Publishing contribution: ${contribution.title}`);
-
     // In a real implementation, this would publish the contribution
     // For demonstration, we'll simulate the publishing process
 
@@ -560,7 +544,6 @@ export class ContributionWorkflowManager extends EventEmitter {
     });
 
     if (updatedContribution) {
-      console.log(`Contribution published: ${updatedContribution.title} - Version: ${version}`);
       this.emit('contribution:published', updatedContribution);
 
       // If this is a plugin contribution, update the plugin status
@@ -592,7 +575,6 @@ export class ContributionWorkflowManager extends EventEmitter {
     });
 
     if (updatedContribution) {
-      console.log(`Changes requested for contribution: ${updatedContribution.title}`);
       this.emit('contribution:changes-requested', { contribution: updatedContribution, comments });
     }
 
@@ -616,7 +598,6 @@ export class ContributionWorkflowManager extends EventEmitter {
     });
 
     if (updatedContribution) {
-      console.log(`Contribution rejected: ${updatedContribution.title}`);
       this.emit('contribution:rejected', { contribution: updatedContribution, reason });
     }
 
@@ -628,7 +609,6 @@ export class ContributionWorkflowManager extends EventEmitter {
    */
   public setUserRole(userId: string, role: UserRole): void {
     this.userRoles.set(userId, role);
-    console.log(`User role set: ${userId} -> ${role}`);
     this.emit('user:role-set', { userId, role });
   }
 
@@ -874,3 +854,4 @@ export class ContributionWorkflowManager extends EventEmitter {
 export function createContributionWorkflowManager(): ContributionWorkflowManager {
   return new ContributionWorkflowManager();
 }
+

@@ -44,12 +44,10 @@ export class PropertyUseCodesMapper {
       });
 
       stats.totalRecords = records.length;
-      console.log(`Found ${records.length} property use code records`);
-
       // Log the field structure of the first record to help with debugging
       if (records.length > 0) {
         const sampleRecord = records[0];
-        console.log(`Sample record fields: ${Object.keys(sampleRecord).join(', ')}`);
+        .join(', ')}`);
       }
 
       // Map each record to our property schema
@@ -66,10 +64,6 @@ export class PropertyUseCodesMapper {
           console.error(errorMessage);
         }
       }
-
-      console.log(
-        `Successfully mapped ${stats.mappedRecords} out of ${stats.totalRecords} records`
-      );
 
       return {
         mappedProperties,
@@ -196,3 +190,4 @@ export class PropertyUseCodesMapper {
     return commonFields.includes(fieldName);
   }
 }
+

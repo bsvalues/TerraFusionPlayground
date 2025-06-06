@@ -45,7 +45,6 @@ export abstract class BaseAgent {
   protected registerCapability(name: string, handler: Function): void {
     this.capabilities.set(name, handler);
     this.mcpService.registerAgentCapability(this.id, name, handler.bind(this));
-    console.log(`[${this.name}] Registered capability: ${name}`);
   }
 
   /**

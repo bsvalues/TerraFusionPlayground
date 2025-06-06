@@ -93,7 +93,6 @@ export class DataConversionService {
    * Initialize the service
    */
   async initialize(): Promise<void> {
-    console.log('Data Conversion Service initializing...');
     // Any initialization logic
   }
 
@@ -215,8 +214,6 @@ export class DataConversionService {
       }> = [];
 
       // 1. Load source data
-      console.log(`Loading data for ETL job ${jobId} from format ${config.sourceFormat}`);
-
       // Placeholder for getting the source data
       // In a real implementation, this would:
       // - Read from a file or database
@@ -228,17 +225,14 @@ export class DataConversionService {
 
       // 2. Validate if required
       if (config.validation?.validateBeforeConversion) {
-        console.log(`Validating source data for ETL job ${jobId}`);
         // Perform validation
         // Add errors/warnings as needed
       }
 
       // 3. Apply field mappings
-      console.log(`Applying field mappings for ETL job ${jobId}`);
       const transformedData = await this.applyFieldMappings(sourceData, config.fieldMappings);
 
       // 4. Convert to target format
-      console.log(`Converting data for ETL job ${jobId} to format ${config.targetFormat}`);
       // Use GIS data service to convert
       // This is a placeholder - in a real implementation we would:
       // - Convert the data using the GIS data service
@@ -247,13 +241,11 @@ export class DataConversionService {
 
       // 5. Validate result if required
       if (config.validation?.validateAfterConversion) {
-        console.log(`Validating converted data for ETL job ${jobId}`);
         // Perform validation
         // Add errors/warnings as needed
       }
 
       // 6. Store the result
-      console.log(`Storing result for ETL job ${jobId}`);
       // Placeholder for storing the result
       // In a real implementation, this would:
       // - Write to a file or database
@@ -332,7 +324,6 @@ export class DataConversionService {
   ): Promise<void> {
     // This is a placeholder implementation
     // In a real implementation, this would send notifications via email, webhook, etc.
-    console.log(`Sending notification for ETL job ${jobId}: ${status}`);
   }
 
   /**

@@ -159,7 +159,6 @@ export class PluginManager extends EventEmitter {
    * Initialize the plugin manager
    */
   public initialize(): void {
-    console.log('Initializing plugin manager');
     this.emit('initialized');
   }
 
@@ -191,7 +190,7 @@ export class PluginManager extends EventEmitter {
 
     this.plugins.set(id, newPlugin);
 
-    console.log(`Plugin registered: ${newPlugin.displayName} (${newPlugin.id})`);
+    `);
     this.emit('plugin:registered', newPlugin);
 
     return newPlugin;
@@ -229,7 +228,7 @@ export class PluginManager extends EventEmitter {
 
     this.plugins.set(id, updatedPlugin);
 
-    console.log(`Plugin updated: ${updatedPlugin.displayName} (${updatedPlugin.id})`);
+    `);
     this.emit('plugin:updated', updatedPlugin);
 
     return updatedPlugin;
@@ -251,9 +250,6 @@ export class PluginManager extends EventEmitter {
     const updatedPlugin = this.updatePlugin(id, { status });
 
     if (updatedPlugin) {
-      console.log(
-        `Plugin status changed: ${updatedPlugin.displayName} - ${previousStatus} → ${status}`
-      );
       this.emit('plugin:status-changed', {
         plugin: updatedPlugin,
         previousStatus,
@@ -300,7 +296,6 @@ export class PluginManager extends EventEmitter {
     });
 
     if (updatedPlugin) {
-      console.log(`Plugin version added: ${updatedPlugin.displayName} - ${version.version}`);
       this.emit('plugin:version-added', { plugin: updatedPlugin, version });
 
       // If the plugin is installed and a newer version is available, update the installation status
@@ -345,7 +340,6 @@ export class PluginManager extends EventEmitter {
     // Update the plugin
     this.updatePlugin(id, { reviews: updatedReviews });
 
-    console.log(`Plugin review added: ${plugin.displayName} - ${newReview.title}`);
     this.emit('plugin:review-added', { plugin, review: newReview });
 
     return newReview;
@@ -373,8 +367,6 @@ export class PluginManager extends EventEmitter {
 
     try {
       // In a real implementation, this would install the plugin
-      console.log(`Installing plugin: ${plugin.displayName}`);
-
       // Simulate installation
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -387,7 +379,6 @@ export class PluginManager extends EventEmitter {
       });
 
       if (updateResult) {
-        console.log(`Plugin installed: ${updateResult.displayName}`);
         this.emit('plugin:installed', updateResult);
         return true;
       }
@@ -423,8 +414,6 @@ export class PluginManager extends EventEmitter {
 
     try {
       // In a real implementation, this would uninstall the plugin
-      console.log(`Uninstalling plugin: ${plugin.displayName}`);
-
       // Simulate uninstallation
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -437,7 +426,6 @@ export class PluginManager extends EventEmitter {
       });
 
       if (updateResult) {
-        console.log(`Plugin uninstalled: ${updateResult.displayName}`);
         this.emit('plugin:uninstalled', updateResult);
         return true;
       }
@@ -472,14 +460,11 @@ export class PluginManager extends EventEmitter {
     // Check if there's a newer version
     const latestVersion = plugin.versions[0]?.version;
     if (!latestVersion || this.compareVersions(latestVersion, plugin.currentVersion) <= 0) {
-      console.log(`Plugin ${id} is already up to date`);
       return false;
     }
 
     try {
       // In a real implementation, this would update the plugin
-      console.log(`Updating plugin: ${plugin.displayName} to ${latestVersion}`);
-
       // Simulate update
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -490,7 +475,6 @@ export class PluginManager extends EventEmitter {
       });
 
       if (updateResult) {
-        console.log(`Plugin updated: ${updateResult.displayName} to ${latestVersion}`);
         this.emit('plugin:updated-version', updateResult);
         return true;
       }
@@ -710,3 +694,4 @@ export class PluginManager extends EventEmitter {
 export function createPluginManager(): PluginManager {
   return new PluginManager();
 }
+

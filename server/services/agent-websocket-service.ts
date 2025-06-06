@@ -70,8 +70,6 @@ export class AgentWebSocketService {
   public initialize(server: Server) {
     try {
       // Enhanced logging for WebSocket initialization
-      console.log('[WebSocket Debug] Creating WebSocketServer for path: /api/agents/ws');
-
       // Create WebSocket server with path prefix option
       // This is more compatible with various hosting environments including Replit
       this.wss = new WebSocketServer({
@@ -82,8 +80,6 @@ export class AgentWebSocketService {
         // Add proper CORS handling for WebSocket connections
         verifyClient: (info, callback) => {
           // Log verify client info for debugging
-          console.log('[WebSocket Debug] verifyClient called for agent WebSocket');
-
           // Accept all connections at this stage, we'll authenticate later
           if (callback) {
             callback(true);
@@ -93,10 +89,6 @@ export class AgentWebSocketService {
       });
 
       // Log success
-      console.log(
-        '[WebSocket Debug] WebSocketServer created successfully for path: /api/agents/ws'
-      );
-
       // Set up event handlers
       this.setupEventHandlers();
 

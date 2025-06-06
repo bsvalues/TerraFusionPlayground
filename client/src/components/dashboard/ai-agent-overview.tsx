@@ -574,7 +574,6 @@ const AIAgentOverview = () => {
                             // Trigger the same action as clicking the Run button
                             e.preventDefault();
                             // This would typically call an agent run function
-                            console.log(`Running agent: ${agent.name}`);
                           }
                         }}
                       >

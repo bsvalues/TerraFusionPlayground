@@ -65,8 +65,6 @@ export class VoiceCommandProcessor {
     const startTime = Date.now();
 
     try {
-      console.log(`Processing voice command: "${rawCommand}" for user ${context.userId}`);
-
       // Initialize command log data
       const logData: Partial<InsertVoiceCommandLog> = {
         sessionId: context.sessionId,
@@ -83,7 +81,6 @@ export class VoiceCommandProcessor {
       );
 
       if (expandedCommand !== rawCommand) {
-        console.log(`Command expanded to: "${expandedCommand}"`);
         logData.processedCommand = expandedCommand;
       }
 

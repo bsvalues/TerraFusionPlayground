@@ -75,25 +75,14 @@ class CollaborationWebSocketService {
 
   public initialize(server: HTTPServer): void {
     // Create WebSocket server with a specific path for collaboration
-    console.log('Initializing Collaboration WebSocket service at path: /ws/collaboration');
     this.wss = new WebSocketServer({
       server,
       path: '/ws/collaboration',
     });
 
     // Debug: Log WebSocket server instance details
-    console.log('WebSocket server created:', {
-      path: this.wss.options.path,
-      clients: this.wss.clients.size,
-    });
-
     // Set up event handlers
     this.wss.on('connection', (socket, request) => {
-      console.log('New WebSocket connection received:', {
-        url: request.url,
-        headers: request.headers,
-        method: request.method,
-      });
       this.handleConnection(socket);
     });
 
@@ -107,8 +96,7 @@ class CollaborationWebSocketService {
       this.sendPingToAllClients();
     }, this.heartbeatInterval);
 
-    console.log('Collaboration WebSocket service initialized');
-  }
+    }
 
   private handleConnection(socket: WebSocket): void {
     const clientId = randomUUID();
@@ -120,8 +108,7 @@ class CollaborationWebSocketService {
 
     // Log the connection if in debug mode
     if (this.debug) {
-      console.log(`[CollabWS] Client connected: ${clientId}`);
-    }
+      }
 
     // Send welcome message
     socket.send(
@@ -174,8 +161,7 @@ class CollaborationWebSocketService {
 
         default:
           if (this.debug) {
-            console.log(`[CollabWS] Unhandled message type: ${message.type}`);
-          }
+            }
       }
     } catch (error) {
       console.error('[CollabWS] Error handling message:', error);
@@ -287,8 +273,7 @@ class CollaborationWebSocketService {
       });
 
       if (this.debug) {
-        console.log(
-          `[CollabWS] User ${userId} (${clientConnection.userName}) joined session ${sessionId}`
+        joined session ${sessionId}`
         );
       }
     } catch (error) {
@@ -310,8 +295,7 @@ class CollaborationWebSocketService {
       await this.removeParticipantFromSession(client.sessionId, client.userId, clientId);
 
       if (this.debug) {
-        console.log(
-          `[CollabWS] User ${client.userId} (${client.userName}) left session ${client.sessionId}`
+        left session ${client.sessionId}`
         );
       }
     } catch (error) {
@@ -560,8 +544,7 @@ class CollaborationWebSocketService {
       );
 
       if (this.debug) {
-        console.log(`[CollabWS] Client disconnected: ${clientId}`);
-      }
+        }
     }
 
     // Remove client
@@ -760,8 +743,7 @@ class CollaborationWebSocketService {
 
     this.clients.clear();
 
-    console.log('Collaboration WebSocket service shutdown');
-  }
+    }
 }
 
 export const collaborationWebSocketService = new CollaborationWebSocketService(null!);
@@ -770,3 +752,4 @@ export const collaborationWebSocketService = new CollaborationWebSocketService(n
 export function initializeCollaborationWebSocketService(storage: IStorage): void {
   (collaborationWebSocketService as any).storage = storage;
 }
+

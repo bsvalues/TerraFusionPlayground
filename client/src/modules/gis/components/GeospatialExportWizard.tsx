@@ -108,8 +108,6 @@ export default function GeospatialExportWizard() {
     setIsExporting(true);
 
     try {
-      console.log('Export data:', data);
-
       // Prepare the export request
       const exportRequest = {
         layers: data.selectedLayers,

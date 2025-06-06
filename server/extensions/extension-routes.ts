@@ -21,16 +21,12 @@ const routePrefix = '';
  */
 router.get('/', async (req, res) => {
   try {
-    console.log('GET /api/extensions called');
-
     if (!registry) {
       console.error('Extension registry is not initialized');
       return res.status(500).json({ error: 'Extension registry is not initialized' });
     }
 
     const allExtensions = registry.getExtensions();
-    console.log(`Found ${allExtensions.length} extensions`);
-
     const extensions = allExtensions.map(ext => {
       const metadata = ext.getMetadata();
       return {
@@ -61,22 +57,16 @@ router.get('/', async (req, res) => {
 router.get('/webviews', async (req, res) => {
   try {
     // Log for debugging
-    console.log('GET /api/extensions/webviews called');
-
     if (!registry) {
       console.error('Extension registry is not initialized');
       return res.status(500).json({ error: 'Extension registry is not initialized' });
     }
 
     const activeExtensions = registry.getExtensions().filter(ext => ext.isActive());
-    console.log(
-      'Active extensions:',
-      activeExtensions.map(ext => ext.getMetadata().id)
+    .id)
     );
 
     const webviews = registry.getAllWebviews();
-    console.log('Found webviews:', webviews.length);
-
     // Add more details to each webview for better debugging
     const enhancedWebviews = webviews.map(webview => ({
       ...webview,
@@ -102,8 +92,6 @@ router.get('/webviews', async (req, res) => {
  */
 router.get('/webviews/:id', async (req, res) => {
   try {
-    console.log(`GET /api/extensions/webviews/${req.params.id} called`);
-
     if (!registry) {
       console.error('Extension registry is not initialized');
       return res.status(500).json({ error: 'Extension registry is not initialized' });
@@ -117,7 +105,6 @@ router.get('/webviews/:id', async (req, res) => {
       return res.status(404).json({ error: `Webview '${id}' not found` });
     }
 
-    console.log(`Found webview: ${id} from extension ${webview.extensionId}`);
     res.json(webview);
   } catch (error) {
     console.error(`Error getting webview ${req.params.id}:`, error);
@@ -346,8 +333,6 @@ router.post('/:id/command/:command', async (req, res) => {
  */
 router.get('/:id/webviews/:webviewId', async (req, res) => {
   try {
-    console.log(`GET /api/extensions/${req.params.id}/webviews/${req.params.webviewId} called`);
-
     const { id, webviewId } = req.params;
     const extension = registry.getExtension(id);
 
@@ -383,8 +368,6 @@ router.get('/:id/webviews/:webviewId', async (req, res) => {
       return res.status(500).json({ error: `Failed to get content for webview '${webviewId}'` });
     }
 
-    console.log(`Successfully retrieved content for webview '${webviewId}'`);
-
     // Return the content as HTML
     res.header('Content-Type', 'text/html');
     res.send(contentTemplate);
@@ -401,3 +384,4 @@ router.get('/:id/webviews/:webviewId', async (req, res) => {
 });
 
 export default router;
+

@@ -200,9 +200,9 @@ export function MapComposer({
           getCenter: () => mapCenter,
           setZoom: (zoom: number) => setMapZoom(zoom),
           getZoom: () => mapZoom,
-          addLayer: (layer: any) => console.log('Added layer:', layer),
-          removeLayer: (layerId: number) => console.log('Removed layer:', layerId),
-          on: (event: string, callback: any) => console.log('Map event registered:', event),
+          addLayer: (layer: any) => ,
+          removeLayer: (layerId: number) => ,
+          on: (event: string, callback: any) => ,
         };
 
         setMapInstance(mockMapInstance);
@@ -725,3 +725,4 @@ export function MapComposer({
 }
 
 export default MapComposer;
+

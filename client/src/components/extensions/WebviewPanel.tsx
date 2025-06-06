@@ -38,8 +38,6 @@ export function WebviewPanel({
         setIsLoading(true);
         setError(null);
 
-        console.log(`Fetching webview content for ${extensionId}/${webviewId}...`);
-
         // First check if the extension itself exists and is active
         const extensionResponse = await apiRequest(`/api/extensions/${extensionId}`);
         if (!extensionResponse.ok) {
@@ -67,7 +65,6 @@ export function WebviewPanel({
         }
 
         const contentText = await response.text();
-        console.log(`Successfully loaded webview content for ${extensionId}/${webviewId}`);
         setContent(contentText);
       } catch (err) {
         console.error('Error loading webview content:', err);
@@ -103,15 +100,11 @@ export function WebviewPanel({
     // Setup listeners for messages from the iframe
     messageChannel.port1.onmessage = event => {
       if (event.data.type === 'webview.ready') {
-        console.log('Webview is ready', event.data.status || 'success');
       } else if (event.data.type === 'webview.action') {
         // Handle actions requested by the webview
-        console.log('Webview action:', event.data.action, event.data);
-
         if (event.data.action === 'close') {
           onClose();
         } else if (event.data.action === 'retry') {
-          console.log('Retrying webview content load...');
           setIsLoading(true);
           setError(null);
           setContent(null);
@@ -142,12 +135,9 @@ export function WebviewPanel({
             fetchWebviewContent();
           }, 500);
         } else if (event.data.action === 'activate') {
-          console.log(`Attempting to activate extension ${extensionId}...`);
-
           apiRequest(`/api/extensions/${extensionId}/activate`, { method: 'POST' })
             .then(response => {
               if (response.ok) {
-                console.log(`Extension ${extensionId} activated successfully`);
                 // Retry loading the webview
                 setIsLoading(true);
                 setError(null);
@@ -202,11 +192,9 @@ export function WebviewPanel({
                   <button
                     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                     onClick={() => {
-                      console.log(`Attempting to activate extension ${extensionId}...`);
                       apiRequest(`/api/extensions/${extensionId}/activate`, { method: 'POST' })
                         .then(response => {
                           if (response.ok) {
-                            console.log(`Extension ${extensionId} activated successfully`);
                             // Retry loading the webview
                             setIsLoading(true);
                             setError(null);

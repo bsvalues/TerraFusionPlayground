@@ -148,11 +148,9 @@ export const GISProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const token = import.meta.env.VITE_MAPBOX_TOKEN || import.meta.env.MAPBOX_TOKEN || '';
 
       if (token && token.trim().length > 0) {
-        console.log('Mapbox token found in environment variables');
         setMapboxToken(token);
         setUseOpenStreetMapFallback(false);
       } else {
-        console.log('No Mapbox token found in environment variables, using OpenStreetMap fallback');
         setMapboxToken(undefined);
         setUseOpenStreetMapFallback(true);
       }

@@ -162,7 +162,7 @@ function testLockFileRemoval() {
 function runAllTests() {
   logger.info('Starting FTP Agent Scheduler Lock Tests...');
 
-  let results = {};
+  const results = {};
 
   // Test 1: Lock file creation
   results.lockCreation = testLockFileCreation();
@@ -178,8 +178,8 @@ function runAllTests() {
 
   // Print summary
   logger.info('=== FTP Agent Scheduler Lock Test Results ===');
-  let totalTests = Object.keys(results).length;
-  let passedTests = Object.values(results).filter(Boolean).length;
+  const totalTests = Object.keys(results).length;
+  const passedTests = Object.values(results).filter(Boolean).length;
 
   logger.info(`Tests passed: ${passedTests}/${totalTests}`);
 

@@ -225,7 +225,7 @@ export class TeamCollaborationWebSocketService {
    */
   constructor(server: Server, storage: IStorage) {
     this.storage = storage;
-    this.notificationService = new NotificationService(storage);
+    this.notificationService = new NotificationService();
 
     // Create WebSocket server with enhanced debugging
     try {
@@ -239,25 +239,13 @@ export class TeamCollaborationWebSocketService {
         skipUTF8Validation: true, // Be more permissive with message formats
         verifyClient: (info, callback) => {
           // Log headers for debugging
-          console.log(
-            '[TeamWS] Verification - Client connecting with headers:',
-            JSON.stringify(info.req.headers, null, 2)
-          );
-          console.log(
-            '[TeamWS] Verification - Client connection from:',
-            info.req.socket.remoteAddress
-          );
-
+          console.log('[TeamWS] New connection attempt from:', info.origin);
           // Always accept the connection at this stage
           // We'll handle authentication after connection is established
           if (callback) callback(true);
           return true;
         },
       });
-
-      console.log(
-        'Team collaboration WebSocket server created successfully at /ws/team-collaboration'
-      );
 
       // Add error handler for the WebSocket server itself
       this.wss.on('error', error => {
@@ -280,16 +268,11 @@ export class TeamCollaborationWebSocketService {
     try {
       // Handle incoming connections
       this.wss.on('connection', (socket: WebSocket, request) => {
-        console.log('[TeamWS] New WebSocket connection received');
-        console.log('[TeamWS] Connection URL:', request.url);
-        console.log('[TeamWS] Connection headers:', JSON.stringify(request.headers, null, 2));
-
         // Add socket ping to keep connection alive
         const pingInterval = setInterval(() => {
           if (socket.readyState === WebSocket.OPEN) {
             try {
               socket.ping();
-              console.log('[TeamWS] Ping sent to keep connection alive');
             } catch (error) {
               console.error('[TeamWS] Error sending ping:', error);
             }
@@ -300,19 +283,15 @@ export class TeamCollaborationWebSocketService {
 
         // Generate a unique connection ID
         const connectionId = uuidv4();
-        console.log(`[TeamWS] Generated connection ID: ${connectionId}`);
-
         // Require authentication
         try {
           this.sendAuthRequiredMessage(socket, connectionId);
-          console.log(`[TeamWS] Sent auth required message for connection: ${connectionId}`);
         } catch (error) {
           console.error(`[TeamWS] Error sending auth required message:`, error);
         }
 
         // Set authentication timeout
         const authTimeout = setTimeout(() => {
-          console.log(`[TeamWS] Authentication timeout for connection: ${connectionId}`);
           this.handleAuthenticationTimeout(connectionId);
         }, this.AUTH_TIMEOUT);
 
@@ -320,10 +299,10 @@ export class TeamCollaborationWebSocketService {
         this.pendingAuthentication.set(connectionId, { socket, authTimeout });
 
         // Handle incoming messages
-        socket.on('message', async (data: WebSocket.Data) => {
+        socket.on('message', async (data: any) => {
           try {
             console.log(
-              `[TeamWS] Received message data:`,
+              '[TeamWS] Received message:',
               data.toString().substring(0, 200) + (data.toString().length > 200 ? '...' : '')
             );
 
@@ -337,7 +316,6 @@ export class TeamCollaborationWebSocketService {
             let message;
             try {
               message = JSON.parse(data.toString());
-              console.log(`[TeamWS] Parsed message type: ${message.type}`);
             } catch (parseError) {
               console.error(`[TeamWS] Error parsing message: ${parseError}`, data.toString());
               this.sendErrorMessage(
@@ -350,7 +328,6 @@ export class TeamCollaborationWebSocketService {
 
             // Handle authentication message
             if (message.type === 'authenticate') {
-              console.log(`[TeamWS] Handling authentication for connection: ${connectionId}`);
               await this.handleAuthentication(connectionId, socket, message);
               return;
             }
@@ -358,16 +335,12 @@ export class TeamCollaborationWebSocketService {
             // For all other messages, find the user by socket and ensure they're authenticated
             const connection = this.findUserConnection(socket);
             if (!connection) {
-              console.log(`[TeamWS] Received message from unauthenticated connection`);
               this.sendErrorMessage(socket, 'not_authenticated', 'User not authenticated');
               return;
             }
 
             // Update last activity timestamp
             connection.lastActivity = new Date();
-            console.log(
-              `[TeamWS] Updated last activity for user: ${connection.userName} (${connection.userId})`
-            );
 
             // Handle the message
             await this.handleMessage(connection, message);
@@ -386,15 +359,10 @@ export class TeamCollaborationWebSocketService {
         });
 
         // Handle pong responses to our ping messages
-        socket.on('pong', () => {
-          console.log('[TeamWS] Received pong response');
-        });
+        socket.on('pong', () => {});
 
         // Handle disconnection
         socket.on('close', (code, reason) => {
-          console.log(
-            `[TeamWS] Connection closed with code: ${code}, reason: ${reason || 'No reason provided'}`
-          );
           try {
             this.handleDisconnect(socket);
 
@@ -404,15 +372,11 @@ export class TeamCollaborationWebSocketService {
               if (pendingAuth) {
                 clearTimeout(pendingAuth.authTimeout);
                 this.pendingAuthentication.delete(connectionId);
-                console.log(
-                  `[TeamWS] Cleaned up pending authentication for connection: ${connectionId}`
-                );
               }
             }
 
             // Clear ping interval
             clearInterval(pingInterval);
-            console.log(`[TeamWS] Cleared ping interval for connection: ${connectionId}`);
           } catch (error) {
             console.error('[TeamWS] Error handling WebSocket close event:', error);
           }
@@ -432,8 +396,6 @@ export class TeamCollaborationWebSocketService {
           }
         });
       });
-
-      console.log('Team collaboration WebSocket server initialized');
     } catch (error) {
       console.error('[TeamWS] Error initializing WebSocket server:', error);
     }
@@ -498,7 +460,7 @@ export class TeamCollaborationWebSocketService {
 
       // Verify user exists in the database
       try {
-        const user = await this.storage.getTeamMember(message.userId);
+        const user = await this.storage.getTeamMemberById(message.userId);
         if (!user) {
           this.sendErrorMessage(socket, 'user_not_found', 'User not found');
           return;
@@ -575,7 +537,8 @@ export class TeamCollaborationWebSocketService {
         await this.storage.createSystemActivity({
           activity_type: 'team_collaboration',
           component: 'websocket',
-          status: 'user_joined',
+          activity: 'user_joined',
+          status: 'success',
           details: {
             userId: message.userId,
             userName: message.userName,
@@ -586,9 +549,7 @@ export class TeamCollaborationWebSocketService {
         console.error('Error logging user activity:', error);
       }
 
-      console.log(
-        `User ${message.userName} (ID: ${message.userId}) joined session ${message.sessionId}`
-      );
+      console.log(`[TeamWS] User ${message.userName} joined session ${message.sessionId}`);
     } catch (error) {
       console.error('Authentication error:', error);
       this.sendErrorMessage(socket, 'auth_error', 'Authentication failed');
@@ -736,14 +697,15 @@ export class TeamCollaborationWebSocketService {
 
       // Record the message in the database
       try {
-        await this.storage.createTeamChatMessage({
-          id: uuidv4(),
-          sessionId,
-          fromUserId: message.senderId!,
-          content: message.content,
-          timestamp: new Date(),
-          threadId: message.threadId || null,
-        });
+        // TODO: Implement chat message storage when the method is available
+        // await this.storage.createTeamChatMessage({
+        //   id: uuidv4(),
+        //   sessionId,
+        //   fromUserId: message.senderId!,
+        //   content: message.content,
+        //   timestamp: new Date(),
+        //   threadId: message.threadId || null,
+        // });
       } catch (error) {
         console.error('Error storing chat message:', error);
       }
@@ -1035,9 +997,7 @@ export class TeamCollaborationWebSocketService {
         console.error('Error logging user disconnect:', error);
       }
 
-      console.log(
-        `User ${connection.userName} (ID: ${connection.userId}) left session ${connection.sessionId}`
-      );
+      console.log(`[TeamWS] User ${connection.userName} left session ${connection.sessionId}`);
     } catch (error) {
       console.error('Error handling disconnect:', error);
     }

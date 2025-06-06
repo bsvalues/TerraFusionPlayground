@@ -38,8 +38,6 @@ export default function PropertyEditorPage() {
 
   // Handle save
   const handleSave = (data: any) => {
-    console.log('Property saved:', data);
-
     // Show toast
     toast({
       title: 'Property Saved',

@@ -18,13 +18,10 @@ import {
 import { InsertTeamMember } from '@shared/schema';
 
 async function initializeTeamAgents() {
-  console.log('Initializing team agents...');
-
   try {
     // Check if agents already exist
     const existingMembers = await storage.getAllTeamMembers();
     if (existingMembers.length > 0) {
-      console.log(`Team already initialized with ${existingMembers.length} members.`);
       return;
     }
 
@@ -245,9 +242,8 @@ async function initializeTeamAgents() {
     createdMembers.push(await storage.createTeamMember(qaTester));
     createdMembers.push(await storage.createTeamMember(countyAssessor));
 
-    console.log(`Successfully created ${createdMembers.length} team agents:`);
     createdMembers.forEach(member => {
-      console.log(`- ${member.name} (${member.role}): ${member.status}`);
+      : ${member.status}`);
     });
 
     // Create initial collaboration session for team onboarding
@@ -269,8 +265,6 @@ async function initializeTeamAgents() {
       taskIds: [],
     });
 
-    console.log(`Created initial team collaboration session: ${initialSession.title}`);
-
     // Create some initial knowledge base items
     const initialKnowledgeItem = await storage.createTeamKnowledgeBaseItem({
       title: 'Property Assessment Platform Overview',
@@ -281,10 +275,7 @@ async function initializeTeamAgents() {
       tags: ['overview', 'project-scope', 'introduction'],
     });
 
-    console.log(`Created initial knowledge base item: ${initialKnowledgeItem.title}`);
-
-    console.log('Team agent initialization complete.');
-  } catch (error) {
+    } catch (error) {
     console.error('Error initializing team agents:', error);
   }
 }
@@ -294,3 +285,4 @@ export { initializeTeamAgents };
 
 // Note: Direct execution check removed because we're using ES modules
 // The file will only be executed directly when explicitly called
+

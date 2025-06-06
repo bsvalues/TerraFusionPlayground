@@ -8,6 +8,41 @@
 import { BaseAgent, AgentConfig } from '../../agents/base-agent';
 import { IStorage } from '../../../storage';
 import { MCPService } from '../../mcp';
+import { InsertAgentMessage, InsertSpatialEvent } from '../../../../shared/gis-schema';
+
+/**
+ * Interface for agent messages
+ */
+export interface AgentMessage {
+  messageId: string;
+  senderAgentId: string;
+  messageType: string;
+  subject?: string;
+  content: string;
+  status?: string;
+  metadata?: Record<string, unknown>;
+  timestamp: string;
+}
+
+/**
+ * Interface for GIS operation log
+ */
+export interface GISOperationLog {
+  operation: string;
+  details?: Record<string, unknown>;
+  timestamp: string;
+}
+
+/**
+ * Interface for spatial events
+ */
+export interface SpatialEvent {
+  type: string;
+  agent_id: string;
+  geometry: string;
+  details: string;
+  timestamp: string;
+}
 
 /**
  * Abstract base class for GIS agents
@@ -27,37 +62,36 @@ export abstract class BaseGISAgent extends BaseAgent {
 
   /**
    * Create an agent message in the storage system
+   * @param message AgentMessage object
    */
-  protected async createAgentMessage(message: any): Promise<any> {
+  protected async createAgentMessage(message: Partial<InsertAgentMessage>): Promise<any> {
     try {
-      // Ensure agentId is set
-      if (!message.agentId) {
-        message.agentId = this.agentId;
-      }
-
-      // Create the message in storage
-      return await this.storage.createAgentMessage(message);
+      const fullMessage: InsertAgentMessage = {
+        agentId: message.agentId || this.agentId,
+        type: message.type || 'INFO',
+        content: typeof message.content === 'string' ? message.content : (message.content ? String(message.content) : ''),
+        parentId: message.parentId,
+        metadata: message.metadata && typeof message.metadata === 'object' ? message.metadata : undefined,
+      };
+      return await this.storage.createAgentMessage(fullMessage);
     } catch (error) {
       console.error(`Error creating agent message for ${this.name}:`, error);
-      // Don't throw here to prevent cascading failures
       return null;
     }
   }
 
   /**
    * Log GIS operation
+   * @param operation Operation name
+   * @param details Optional details
    */
-  protected async logGISOperation(operation: string, details: any = {}): Promise<void> {
+  protected async logGISOperation(operation: string, details: Record<string, unknown> = {}): Promise<void> {
     try {
       await this.createAgentMessage({
-        type: 'GIS_OPERATION',
-        content: `GIS Operation: ${operation}`,
         agentId: this.agentId,
-        metadata: {
-          operation,
-          timestamp: new Date(),
-          ...details,
-        },
+        type: 'INFO',
+        content: `GIS Operation: ${operation}`,
+        metadata: details,
       });
     } catch (error) {
       console.error(`Error logging GIS operation for ${this.name}:`, error);
@@ -66,31 +100,24 @@ export abstract class BaseGISAgent extends BaseAgent {
 
   /**
    * Record a spatial event
+   * @param eventType Event type
+   * @param geometry Geometry object
+   * @param details Optional details
    */
   protected async recordSpatialEvent(
     eventType: string,
-    geometry: any,
-    details: any = {}
+    geometry: unknown,
+    details: Record<string, unknown> = {}
   ): Promise<any> {
     try {
-      const event = {
-        event_type: eventType,
-        agent_id: this.agentId,
-        geometry: JSON.stringify(geometry),
-        details: JSON.stringify({
-          agentName: this.name,
-          ...details,
-        }),
-        created_at: new Date(),
+      const event: InsertSpatialEvent = {
+        type: eventType,
+        details: { agentName: this.name, ...details },
+        metadata: { geometry },
       };
-
-      // Create the spatial event in storage
       if (typeof this.storage.createSpatialEvent === 'function') {
         return await this.storage.createSpatialEvent(event);
       } else {
-        console.log(
-          `Storage doesn't support createSpatialEvent method. Event not recorded: ${eventType}`
-        );
         return null;
       }
     } catch (error) {
@@ -101,16 +128,14 @@ export abstract class BaseGISAgent extends BaseAgent {
 
   /**
    * Get recent agent messages
+   * @param limit Number of messages to retrieve
    */
   protected async getRecentMessages(limit: number = 10): Promise<any[]> {
     try {
       // Get recent messages for this agent
-      if (typeof this.storage.getAgentMessagesByAgentId === 'function') {
-        return await this.storage.getAgentMessagesByAgentId(this.agentId);
+      if (typeof this.storage.getAgentMessagesByAgent === 'function') {
+        return await this.storage.getAgentMessagesByAgent(this.agentId);
       } else {
-        console.log(
-          `Storage doesn't support getAgentMessagesByAgentId method. Returning empty array.`
-        );
         return [];
       }
     } catch (error) {

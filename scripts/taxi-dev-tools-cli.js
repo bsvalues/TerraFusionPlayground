@@ -63,7 +63,7 @@ program
   .action(async options => {
     console.log(chalk.blue('Fetching code snippets...'));
 
-    let queryParams = [];
+    const queryParams = [];
     if (options.language) queryParams.push(`language=${options.language}`);
     if (options.type) queryParams.push(`type=${options.type}`);
     if (options.search) queryParams.push(`search=${encodeURIComponent(options.search)}`);
@@ -335,7 +335,7 @@ program
   .action(async options => {
     console.log(chalk.blue('Fetching data visualizations...'));
 
-    let queryParams = [];
+    const queryParams = [];
     if (options.type) queryParams.push(`type=${options.type}`);
     if (options.search) queryParams.push(`search=${encodeURIComponent(options.search)}`);
 
@@ -405,7 +405,7 @@ program
   .action(async options => {
     console.log(chalk.blue('Fetching UI component templates...'));
 
-    let queryParams = [];
+    const queryParams = [];
     if (options.type) queryParams.push(`type=${options.type}`);
     if (options.framework) queryParams.push(`framework=${options.framework}`);
     if (options.search) queryParams.push(`search=${encodeURIComponent(options.search)}`);

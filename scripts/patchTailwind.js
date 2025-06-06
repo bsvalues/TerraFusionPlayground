@@ -3,7 +3,6 @@
  * This plugin extends the Tailwind config with our custom TerraFusion design tokens
  */
 
-// eslint-disable-next-line
 module.exports = function terrafusionPlugin() {
   return function ({ addUtilities, theme, variants, e, addComponents, config, addBase }) {
     // Add TerraFusion colors to Tailwind

@@ -1,21 +1,66 @@
 import React, { useState, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { useMutation } from '@tanstack/react-query';
-import { LoaderCircle, Code, Copy, FileCode, Brain, Cpu, Braces, Sparkles, PlusCircle, Plus, TerminalSquare, 
-  SquarePen, User, Book, Server, Workflow, Layers, GitBranch, Lightbulb, Archive, Download, Upload, 
-  ChevronsRight, ChevronsLeft, Search, Layout, Map, Calculator, Check, FileText, BarChart, ListFilter,
-  Github, Database } from 'lucide-react';
+import {
+  LoaderCircle,
+  Code,
+  Copy,
+  FileCode,
+  Brain,
+  Cpu,
+  Braces,
+  Sparkles,
+  PlusCircle,
+  Plus,
+  TerminalSquare,
+  SquarePen,
+  User,
+  Book,
+  Server,
+  Workflow,
+  Layers,
+  GitBranch,
+  Lightbulb,
+  Archive,
+  Download,
+  Upload,
+  ChevronsRight,
+  ChevronsLeft,
+  Search,
+  Layout,
+  Map,
+  Calculator,
+  Check,
+  FileText,
+  BarChart,
+  ListFilter,
+  Github,
+  Database,
+} from 'lucide-react';
 
 // Development template types
 interface DevelopmentTemplate {
@@ -128,8 +173,10 @@ const CodeAssistantPanel: React.FC = () => {
   const [gisVisualizationData, setGISVisualizationData] = useState<string>('');
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const [applicationParts, setApplicationParts] = useState<string[]>([]);
-  const [assistantHistory, setAssistantHistory] = useState<{role: 'user'|'assistant', content: string}[]>([]);
-  
+  const [assistantHistory, setAssistantHistory] = useState<
+    { role: 'user' | 'assistant'; content: string }[]
+  >([]);
+
   // Define missing variables for TypeScript errors
   const [selectedParcel, setSelectedParcel] = useState<{
     site_address: string;
@@ -138,7 +185,7 @@ const CodeAssistantPanel: React.FC = () => {
     acres: number;
     tax_status: string;
   } | null>(null);
-  
+
   // Sample property data for code that references property
   const [propertyData, setPropertyData] = useState<{
     id: string;
@@ -156,7 +203,7 @@ const CodeAssistantPanel: React.FC = () => {
       squareFeet: number;
     }>;
   } | null>(null);
-  
+
   // Sample improvement and assessment data
   const [improvement, setImprovement] = useState<{
     id: string;
@@ -165,7 +212,7 @@ const CodeAssistantPanel: React.FC = () => {
     squareFeet: number;
     value: number;
   } | null>(null);
-  
+
   const [assessment, setAssessment] = useState<{
     id: string;
     year: number;
@@ -173,16 +220,16 @@ const CodeAssistantPanel: React.FC = () => {
     taxAmount: number;
     assessmentDate: string;
   } | null>(null);
-  
+
   // Sample development context - in a real implementation, this would come from your application state
   const context = {
     domain: 'property-assessment',
-    organization: 'Benton County Assessor\'s Office',
+    organization: "Benton County Assessor's Office",
     currentProject: 'Property Assessment System',
     availableModels: ['Property', 'Improvement', 'Owner', 'Assessment', 'Land'],
     activeDataSources: ['PACS', 'GIS', 'CountyRecords', 'TaxRolls'],
     workflows: ['PropertyLookup', 'ValueCalculation', 'NoticeGeneration', 'AppealProcessing'],
-    userTypes: ['Assessor', 'Administrator', 'PublicUser', 'CountyOfficial']
+    userTypes: ['Assessor', 'Administrator', 'PublicUser', 'CountyOfficial'],
   };
 
   // Sample property models - in production, these would be fetched from your API
@@ -192,33 +239,75 @@ const CodeAssistantPanel: React.FC = () => {
       name: 'Property',
       description: 'Core property record with ownership and valuation data',
       fields: [
-        { name: 'propertyId', type: 'string', description: 'Unique identifier', example: 'BC12345' },
-        { name: 'address', type: 'string', description: 'Physical location', example: '123 Main St, Corvallis' },
-        { name: 'marketValue', type: 'number', description: 'Current market value', example: '350000' },
+        {
+          name: 'propertyId',
+          type: 'string',
+          description: 'Unique identifier',
+          example: 'BC12345',
+        },
+        {
+          name: 'address',
+          type: 'string',
+          description: 'Physical location',
+          example: '123 Main St, Corvallis',
+        },
+        {
+          name: 'marketValue',
+          type: 'number',
+          description: 'Current market value',
+          example: '350000',
+        },
         { name: 'acres', type: 'number', description: 'Total land area in acres', example: '1.25' },
-        { name: 'taxCode', type: 'string', description: 'Tax jurisdiction code', example: 'BC-R2' }
+        { name: 'taxCode', type: 'string', description: 'Tax jurisdiction code', example: 'BC-R2' },
       ],
       relationships: [
-        { relatedModel: 'Owner', type: 'one-to-many', description: 'Property owners (current and historical)' },
-        { relatedModel: 'Improvement', type: 'one-to-many', description: 'Buildings and structures on property' },
-        { relatedModel: 'Assessment', type: 'one-to-many', description: 'Annual assessment records' }
-      ]
+        {
+          relatedModel: 'Owner',
+          type: 'one-to-many',
+          description: 'Property owners (current and historical)',
+        },
+        {
+          relatedModel: 'Improvement',
+          type: 'one-to-many',
+          description: 'Buildings and structures on property',
+        },
+        {
+          relatedModel: 'Assessment',
+          type: 'one-to-many',
+          description: 'Annual assessment records',
+        },
+      ],
     },
     {
       id: 'improvement-model',
       name: 'Improvement',
       description: 'Buildings, structures and other property improvements',
       fields: [
-        { name: 'improvementId', type: 'string', description: 'Unique identifier', example: 'IMP-5432' },
-        { name: 'propertyId', type: 'string', description: 'Associated property', example: 'BC12345' },
-        { name: 'type', type: 'string', description: 'Type of improvement', example: 'Single Family Residence' },
+        {
+          name: 'improvementId',
+          type: 'string',
+          description: 'Unique identifier',
+          example: 'IMP-5432',
+        },
+        {
+          name: 'propertyId',
+          type: 'string',
+          description: 'Associated property',
+          example: 'BC12345',
+        },
+        {
+          name: 'type',
+          type: 'string',
+          description: 'Type of improvement',
+          example: 'Single Family Residence',
+        },
         { name: 'squareFeet', type: 'number', description: 'Building size', example: '2400' },
-        { name: 'yearBuilt', type: 'number', description: 'Year of construction', example: '1998' }
+        { name: 'yearBuilt', type: 'number', description: 'Year of construction', example: '1998' },
       ],
       relationships: [
-        { relatedModel: 'Property', type: 'one-to-one', description: 'Parent property' }
-      ]
-    }
+        { relatedModel: 'Property', type: 'one-to-one', description: 'Parent property' },
+      ],
+    },
   ];
 
   // Sample templates - in production, these would be fetched from your API
@@ -259,8 +348,7 @@ export const PropertyLookup: React.FC = () => {
 
   const handleSearch = () => {
     // Implement search functionality
-    console.log('Searching for:', searchTerm);
-  };
+    };
 
   return (
     <div className="space-y-4">
@@ -294,13 +382,14 @@ export const PropertyLookup: React.FC = () => {
       )}
     </div>
   );
-};`
+};`,
     },
     {
       id: 'assessment-calculation',
       name: 'Assessment Value Calculator',
       category: 'Business Logic',
-      description: 'Utility for calculating property assessment values based on improvements and land',
+      description:
+        'Utility for calculating property assessment values based on improvements and land',
       language: 'typescript',
       complexity: 'complex',
       tags: ['calculation', 'assessment', 'utility'],
@@ -433,8 +522,8 @@ export class AssessmentCalculator {
       return total + depreciatedValue;
     }, 0);
   }
-}`
-    }
+}`,
+    },
   ];
 
   // Sample CAMA models - in production, these would be fetched from your API
@@ -447,11 +536,36 @@ export class AssessmentCalculator {
       complexity: 'advanced',
       applicablePropertyTypes: ['residential', 'commercial', 'vacant land'],
       parameters: [
-        { name: 'radiusMiles', type: 'number', description: 'Search radius for comparable properties', defaultValue: '1.0' },
-        { name: 'maxAgeDays', type: 'number', description: 'Maximum age of sales to consider', defaultValue: '365' },
-        { name: 'adjustmentFactors', type: 'object', description: 'Adjustment factors for property characteristics', defaultValue: '{}' },
-        { name: 'minComparables', type: 'number', description: 'Minimum number of comparables required', defaultValue: '3' },
-        { name: 'qualityThreshold', type: 'number', description: 'Minimum quality score for comparables', defaultValue: '0.7' }
+        {
+          name: 'radiusMiles',
+          type: 'number',
+          description: 'Search radius for comparable properties',
+          defaultValue: '1.0',
+        },
+        {
+          name: 'maxAgeDays',
+          type: 'number',
+          description: 'Maximum age of sales to consider',
+          defaultValue: '365',
+        },
+        {
+          name: 'adjustmentFactors',
+          type: 'object',
+          description: 'Adjustment factors for property characteristics',
+          defaultValue: '{}',
+        },
+        {
+          name: 'minComparables',
+          type: 'number',
+          description: 'Minimum number of comparables required',
+          defaultValue: '3',
+        },
+        {
+          name: 'qualityThreshold',
+          type: 'number',
+          description: 'Minimum quality score for comparables',
+          defaultValue: '0.7',
+        },
       ],
       algorithm: `/**
  * Market Comparable Analysis Algorithm
@@ -561,7 +675,7 @@ export class MarketComparableAnalysis {
       valueRange: [0, 0]
     }; // Placeholder
   }
-}`
+}`,
     },
     {
       id: 'cost-approach-model',
@@ -571,10 +685,30 @@ export class MarketComparableAnalysis {
       complexity: 'intermediate',
       applicablePropertyTypes: ['residential', 'commercial', 'industrial'],
       parameters: [
-        { name: 'costManual', type: 'string', description: 'Cost manual to use for base costs', defaultValue: 'marshall-swift' },
-        { name: 'costMultiplier', type: 'number', description: 'Regional cost multiplier', defaultValue: '1.05' },
-        { name: 'depreciationMethod', type: 'string', description: 'Method for calculating depreciation', defaultValue: 'age-life' },
-        { name: 'economicObsolescence', type: 'number', description: 'Economic obsolescence factor', defaultValue: '0.0' }
+        {
+          name: 'costManual',
+          type: 'string',
+          description: 'Cost manual to use for base costs',
+          defaultValue: 'marshall-swift',
+        },
+        {
+          name: 'costMultiplier',
+          type: 'number',
+          description: 'Regional cost multiplier',
+          defaultValue: '1.05',
+        },
+        {
+          name: 'depreciationMethod',
+          type: 'string',
+          description: 'Method for calculating depreciation',
+          defaultValue: 'age-life',
+        },
+        {
+          name: 'economicObsolescence',
+          type: 'number',
+          description: 'Economic obsolescence factor',
+          defaultValue: '0.0',
+        },
       ],
       algorithm: `/**
  * Cost Approach Valuation Model
@@ -708,10 +842,10 @@ export class CostApproachValuation {
     // Calculate depreciation based on the selected method
     return 0; // Placeholder
   }
-}`
-    }
+}`,
+    },
   ];
-  
+
   // Sample regulation rules - in production, these would be fetched from your API
   const regulationRules: RegulationRule[] = [
     {
@@ -724,7 +858,7 @@ export class CostApproachValuation {
       codePattern: '(?:assessed|assessment)\\s*(?:value|ratio)\\s*=\\s*([^\\n]*)',
       message: 'Washington state requires assessments at 100% of market value',
       suggestion: 'Ensure assessment calculations do not include non-standard ratio adjustments',
-      reference: "RCW 84.40.030 - Basis of valuation, assessment, appraisal"
+      reference: 'RCW 84.40.030 - Basis of valuation, assessment, appraisal',
     },
     {
       id: 'benton-exemption-code',
@@ -736,7 +870,7 @@ export class CostApproachValuation {
       codePattern: 'exemptionCode\\s*=\\s*[\'"]([^\'"]*)[\'"]',
       message: 'Unrecognized exemption code or format for Benton County',
       suggestion: 'Use standard Benton County exemption codes with format BC-EX-###',
-      reference: "Benton County Assessor Office Exemption Code List 2025"
+      reference: 'Benton County Assessor Office Exemption Code List 2025',
     },
     {
       id: 'wa-appeals-notification',
@@ -748,10 +882,10 @@ export class CostApproachValuation {
       codePattern: 'generate(?:Notice|Assessment)\\s*\\([^\\)]*\\)',
       message: 'Assessment notices must include appeals rights and deadline information',
       suggestion: 'Include appeals information in all assessment notice templates',
-      reference: "RCW 84.40.045 - Notice of change in valuation of real property"
-    }
+      reference: 'RCW 84.40.045 - Notice of change in valuation of real property',
+    },
   ];
-  
+
   // Sample GIS templates - in production, these would be fetched from your API
   const gisTemplates: GISTemplate[] = [
     {
@@ -899,7 +1033,7 @@ export const ParcelViewer = () => {
     </div>
   );
 };`,
-      dataRequirements: ['parcel-boundaries', 'ownership-data', 'assessment-values', 'zoning-data']
+      dataRequirements: ['parcel-boundaries', 'ownership-data', 'assessment-values', 'zoning-data'],
     },
     {
       id: 'sales-ratio-map',
@@ -1168,8 +1302,13 @@ export const SalesRatioMap = () => {
     </div>
   );
 };`,
-      dataRequirements: ['neighborhood-boundaries', 'sales-records', 'assessment-data', 'property-classifications']
-    }
+      dataRequirements: [
+        'neighborhood-boundaries',
+        'sales-records',
+        'assessment-data',
+        'property-classifications',
+      ],
+    },
   ];
 
   // Sample code snippets - in production, these would be fetched from your API
@@ -1272,7 +1411,7 @@ export class PACSConnection {
       category: 'API Integration',
       tags: ['api', 'pacs', 'connection', 'authentication'],
       usageCount: 27,
-      lastUsed: '2025-04-12T14:23:00Z'
+      lastUsed: '2025-04-12T14:23:00Z',
     },
     {
       id: 'property-data-validation',
@@ -1365,8 +1504,8 @@ export type Property = z.infer<typeof propertySchema>;`,
       category: 'Data Validation',
       tags: ['validation', 'schema', 'zod', 'property'],
       usageCount: 18,
-      lastUsed: '2025-04-14T09:45:00Z'
-    }
+      lastUsed: '2025-04-14T09:45:00Z',
+    },
   ];
 
   // Property assessment specific context interface
@@ -1380,45 +1519,68 @@ export type Property = z.infer<typeof propertySchema>;`,
     domain: string;
     organization: string;
   }
-  
+
   // Function to generate specialized code based on property assessment context
-  const generateSpecializedCode = (prompt: string, context: PropertyAssessmentContext): { code: string, message: string, className: string } => {
+  const generateSpecializedCode = (
+    prompt: string,
+    context: PropertyAssessmentContext
+  ): { code: string; message: string; className: string } => {
     const lowercasePrompt = prompt.toLowerCase();
     let code = '';
     let message = '';
     let className = '';
-    
+
     // Extract a class name from the prompt
     const words = prompt.split(/\s+/);
-    const nameWords = words.filter(w => w.length > 3 && !['component', 'create', 'build', 'make', 'implement', 'develop'].includes(w.toLowerCase()));
+    const nameWords = words.filter(
+      w =>
+        w.length > 3 &&
+        !['component', 'create', 'build', 'make', 'implement', 'develop'].includes(w.toLowerCase())
+    );
     if (nameWords.length > 0) {
       const baseName = nameWords.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
       className = baseName + 'Component';
     } else {
       className = 'PropertyComponent';
     }
-    
+
     // Generate specialized imports based on context
     let imports = `import React, { useState } from 'react';\nimport { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";\nimport { Button } from "@/components/ui/button";\nimport { Input } from "@/components/ui/input";\n`;
-    
+
     if (context.includeGIS) {
       imports += `import { Map, NavigationControl, Source, Layer } from 'react-map-gl';\n`;
     }
-    
+
     if (context.includeCalculations) {
       imports += `import { Calculator } from 'lucide-react';\nimport { AssessmentCalculator } from "@/utils/assessment-calculator";\n`;
     }
-    
-    if (lowercasePrompt.includes('search') || lowercasePrompt.includes('lookup') || lowercasePrompt.includes('find')) {
+
+    if (
+      lowercasePrompt.includes('search') ||
+      lowercasePrompt.includes('lookup') ||
+      lowercasePrompt.includes('find')
+    ) {
       code = generatePropertySearchComponent(imports, className, context);
       message = `I've created a specialized property search component for ${context.county} that incorporates ${context.includeRegulations ? 'assessment regulations, ' : ''}${context.includeGIS ? 'GIS mapping capabilities, ' : ''}${context.includePACS ? 'PACS integration, ' : ''}and ${context.includeCalculations ? 'assessment calculations' : 'basic search functionality'}.`;
-    } else if (lowercasePrompt.includes('dashboard') || lowercasePrompt.includes('analytics') || lowercasePrompt.includes('overview')) {
+    } else if (
+      lowercasePrompt.includes('dashboard') ||
+      lowercasePrompt.includes('analytics') ||
+      lowercasePrompt.includes('overview')
+    ) {
       code = generatePropertyDashboardComponent(imports, className, context);
       message = `I've created a property assessment dashboard optimized for ${context.county} assessors that includes ${context.includeGIS ? 'interactive maps, ' : ''}${context.includeCalculations ? 'value analysis charts, ' : ''}and ${context.includePACS ? 'direct PACS data integration' : 'assessment data visualization'}.`;
-    } else if (lowercasePrompt.includes('map') || lowercasePrompt.includes('gis') || lowercasePrompt.includes('spatial')) {
+    } else if (
+      lowercasePrompt.includes('map') ||
+      lowercasePrompt.includes('gis') ||
+      lowercasePrompt.includes('spatial')
+    ) {
       code = generatePropertyMapComponent(imports, className, context);
       message = `I've created a specialized property mapping component for ${context.county} that integrates with GIS systems${context.includePACS ? ', connects to PACS data' : ''}${context.includeCalculations ? ', and displays value calculations' : ''}.`;
-    } else if (lowercasePrompt.includes('calculation') || lowercasePrompt.includes('value') || lowercasePrompt.includes('assessment')) {
+    } else if (
+      lowercasePrompt.includes('calculation') ||
+      lowercasePrompt.includes('value') ||
+      lowercasePrompt.includes('assessment')
+    ) {
       code = generatePropertyCalculationComponent(imports, className, context);
       message = `I've created a property value calculator specific to ${context.county}'s assessment methodologies${context.includeRegulations ? ' that adheres to Washington State regulations' : ''}.`;
     } else {
@@ -1426,12 +1588,16 @@ export type Property = z.infer<typeof propertySchema>;`,
       code = generatePropertyDetailComponent(imports, className, context);
       message = `I've created a property detail component for ${context.county} Assessor's Office that displays comprehensive property information.`;
     }
-    
+
     return { code, message, className };
   };
-  
+
   // Helper function to generate a property search component
-  const generatePropertySearchComponent = (imports: string, className: string, context: PropertyAssessmentContext): string => {
+  const generatePropertySearchComponent = (
+    imports: string,
+    className: string,
+    context: PropertyAssessmentContext
+  ): string => {
     return `${imports}
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
@@ -1567,7 +1733,7 @@ export const ${className}: React.FC = () => {
   );
 };`;
   };
-  
+
   // Handle form submission for AI assistant
   const handleAssistantSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1575,7 +1741,7 @@ export const ${className}: React.FC = () => {
       generateCodeMutation.mutate(inputValue);
     }
   };
-  
+
   // Mutation for generating code from AI assistant
   const generateCodeMutation = useMutation({
     mutationFn: async (prompt: string) => {
@@ -1583,10 +1749,14 @@ export const ${className}: React.FC = () => {
       try {
         // Get specialized property assessment contexts
         const contextPACS = document.getElementById('context-pacs') as HTMLInputElement;
-        const contextRegulations = document.getElementById('context-regulations') as HTMLInputElement;
+        const contextRegulations = document.getElementById(
+          'context-regulations'
+        ) as HTMLInputElement;
         const contextGIS = document.getElementById('context-gis') as HTMLInputElement;
-        const contextCalculations = document.getElementById('context-calculations') as HTMLInputElement;
-        
+        const contextCalculations = document.getElementById(
+          'context-calculations'
+        ) as HTMLInputElement;
+
         // Build specialized context for Benton County property assessment
         const specializedContext: PropertyAssessmentContext = {
           includePACS: contextPACS?.checked || false,
@@ -1596,19 +1766,19 @@ export const ${className}: React.FC = () => {
           county: 'Benton County',
           state: 'Washington',
           domain: 'property-assessment',
-          organization: 'Benton County Assessor\'s Office'
+          organization: "Benton County Assessor's Office",
         };
-        
+
         // In a real implementation, this would call your AI service with the specialized context
         // Simulating AI response with a delay
         await new Promise(resolve => setTimeout(resolve, 1500));
-        
+
         const result = generateSpecializedCode(prompt, specializedContext);
-        
+
         return {
           code: result.code,
           message: result.message,
-          className: result.className
+          className: result.className,
         };
       } catch (error) {
         console.error('Error generating specialized code:', error);
@@ -1617,15 +1787,15 @@ export const ${className}: React.FC = () => {
         setIsGenerating(false);
       }
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       setOutputCode(data.code);
       setAssistantHistory([
-        ...assistantHistory, 
+        ...assistantHistory,
         { role: 'user', content: inputValue },
-        { role: 'assistant', content: data.message }
+        { role: 'assistant', content: data.message },
       ]);
       setInputValue('');
-      
+
       // If this is a new component, add it to our generated components list
       if (data.className && data.code) {
         const newComponent = {
@@ -1633,27 +1803,32 @@ export const ${className}: React.FC = () => {
           name: data.className,
           code: data.code,
           prompt: inputValue,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         };
         setGeneratedComponents(prev => [...prev, newComponent.name]);
       }
-      
+
       toast({
         title: 'Code generated successfully',
-        description: 'Your specialized Benton County property assessment component is ready to use.',
+        description:
+          'Your specialized Benton County property assessment component is ready to use.',
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: 'Failed to generate code',
         description: 'There was an error generating your code. Please try again.',
         variant: 'destructive',
       });
-    }
+    },
   });
-  
+
   // Helper functions to generate additional component types
-  const generatePropertyDetailComponent = (imports: string, className: string, context: PropertyAssessmentContext): string => {
+  const generatePropertyDetailComponent = (
+    imports: string,
+    className: string,
+    context: PropertyAssessmentContext
+  ): string => {
     return `${imports}
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from '@tanstack/react-query';
@@ -1722,8 +1897,11 @@ export const ${className}: React.FC<{ propertyId: string }> = ({ propertyId }) =
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Improvement Value:</span>
-                  <span className="font-medium">${(propertyData?.assessedValue && propertyData?.landValue) ? 
-                    (propertyData.assessedValue - propertyData.landValue).toLocaleString() : 'N/A'}</span>
+                  <span className="font-medium">${
+                    propertyData?.assessedValue && propertyData?.landValue
+                      ? (propertyData.assessedValue - propertyData.landValue).toLocaleString()
+                      : 'N/A'
+                  }</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Last Assessment:</span>
@@ -1841,8 +2019,12 @@ export const ${className}: React.FC<{ propertyId: string }> = ({ propertyId }) =
   );
 };`;
   };
-  
-  const generatePropertyMapComponent = (imports: string, className: string, context: PropertyAssessmentContext): string => {
+
+  const generatePropertyMapComponent = (
+    imports: string,
+    className: string,
+    context: PropertyAssessmentContext
+  ): string => {
     return `${imports}
 import { useRef, useState, useEffect } from 'react';
 import { Map, NavigationControl, Source, Layer } from 'react-map-gl';
@@ -2089,8 +2271,12 @@ export const ${className}: React.FC = () => {
   );
 };`;
   };
-  
-  const generatePropertyDashboardComponent = (imports: string, className: string, context: PropertyAssessmentContext): string => {
+
+  const generatePropertyDashboardComponent = (
+    imports: string,
+    className: string,
+    context: PropertyAssessmentContext
+  ): string => {
     return `${imports}
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -2390,2075 +2576,2281 @@ export const ${className}: React.FC = () => {
   );
 };`;
   };
-  
-  const generatePropertyCalculationComponent = (imports: string, className: string, context: PropertyAssessmentContext): string => {
-    const code = imports + '\n' +
-    'import { useState } from \'react\';\n' +
-    'import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";\n' +
-    'import { Input } from "@/components/ui/input";\n' +
-    'import { Button } from "@/components/ui/button";\n' +
-    'import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";\n' +
-    'import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";\n' +
-    'import { Calculator, Home, Building, Warehouse, Factory, FileText } from \'lucide-react\';\n' +
-    'import { Separator } from "@/components/ui/separator";\n\n' +
-    '/**\n' +
-    ' * ' + className + '\n' +
-    ' * \n' +
-    ' * A specialized property value calculator for ' + context.county + ' Assessor\'s Office\n' +
-    ' * that implements the Computer Assisted Mass Appraisal (CAMA) methodology.\n' +
-    ' */\n' +
-    'export const ' + className + ': React.FC = () => {\n' +
-    '  // Component implementation will go here\n' +
-    '  return (\n' +
-    '    <div>Property Assessment Calculator Implementation</div>\n' +
-    '  );\n' +
-    '};\n';
-    
+
+  const generatePropertyCalculationComponent = (
+    imports: string,
+    className: string,
+    context: PropertyAssessmentContext
+  ): string => {
+    const code =
+      imports +
+      '\n' +
+      "import { useState } from 'react';\n" +
+      'import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";\n' +
+      'import { Input } from "@/components/ui/input";\n' +
+      'import { Button } from "@/components/ui/button";\n' +
+      'import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";\n' +
+      'import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";\n' +
+      "import { Calculator, Home, Building, Warehouse, Factory, FileText } from 'lucide-react';\n" +
+      'import { Separator } from "@/components/ui/separator";\n\n' +
+      '/**\n' +
+      ' * ' +
+      className +
+      '\n' +
+      ' * \n' +
+      ' * A specialized property value calculator for ' +
+      context.county +
+      " Assessor's Office\n" +
+      ' * that implements the Computer Assisted Mass Appraisal (CAMA) methodology.\n' +
+      ' */\n' +
+      'export const ' +
+      className +
+      ': React.FC = () => {\n' +
+      '  // Component implementation will go here\n' +
+      '  return (\n' +
+      '    <div>Property Assessment Calculator Implementation</div>\n' +
+      '  );\n' +
+      '};\n';
+
     return code;
 
-// Moved PropertyAssessmentCalculator definition to generated code
-const ExamplePropertyCalculator = () => {
-  const [activeTab, setActiveTab] = useState('residential');
-  const [calculationResults, setCalculationResults] = useState<any>(null);
-  
-  // Residential property state
-  const [residentialInputs, setResidentialInputs] = useState({
-    landSquareFeet: 10000,
-    landValuePerSqFt: 12,
-    buildingSquareFeet: 2200,
-    yearBuilt: 2000,
-    quality: 'average',
-    bedrooms: 3,
-    bathrooms: 2,
-    stories: 1,
-    hasGarage: true,
-    hasDeck: false,
-    hasPool: false,
-    neighborhood: 'average',
-  });
-  
-  // Commercial property state
-  const [commercialInputs, setCommercialInputs] = useState({
-    landSquareFeet: 20000,
-    landValuePerSqFt: 20,
-    buildingSquareFeet: 5000,
-    yearBuilt: 2005,
-    buildingType: 'retail',
-    stories: 1,
-    condition: 'good',
-    location: 'suburban',
-    parking: true,
-    loadingDock: false,
-  });
-  
-  // Calculate residential property value
-  const calculateResidentialValue = () => {
-    // Land value calculation
-    const landValue = residentialInputs.landSquareFeet * residentialInputs.landValuePerSqFt;
-    
-    // Base building value
-    let baseBuildingValue = residentialInputs.buildingSquareFeet * 150; // Base rate per square foot
-    
-    // Adjust for quality
-    const qualityMultipliers = {
-      'low': 0.8,
-      'below-average': 0.9,
-      'average': 1.0,
-      'above-average': 1.2,
-      'high': 1.5,
-      'luxury': 2.0
-    };
-    baseBuildingValue *= qualityMultipliers[residentialInputs.quality as keyof typeof qualityMultipliers] || 1.0;
-    
-    // Age adjustment
-    const effectiveAge = new Date().getFullYear() - residentialInputs.yearBuilt;
-    const ageDepreciation = Math.min(0.5, effectiveAge * 0.01); // Maximum 50% depreciation
-    baseBuildingValue *= (1 - ageDepreciation);
-    
-    // Features adjustments
-    const featureValues = {
-      bedrooms: (residentialInputs.bedrooms - 2) * 10000, // Adjustment for bedrooms over/under 2
-      bathrooms: (residentialInputs.bathrooms - 1.5) * 15000, // Adjustment for bathrooms over/under 1.5
-      stories: (residentialInputs.stories - 1) * 20000, // Adjustment for multi-story
-      garage: residentialInputs.hasGarage ? 30000 : 0,
-      deck: residentialInputs.hasDeck ? 15000 : 0,
-      pool: residentialInputs.hasPool ? 50000 : 0
-    };
-    
-    // Calculate features total (can't go negative)
-    const featuresAdjustment = Object.values(featureValues).reduce((sum, value) => sum + value, 0);
-    
-    // Neighborhood adjustment
-    const neighborhoodMultipliers = {
-      'low': 0.7,
-      'below-average': 0.85,
-      'average': 1.0,
-      'above-average': 1.3,
-      'high': 1.6
-    };
-    const neighborhoodAdjustment = neighborhoodMultipliers[residentialInputs.neighborhood as keyof typeof neighborhoodMultipliers] || 1.0;
-    
-    // Calculate total improvements value
-    const improvementsValue = (baseBuildingValue + Math.max(0, featuresAdjustment)) * neighborhoodAdjustment;
-    
-    // Total value is land + improvements
-    const totalValue = landValue + improvementsValue;
-    
-    // Return detailed breakdown
-    setCalculationResults({
-      landValue: Math.round(landValue),
-      improvementsValue: Math.round(improvementsValue),
-      totalValue: Math.round(totalValue),
-      details: {
-        landArea: residentialInputs.landSquareFeet,
-        landRatePerSqFt: residentialInputs.landValuePerSqFt,
-        buildingArea: residentialInputs.buildingSquareFeet,
-        qualityFactor: qualityMultipliers[residentialInputs.quality],
-        ageDepreciationFactor: (1 - ageDepreciation).toFixed(2),
-        neighborhoodFactor: neighborhoodAdjustment.toFixed(2),
-        baseBuildingValue: Math.round(baseBuildingValue),
-        featuresAdjustment: Math.round(featuresAdjustment)
-      }
-    });
-  };
-  
-  // Calculate commercial property value
-  const calculateCommercialValue = () => {
-    // Land value calculation
-    const landValue = commercialInputs.landSquareFeet * commercialInputs.landValuePerSqFt;
-    
-    // Base building value
-    const buildingTypeRates = {
-      'retail': 180,
-      'office': 200,
-      'industrial': 120,
-      'warehouse': 100,
-      'mixed-use': 190
-    };
-    let baseBuildingValue = commercialInputs.buildingSquareFeet * 
-                           (buildingTypeRates[commercialInputs.buildingType] || 180);
-    
-    // Condition adjustment
-    const conditionMultipliers = {
-      'poor': 0.7,
-      'fair': 0.85,
-      'average': 1.0,
-      'good': 1.15,
-      'excellent': 1.3
-    };
-    baseBuildingValue *= conditionMultipliers[commercialInputs.condition] || 1.0;
-    
-    // Age adjustment
-    const effectiveAge = new Date().getFullYear() - commercialInputs.yearBuilt;
-    const ageDepreciation = Math.min(0.6, effectiveAge * 0.015); // Maximum 60% depreciation
-    baseBuildingValue *= (1 - ageDepreciation);
-    
-    // Location adjustment
-    const locationMultipliers = {
-      'rural': 0.7,
-      'suburban': 1.0,
-      'urban': 1.3,
-      'prime': 1.8
-    };
-    const locationAdjustment = locationMultipliers[commercialInputs.location] || 1.0;
-    
-    // Feature adjustments
-    const featureValues = {
-      stories: (commercialInputs.stories - 1) * 0.05 * baseBuildingValue, // adjustment per story
-      parking: commercialInputs.parking ? 0.1 * baseBuildingValue : 0,
-      loadingDock: commercialInputs.loadingDock ? 0.07 * baseBuildingValue : 0
-    };
-    
-    // Calculate features total
-    const featuresAdjustment = Object.values(featureValues).reduce((sum, value) => sum + value, 0);
-    
-    // Calculate total improvements value
-    const improvementsValue = (baseBuildingValue + featuresAdjustment) * locationAdjustment;
-    
-    // Total value is land + improvements
-    const totalValue = landValue + improvementsValue;
-    
-    // Return detailed breakdown
-    setCalculationResults({
-      landValue: Math.round(landValue),
-      improvementsValue: Math.round(improvementsValue),
-      totalValue: Math.round(totalValue),
-      details: {
-        landArea: commercialInputs.landSquareFeet,
-        landRatePerSqFt: commercialInputs.landValuePerSqFt,
-        buildingArea: commercialInputs.buildingSquareFeet,
-        buildingType: commercialInputs.buildingType,
-        ratePerSqFt: buildingTypeRates[commercialInputs.buildingType],
-        conditionFactor: conditionMultipliers[commercialInputs.condition],
-        ageDepreciationFactor: (1 - ageDepreciation).toFixed(2),
-        locationFactor: locationAdjustment.toFixed(2),
-        baseBuildingValue: Math.round(baseBuildingValue),
-        featuresAdjustment: Math.round(featuresAdjustment)
-      }
-    });
-  };
-  
-  const handleCalculate = () => {
-    if (activeTab === 'residential') {
-      calculateResidentialValue();
-    } else if (activeTab === 'commercial') {
-      calculateCommercialValue();
-    }
-  };
-  
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-  
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Calculator className="mr-2 h-5 w-5 text-amber-500" />
-            Property Assessment Calculator
-          </CardTitle>
-          <CardDescription>
-            {context.county} Computer Assisted Mass Appraisal (CAMA) model
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="residential" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6">
-              <TabsTrigger value="residential" className="flex items-center">
-                <Home className="mr-2 h-4 w-4" />
-                Residential
-              </TabsTrigger>
-              <TabsTrigger value="commercial" className="flex items-center">
-                <Building className="mr-2 h-4 w-4" />
-                Commercial
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="residential">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Property Characteristics</h3>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Land Area (sq ft)</label>
-                        <Input
-                          type="number"
-                          value={residentialInputs.landSquareFeet}
-                          onChange={(e) => setResidentialInputs({
-                            ...residentialInputs,
-                            landSquareFeet: parseInt(e.target.value) || 0
-                          })}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Land Value (per sq ft)</label>
-                        <Input
-                          type="number"
-                          value={residentialInputs.landValuePerSqFt}
-                          onChange={(e) => setResidentialInputs({
-                            ...residentialInputs,
-                            landValuePerSqFt: parseFloat(e.target.value) || 0
-                          })}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Building Area (sq ft)</label>
-                        <Input
-                          type="number"
-                          value={residentialInputs.buildingSquareFeet}
-                          onChange={(e) => setResidentialInputs({
-                            ...residentialInputs,
-                            buildingSquareFeet: parseInt(e.target.value) || 0
-                          })}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Year Built</label>
-                        <Input
-                          type="number"
-                          value={residentialInputs.yearBuilt}
-                          onChange={(e) => setResidentialInputs({
-                            ...residentialInputs,
-                            yearBuilt: parseInt(e.target.value) || 0
-                          })}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Quality</label>
-                        <Select
-                          value={residentialInputs.quality}
-                          onValueChange={(value) => setResidentialInputs({
-                            ...residentialInputs,
-                            quality: value
-                          })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select quality" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="below-average">Below Average</SelectItem>
-                            <SelectItem value="average">Average</SelectItem>
-                            <SelectItem value="above-average">Above Average</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                            <SelectItem value="luxury">Luxury</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Neighborhood</label>
-                        <Select
-                          value={residentialInputs.neighborhood}
-                          onValueChange={(value) => setResidentialInputs({
-                            ...residentialInputs,
-                            neighborhood: value
-                          })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select neighborhood" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Low Value Area</SelectItem>
-                            <SelectItem value="below-average">Below Average Area</SelectItem>
-                            <SelectItem value="average">Average Area</SelectItem>
-                            <SelectItem value="above-average">Above Average Area</SelectItem>
-                            <SelectItem value="high">High Value Area</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Bedrooms</label>
-                        <Input
-                          type="number"
-                          value={residentialInputs.bedrooms}
-                          onChange={(e) => setResidentialInputs({
-                            ...residentialInputs,
-                            bedrooms: parseInt(e.target.value) || 0
-                          })}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Bathrooms</label>
-                        <Input
-                          type="number"
-                          value={residentialInputs.bathrooms}
-                          step="0.5"
-                          onChange={(e) => setResidentialInputs({
-                            ...residentialInputs,
-                            bathrooms: parseFloat(e.target.value) || 0
-                          })}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Stories</label>
-                        <Input
-                          type="number"
-                          value={residentialInputs.stories}
-                          onChange={(e) => setResidentialInputs({
-                            ...residentialInputs,
-                            stories: parseInt(e.target.value) || 0
-                          })}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="hasGarage"
-                          checked={residentialInputs.hasGarage}
-                          onChange={(e) => setResidentialInputs({
-                            ...residentialInputs,
-                            hasGarage: e.target.checked
-                          })}
-                        />
-                        <label htmlFor="hasGarage">Garage</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="hasDeck"
-                          checked={residentialInputs.hasDeck}
-                          onChange={(e) => setResidentialInputs({
-                            ...residentialInputs,
-                            hasDeck: e.target.checked
-                          })}
-                        />
-                        <label htmlFor="hasDeck">Deck/Patio</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="hasPool"
-                          checked={residentialInputs.hasPool}
-                          onChange={(e) => setResidentialInputs({
-                            ...residentialInputs,
-                            hasPool: e.target.checked
-                          })}
-                        />
-                        <label htmlFor="hasPool">Swimming Pool</label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="commercial">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Property Characteristics</h3>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Land Area (sq ft)</label>
-                        <Input
-                          type="number"
-                          value={commercialInputs.landSquareFeet}
-                          onChange={(e) => setCommercialInputs({
-                            ...commercialInputs,
-                            landSquareFeet: parseInt(e.target.value) || 0
-                          })}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Land Value (per sq ft)</label>
-                        <Input
-                          type="number"
-                          value={commercialInputs.landValuePerSqFt}
-                          onChange={(e) => setCommercialInputs({
-                            ...commercialInputs,
-                            landValuePerSqFt: parseFloat(e.target.value) || 0
-                          })}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Building Area (sq ft)</label>
-                        <Input
-                          type="number"
-                          value={commercialInputs.buildingSquareFeet}
-                          onChange={(e) => setCommercialInputs({
-                            ...commercialInputs,
-                            buildingSquareFeet: parseInt(e.target.value) || 0
-                          })}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Year Built</label>
-                        <Input
-                          type="number"
-                          value={commercialInputs.yearBuilt}
-                          onChange={(e) => setCommercialInputs({
-                            ...commercialInputs,
-                            yearBuilt: parseInt(e.target.value) || 0
-                          })}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Building Type</label>
-                        <Select
-                          value={commercialInputs.buildingType}
-                          onValueChange={(value) => setCommercialInputs({
-                            ...commercialInputs,
-                            buildingType: value
-                          })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="retail">Retail</SelectItem>
-                            <SelectItem value="office">Office</SelectItem>
-                            <SelectItem value="industrial">Industrial</SelectItem>
-                            <SelectItem value="warehouse">Warehouse</SelectItem>
-                            <SelectItem value="mixed-use">Mixed Use</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Condition</label>
-                        <Select
-                          value={commercialInputs.condition}
-                          onValueChange={(value) => setCommercialInputs({
-                            ...commercialInputs,
-                            condition: value
-                          })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select condition" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="poor">Poor</SelectItem>
-                            <SelectItem value="fair">Fair</SelectItem>
-                            <SelectItem value="average">Average</SelectItem>
-                            <SelectItem value="good">Good</SelectItem>
-                            <SelectItem value="excellent">Excellent</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Location</label>
-                        <Select
-                          value={commercialInputs.location}
-                          onValueChange={(value) => setCommercialInputs({
-                            ...commercialInputs,
-                            location: value
-                          })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select location" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="rural">Rural</SelectItem>
-                            <SelectItem value="suburban">Suburban</SelectItem>
-                            <SelectItem value="urban">Urban</SelectItem>
-                            <SelectItem value="prime">Prime</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Stories</label>
-                        <Input
-                          type="number"
-                          value={commercialInputs.stories}
-                          onChange={(e) => setCommercialInputs({
-                            ...commercialInputs,
-                            stories: parseInt(e.target.value) || 0
-                          })}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="parking"
-                          checked={commercialInputs.parking}
-                          onChange={(e) => setCommercialInputs({
-                            ...commercialInputs,
-                            parking: e.target.checked
-                          })}
-                        />
-                        <label htmlFor="parking">Parking Area</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="loadingDock"
-                          checked={commercialInputs.loadingDock}
-                          onChange={(e) => setCommercialInputs({
-                            ...commercialInputs,
-                            loadingDock: e.target.checked
-                          })}
-                        />
-                        <label htmlFor="loadingDock">Loading Dock</label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-            
-            <div className="mt-6">
-              <Button onClick={handleCalculate} className="w-full md:w-auto">
-                <Calculator className="mr-2 h-4 w-4" />
-                Calculate Assessed Value
-              </Button>
-            </div>
-          </Tabs>
-        </CardContent>
-      </Card>
-      
-      {calculationResults && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Calculation Results</CardTitle>
-            <CardDescription>
-              CAMA assessment results based on {context.county} methodology
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-500 mb-1">Land Value</p>
-                    <p className="text-2xl font-bold">{formatCurrency(calculationResults.landValue)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-500 mb-1">Improvements Value</p>
-                    <p className="text-2xl font-bold">{formatCurrency(calculationResults.improvementsValue)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-500 mb-1">Total Assessed Value</p>
-                    <p className="text-2xl font-bold">{formatCurrency(calculationResults.totalValue)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="mt-6">
-              <h3 className="font-medium text-lg mb-4">Calculation Breakdown</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {Object.entries(calculationResults.details).map(([key, value]) => (
-                    <div key={key} className="p-3 bg-gray-50 rounded-md">
-                      <div className="text-sm text-gray-500">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</div>
-                      <div className="font-medium">
-                        {typeof value === 'number' && value > 100 
-                          ? formatCurrency(value) 
-                          : value}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="pt-4">
-                  <p className="text-sm text-gray-500">
-                    This assessment follows {context.county} appraisal methodologies
-                    {context.includeRegulations && ' and Washington State assessment regulations'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-};
+    // Moved PropertyAssessmentCalculator definition to generated code
+    const ExamplePropertyCalculator = () => {
+      const [activeTab, setActiveTab] = useState('residential');
+      const [calculationResults, setCalculationResults] = useState<any>(null);
 
-  // Handle adding a template to the project
-  const handleAddTemplate = (template: DevelopmentTemplate) => {
-    setOutputCode(template.templateCode);
-    toast({
-      title: 'Template Added',
-      description: 'Template has been loaded into the editor'
-    });
-  };
+      // Residential property state
+      const [residentialInputs, setResidentialInputs] = useState({
+        landSquareFeet: 10000,
+        landValuePerSqFt: 12,
+        buildingSquareFeet: 2200,
+        yearBuilt: 2000,
+        quality: 'average',
+        bedrooms: 3,
+        bathrooms: 2,
+        stories: 1,
+        hasGarage: true,
+        hasDeck: false,
+        hasPool: false,
+        neighborhood: 'average',
+      });
 
-  // Handle adding a snippet to the project
-  const handleAddSnippet = (snippet: CodeSnippet) => {
-    setOutputCode(snippet.code);
-    toast({
-      title: 'Snippet Added',
-      description: 'Snippet has been loaded into the editor'
-    });
-  };
-  
-  // Select model
-  const handleSelectModel = (model: PropertyModel) => {
-    setSelectedModel(model);
-    // Create a simplified static model context instead of using template literals
-    const modelContextCode = "/**\n" +
-      " * " + model.name + " Model Interface\n" +
-      " *\n" +
-      " * Benton County Assessor's Office\n" +
-      " * This model defines the structure for properties\n" +
-      " */\n" +
-      "export interface " + model.name + " {\n" +
-      "  id: string;\n" +
-      "  propertyId: string;\n" +
-      "  address: string;\n" +
-      "  ownerName: string;\n" +
-      "  assessedValue: number;\n" +
-      "  // Additional fields would be included here\n" +
-      "}";
-    
-    setCodeContext(modelContextCode);
-    toast({
-      title: 'Model Selected',
-      description: 'Model details have been loaded'
-    });
-  };
-  
-  // Generate a full application
-  const generateFullApplication = () => {
-    setApplicationParts([
-      'PropertySearchComponent', 
-      'PropertyDetailView', 
-      'AssessmentHistoryChart',
-      'TaxLotMapViewer',
-      'ComparablePropertiesPanel',
-      'PropertyDataExport'
-    ]);
-    setProjectContext("Project: Benton County Property Assessment Tool\n" +
-      "Domain: Tax Assessment\n" +
-      "Features:\n" +
-      "- Property search and lookup\n" +
-      "- Assessment history visualization\n" +
-      "- Comparable properties analysis\n" +
-      "- Tax lot mapping and visualization\n" +
-      "- Data export and reporting tools\n" +
-      "- Integration with PACS and GIS systems\n\n" +
-      "Tech Stack:\n" +
-      "- React + TypeScript frontend\n" +
-      "- Node.js + Express backend\n" +
-      "- PostgreSQL database\n" +
-      "- Mapping via Leaflet/ArcGIS");
-    toast({
-      title: 'Application Structure Generated',
-      description: 'Property assessment application structure has been outlined'
-    });
-  };
+      // Commercial property state
+      const [commercialInputs, setCommercialInputs] = useState({
+        landSquareFeet: 20000,
+        landValuePerSqFt: 20,
+        buildingSquareFeet: 5000,
+        yearBuilt: 2005,
+        buildingType: 'retail',
+        stories: 1,
+        condition: 'good',
+        location: 'suburban',
+        parking: true,
+        loadingDock: false,
+      });
 
-  // Utility function to extract component name from code
-  const getComponentNameFromCode = (code: string): string => {
-    try {
-      // Try to extract the component name using regex
-      const match = code.match(/export (?:const|function) ([A-Za-z0-9_]+)/);
-      return match ? match[1] : '';
-    } catch (e) {
-      return '';
-    }
-  };
-  
-  // Copy the code to clipboard
-  const handleCopyCode = () => {
-    if (outputCode && navigator.clipboard) {
-      navigator.clipboard.writeText(outputCode)
-        .then(() => {
-          toast({
-            title: 'Code copied to clipboard',
-            description: 'The generated code has been copied to your clipboard.'
-          });
-        })
-        .catch((err) => {
-          console.error('Failed to copy code:', err);
-          toast({
-            title: 'Failed to copy code',
-            description: 'There was an error copying the code to your clipboard.',
-            variant: 'destructive'
-          });
+      // Calculate residential property value
+      const calculateResidentialValue = () => {
+        // Land value calculation
+        const landValue = residentialInputs.landSquareFeet * residentialInputs.landValuePerSqFt;
+
+        // Base building value
+        let baseBuildingValue = residentialInputs.buildingSquareFeet * 150; // Base rate per square foot
+
+        // Adjust for quality
+        const qualityMultipliers = {
+          low: 0.8,
+          'below-average': 0.9,
+          average: 1.0,
+          'above-average': 1.2,
+          high: 1.5,
+          luxury: 2.0,
+        };
+        baseBuildingValue *=
+          qualityMultipliers[residentialInputs.quality as keyof typeof qualityMultipliers] || 1.0;
+
+        // Age adjustment
+        const effectiveAge = new Date().getFullYear() - residentialInputs.yearBuilt;
+        const ageDepreciation = Math.min(0.5, effectiveAge * 0.01); // Maximum 50% depreciation
+        baseBuildingValue *= 1 - ageDepreciation;
+
+        // Features adjustments
+        const featureValues = {
+          bedrooms: (residentialInputs.bedrooms - 2) * 10000, // Adjustment for bedrooms over/under 2
+          bathrooms: (residentialInputs.bathrooms - 1.5) * 15000, // Adjustment for bathrooms over/under 1.5
+          stories: (residentialInputs.stories - 1) * 20000, // Adjustment for multi-story
+          garage: residentialInputs.hasGarage ? 30000 : 0,
+          deck: residentialInputs.hasDeck ? 15000 : 0,
+          pool: residentialInputs.hasPool ? 50000 : 0,
+        };
+
+        // Calculate features total (can't go negative)
+        const featuresAdjustment = Object.values(featureValues).reduce(
+          (sum, value) => sum + value,
+          0
+        );
+
+        // Neighborhood adjustment
+        const neighborhoodMultipliers = {
+          low: 0.7,
+          'below-average': 0.85,
+          average: 1.0,
+          'above-average': 1.3,
+          high: 1.6,
+        };
+        const neighborhoodAdjustment =
+          neighborhoodMultipliers[
+            residentialInputs.neighborhood as keyof typeof neighborhoodMultipliers
+          ] || 1.0;
+
+        // Calculate total improvements value
+        const improvementsValue =
+          (baseBuildingValue + Math.max(0, featuresAdjustment)) * neighborhoodAdjustment;
+
+        // Total value is land + improvements
+        const totalValue = landValue + improvementsValue;
+
+        // Return detailed breakdown
+        setCalculationResults({
+          landValue: Math.round(landValue),
+          improvementsValue: Math.round(improvementsValue),
+          totalValue: Math.round(totalValue),
+          details: {
+            landArea: residentialInputs.landSquareFeet,
+            landRatePerSqFt: residentialInputs.landValuePerSqFt,
+            buildingArea: residentialInputs.buildingSquareFeet,
+            qualityFactor: qualityMultipliers[residentialInputs.quality],
+            ageDepreciationFactor: (1 - ageDepreciation).toFixed(2),
+            neighborhoodFactor: neighborhoodAdjustment.toFixed(2),
+            baseBuildingValue: Math.round(baseBuildingValue),
+            featuresAdjustment: Math.round(featuresAdjustment),
+          },
         });
-    }
-  };
+      };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Benton County Code Assistant</h2>
-          <p className="text-gray-500">
-            Specialized development tools for property assessment applications
-          </p>
-        </div>
-      </div>
+      // Calculate commercial property value
+      const calculateCommercialValue = () => {
+        // Land value calculation
+        const landValue = commercialInputs.landSquareFeet * commercialInputs.landValuePerSqFt;
 
-      <Tabs defaultValue="assistant" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-6 mb-6">
-          <TabsTrigger value="assistant" className="flex items-center">
-            <Brain className="mr-2 h-4 w-4" />
-            AI Assistant
-          </TabsTrigger>
-          <TabsTrigger value="templates">
-            <FileCode className="mr-2 h-4 w-4" />
-            Templates
-          </TabsTrigger>
-          <TabsTrigger value="snippets">
-            <Code className="mr-2 h-4 w-4" />
-            Snippets
-          </TabsTrigger>
-          <TabsTrigger value="models">
-            <Database className="mr-2 h-4 w-4" />
-            Data Models
-          </TabsTrigger>
-          <TabsTrigger value="generator">
-            <Sparkles className="mr-2 h-4 w-4" />
-            App Generator
-          </TabsTrigger>
-          <TabsTrigger value="developer" className="flex items-center bg-amber-100">
-            <Cpu className="mr-2 h-4 w-4" />
-            Developer
-          </TabsTrigger>
-        </TabsList>
+        // Base building value
+        const buildingTypeRates = {
+          retail: 180,
+          office: 200,
+          industrial: 120,
+          warehouse: 100,
+          'mixed-use': 190,
+        };
+        let baseBuildingValue =
+          commercialInputs.buildingSquareFeet *
+          (buildingTypeRates[commercialInputs.buildingType] || 180);
 
-        {/* AI Assistant Tab */}
-        <TabsContent value="assistant">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <Card className="lg:col-span-3">
+        // Condition adjustment
+        const conditionMultipliers = {
+          poor: 0.7,
+          fair: 0.85,
+          average: 1.0,
+          good: 1.15,
+          excellent: 1.3,
+        };
+        baseBuildingValue *= conditionMultipliers[commercialInputs.condition] || 1.0;
+
+        // Age adjustment
+        const effectiveAge = new Date().getFullYear() - commercialInputs.yearBuilt;
+        const ageDepreciation = Math.min(0.6, effectiveAge * 0.015); // Maximum 60% depreciation
+        baseBuildingValue *= 1 - ageDepreciation;
+
+        // Location adjustment
+        const locationMultipliers = {
+          rural: 0.7,
+          suburban: 1.0,
+          urban: 1.3,
+          prime: 1.8,
+        };
+        const locationAdjustment = locationMultipliers[commercialInputs.location] || 1.0;
+
+        // Feature adjustments
+        const featureValues = {
+          stories: (commercialInputs.stories - 1) * 0.05 * baseBuildingValue, // adjustment per story
+          parking: commercialInputs.parking ? 0.1 * baseBuildingValue : 0,
+          loadingDock: commercialInputs.loadingDock ? 0.07 * baseBuildingValue : 0,
+        };
+
+        // Calculate features total
+        const featuresAdjustment = Object.values(featureValues).reduce(
+          (sum, value) => sum + value,
+          0
+        );
+
+        // Calculate total improvements value
+        const improvementsValue = (baseBuildingValue + featuresAdjustment) * locationAdjustment;
+
+        // Total value is land + improvements
+        const totalValue = landValue + improvementsValue;
+
+        // Return detailed breakdown
+        setCalculationResults({
+          landValue: Math.round(landValue),
+          improvementsValue: Math.round(improvementsValue),
+          totalValue: Math.round(totalValue),
+          details: {
+            landArea: commercialInputs.landSquareFeet,
+            landRatePerSqFt: commercialInputs.landValuePerSqFt,
+            buildingArea: commercialInputs.buildingSquareFeet,
+            buildingType: commercialInputs.buildingType,
+            ratePerSqFt: buildingTypeRates[commercialInputs.buildingType],
+            conditionFactor: conditionMultipliers[commercialInputs.condition],
+            ageDepreciationFactor: (1 - ageDepreciation).toFixed(2),
+            locationFactor: locationAdjustment.toFixed(2),
+            baseBuildingValue: Math.round(baseBuildingValue),
+            featuresAdjustment: Math.round(featuresAdjustment),
+          },
+        });
+      };
+
+      const handleCalculate = () => {
+        if (activeTab === 'residential') {
+          calculateResidentialValue();
+        } else if (activeTab === 'commercial') {
+          calculateCommercialValue();
+        }
+      };
+
+      const formatCurrency = value => {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(value);
+      };
+
+      return (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Calculator className="mr-2 h-5 w-5 text-amber-500" />
+                Property Assessment Calculator
+              </CardTitle>
+              <CardDescription>
+                {context.county} Computer Assisted Mass Appraisal (CAMA) model
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="residential" value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="mb-6">
+                  <TabsTrigger value="residential" className="flex items-center">
+                    <Home className="mr-2 h-4 w-4" />
+                    Residential
+                  </TabsTrigger>
+                  <TabsTrigger value="commercial" className="flex items-center">
+                    <Building className="mr-2 h-4 w-4" />
+                    Commercial
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="residential">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">Property Characteristics</h3>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">
+                              Land Area (sq ft)
+                            </label>
+                            <Input
+                              type="number"
+                              value={residentialInputs.landSquareFeet}
+                              onChange={e =>
+                                setResidentialInputs({
+                                  ...residentialInputs,
+                                  landSquareFeet: parseInt(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">
+                              Land Value (per sq ft)
+                            </label>
+                            <Input
+                              type="number"
+                              value={residentialInputs.landValuePerSqFt}
+                              onChange={e =>
+                                setResidentialInputs({
+                                  ...residentialInputs,
+                                  landValuePerSqFt: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">
+                              Building Area (sq ft)
+                            </label>
+                            <Input
+                              type="number"
+                              value={residentialInputs.buildingSquareFeet}
+                              onChange={e =>
+                                setResidentialInputs({
+                                  ...residentialInputs,
+                                  buildingSquareFeet: parseInt(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Year Built</label>
+                            <Input
+                              type="number"
+                              value={residentialInputs.yearBuilt}
+                              onChange={e =>
+                                setResidentialInputs({
+                                  ...residentialInputs,
+                                  yearBuilt: parseInt(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Quality</label>
+                            <Select
+                              value={residentialInputs.quality}
+                              onValueChange={value =>
+                                setResidentialInputs({
+                                  ...residentialInputs,
+                                  quality: value,
+                                })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select quality" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="low">Low</SelectItem>
+                                <SelectItem value="below-average">Below Average</SelectItem>
+                                <SelectItem value="average">Average</SelectItem>
+                                <SelectItem value="above-average">Above Average</SelectItem>
+                                <SelectItem value="high">High</SelectItem>
+                                <SelectItem value="luxury">Luxury</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">
+                              Neighborhood
+                            </label>
+                            <Select
+                              value={residentialInputs.neighborhood}
+                              onValueChange={value =>
+                                setResidentialInputs({
+                                  ...residentialInputs,
+                                  neighborhood: value,
+                                })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select neighborhood" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="low">Low Value Area</SelectItem>
+                                <SelectItem value="below-average">Below Average Area</SelectItem>
+                                <SelectItem value="average">Average Area</SelectItem>
+                                <SelectItem value="above-average">Above Average Area</SelectItem>
+                                <SelectItem value="high">High Value Area</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Bedrooms</label>
+                            <Input
+                              type="number"
+                              value={residentialInputs.bedrooms}
+                              onChange={e =>
+                                setResidentialInputs({
+                                  ...residentialInputs,
+                                  bedrooms: parseInt(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Bathrooms</label>
+                            <Input
+                              type="number"
+                              value={residentialInputs.bathrooms}
+                              step="0.5"
+                              onChange={e =>
+                                setResidentialInputs({
+                                  ...residentialInputs,
+                                  bathrooms: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Stories</label>
+                            <Input
+                              type="number"
+                              value={residentialInputs.stories}
+                              onChange={e =>
+                                setResidentialInputs({
+                                  ...residentialInputs,
+                                  stories: parseInt(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="hasGarage"
+                              checked={residentialInputs.hasGarage}
+                              onChange={e =>
+                                setResidentialInputs({
+                                  ...residentialInputs,
+                                  hasGarage: e.target.checked,
+                                })
+                              }
+                            />
+                            <label htmlFor="hasGarage">Garage</label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="hasDeck"
+                              checked={residentialInputs.hasDeck}
+                              onChange={e =>
+                                setResidentialInputs({
+                                  ...residentialInputs,
+                                  hasDeck: e.target.checked,
+                                })
+                              }
+                            />
+                            <label htmlFor="hasDeck">Deck/Patio</label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="hasPool"
+                              checked={residentialInputs.hasPool}
+                              onChange={e =>
+                                setResidentialInputs({
+                                  ...residentialInputs,
+                                  hasPool: e.target.checked,
+                                })
+                              }
+                            />
+                            <label htmlFor="hasPool">Swimming Pool</label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="commercial">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">Property Characteristics</h3>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">
+                              Land Area (sq ft)
+                            </label>
+                            <Input
+                              type="number"
+                              value={commercialInputs.landSquareFeet}
+                              onChange={e =>
+                                setCommercialInputs({
+                                  ...commercialInputs,
+                                  landSquareFeet: parseInt(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">
+                              Land Value (per sq ft)
+                            </label>
+                            <Input
+                              type="number"
+                              value={commercialInputs.landValuePerSqFt}
+                              onChange={e =>
+                                setCommercialInputs({
+                                  ...commercialInputs,
+                                  landValuePerSqFt: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">
+                              Building Area (sq ft)
+                            </label>
+                            <Input
+                              type="number"
+                              value={commercialInputs.buildingSquareFeet}
+                              onChange={e =>
+                                setCommercialInputs({
+                                  ...commercialInputs,
+                                  buildingSquareFeet: parseInt(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Year Built</label>
+                            <Input
+                              type="number"
+                              value={commercialInputs.yearBuilt}
+                              onChange={e =>
+                                setCommercialInputs({
+                                  ...commercialInputs,
+                                  yearBuilt: parseInt(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">
+                              Building Type
+                            </label>
+                            <Select
+                              value={commercialInputs.buildingType}
+                              onValueChange={value =>
+                                setCommercialInputs({
+                                  ...commercialInputs,
+                                  buildingType: value,
+                                })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="retail">Retail</SelectItem>
+                                <SelectItem value="office">Office</SelectItem>
+                                <SelectItem value="industrial">Industrial</SelectItem>
+                                <SelectItem value="warehouse">Warehouse</SelectItem>
+                                <SelectItem value="mixed-use">Mixed Use</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Condition</label>
+                            <Select
+                              value={commercialInputs.condition}
+                              onValueChange={value =>
+                                setCommercialInputs({
+                                  ...commercialInputs,
+                                  condition: value,
+                                })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select condition" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="poor">Poor</SelectItem>
+                                <SelectItem value="fair">Fair</SelectItem>
+                                <SelectItem value="average">Average</SelectItem>
+                                <SelectItem value="good">Good</SelectItem>
+                                <SelectItem value="excellent">Excellent</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Location</label>
+                            <Select
+                              value={commercialInputs.location}
+                              onValueChange={value =>
+                                setCommercialInputs({
+                                  ...commercialInputs,
+                                  location: value,
+                                })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select location" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="rural">Rural</SelectItem>
+                                <SelectItem value="suburban">Suburban</SelectItem>
+                                <SelectItem value="urban">Urban</SelectItem>
+                                <SelectItem value="prime">Prime</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Stories</label>
+                            <Input
+                              type="number"
+                              value={commercialInputs.stories}
+                              onChange={e =>
+                                setCommercialInputs({
+                                  ...commercialInputs,
+                                  stories: parseInt(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="parking"
+                              checked={commercialInputs.parking}
+                              onChange={e =>
+                                setCommercialInputs({
+                                  ...commercialInputs,
+                                  parking: e.target.checked,
+                                })
+                              }
+                            />
+                            <label htmlFor="parking">Parking Area</label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="loadingDock"
+                              checked={commercialInputs.loadingDock}
+                              onChange={e =>
+                                setCommercialInputs({
+                                  ...commercialInputs,
+                                  loadingDock: e.target.checked,
+                                })
+                              }
+                            />
+                            <label htmlFor="loadingDock">Loading Dock</label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <div className="mt-6">
+                  <Button onClick={handleCalculate} className="w-full md:w-auto">
+                    <Calculator className="mr-2 h-4 w-4" />
+                    Calculate Assessed Value
+                  </Button>
+                </div>
+              </Tabs>
+            </CardContent>
+          </Card>
+
+          {calculationResults && (
+            <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Brain className="h-5 w-5 mr-2 text-primary" />
-                  Property Assessment Code Assistant
-                </CardTitle>
+                <CardTitle>Calculation Results</CardTitle>
                 <CardDescription>
-                  Specialized AI assistant for Benton County property assessment development
+                  CAMA assessment results based on {context.county} methodology
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-col h-[400px]">
-                  <ScrollArea className="flex-1 pr-4 mb-4">
-                    <div className="space-y-4">
-                      {assistantHistory.length === 0 && (
-                        <div className="text-center py-8 text-gray-500">
-                          <Lightbulb className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                          <p className="text-lg font-medium">How can I help you?</p>
-                          <p className="text-sm mt-1">Ask me to create property assessment components or utilities</p>
-                          <div className="mt-6 grid grid-cols-2 gap-3">
-                            <Button variant="outline" className="text-sm justify-start" onClick={() => setInputValue("Create a property search component with address autocomplete")}>
-                              <Search className="h-4 w-4 mr-2" />
-                              Property search component
-                            </Button>
-                            <Button variant="outline" className="text-sm justify-start" onClick={() => setInputValue("Build a PACS data import utility")}>
-                              <Upload className="h-4 w-4 mr-2" />
-                              PACS data import utility
-                            </Button>
-                            <Button variant="outline" className="text-sm justify-start" onClick={() => setInputValue("Generate a tax lot mapping component")}>
-                              <Map className="h-4 w-4 mr-2" />
-                              Tax lot mapping component
-                            </Button>
-                            <Button variant="outline" className="text-sm justify-start" onClick={() => setInputValue("Create a property valuation calculator")}>
-                              <Calculator className="h-4 w-4 mr-2" />
-                              Property valuation calculator
-                            </Button>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-gray-500 mb-1">Land Value</p>
+                        <p className="text-2xl font-bold">
+                          {formatCurrency(calculationResults.landValue)}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-gray-500 mb-1">Improvements Value</p>
+                        <p className="text-2xl font-bold">
+                          {formatCurrency(calculationResults.improvementsValue)}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-gray-500 mb-1">
+                          Total Assessed Value
+                        </p>
+                        <p className="text-2xl font-bold">
+                          {formatCurrency(calculationResults.totalValue)}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="mt-6">
+                  <h3 className="font-medium text-lg mb-4">Calculation Breakdown</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {Object.entries(calculationResults.details).map(([key, value]) => (
+                        <div key={key} className="p-3 bg-gray-50 rounded-md">
+                          <div className="text-sm text-gray-500">
+                            {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                          </div>
+                          <div className="font-medium">
+                            {typeof value === 'number' && value > 100
+                              ? formatCurrency(value)
+                              : value}
                           </div>
                         </div>
-                      )}
-                      
-                      {assistantHistory.map((message, index) => (
-                        <div 
-                          key={index} 
-                          className={"flex " + (message.role === 'user' ? 'justify-end' : 'justify-start')}
-                        >
-                          <div 
-                            className={"max-w-[80%] rounded-lg p-3 " + 
-                              (message.role === 'user' 
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-gray-100 dark:bg-gray-800')
+                      ))}
+                    </div>
+
+                    <div className="pt-4">
+                      <p className="text-sm text-gray-500">
+                        This assessment follows {context.county} appraisal methodologies
+                        {context.includeRegulations &&
+                          ' and Washington State assessment regulations'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      );
+    };
+
+    // Handle adding a template to the project
+    const handleAddTemplate = (template: DevelopmentTemplate) => {
+      setOutputCode(template.templateCode);
+      toast({
+        title: 'Template Added',
+        description: 'Template has been loaded into the editor',
+      });
+    };
+
+    // Handle adding a snippet to the project
+    const handleAddSnippet = (snippet: CodeSnippet) => {
+      setOutputCode(snippet.code);
+      toast({
+        title: 'Snippet Added',
+        description: 'Snippet has been loaded into the editor',
+      });
+    };
+
+    // Select model
+    const handleSelectModel = (model: PropertyModel) => {
+      setSelectedModel(model);
+      // Create a simplified static model context instead of using template literals
+      const modelContextCode =
+        '/**\n' +
+        ' * ' +
+        model.name +
+        ' Model Interface\n' +
+        ' *\n' +
+        " * Benton County Assessor's Office\n" +
+        ' * This model defines the structure for properties\n' +
+        ' */\n' +
+        'export interface ' +
+        model.name +
+        ' {\n' +
+        '  id: string;\n' +
+        '  propertyId: string;\n' +
+        '  address: string;\n' +
+        '  ownerName: string;\n' +
+        '  assessedValue: number;\n' +
+        '  // Additional fields would be included here\n' +
+        '}';
+
+      setCodeContext(modelContextCode);
+      toast({
+        title: 'Model Selected',
+        description: 'Model details have been loaded',
+      });
+    };
+
+    // Generate a full application
+    const generateFullApplication = () => {
+      setApplicationParts([
+        'PropertySearchComponent',
+        'PropertyDetailView',
+        'AssessmentHistoryChart',
+        'TaxLotMapViewer',
+        'ComparablePropertiesPanel',
+        'PropertyDataExport',
+      ]);
+      setProjectContext(
+        'Project: Benton County Property Assessment Tool\n' +
+          'Domain: Tax Assessment\n' +
+          'Features:\n' +
+          '- Property search and lookup\n' +
+          '- Assessment history visualization\n' +
+          '- Comparable properties analysis\n' +
+          '- Tax lot mapping and visualization\n' +
+          '- Data export and reporting tools\n' +
+          '- Integration with PACS and GIS systems\n\n' +
+          'Tech Stack:\n' +
+          '- React + TypeScript frontend\n' +
+          '- Node.js + Express backend\n' +
+          '- PostgreSQL database\n' +
+          '- Mapping via Leaflet/ArcGIS'
+      );
+      toast({
+        title: 'Application Structure Generated',
+        description: 'Property assessment application structure has been outlined',
+      });
+    };
+
+    // Utility function to extract component name from code
+    const getComponentNameFromCode = (code: string): string => {
+      try {
+        // Try to extract the component name using regex
+        const match = code.match(/export (?:const|function) ([A-Za-z0-9_]+)/);
+        return match ? match[1] : '';
+      } catch (e) {
+        return '';
+      }
+    };
+
+    // Copy the code to clipboard
+    const handleCopyCode = () => {
+      if (outputCode && navigator.clipboard) {
+        navigator.clipboard
+          .writeText(outputCode)
+          .then(() => {
+            toast({
+              title: 'Code copied to clipboard',
+              description: 'The generated code has been copied to your clipboard.',
+            });
+          })
+          .catch(err => {
+            console.error('Failed to copy code:', err);
+            toast({
+              title: 'Failed to copy code',
+              description: 'There was an error copying the code to your clipboard.',
+              variant: 'destructive',
+            });
+          });
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold">Benton County Code Assistant</h2>
+            <p className="text-gray-500">
+              Specialized development tools for property assessment applications
+            </p>
+          </div>
+        </div>
+
+        <Tabs defaultValue="assistant" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid grid-cols-6 mb-6">
+            <TabsTrigger value="assistant" className="flex items-center">
+              <Brain className="mr-2 h-4 w-4" />
+              AI Assistant
+            </TabsTrigger>
+            <TabsTrigger value="templates">
+              <FileCode className="mr-2 h-4 w-4" />
+              Templates
+            </TabsTrigger>
+            <TabsTrigger value="snippets">
+              <Code className="mr-2 h-4 w-4" />
+              Snippets
+            </TabsTrigger>
+            <TabsTrigger value="models">
+              <Database className="mr-2 h-4 w-4" />
+              Data Models
+            </TabsTrigger>
+            <TabsTrigger value="generator">
+              <Sparkles className="mr-2 h-4 w-4" />
+              App Generator
+            </TabsTrigger>
+            <TabsTrigger value="developer" className="flex items-center bg-amber-100">
+              <Cpu className="mr-2 h-4 w-4" />
+              Developer
+            </TabsTrigger>
+          </TabsList>
+
+          {/* AI Assistant Tab */}
+          <TabsContent value="assistant">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              <Card className="lg:col-span-3">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Brain className="h-5 w-5 mr-2 text-primary" />
+                    Property Assessment Code Assistant
+                  </CardTitle>
+                  <CardDescription>
+                    Specialized AI assistant for Benton County property assessment development
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col h-[400px]">
+                    <ScrollArea className="flex-1 pr-4 mb-4">
+                      <div className="space-y-4">
+                        {assistantHistory.length === 0 && (
+                          <div className="text-center py-8 text-gray-500">
+                            <Lightbulb className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                            <p className="text-lg font-medium">How can I help you?</p>
+                            <p className="text-sm mt-1">
+                              Ask me to create property assessment components or utilities
+                            </p>
+                            <div className="mt-6 grid grid-cols-2 gap-3">
+                              <Button
+                                variant="outline"
+                                className="text-sm justify-start"
+                                onClick={() =>
+                                  setInputValue(
+                                    'Create a property search component with address autocomplete'
+                                  )
+                                }
+                              >
+                                <Search className="h-4 w-4 mr-2" />
+                                Property search component
+                              </Button>
+                              <Button
+                                variant="outline"
+                                className="text-sm justify-start"
+                                onClick={() => setInputValue('Build a PACS data import utility')}
+                              >
+                                <Upload className="h-4 w-4 mr-2" />
+                                PACS data import utility
+                              </Button>
+                              <Button
+                                variant="outline"
+                                className="text-sm justify-start"
+                                onClick={() =>
+                                  setInputValue('Generate a tax lot mapping component')
+                                }
+                              >
+                                <Map className="h-4 w-4 mr-2" />
+                                Tax lot mapping component
+                              </Button>
+                              <Button
+                                variant="outline"
+                                className="text-sm justify-start"
+                                onClick={() =>
+                                  setInputValue('Create a property valuation calculator')
+                                }
+                              >
+                                <Calculator className="h-4 w-4 mr-2" />
+                                Property valuation calculator
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {assistantHistory.map((message, index) => (
+                          <div
+                            key={index}
+                            className={
+                              'flex ' + (message.role === 'user' ? 'justify-end' : 'justify-start')
                             }
                           >
-                            {message.role === 'user' ? (
-                              <div className="flex items-start">
-                                <div className="mr-2 mt-0.5 h-6 w-6 rounded-full bg-primary-foreground/20 flex items-center justify-center text-xs font-semibold">
-                                  Y
+                            <div
+                              className={
+                                'max-w-[80%] rounded-lg p-3 ' +
+                                (message.role === 'user'
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-gray-100 dark:bg-gray-800')
+                              }
+                            >
+                              {message.role === 'user' ? (
+                                <div className="flex items-start">
+                                  <div className="mr-2 mt-0.5 h-6 w-6 rounded-full bg-primary-foreground/20 flex items-center justify-center text-xs font-semibold">
+                                    Y
+                                  </div>
+                                  <div>
+                                    <p>{message.content}</p>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p>{message.content}</p>
+                              ) : (
+                                <div className="flex items-start">
+                                  <div className="mr-2 mt-0.5 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <Brain className="h-3.5 w-3.5 text-primary" />
+                                  </div>
+                                  <div>
+                                    <p>{message.content}</p>
+                                    {outputCode && index === assistantHistory.length - 1 && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="mt-2"
+                                        onClick={() => handleCopyCode()}
+                                      >
+                                        <Copy className="h-3.5 w-3.5 mr-1.5" />
+                                        Copy Code
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-start">
-                                <div className="mr-2 mt-0.5 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                                  <Brain className="h-3.5 w-3.5 text-primary" />
-                                </div>
-                                <div>
-                                  <p>{message.content}</p>
-                                  {outputCode && index === assistantHistory.length - 1 && (
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      className="mt-2"
-                                      onClick={() => handleCopyCode()}
-                                    >
-                                      <Copy className="h-3.5 w-3.5 mr-1.5" />
-                                      Copy Code
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            )}
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+
+                    <form onSubmit={handleAssistantSubmit} className="mt-auto">
+                      <div className="flex space-x-2">
+                        <Input
+                          placeholder="Ask me to create property assessment components or utilities..."
+                          value={inputValue}
+                          onChange={e => setInputValue(e.target.value)}
+                          disabled={isGenerating}
+                        />
+                        <Button type="submit" disabled={isGenerating || !inputValue.trim()}>
+                          {isGenerating ? (
+                            <LoaderCircle className="h-4 w-4 animate-spin" />
+                          ) : (
+                            'Generate'
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Code Editor</CardTitle>
+                  <CardDescription>View and edit generated code</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="relative">
+                    <div className="absolute top-2 right-2 z-10">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={handleCopyCode}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-900 rounded-md border">
+                      <div className="flex items-center justify-between border-b px-3 py-1.5 text-sm">
+                        <div className="flex items-center">
+                          <FileCode className="h-3.5 w-3.5 mr-2 text-primary" />
+                          <span className="font-medium">
+                            {getComponentNameFromCode(outputCode) || 'Component.tsx'}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          TypeScript
+                        </Badge>
+                      </div>
+                      <Textarea
+                        ref={editorRef}
+                        value={outputCode}
+                        onChange={e => setOutputCode(e.target.value)}
+                        className="font-mono text-sm h-[350px] border-0 bg-transparent focus-visible:ring-0 resize-none"
+                        placeholder="// Generated code will appear here"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <div>
+                    {outputCode && (
+                      <div className="text-xs text-gray-500">
+                        {outputCode.split('\n').length} lines • {outputCode.length} characters
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button variant="outline" size="sm">
+                      <TerminalSquare className="h-4 w-4 mr-2" />
+                      Test
+                    </Button>
+                    <Button size="sm">
+                      <Check className="h-4 w-4 mr-2" />
+                      Save
+                    </Button>
+                  </div>
+                </CardFooter>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Templates Tab */}
+          <TabsContent value="templates">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {developmentTemplates.map(template => (
+                <Card key={template.id} className="overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center">
+                      {template.category === 'UI Component' ? (
+                        <Layout className="h-4 w-4 mr-2 text-primary" />
+                      ) : template.category === 'Business Logic' ? (
+                        <Cpu className="h-4 w-4 mr-2 text-primary" />
+                      ) : (
+                        <FileCode className="h-4 w-4 mr-2 text-primary" />
+                      )}
+                      {template.name}
+                    </CardTitle>
+                    <CardDescription className="text-xs">{template.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pb-2">
+                    <div className="mb-3 flex flex-wrap gap-1">
+                      <Badge variant="outline" className="text-xs">
+                        {template.language}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {template.complexity}
+                      </Badge>
+                      {template.tags.slice(0, 2).map(tag => (
+                        <Badge key={tag} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-900 rounded border p-2 overflow-auto h-[100px]">
+                      <pre className="text-xs font-mono">
+                        <code>{template.templateCode.substring(0, 200)}...</code>
+                      </pre>
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleAddTemplate(template)}
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Use Template
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Snippets Tab */}
+          <TabsContent value="snippets">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {codeSnippets.map(snippet => (
+                <Card key={snippet.id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-base">{snippet.title}</CardTitle>
+                      <Badge variant="outline">{snippet.language}</Badge>
+                    </div>
+                    <CardDescription className="text-xs">{snippet.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pb-2">
+                    <div className="bg-gray-50 dark:bg-gray-900 rounded border p-2 overflow-auto h-[120px]">
+                      <pre className="text-xs font-mono">
+                        <code>{snippet.code.substring(0, 300)}...</code>
+                      </pre>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {snippet.tags.map(tag => (
+                        <Badge key={tag} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex justify-between">
+                    <div className="text-xs text-gray-500">Used {snippet.usageCount} times</div>
+                    <Button size="sm" onClick={() => handleAddSnippet(snippet)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Use Snippet
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Data Models Tab */}
+          <TabsContent value="models">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="lg:col-span-1">
+                <CardHeader>
+                  <CardTitle>Benton County Data Models</CardTitle>
+                  <CardDescription>Specialized property assessment data models</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[400px] pr-4">
+                    <div className="space-y-2">
+                      {propertyModels.map(model => (
+                        <div
+                          key={model.id}
+                          className={
+                            'p-3 border rounded-md cursor-pointer transition-colors ' +
+                            (selectedModel?.id === model.id
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-primary/50')
+                          }
+                          onClick={() => handleSelectModel(model)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <Database className="h-4 w-4 mr-2 text-primary" />
+                              <span className="font-medium">{model.name}</span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={e => {
+                                e.stopPropagation();
+                                handleSelectModel(model);
+                              }}
+                            >
+                              <Code className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <p className="mt-1 text-sm text-gray-500">{model.description}</p>
+                          <div className="mt-2 text-xs text-gray-500">
+                            {model.fields.length} fields • {model.relationships.length}{' '}
+                            relationships
                           </div>
                         </div>
                       ))}
                     </div>
                   </ScrollArea>
-                  
-                  <form onSubmit={handleAssistantSubmit} className="mt-auto">
-                    <div className="flex space-x-2">
-                      <Input
-                        placeholder="Ask me to create property assessment components or utilities..."
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        disabled={isGenerating}
-                      />
-                      <Button type="submit" disabled={isGenerating || !inputValue.trim()}>
-                        {isGenerating ? (
-                          <LoaderCircle className="h-4 w-4 animate-spin" />
-                        ) : (
-                          'Generate'
-                        )}
-                      </Button>
-                    </div>
-                  </form>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Code Editor</CardTitle>
-                <CardDescription>
-                  View and edit generated code
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="relative">
-                  <div className="absolute top-2 right-2 z-10">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-7 w-7 p-0" 
-                      onClick={handleCopyCode}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="bg-gray-50 dark:bg-gray-900 rounded-md border">
-                    <div className="flex items-center justify-between border-b px-3 py-1.5 text-sm">
-                      <div className="flex items-center">
-                        <FileCode className="h-3.5 w-3.5 mr-2 text-primary" />
-                        <span className="font-medium">
-                          {getComponentNameFromCode(outputCode) || 'Component.tsx'}
-                        </span>
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        TypeScript
-                      </Badge>
-                    </div>
-                    <Textarea
-                      ref={editorRef}
-                      value={outputCode}
-                      onChange={(e) => setOutputCode(e.target.value)}
-                      className="font-mono text-sm h-[350px] border-0 bg-transparent focus-visible:ring-0 resize-none"
-                      placeholder="// Generated code will appear here"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                <div>
-                  {outputCode && (
-                    <div className="text-xs text-gray-500">
-                      {outputCode.split('\n').length} lines • {outputCode.length} characters
-                    </div>
-                  )}
-                </div>
-                <div className="flex space-x-2">
-                  <Button variant="outline" size="sm">
-                    <TerminalSquare className="h-4 w-4 mr-2" />
-                    Test
-                  </Button>
-                  <Button size="sm">
-                    <Check className="h-4 w-4 mr-2" />
-                    Save
-                  </Button>
-                </div>
-              </CardFooter>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Templates Tab */}
-        <TabsContent value="templates">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {developmentTemplates.map((template) => (
-              <Card key={template.id} className="overflow-hidden">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center">
-                    {template.category === 'UI Component' ? (
-                      <Layout className="h-4 w-4 mr-2 text-primary" />
-                    ) : template.category === 'Business Logic' ? (
-                      <Cpu className="h-4 w-4 mr-2 text-primary" />
-                    ) : (
-                      <FileCode className="h-4 w-4 mr-2 text-primary" />
-                    )}
-                    {template.name}
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    {template.description}
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Model Details</CardTitle>
+                  <CardDescription>
+                    {selectedModel
+                      ? 'Viewing details for ' + selectedModel.name + ' model'
+                      : 'Select a model to view details'}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="pb-2">
-                  <div className="mb-3 flex flex-wrap gap-1">
-                    <Badge variant="outline" className="text-xs">
-                      {template.language}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {template.complexity}
-                    </Badge>
-                    {template.tags.slice(0, 2).map((tag) => (
-                      <Badge key={tag} variant="secondary" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="bg-gray-50 dark:bg-gray-900 rounded border p-2 overflow-auto h-[100px]">
-                    <pre className="text-xs font-mono">
-                      <code>{template.templateCode.substring(0, 200)}...</code>
-                    </pre>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full" 
-                    onClick={() => handleAddTemplate(template)}
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Use Template
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Snippets Tab */}
-        <TabsContent value="snippets">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {codeSnippets.map((snippet) => (
-              <Card key={snippet.id}>
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-base">{snippet.title}</CardTitle>
-                    <Badge variant="outline">{snippet.language}</Badge>
-                  </div>
-                  <CardDescription className="text-xs">
-                    {snippet.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pb-2">
-                  <div className="bg-gray-50 dark:bg-gray-900 rounded border p-2 overflow-auto h-[120px]">
-                    <pre className="text-xs font-mono">
-                      <code>{snippet.code.substring(0, 300)}...</code>
-                    </pre>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {snippet.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                  <div className="text-xs text-gray-500">
-                    Used {snippet.usageCount} times
-                  </div>
-                  <Button 
-                    size="sm" 
-                    onClick={() => handleAddSnippet(snippet)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Use Snippet
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Data Models Tab */}
-        <TabsContent value="models">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-1">
-              <CardHeader>
-                <CardTitle>Benton County Data Models</CardTitle>
-                <CardDescription>
-                  Specialized property assessment data models
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[400px] pr-4">
-                  <div className="space-y-2">
-                    {propertyModels.map((model) => (
-                      <div 
-                        key={model.id}
-                        className={"p-3 border rounded-md cursor-pointer transition-colors " + 
-                          (selectedModel?.id === model.id 
-                            ? 'border-primary bg-primary/5' 
-                            : 'border-border hover:border-primary/50')
-                        }
-                        onClick={() => handleSelectModel(model)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <Database className="h-4 w-4 mr-2 text-primary" />
-                            <span className="font-medium">{model.name}</span>
-                          </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-7 w-7"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSelectModel(model);
-                            }}
-                          >
-                            <Code className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <p className="mt-1 text-sm text-gray-500">
-                          {model.description}
-                        </p>
-                        <div className="mt-2 text-xs text-gray-500">
-                          {model.fields.length} fields • {model.relationships.length} relationships
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Model Details</CardTitle>
-                <CardDescription>
-                  {selectedModel 
-                    ? ("Viewing details for " + selectedModel.name + " model") 
-                    : 'Select a model to view details'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {selectedModel ? (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Fields</h3>
-                      <div className="bg-gray-50 dark:bg-gray-900 rounded border">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead>
-                            <tr className="bg-gray-50 dark:bg-gray-900">
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Example</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                            {selectedModel.fields.map((field, index) => (
-                              <tr key={index} className="hover:bg-gray-100 dark:hover:bg-gray-800">
-                                <td className="px-3 py-2 text-sm font-medium">{field.name}</td>
-                                <td className="px-3 py-2 text-sm">
-                                  <Badge variant="outline" className="font-mono text-xs">
-                                    {field.type}
-                                  </Badge>
-                                </td>
-                                <td className="px-3 py-2 text-sm text-gray-500">{field.description}</td>
-                                <td className="px-3 py-2 text-sm font-mono text-xs text-gray-600">{field.example}</td>
+                <CardContent>
+                  {selectedModel ? (
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-sm font-medium mb-2">Fields</h3>
+                        <div className="bg-gray-50 dark:bg-gray-900 rounded border">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead>
+                              <tr className="bg-gray-50 dark:bg-gray-900">
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Name
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Type
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Description
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Example
+                                </th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                              {selectedModel.fields.map((field, index) => (
+                                <tr
+                                  key={index}
+                                  className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                                >
+                                  <td className="px-3 py-2 text-sm font-medium">{field.name}</td>
+                                  <td className="px-3 py-2 text-sm">
+                                    <Badge variant="outline" className="font-mono text-xs">
+                                      {field.type}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-500">
+                                    {field.description}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm font-mono text-xs text-gray-600">
+                                    {field.example}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Relationships</h3>
-                      <div className="space-y-2">
-                        {selectedModel.relationships.map((rel, index) => (
-                          <div key={index} className="flex items-start p-3 bg-gray-50 dark:bg-gray-900 rounded border">
-                            <div className="mr-3">
-                              {rel.type === 'one-to-one' && (
-                                <Badge variant="outline" className="text-xs">1:1</Badge>
-                              )}
-                              {rel.type === 'one-to-many' && (
-                                <Badge variant="outline" className="text-xs">1:n</Badge>
-                              )}
-                              {rel.type === 'many-to-many' && (
-                                <Badge variant="outline" className="text-xs">n:n</Badge>
-                              )}
-                            </div>
-                            <div>
-                              <div className="font-medium text-sm">{rel.relatedModel}</div>
-                              <div className="text-xs text-gray-500 mt-0.5">{rel.description}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Generated Type</h3>
-                      <div className="bg-gray-50 dark:bg-gray-900 rounded border p-3 font-mono text-xs overflow-auto max-h-[200px]">
-                        <pre>{codeContext}</pre>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-[400px] text-center">
-                    <Database className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" />
-                    <h3 className="text-xl font-medium mb-2">No Model Selected</h3>
-                    <p className="text-gray-500 max-w-md mb-6">
-                      Select a data model from the list to view its details and structure
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      These models are specifically designed for Benton County property assessment data
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
 
-        {/* App Generator Tab */}
-        <TabsContent value="generator">
-          <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
-            <div className="lg:col-span-2 space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Application Builder</CardTitle>
-                  <CardDescription>
-                    Generate complete property assessment applications
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Application Type</Label>
-                      <Select defaultValue="property-assessment">
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select application type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="property-assessment">Property Assessment</SelectItem>
-                          <SelectItem value="tax-collection">Tax Collection</SelectItem>
-                          <SelectItem value="appeals-management">Appeals Management</SelectItem>
-                          <SelectItem value="public-portal">Public Information Portal</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Target Users</Label>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline">
-                          <User className="h-3 w-3 mr-1" />
-                          Assessors
-                        </Badge>
-                        <Badge variant="outline">
-                          <User className="h-3 w-3 mr-1" />
-                          Administrators
-                        </Badge>
-                        <Badge variant="secondary">
-                          <User className="h-3 w-3 mr-1" />
-                          Public
-                        </Badge>
-                        <Badge variant="outline">
-                          <User className="h-3 w-3 mr-1" />
-                          Officials
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Required Features</Label>
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="searchFeature" defaultChecked />
-                          <Label htmlFor="searchFeature">Property Search</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="mapFeature" defaultChecked />
-                          <Label htmlFor="mapFeature">GIS Mapping</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="historyFeature" defaultChecked />
-                          <Label htmlFor="historyFeature">Assessment History</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="comparablesFeature" defaultChecked />
-                          <Label htmlFor="comparablesFeature">Comparable Analysis</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="exportFeature" defaultChecked />
-                          <Label htmlFor="exportFeature">Data Export</Label>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Integrations</Label>
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="pacsIntegration" defaultChecked />
-                          <Label htmlFor="pacsIntegration">PACS System</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="gisIntegration" defaultChecked />
-                          <Label htmlFor="gisIntegration">GIS Data</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="docsIntegration" />
-                          <Label htmlFor="docsIntegration">Document Management</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="noticeIntegration" />
-                          <Label htmlFor="noticeIntegration">Notice Generation</Label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button 
-                    className="w-full" 
-                    onClick={generateFullApplication}
-                  >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Generate Application
-                  </Button>
-                </CardFooter>
-              </Card>
-            </div>
-            
-            <div className="lg:col-span-5 space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Application Structure</CardTitle>
-                  <CardDescription>
-                    Generated property assessment application components
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {applicationParts.length > 0 ? (
-                    <div className="space-y-4">
-                      <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                        <pre className="text-sm whitespace-pre-wrap">
-                          {projectContext}
-                        </pre>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {applicationParts.map((part, index) => (
-                          <div key={index} className="flex items-start p-3 border rounded-lg">
-                            <div className="mr-3 mt-0.5">
-                              {index === 0 ? (
-                                <Layout className="h-5 w-5 text-primary" />
-                              ) : index === 1 ? (
-                                <SquarePen className="h-5 w-5 text-purple-500" />
-                              ) : index === 2 ? (
-                                <BarChart className="h-5 w-5 text-amber-500" />
-                              ) : index === 3 ? (
-                                <Map className="h-5 w-5 text-green-500" />
-                              ) : index === 4 ? (
-                                <ListFilter className="h-5 w-5 text-blue-500" />
-                              ) : (
-                                <FileText className="h-5 w-5 text-red-500" />
-                              )}
-                            </div>
-                            <div className="space-y-1 flex-1">
-                              <div className="flex items-center justify-between">
-                                <h4 className="font-medium">{part}</h4>
-                                <Button variant="ghost" size="sm" className="h-7 px-2">
-                                  <Download className="h-3 w-3" />
-                                </Button>
+                      <div>
+                        <h3 className="text-sm font-medium mb-2">Relationships</h3>
+                        <div className="space-y-2">
+                          {selectedModel.relationships.map((rel, index) => (
+                            <div
+                              key={index}
+                              className="flex items-start p-3 bg-gray-50 dark:bg-gray-900 rounded border"
+                            >
+                              <div className="mr-3">
+                                {rel.type === 'one-to-one' && (
+                                  <Badge variant="outline" className="text-xs">
+                                    1:1
+                                  </Badge>
+                                )}
+                                {rel.type === 'one-to-many' && (
+                                  <Badge variant="outline" className="text-xs">
+                                    1:n
+                                  </Badge>
+                                )}
+                                {rel.type === 'many-to-many' && (
+                                  <Badge variant="outline" className="text-xs">
+                                    n:n
+                                  </Badge>
+                                )}
                               </div>
-                              <p className="text-xs text-gray-500">
-                                {index === 0 
-                                  ? 'Property search interface with address autocomplete' 
-                                  : index === 1 
-                                  ? 'Detailed property information display' 
-                                  : index === 2 
-                                  ? 'Historical assessment data visualization' 
-                                  : index === 3 
-                                  ? 'Interactive GIS map for tax lot visualization' 
-                                  : index === 4 
-                                  ? 'Find and analyze similar properties' 
-                                  : 'Export property data in various formats'}
-                              </p>
-                              <div className="flex mt-1">
-                                <Badge variant="outline" className="mr-1 text-xs">React</Badge>
-                                <Badge variant="outline" className="mr-1 text-xs">TypeScript</Badge>
-                                {index === 2 && <Badge variant="outline" className="text-xs">Chart.js</Badge>}
-                                {index === 3 && <Badge variant="outline" className="text-xs">Leaflet</Badge>}
+                              <div>
+                                <div className="font-medium text-sm">{rel.relatedModel}</div>
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  {rel.description}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-sm font-medium mb-2">Generated Type</h3>
+                        <div className="bg-gray-50 dark:bg-gray-900 rounded border p-3 font-mono text-xs overflow-auto max-h-[200px]">
+                          <pre>{codeContext}</pre>
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <Archive className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" />
-                      <h3 className="text-xl font-medium mb-2">No Application Generated</h3>
+                    <div className="flex flex-col items-center justify-center h-[400px] text-center">
+                      <Database className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" />
+                      <h3 className="text-xl font-medium mb-2">No Model Selected</h3>
                       <p className="text-gray-500 max-w-md mb-6">
-                        Configure your application settings and click "Generate Application" to create a custom property assessment system for Benton County
+                        Select a data model from the list to view its details and structure
                       </p>
-                      <Button 
-                        variant="outline" 
-                        onClick={generateFullApplication}
-                      >
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Generate Sample Application
-                      </Button>
+                      <p className="text-xs text-gray-400">
+                        These models are specifically designed for Benton County property assessment
+                        data
+                      </p>
                     </div>
                   )}
                 </CardContent>
               </Card>
-              
-              {applicationParts.length > 0 && (
+            </div>
+          </TabsContent>
+
+          {/* App Generator Tab */}
+          <TabsContent value="generator">
+            <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
+              <div className="lg:col-span-2 space-y-4">
                 <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle>Project Architecture</CardTitle>
+                  <CardHeader>
+                    <CardTitle>Application Builder</CardTitle>
                     <CardDescription>
-                      Visual representation of application components
+                      Generate complete property assessment applications
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border p-6">
-                      <div className="flex flex-col items-center">
-                        <div className="w-40 h-20 border-2 border-primary rounded-lg flex items-center justify-center mb-4">
-                          <div className="text-center">
-                            <div className="font-bold text-sm">App Entry</div>
-                            <div className="text-xs text-gray-500">Authentication</div>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Application Type</Label>
+                        <Select defaultValue="property-assessment">
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select application type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="property-assessment">Property Assessment</SelectItem>
+                            <SelectItem value="tax-collection">Tax Collection</SelectItem>
+                            <SelectItem value="appeals-management">Appeals Management</SelectItem>
+                            <SelectItem value="public-portal">Public Information Portal</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Target Users</Label>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="outline">
+                            <User className="h-3 w-3 mr-1" />
+                            Assessors
+                          </Badge>
+                          <Badge variant="outline">
+                            <User className="h-3 w-3 mr-1" />
+                            Administrators
+                          </Badge>
+                          <Badge variant="secondary">
+                            <User className="h-3 w-3 mr-1" />
+                            Public
+                          </Badge>
+                          <Badge variant="outline">
+                            <User className="h-3 w-3 mr-1" />
+                            Officials
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Required Features</Label>
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="searchFeature" defaultChecked />
+                            <Label htmlFor="searchFeature">Property Search</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="mapFeature" defaultChecked />
+                            <Label htmlFor="mapFeature">GIS Mapping</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="historyFeature" defaultChecked />
+                            <Label htmlFor="historyFeature">Assessment History</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="comparablesFeature" defaultChecked />
+                            <Label htmlFor="comparablesFeature">Comparable Analysis</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="exportFeature" defaultChecked />
+                            <Label htmlFor="exportFeature">Data Export</Label>
                           </div>
                         </div>
-                        
-                        <Workflow className="h-6 w-6 my-2 text-gray-400" />
-                        
-                        <div className="grid grid-cols-3 gap-4 w-full mb-4">
-                          <div className="col-span-2 border-2 border-blue-500 rounded-lg p-2 text-center">
-                            <div className="font-bold text-sm">Main Dashboard</div>
-                            <div className="text-xs text-gray-500">User Portal</div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Integrations</Label>
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="pacsIntegration" defaultChecked />
+                            <Label htmlFor="pacsIntegration">PACS System</Label>
                           </div>
-                          <div className="border-2 border-purple-500 rounded-lg p-2 text-center">
-                            <div className="font-bold text-sm">Admin Panel</div>
-                            <div className="text-xs text-gray-500">Management</div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="gisIntegration" defaultChecked />
+                            <Label htmlFor="gisIntegration">GIS Data</Label>
                           </div>
-                        </div>
-                        
-                        <Workflow className="h-6 w-6 my-2 text-gray-400" />
-                        
-                        <div className="grid grid-cols-3 gap-4 w-full mb-6">
-                          <div className="border-2 border-green-500 rounded-lg p-2 text-center h-20 flex flex-col items-center justify-center">
-                            <div className="font-bold text-sm">Property Search</div>
-                            <div className="text-xs text-gray-500">Lookup Module</div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="docsIntegration" />
+                            <Label htmlFor="docsIntegration">Document Management</Label>
                           </div>
-                          <div className="border-2 border-amber-500 rounded-lg p-2 text-center h-20 flex flex-col items-center justify-center">
-                            <div className="font-bold text-sm">Assessment View</div>
-                            <div className="text-xs text-gray-500">Details & History</div>
-                          </div>
-                          <div className="border-2 border-red-500 rounded-lg p-2 text-center h-20 flex flex-col items-center justify-center">
-                            <div className="font-bold text-sm">GIS Mapping</div>
-                            <div className="text-xs text-gray-500">Tax Lot Display</div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-center w-full">
-                          <div className="h-px bg-gray-300 dark:bg-gray-700 w-full" />
-                          <Layers className="h-6 w-6 mx-4 text-gray-400" />
-                          <div className="h-px bg-gray-300 dark:bg-gray-700 w-full" />
-                        </div>
-                        
-                        <div className="grid grid-cols-3 gap-4 w-full mt-6">
-                          <div className="border-2 border-indigo-500 rounded-lg p-2 text-center h-16 flex flex-col items-center justify-center">
-                            <div className="font-bold text-sm">PACS API</div>
-                            <div className="text-xs text-gray-500">Data Source</div>
-                          </div>
-                          <div className="border-2 border-cyan-500 rounded-lg p-2 text-center h-16 flex flex-col items-center justify-center">
-                            <div className="font-bold text-sm">Database</div>
-                            <div className="text-xs text-gray-500">PostgreSQL</div>
-                          </div>
-                          <div className="border-2 border-emerald-500 rounded-lg p-2 text-center h-16 flex flex-col items-center justify-center">
-                            <div className="font-bold text-sm">GIS Server</div>
-                            <div className="text-xs text-gray-500">Map Services</div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="noticeIntegration" />
+                            <Label htmlFor="noticeIntegration">Notice Generation</Label>
                           </div>
                         </div>
                       </div>
                     </div>
                   </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button variant="outline" size="sm">
-                      <GitBranch className="h-4 w-4 mr-2" />
-                      Export Architecture
-                    </Button>
-                    <Button size="sm">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Deploy App
+                  <CardFooter>
+                    <Button className="w-full" onClick={generateFullApplication}>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Generate Application
                     </Button>
                   </CardFooter>
                 </Card>
-              )}
+              </div>
+
+              <div className="lg:col-span-5 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Application Structure</CardTitle>
+                    <CardDescription>
+                      Generated property assessment application components
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {applicationParts.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                          <pre className="text-sm whitespace-pre-wrap">{projectContext}</pre>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {applicationParts.map((part, index) => (
+                            <div key={index} className="flex items-start p-3 border rounded-lg">
+                              <div className="mr-3 mt-0.5">
+                                {index === 0 ? (
+                                  <Layout className="h-5 w-5 text-primary" />
+                                ) : index === 1 ? (
+                                  <SquarePen className="h-5 w-5 text-purple-500" />
+                                ) : index === 2 ? (
+                                  <BarChart className="h-5 w-5 text-amber-500" />
+                                ) : index === 3 ? (
+                                  <Map className="h-5 w-5 text-green-500" />
+                                ) : index === 4 ? (
+                                  <ListFilter className="h-5 w-5 text-blue-500" />
+                                ) : (
+                                  <FileText className="h-5 w-5 text-red-500" />
+                                )}
+                              </div>
+                              <div className="space-y-1 flex-1">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-medium">{part}</h4>
+                                  <Button variant="ghost" size="sm" className="h-7 px-2">
+                                    <Download className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  {index === 0
+                                    ? 'Property search interface with address autocomplete'
+                                    : index === 1
+                                      ? 'Detailed property information display'
+                                      : index === 2
+                                        ? 'Historical assessment data visualization'
+                                        : index === 3
+                                          ? 'Interactive GIS map for tax lot visualization'
+                                          : index === 4
+                                            ? 'Find and analyze similar properties'
+                                            : 'Export property data in various formats'}
+                                </p>
+                                <div className="flex mt-1">
+                                  <Badge variant="outline" className="mr-1 text-xs">
+                                    React
+                                  </Badge>
+                                  <Badge variant="outline" className="mr-1 text-xs">
+                                    TypeScript
+                                  </Badge>
+                                  {index === 2 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Chart.js
+                                    </Badge>
+                                  )}
+                                  {index === 3 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Leaflet
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <Archive className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" />
+                        <h3 className="text-xl font-medium mb-2">No Application Generated</h3>
+                        <p className="text-gray-500 max-w-md mb-6">
+                          Configure your application settings and click "Generate Application" to
+                          create a custom property assessment system for Benton County
+                        </p>
+                        <Button variant="outline" onClick={generateFullApplication}>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Generate Sample Application
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {applicationParts.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle>Project Architecture</CardTitle>
+                      <CardDescription>
+                        Visual representation of application components
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border p-6">
+                        <div className="flex flex-col items-center">
+                          <div className="w-40 h-20 border-2 border-primary rounded-lg flex items-center justify-center mb-4">
+                            <div className="text-center">
+                              <div className="font-bold text-sm">App Entry</div>
+                              <div className="text-xs text-gray-500">Authentication</div>
+                            </div>
+                          </div>
+
+                          <Workflow className="h-6 w-6 my-2 text-gray-400" />
+
+                          <div className="grid grid-cols-3 gap-4 w-full mb-4">
+                            <div className="col-span-2 border-2 border-blue-500 rounded-lg p-2 text-center">
+                              <div className="font-bold text-sm">Main Dashboard</div>
+                              <div className="text-xs text-gray-500">User Portal</div>
+                            </div>
+                            <div className="border-2 border-purple-500 rounded-lg p-2 text-center">
+                              <div className="font-bold text-sm">Admin Panel</div>
+                              <div className="text-xs text-gray-500">Management</div>
+                            </div>
+                          </div>
+
+                          <Workflow className="h-6 w-6 my-2 text-gray-400" />
+
+                          <div className="grid grid-cols-3 gap-4 w-full mb-6">
+                            <div className="border-2 border-green-500 rounded-lg p-2 text-center h-20 flex flex-col items-center justify-center">
+                              <div className="font-bold text-sm">Property Search</div>
+                              <div className="text-xs text-gray-500">Lookup Module</div>
+                            </div>
+                            <div className="border-2 border-amber-500 rounded-lg p-2 text-center h-20 flex flex-col items-center justify-center">
+                              <div className="font-bold text-sm">Assessment View</div>
+                              <div className="text-xs text-gray-500">Details & History</div>
+                            </div>
+                            <div className="border-2 border-red-500 rounded-lg p-2 text-center h-20 flex flex-col items-center justify-center">
+                              <div className="font-bold text-sm">GIS Mapping</div>
+                              <div className="text-xs text-gray-500">Tax Lot Display</div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-center w-full">
+                            <div className="h-px bg-gray-300 dark:bg-gray-700 w-full" />
+                            <Layers className="h-6 w-6 mx-4 text-gray-400" />
+                            <div className="h-px bg-gray-300 dark:bg-gray-700 w-full" />
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-4 w-full mt-6">
+                            <div className="border-2 border-indigo-500 rounded-lg p-2 text-center h-16 flex flex-col items-center justify-center">
+                              <div className="font-bold text-sm">PACS API</div>
+                              <div className="text-xs text-gray-500">Data Source</div>
+                            </div>
+                            <div className="border-2 border-cyan-500 rounded-lg p-2 text-center h-16 flex flex-col items-center justify-center">
+                              <div className="font-bold text-sm">Database</div>
+                              <div className="text-xs text-gray-500">PostgreSQL</div>
+                            </div>
+                            <div className="border-2 border-emerald-500 rounded-lg p-2 text-center h-16 flex flex-col items-center justify-center">
+                              <div className="font-bold text-sm">GIS Server</div>
+                              <div className="text-xs text-gray-500">Map Services</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-between">
+                      <Button variant="outline" size="sm">
+                        <GitBranch className="h-4 w-4 mr-2" />
+                        Export Architecture
+                      </Button>
+                      <Button size="sm">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Deploy App
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                )}
+              </div>
             </div>
-          </div>
-        </TabsContent>
+          </TabsContent>
 
-        {/* Developer Tab with specialized property assessment development tools */}
-        <TabsContent value="developer">
-          <div className="grid grid-cols-1 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center">
-                  <Cpu className="h-5 w-5 mr-2 text-amber-500" />
-                  BCBS GeoAssessment Developer Tools
-                </CardTitle>
-                <CardDescription>
-                  Specialized tools for property assessment application development
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="ai-pair" value={activeDeveloperTab} onValueChange={setActiveDeveloperTab}>
-                  <TabsList className="grid grid-cols-5 mb-6">
-                    <TabsTrigger value="ai-pair" className="flex items-center">
-                      <Brain className="mr-2 h-4 w-4" />
-                      AI Pair Programming
-                    </TabsTrigger>
-                    <TabsTrigger value="cama-playground" className="flex items-center">
-                      <Calculator className="mr-2 h-4 w-4" />
-                      CAMA Playground
-                    </TabsTrigger>
-                    <TabsTrigger value="regulation-checker" className="flex items-center">
-                      <FileText className="mr-2 h-4 w-4" />
-                      Regulation Checker
-                    </TabsTrigger>
-                    <TabsTrigger value="data-modeler" className="flex items-center">
-                      <Database className="mr-2 h-4 w-4" />
-                      Data Modeler
-                    </TabsTrigger>
-                    <TabsTrigger value="gis-tools" className="flex items-center">
-                      <Map className="mr-2 h-4 w-4" />
-                      GIS Tools
-                    </TabsTrigger>
-                  </TabsList>
+          {/* Developer Tab with specialized property assessment development tools */}
+          <TabsContent value="developer">
+            <div className="grid grid-cols-1 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center">
+                    <Cpu className="h-5 w-5 mr-2 text-amber-500" />
+                    BCBS GeoAssessment Developer Tools
+                  </CardTitle>
+                  <CardDescription>
+                    Specialized tools for property assessment application development
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Tabs
+                    defaultValue="ai-pair"
+                    value={activeDeveloperTab}
+                    onValueChange={setActiveDeveloperTab}
+                  >
+                    <TabsList className="grid grid-cols-5 mb-6">
+                      <TabsTrigger value="ai-pair" className="flex items-center">
+                        <Brain className="mr-2 h-4 w-4" />
+                        AI Pair Programming
+                      </TabsTrigger>
+                      <TabsTrigger value="cama-playground" className="flex items-center">
+                        <Calculator className="mr-2 h-4 w-4" />
+                        CAMA Playground
+                      </TabsTrigger>
+                      <TabsTrigger value="regulation-checker" className="flex items-center">
+                        <FileText className="mr-2 h-4 w-4" />
+                        Regulation Checker
+                      </TabsTrigger>
+                      <TabsTrigger value="data-modeler" className="flex items-center">
+                        <Database className="mr-2 h-4 w-4" />
+                        Data Modeler
+                      </TabsTrigger>
+                      <TabsTrigger value="gis-tools" className="flex items-center">
+                        <Map className="mr-2 h-4 w-4" />
+                        GIS Tools
+                      </TabsTrigger>
+                    </TabsList>
 
-                  {/* AI Pair Programming Tool */}
-                  <TabsContent value="ai-pair">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      <Card className="lg:col-span-1">
-                        <CardHeader>
-                          <CardTitle className="text-base">Property Assessment Pair Programming</CardTitle>
-                          <CardDescription>AI-powered coding assistant specialized for property assessment</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div>
-                              <h3 className="text-sm font-medium mb-2">Specialized Context</h3>
+                    {/* AI Pair Programming Tool */}
+                    <TabsContent value="ai-pair">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <Card className="lg:col-span-1">
+                          <CardHeader>
+                            <CardTitle className="text-base">
+                              Property Assessment Pair Programming
+                            </CardTitle>
+                            <CardDescription>
+                              AI-powered coding assistant specialized for property assessment
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              <div>
+                                <h3 className="text-sm font-medium mb-2">Specialized Context</h3>
+                                <div className="space-y-2">
+                                  <div className="flex items-center space-x-2">
+                                    <Checkbox id="context-pacs" />
+                                    <Label htmlFor="context-pacs">PACS Integration</Label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Checkbox id="context-regulations" defaultChecked />
+                                    <Label htmlFor="context-regulations">
+                                      WA Assessment Regulations
+                                    </Label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Checkbox id="context-gis" />
+                                    <Label htmlFor="context-gis">GIS Mapping</Label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Checkbox id="context-calculations" defaultChecked />
+                                    <Label htmlFor="context-calculations">Value Calculations</Label>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div>
+                                <h3 className="text-sm font-medium mb-2">Common Tasks</h3>
+                                <div className="space-y-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full justify-start"
+                                  >
+                                    <FileCode className="mr-2 h-4 w-4" />
+                                    Property Lookup Component
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full justify-start"
+                                  >
+                                    <Calculator className="mr-2 h-4 w-4" />
+                                    CAMA Value Calculator
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full justify-start"
+                                  >
+                                    <Map className="mr-2 h-4 w-4" />
+                                    Parcel Map Integration
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full justify-start"
+                                  >
+                                    <BarChart className="mr-2 h-4 w-4" />
+                                    Value Analysis Dashboard
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="lg:col-span-2">
+                          <CardHeader>
+                            <CardTitle className="text-base">Code Workspace</CardTitle>
+                            <CardDescription>
+                              Specialized coding environment for assessment applications
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              <Textarea
+                                placeholder="Describe what you want to build, or paste code to enhance..."
+                                className="font-mono h-[200px] resize-none"
+                              />
+
+                              <div className="flex justify-between">
+                                <div className="flex space-x-2">
+                                  <Select defaultValue="typescript">
+                                    <SelectTrigger className="w-[140px]">
+                                      <SelectValue placeholder="Language" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="typescript">TypeScript</SelectItem>
+                                      <SelectItem value="javascript">JavaScript</SelectItem>
+                                      <SelectItem value="python">Python</SelectItem>
+                                      <SelectItem value="sql">SQL</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+
+                                  <Select defaultValue="component">
+                                    <SelectTrigger className="w-[140px]">
+                                      <SelectValue placeholder="Type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="component">UI Component</SelectItem>
+                                      <SelectItem value="calculation">Calculation</SelectItem>
+                                      <SelectItem value="data">Data Model</SelectItem>
+                                      <SelectItem value="utility">Utility</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                <Button>
+                                  <Brain className="mr-2 h-4 w-4" />
+                                  Generate Code
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </TabsContent>
+
+                    {/* CAMA Model Playground */}
+                    <TabsContent value="cama-playground">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <Card className="lg:col-span-1">
+                          <CardHeader>
+                            <CardTitle className="text-base">CAMA Models</CardTitle>
+                            <CardDescription>
+                              Test and develop property valuation models
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
                               <div className="space-y-2">
-                                <div className="flex items-center space-x-2">
-                                  <Checkbox id="context-pacs" />
-                                  <Label htmlFor="context-pacs">PACS Integration</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <Checkbox id="context-regulations" defaultChecked />
-                                  <Label htmlFor="context-regulations">WA Assessment Regulations</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <Checkbox id="context-gis" />
-                                  <Label htmlFor="context-gis">GIS Mapping</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <Checkbox id="context-calculations" defaultChecked />
-                                  <Label htmlFor="context-calculations">Value Calculations</Label>
-                                </div>
+                                {camaModels.map(model => (
+                                  <div
+                                    key={model.id}
+                                    className={
+                                      'p-3 border rounded-md cursor-pointer transition-colors ' +
+                                      (selectedCAMAModel?.id === model.id
+                                        ? 'border-amber-500 bg-amber-50'
+                                        : 'border-border hover:border-amber-300')
+                                    }
+                                    onClick={() => setSelectedCAMAModel(model)}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center">
+                                        <Calculator className="h-4 w-4 mr-2 text-amber-500" />
+                                        <span className="font-medium">{model.name}</span>
+                                      </div>
+                                      <Badge variant="outline" className="text-xs">
+                                        {model.type}
+                                      </Badge>
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      {model.description}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
-                            
-                            <div>
-                              <h3 className="text-sm font-medium mb-2">Common Tasks</h3>
-                              <div className="space-y-2">
-                                <Button variant="outline" size="sm" className="w-full justify-start">
-                                  <FileCode className="mr-2 h-4 w-4" />
-                                  Property Lookup Component
-                                </Button>
-                                <Button variant="outline" size="sm" className="w-full justify-start">
-                                  <Calculator className="mr-2 h-4 w-4" />
-                                  CAMA Value Calculator
-                                </Button>
-                                <Button variant="outline" size="sm" className="w-full justify-start">
-                                  <Map className="mr-2 h-4 w-4" />
-                                  Parcel Map Integration
-                                </Button>
-                                <Button variant="outline" size="sm" className="w-full justify-start">
-                                  <BarChart className="mr-2 h-4 w-4" />
-                                  Value Analysis Dashboard
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card className="lg:col-span-2">
-                        <CardHeader>
-                          <CardTitle className="text-base">Code Workspace</CardTitle>
-                          <CardDescription>
-                            Specialized coding environment for assessment applications
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <Textarea 
-                              placeholder="Describe what you want to build, or paste code to enhance..."
-                              className="font-mono h-[200px] resize-none"
-                            />
-                            
-                            <div className="flex justify-between">
-                              <div className="flex space-x-2">
-                                <Select defaultValue="typescript">
-                                  <SelectTrigger className="w-[140px]">
-                                    <SelectValue placeholder="Language" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="typescript">TypeScript</SelectItem>
-                                    <SelectItem value="javascript">JavaScript</SelectItem>
-                                    <SelectItem value="python">Python</SelectItem>
-                                    <SelectItem value="sql">SQL</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                
-                                <Select defaultValue="component">
-                                  <SelectTrigger className="w-[140px]">
-                                    <SelectValue placeholder="Type" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="component">UI Component</SelectItem>
-                                    <SelectItem value="calculation">Calculation</SelectItem>
-                                    <SelectItem value="data">Data Model</SelectItem>
-                                    <SelectItem value="utility">Utility</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              
-                              <Button>
-                                <Brain className="mr-2 h-4 w-4" />
-                                Generate Code
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
+                          </CardContent>
+                        </Card>
 
-                  {/* CAMA Model Playground */}
-                  <TabsContent value="cama-playground">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      <Card className="lg:col-span-1">
-                        <CardHeader>
-                          <CardTitle className="text-base">CAMA Models</CardTitle>
-                          <CardDescription>
-                            Test and develop property valuation models
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
+                        <Card className="lg:col-span-2">
+                          <CardHeader>
+                            <CardTitle className="text-base">Model Playground</CardTitle>
+                            <CardDescription>Test and visualize CAMA model results</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              <Textarea
+                                placeholder="Enter test property data as JSON..."
+                                className="font-mono h-[200px] resize-none"
+                                value={modelPlaygroundData}
+                                onChange={e => setModelPlaygroundData(e.target.value)}
+                              />
+
+                              <div className="flex justify-between">
+                                <div>
+                                  <Select defaultValue="residential">
+                                    <SelectTrigger className="w-[160px]">
+                                      <SelectValue placeholder="Property Type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="residential">Residential</SelectItem>
+                                      <SelectItem value="commercial">Commercial</SelectItem>
+                                      <SelectItem value="agricultural">Agricultural</SelectItem>
+                                      <SelectItem value="industrial">Industrial</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                <div className="flex space-x-2">
+                                  <Button variant="outline">
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    Load Sample
+                                  </Button>
+                                  <Button>
+                                    <Calculator className="mr-2 h-4 w-4" />
+                                    Run Model
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </TabsContent>
+
+                    {/* Regulation Checker */}
+                    <TabsContent value="regulation-checker">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <Card className="lg:col-span-1">
+                          <CardHeader>
+                            <CardTitle className="text-base">Regulation Rules</CardTitle>
+                            <CardDescription>
+                              Assessment compliance rules for Washington State
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="h-[500px] overflow-auto">
                             <div className="space-y-2">
-                              {camaModels.map((model) => (
-                                <div 
-                                  key={model.id}
-                                  className={"p-3 border rounded-md cursor-pointer transition-colors " + 
-                                    (selectedCAMAModel?.id === model.id 
-                                      ? 'border-amber-500 bg-amber-50' 
+                              {regulationRules.map(rule => (
+                                <div
+                                  key={rule.id}
+                                  className={
+                                    'p-3 border rounded-md cursor-pointer transition-colors ' +
+                                    (selectedRegulation?.id === rule.id
+                                      ? 'border-amber-500 bg-amber-50'
                                       : 'border-border hover:border-amber-300')
                                   }
-                                  onClick={() => setSelectedCAMAModel(model)}
+                                  onClick={() => setSelectedRegulation(rule)}
                                 >
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center">
-                                      <Calculator className="h-4 w-4 mr-2 text-amber-500" />
+                                      {rule.severity === 'error' ? (
+                                        <div className="h-2 w-2 rounded-full bg-red-500 mr-2" />
+                                      ) : rule.severity === 'warning' ? (
+                                        <div className="h-2 w-2 rounded-full bg-amber-500 mr-2" />
+                                      ) : (
+                                        <div className="h-2 w-2 rounded-full bg-blue-500 mr-2" />
+                                      )}
+                                      <span className="font-medium text-sm">{rule.name}</span>
+                                    </div>
+                                    <Badge variant="outline" className="text-xs">
+                                      {rule.jurisdiction}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {rule.description}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="lg:col-span-2">
+                          <CardHeader>
+                            <CardTitle className="text-base">Code Compliance Checker</CardTitle>
+                            <CardDescription>
+                              Check assessment code against regulations
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              <Textarea
+                                placeholder="Paste assessment code to check for compliance..."
+                                className="font-mono h-[200px] resize-none"
+                                value={codeToCheck}
+                                onChange={e => setCodeToCheck(e.target.value)}
+                              />
+
+                              <div className="flex justify-between">
+                                <div className="flex items-center space-x-4">
+                                  <div className="flex items-center space-x-2">
+                                    <Checkbox id="rule-market-value" defaultChecked />
+                                    <Label htmlFor="rule-market-value">Market Value</Label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Checkbox id="rule-exemptions" defaultChecked />
+                                    <Label htmlFor="rule-exemptions">Exemptions</Label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Checkbox id="rule-notices" defaultChecked />
+                                    <Label htmlFor="rule-notices">Notices</Label>
+                                  </div>
+                                </div>
+
+                                <Button>
+                                  <FileText className="mr-2 h-4 w-4" />
+                                  Check Compliance
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </TabsContent>
+
+                    {/* Visual Data Model Builder */}
+                    <TabsContent value="data-modeler">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <Card className="lg:col-span-1">
+                          <CardHeader>
+                            <CardTitle className="text-base">Property Models</CardTitle>
+                            <CardDescription>
+                              Design property assessment data models
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                {propertyModels.map(model => (
+                                  <div
+                                    key={model.id}
+                                    className={
+                                      'p-3 border rounded-md cursor-pointer transition-colors ' +
+                                      (selectedModel?.id === model.id
+                                        ? 'border-amber-500 bg-amber-50'
+                                        : 'border-border hover:border-amber-300')
+                                    }
+                                    onClick={() => setSelectedModel(model)}
+                                  >
+                                    <div className="flex items-center">
+                                      <Database className="h-4 w-4 mr-2 text-amber-500" />
                                       <span className="font-medium">{model.name}</span>
                                     </div>
-                                    <Badge variant="outline" className="text-xs">
-                                      {model.type}
-                                    </Badge>
-                                  </div>
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {model.description}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card className="lg:col-span-2">
-                        <CardHeader>
-                          <CardTitle className="text-base">Model Playground</CardTitle>
-                          <CardDescription>
-                            Test and visualize CAMA model results
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <Textarea 
-                              placeholder="Enter test property data as JSON..."
-                              className="font-mono h-[200px] resize-none"
-                              value={modelPlaygroundData}
-                              onChange={(e) => setModelPlaygroundData(e.target.value)}
-                            />
-                            
-                            <div className="flex justify-between">
-                              <div>
-                                <Select defaultValue="residential">
-                                  <SelectTrigger className="w-[160px]">
-                                    <SelectValue placeholder="Property Type" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="residential">Residential</SelectItem>
-                                    <SelectItem value="commercial">Commercial</SelectItem>
-                                    <SelectItem value="agricultural">Agricultural</SelectItem>
-                                    <SelectItem value="industrial">Industrial</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              
-                              <div className="flex space-x-2">
-                                <Button variant="outline">
-                                  <FileText className="mr-2 h-4 w-4" />
-                                  Load Sample
-                                </Button>
-                                <Button>
-                                  <Calculator className="mr-2 h-4 w-4" />
-                                  Run Model
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
-
-                  {/* Regulation Checker */}
-                  <TabsContent value="regulation-checker">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      <Card className="lg:col-span-1">
-                        <CardHeader>
-                          <CardTitle className="text-base">Regulation Rules</CardTitle>
-                          <CardDescription>
-                            Assessment compliance rules for Washington State
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="h-[500px] overflow-auto">
-                          <div className="space-y-2">
-                            {regulationRules.map((rule) => (
-                              <div 
-                                key={rule.id}
-                                className={"p-3 border rounded-md cursor-pointer transition-colors " + 
-                                  (selectedRegulation?.id === rule.id 
-                                    ? 'border-amber-500 bg-amber-50' 
-                                    : 'border-border hover:border-amber-300')
-                                }
-                                onClick={() => setSelectedRegulation(rule)}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center">
-                                    {rule.severity === 'error' ? (
-                                      <div className="h-2 w-2 rounded-full bg-red-500 mr-2" />
-                                    ) : rule.severity === 'warning' ? (
-                                      <div className="h-2 w-2 rounded-full bg-amber-500 mr-2" />
-                                    ) : (
-                                      <div className="h-2 w-2 rounded-full bg-blue-500 mr-2" />
-                                    )}
-                                    <span className="font-medium text-sm">{rule.name}</span>
-                                  </div>
-                                  <Badge variant="outline" className="text-xs">
-                                    {rule.jurisdiction}
-                                  </Badge>
-                                </div>
-                                <div className="text-xs text-gray-500 mt-1">
-                                  {rule.description}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card className="lg:col-span-2">
-                        <CardHeader>
-                          <CardTitle className="text-base">Code Compliance Checker</CardTitle>
-                          <CardDescription>
-                            Check assessment code against regulations
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <Textarea 
-                              placeholder="Paste assessment code to check for compliance..."
-                              className="font-mono h-[200px] resize-none"
-                              value={codeToCheck}
-                              onChange={(e) => setCodeToCheck(e.target.value)}
-                            />
-                            
-                            <div className="flex justify-between">
-                              <div className="flex items-center space-x-4">
-                                <div className="flex items-center space-x-2">
-                                  <Checkbox id="rule-market-value" defaultChecked />
-                                  <Label htmlFor="rule-market-value">Market Value</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <Checkbox id="rule-exemptions" defaultChecked />
-                                  <Label htmlFor="rule-exemptions">Exemptions</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <Checkbox id="rule-notices" defaultChecked />
-                                  <Label htmlFor="rule-notices">Notices</Label>
-                                </div>
-                              </div>
-                              
-                              <Button>
-                                <FileText className="mr-2 h-4 w-4" />
-                                Check Compliance
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
-
-                  {/* Visual Data Model Builder */}
-                  <TabsContent value="data-modeler">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      <Card className="lg:col-span-1">
-                        <CardHeader>
-                          <CardTitle className="text-base">Property Models</CardTitle>
-                          <CardDescription>
-                            Design property assessment data models
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              {propertyModels.map((model) => (
-                                <div 
-                                  key={model.id}
-                                  className={"p-3 border rounded-md cursor-pointer transition-colors " + 
-                                    (selectedModel?.id === model.id 
-                                      ? 'border-amber-500 bg-amber-50' 
-                                      : 'border-border hover:border-amber-300')
-                                  }
-                                  onClick={() => setSelectedModel(model)}
-                                >
-                                  <div className="flex items-center">
-                                    <Database className="h-4 w-4 mr-2 text-amber-500" />
-                                    <span className="font-medium">{model.name}</span>
-                                  </div>
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {model.description}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                            
-                            <Button variant="outline" size="sm" className="w-full">
-                              <PlusCircle className="mr-2 h-4 w-4" />
-                              New Data Model
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card className="lg:col-span-2">
-                        <CardHeader>
-                          <CardTitle className="text-base">Visual Model Designer</CardTitle>
-                          <CardDescription>
-                            Design and generate database schemas
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div className="border rounded-md h-[300px] p-4 bg-gray-50 flex items-center justify-center">
-                              {dataModelDiagram ? (
-                                <div>
-                                  {/* Visual diagram would go here */}
-                                  <div className="text-center text-gray-500">Data model diagram rendering</div>
-                                </div>
-                              ) : (
-                                <div className="text-center text-gray-500">
-                                  <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                                  <p>Select a model to view or create a new one</p>
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex justify-between">
-                              <div className="flex space-x-2">
-                                <Button variant="outline" size="sm">
-                                  <Download className="mr-2 h-4 w-4" />
-                                  Export Schema
-                                </Button>
-                                <Button variant="outline" size="sm">
-                                  <Upload className="mr-2 h-4 w-4" />
-                                  Import Schema
-                                </Button>
-                              </div>
-                              
-                              <Button size="sm">
-                                <Database className="mr-2 h-4 w-4" />
-                                Generate Drizzle Schema
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
-                  
-                  {/* GIS Integration Tools */}
-                  <TabsContent value="gis-tools">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      <Card className="lg:col-span-1">
-                        <CardHeader>
-                          <CardTitle className="text-base">GIS Templates</CardTitle>
-                          <CardDescription>
-                            Map visualizations for property assessment
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              {gisTemplates.map((template) => (
-                                <div 
-                                  key={template.id}
-                                  className={"p-3 border rounded-md cursor-pointer transition-colors " + 
-                                    (selectedGISTemplate?.id === template.id 
-                                      ? 'border-amber-500 bg-amber-50' 
-                                      : 'border-border hover:border-amber-300')
-                                  }
-                                  onClick={() => setSelectedGISTemplate(template)}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center">
-                                      <Map className="h-4 w-4 mr-2 text-amber-500" />
-                                      <span className="font-medium">{template.name}</span>
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      {model.description}
                                     </div>
-                                    <Badge variant="outline" className="text-xs">
-                                      {template.mapType}
-                                    </Badge>
                                   </div>
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {template.description}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card className="lg:col-span-2">
-                        <CardHeader>
-                          <CardTitle className="text-base">Map Component Builder</CardTitle>
-                          <CardDescription>
-                            Create property assessment map visualizations
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div className="border rounded-md h-[300px] p-4 bg-gray-50 flex items-center justify-center">
-                              {gisVisualizationData ? (
-                                <div>
-                                  {/* GIS visualization would go here */}
-                                  <div className="text-center text-gray-500">Map visualization preview</div>
-                                </div>
-                              ) : (
-                                <div className="text-center text-gray-500">
-                                  <Map className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                                  <p>Select a GIS template to preview</p>
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex justify-between">
-                              <div className="flex space-x-2">
-                                <Select defaultValue="parcel">
-                                  <SelectTrigger className="w-[160px]">
-                                    <SelectValue placeholder="Map Type" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="parcel">Parcel Map</SelectItem>
-                                    <SelectItem value="zoning">Zoning Map</SelectItem>
-                                    <SelectItem value="district">District Map</SelectItem>
-                                    <SelectItem value="neighborhood">Neighborhood Map</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                                ))}
                               </div>
-                              
-                              <div className="flex space-x-2">
-                                <Button variant="outline" size="sm">
-                                  <FileText className="mr-2 h-4 w-4" />
-                                  Preview
-                                </Button>
+
+                              <Button variant="outline" size="sm" className="w-full">
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                New Data Model
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="lg:col-span-2">
+                          <CardHeader>
+                            <CardTitle className="text-base">Visual Model Designer</CardTitle>
+                            <CardDescription>Design and generate database schemas</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              <div className="border rounded-md h-[300px] p-4 bg-gray-50 flex items-center justify-center">
+                                {dataModelDiagram ? (
+                                  <div>
+                                    {/* Visual diagram would go here */}
+                                    <div className="text-center text-gray-500">
+                                      Data model diagram rendering
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-center text-gray-500">
+                                    <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                    <p>Select a model to view or create a new one</p>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex justify-between">
+                                <div className="flex space-x-2">
+                                  <Button variant="outline" size="sm">
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Export Schema
+                                  </Button>
+                                  <Button variant="outline" size="sm">
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    Import Schema
+                                  </Button>
+                                </div>
+
                                 <Button size="sm">
-                                  <Map className="mr-2 h-4 w-4" />
-                                  Generate Component
+                                  <Database className="mr-2 h-4 w-4" />
+                                  Generate Drizzle Schema
                                 </Button>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </TabsContent>
+
+                    {/* GIS Integration Tools */}
+                    <TabsContent value="gis-tools">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <Card className="lg:col-span-1">
+                          <CardHeader>
+                            <CardTitle className="text-base">GIS Templates</CardTitle>
+                            <CardDescription>
+                              Map visualizations for property assessment
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                {gisTemplates.map(template => (
+                                  <div
+                                    key={template.id}
+                                    className={
+                                      'p-3 border rounded-md cursor-pointer transition-colors ' +
+                                      (selectedGISTemplate?.id === template.id
+                                        ? 'border-amber-500 bg-amber-50'
+                                        : 'border-border hover:border-amber-300')
+                                    }
+                                    onClick={() => setSelectedGISTemplate(template)}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center">
+                                        <Map className="h-4 w-4 mr-2 text-amber-500" />
+                                        <span className="font-medium">{template.name}</span>
+                                      </div>
+                                      <Badge variant="outline" className="text-xs">
+                                        {template.mapType}
+                                      </Badge>
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      {template.description}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="lg:col-span-2">
+                          <CardHeader>
+                            <CardTitle className="text-base">Map Component Builder</CardTitle>
+                            <CardDescription>
+                              Create property assessment map visualizations
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              <div className="border rounded-md h-[300px] p-4 bg-gray-50 flex items-center justify-center">
+                                {gisVisualizationData ? (
+                                  <div>
+                                    {/* GIS visualization would go here */}
+                                    <div className="text-center text-gray-500">
+                                      Map visualization preview
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-center text-gray-500">
+                                    <Map className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                    <p>Select a GIS template to preview</p>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex justify-between">
+                                <div className="flex space-x-2">
+                                  <Select defaultValue="parcel">
+                                    <SelectTrigger className="w-[160px]">
+                                      <SelectValue placeholder="Map Type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="parcel">Parcel Map</SelectItem>
+                                      <SelectItem value="zoning">Zoning Map</SelectItem>
+                                      <SelectItem value="district">District Map</SelectItem>
+                                      <SelectItem value="neighborhood">Neighborhood Map</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                <div className="flex space-x-2">
+                                  <Button variant="outline" size="sm">
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    Preview
+                                  </Button>
+                                  <Button size="sm">
+                                    <Map className="mr-2 h-4 w-4" />
+                                    Generate Component
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Context sidebar for additional tools */}
+        <div className="fixed right-4 top-1/2 -translate-y-1/2">
+          <div className="bg-white dark:bg-gray-950 rounded-full shadow-lg p-1.5 flex flex-col items-center space-y-2 border">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              title="Context Panel"
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Separator className="w-5" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              title="Documentation"
+            >
+              <Book className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              title="Backend API"
+            >
+              <Server className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              title="Code Templates"
+            >
+              <FileCode className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              title="AI Assistant"
+            >
+              <Brain className="h-4 w-4" />
+            </Button>
+            <Separator className="w-5" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" title="GitHub">
+              <Github className="h-4 w-4" />
+            </Button>
           </div>
-        </TabsContent>
-      </Tabs>
-      
-      {/* Context sidebar for additional tools */}
-      <div className="fixed right-4 top-1/2 -translate-y-1/2">
-        <div className="bg-white dark:bg-gray-950 rounded-full shadow-lg p-1.5 flex flex-col items-center space-y-2 border">
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" title="Context Panel">
-            <ChevronsLeft className="h-4 w-4" />
-          </Button>
-          <Separator className="w-5" />
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" title="Documentation">
-            <Book className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" title="Backend API">
-            <Server className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" title="Code Templates">
-            <FileCode className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" title="AI Assistant">
-            <Brain className="h-4 w-4" />
-          </Button>
-          <Separator className="w-5" />
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" title="GitHub">
-            <Github className="h-4 w-4" />
-          </Button>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
-export default CodeAssistantPanel;
-}
+  export default CodeAssistantPanel;
+};

@@ -1156,9 +1156,7 @@ export class RobustWebSocketManager {
   private log(message: string, ...data: any[]): void {
     if (this.options.debug) {
       if (data.length > 0) {
-        console.log(`[RobustWebSocket] ${message}`, ...data);
       } else {
-        console.log(`[RobustWebSocket] ${message}`);
       }
     }
   }

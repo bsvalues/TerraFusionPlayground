@@ -62,15 +62,15 @@ const connectionManager = new ConnectionManager({
   httpEndpoint: '/api/ws-fallback/send',
   reconnectAttempts: 5,
   exponentialBackoff: true,
-  debug: true
+  debug: true,
 });
 
 // Register event listeners
-connectionManager.on('connect', (event) => {
+connectionManager.on('connect', event => {
   console.log(`Connected via ${event.connectionType}`);
 });
 
-connectionManager.on('message', (event) => {
+connectionManager.on('message', event => {
   console.log('Message received:', event.message);
 });
 
@@ -80,7 +80,7 @@ connectionManager.connect();
 // Send a message
 connectionManager.send({
   type: 'chat',
-  content: 'Hello, world!'
+  content: 'Hello, world!',
 });
 
 // Disconnect
@@ -93,32 +93,28 @@ connectionManager.disconnect();
 import { useConnection } from '../hooks/use-connection';
 
 function ChatComponent() {
-  const {
-    connectionState,
-    connectionType,
-    send,
-    connect,
-    disconnect
-  } = useConnection({
+  const { connectionState, connectionType, send, connect, disconnect } = useConnection({
     wsEndpoint: '/ws',
     sseEndpoint: '/api/events',
     httpEndpoint: '/api/ws-fallback/send',
     autoConnect: true,
-    onMessage: (event) => {
+    onMessage: event => {
       console.log('Message received:', event.message);
-    }
+    },
   });
 
   const sendMessage = () => {
     send({
       type: 'chat',
-      content: 'Hello from React!'
+      content: 'Hello from React!',
     });
   };
 
   return (
     <div>
-      <div>Status: {connectionState} via {connectionType}</div>
+      <div>
+        Status: {connectionState} via {connectionType}
+      </div>
       <button onClick={sendMessage}>Send Message</button>
       <button onClick={disconnect}>Disconnect</button>
       <button onClick={connect}>Connect</button>
@@ -138,18 +134,22 @@ Visit these URLs to test the different connection methods:
 ## Future Improvements
 
 1. **WebSocket Protocol Enhancement**
+
    - Implement a proper subprotocol for structured message exchange
    - Add message acknowledgments for guaranteed delivery
 
 2. **Persistent Message Queue**
+
    - Store messages in localStorage during disconnections
    - Sync message states across browser tabs
 
 3. **Connection Analytics**
+
    - Track connection quality metrics
    - Analyze patterns of connection failures
 
 4. **More Intelligent Reconnection**
+
    - Adapt reconnection strategies based on failure patterns
    - Prioritize connection methods based on observed performance
 

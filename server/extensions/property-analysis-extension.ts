@@ -51,8 +51,6 @@ export class PropertyAnalysisAIExtension extends AIExtension {
    * Activate the extension
    */
   public async activate(): Promise<void> {
-    console.log('PropertyAnalysisAIExtension activated');
-
     // Register event listeners
     this.subscribeToAgentMessages();
 
@@ -64,8 +62,6 @@ export class PropertyAnalysisAIExtension extends AIExtension {
    * Deactivate the extension
    */
   public async deactivate(): Promise<void> {
-    console.log('PropertyAnalysisAIExtension deactivated');
-
     // Unregister capabilities
     this.agentProtocol.unregisterCapabilities(this.id);
 
@@ -79,7 +75,6 @@ export class PropertyAnalysisAIExtension extends AIExtension {
   private async loadSettings(): Promise<void> {
     try {
       // In a real implementation, this would load the settings from storage
-      console.log('Loading property analysis extension settings');
     } catch (error) {
       console.error('Error loading PropertyAnalysisAIExtension settings:', error);
     }

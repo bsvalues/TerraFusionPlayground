@@ -120,11 +120,9 @@ const ConflictManager: React.FC<ConflictManagerProps> = ({
 
     // Log performance
     const totalTime = performance.now() - startTime.current;
-    console.log(
-      `[Performance] ConflictManager for ${conflictId} initialized in ${totalTime.toFixed(2)}ms`
+    }ms`
     );
-    console.log(
-      `[Performance] Diff generation took ${diffGenerationTime ? diffGenerationTime.toFixed(2) : 'N/A'}ms for ${diffs.length} differences`
+    : 'N/A'}ms for ${diffs.length} differences`
     );
   }, [local, remote, conflictId, computeFieldDiffs, diffGenerationTime]);
 
@@ -137,8 +135,7 @@ const ConflictManager: React.FC<ConflictManagerProps> = ({
     );
 
     const selectionEnd = performance.now();
-    console.log(
-      `[Performance] Field selection for ${field} took ${(selectionEnd - selectionStart).toFixed(2)}ms`
+    .toFixed(2)}ms`
     );
   }, []);
 
@@ -186,8 +183,7 @@ const ConflictManager: React.FC<ConflictManagerProps> = ({
     }
 
     const resolveEnd = performance.now();
-    console.log(
-      `[Performance] Conflict resolution took ${(resolveEnd - resolveStart).toFixed(2)}ms`
+    .toFixed(2)}ms`
     );
 
     // Call onResolve callback
@@ -404,3 +400,4 @@ const MonitoredConflictManager: React.FC<ConflictManagerProps> = props => (
 );
 
 export default MonitoredConflictManager;
+

@@ -167,7 +167,6 @@ export class ApiCatalogManager extends EventEmitter {
    * Initialize the API catalog
    */
   public initialize(): void {
-    console.log('Initializing API catalog');
     this.emit('initialized');
   }
 
@@ -186,7 +185,7 @@ export class ApiCatalogManager extends EventEmitter {
 
     this.apis.set(id, newApi);
 
-    console.log(`API registered: ${newApi.name} (${newApi.type})`);
+    console.log(`Registered API: ${newApi.name} (${newApi.id})`);
     this.emit('api:registered', newApi);
 
     return newApi;
@@ -214,7 +213,7 @@ export class ApiCatalogManager extends EventEmitter {
 
     this.apis.set(id, updatedApi);
 
-    console.log(`API updated: ${updatedApi.name} (${updatedApi.id})`);
+    console.log(`Updated API: ${updatedApi.name} (${updatedApi.id})`);
     this.emit('api:updated', updatedApi);
 
     return updatedApi;
@@ -246,7 +245,6 @@ export class ApiCatalogManager extends EventEmitter {
     api.endpoints = [...(api.endpoints || []), newEndpoint];
     api.updatedAt = new Date();
 
-    console.log(`Endpoint added: ${newEndpoint.method} ${newEndpoint.path}`);
     this.emit('endpoint:added', { api, endpoint: newEndpoint });
 
     return newEndpoint;
@@ -281,7 +279,6 @@ export class ApiCatalogManager extends EventEmitter {
     api.graphqlOperations = [...(api.graphqlOperations || []), newOperation];
     api.updatedAt = new Date();
 
-    console.log(`GraphQL operation added: ${newOperation.type} ${newOperation.name}`);
     this.emit('graphql-operation:added', { api, operation: newOperation });
 
     return newOperation;
@@ -316,7 +313,6 @@ export class ApiCatalogManager extends EventEmitter {
     api.websocketEvents = [...(api.websocketEvents || []), newEvent];
     api.updatedAt = new Date();
 
-    console.log(`WebSocket event added: ${newEvent.name}`);
     this.emit('websocket-event:added', { api, event: newEvent });
 
     return newEvent;
@@ -335,7 +331,7 @@ export class ApiCatalogManager extends EventEmitter {
 
     this.sdks.set(id, newSDK);
 
-    console.log(`SDK registered: ${newSDK.name} (${newSDK.language})`);
+    console.log(`Registered SDK: ${newSDK.name} (${newSDK.id})`);
     this.emit('sdk:registered', newSDK);
 
     return newSDK;
@@ -361,7 +357,6 @@ export class ApiCatalogManager extends EventEmitter {
     api.sdks = [...(api.sdks || []), sdk];
     api.updatedAt = new Date();
 
-    console.log(`SDK ${sdk.name} linked to API ${api.name}`);
     this.emit('sdk:linked', { api, sdk });
 
     return true;
@@ -554,7 +549,6 @@ export class ApiCatalogManager extends EventEmitter {
       }
     }
 
-    console.log(`OpenAPI spec generated for ${api.name}`);
     this.emit('openapi:generated', { api, spec });
 
     return spec;
@@ -642,7 +636,6 @@ export class ApiCatalogManager extends EventEmitter {
       });
     }
 
-    console.log(`Documentation generated for ${api.name}`);
     this.emit('documentation:generated', { api, documentation });
 
     return documentation;

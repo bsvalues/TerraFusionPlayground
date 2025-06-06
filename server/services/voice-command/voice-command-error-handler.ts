@@ -84,10 +84,6 @@ export class VoiceCommandErrorHandler {
    * Handle command not found error
    */
   async handleCommandNotFound(rawCommand: string, contextId?: string): Promise<ErrorResponse> {
-    console.log(
-      `Handling command not found: "${rawCommand}" in context "${contextId || 'global'}"`
-    );
-
     // Try to correct the command using fuzzy matching
     const correctedCommand = await this.attemptCommandCorrection(rawCommand);
 
@@ -119,7 +115,8 @@ export class VoiceCommandErrorHandler {
     possibleIntents: string[]
   ): Promise<ErrorResponse> {
     console.log(
-      `Handling ambiguous command: "${rawCommand}" with possible intents: ${possibleIntents.join(', ')}`
+      `Ambiguous command detected: "${rawCommand}" with possible intents:`,
+      possibleIntents
     );
 
     return {
@@ -138,8 +135,6 @@ export class VoiceCommandErrorHandler {
     missingParam: string,
     commandType: VoiceCommandType
   ): Promise<ErrorResponse> {
-    console.log(`Handling missing parameter: "${missingParam}" for command "${rawCommand}"`);
-
     // Get help content for this command type
     const helpContent = await voiceCommandHelpService.getHelpContentByCommandType(
       commandType,
@@ -178,8 +173,6 @@ export class VoiceCommandErrorHandler {
     value: string,
     validValues?: string[]
   ): Promise<ErrorResponse> {
-    console.log(`Handling invalid parameter: "${param}" with value "${value}"`);
-
     let suggestions = [`The value "${value}" is not valid for ${param}`];
 
     if (validValues && validValues.length > 0) {
@@ -200,10 +193,6 @@ export class VoiceCommandErrorHandler {
     rawCommand: string,
     permissionNeeded: string
   ): Promise<ErrorResponse> {
-    console.log(
-      `Handling permission error: needs "${permissionNeeded}" for command "${rawCommand}"`
-    );
-
     return {
       status: VoiceCommandStatus.FAILED,
       errorMessage: "You don't have permission for this command",
@@ -235,8 +224,6 @@ export class VoiceCommandErrorHandler {
    * Handle rate limit error
    */
   async handleRateLimitError(rawCommand: string): Promise<ErrorResponse> {
-    console.log(`Handling rate limit error for command "${rawCommand}"`);
-
     return {
       status: VoiceCommandStatus.FAILED,
       errorMessage: 'Too many commands too quickly',

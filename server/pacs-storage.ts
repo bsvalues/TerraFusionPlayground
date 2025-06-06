@@ -35,21 +35,13 @@ export async function getAllPacsModules(
   // If no modules in memory, try to fetch from database
   try {
     // Connect to database using DATABASE_URL
-    console.log(
-      'Connecting to database with URL:',
-      process.env.DATABASE_URL ? 'URL exists' : 'URL is missing'
-    );
     // Use direct import since we're now importing pg at the top level
     const { Pool } = pg;
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
     });
-    console.log('Database pool created');
-
     // Query the database
-    console.log('Attempting to connect to database...');
     const client = await pool.connect();
-    console.log('Database connection established successfully');
     try {
       const result = await client.query('SELECT * FROM pacs_modules ORDER BY module_name');
 
@@ -254,20 +246,12 @@ export async function upsertPacsModule(
 ): Promise<PacsModule> {
   try {
     // Connect to database using DATABASE_URL
-    console.log(
-      'Upserting module, connecting to database with URL:',
-      process.env.DATABASE_URL ? 'URL exists' : 'URL is missing'
-    );
     // Use direct import since we're now importing pg at the top level
     const { Pool } = pg;
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
     });
-    console.log('Database pool created for upsert');
-
-    console.log('Attempting to connect to database for upsert...');
     const client = await pool.connect();
-    console.log('Database connection established successfully for upsert');
     try {
       // Check if the module exists in the database
       const existingResult = await client.query(

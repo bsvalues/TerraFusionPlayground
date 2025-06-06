@@ -262,8 +262,6 @@ export function registerWebVitalsRoutes(router: Router, storage: IStorage) {
       metricsService.incrementCounter(metric, labels);
 
       // Log the event for debugging purposes
-      console.log(`Custom metric recorded: ${metric}`, labels);
-
       return res.status(200).json({
         success: true,
         metric,

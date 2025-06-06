@@ -46,10 +46,6 @@ export class AgentVoiceCommandService {
     context: VoiceCommandContext = {}
   ): Promise<VoiceCommandResult> {
     try {
-      console.log(
-        `Processing voice command: "${command}" for agent: ${context.agentId || 'default'}`
-      );
-
       // Normalize the command
       const normalizedCommand = command.trim().toLowerCase();
 
@@ -425,7 +421,7 @@ You can also ask specific questions about properties, valuations, or assessment 
       };
 
       // Log to console for debugging
-      console.log('Voice Command Log:', JSON.stringify(logData, null, 2));
+      );
 
       // Try to use storage method if it exists
       if (this.storage.createSystemActivity) {
@@ -454,11 +450,7 @@ You can also ask specific questions about properties, valuations, or assessment 
   private logToAnalytics(command: string, context: VoiceCommandContext): void {
     // This would integrate with your analytics system
     // For now, we'll just log to console
-    console.log('Voice Analytics:', {
-      type: 'voice_interaction',
-      command: command,
-      agentId: context.agentId || 'default',
-      timestamp: Date.now(),
+    ,
     });
   }
 }
@@ -477,3 +469,4 @@ export function getAgentVoiceCommandService(): AgentVoiceCommandService {
   }
   return agentVoiceCommandService;
 }
+

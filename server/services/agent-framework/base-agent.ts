@@ -111,7 +111,7 @@ export abstract class BaseAgent {
     try {
       // Registration logic would go here
       // For now, we'll just log it
-      console.log(`Agent ${this.config.name} (${this.id}) registered with the system`);
+      registered with the system`);
     } catch (error) {
       console.error('Error registering agent:', error);
       this.status = 'error';
@@ -127,12 +127,11 @@ export abstract class BaseAgent {
       this.config.capabilities.forEach(capability => {
         if (typeof capability === 'string') {
           // String-based capability registration
-          console.log(`Registered capability: ${capability} (implementation needed)`);
+          `);
         } else {
           // Object-based capability with handler
           this.capabilityHandlers.set(capability.name, capability.handler);
-          console.log(`Registered capability with handler: ${capability.name}`);
-        }
+          }
       });
     }
   }
@@ -167,8 +166,7 @@ export abstract class BaseAgent {
     handler: (message: any) => Promise<any>
   ): void {
     this.messageHandlers.set(messageType, handler);
-    console.log(`Registered message handler for ${messageType}`);
-  }
+    }
 
   /**
    * Handle an incoming message
@@ -307,3 +305,4 @@ export abstract class BaseAgent {
     }
   }
 }
+

@@ -36,8 +36,6 @@ export class PostgresConverter extends BaseConverter {
     targetConfig: DatabaseConnectionConfig,
     customInstructions?: string
   ): Promise<MigrationPlan> {
-    console.log('Generating PostgreSQL migration plan...');
-
     // Ensure we have a data type mapping
     if (!this.dataTypeMapping) {
       this.dataTypeMapping = await this.getDataTypeMapping();
@@ -135,8 +133,6 @@ export class PostgresConverter extends BaseConverter {
     migrationPlan: MigrationPlan,
     targetConfig: DatabaseConnectionConfig
   ): Promise<string> {
-    console.log('Generating PostgreSQL migration script...');
-
     const schemaName = targetConfig.schema || 'public';
 
     // Start building the script
@@ -278,8 +274,6 @@ export class PostgresConverter extends BaseConverter {
     migrationPlan: MigrationPlan,
     options: MigrationOptions = {}
   ): Promise<MigrationResult> {
-    console.log('Executing PostgreSQL migration...');
-
     // This would connect to both databases and perform the migration
     // For this implementation, we'll delegate to the DataMigrationService
 
@@ -312,8 +306,6 @@ export class PostgresConverter extends BaseConverter {
     migrationPlan: MigrationPlan,
     migrationResult: MigrationResult
   ): Promise<ValidationResult> {
-    console.log('Validating PostgreSQL migration...');
-
     // This would connect to both databases and validate the migration
     // For now, this is a placeholder
 
@@ -1113,8 +1105,6 @@ export class PostgresConverter extends BaseConverter {
       return updatedPlan;
     } catch (error) {
       console.error('Error parsing AI refined migration plan:', error);
-      console.log('AI response:', response);
-
       // Return the original plan
       return migrationPlan;
     }

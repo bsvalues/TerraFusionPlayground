@@ -27,7 +27,7 @@
  * Run with: node test-connection-manager.cjs
  */
 
-console.log('Running simplified ConnectionManager tests...');
+// console.log('Running simplified ConnectionManager tests...');
 
 // Mock document object
 global.document = {
@@ -155,14 +155,14 @@ async function runTests() {
       results.failed++;
       const error = new Error(message);
       results.errors.push(error);
-      console.error(`❌ FAILED: ${message}`);
+      // console.error(`❌ FAILED: ${message}`);
       return false;
     }
   }
 
   // Setup - Load the ConnectionManager implementation
   try {
-    console.log('Loading ConnectionManager implementation...');
+    // console.log('Loading ConnectionManager implementation...');
     // This is where we would normally load the ConnectionManager module
     // For now, let's create a simple stub that matches our tests
     
@@ -212,7 +212,7 @@ async function runTests() {
         
         ws.addEventListener('error', () => {
           if (this.state.retries >= this.config.maxRetries) {
-            console.log('Max WebSocket retries reached, trying SSE fallback');
+            // console.log('Max WebSocket retries reached, trying SSE fallback');
             this.connectSSE();
           } else {
             this.scheduleReconnect();
@@ -252,7 +252,7 @@ async function runTests() {
         const backoffTime = this.state.backoffTime;
         this.state.backoffTime = Math.min(backoffTime * 2, 30000); // Cap at 30 seconds
         
-        console.log(`Scheduling reconnect in ${backoffTime}ms (retry ${this.state.retries})`);
+        // console.log(`Scheduling reconnect in ${backoffTime}ms (retry ${this.state.retries})`);
         this.state.reconnectTimer = setTimeout(() => {
           this.connectWebSocket();
         }, backoffTime);
@@ -277,15 +277,15 @@ async function runTests() {
       }
     };
     
-    console.log('ConnectionManager loaded successfully');
+    // console.log('ConnectionManager loaded successfully');
   } catch (error) {
-    console.error('Failed to load ConnectionManager:', error);
+    // console.error('Failed to load ConnectionManager:', error);
     process.exit(1);
   }
 
   // Test 1: Basic initialization and connection
   try {
-    console.log('\n🧪 TEST 1: Basic initialization and connection');
+    // console.log('\n🧪 TEST 1: Basic initialization and connection');
     connectionManager = new ConnectionManager({
       wsUrl: 'wss://example.com/ws',
       sseUrl: 'https://example.com/sse',
@@ -311,16 +311,16 @@ async function runTests() {
     assert(connectionManager.getState().mode === 'websocket', 
       'After connection, mode should be "websocket"');
       
-    console.log('✅ TEST 1 PASSED');
+    // console.log('✅ TEST 1 PASSED');
   } catch (error) {
-    console.error('❌ TEST 1 FAILED:', error);
+    // console.error('❌ TEST 1 FAILED:', error);
     results.failed++;
     results.errors.push(error);
   }
 
   // Test 2: Backoff and retry
   try {
-    console.log('\n🧪 TEST 2: Backoff and retry mechanism');
+    // console.log('\n🧪 TEST 2: Backoff and retry mechanism');
     WebSocket.mockShouldSucceed = false; // Make connections fail
     connectionManager = new ConnectionManager({
       wsUrl: 'wss://example.com/ws',
@@ -333,43 +333,43 @@ async function runTests() {
     connectionManager.connectWebSocket();
     
     // Print initial state
-    console.log('Initial state:', connectionManager.getState());
+    // console.log('Initial state:', connectionManager.getState());
     
     // Wait for error and first retry 
     await new Promise(resolve => setTimeout(resolve, 50));
-    console.log('After initial connection fails:', connectionManager.getState());
+    // console.log('After initial connection fails:', connectionManager.getState());
     
     // Wait for retry to happen
     await new Promise(resolve => setTimeout(resolve, 150));
-    console.log('After first reconnect timer fires:', connectionManager.getState());
+    // console.log('After first reconnect timer fires:', connectionManager.getState());
     assert(connectionManager.getState().retries >= 1, 
       'After first failure, retries should be at least 1');
     
     // Wait for second retry
     await new Promise(resolve => setTimeout(resolve, 250));
-    console.log('After second reconnect timer fires:', connectionManager.getState());
+    // console.log('After second reconnect timer fires:', connectionManager.getState());
     assert(connectionManager.getState().retries >= 2, 
       'After second failure, retries should be at least 2');
     
     // Wait for third retry and SSE fallback
     await new Promise(resolve => setTimeout(resolve, 350));
-    console.log('After third reconnect timer fires:', connectionManager.getState());
+    // console.log('After third reconnect timer fires:', connectionManager.getState());
     
     // We can't check for SSE directly since our mock doesn't fully implement the ConnectionManager,
     // but in a real implementation, after max retries it would try SSE.
     assert(connectionManager.getState().retries === 3, 
       'After third failure, retries should be 3');
       
-    console.log('✅ TEST 2 PASSED');
+    // console.log('✅ TEST 2 PASSED');
   } catch (error) {
-    console.error('❌ TEST 2 FAILED:', error);
+    // console.error('❌ TEST 2 FAILED:', error);
     results.failed++;
     results.errors.push(error);
   }
 
   // Test 3: SSE Fallback
   try {
-    console.log('\n🧪 TEST 3: SSE Fallback after WebSocket failures');
+    // console.log('\n🧪 TEST 3: SSE Fallback after WebSocket failures');
     WebSocket.mockShouldSucceed = false; // Make WebSocket connections fail
     EventSource.mockShouldSucceed = true; // Make SSE connections succeed
     
@@ -387,31 +387,31 @@ async function runTests() {
     // Wait for WebSocket retries to fail and SSE to connect
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    console.log('✅ TEST 3 PASSED');
+    // console.log('✅ TEST 3 PASSED');
   } catch (error) {
-    console.error('❌ TEST 3 FAILED:', error);
+    // console.error('❌ TEST 3 FAILED:', error);
     results.failed++;
     results.errors.push(error);
   }
 
   // Test results
-  console.log('\n----- TEST RESULTS -----');
-  console.log(`PASSED: ${results.passed}`);
-  console.log(`FAILED: ${results.failed}`);
+  // console.log('\n----- TEST RESULTS -----');
+  // console.log(`PASSED: ${results.passed}`);
+  // console.log(`FAILED: ${results.failed}`);
   
   if (results.failed > 0) {
-    console.error('\nERRORS:');
+    // console.error('\nERRORS:');
     results.errors.forEach((error, index) => {
-      console.error(`${index + 1}. ${error.message}`);
+      // console.error(`${index + 1}. ${error.message}`);
     });
     process.exit(1);
   } else {
-    console.log('\nAll tests passed successfully!');
+    // console.log('\nAll tests passed successfully!');
   }
 }
 
 // Run the tests
 runTests().catch(error => {
-  console.error('Unexpected error running tests:', error);
+  // console.error('Unexpected error running tests:', error);
   process.exit(1);
 });

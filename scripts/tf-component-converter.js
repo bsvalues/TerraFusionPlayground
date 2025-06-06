@@ -195,9 +195,9 @@ function processFile(filePath) {
   }
 
   try {
-    let content = fs.readFileSync(filePath, 'utf8');
+    const content = fs.readFileSync(filePath, 'utf8');
     let modifiedContent = content;
-    let changes = [];
+    const changes = [];
 
     // Process hex color replacements
     for (const [hexColor, token] of Object.entries(colorTokenMappings)) {

@@ -45,16 +45,6 @@ export default function Terrain3DDemo() {
     if (!mapRef.current || mapInstanceRef.current) return;
 
     // Debug: Log token info from context
-    console.log('Mapbox token available from context:', mapboxTokenAvailable);
-    console.log('Using OpenStreetMap fallback:', useOpenStreetMapFallback);
-    console.log('Map container element exists:', !!mapRef.current);
-    console.log(
-      'Map container dimensions:',
-      mapRef.current?.clientWidth,
-      'x',
-      mapRef.current?.clientHeight
-    );
-
     try {
       setMapStatus('loading');
       setStatusMessage('Loading terrain map tiles...');
@@ -68,21 +58,18 @@ export default function Terrain3DDemo() {
 
       // Try to use Mapbox if token is available and we're not in fallback mode
       if (mapboxToken && !useOpenStreetMapFallback) {
-        console.log('Attempting to use Mapbox with token');
         setStatusMessage('Loading Mapbox terrain data...');
         tileSource.setUrl(
           `https://api.mapbox.com/styles/v1/mapbox/outdoors-v11/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`
         );
         tileSource.setAttributions('© Mapbox, © OpenStreetMap');
       } else {
-        console.log('Using OpenStreetMap tiles');
       }
 
       const mapLayer = new TileLayer({
         source: tileSource,
       });
 
-      console.log('Creating OpenLayers map instance');
       const map = new Map({
         target: mapRef.current,
         layers: [mapLayer],
@@ -94,7 +81,6 @@ export default function Terrain3DDemo() {
 
       // Set up event listeners for map
       map.once('rendercomplete', () => {
-        console.log('Map render complete');
         setMapStatus('loaded');
         setStatusMessage('Terrain visualization loaded successfully');
         setMapLoaded(true);
@@ -103,10 +89,8 @@ export default function Terrain3DDemo() {
       map.getView().on('change:resolution', () => {
         // Update zoom level when it changes
         const newZoom = Math.round(map.getView().getZoom() || initialZoom);
-        console.log('Zoom level changed:', newZoom);
       });
 
-      console.log('Map instance created successfully');
       mapInstanceRef.current = map;
 
       // Add 3D effect to map container
@@ -116,7 +100,6 @@ export default function Terrain3DDemo() {
       // Force a map resize to ensure proper rendering
       setTimeout(() => {
         if (map) {
-          console.log('Triggering map resize');
           map.updateSize();
         }
       }, 100);

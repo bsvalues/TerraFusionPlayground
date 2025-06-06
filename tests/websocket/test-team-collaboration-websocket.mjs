@@ -14,15 +14,15 @@ import { WebSocket } from 'ws';
 // Determine server URL from environment
 const port = process.env.PORT || 5000;
 const serverUrl = `http://localhost:${port}`;
-console.log(`Running in ESM environment - Team Collaboration WebSocket Test`);
-console.log(`Using port ${port}`);
+// console.log(`Running in ESM environment - Team Collaboration WebSocket Test`);
+// console.log(`Using port ${port}`);
 
 function connectWebSocket() {
-  console.log('Connecting to WebSocket server...');
+  // console.log('Connecting to WebSocket server...');
   
   // Use the /ws/team-collaboration endpoint for team collaboration
   const wsUrl = `ws://localhost:${port}/ws/team-collaboration`;
-  console.log(`WebSocket URL: ${wsUrl}`);
+  // console.log(`WebSocket URL: ${wsUrl}`);
   
   // Add request headers for better compatibility
   const socket = new WebSocket(wsUrl, [], {
@@ -43,12 +43,12 @@ function connectWebSocket() {
   
   // Event handlers
   socket.on('open', () => {
-    console.log('WebSocket connection established');
+    // console.log('WebSocket connection established');
   });
   
   socket.on('message', (data) => {
     const message = JSON.parse(data.toString());
-    console.log('Received message:', message);
+    // console.log('Received message:', message);
     
     // Handle authentication
     if (message.type === 'auth_required') {
@@ -59,7 +59,7 @@ function connectWebSocket() {
     
     // Handle authentication success
     if (message.type === 'auth_success') {
-      console.log('Authentication successful!');
+      // console.log('Authentication successful!');
       
       // After successful authentication, start sending test messages
       setTimeout(() => sendChatMessage(socket, 'session_1', 1, 'Hello team! This is a test message from the Frontend Developer.'), 1000);
@@ -73,16 +73,16 @@ function connectWebSocket() {
     
     // Handle session state
     if (message.type === 'session_state') {
-      console.log('Current users in session:', message.activeUsers);
+      // console.log('Current users in session:', message.activeUsers);
     }
   });
   
   socket.on('error', (error) => {
-    console.error('WebSocket error:', error);
+    // console.error('WebSocket error:', error);
   });
   
   socket.on('close', (code, reason) => {
-    console.log(`WebSocket connection closed: ${code} ${reason}`);
+    // console.log(`WebSocket connection closed: ${code} ${reason}`);
   });
   
   return socket;
@@ -90,7 +90,7 @@ function connectWebSocket() {
 
 // Helper function to send authentication message
 function sendAuthentication(socket, connectionId, sessionId, userId, userName, userRole) {
-  console.log(`Authenticating as ${userName} (ID: ${userId})...`);
+  // console.log(`Authenticating as ${userName} (ID: ${userId})...`);
   
   const authMessage = {
     type: 'authenticate',
@@ -106,7 +106,7 @@ function sendAuthentication(socket, connectionId, sessionId, userId, userName, u
 
 // Helper function to send chat message
 function sendChatMessage(socket, sessionId, senderId, content) {
-  console.log(`Sending chat message: ${content}`);
+  // console.log(`Sending chat message: ${content}`);
   
   const chatMessage = {
     type: 'chat_message',
@@ -121,7 +121,7 @@ function sendChatMessage(socket, sessionId, senderId, content) {
 
 // Helper function to send status update
 function sendStatusUpdate(socket, sessionId, senderId, status, activity) {
-  console.log(`Sending status update: ${status} - ${activity}`);
+  // console.log(`Sending status update: ${status} - ${activity}`);
   
   const statusMessage = {
     type: 'status_update',
@@ -137,7 +137,7 @@ function sendStatusUpdate(socket, sessionId, senderId, status, activity) {
 
 // Helper function to assign task
 function assignTask(socket, sessionId, senderId, assigneeId, taskId, taskTitle) {
-  console.log(`Assigning task "${taskTitle}" to user ${assigneeId}`);
+  // console.log(`Assigning task "${taskTitle}" to user ${assigneeId}`);
   
   const taskMessage = {
     type: 'task_assigned',
@@ -157,23 +157,23 @@ function assignTask(socket, sessionId, senderId, assigneeId, taskId, taskTitle) 
 // Main test function
 async function runTest() {
   try {
-    console.log('Starting Team Collaboration WebSocket test...');
+    // console.log('Starting Team Collaboration WebSocket test...');
     
     // Connect to WebSocket and keep connection open
     const socket = connectWebSocket();
     
     // Keep the script running for 10 seconds
     setTimeout(() => {
-      console.log('Test completed, closing connection...');
+      // console.log('Test completed, closing connection...');
       socket.close();
-      console.log('---------------------------------------');
-      console.log('Team collaboration WebSocket test completed');
-      console.log('---------------------------------------');
+      // console.log('---------------------------------------');
+      // console.log('Team collaboration WebSocket test completed');
+      // console.log('---------------------------------------');
       process.exit(0);
     }, 10000);
     
   } catch (error) {
-    console.error('Test failed:', error);
+    // console.error('Test failed:', error);
     process.exit(1);
   }
 }

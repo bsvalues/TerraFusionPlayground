@@ -179,13 +179,11 @@ export function AgentControlPanel() {
     fetchAgents();
     fetchTasks();
 
-    console.log(`[Agent UI] Setting up polling with connection status: ${connectionStatus}`);
-
     // Always poll for data regardless of WebSocket connection status
     // This ensures the UI stays responsive even if the WebSocket is having issues
     const pollingInterval = setInterval(
       () => {
-        console.log(`[Agent UI] Polling for data (connection: ${connectionStatus})`);
+        console.log(`Agent control panel polling (connection: ${connectionStatus})`);
         fetchAgents();
         fetchTasks();
       },

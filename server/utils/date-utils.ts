@@ -42,6 +42,10 @@ export function formatDate(date: Date, format: string = 'MM/DD/YYYY'): string {
         'December',
       ];
       return `${monthNames[date.getMonth()]} ${date.getDate()}, ${year}`;
+    case 'quarter': {
+      const months = Math.floor((date.getMonth() + 2) / 3);
+      return months <= 1 ? `${months} quarter ago` : `${months} quarters ago`;
+    }
     default:
       return `${month}/${day}/${year}`;
   }

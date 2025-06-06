@@ -174,8 +174,7 @@ export function initWebVitalsReporting(options: WebVitalsReportingOptions = {}):
       }
 
       if (debug) {
-        console.log('[WebVitals] Report sent successfully:', report);
-      }
+        }
     } catch (error) {
       if (debug) {
         console.error('[WebVitals] Failed to send report:', error);
@@ -216,7 +215,7 @@ export function initWebVitalsReporting(options: WebVitalsReportingOptions = {}):
     }
 
     if (debug) {
-      console.log(`[WebVitals] ${metric.name}: ${metric.value} (${rating})`);
+      `);
     }
   };
 
@@ -238,8 +237,7 @@ export function initWebVitalsReporting(options: WebVitalsReportingOptions = {}):
 
   // Debug logging
   if (debug) {
-    console.log('[WebVitals] Monitoring initialized with options:', options);
-  }
+    }
 }
 
 // Get Web Vitals summary
@@ -280,3 +278,4 @@ export function sendOneTimeReport(): void {
     console.error('[WebVitals] Failed to send one-time report:', error);
   });
 }
+

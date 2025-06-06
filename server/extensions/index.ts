@@ -21,9 +21,7 @@ export function initializeExtensionSystem(storage: IStorage): ExtensionRegistry 
     // Initialize the registry
     registry
       .initialize()
-      .then(() => {
-        console.log('Extension system initialized successfully');
-      })
+      .then(() => {})
       .catch(error => {
         console.error('Failed to initialize extension system:', error);
       });

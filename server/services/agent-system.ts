@@ -92,8 +92,6 @@ export class AgentSystem {
     }
 
     try {
-      console.log('Initializing Agent System...');
-
       // Log initialization
       await this.storage.createSystemActivity({
         activity_type: 'agent_system_init',
@@ -120,7 +118,6 @@ export class AgentSystem {
       });
 
       // Create and register agents
-      console.log('Creating Property Assessment Agent...');
       const propertyAssessmentAgent = new PropertyAssessmentAgent(
         this.storage,
         this.mcpService,
@@ -129,15 +126,12 @@ export class AgentSystem {
       );
       this.registerAgent('property_assessment', propertyAssessmentAgent);
 
-      console.log('Creating Data Ingestion Agent...');
       const ingestionAgent = new IngestionAgent(this.storage, this.mcpService, ftpService);
       this.registerAgent('data_ingestion', ingestionAgent);
 
-      console.log('Creating Reporting Agent...');
       const reportingAgent = new ReportingAgent(this.storage, this.mcpService);
       this.registerAgent('reporting', reportingAgent);
 
-      console.log('Creating Spatial GIS Agent...');
       const spatialGisAgent = new SpatialGISAgent(
         this.storage,
         this.mcpService,
@@ -146,7 +140,6 @@ export class AgentSystem {
       );
       this.registerAgent('spatial_gis', spatialGisAgent);
 
-      console.log('Creating Market Analysis Agent...');
       const marketAnalysisAgent = new MarketAnalysisAgent(
         this.storage,
         this.mcpService,
@@ -155,7 +148,6 @@ export class AgentSystem {
       );
       this.registerAgent('market_analysis', marketAnalysisAgent);
 
-      console.log('Creating FTP Data Agent...');
       const ftpDataAgent = new FtpDataAgent(this.storage, this.mcpService);
       this.registerAgent('ftp_data', ftpDataAgent);
 
@@ -163,11 +155,9 @@ export class AgentSystem {
       const notificationService = new NotificationService(this.storage);
 
       // Create the compliance agent for regulatory compliance
-      console.log('Creating Compliance Agent...');
       const complianceAgent = new ComplianceAgentImpl(this.storage, notificationService);
       this.registerAgent('compliance', complianceAgent);
 
-      console.log('Creating Data Quality Agent...');
       const propertyValidationEngine = new PropertyValidationEngine(this.storage);
       const dataQualityAgent = new DataQualityAgent(
         this.storage,
@@ -177,13 +167,10 @@ export class AgentSystem {
       this.registerAgent('data_quality', dataQualityAgent);
 
       // Create advanced services for superintelligence agent
-      console.log('Creating Market Prediction Model...');
       const marketPredictionModel = new MarketPredictionModel(this.storage, llmService);
 
-      console.log('Creating Risk Assessment Engine...');
       const riskAssessmentEngine = new RiskAssessmentEngine(this.storage, llmService);
 
-      console.log('Creating Superintelligence Agent...');
       const superintelligenceAgent = new SuperintelligenceAgent(
         this.storage,
         this.mcpService,
@@ -197,22 +184,15 @@ export class AgentSystem {
       // Initialize agents
       for (const [name, agent] of this.agents.entries()) {
         try {
-          console.log(`Initializing agent: ${name}...`);
           await agent.initialize();
-          console.log(`Agent ${name} initialized successfully.`);
         } catch (error) {
           console.error(`Error initializing agent ${name}:`, error);
         }
       }
 
       // Initialize the command structure
-      console.log('Initializing Command Structure...');
       await this.commandStructure.initialize();
-      console.log('Command Structure initialized successfully.');
-
       this.isInitialized = true;
-      console.log('Agent System initialized successfully.');
-
       // Log successful initialization
       await this.storage.createSystemActivity({
         activity_type: 'agent_system_ready',
@@ -285,7 +265,6 @@ export class AgentSystem {
         return agent.getStatus();
       } else {
         // Fallback if getStatus method is not available
-        console.log(`Agent ${agentId} does not have getStatus method, using fallback status`);
         return {
           id:
             typeof agent.id !== 'undefined'
@@ -321,9 +300,7 @@ export class AgentSystem {
   public async startAllAgents(): Promise<void> {
     for (const [name, agent] of this.agents.entries()) {
       try {
-        console.log(`Starting agent: ${name}...`);
         await agent.start();
-        console.log(`Agent ${name} started successfully.`);
       } catch (error) {
         console.error(`Error starting agent ${name}:`, error);
       }
@@ -336,9 +313,7 @@ export class AgentSystem {
   public async stopAllAgents(): Promise<void> {
     for (const [name, agent] of this.agents.entries()) {
       try {
-        console.log(`Stopping agent: ${name}...`);
         await agent.stop();
-        console.log(`Agent ${name} stopped successfully.`);
       } catch (error) {
         console.error(`Error stopping agent ${name}:`, error);
       }
@@ -388,7 +363,6 @@ export class AgentSystem {
             performanceScore:
               typeof agent.performanceScore !== 'undefined' ? agent.performanceScore : 0,
           };
-          console.log(`Created fallback status for agent ${name} due to missing getStatus method`);
         }
       } catch (error) {
         console.error(`Error getting status for agent ${name}:`, error);

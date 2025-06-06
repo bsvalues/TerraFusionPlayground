@@ -9,7 +9,6 @@ import { Map } from 'ol';
 
 // Safe dynamic import function for ol-ext modules
 export async function importOlExt(modulePath: string) {
-  console.log(`Attempted to import ol-ext/${modulePath} but using fallback functionality instead`);
   return {
     default: null,
     // Mock additional exports as needed
@@ -20,19 +19,16 @@ export async function importOlExt(modulePath: string) {
 export const olExtFallbacks = {
   // Fallback for ElevationFilter
   createElevationFilter: (options: any) => {
-    console.log('Using fallback elevation filter with options:', options);
     // Return a minimal compatible interface
     return {
-      setElevation: (value: number) => console.log(`Setting elevation to ${value}`),
-      setColor: (color: any) => console.log(`Setting color to`, color),
-      setLighting: (options: any) => console.log(`Setting lighting`, options),
+      setElevation: (value: number) => ,
+      setColor: (color: any) => ,
+      setLighting: (options: any) => ,
     };
   },
 
   // Fallback for Elevation control
   createElevationControl: (options: any) => {
-    console.log('Using fallback elevation control with options:', options);
-
     // Create a basic control that can be added to a map
     const controlDiv = document.createElement('div');
     controlDiv.className = 'ol-elevation ol-unselectable ol-control';
@@ -63,9 +59,9 @@ export const olExtFallbacks = {
     // Add mock methods that the original control would have
     const mockControl = Object.assign(control, {
       getProfile: () => [],
-      setGeometry: () => console.log('Setting geometry on elevation control'),
-      draw: () => console.log('Drawing elevation profile'),
-      clear: () => console.log('Clearing elevation profile'),
+      setGeometry: () => ,
+      draw: () => ,
+      clear: () => ,
     });
 
     return mockControl;
@@ -73,8 +69,6 @@ export const olExtFallbacks = {
 
   // Fallback for Contour source
   createContourSource: (options: any) => {
-    console.log('Using fallback contour source with options:', options);
-
     // Return a minimal compatible interface
     return {
       getFeatures: () => [],
@@ -95,3 +89,4 @@ export interface MapProviderOptions {
 }
 
 export type MapProviderType = 'mapbox' | 'google' | 'qgis' | 'osm';
+

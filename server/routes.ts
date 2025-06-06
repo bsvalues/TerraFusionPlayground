@@ -152,24 +152,13 @@ import { initializeAICodeAssistant } from './scripts/initialize-ai-code-assistan
 // Initialize agent systems
 (async () => {
   try {
-    console.log('Initializing Agent System...');
     await agentSystem.initialize();
-    console.log('Agent System initialization completed successfully');
-
-    console.log('Initializing Agent Factory...');
     await agentFactory.initialize();
-    console.log('Agent Factory initialized successfully');
-
     // Initialize team agents (Frontend, Backend, Designer, QA, Assessor)
-    console.log('Initializing Team Agents...');
     await initializeTeamAgents();
-    console.log('Team Agents initialization completed successfully');
-
     // Initialize AI Code Assistant
-    console.log('Initializing AI Code Assistant...');
     await initializeAICodeAssistant();
-    console.log('AI Code Assistant initialized successfully');
-  } catch (error) {
+    } catch (error) {
     console.error('Failed to initialize Agent Systems:', error);
   }
 })();
@@ -355,8 +344,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Client connection ID
     const clientId =
       req.query.clientId || `client_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-    console.log(`SSE client connected: ${clientId}`);
-
     // Function to send messages to this client
     const sendEvent = data => {
       res.write(`data: ${JSON.stringify(data)}\n\n`);
@@ -390,7 +377,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Cleanup when client disconnects
     req.on('close', () => {
-      console.log(`SSE client disconnected: ${clientId}`);
       clearInterval(heartbeatInterval);
       if (global.sseClients) {
         global.sseClients.delete(clientId);
@@ -548,10 +534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initialize GIS Agent Orchestration System
   try {
-    console.log('Initializing GIS Agent System with new implemented agents...');
     const gisOrchestrationService = await initializeGISAgentsWithService(storage);
-    console.log('GIS Agent System initialization completed successfully');
-
     // Note: The following specialized GIS agents have been implemented and are ready to use:
     // 1. Spatial Query Agent - handles spatial operations like intersections and buffering
     // 2. Data Conversion Agent - transforms various GIS data formats
@@ -1311,7 +1294,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // System Activities route
   app.get('/api/system-activities', async (req, res) => {
     try {
-      console.log('Getting system activities from storage');
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
 
       try {
@@ -1323,8 +1305,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ORDER BY timestamp DESC
           LIMIT ${limit}
         `);
-
-        console.log(`Retrieved ${result.rows.length} system activities directly from DB`);
 
         // Map result to match frontend expectations
         const activities = result.rows.map(row => ({
@@ -3254,8 +3234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   httpServer.on('upgrade', (request, socket, head) => {
     const { pathname } = new URL(request.url || '', `http://${request.headers.host}`);
     logger.debug(`[WebSocket] Upgrade request received for path: ${pathname}`);
-    console.log(`[WebSocket Debug] Upgrade request for path: ${pathname}`);
-  });
+    });
 
   logger.info('[WebSocket] MainWebSocketServer initialized successfully');
 
@@ -3307,7 +3286,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const pingAllClients = () => {
     wss.clients.forEach(ws => {
       if ((ws as any).isAlive === false) {
-        console.log('[WebSocket Server] Terminating dead connection');
         return ws.terminate();
       }
 
@@ -3327,8 +3305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Clean up interval when server closes
   wss.on('close', () => {
     clearInterval(heartbeatInterval);
-    console.log('[WebSocket Server] Server closed, heartbeat stopped');
-  });
+    });
 
   // HTTP fallback endpoint for sending messages when WebSocket is not available
   app.post('/api/ws-fallback/send', (req, res) => {
@@ -3340,8 +3317,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Log the message
-      console.log(`[HTTP Fallback] Message received from client ${clientId}:`, message);
-
       // Record a metric for the HTTP fallback usage
       metricsService.incrementCounter('websocket_fallback_total', {
         reason: 'message_sent_via_http',
@@ -3386,8 +3361,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       route: '/api/events',
     });
 
-    console.log(`[SSE] Client connected: ${clientId}`);
-
     // Send an initial connection message
     res.write(
       `data: ${JSON.stringify({
@@ -3410,7 +3383,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Clean up when the client disconnects
     req.on('close', () => {
-      console.log(`[SSE] Client disconnected: ${clientId}`);
       clearInterval(heartbeatInterval);
 
       // Record metrics about disconnection
@@ -3427,8 +3399,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   wss.on('connection', (ws, req) => {
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    console.log(`[WebSocket Server] Client ${clientId} connected to /ws from ${clientIp}`);
 
     // Set client metadata
     (ws as any).clientId = clientId;
@@ -3475,8 +3445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update isAlive status when pong received
       (ws as any).isAlive = true;
       (ws as any).lastActivity = Date.now();
-      console.log(`[WebSocket Server] Received pong from client ${clientId}`);
-    });
+      });
 
     // Record connection metrics
     metricsService.incrementCounter('websocket_connections_total', {
@@ -3498,8 +3467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Truncate excessive logs
           const logMessage =
             messageStr.length > 200 ? messageStr.substring(0, 200) + '...' : messageStr;
-          console.log(`[WebSocket Server] Received message from ${clientId}:`, logMessage);
-        } catch (logError) {
+          } catch (logError) {
           console.error(
             `[WebSocket Server] Error converting message to string for ${clientId}:`,
             logError
@@ -3637,10 +3605,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Better close handler with detailed logging
     ws.on('close', (code, reason) => {
       const reasonText = reason ? reason.toString() : 'No reason provided';
-      console.log(
-        `[WebSocket Server] Client ${clientId} disconnected. Code: ${code}, Reason: ${reasonText}`
-      );
-
       // Record disconnect metric with more context
       metricsService.incrementCounter('websocket_disconnections_total', {
         client_id: clientId,
@@ -3669,7 +3633,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Check if the client is still responding to pings
         if ((ws as any).isAlive === false) {
-          console.log(`[WebSocket Server] Client ${clientId} not responding to pings, terminating`);
           clearInterval((ws as any).pingInterval);
           return ws.terminate();
         }
@@ -3679,7 +3642,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Try to ping the client using WebSocket built-in ping frame
         try {
-          console.log(`[WebSocket Server] Sending ping to client ${clientId}`);
           ws.ping(Buffer.from(JSON.stringify({ timestamp: Date.now(), clientId })));
 
           // Also send an application-level ping message for clients that need it
@@ -3746,8 +3708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (ws.readyState !== WebSocket.OPEN) {
       const states = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
       const stateString = states[ws.readyState] || 'UNKNOWN';
-      console.log(
-        `[WebSocket Server] Cannot send message, connection not open (state: ${stateString}). Client: ${clientId}, TraceId: ${traceId}, Priority: ${priority}`
+      . Client: ${clientId}, TraceId: ${traceId}, Priority: ${priority}`
       );
 
       // Potentially retry high priority messages
@@ -3756,8 +3717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentRetry < maxRetries &&
         (priority === 'high' || ws.readyState === WebSocket.CONNECTING)
       ) {
-        console.log(
-          `[WebSocket Server] Scheduling retry (${currentRetry + 1}/${maxRetries}) for message to ${clientId} in ${retryDelay}ms`
+        for message to ${clientId} in ${retryDelay}ms`
         );
 
         setTimeout(() => {
@@ -3817,8 +3777,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Potentially retry for important messages
           if (retryEnabled && currentRetry < maxRetries && priority === 'high') {
-            console.log(
-              `[WebSocket Server] Scheduling retry (${currentRetry + 1}/${maxRetries}) after send error to ${clientId}`
+            after send error to ${clientId}`
             );
 
             setTimeout(() => {
@@ -3863,8 +3822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Potentially retry for important messages
       if (retryEnabled && currentRetry < maxRetries && priority === 'high') {
-        console.log(
-          `[WebSocket Server] Scheduling retry (${currentRetry + 1}/${maxRetries}) after error sending to ${clientId}`
+        after error sending to ${clientId}`
         );
 
         setTimeout(() => {
@@ -3894,15 +3852,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
 
       // Log all WebSocket upgrade attempts for debugging
-      console.log('[WebSocket Debug] Upgrade request for path:', pathname);
-
       // Only log detailed headers for our application paths (not Vite HMR)
       if (
         pathname === '/api/agents/ws' ||
         pathname === '/api/collaboration/ws' ||
         pathname === '/ws'
       ) {
-        console.log('[WebSocket Debug] Headers:', JSON.stringify(request.headers, null, 2));
+        );
       }
     } catch (error) {
       console.error('[WebSocket Debug] Error parsing upgrade request:', error);
@@ -3910,20 +3866,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Initialize agent communication services
-  console.log('Initializing Agent WebSocket service...');
   agentWebSocketService.initialize(httpServer);
-  console.log('Agent WebSocket service initialized');
-
   // Initialize Agent Health WebSocket service for real-time monitoring updates
-  console.log('Initializing Agent Health WebSocket service...');
   agentHealthWebSocketService.initialize(httpServer, storage, agentSystem);
-  console.log('Agent Health WebSocket service initialized');
-
   // Initialize Socket.IO service (preferred method for better compatibility)
-  console.log('Initializing Agent Socket.IO service...');
   agentSocketIOService.initialize(httpServer);
-  console.log('Agent Socket.IO service initialized');
-
   // Register REST API routes for the Socket.IO service
   const socketIORoutes = agentSocketIOService.getRestRoutes();
   app.post('/api/agents/socketio/auth', socketIORoutes.auth);
@@ -3932,18 +3879,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/agents/socketio/messages/pending', socketIORoutes.pendingMessages);
 
   // Initialize collaboration WebSocket service with the HTTP server
-  console.log('Initializing Collaboration WebSocket service...');
   initializeCollaborationWebSocketService(storage);
   collaborationWebSocketService.initialize(httpServer);
-  console.log('Collaboration WebSocket service initialized');
-
   // Initialize team collaboration WebSocket service with error handling
   try {
     const teamCollaborationWsService = new TeamCollaborationWebSocketService(httpServer, storage);
-    console.log('Team Collaboration WebSocket service initialized');
-  } catch (error) {
+    } catch (error) {
     console.error('Failed to initialize Team Collaboration WebSocket Service:', error);
   }
 
   return httpServer;
 }
+

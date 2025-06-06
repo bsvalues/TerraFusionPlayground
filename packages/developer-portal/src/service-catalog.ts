@@ -101,7 +101,6 @@ export class ServiceCatalogManager extends EventEmitter {
    * Initialize the service catalog
    */
   public initialize(): void {
-    console.log('Initializing service catalog');
     this.emit('initialized');
   }
 
@@ -122,7 +121,7 @@ export class ServiceCatalogManager extends EventEmitter {
 
     this.services.set(id, newService);
 
-    console.log(`Service registered: ${newService.name} (${newService.type})`);
+    `);
     this.emit('service:registered', newService);
 
     return newService;
@@ -150,7 +149,7 @@ export class ServiceCatalogManager extends EventEmitter {
 
     this.services.set(id, updatedService);
 
-    console.log(`Service updated: ${updatedService.name} (${updatedService.id})`);
+    `);
     this.emit('service:updated', updatedService);
 
     return updatedService;
@@ -180,7 +179,6 @@ export class ServiceCatalogManager extends EventEmitter {
 
     this.services.set(id, updatedService);
 
-    console.log(`Service health updated: ${updatedService.name} - ${status}`);
     this.emit('service:health-updated', {
       service: updatedService,
       oldStatus: service.healthStatus,
@@ -212,7 +210,6 @@ export class ServiceCatalogManager extends EventEmitter {
 
     service.updatedAt = new Date();
 
-    console.log(`Dependency added to ${service.name}: ${dependency.name}`);
     this.emit('service:dependency-added', { service, dependency });
 
     return service;
@@ -232,7 +229,6 @@ export class ServiceCatalogManager extends EventEmitter {
     service.dependencies = service.dependencies.filter(d => d.serviceId !== dependencyServiceId);
     service.updatedAt = new Date();
 
-    console.log(`Dependency removed from ${service.name}: ${dependencyServiceId}`);
     this.emit('service:dependency-removed', { service, dependencyServiceId });
 
     return service;
@@ -259,7 +255,6 @@ export class ServiceCatalogManager extends EventEmitter {
     service.examples.push(newExample);
     service.updatedAt = new Date();
 
-    console.log(`Example added to ${service.name}: ${newExample.title}`);
     this.emit('service:example-added', { service, example: newExample });
 
     return newExample;
@@ -456,7 +451,6 @@ export class ServiceCatalogManager extends EventEmitter {
       });
     }
 
-    console.log(`Documentation generated for ${service.name}`);
     this.emit('documentation:generated', { service, documentation });
 
     return documentation;
@@ -518,3 +512,4 @@ export class ServiceCatalogManager extends EventEmitter {
 export function createServiceCatalogManager(): ServiceCatalogManager {
   return new ServiceCatalogManager();
 }
+

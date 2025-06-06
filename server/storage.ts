@@ -2040,8 +2040,6 @@ export class MemStorage implements IStorage {
   private currentGISFeatureCollectionId: number;
   private currentGISMapProjectId: number;
   private currentSpatialAnalysisResultId: number;
-  
-
 
   constructor() {
     this.users = new Map();
@@ -10906,15 +10904,12 @@ export class PgStorage implements IStorage {
   }): Promise<WorkflowOptimizationRequest[]> {
     // Initialize the map if it doesn't exist
     if (!this.workflowOptimizationRequests) {
-      console.log('Initializing workflowOptimizationRequests map');
       this.workflowOptimizationRequests = new Map<number, WorkflowOptimizationRequest>();
       // Seed some initial data
       this.seedWorkflowOptimizerData();
     }
 
     let requests = Array.from(this.workflowOptimizationRequests.values());
-    console.log(`Found ${requests.length} workflow optimization requests in storage`);
-
     // Apply filters if provided
     if (filters) {
       if (filters.status) {
@@ -11040,7 +11035,6 @@ export class PgStorage implements IStorage {
   async getWorkflowOptimizationResults(requestId?: string): Promise<WorkflowOptimizationResult[]> {
     // Initialize the map if it doesn't exist
     if (!this.workflowOptimizationResults) {
-      console.log('Initializing workflowOptimizationResults map');
       this.workflowOptimizationResults = new Map<number, WorkflowOptimizationResult>();
 
       // If the requests map doesn't exist either, seed the data
@@ -11050,11 +11044,8 @@ export class PgStorage implements IStorage {
     }
 
     let results = Array.from(this.workflowOptimizationResults.values());
-    console.log(`Found ${results.length} workflow optimization results in storage`);
-
     if (requestId) {
       results = results.filter(result => result.requestId === requestId);
-      console.log(`Filtered to ${results.length} results for requestId ${requestId}`);
     }
 
     return results;

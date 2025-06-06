@@ -239,8 +239,6 @@ const TerrainVisualization3D = ({
     if (!terrainMapRef.current) return;
 
     try {
-      console.log('Initializing terrain layers');
-
       // Initialize 3D property extrusion if enabled
       if (showPropertyExtrusion) {
         initializePropertyExtrusion();
@@ -260,7 +258,7 @@ const TerrainVisualization3D = ({
       // For now, we'll add a basic overlay to simulate elevation visualization
       // This is a temporary solution until we properly integrate ol-ext
       if (elevationMode !== 'none' && terrainMapRef.current) {
-        console.log(`Setting elevation mode: ${elevationMode} (simulated)`);
+        `);
 
         // Apply basic styling based on mode
         const terrainLayer = terrainMapRef.current.getLayers().getArray()[0];
@@ -288,7 +286,7 @@ const TerrainVisualization3D = ({
     if (!terrainMapRef.current) return;
 
     try {
-      console.log(`Applying elevation mode: ${mode} (simulated)`);
+      `);
 
       // Apply basic styling based on mode - this is a simplified version until ol-ext is properly integrated
       const terrainLayer = terrainMapRef.current.getLayers().getArray()[0];
@@ -1090,3 +1088,4 @@ const ThreeDIcon = ({ className }: { className?: string }) => (
 );
 
 export default TerrainVisualization3D;
+

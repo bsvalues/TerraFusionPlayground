@@ -198,13 +198,7 @@ const TeamAgentsPage = () => {
       const wsUrl = `${protocol}//${hostname}${port ? ':' + port : ''}/ws/team-collaboration`;
 
       // Add debug logging to help diagnose connection issues
-      console.log(`[TeamAgents WebSocket] Using URL: ${wsUrl}`);
-      console.log(`[TeamAgents WebSocket] hostname: ${hostname}`);
-      console.log(`[TeamAgents WebSocket] port: ${port}`);
-      console.log(`[TeamAgents WebSocket] protocol: ${protocol}`);
-
       if (websocket.current?.readyState === WebSocket.OPEN) {
-        console.log('WebSocket already connected');
         return;
       }
 
@@ -213,7 +207,6 @@ const TeamAgentsPage = () => {
         websocket.current = ws;
 
         ws.onopen = () => {
-          console.log('WebSocket connection established');
           setConnectionStatus('Connected');
           setWsConnected(true);
         };
@@ -221,8 +214,6 @@ const TeamAgentsPage = () => {
         ws.onmessage = event => {
           try {
             const data = JSON.parse(event.data);
-            console.log('WebSocket message received:', data);
-
             handleWebSocketMessage(data);
           } catch (error) {
             console.error('Error parsing WebSocket message:', error);
@@ -241,7 +232,6 @@ const TeamAgentsPage = () => {
         };
 
         ws.onclose = event => {
-          console.log('WebSocket connection closed:', event.code, event.reason);
           setConnectionStatus('Disconnected');
           setWsConnected(false);
 

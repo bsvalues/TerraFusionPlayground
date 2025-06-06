@@ -107,7 +107,7 @@ module.exports = function transformer(file, api) {
 
         for (let i = 0; i < quasis.length; i++) {
           let value = quasis[i].value.raw;
-          let original = value;
+          const original = value;
 
           Object.keys(tokenMap).forEach(color => {
             if (value.includes(color)) {

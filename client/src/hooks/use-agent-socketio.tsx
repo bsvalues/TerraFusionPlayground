@@ -186,8 +186,6 @@ export const useAgentSocketIO = ({
   // Clean up existing connection
   const cleanupSocketIO = useCallback(() => {
     if (socketRef.current) {
-      console.log('Disconnecting Socket.IO');
-
       // Remove all event listeners
       events.forEach(event => {
         socketRef.current?.off(event.name);
@@ -224,8 +222,6 @@ export const useAgentSocketIO = ({
       setStatus('connecting');
 
       const socketUrl = getSocketIOUrl();
-      console.log(`Connecting to Socket.IO at ${socketUrl}`);
-
       // Default options with good practices
       const defaultOptions = {
         reconnection: autoReconnect,
@@ -246,7 +242,6 @@ export const useAgentSocketIO = ({
 
       // Set up event handlers
       socketRef.current.on('connect', () => {
-        console.log('Socket.IO connected');
         setStatus('connected');
         connectionStartTimeRef.current = Date.now();
 
@@ -281,7 +276,6 @@ export const useAgentSocketIO = ({
       });
 
       socketRef.current.on('disconnect', (reason: string) => {
-        console.log(`Socket.IO disconnected: ${reason}`);
         setStatus('disconnected');
 
         // Update metrics
@@ -312,7 +306,6 @@ export const useAgentSocketIO = ({
       });
 
       socketRef.current.on('reconnect_attempt', (attemptNumber: number) => {
-        console.log(`Socket.IO reconnection attempt ${attemptNumber}`);
         setStatus('connecting');
 
         // Update metrics
@@ -323,14 +316,11 @@ export const useAgentSocketIO = ({
       });
 
       socketRef.current.on('reconnect_failed', () => {
-        console.log('Socket.IO reconnection failed');
         setStatus('error');
       });
 
       // Detect transport changes (e.g., websocket to polling)
       socketRef.current.io.engine.on('upgrade', (transport: any) => {
-        console.log(`Socket.IO transport upgraded to ${transport.name}`);
-
         setTransport(transport.name === 'websocket' ? 'websocket' : 'polling');
 
         setMetrics(prev => ({

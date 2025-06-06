@@ -28,8 +28,7 @@ const MAX_HISTORY = 100;
  * @param metrics Performance metrics
  */
 export function logPerformanceMetrics(metrics: PerformanceMetrics): void {
-  console.log(
-    `[Performance] ${metrics.componentId} ${metrics.phase}: actual=${metrics.actualDuration.toFixed(2)}ms, base=${metrics.baseDuration.toFixed(2)}ms`
+  }ms, base=${metrics.baseDuration.toFixed(2)}ms`
   );
 }
 
@@ -212,11 +211,7 @@ export function useRenderProfiling(
       });
 
       if (changedProps.length > 0 && log) {
-        console.log(
-          `[Performance] ${componentName} rendered due to changes in props:`,
-          changedProps
-        );
-      }
+        }
     }
 
     // Update prevProps for next comparison
@@ -266,3 +261,4 @@ export function downloadPerformanceReport(): void {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+

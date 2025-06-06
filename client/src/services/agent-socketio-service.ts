@@ -197,17 +197,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         const socketUrl = window.location.origin;
 
         // Log connection attempt with improved details
-        console.log(`[Agent SocketIO] Attempting to connect to: ${socketUrl} with path ${path}`);
-
         // Add debugging to help diagnose issues
-        console.log(`[Agent SocketIO] Connection details:`, {
-          url: socketUrl,
-          path,
-          protocol: window.location.protocol,
-          host: window.location.host,
-          origin: window.location.origin,
-        });
-
         // Create Socket.IO instance with robust configuration
         this.socket = io(socketUrl, {
           path: path,
@@ -435,7 +425,6 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   private setupEventHandlers(socket: Socket) {
     // Handle connection
     socket.on('connect', () => {
-      console.log('[Agent SocketIO] Connected');
       this.updateConnectionStatus(ConnectionStatus.CONNECTED);
 
       // Stop fallback polling
@@ -493,7 +482,6 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
       // If max reconnect attempts reached, give up and use fallback
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-        console.log('[Agent SocketIO] Maximum reconnect attempts reached, using fallback');
         this.socket?.disconnect();
         this.initFallbackPolling();
 
@@ -508,8 +496,6 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
     // Handle disconnection
     socket.on('disconnect', reason => {
-      console.log(`[Agent SocketIO] Disconnected: ${reason}`);
-
       // Update connection status
       this.updateConnectionStatus(ConnectionStatus.DISCONNECTED);
 
@@ -524,14 +510,10 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     });
 
     // Handle socket.io reconnect
-    socket.io.on('reconnect', attemptNumber => {
-      console.log(`[Agent SocketIO] Reconnected after ${attemptNumber} attempts`);
-    });
+    socket.io.on('reconnect', attemptNumber => {});
 
     // Handle socket.io reconnect attempt
-    socket.io.on('reconnect_attempt', attemptNumber => {
-      console.log(`[Agent SocketIO] Reconnect attempt ${attemptNumber}`);
-    });
+    socket.io.on('reconnect_attempt', attemptNumber => {});
 
     // Handle reconnect error
     socket.io.on('reconnect_error', error => {
@@ -546,18 +528,14 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
     // Handle connection established
     socket.on('connection_established', data => {
-      console.log(`[Agent SocketIO] Connection established: ${data.clientId}`);
-
       // If server assigned a different client ID
       if (data.clientId && data.clientId !== this.clientId) {
         this.clientId = data.clientId;
-        console.log(`[Agent SocketIO] Using server-assigned client ID: ${this.clientId}`);
       }
     });
 
     // Handle auth success
     socket.on('auth_success', data => {
-      console.log('[Agent SocketIO] Authentication successful');
       this.dispatchMessage({
         type: 'auth_success',
         clientId: data.clientId || this.clientId,
@@ -695,11 +673,9 @@ export class AgentSocketIOService extends BrowserEventEmitter {
    */
   private initFallbackPolling() {
     if (this.usingFallback) {
-      console.log('Already using polling fallback, not initializing again');
       return;
     }
 
-    console.log('Initializing polling fallback mechanism');
     this.usingFallback = true;
 
     // Try to authenticate via REST API
@@ -722,8 +698,6 @@ export class AgentSocketIOService extends BrowserEventEmitter {
   private startPolling() {
     // Already polling, stop first
     this.stopPolling();
-
-    console.log(`[Agent UI] Setting up polling with connection status: ${this.connectionStatus}`);
 
     // Start new polling interval
     this.pollingInterval = setInterval(() => {
@@ -751,7 +725,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     try {
       // Only log polling attempts when debugging is needed
       if (this.connectionStatus === ConnectionStatus.CONNECTING) {
-        console.log('[Agent UI] Polling for data (connection: ' + this.connectionStatus + ')');
+        console.debug('Polling for messages...');
       }
 
       // Determine API endpoint - either regular or Socket.IO
@@ -838,8 +812,6 @@ export class AgentSocketIOService extends BrowserEventEmitter {
    */
   private async authenticateViaRest(): Promise<void> {
     try {
-      console.log('Authenticating via REST API');
-
       const response = await fetch('/api/agents/socketio/auth', {
         method: 'POST',
         headers: {
@@ -866,8 +838,6 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       if (data.clientId && data.clientId !== this.clientId) {
         this.clientId = data.clientId;
       }
-
-      console.log('REST authentication successful, client ID:', this.clientId);
 
       this.dispatchMessage({
         type: 'auth_success',
@@ -979,8 +949,6 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     if (this.pendingMessages.length === 0) {
       return;
     }
-
-    console.log(`Sending ${this.pendingMessages.length} pending messages`);
 
     // Copy pending messages and clear the queue
     const messagesToSend = [...this.pendingMessages];

@@ -62,8 +62,20 @@ export interface IGISAgent {
   capabilities: string[];
   status: 'AVAILABLE' | 'BUSY' | 'OFFLINE';
   initialize(): Promise<void>;
-  processTask(task: GISAgentTask): Promise<any>;
+  processTask(task: GISAgentTask): Promise<Record<string, unknown>>;
   shutdown(): Promise<void>;
+}
+
+interface TaskAssignmentResult {
+  success: boolean;
+  agentId?: string;
+  error?: string;
+}
+
+interface TaskExecutionResult {
+  success: boolean;
+  result?: Record<string, unknown>;
+  error?: string;
 }
 
 // Agent orchestration service class
@@ -102,8 +114,6 @@ export class GISAgentOrchestrationService {
     }
 
     try {
-      console.log('Initializing GIS Agent Orchestration Service...');
-
       // Register event listeners
       this.registerEventListeners();
 
@@ -113,7 +123,8 @@ export class GISAgentOrchestrationService {
       this.isInitialized = true;
       console.log('GIS Agent Orchestration Service initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize GIS Agent Orchestration Service:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Failed to initialize GIS Agent Orchestration Service:', errorMessage);
       this.errorTrackingService.trackError(error, {
         category: ErrorCategory.GIS,
         severity: ErrorSeverity.HIGH,
@@ -134,11 +145,12 @@ export class GISAgentOrchestrationService {
     }
 
     this.agents.set(agent.id, agent);
-    console.log(`Registered GIS agent: ${agent.name} (${agent.id})`);
+    console.log(`Agent ${agent.id} (${agent.name}) registered successfully`);
 
     // Initialize the agent
     agent.initialize().catch(error => {
-      console.error(`Failed to initialize agent ${agent.id}:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error(`Failed to initialize agent ${agent.id}: ${errorMessage}`);
       this.errorTrackingService.trackAgentError(error, agent.id, {
         component: 'GISAgentOrchestrationService',
         method: 'registerAgent',
@@ -168,12 +180,13 @@ export class GISAgentOrchestrationService {
 
       // Remove from the registered agents
       this.agents.delete(agentId);
-      console.log(`Unregistered GIS agent: ${agent.name} (${agentId})`);
+      console.log(`Agent ${agentId} (${agent.name}) unregistered successfully`);
 
       // Emit agent unregistered event
       this.eventEmitter.emit('agent:unregistered', agentId);
     } catch (error) {
-      console.error(`Failed to unregister agent ${agentId}:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error(`Failed to unregister agent ${agentId}: ${errorMessage}`);
       this.errorTrackingService.trackAgentError(error, agentId, {
         component: 'GISAgentOrchestrationService',
         method: 'unregisterAgent',
@@ -239,7 +252,8 @@ export class GISAgentOrchestrationService {
 
       return task;
     } catch (error) {
-      console.error('Failed to create task:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Failed to create task:', errorMessage);
       this.errorTrackingService.trackGisError(error, {
         component: 'GISAgentOrchestrationService',
         method: 'createTask',
@@ -252,407 +266,109 @@ export class GISAgentOrchestrationService {
   /**
    * Assign a task to an appropriate agent
    * @param task The task to assign
+   * @returns The result of the assignment
    */
-  private async assignTask(task: GISAgentTask): Promise<void> {
+  private async assignTask(task: GISAgentTask): Promise<TaskAssignmentResult> {
     try {
-      // Find available agents of the specified type
+      // Find available agents that can handle this task type
       const availableAgents = this.findAvailableAgents(task.agentType as GISAgentType);
 
       if (availableAgents.length === 0) {
-        console.warn(`No available agents of type ${task.agentType} for task ${task.id}`);
-        return;
+        const error = `No available agents found for task type ${task.taskType}`;
+        console.error(error);
+        return { success: false, error };
       }
 
-      // Simple round-robin assignment for now
-      // In a production system, this would use more sophisticated load balancing
-      const agent = availableAgents[0];
+      // Select the first available agent
+      const selectedAgent = availableAgents[0];
 
-      // Update task status - ensure ID is handled as a number
-      const updatedTask = await this.storage.updateGISAgentTask(
-        typeof task.id === 'number' ? task.id : parseInt(task.id as string),
-        {
-          status: TaskStatus.RUNNING,
-          agentId: agent.id,
-        }
-      );
-
-      if (!updatedTask) {
-        throw new Error(`Failed to update task ${task.id}`);
-      }
-
-      // Add to active tasks
-      this.activeTasks.set(updatedTask.id as unknown as number, updatedTask);
-
-      // Set agent status to busy
-      agent.status = 'BUSY';
-
-      // Process the task asynchronously
-      this.processTaskAsync(agent, updatedTask);
-
-      // Emit task assigned event
-      this.eventEmitter.emit('task:assigned', {
-        taskId: updatedTask.id,
-        agentId: agent.id,
+      // Update task status
+      task.status = TaskStatus.RUNNING;
+      await this.storage.updateGISAgentTask(task.id, {
+        status: TaskStatus.RUNNING,
+        agentId: selectedAgent.id
       });
-    } catch (error) {
-      console.error(`Failed to assign task ${task.id}:`, error);
 
-      // Track the error
+      // Update agent status
+      selectedAgent.status = 'BUSY';
+
+      // Execute the task
+      const executionResult = await this.executeTask(task, selectedAgent);
+
+      if (!executionResult.success) {
+        task.status = TaskStatus.FAILED;
+        await this.storage.updateGISAgentTask(task.id, {
+          status: TaskStatus.FAILED,
+          error: executionResult.error || null
+        });
+        return { success: false, error: executionResult.error };
+      }
+
+      // Update task status
+      task.status = TaskStatus.COMPLETED;
+      task.result = executionResult.result;
+      task.endTime = new Date();
+      await this.storage.updateGISAgentTask(task.id, {
+        status: TaskStatus.COMPLETED,
+        result: executionResult.result,
+        endTime: new Date()
+      });
+
+      // Update agent status
+      selectedAgent.status = 'AVAILABLE';
+
+      return { success: true, agentId: selectedAgent.id };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Failed to assign task:', errorMessage);
       this.errorTrackingService.trackGisError(error, {
         component: 'GISAgentOrchestrationService',
         method: 'assignTask',
         taskId: task.id,
-        taskType: task.taskType,
-        agentType: task.agentType,
       });
-
-      // Update task status to failed
-      await this.storage.updateGISAgentTask(
-        typeof task.id === 'number' ? task.id : parseInt(task.id as string),
-        {
-          status: TaskStatus.FAILED,
-          error: error instanceof Error ? error.message : 'Failed to assign task',
-        }
-      );
+      return { success: false, error: errorMessage };
     }
   }
 
   /**
-   * Process a task asynchronously
-   * @param agent The agent to process the task
-   * @param task The task to process
+   * Execute a task using the assigned agent
+   * @param task The task to execute
+   * @param agent The agent to execute the task
+   * @returns The result of the task execution
    */
-  private async processTaskAsync(agent: IGISAgent, task: GISAgentTask): Promise<void> {
+  private async executeTask(task: GISAgentTask, agent: IGISAgent): Promise<TaskExecutionResult> {
     try {
-      // Process the task
       const result = await agent.processTask(task);
-
-      // Update task status
-      const updatedTask = await this.storage.updateGISAgentTask(
-        typeof task.id === 'number' ? task.id : parseInt(task.id as string),
-        {
-          status: TaskStatus.COMPLETED,
-          result,
-          endTime: new Date(),
-        }
-      );
-
-      if (!updatedTask) {
-        throw new Error(`Failed to update task ${task.id}`);
-      }
-
-      // Remove from active tasks
-      this.activeTasks.delete(task.id as unknown as number);
-
-      // Set agent status back to available
-      agent.status = 'AVAILABLE';
-
-      // Emit task completed event
-      this.eventEmitter.emit('task:completed', {
-        taskId: task.id,
-        agentId: agent.id,
-        result,
-      });
+      return { success: true, result };
     } catch (error) {
-      console.error(`Failed to process task ${task.id}:`, error);
-
-      // Track the error
-      this.errorTrackingService.trackAgentError(error, agent.id, {
-        component: 'GISAgentOrchestrationService',
-        method: 'processTaskAsync',
-        taskId: task.id,
-        taskType: task.taskType,
-        agentType: agent.type,
-        agentName: agent.name,
-      });
-
-      // Update task status to failed
-      await this.storage.updateGISAgentTask(
-        typeof task.id === 'number' ? task.id : parseInt(task.id as string),
-        {
-          status: TaskStatus.FAILED,
-          error: error instanceof Error ? error.message : 'Failed to process task',
-          endTime: new Date(),
-        }
-      );
-
-      // Remove from active tasks
-      this.activeTasks.delete(task.id as unknown as number);
-
-      // Set agent status back to available
-      agent.status = 'AVAILABLE';
-
-      // Emit task failed event
-      this.eventEmitter.emit('task:failed', {
-        taskId: task.id,
-        agentId: agent.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error(`Task execution failed: ${errorMessage}`);
+      return { success: false, error: errorMessage };
     }
   }
 
   /**
-   * Cancel a task
-   * @param taskId The ID of the task to cancel
-   */
-  public async cancelTask(taskId: string): Promise<void> {
-    try {
-      const numericTaskId = typeof taskId === 'number' ? taskId : parseInt(taskId);
-      const task = this.activeTasks.get(numericTaskId);
-
-      if (!task) {
-        const error = new Error(`Task with ID ${taskId} is not active`);
-        this.errorTrackingService.trackGisError(error, {
-          component: 'GISAgentOrchestrationService',
-          method: 'cancelTask',
-          taskId,
-        });
-        throw error;
-      }
-
-      // Update task status
-      const updatedTask = await this.storage.updateGISAgentTask(numericTaskId, {
-        status: TaskStatus.CANCELLED,
-        endTime: new Date(),
-      });
-
-      if (!updatedTask) {
-        const error = new Error(`Failed to update task ${taskId}`);
-        this.errorTrackingService.trackGisError(error, {
-          component: 'GISAgentOrchestrationService',
-          method: 'cancelTask',
-          taskId,
-          taskType: task.taskType,
-          agentId: task.agentId,
-        });
-        throw error;
-      }
-
-      // Remove from active tasks
-      this.activeTasks.delete(numericTaskId);
-
-      // Set agent status back to available if there is an agent assigned
-      if (task.agentId) {
-        const agent = this.agents.get(task.agentId);
-        if (agent) {
-          agent.status = 'AVAILABLE';
-        }
-      }
-
-      // Emit task cancelled event
-      this.eventEmitter.emit('task:cancelled', {
-        taskId: task.id,
-        agentId: task.agentId,
-      });
-    } catch (error) {
-      if (
-        !(
-          (error instanceof Error && error.message.includes('is not active')) ||
-          error.message.includes('Failed to update task')
-        )
-      ) {
-        console.error(`Unexpected error cancelling task ${taskId}:`, error);
-        this.errorTrackingService.trackGisError(error, {
-          component: 'GISAgentOrchestrationService',
-          method: 'cancelTask',
-          taskId,
-        });
-      }
-      throw error;
-    }
-  }
-
-  /**
-   * Get all tasks
-   * @param agentId Optional agent ID to filter tasks by
-   * @param status Optional status to filter tasks by
-   * @returns A list of tasks matching the specified filters
-   */
-  public async getTasks(agentId?: string, status?: string): Promise<GISAgentTask[]> {
-    try {
-      return await this.storage.getGISAgentTasks(agentId, status);
-    } catch (error) {
-      console.error('Failed to get tasks:', error);
-      this.errorTrackingService.trackGisError(error, {
-        component: 'GISAgentOrchestrationService',
-        method: 'getTasks',
-        agentId,
-        status,
-        severity: ErrorSeverity.MEDIUM,
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Get a task by ID
-   * @param taskId The ID of the task to get
-   * @returns The task with the specified ID, or undefined if not found
-   */
-  public async getTask(taskId: string): Promise<GISAgentTask | undefined> {
-    try {
-      return await this.storage.getGISAgentTask(taskId as unknown as number);
-    } catch (error) {
-      console.error(`Failed to get task ${taskId}:`, error);
-      this.errorTrackingService.trackGisError(error, {
-        component: 'GISAgentOrchestrationService',
-        method: 'getTask',
-        taskId,
-        severity: ErrorSeverity.MEDIUM,
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Create a new agent message
-   * @param message The message to create
-   * @returns The created message
-   */
-  public async createMessage(message: InsertAgentMessage): Promise<AgentMessage> {
-    try {
-      return await this.storage.createAgentMessage(message);
-    } catch (error) {
-      console.error('Failed to create agent message:', error);
-      this.errorTrackingService.trackGisError(error, {
-        component: 'GISAgentOrchestrationService',
-        method: 'createMessage',
-        messageType: message.messageType,
-        senderAgentId: message.senderAgentId,
-        severity: ErrorSeverity.MEDIUM,
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Get messages for an agent
-   * @param agentId The ID of the agent to get messages for
-   * @returns A list of messages for the specified agent
-   */
-  public async getMessages(agentId: string): Promise<AgentMessage[]> {
-    try {
-      return await this.storage.getAgentMessagesByAgent(agentId);
-    } catch (error) {
-      console.error(`Failed to get messages for agent ${agentId}:`, error);
-      this.errorTrackingService.trackAgentError(error, agentId, {
-        component: 'GISAgentOrchestrationService',
-        method: 'getMessages',
-        severity: ErrorSeverity.MEDIUM,
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Create a new spatial event
-   * @param event The event to create
-   * @returns The created event
-   */
-  public async createSpatialEvent(event: InsertSpatialEvent): Promise<SpatialEvent> {
-    try {
-      const newEvent = await this.storage.createSpatialEvent(event);
-
-      // Emit spatial event created
-      this.eventEmitter.emit('spatial:event', newEvent);
-
-      return newEvent;
-    } catch (error) {
-      console.error('Failed to create spatial event:', error);
-      this.errorTrackingService.trackGisError(error, {
-        component: 'GISAgentOrchestrationService',
-        method: 'createSpatialEvent',
-        eventType: event.type,
-        layerId: event.layerId,
-        severity: ErrorSeverity.MEDIUM,
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Get spatial events
-   * @param layerId Optional layer ID to filter events by
-   * @param type Optional type to filter events by
-   * @param userId Optional user ID to filter events by
-   * @returns A list of events matching the specified filters
-   */
-  public async getSpatialEvents(
-    layerId?: number,
-    type?: string,
-    userId?: number
-  ): Promise<SpatialEvent[]> {
-    try {
-      return await this.storage.getSpatialEvents(layerId, type, userId);
-    } catch (error) {
-      console.error('Failed to get spatial events:', error);
-      this.errorTrackingService.trackGisError(error, {
-        component: 'GISAgentOrchestrationService',
-        method: 'getSpatialEvents',
-        layerId,
-        type,
-        userId,
-        severity: ErrorSeverity.MEDIUM,
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Subscribe to an event
-   * @param event The event to subscribe to
-   * @param callback The callback to invoke when the event occurs
-   */
-  public subscribe(event: string, callback: (...args: any[]) => void): void {
-    this.eventEmitter.on(event, callback);
-  }
-
-  /**
-   * Unsubscribe from an event
-   * @param event The event to unsubscribe from
-   * @param callback The callback to remove
-   */
-  public unsubscribe(event: string, callback: (...args: any[]) => void): void {
-    this.eventEmitter.off(event, callback);
-  }
-
-  /**
-   * Register event listeners
+   * Register event listeners for the orchestration service
    */
   private registerEventListeners(): void {
-    // Task event logging
-    this.eventEmitter.on('task:created', task => {
-      console.log(`Task created: ${task.id} (${task.taskType})`);
-    });
-
-    this.eventEmitter.on('task:assigned', data => {
-      console.log(`Task ${data.taskId} assigned to agent ${data.agentId}`);
-    });
-
-    this.eventEmitter.on('task:completed', data => {
-      console.log(`Task ${data.taskId} completed by agent ${data.agentId}`);
-    });
-
-    this.eventEmitter.on('task:failed', data => {
-      console.log(`Task ${data.taskId} failed by agent ${data.agentId}: ${data.error}`);
-    });
-
-    this.eventEmitter.on('task:cancelled', data => {
-      console.log(`Task ${data.taskId} cancelled`);
-    });
-
-    // Agent event logging
-    this.eventEmitter.on('agent:registered', agent => {
+    this.eventEmitter.on('agent:registered', (agent: IGISAgent) => {
       console.log(`Agent registered: ${agent.name} (${agent.id})`);
     });
 
-    this.eventEmitter.on('agent:unregistered', agentId => {
+    this.eventEmitter.on('agent:unregistered', (agentId: string) => {
       console.log(`Agent unregistered: ${agentId}`);
     });
 
-    // Spatial event logging
-    this.eventEmitter.on('spatial:event', event => {
-      console.log(`Spatial event: ${event.type} on layer ${event.layerId}`);
+    this.eventEmitter.on('task:created', (task: GISAgentTask) => {
+      console.log(`Task created: ${task.id} (${task.taskType})`);
+    });
+
+    this.eventEmitter.on('task:completed', (task: GISAgentTask) => {
+      console.log(`Task completed: ${task.id} (${task.taskType})`);
+    });
+
+    this.eventEmitter.on('task:failed', (task: GISAgentTask) => {
+      console.log(`Task failed: ${task.id} (${task.taskType})`);
     });
   }
 
@@ -661,22 +377,19 @@ export class GISAgentOrchestrationService {
    */
   private async loadActiveTasks(): Promise<void> {
     try {
-      // Get all running tasks
-      const runningTasks = await this.storage.getGISAgentTasks(undefined, TaskStatus.RUNNING);
-
-      // Add to active tasks map
-      for (const task of runningTasks) {
-        this.activeTasks.set(task.id as unknown as number, task);
-      }
-
-      console.log(`Loaded ${runningTasks.length} active tasks`);
+      const tasks = await this.storage.getGISAgentTasks(undefined, TaskStatus.RUNNING);
+      tasks.forEach((task: GISAgentTask) => {
+        this.activeTasks.set(task.id, task);
+      });
+      console.log(`Loaded ${tasks.length} active tasks`);
     } catch (error) {
-      console.error('Failed to load active tasks:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Failed to load active tasks:', errorMessage);
       this.errorTrackingService.trackGisError(error, {
         component: 'GISAgentOrchestrationService',
         method: 'loadActiveTasks',
-        severity: ErrorSeverity.HIGH,
       });
+      throw error;
     }
   }
 }
@@ -687,3 +400,4 @@ export const getGISAgentOrchestrationService = (
 ): GISAgentOrchestrationService => {
   return GISAgentOrchestrationService.getInstance(storage);
 };
+

@@ -22,8 +22,6 @@ export async function initializeGISAgents(
   storage: IStorage,
   orchestrationService: GISAgentOrchestrationService
 ): Promise<void> {
-  console.log('Initializing GIS agents...');
-
   try {
     // Initialize orchestration service first
     await orchestrationService.initialize();
@@ -57,8 +55,6 @@ export async function initializeGISAgents(
     const aiInsightsAgent = createAIInsightsAgent(storage);
     await aiInsightsAgent.initialize();
     orchestrationService.registerAgent(aiInsightsAgent);
-
-    console.log('GIS agents initialized successfully');
   } catch (error) {
     console.error('Failed to initialize GIS agents:', error);
     throw error;

@@ -382,7 +382,6 @@ export function PropertyStoryDemo() {
       });
 
       // Log PDF data to console for demonstration
-      console.log('PDF Export Data:', pdfData);
     } catch (error: any) {
       toast({
         title: 'Error exporting PDF',

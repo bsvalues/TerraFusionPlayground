@@ -19,7 +19,7 @@ const WS_PATHS = [
 
 // Test WebSocket connections
 async function testWebSockets() {
-  console.log('Testing WebSocket connections...\n');
+  // console.log('Testing WebSocket connections...\n');
   
   for (const path of WS_PATHS) {
     await testWebSocketConnection(path);
@@ -31,19 +31,19 @@ async function testWebSockets() {
 // Test individual WebSocket connection
 function testWebSocketConnection(path) {
   return new Promise((resolve) => {
-    console.log(`Testing WebSocket connection to: ${path}`);
+    // console.log(`Testing WebSocket connection to: ${path}`);
     
     const url = `ws://${HOST}${path}`;
     const ws = new WebSocket(url);
     
     const timeout = setTimeout(() => {
-      console.log(`  Connection to ${path} timed out after 5 seconds`);
+      // console.log(`  Connection to ${path} timed out after 5 seconds`);
       ws.terminate();
       resolve();
     }, 5000);
     
     ws.on('open', () => {
-      console.log(`  Successfully connected to ${path}`);
+      // console.log(`  Successfully connected to ${path}`);
       
       // Send a ping message
       const pingMessage = JSON.stringify({ 
@@ -52,31 +52,31 @@ function testWebSocketConnection(path) {
       });
       
       ws.send(pingMessage);
-      console.log(`  Sent ping message: ${pingMessage}`);
+      // console.log(`  Sent ping message: ${pingMessage}`);
     });
     
     ws.on('message', (data) => {
       try {
         const message = JSON.parse(data);
-        console.log(`  Received message from ${path}:`, message);
+        // console.log(`  Received message from ${path}:`, message);
         
         // Close connection after receiving a response
         clearTimeout(timeout);
         ws.close();
         setTimeout(resolve, 500);
       } catch (error) {
-        console.error(`  Error parsing message from ${path}:`, error);
+        // console.error(`  Error parsing message from ${path}:`, error);
       }
     });
     
     ws.on('error', (error) => {
-      console.error(`  Error connecting to ${path}:`, error.message);
+      // console.error(`  Error connecting to ${path}:`, error.message);
       clearTimeout(timeout);
       resolve();
     });
     
     ws.on('close', (code, reason) => {
-      console.log(`  Connection to ${path} closed: ${code} ${reason}`);
+      // console.log(`  Connection to ${path} closed: ${code} ${reason}`);
     });
   });
 }
@@ -84,7 +84,7 @@ function testWebSocketConnection(path) {
 // Test Socket.IO connection
 function testSocketIOConnection() {
   return new Promise((resolve) => {
-    console.log(`Testing Socket.IO connection`);
+    // console.log(`Testing Socket.IO connection`);
     
     const socket = io(`http://${HOST}/api/agents/socket.io`, {
       transports: ['websocket'],
@@ -92,34 +92,34 @@ function testSocketIOConnection() {
     });
     
     const timeout = setTimeout(() => {
-      console.log(`  Socket.IO connection timed out after 5 seconds`);
+      // console.log(`  Socket.IO connection timed out after 5 seconds`);
       socket.disconnect();
       resolve();
     }, 5000);
     
     socket.on('connect', () => {
-      console.log(`  Successfully connected to Socket.IO (${socket.id})`);
+      // console.log(`  Successfully connected to Socket.IO (${socket.id})`);
       
       // Send a test event
       socket.emit('ping', { timestamp: Date.now() });
-      console.log(`  Sent ping event to Socket.IO`);
+      // console.log(`  Sent ping event to Socket.IO`);
     });
     
     socket.on('pong', (data) => {
-      console.log(`  Received pong from Socket.IO:`, data);
+      // console.log(`  Received pong from Socket.IO:`, data);
       clearTimeout(timeout);
       socket.disconnect();
       setTimeout(resolve, 500);
     });
     
     socket.on('connect_error', (error) => {
-      console.error(`  Error connecting to Socket.IO:`, error.message);
+      // console.error(`  Error connecting to Socket.IO:`, error.message);
       clearTimeout(timeout);
       resolve();
     });
     
     socket.on('disconnect', (reason) => {
-      console.log(`  Socket.IO disconnected: ${reason}`);
+      // console.log(`  Socket.IO disconnected: ${reason}`);
     });
   });
 }
@@ -127,10 +127,10 @@ function testSocketIOConnection() {
 // Run tests
 testWebSockets()
   .then(() => {
-    console.log('\nWebSocket tests completed');
+    // console.log('\nWebSocket tests completed');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('Error running WebSocket tests:', error);
+    // console.error('Error running WebSocket tests:', error);
     process.exit(1);
   });

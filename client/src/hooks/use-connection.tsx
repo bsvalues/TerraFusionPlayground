@@ -5,7 +5,7 @@ import {
   ConnectionState,
   ConnectionType,
   ConnectionEvent,
-  MessageData
+  MessageData,
 } from '../services/connection-manager';
 
 export { ConnectionState, ConnectionType };
@@ -33,67 +33,62 @@ export type ConnectionHookResult = {
  */
 export function useConnection(options: ConnectionHookOptions = {}): ConnectionHookResult {
   // Extract callback handlers
-  const { 
-    onConnect, 
-    onDisconnect, 
-    onMessage, 
-    onError, 
-    onStateChange,
-    ...connectionOptions 
-  } = options;
-  
+  const { onConnect, onDisconnect, onMessage, onError, onStateChange, ...connectionOptions } =
+    options;
+
   // Connection manager reference
   const connectionManagerRef = useRef<ConnectionManager | null>(null);
-  
+
   // State
-  const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
+  const [connectionState, setConnectionState] = useState<ConnectionState>(
+    ConnectionState.DISCONNECTED
+  );
   const [connectionType, setConnectionType] = useState<ConnectionType | null>(null);
   const [clientId, setClientId] = useState<string>('');
-  
+
   // Create the connection manager on mount
   useEffect(() => {
     const manager = new ConnectionManager(connectionOptions);
     connectionManagerRef.current = manager;
-    
+
     // Store client ID
     setClientId(manager.getClientId());
-    
+
     // Register event handlers
-    manager.on('connect', (event) => {
+    manager.on('connect', event => {
       setConnectionState(ConnectionState.CONNECTED);
       setConnectionType(event.connectionType);
       if (onConnect) onConnect(event);
     });
-    
-    manager.on('disconnect', (event) => {
+
+    manager.on('disconnect', event => {
       setConnectionState(ConnectionState.DISCONNECTED);
       setConnectionType(null);
       if (onDisconnect) onDisconnect(event);
     });
-    
-    manager.on('message', (event) => {
+
+    manager.on('message', event => {
       if (onMessage) onMessage(event);
     });
-    
-    manager.on('error', (event) => {
+
+    manager.on('error', event => {
       if (event.error) console.error(event.error);
       if (onError) onError(event);
     });
-    
-    manager.on('statechange', (event) => {
+
+    manager.on('statechange', event => {
       if (event.state) setConnectionState(event.state as ConnectionState);
       if (onStateChange) onStateChange(event);
     });
-    
-    manager.on('reconnecting', (event) => {
+
+    manager.on('reconnecting', event => {
       setConnectionState(ConnectionState.RECONNECTING);
-      console.log(`Reconnecting: attempt ${event.attempt}, delay ${event.retryDelay}ms`);
     });
-    
+
     // Update initial state
     setConnectionState(manager.getState());
     setConnectionType(manager.getConnectionType());
-    
+
     // Clean up on unmount
     return () => {
       if (connectionManagerRef.current) {
@@ -102,7 +97,7 @@ export function useConnection(options: ConnectionHookOptions = {}): ConnectionHo
       }
     };
   }, []); // Empty dependency array = only on mount
-  
+
   // Send message
   const send = useCallback((message: MessageData) => {
     if (connectionManagerRef.current) {
@@ -111,7 +106,7 @@ export function useConnection(options: ConnectionHookOptions = {}): ConnectionHo
       console.error('Connection manager not initialized');
     }
   }, []);
-  
+
   // Connect
   const connect = useCallback(() => {
     if (connectionManagerRef.current) {
@@ -120,7 +115,7 @@ export function useConnection(options: ConnectionHookOptions = {}): ConnectionHo
       console.error('Connection manager not initialized');
     }
   }, []);
-  
+
   // Disconnect
   const disconnect = useCallback(() => {
     if (connectionManagerRef.current) {
@@ -129,7 +124,7 @@ export function useConnection(options: ConnectionHookOptions = {}): ConnectionHo
       console.error('Connection manager not initialized');
     }
   }, []);
-  
+
   // Get connection info (for debugging)
   const connectionInfo = useCallback(() => {
     if (connectionManagerRef.current) {
@@ -138,7 +133,7 @@ export function useConnection(options: ConnectionHookOptions = {}): ConnectionHo
       return { error: 'Connection manager not initialized' };
     }
   }, []);
-  
+
   // Return the hook result
   return {
     connectionState,
@@ -147,6 +142,6 @@ export function useConnection(options: ConnectionHookOptions = {}): ConnectionHo
     send,
     connect,
     disconnect,
-    connectionInfo
+    connectionInfo,
   };
 }

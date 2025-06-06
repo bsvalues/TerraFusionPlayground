@@ -18,17 +18,8 @@ router.get('/requests', async (req, res) => {
   try {
     const { status, type, userId, repositoryId } = req.query;
 
-    console.log('GET /api/workflow-optimizer/requests query params:', {
-      status,
-      type,
-      userId,
-      repositoryId,
-    });
-
     // Get seed data directly to bypass storage issues
     let requests = getSeedWorkflowOptimizerData().requests;
-    console.log(`Retrieved ${requests.length} workflow optimization requests from seed data`);
-
     // Apply filters if needed
     if (status) {
       requests = requests.filter(request => request.status === status);
@@ -51,8 +42,6 @@ router.get('/requests', async (req, res) => {
         requests = requests.filter(request => request.repositoryId === repoIdNum);
       }
     }
-
-    console.log(`Returning ${requests.length} workflow optimization requests after filtering`);
 
     res.json(requests);
   } catch (error) {
@@ -79,8 +68,6 @@ router.get('/requests/:id', async (req, res) => {
     // Get seed data directly and find by id
     const requests = getSeedWorkflowOptimizerData().requests;
     const request = requests.find(req => req.id === id);
-
-    console.log(`Looking for request with id ${id}, found: ${request ? 'yes' : 'no'}`);
 
     if (!request) {
       return res.status(404).json({ error: 'Optimization request not found' });
@@ -203,7 +190,6 @@ router.get('/results', async (req, res) => {
   try {
     // Get seed data directly to bypass storage issues
     const results = getSeedWorkflowOptimizerData().results;
-    console.log(`Retrieved ${results.length} workflow optimization results from seed data`);
     res.json(results);
   } catch (error) {
     console.error('Error retrieving workflow optimization results:', error);
@@ -223,8 +209,6 @@ router.get('/results/:requestId', async (req, res) => {
     // Get seed data directly and filter by requestId
     const allResults = getSeedWorkflowOptimizerData().results;
     const filteredResults = allResults.filter(result => result.requestId === requestId);
-
-    console.log(`Found ${filteredResults.length} results for requestId ${requestId}`);
 
     if (filteredResults.length === 0) {
       return res.status(404).json({ error: 'No optimization results found for the request' });

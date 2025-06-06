@@ -78,8 +78,6 @@ function assessProperty(property) {
     // Try each provider in order
     for (const provider of providers) {
       try {
-        console.log(`Attempting to generate code using provider: ${provider}`);
-
         const response = await this.aiAssistantService.generateResponse({
           message: fullPrompt,
           context: context,
@@ -155,8 +153,6 @@ function calculateTaxableValue(assessedValue, exemptions) {
 
     for (const provider of providers) {
       try {
-        console.log(`Attempting to complete code using provider: ${provider}`);
-
         const response = await this.aiAssistantService.generateResponse({
           message: promptMessage,
           provider: provider,
@@ -218,8 +214,6 @@ function calculateTaxableValue(assessedValue, exemptions) {
 
     for (const provider of providers) {
       try {
-        console.log(`Attempting to explain code using provider: ${provider}`);
-
         const response = await this.aiAssistantService.generateResponse({
           message: promptMessage,
           context: context,
@@ -270,8 +264,6 @@ function calculateTaxableValue(assessedValue, exemptions) {
 
     for (const provider of providers) {
       try {
-        console.log(`Attempting to fix bugs using provider: ${provider}`);
-
         const response = await this.aiAssistantService.generateResponse({
           message: promptMessage,
           context: context,
@@ -378,8 +370,6 @@ For a more detailed analysis, please try again when AI services are available.`;
 
     for (const provider of providers) {
       try {
-        console.log(`Attempting to recommend improvements using provider: ${provider}`);
-
         const response = await this.aiAssistantService.generateResponse({
           message: promptMessage,
           context: context,
@@ -443,8 +433,6 @@ For a more detailed analysis, please try again when AI services are available.`;
 
     for (const provider of providers) {
       try {
-        console.log(`Attempting to generate assessment model using provider: ${provider}`);
-
         const response = await this.aiAssistantService.generateResponse({
           message: promptMessage,
           context: context,

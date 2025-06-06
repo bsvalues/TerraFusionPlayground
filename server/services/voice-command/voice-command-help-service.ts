@@ -206,7 +206,6 @@ export class VoiceCommandHelpService {
         .from(voiceCommandHelpContents);
 
       if (existingContent[0].count > 0) {
-        console.log('Help content already initialized, skipping default content creation');
         return;
       }
 
@@ -367,8 +366,6 @@ export class VoiceCommandHelpService {
       for (const helpContent of defaultHelpContent) {
         await this.createHelpContent(helpContent);
       }
-
-      console.log('Default help content initialized successfully');
     } catch (error) {
       console.error('Error initializing default help content:', error);
       throw error;

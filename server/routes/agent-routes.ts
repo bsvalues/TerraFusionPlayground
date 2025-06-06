@@ -364,8 +364,6 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
 
       // Here we would actually send the message to the agent
       // For now, just log it and return success
-      console.log(`REST API message to ${recipientId}:`, message);
-
       res.json({
         success: true,
         messageId,
@@ -401,8 +399,6 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
 
       // Here we would actually send the action request to the agent
       // For now, just log it and return success
-      console.log(`REST API action to ${targetAgent}: ${action}`, params);
-
       res.json({
         success: true,
         messageId,
@@ -928,7 +924,7 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
         }
       }
 
-      console.log('Request body for test tool log:', JSON.stringify(requestBody));
+      );
 
       // Just use the requestBody directly
       // The issue appears to be related to how the result is being handled in the storage layer
@@ -936,7 +932,7 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
       // Let's just respect the exact values from the request body with minimal processing
 
       // For debugging
-      console.log('requestBody.result:', JSON.stringify(requestBody.result));
+      );
 
       // Create the test log with either default values or values from the request
       const testLog = {
@@ -958,9 +954,9 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
         endTime: now,
       };
 
-      console.log('Creating test tool execution log:', JSON.stringify(testLog));
+      );
       const log = await agentSystem.storage.createMCPToolExecutionLog(testLog);
-      console.log('Created log:', JSON.stringify(log));
+      );
 
       // Set appropriate headers to ensure proper JSON response
       res.setHeader('Content-Type', 'application/json');
@@ -978,3 +974,4 @@ export function createAgentRoutes(agentSystem: AgentSystem) {
 
   return router;
 }
+

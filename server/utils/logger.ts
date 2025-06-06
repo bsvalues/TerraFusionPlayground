@@ -160,7 +160,6 @@ class Logger {
         console.error(consoleOutput);
         break;
       default:
-        console.log(consoleOutput);
     }
   }
 

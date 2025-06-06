@@ -9,7 +9,6 @@ export class LLMService {
 
   constructor(config: any) {
     // Mock constructor
-    console.log('Using mock LLM service for testing');
   }
 
   public async prompt(prompt: string, options?: any): Promise<any> {

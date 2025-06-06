@@ -7,8 +7,9 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { IStorage } from '../../../storage';
-import { GISAgentType, GISTaskType, TaskStatus, IGISAgent } from '../agent-orchestration-service';
-import { GISAgentTask, InsertAgentMessage } from '@shared/gis-schema';
+import { BaseGISAgent } from './base-gis-agent';
+import { GISTaskType } from '../agent-orchestration-service';
+import { AgentConfig, AgentCapability } from '../../agents/base-agent';
 import {
   ErrorTrackingService,
   ErrorSeverity,
@@ -16,17 +17,43 @@ import {
   ErrorSource,
 } from '../../error-tracking-service';
 
-export class SchemaConversionAgent implements IGISAgent {
-  public id: string;
-  public type: GISAgentType;
-  public name: string;
-  public description: string;
-  public capabilities: string[];
-  public status: 'AVAILABLE' | 'BUSY' | 'OFFLINE';
+interface SchemaValidationData {
+  schema: Record<string, unknown>;
+  format: string;
+}
 
-  private storage: IStorage;
+interface FormatConversionData {
+  sourceFormat: string;
+  targetFormat: string;
+  schema: Record<string, unknown>;
+  options?: Record<string, unknown>;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  format: string;
+  issues: Array<{
+    type: string;
+    message: string;
+    fields: string[];
+  }>;
+  warnings: Array<{
+    type: string;
+    message: string;
+    fields: string[];
+  }>;
+  summary: {
+    fieldCount: number;
+    geometryType: string;
+    spatialReference: string;
+    analyzedAt: string;
+  };
+  [key: string]: unknown;
+}
+
+export class SchemaConversionAgent extends BaseGISAgent {
   private errorTrackingService: ErrorTrackingService;
-  private isInitialized: boolean = false;
+  private isInitialized: boolean;
 
   // Supported source formats
   private supportedSourceFormats = [
@@ -51,54 +78,89 @@ export class SchemaConversionAgent implements IGISAgent {
     'OGC WFS',
   ];
 
-  constructor(storage: IStorage, id?: string) {
-    this.id = id || `schema-conversion-agent-${uuidv4()}`;
-    this.type = GISAgentType.SCHEMA_CONVERSION;
-    this.name = 'Schema Conversion Agent';
-    this.description = 'Converts GIS data schemas between different formats';
-    this.capabilities = [
-      'schema-analysis',
-      'format-detection',
-      'field-mapping',
-      'schema-validation',
-      'schema-transformation',
+  constructor(storage: IStorage) {
+    const capabilities: AgentCapability[] = [
+      {
+        name: 'schema-analysis',
+        description: 'Analyze GIS data schemas',
+        handler: async (params: any) => {
+          // Implementation will be added later
+          return { success: true };
+        }
+      },
+      {
+        name: 'format-detection',
+        description: 'Detect GIS data formats',
+        handler: async (params: any) => {
+          // Implementation will be added later
+          return { success: true };
+        }
+      },
+      {
+        name: 'field-mapping',
+        description: 'Map fields between different schemas',
+        handler: async (params: any) => {
+          // Implementation will be added later
+          return { success: true };
+        }
+      },
+      {
+        name: 'schema-validation',
+        description: 'Validate GIS data schemas',
+        handler: async (params: any) => {
+          // Implementation will be added later
+          return { success: true };
+        }
+      },
+      {
+        name: 'schema-transformation',
+        description: 'Transform schemas between formats',
+        handler: async (params: any) => {
+          // Implementation will be added later
+          return { success: true };
+        }
+      }
     ];
-    this.status = 'OFFLINE';
-    this.storage = storage;
+
+    const config: AgentConfig = {
+      id: uuidv4(),
+      name: 'Schema Conversion Agent',
+      description: 'Converts GIS data schemas between different formats',
+      capabilities,
+      permissions: ['read:gis', 'write:gis']
+    };
+
+    super(storage, config);
     this.errorTrackingService = new ErrorTrackingService(storage);
+    this.isInitialized = false;
   }
 
-  /**
-   * Initialize the agent
-   */
   public async initialize(): Promise<void> {
     if (this.isInitialized) {
       return;
     }
 
     try {
-      console.log(`Initializing ${this.name} (${this.id})...`);
-
-      // Log agent initialization - let database generate the ID
-      await this.storage.createAgentMessage({
-        agentId: this.id,
-        type: 'INFO',
-        content: `Agent ${this.name} (${this.id}) initialized`,
-        timestamp: new Date(),
+      await this.createAgentMessage({
+        messageId: uuidv4(),
+        senderAgentId: this.agentId,
+        messageType: 'INFO',
+        subject: 'Agent Initialization',
+        content: `Agent ${this.name} (${this.agentId}) initialized successfully`,
+        status: 'completed'
       });
 
-      this.status = 'AVAILABLE';
+      await this.updateStatus('active', 100);
       this.isInitialized = true;
-      console.log(`${this.name} (${this.id}) initialized successfully`);
-    } catch (error: any) {
-      console.error(`Failed to initialize ${this.name} (${this.id}):`, error);
-      this.status = 'OFFLINE';
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error(`Failed to initialize ${this.name} (${this.agentId}):`, errorMessage);
+      await this.updateStatus('error', 0);
 
-      // Track the error
       this.errorTrackingService.trackGisError(error, {
         component: 'SchemaConversionAgent',
         method: 'initialize',
-        agentId: this.id,
+        agentId: this.agentId,
         severity: ErrorSeverity.HIGH,
       });
 
@@ -106,66 +168,49 @@ export class SchemaConversionAgent implements IGISAgent {
     }
   }
 
-  /**
-   * Process a task
-   * @param task The task to process
-   * @returns The result of the task
-   */
-  public async processTask(task: GISAgentTask): Promise<any> {
-    console.log(`${this.name} (${this.id}) processing task ${task.id}...`);
-
+  public async processTask(task: { id: string; taskType: GISTaskType; data: unknown }): Promise<Record<string, unknown>> {
     try {
-      // Log task start
       await this.logMessage('INFO', `Processing task ${task.id}: ${task.taskType}`);
 
-      // Validate the task
       if (!task.data) {
         throw new Error('Task data is required');
       }
 
-      let result;
+      let result: Record<string, unknown>;
 
-      // Process the task based on its type
       switch (task.taskType) {
         case GISTaskType.SCHEMA_VALIDATION:
-          result = await this.validateSchema(task.data);
+          result = await this.validateSchema(task.data as SchemaValidationData);
           break;
         case GISTaskType.FORMAT_CONVERSION:
-          result = await this.convertFormat(task.data);
+          result = await this.convertFormat(task.data as FormatConversionData);
           break;
         default:
           throw new Error(`Unsupported task type: ${task.taskType}`);
       }
 
-      // Log task completion
       await this.logMessage('INFO', `Task ${task.id} completed successfully`);
 
       return result;
-    } catch (error: any) {
-      // Log task failure
-      await this.logMessage('ERROR', `Task ${task.id} failed: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      await this.logMessage('ERROR', `Task ${task.id} failed: ${errorMessage}`);
 
-      // Track the error
       this.errorTrackingService.trackGisError(error, {
         component: 'SchemaConversionAgent',
         method: 'processTask',
-        agentId: this.id,
+        agentId: this.agentId,
         taskId: task.id,
         taskType: task.taskType,
         severity: ErrorSeverity.MEDIUM,
-        category: ErrorCategory.TASK_PROCESSING,
+        category: ErrorCategory.VALIDATION,
       });
 
       throw error;
     }
   }
 
-  /**
-   * Validate a GIS schema
-   * @param data The schema data to validate
-   * @returns The validation result
-   */
-  private async validateSchema(data: any): Promise<any> {
+  private async validateSchema(data: SchemaValidationData): Promise<ValidationResult> {
     const { schema, format } = data;
 
     if (!schema) {
@@ -176,27 +221,26 @@ export class SchemaConversionAgent implements IGISAgent {
       throw new Error('Format is required for validation');
     }
 
-    // Check if the format is supported
     if (!this.isSupportedFormat(format)) {
       throw new Error(`Unsupported format: ${format}`);
     }
 
     await this.logMessage('INFO', `Validating schema in ${format} format`);
 
-    // Perform validation based on the format
-    const validationResults = {
+    const validationResults: ValidationResult = {
       isValid: true,
       format,
       issues: [],
       warnings: [],
-      summary: {},
+      summary: {
+        fieldCount: 0,
+        geometryType: 'unknown',
+        spatialReference: 'unknown',
+        analyzedAt: new Date().toISOString(),
+      },
     };
 
     try {
-      // Actual validation logic would be implemented here
-      // For now, we'll simulate validation
-
-      // Check for required fields based on format
       const requiredFields = this.getRequiredFieldsForFormat(format);
       const missingFields = requiredFields.filter(field => !schema[field]);
 
@@ -209,7 +253,6 @@ export class SchemaConversionAgent implements IGISAgent {
         });
       }
 
-      // Check for unsupported data types
       const unsupportedTypes = this.findUnsupportedTypes(schema, format);
       if (unsupportedTypes.length > 0) {
         validationResults.isValid = false;
@@ -220,7 +263,6 @@ export class SchemaConversionAgent implements IGISAgent {
         });
       }
 
-      // Look for potential data loss issues
       const dataLossRisks = this.identifyDataLossRisks(schema, format);
       if (dataLossRisks.length > 0) {
         validationResults.warnings.push({
@@ -230,11 +272,10 @@ export class SchemaConversionAgent implements IGISAgent {
         });
       }
 
-      // Generate schema summary
       validationResults.summary = {
         fieldCount: Object.keys(schema).length,
-        geometryType: schema.geometryType || 'unknown',
-        spatialReference: schema.spatialReference || 'unknown',
+        geometryType: schema.geometryType as string || 'unknown',
+        spatialReference: schema.spatialReference as string || 'unknown',
         analyzedAt: new Date().toISOString(),
       };
 
@@ -244,45 +285,25 @@ export class SchemaConversionAgent implements IGISAgent {
       );
 
       return validationResults;
-    } catch (error: any) {
-      await this.logMessage('ERROR', `Schema validation error: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      await this.logMessage('ERROR', `Schema validation error: ${errorMessage}`);
 
-      // Track the error
       this.errorTrackingService.trackGisError(error, {
         component: 'SchemaConversionAgent',
         method: 'validateSchema',
-        agentId: this.id,
+        agentId: this.agentId,
         severity: ErrorSeverity.MEDIUM,
         category: ErrorCategory.VALIDATION,
-        source: ErrorSource.AGENT,
-        context: { format },
       });
 
-      throw new Error(`Schema validation failed: ${error.message}`);
+      throw error;
     }
   }
 
-  /**
-   * Convert a GIS schema from one format to another
-   * @param data The data containing source schema, source format, and target format
-   * @returns The converted schema
-   */
-  private async convertFormat(data: any): Promise<any> {
-    const { sourceSchema, sourceFormat, targetFormat } = data;
+  private async convertFormat(data: FormatConversionData): Promise<Record<string, unknown>> {
+    const { sourceFormat, targetFormat, schema, options = {} } = data;
 
-    if (!sourceSchema) {
-      throw new Error('Source schema is required for conversion');
-    }
-
-    if (!sourceFormat) {
-      throw new Error('Source format is required for conversion');
-    }
-
-    if (!targetFormat) {
-      throw new Error('Target format is required for conversion');
-    }
-
-    // Check if the formats are supported
     if (!this.isSupportedFormat(sourceFormat)) {
       throw new Error(`Unsupported source format: ${sourceFormat}`);
     }
@@ -293,361 +314,168 @@ export class SchemaConversionAgent implements IGISAgent {
 
     await this.logMessage('INFO', `Converting schema from ${sourceFormat} to ${targetFormat}`);
 
-    // Perform conversion based on the formats
     try {
-      // Actual conversion logic would be implemented here
-      // For now, we'll simulate conversion
+      const validationResult = await this.validateSchema({ schema, format: sourceFormat });
+      if (!validationResult.isValid) {
+        throw new Error(`Source schema validation failed: ${validationResult.issues.map(i => i.message).join(', ')}`);
+      }
 
-      // Create field mappings between source and target formats
-      const fieldMappings = this.createFieldMappings(sourceSchema, sourceFormat, targetFormat);
+      const convertedSchema = await this.performSchemaConversion(schema, sourceFormat, targetFormat, options);
 
-      // Transform the schema
-      const targetSchema = this.transformSchema(sourceSchema, fieldMappings, targetFormat);
-
-      // Create conversion result
-      const conversionResult = {
+      return {
+        success: true,
         sourceFormat,
         targetFormat,
-        sourceSchema,
-        targetSchema,
-        fieldMappings,
-        conversionSummary: {
-          fieldsMapped: Object.keys(fieldMappings).length,
-          fieldsDropped: Object.keys(sourceSchema).length - Object.keys(targetSchema).length,
-          convertedAt: new Date().toISOString(),
+        convertedSchema,
+        metadata: {
+          conversionTime: new Date().toISOString(),
+          warnings: validationResult.warnings,
         },
       };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      await this.logMessage('ERROR', `Format conversion error: ${errorMessage}`);
 
-      await this.logMessage(
-        'INFO',
-        `Schema conversion completed successfully with ${conversionResult.conversionSummary.fieldsMapped} fields mapped and ${conversionResult.conversionSummary.fieldsDropped} fields dropped`
-      );
-
-      return conversionResult;
-    } catch (error: any) {
-      await this.logMessage('ERROR', `Schema conversion error: ${error.message}`);
-
-      // Track the error
       this.errorTrackingService.trackGisError(error, {
         component: 'SchemaConversionAgent',
         method: 'convertFormat',
-        agentId: this.id,
+        agentId: this.agentId,
         severity: ErrorSeverity.MEDIUM,
         category: ErrorCategory.CONVERSION,
-        source: ErrorSource.AGENT,
-        context: {
-          sourceFormat,
-          targetFormat,
-          fieldsCount: Object.keys(sourceSchema || {}).length,
-        },
       });
 
-      throw new Error(`Schema conversion failed: ${error.message}`);
+      throw error;
     }
   }
 
-  /**
-   * Check if a format is supported
-   * @param format The format to check
-   * @returns True if the format is supported, false otherwise
-   */
+  private async performSchemaConversion(
+    schema: Record<string, unknown>,
+    sourceFormat: string,
+    targetFormat: string,
+    options: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
+    // This is a placeholder for the actual conversion logic
+    // In a real implementation, this would handle the specific conversion rules
+    // for each format pair
+    return {
+      ...schema,
+      _converted: true,
+      _sourceFormat: sourceFormat,
+      _targetFormat: targetFormat,
+      _conversionTime: new Date().toISOString(),
+    };
+  }
+
   private isSupportedFormat(format: string): boolean {
-    return [...this.supportedSourceFormats, ...this.supportedTargetFormats].includes(format);
+    return (
+      this.supportedSourceFormats.includes(format) || this.supportedTargetFormats.includes(format)
+    );
   }
 
-  /**
-   * Get required fields for a format
-   * @param format The format to get required fields for
-   * @returns The required fields for the format
-   */
   private getRequiredFieldsForFormat(format: string): string[] {
-    // In a real implementation, this would return the actual required fields for each format
-    switch (format) {
-      case 'ESRI Shapefile':
-        return ['geometry', 'attributes'];
-      case 'GeoJSON':
-        return ['type', 'geometry', 'properties'];
-      case 'PostGIS':
-        return ['tableName', 'geometry_column', 'columns'];
-      case 'OGC GeoPackage':
-        return ['tableName', 'geometry_column', 'columns'];
-      default:
-        return ['geometry'];
-    }
+    const formatRequirements: Record<string, string[]> = {
+      'GeoJSON': ['type', 'features'],
+      'PostGIS': ['geometry', 'properties'],
+      'ESRI Shapefile': ['geometry', 'attributes'],
+      'KML': ['coordinates', 'name'],
+      'GML': ['coordinates', 'name'],
+      'MapInfo TAB': ['geometry', 'attributes'],
+      'Spatialite': ['geometry', 'attributes'],
+      'CSV with coordinates': ['x', 'y'],
+      'OGC GeoPackage': ['geometry', 'attributes'],
+      'ESRI Geodatabase': ['geometry', 'attributes'],
+      'OGC WFS': ['geometry', 'properties'],
+    };
+
+    return formatRequirements[format] || [];
   }
 
-  /**
-   * Find unsupported data types in a schema for a specific format
-   * @param schema The schema to check
-   * @param format The format to check against
-   * @returns A list of fields with unsupported data types
-   */
-  private findUnsupportedTypes(schema: any, format: string): { field: string; type: string }[] {
-    // In a real implementation, this would check for actual unsupported types for each format
-    const unsupportedTypes: { field: string; type: string }[] = [];
+  private findUnsupportedTypes(schema: Record<string, unknown>, format: string): Array<{ field: string; type: string }> {
+    const unsupportedTypes: Array<{ field: string; type: string }> = [];
+    const supportedTypes: Record<string, string[]> = {
+      'GeoJSON': ['string', 'number', 'boolean', 'object', 'array'],
+      'PostGIS': ['string', 'number', 'boolean', 'geometry'],
+      'ESRI Shapefile': ['string', 'number', 'boolean', 'date'],
+      'KML': ['string', 'number', 'boolean', 'coordinates'],
+      'GML': ['string', 'number', 'boolean', 'coordinates'],
+      'MapInfo TAB': ['string', 'number', 'boolean', 'date'],
+      'Spatialite': ['string', 'number', 'boolean', 'date'],
+      'CSV with coordinates': ['string', 'number', 'boolean'],
+      'OGC GeoPackage': ['string', 'number', 'boolean', 'date'],
+      'ESRI Geodatabase': ['string', 'number', 'boolean', 'date'],
+      'OGC WFS': ['string', 'number', 'boolean', 'object'],
+    };
 
-    // Example implementation
-    if (format === 'ESRI Shapefile') {
-      // Shapefiles have limited field name lengths and data types
-      for (const [field, details] of Object.entries(schema)) {
-        if (field.length > 10) {
-          unsupportedTypes.push({
-            field,
-            type: 'field name too long',
-          });
-        }
-
-        if (details.type === 'BLOB' || details.type === 'JSON') {
-          unsupportedTypes.push({
-            field,
-            type: details.type,
-          });
-        }
+    const allowedTypes = supportedTypes[format] || [];
+    
+    for (const [field, value] of Object.entries(schema)) {
+      const type = typeof value;
+      if (!allowedTypes.includes(type)) {
+        unsupportedTypes.push({ field, type });
       }
     }
 
     return unsupportedTypes;
   }
 
-  /**
-   * Identify potential data loss risks when converting a schema
-   * @param schema The schema to check
-   * @param format The target format
-   * @returns A list of fields with potential data loss risks
-   */
-  private identifyDataLossRisks(schema: any, format: string): { field: string; reason: string }[] {
-    // In a real implementation, this would identify actual data loss risks for each format
-    const dataLossRisks: { field: string; reason: string }[] = [];
+  private identifyDataLossRisks(schema: Record<string, unknown>, format: string): Array<{ field: string; reason: string }> {
+    const risks: Array<{ field: string; reason: string }> = [];
+    const formatLimitations: Record<string, Record<string, string>> = {
+      'GeoJSON': {
+        'precision': 'Limited to 6 decimal places',
+        'date': 'Dates stored as strings',
+      },
+      'PostGIS': {
+        'precision': 'Limited to 15 decimal places',
+        'date': 'Dates stored as timestamps',
+      },
+      'ESRI Shapefile': {
+        'fieldLength': 'Limited to 10 characters',
+        'date': 'Limited date range',
+      },
+    };
 
-    // Example implementation
-    if (format === 'ESRI Shapefile') {
-      // Shapefiles have limited field types and sizes
-      for (const [field, details] of Object.entries(schema)) {
-        if (details.type === 'VARCHAR' && details.length > 254) {
-          dataLossRisks.push({
-            field,
-            reason: 'VARCHAR field length exceeds 254 characters',
-          });
-        }
-
-        if (details.type === 'DATE' && details.hasTimeComponent) {
-          dataLossRisks.push({
-            field,
-            reason: 'Time component will be lost in DATE field',
-          });
-        }
+    const limitations = formatLimitations[format] || {};
+    
+    for (const [field, value] of Object.entries(schema)) {
+      if (typeof value === 'number' && limitations.precision) {
+        risks.push({ field, reason: limitations.precision });
+      }
+      if (value instanceof Date && limitations.date) {
+        risks.push({ field, reason: limitations.date });
+      }
+      if (typeof value === 'string' && limitations.fieldLength) {
+        risks.push({ field, reason: limitations.fieldLength });
       }
     }
 
-    return dataLossRisks;
+    return risks;
   }
 
-  /**
-   * Create field mappings between source and target formats
-   * @param sourceSchema The source schema
-   * @param sourceFormat The source format
-   * @param targetFormat The target format
-   * @returns The field mappings
-   */
-  private createFieldMappings(
-    sourceSchema: any,
-    sourceFormat: string,
-    targetFormat: string
-  ): Record<string, string> {
-    // In a real implementation, this would create actual field mappings between formats
-    const fieldMappings: Record<string, string> = {};
-
-    // Example implementation - just map fields directly for now
-    for (const field of Object.keys(sourceSchema)) {
-      // Skip fields that can't be mapped to the target format
-      if (this.canMapField(field, sourceSchema[field], sourceFormat, targetFormat)) {
-        fieldMappings[field] = field;
-      }
-    }
-
-    return fieldMappings;
-  }
-
-  /**
-   * Check if a field can be mapped from one format to another
-   * @param field The field name
-   * @param fieldDetails The field details
-   * @param sourceFormat The source format
-   * @param targetFormat The target format
-   * @returns True if the field can be mapped, false otherwise
-   */
-  private canMapField(
-    field: string,
-    fieldDetails: any,
-    sourceFormat: string,
-    targetFormat: string
-  ): boolean {
-    // In a real implementation, this would check if a field can be mapped between formats
-
-    // Example implementation - simple check for non-mappable types
-    if (
-      targetFormat === 'ESRI Shapefile' &&
-      (fieldDetails.type === 'BLOB' || fieldDetails.type === 'JSON' || field.length > 10)
-    ) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * Transform a schema from one format to another
-   * @param sourceSchema The source schema
-   * @param fieldMappings The field mappings
-   * @param targetFormat The target format
-   * @returns The transformed schema
-   */
-  private transformSchema(
-    sourceSchema: any,
-    fieldMappings: Record<string, string>,
-    targetFormat: string
-  ): any {
-    // In a real implementation, this would transform the schema between formats
-    const targetSchema: any = {};
-
-    // Example implementation - simple transformation
-    for (const [sourceField, targetField] of Object.entries(fieldMappings)) {
-      const fieldDetails = sourceSchema[sourceField];
-
-      // Map field details to target format
-      targetSchema[targetField] = this.mapFieldToTargetFormat(fieldDetails, targetFormat);
-    }
-
-    // Add format-specific required fields
-    this.addFormatSpecificFields(targetSchema, targetFormat);
-
-    return targetSchema;
-  }
-
-  /**
-   * Map field details to a target format
-   * @param fieldDetails The field details
-   * @param targetFormat The target format
-   * @returns The mapped field details
-   */
-  private mapFieldToTargetFormat(fieldDetails: any, targetFormat: string): any {
-    // In a real implementation, this would map field details to the target format
-
-    // Example implementation - simple mapping
-    const mappedField = { ...fieldDetails };
-
-    // Handle format-specific transformations
-    if (targetFormat === 'ESRI Shapefile') {
-      // Shapefiles have limited data types
-      if (mappedField.type === 'VARCHAR') {
-        mappedField.type = 'TEXT';
-        mappedField.length = Math.min(mappedField.length || 255, 254);
-      } else if (mappedField.type === 'INTEGER') {
-        mappedField.type = 'NUMBER';
-        mappedField.precision = 10;
-      } else if (mappedField.type === 'FLOAT' || mappedField.type === 'DOUBLE') {
-        mappedField.type = 'NUMBER';
-        mappedField.precision = 19;
-        mappedField.scale = 11;
-      }
-    } else if (targetFormat === 'GeoJSON') {
-      // GeoJSON properties are just simple types
-      if (mappedField.type === 'GEOMETRY') {
-        mappedField.type = 'Feature';
-      }
-    }
-
-    return mappedField;
-  }
-
-  /**
-   * Add format-specific fields to a schema
-   * @param schema The schema to add fields to
-   * @param format The format to add fields for
-   */
-  private addFormatSpecificFields(schema: any, format: string): void {
-    // In a real implementation, this would add actual format-specific fields
-
-    // Example implementation
-    if (format === 'GeoJSON') {
-      schema.type = 'FeatureCollection';
-      schema.features = [];
-    } else if (format === 'PostGIS') {
-      schema.srid = 4326; // Default to WGS84
-      schema.schema = 'public'; // Default to public schema
-    }
-  }
-
-  /**
-   * Log a message from the agent
-   * @param type The message type
-   * @param content The message content
-   */
-  private async logMessage(type: 'INFO' | 'WARNING' | 'ERROR', content: string): Promise<void> {
+  private async logMessage(type: string, content: string): Promise<void> {
     try {
-      const message: InsertAgentMessage = {
-        agentId: this.id,
-        type,
+      await this.createAgentMessage({
+        messageId: uuidv4(),
+        senderAgentId: this.agentId,
+        messageType: type,
+        subject: 'Agent Message',
         content,
-        timestamp: new Date(),
-      };
-
-      await this.storage.createAgentMessage(message);
-    } catch (error: any) {
-      console.error(`Failed to log message from agent ${this.id}:`, error);
-
-      // Track the error, but don't re-throw since this is a non-critical operation
-      this.errorTrackingService.trackGisError(error, {
-        component: 'SchemaConversionAgent',
-        method: 'logMessage',
-        agentId: this.id,
-        severity: ErrorSeverity.LOW,
-        category: ErrorCategory.LOGGING,
-        source: ErrorSource.INTERNAL,
-        context: {
-          messageType: type,
-          messageContent: content.substring(0, 100), // Include just the beginning in case it's long
-        },
+        status: 'completed'
       });
-
-      // Don't throw here, as this is a non-critical operation
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error(`Failed to log message: ${errorMessage}`);
     }
   }
 
-  /**
-   * Shutdown the agent
-   */
   public async shutdown(): Promise<void> {
-    if (!this.isInitialized) {
-      return;
-    }
-
     try {
-      console.log(`Shutting down ${this.name} (${this.id})...`);
-
-      // Log agent shutdown
-      await this.logMessage('INFO', `Agent ${this.name} (${this.id}) shutting down`);
-
-      this.status = 'OFFLINE';
+      await this.logMessage('INFO', `Agent ${this.name} (${this.agentId}) shutting down`);
+      await this.updateStatus('inactive', 0);
       this.isInitialized = false;
-      console.log(`${this.name} (${this.id}) shut down successfully`);
-    } catch (error: any) {
-      console.error(`Failed to shut down ${this.name} (${this.id}):`, error);
-
-      // Track the error
-      this.errorTrackingService.trackGisError(error, {
-        component: 'SchemaConversionAgent',
-        method: 'shutdown',
-        agentId: this.id,
-        severity: ErrorSeverity.HIGH,
-        category: ErrorCategory.LIFECYCLE,
-        source: ErrorSource.INTERNAL,
-        context: {
-          agentStatus: this.status,
-          isInitialized: this.isInitialized.toString(),
-        },
-      });
-
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error(`Failed to shutdown agent: ${errorMessage}`);
       throw error;
     }
   }
@@ -661,3 +489,4 @@ export class SchemaConversionAgent implements IGISAgent {
 export function createSchemaConversionAgent(storage: IStorage): SchemaConversionAgent {
   return new SchemaConversionAgent(storage);
 }
+

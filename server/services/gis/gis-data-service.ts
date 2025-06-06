@@ -107,8 +107,7 @@ export class GISDataService {
 
     // Log operation
     if (this.options.logOperations) {
-      console.log(`GIS Data Service: Retrieved layer ${id}`);
-    }
+      }
 
     return layer;
   }
@@ -135,8 +134,7 @@ export class GISDataService {
 
     // Log operation
     if (this.options.logOperations) {
-      console.log(`GIS Data Service: Retrieved ${layers.length} layers`);
-    }
+      }
 
     return layers;
   }
@@ -160,7 +158,7 @@ export class GISDataService {
 
     // Log operation
     if (this.options.logOperations) {
-      console.log(`GIS Data Service: Created layer ${createdLayer.id} (${createdLayer.name})`);
+      `);
     }
 
     return createdLayer;
@@ -186,7 +184,7 @@ export class GISDataService {
 
     // Log operation
     if (this.options.logOperations && updatedLayer) {
-      console.log(`GIS Data Service: Updated layer ${id} (${updatedLayer.name})`);
+      console.log(`Updated GIS layer: ${updatedLayer.name} (ID: ${updatedLayer.id})`);
     }
 
     return updatedLayer;
@@ -207,7 +205,7 @@ export class GISDataService {
 
     // Log operation
     if (this.options.logOperations) {
-      console.log(`GIS Data Service: Deleted layer ${id} (success: ${result})`);
+      console.log(`Deleted GIS layer with ID: ${id}`);
     }
 
     return result;
@@ -235,8 +233,7 @@ export class GISDataService {
 
     // Log operation
     if (this.options.logOperations) {
-      console.log(`GIS Data Service: Retrieved feature collection ${id}`);
-    }
+      }
 
     return collection;
   }
@@ -263,10 +260,7 @@ export class GISDataService {
 
     // Log operation
     if (this.options.logOperations) {
-      console.log(
-        `GIS Data Service: Retrieved ${collections.length} feature collections for layer ${layerId}`
-      );
-    }
+      }
 
     return collections;
   }
@@ -292,10 +286,7 @@ export class GISDataService {
 
     // Log operation
     if (this.options.logOperations) {
-      console.log(
-        `GIS Data Service: Created feature collection ${createdCollection.id} for layer ${collection.layerId}`
-      );
-    }
+      }
 
     return createdCollection;
   }
@@ -323,8 +314,7 @@ export class GISDataService {
 
     // Log operation
     if (this.options.logOperations && updatedCollection) {
-      console.log(`GIS Data Service: Updated feature collection ${id}`);
-    }
+      }
 
     return updatedCollection;
   }
@@ -349,7 +339,7 @@ export class GISDataService {
 
     // Log operation
     if (this.options.logOperations) {
-      console.log(`GIS Data Service: Deleted feature collection ${id} (success: ${result})`);
+      `);
     }
 
     return result;
@@ -361,8 +351,7 @@ export class GISDataService {
   async queryFeatures(layerId: number, options: FeatureQueryOptions = {}): Promise<any[]> {
     // Log operation
     if (this.options.logOperations) {
-      console.log(`GIS Data Service: Querying features for layer ${layerId}`, options);
-    }
+      }
 
     // Get feature collections for the layer
     const collections = await this.getFeatureCollectionsByLayer(layerId);
@@ -419,8 +408,7 @@ export class GISDataService {
   ): Promise<SpatialOperationResult> {
     // Log operation
     if (this.options.logOperations) {
-      console.log(`GIS Data Service: Performing spatial operation ${operation}`);
-    }
+      }
 
     try {
       switch (operation) {
@@ -462,8 +450,7 @@ export class GISDataService {
 
     // Log operation
     if (this.options.logOperations) {
-      console.log(`GIS Data Service: Transforming coordinates from ${fromSRS} to ${toSRS}`);
-    }
+      }
 
     return coordinates;
   }
@@ -985,3 +972,4 @@ export class GISDataService {
     }
   }
 }
+

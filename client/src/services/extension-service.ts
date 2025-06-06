@@ -34,7 +34,6 @@ export class ExtensionService {
    */
   async getExtensions(): Promise<Extension[]> {
     try {
-      console.log('Fetching extensions from API...');
       const response = await apiRequest('/api/extensions');
 
       if (!response.ok) {
@@ -44,7 +43,6 @@ export class ExtensionService {
       }
 
       const extensions = await response.json();
-      console.log(`Successfully loaded ${extensions.length} extensions`);
       return extensions;
     } catch (error) {
       console.error('Error getting extensions:', error);
@@ -59,7 +57,6 @@ export class ExtensionService {
    */
   async getExtension(extensionId: string): Promise<Extension | null> {
     try {
-      console.log(`Fetching extension details for ${extensionId}`);
       const response = await apiRequest(`/api/extensions/${extensionId}`);
 
       if (!response.ok) {
@@ -71,7 +68,6 @@ export class ExtensionService {
       }
 
       const extension = await response.json();
-      console.log(`Successfully loaded extension ${extensionId}`, extension);
       return extension;
     } catch (error) {
       console.error(`Error getting extension ${extensionId}:`, error);
@@ -84,7 +80,6 @@ export class ExtensionService {
    */
   async getWebviews(): Promise<WebviewInfo[]> {
     try {
-      console.log('Fetching webviews from API...');
       const response = await apiRequest('/api/extensions/webviews');
 
       if (!response.ok) {
@@ -94,7 +89,6 @@ export class ExtensionService {
       }
 
       const webviews = await response.json();
-      console.log(`Successfully loaded ${webviews.length} webviews`);
       return webviews;
     } catch (error) {
       console.error('Error getting webviews:', error);
@@ -109,8 +103,6 @@ export class ExtensionService {
    */
   async getWebviewContent(extensionId: string, webviewId: string): Promise<string> {
     try {
-      console.log(`Fetching webview content for ${extensionId}/${webviewId}...`);
-
       // First, ensure the extension is active
       const extensionResponse = await apiRequest(`/api/extensions/${extensionId}`);
       if (!extensionResponse.ok) {
@@ -121,8 +113,6 @@ export class ExtensionService {
 
       const extensionData = await extensionResponse.json();
       if (!extensionData.active) {
-        console.log(`Extension ${extensionId} is not active. Activating...`);
-
         // Attempt to activate the extension
         const activateResponse = await apiRequest(`/api/extensions/${extensionId}/activate`, {
           method: 'POST',
@@ -148,9 +138,7 @@ export class ExtensionService {
       }
 
       const contentText = await response.text();
-      console.log(
-        `Successfully loaded webview content for ${extensionId}/${webviewId} (${contentText.length} bytes)`
-      );
+      console.log(`Successfully fetched webview content for ${extensionId}/${webviewId}`);
       return contentText;
     } catch (error) {
       console.error('Error getting webview content:', error);

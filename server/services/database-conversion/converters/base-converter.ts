@@ -151,8 +151,6 @@ export abstract class BaseConverter {
       return JSON.parse(jsonMatch[0]);
     } catch (error) {
       console.error('Error parsing AI data type mapping:', error);
-      console.log('AI response:', response);
-
       // Return a default mapping
       return this.getDefaultDataTypeMapping(sourceType, targetType);
     }

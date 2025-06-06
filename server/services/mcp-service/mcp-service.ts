@@ -49,14 +49,10 @@ export class MCPService {
    * Initialize the MCP Service
    */
   async initialize(): Promise<void> {
-    console.log('MCP Service initializing...');
-
     // Register core tools
     this.registerCoreTool('system.getStatus', this.getSystemStatus.bind(this));
     this.registerCoreTool('system.registerAgent', this.registerAgent.bind(this));
     this.registerCoreTool('system.getToolRegistry', this.getToolRegistry.bind(this));
-
-    console.log('MCP Service initialized');
   }
 
   /**
@@ -64,8 +60,6 @@ export class MCPService {
    */
   registerTool(registration: ToolRegistration): void {
     this.tools.set(registration.toolName, registration);
-    console.log(`Registered tool: ${registration.toolName}`);
-
     // Emit registration event
     this.eventEmitter.emit('tool.registered', registration.toolName);
   }
@@ -95,8 +89,6 @@ export class MCPService {
 
     // Log the tool execution if enabled
     if (this.config.enableLogging) {
-      console.log(`Executing tool: ${toolName}`, params);
-
       // Create a system activity
       try {
         await this.storage.createSystemActivity({
@@ -125,7 +117,6 @@ export class MCPService {
 
       // Log successful execution
       if (this.config.enableLogging) {
-        console.log(`Tool execution completed: ${toolName}`);
       }
 
       return result;

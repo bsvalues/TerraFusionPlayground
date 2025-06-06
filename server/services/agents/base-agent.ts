@@ -72,8 +72,6 @@ export abstract class BaseAgent {
     }
 
     // Log confirmation of ID assignment
-    console.log(`BaseAgent constructor: assigned ID ${this.id} and agentId ${this.agentId}`);
-
     this.name = config.name;
     this.description = config.description;
     this.permissions = config.permissions || [];
@@ -260,9 +258,6 @@ export abstract class BaseAgent {
         await this.storage.updateAiAgentStatus(this.agentId, status, performance);
       } else {
         // Fallback: just log to console if the method doesn't exist
-        console.log(
-          `Agent ${this.name} status update: status=${status}, performance=${performance}`
-        );
       }
     } catch (error) {
       console.error(`Error updating agent status for '${this.name}':`, error);
@@ -280,7 +275,6 @@ export abstract class BaseAgent {
     try {
       // Skip database logging for string agent IDs to avoid type conversion errors
       if (typeof this.agentId === 'string') {
-        console.log(`Agent ${this.name} activity: ${activityType} - ${message}`);
         return;
       }
 
@@ -297,7 +291,6 @@ export abstract class BaseAgent {
         await this.storage.createSystemActivity(activityData);
       } else {
         // Fallback: log to console
-        console.log(`Agent ${this.name} activity: ${activityType} - ${message}`);
       }
     } catch (error) {
       console.error(`Error logging activity for agent '${this.name}':`, error);
@@ -313,7 +306,6 @@ export abstract class BaseAgent {
       return this.mcpService.getAvailableTools(this.permissions);
     } else {
       // Fallback: return empty array if method doesn't exist
-      console.log(`Agent ${this.name}: MCP getAvailableTools not available, using empty array`);
       return [];
     }
   }

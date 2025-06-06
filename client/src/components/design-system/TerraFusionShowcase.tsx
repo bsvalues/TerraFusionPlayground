@@ -50,7 +50,6 @@ export default function TerraFusionShowcase() {
               isOpen={showAuth}
               onClose={() => setShowAuth(false)}
               onSubmit={(email, password) => {
-                console.log('Login attempt:', { email, password });
                 setShowAuth(false);
                 handleShowToast('success');
               }}

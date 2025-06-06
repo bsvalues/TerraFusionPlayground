@@ -69,7 +69,6 @@ export class AgentWebSocketService {
         (this.socket.readyState === WebSocket.OPEN ||
           this.socket.readyState === WebSocket.CONNECTING)
       ) {
-        console.log('WebSocket connection already established or in progress');
         resolve(true);
         return;
       }
@@ -96,18 +95,14 @@ export class AgentWebSocketService {
       const wsBaseUrl = wsProtocol + window.location.host;
 
       // Add debug logging to help diagnose connection issues
-      console.log(`[Agent WebSocket] wsProtocol: ${wsProtocol}`);
-      console.log(`[Agent WebSocket] wsHost: ${window.location.host}`);
-      console.log(`[Agent WebSocket] wsPath: ${wsPath}`);
-
       // Primary WebSocket URL with proper protocol
       const primaryWsUrl = `${wsProtocol}${window.location.host}${wsPath}`;
 
       // Enhanced debug logging for WebSocket connection
-      console.log(`[Agent WebSocket] Attempting to connect to: ${primaryWsUrl}`);
-      console.log(`[Agent WebSocket] Browser URL: ${window.location.href}`);
       console.log(
-        `[Agent WebSocket] Environment: ${host.endsWith('.replit.dev') ? 'Replit' : 'Local'}`
+        `[Agent WebSocket] Environment: ${
+          window.location.hostname.includes('replit') ? 'Replit' : 'Local'
+        }`
       );
 
       try {
@@ -115,13 +110,10 @@ export class AgentWebSocketService {
           // Use a consistent approach for all environments
           // Just use the relative path approach which works in both local and Replit environments
           const relativePath = '/api/agents/ws';
-          console.log(`[Agent WebSocket] Using relative WebSocket path: ${relativePath}`);
-
           // Use the protocol from the current page
           const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
           const wsUrl = `${wsProtocol}//${window.location.host}${relativePath}`;
 
-          console.log(`[Agent WebSocket] Connecting to: ${wsUrl}`);
           this.socket = new WebSocket(wsUrl);
         } catch (wsError) {
           console.error('[Agent WebSocket] Error creating WebSocket connection:', wsError);
@@ -133,13 +125,10 @@ export class AgentWebSocketService {
         }
 
         // Add console logs for WebSocket events for debugging
-        console.log(`[Agent WebSocket] WebSocket object created`);
-
         // Set a timeout for connection - if not successful within 5 seconds,
         // we'll treat this as a failed connection through this path
         this.connectionTimeout = setTimeout(() => {
           if (this.connectionStatus !== 'connected') {
-            console.log('[Agent WebSocket] Connection timeout reached for primary WebSocket path');
             if (this.socket) {
               try {
                 // Close the current connection attempt
@@ -161,22 +150,15 @@ export class AgentWebSocketService {
 
         // Setup event handlers
         this.socket.onopen = event => {
-          console.log(`[Agent WebSocket] Connection opened`, event);
           this.handleSocketOpen(resolve);
         };
 
         this.socket.onmessage = event => {
-          console.log(
-            `[Agent WebSocket] Message received`,
-            event.data?.substring?.(0, 100) || event.data
-          );
+          console.debug(`[Agent WebSocket] Received message: ${event.data}`);
           this.handleSocketMessage(event);
         };
 
         this.socket.onclose = event => {
-          console.log(
-            `[Agent WebSocket] Connection closed: code=${event.code}, reason=${event.reason}`
-          );
           this.handleSocketClose(event, reject);
         };
 
@@ -201,7 +183,6 @@ export class AgentWebSocketService {
    * Handle WebSocket open event
    */
   private handleSocketOpen(resolve: (value: boolean) => void): void {
-    console.log('Agent WebSocket connection established');
     this.updateConnectionStatus('connected');
     this.reconnectAttempts = 0;
     this.reconnectDelay = 2000; // Reset reconnect delay
@@ -240,12 +221,12 @@ export class AgentWebSocketService {
       // Handle connection acknowledgment
       if (message.type === 'connection_established') {
         this.clientId = message.clientId;
-        console.log(`Connection established with client ID: ${this.clientId}`);
+        console.log(`[Agent WebSocket] Client ID assigned: ${this.clientId}`);
       }
 
       // Handle authentication response
       if (message.type === 'auth_success') {
-        console.log('Authentication successful:', message);
+        console.log('[Agent WebSocket] Authentication successful');
       } else if (message.type === 'auth_failed') {
         console.error('Authentication failed:', message);
       }
@@ -266,8 +247,6 @@ export class AgentWebSocketService {
     console.log(
       `[Agent WebSocket] Connection closed: ${event.code} (${codeInfo.name}) - ${event.reason || 'No reason provided'}`
     );
-    console.log(`[Agent WebSocket] Close code description: ${codeInfo.description}`);
-    console.log(`[Agent WebSocket] Connection was ${event.wasClean ? 'clean' : 'abnormal'}`);
 
     // Stop keeping the connection alive
     this.stopPingInterval();
@@ -298,11 +277,9 @@ export class AgentWebSocketService {
     // Handle different close codes appropriately
     switch (event.code) {
       case 1000: // Normal closure
-        console.log('[Agent WebSocket] Normal closure, not attempting reconnect');
         break;
 
       case 1001: // Going away (page refresh/navigation)
-        console.log('[Agent WebSocket] Page unloading, not attempting reconnect');
         break;
 
       case 1002: // Protocol error
@@ -312,7 +289,7 @@ export class AgentWebSocketService {
       case 1010: // Mandatory extension missing
         // For these errors, try to reconnect a limited number of times with increasing delays
         console.log(
-          `[Agent WebSocket] Protocol-level error (${event.code}), attempting controlled reconnect`
+          `[Agent WebSocket] Protocol/Data error (${event.code}), attempting controlled reconnect`
         );
         this.attemptReconnect();
         break;
@@ -320,7 +297,7 @@ export class AgentWebSocketService {
       case 1006: // Abnormal closure
         // This is the most common issue in real-world deployments
         console.log(
-          '[Agent WebSocket] Abnormal closure detected (1006), multiple reconnect strategy'
+          `[Agent WebSocket] Abnormal closure detected (${event.code}), multiple reconnect strategy`
         );
 
         // For abnormal closures, try aggressive reconnection strategy
@@ -345,7 +322,7 @@ export class AgentWebSocketService {
       case 1013: // Try again later
         // For server-side issues, try reconnect with longer delays
         console.log(
-          `[Agent WebSocket] Server-side issue (${event.code}), delayed reconnect with backoff`
+          `[Agent WebSocket] Server error (${event.code}), delayed reconnect with backoff`
         );
         this.reconnectDelay = Math.min(this.reconnectDelay * 2, 10000); // Increase delay up to 10 seconds
         this.attemptReconnect();
@@ -353,7 +330,9 @@ export class AgentWebSocketService {
 
       case 1015: // TLS handshake failure
         // For TLS errors, we may need to fall back to HTTP polling
-        console.log('[Agent WebSocket] TLS handshake failed, switching to fallback');
+        console.log(
+          `[Agent WebSocket] TLS handshake failure (${event.code}), using polling fallback`
+        );
         this.initPollingFallback();
         break;
 
@@ -369,7 +348,9 @@ export class AgentWebSocketService {
       event.code !== 1001 &&
       this.reconnectAttempts >= this.maxReconnectAttempts - 1
     ) {
-      console.log('[Agent WebSocket] Approaching max reconnect attempts, preparing fallback');
+      console.log(
+        '[Agent WebSocket] Max reconnect attempts reached, switching to polling fallback'
+      );
       this.initPollingFallback();
     }
 
@@ -462,10 +443,6 @@ export class AgentWebSocketService {
     console.error('[Agent WebSocket] Connection error:', error);
 
     // Additional diagnostics information
-    console.log('[Agent WebSocket] Browser info:', navigator.userAgent);
-    console.log('[Agent WebSocket] Connection attempts:', this.reconnectAttempts);
-    console.log('[Agent WebSocket] Current status:', this.connectionStatus);
-
     // Update connection status
     this.updateConnectionStatus('errored');
 
@@ -480,13 +457,9 @@ export class AgentWebSocketService {
     // Immediately attempt to reconnect with a shorter initial delay for errors
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       const quickRetryDelay = 1000; // 1 second for first reconnect after error
-      console.log(`[Agent WebSocket] Quick error recovery attempt in ${quickRetryDelay}ms`);
-
       setTimeout(() => {
         this.reconnectAttempts++;
         this.connect().catch(err => {
-          console.log('[Agent WebSocket] Quick reconnect failed:', err);
-
           // Initialize polling fallback if immediate reconnect fails
           if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             this.initPollingFallback();
@@ -495,7 +468,6 @@ export class AgentWebSocketService {
       }, quickRetryDelay);
     } else {
       // Initialize polling fallback if WebSocket fails after retries
-      console.log('[Agent WebSocket] Max reconnect attempts reached, switching to fallback');
       this.initPollingFallback();
     }
 
@@ -507,11 +479,9 @@ export class AgentWebSocketService {
    */
   private initPollingFallback(): void {
     if (this.usingFallback) {
-      console.log('Already using polling fallback, not initializing again');
       return;
     }
 
-    console.log('Initializing polling fallback mechanism');
     this.usingFallback = true;
 
     // Notify user that we're switching to fallback mode
@@ -540,8 +510,6 @@ export class AgentWebSocketService {
       clearInterval(this.pollingInterval);
     }
 
-    console.log(`Starting polling fallback with interval: ${this.pollingDelay}ms`);
-
     this.pollingInterval = window.setInterval(() => {
       this.pollForMessages();
     }, this.pollingDelay);
@@ -564,7 +532,7 @@ export class AgentWebSocketService {
     try {
       // Only log polling attempts when debugging is needed
       if (this.connectionStatus === 'connecting') {
-        console.log('[Agent UI] Polling for data (connection: ' + this.connectionStatus + ')');
+        console.log('[Agent WebSocket] Starting polling attempt');
       }
 
       // Use the REST API to fetch any pending messages
@@ -637,8 +605,6 @@ export class AgentWebSocketService {
    */
   private async authenticateViaRest(): Promise<void> {
     try {
-      console.log('Authenticating via REST API');
-
       const response = await fetch('/api/agents/auth', {
         method: 'POST',
         headers: {
@@ -657,8 +623,6 @@ export class AgentWebSocketService {
 
       if (data.success) {
         this.clientId = data.clientId || 'rest-fallback-client';
-        console.log(`REST authentication successful, client ID: ${this.clientId}`);
-
         // Simulate authentication success message
         this.dispatchMessage({
           type: 'auth_success',
@@ -731,7 +695,6 @@ export class AgentWebSocketService {
         };
 
         this.socket.send(JSON.stringify(authMessage));
-        console.log('Sent authentication message');
       } catch (error) {
         console.error('Error sending authentication message:', error);
         reject(error);
@@ -744,8 +707,6 @@ export class AgentWebSocketService {
    */
   private attemptReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log('[Agent WebSocket] Maximum reconnect attempts reached, switching to fallback');
-
       // Initialize polling fallback when max reconnects are exhausted
       this.initPollingFallback();
 
@@ -771,7 +732,7 @@ export class AgentWebSocketService {
     const delay = Math.min(30000, exponentialPart + jitter);
 
     console.log(
-      `[Agent WebSocket] Attempting to reconnect in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+      `[Agent WebSocket] Attempting reconnection, delay: ${Math.round(delay)}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
     );
 
     // Update connection status to show reconnecting
@@ -789,8 +750,6 @@ export class AgentWebSocketService {
 
     setTimeout(() => {
       if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
-        console.log(`[Agent WebSocket] Executing reconnection attempt ${this.reconnectAttempts}`);
-
         // Close any existing socket to ensure clean state
         if (this.socket) {
           try {
@@ -804,8 +763,6 @@ export class AgentWebSocketService {
         this.connect()
           .then(success => {
             if (success) {
-              console.log('[Agent WebSocket] Reconnection successful');
-
               // Dispatch reconnect success message
               this.dispatchMessage({
                 type: 'connection_status',
@@ -817,8 +774,6 @@ export class AgentWebSocketService {
               // Reset the reconnect counter on success
               this.reconnectAttempts = 0;
             } else {
-              console.log('[Agent WebSocket] Reconnection attempt failed');
-
               // If not at max attempts, try again recursively
               if (this.reconnectAttempts < this.maxReconnectAttempts) {
                 this.attemptReconnect();
@@ -881,7 +836,6 @@ export class AgentWebSocketService {
       }
 
       if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-        console.log('WebSocket not connected, queueing message');
         this.pendingMessages.push({
           type: 'agent_message',
           payload: {
@@ -955,7 +909,6 @@ export class AgentWebSocketService {
       }
 
       if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-        console.log('WebSocket not connected, queueing action request');
         this.pendingMessages.push({
           type: 'action',
           payload: {
@@ -1018,8 +971,6 @@ export class AgentWebSocketService {
    */
   private async sendAgentMessageViaRest(recipientId: string, message: any): Promise<string> {
     try {
-      console.log(`Sending agent message via REST API to ${recipientId}`);
-
       const response = await fetch('/api/agents/message', {
         method: 'POST',
         headers: {
@@ -1075,8 +1026,6 @@ export class AgentWebSocketService {
     params: any = {}
   ): Promise<string> {
     try {
-      console.log(`Sending action request via REST API to ${targetAgent}: ${action}`);
-
       const response = await fetch('/api/agents/action', {
         method: 'POST',
         headers: {
@@ -1125,8 +1074,6 @@ export class AgentWebSocketService {
     if (this.pendingMessages.length === 0) {
       return;
     }
-
-    console.log(`Sending ${this.pendingMessages.length} pending messages`);
 
     // Copy and clear pending messages
     const messages = [...this.pendingMessages];

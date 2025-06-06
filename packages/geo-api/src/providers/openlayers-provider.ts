@@ -38,8 +38,6 @@ export class OpenLayersProvider implements MapProvider {
     options: Partial<MapViewport> = {}
   ): Promise<void> {
     // In a real implementation, this would create an ol.Map instance
-    console.log(`Initializing OpenLayers in container`, container);
-
     // Default viewport
     const viewport: MapViewport = {
       center: options.center || [0, 0],
@@ -65,7 +63,6 @@ export class OpenLayersProvider implements MapProvider {
    */
   async addLayer(layer: MapLayer): Promise<void> {
     // In a real implementation, this would create ol.layer.* and add to the map
-    console.log(`Adding layer: ${layer.id}`);
     this.layers.set(layer.id, layer);
 
     // If the layer has a GeoJSON source, add it as a source
@@ -82,7 +79,6 @@ export class OpenLayersProvider implements MapProvider {
    */
   async removeLayer(layerId: string): Promise<void> {
     // In a real implementation, this would remove the layer from the map
-    console.log(`Removing layer: ${layerId}`);
     this.layers.delete(layerId);
     this.sources.delete(layerId);
 
@@ -103,8 +99,7 @@ export class OpenLayersProvider implements MapProvider {
     if (layer) {
       // Convert to OpenLayers visibility (visible = true, hidden/none = false)
       const visible = visibility === 'visible';
-      console.log(`Setting ${layerId} visibility to ${visible ? 'visible' : 'hidden'}`);
-    }
+      }
 
     return Promise.resolve();
   }
@@ -116,7 +111,7 @@ export class OpenLayersProvider implements MapProvider {
    */
   async setViewport(viewport: Partial<MapViewport>, animate: boolean = true): Promise<void> {
     // In a real implementation, this would update the map's view
-    console.log(`Setting viewport: ${JSON.stringify(viewport)}, animate: ${animate}`);
+    }, animate: ${animate}`);
     this.mapInstance.viewport = {
       ...this.mapInstance.viewport,
       ...viewport,
@@ -135,8 +130,6 @@ export class OpenLayersProvider implements MapProvider {
     layerIds?: string[]
   ): Promise<GeoJSONFeature[]> {
     // In a real implementation, this would use map.forEachFeatureAtPixel
-    console.log(`Querying features at point ${point} for layers ${layerIds || 'all'}`);
-
     // Mock implementation returning empty results
     return Promise.resolve([]);
   }
@@ -151,8 +144,6 @@ export class OpenLayersProvider implements MapProvider {
     layerIds?: string[]
   ): Promise<FeatureQueryResult[]> {
     // In a real implementation, this would use source.getFeaturesInExtent
-    console.log(`Querying features in bounds ${bounds} for layers ${layerIds || 'all'}`);
-
     // Mock implementation returning empty results
     return Promise.resolve([]);
   }
@@ -167,8 +158,6 @@ export class OpenLayersProvider implements MapProvider {
     featureCollection: GeoJSONFeatureCollection
   ): Promise<void> {
     // In a real implementation, this would update the vector source
-    console.log(`Updating ${featureCollection.features.length} features in layer ${layerId}`);
-
     if (this.sources.has(layerId)) {
       this.sources.set(layerId, featureCollection);
     }
@@ -186,7 +175,6 @@ export class OpenLayersProvider implements MapProvider {
     handler: (e: MapFeatureEvent) => void
   ): void {
     // In a real implementation, this would use map.on()
-    console.log(`Registering handler for ${event} event`);
     const handlers = this.eventHandlers.get(event);
     if (handlers) {
       handlers.add(handler);
@@ -203,7 +191,6 @@ export class OpenLayersProvider implements MapProvider {
     handler: (e: MapFeatureEvent) => void
   ): void {
     // In a real implementation, this would use map.un()
-    console.log(`Removing handler for ${event} event`);
     const handlers = this.eventHandlers.get(event);
     if (handlers) {
       handlers.delete(handler);
@@ -215,7 +202,6 @@ export class OpenLayersProvider implements MapProvider {
    */
   dispose(): void {
     // In a real implementation, this would clean up the map instance
-    console.log('Disposing of OpenLayers provider');
     this.layers.clear();
     this.sources.clear();
     this.eventHandlers.forEach(handlers => handlers.clear());
@@ -240,3 +226,4 @@ export class OpenLayersProvider implements MapProvider {
     return coordinates;
   }
 }
+

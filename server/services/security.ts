@@ -70,7 +70,6 @@ export class SecurityService implements ISecurityService {
       storage ||
       ({
         createAuditLog: async (log: InsertAuditLog): Promise<AuditLog> => {
-          console.log('Mock audit log created:', log);
           return {
             id: 0,
             action_type: log.action_type,

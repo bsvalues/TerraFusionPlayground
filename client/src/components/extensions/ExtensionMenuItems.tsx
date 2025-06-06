@@ -42,8 +42,6 @@ export function ExtensionMenuItems({ onItemClick }: ExtensionMenuItemsProps) {
         }
 
         const webviews: WebviewInfo[] = await webviewsResponse.json();
-        console.log('Fetched webviews:', webviews);
-
         // Get all extensions to generate menu items
         const extensionsResponse = await apiRequest('/api/extensions');
         if (!extensionsResponse.ok) {
@@ -51,8 +49,6 @@ export function ExtensionMenuItems({ onItemClick }: ExtensionMenuItemsProps) {
         }
 
         const extensions = await extensionsResponse.json();
-        console.log('Fetched extensions:', extensions);
-
         // Create an array of menu items
         const items: MenuItem[] = [];
 

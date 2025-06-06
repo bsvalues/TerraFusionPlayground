@@ -108,10 +108,6 @@ export class AgentLearningService {
       async () => this.processPendingFeedback(),
       this.config.feedbackProcessingInterval
     );
-
-    console.log(
-      `Agent learning feedback processing started with interval: ${this.config.feedbackProcessingInterval}ms`
-    );
   }
 
   /**
@@ -125,10 +121,6 @@ export class AgentLearningService {
     this.modelUpdateTimer = setInterval(
       async () => this.updateLearningModels(),
       this.config.modelUpdateInterval
-    );
-
-    console.log(
-      `Agent learning model update cycle started with interval: ${this.config.modelUpdateInterval}ms`
     );
   }
 
@@ -144,7 +136,6 @@ export class AgentLearningService {
   ): Promise<AgentLearningEvent> {
     try {
       if (!this.config.enabled) {
-        console.log(`Learning system disabled, not recording event for agent ${agentId}`);
         return null;
       }
 
@@ -160,9 +151,7 @@ export class AgentLearningService {
         })
         .returning();
 
-      console.log(
-        `Recorded learning event (${eventType}) for agent ${agentId} with priority ${priority}`
-      );
+      console.log(`Recorded learning event for agent ${agentId} with priority ${priority}`);
 
       // If priority is high, process immediately
       if (priority >= 4) {
@@ -195,7 +184,6 @@ export class AgentLearningService {
   ): Promise<AgentUserFeedback> {
     try {
       if (!this.config.enabled) {
-        console.log(`Learning system disabled, not recording user feedback for agent ${agentId}`);
         return null;
       }
 
@@ -214,8 +202,6 @@ export class AgentLearningService {
           processed: false,
         })
         .returning();
-
-      console.log(`Recorded user feedback for agent ${agentId}`);
 
       // Also create a learning event from this feedback
       await this.recordLearningEvent(
@@ -248,7 +234,6 @@ export class AgentLearningService {
   ): Promise<AgentKnowledgeBase> {
     try {
       if (!this.config.enabled) {
-        console.log(`Learning system disabled, not adding knowledge for agent ${agentId}`);
         return null;
       }
 
@@ -278,7 +263,6 @@ export class AgentLearningService {
           .where(eq(agentKnowledgeBase.id, existingKnowledge[0].id))
           .returning();
 
-        console.log(`Updated existing knowledge "${title}" for agent ${agentId}`);
         return updated;
       }
 
@@ -296,7 +280,6 @@ export class AgentLearningService {
         })
         .returning();
 
-      console.log(`Added new knowledge "${title}" for agent ${agentId}`);
       return knowledge;
     } catch (error) {
       console.error(`Error adding knowledge for agent ${agentId}:`, error);
@@ -316,9 +299,6 @@ export class AgentLearningService {
   ): Promise<AgentPerformanceMetric> {
     try {
       if (!this.config.enabled) {
-        console.log(
-          `Learning system disabled, not recording performance metric for agent ${agentId}`
-        );
         throw new Error('Learning system is disabled');
       }
 
@@ -333,7 +313,6 @@ export class AgentLearningService {
         })
         .returning();
 
-      console.log(`Recorded ${metricType} metric for agent ${agentId}: ${value}`);
       return metric;
     } catch (error) {
       console.error(`Error recording performance metric for agent ${agentId}:`, error);
@@ -432,8 +411,6 @@ export class AgentLearningService {
         .from(agentUserFeedback)
         .where(eq(agentUserFeedback.processed, false))
         .limit(50);
-
-      console.log(`Processing ${feedbackEntries.length} pending feedback entries`);
 
       for (const feedback of feedbackEntries) {
         try {
@@ -587,8 +564,6 @@ export class AgentLearningService {
       if (!event || event.processed) {
         return;
       }
-
-      console.log(`Processing learning event ${eventId} of type ${event.eventType}`);
 
       let processingNotes = '';
 
@@ -916,8 +891,6 @@ export class AgentLearningService {
       return;
     }
 
-    console.log('Running scheduled learning model update');
-
     try {
       // Get all agents with sufficient learning data
       const agents = await this.getAgentsWithSufficientLearningData();
@@ -956,8 +929,6 @@ export class AgentLearningService {
    */
   private async updateAgentModel(agentId: string): Promise<void> {
     try {
-      console.log(`Updating learning model for agent ${agentId}`);
-
       // Get the agent's previous model if any
       const previousModels = await db
         .select()
@@ -1045,8 +1016,6 @@ export class AgentLearningService {
         },
         3 // Medium priority
       );
-
-      console.log(`Updated learning model for agent ${agentId} to version ${newVersion}`);
     } catch (error) {
       console.error(`Error updating model for agent ${agentId}:`, error);
       throw error;

@@ -8,12 +8,8 @@ import { initializeAICodeAssistant as initializeCodeAssistant } from '../service
  */
 export const initializeAICodeAssistant = async (): Promise<void> => {
   try {
-    console.log('Initializing AI Code Assistant...');
-
     // Initialize the AI Code Assistant with the AI Assistant service
     initializeCodeAssistant(aiAssistantService);
-
-    console.log('AI Code Assistant initialized successfully');
   } catch (error) {
     console.error('Failed to initialize AI Code Assistant:', error);
     throw error;

@@ -14,20 +14,14 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    "incremental": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@shared/*": ["../../shared/*"]
+      "@shared/*": ["../../shared/*"],
+      "@shared/schema": ["../../shared/schema.ts"]
     }
   },
-  "include": [
-    "src/**/*",
-    "assets/**/*",
-    "e2e/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "build"
-  ]
+  "include": ["src/**/*", "assets/**/*", "e2e/**/*"],
+  "exclude": ["node_modules", "dist", "build", "../../archive"]
 }

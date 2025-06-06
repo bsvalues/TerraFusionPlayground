@@ -48,7 +48,6 @@ const GISControlPanel = () => {
   const handleAddressSearch = (e: React.FormEvent) => {
     e.preventDefault();
     // This would typically call a geocoding service
-    console.log('Searching for address:', addressSearchValue);
     // For demo purposes, we'll just center on Benton County
     setCenter([-119.7, 46.2]);
     setZoom(13);
@@ -58,7 +57,6 @@ const GISControlPanel = () => {
   const handleCreateSnapshot = async () => {
     try {
       const snapshotUrl = await createSnapshot();
-      console.log('Snapshot created:', snapshotUrl);
       // Would typically display the snapshot or allow download
     } catch (error) {
       console.error('Failed to create snapshot:', error);
@@ -70,7 +68,6 @@ const GISControlPanel = () => {
     setIsExporting(true);
     try {
       const exportUrl = await exportCurrentView(exportFormat as 'png' | 'jpg' | 'pdf');
-      console.log(`Exported map as ${exportFormat}:`, exportUrl);
       // Would typically trigger a download
     } catch (error) {
       console.error(`Failed to export as ${exportFormat}:`, error);

@@ -288,7 +288,7 @@ export async function implementGISStorage(storage: IStorage): Promise<void> {
       // Generate a fallback ID immediately to ensure it's never null
       const fallbackId = `system_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
 
-      console.log(`DEBUG - createAgentMessage input:`, JSON.stringify(message, null, 2));
+      );
 
       // Check which schema format the message is in
       if ('senderAgentId' in message || 'messageType' in message) {
@@ -300,10 +300,7 @@ export async function implementGISStorage(storage: IStorage): Promise<void> {
         // If agentId is empty, null, undefined, or an invalid string, use fallback
         if (!agentId || agentId === 'null' || agentId === 'undefined' || agentId.trim() === '') {
           agentId = fallbackId;
-          console.log(
-            `Using fallback agent ID: ${agentId} for message - original was empty or invalid`
-          );
-        }
+          }
 
         // Extra validation - ensure agent_id is a valid string
         if (typeof agentId !== 'string') {
@@ -311,12 +308,6 @@ export async function implementGISStorage(storage: IStorage): Promise<void> {
         }
 
         // Log the message and agent ID to help with debugging
-        console.log(
-          `Creating agent message with agent ID: ${agentId}`,
-          `Message has senderAgentId: ${'senderAgentId' in message}`,
-          `Message has agentId: ${'agentId' in message}`
-        );
-
         // Create a fresh object to avoid any reference issues
         const adaptedMessage = {
           agent_id: agentId, // This is guaranteed to be a non-empty string now
@@ -338,13 +329,10 @@ export async function implementGISStorage(storage: IStorage): Promise<void> {
           },
         };
 
-        console.log(`DEBUG - Inserting adapted message:`, JSON.stringify(adaptedMessage, null, 2));
+        );
 
         // Double-check before insert that agent_id is present
         if (!adaptedMessage.agent_id) {
-          console.log(
-            `CRITICAL - agent_id is still null/empty after adaptation. Using emergency fallback.`
-          );
           adaptedMessage.agent_id = `emergency_${Date.now()}`;
         }
 
@@ -361,10 +349,7 @@ export async function implementGISStorage(storage: IStorage): Promise<void> {
         // If agentId is empty, null, undefined, or an invalid string, use fallback
         if (!agentId || agentId === 'null' || agentId === 'undefined' || agentId.trim() === '') {
           agentId = fallbackId;
-          console.log(
-            `Using fallback agent ID: ${agentId} for GIS message - original was empty or invalid`
-          );
-        }
+          }
 
         // Create a fresh object to avoid any reference issues
         const messageWithAgentId = {
@@ -372,13 +357,10 @@ export async function implementGISStorage(storage: IStorage): Promise<void> {
           agent_id: agentId,
         };
 
-        console.log(`DEBUG - Inserting GIS message:`, JSON.stringify(messageWithAgentId, null, 2));
+        );
 
         // Double-check before insert that agent_id is present
         if (!messageWithAgentId.agent_id) {
-          console.log(
-            `CRITICAL - agent_id is still null/empty in GIS format. Using emergency fallback.`
-          );
           messageWithAgentId.agent_id = `emergency_${Date.now()}`;
         }
 
@@ -448,3 +430,4 @@ export async function implementGISStorage(storage: IStorage): Promise<void> {
     return await query.orderBy(desc(spatialEventsTable.createdAt));
   };
 }
+

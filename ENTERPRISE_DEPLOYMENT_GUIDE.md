@@ -9,17 +9,20 @@ This guide provides multiple deployment options for TerraFusion, from quick loca
 ### 1. Quick Deploy (Recommended for Testing)
 
 **Windows:**
+
 ```powershell
 .\quick-deploy.ps1
 ```
 
 **Linux/macOS:**
+
 ```bash
 chmod +x quick-deploy.sh
 ./quick-deploy.sh
 ```
 
 **Features:**
+
 - Fixes module resolution issues
 - Builds the application
 - Starts single instance on http://localhost:3000
@@ -28,17 +31,20 @@ chmod +x quick-deploy.sh
 ### 2. Enterprise Production Deploy (Full Stack)
 
 **Windows:**
+
 ```powershell
 .\deploy-enterprise.ps1 [domain.com]
 ```
 
 **Linux/macOS:**
+
 ```bash
 chmod +x deploy-enterprise.sh
 ./deploy-enterprise.sh [domain.com]
 ```
 
 **Features:**
+
 - High Availability: 2 load-balanced app instances
 - PostgreSQL: Production database with optimizations
 - Redis: Session storage and caching
@@ -51,6 +57,7 @@ chmod +x deploy-enterprise.sh
 ## System Requirements
 
 **Minimum:**
+
 - RAM: 4GB+ (8GB recommended)
 - Storage: 20GB+ free space
 - OS: Linux, macOS, or Windows 10/11
@@ -59,10 +66,12 @@ chmod +x deploy-enterprise.sh
 ## Post-Deployment
 
 ### Quick Deploy
+
 - Application: http://localhost:3000
 - Health check: http://localhost:3000/api/health
 
 ### Enterprise Deploy
+
 - Application: http://your-domain.com
 - Monitoring: http://your-domain.com:3001
 - Update API keys in .env.production
@@ -86,13 +95,15 @@ docker-compose -f docker-compose.prod.yml ps
 ## Success Indicators
 
 **Quick Deploy:**
+
 - Build completes without errors
 - Server starts on port 3000
 - Health check returns "OK"
 - Frontend loads properly
 
 **Enterprise Deploy:**
+
 - All containers show "Up (healthy)"
 - Load balancer responds
 - Database accepts connections
-- Monitoring dashboards accessible 
+- Monitoring dashboards accessible

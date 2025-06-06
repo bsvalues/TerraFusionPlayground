@@ -823,7 +823,7 @@ export class DatabaseConversionAgent extends BaseAgent {
     };
 
     if (logLevels[level] >= logLevels[this.config.logLevel]) {
-      console.log(`[DatabaseConversionAgent] [${level.toUpperCase()}] ${message}`);
+      }] ${message}`);
 
       // Also log to storage if available
       try {
@@ -844,3 +844,4 @@ export class DatabaseConversionAgent extends BaseAgent {
     }
   }
 }
+

@@ -296,17 +296,14 @@ export function executeVoiceCommandAction(action: VoiceCommandAction): void {
 
     case VoiceCommandActionType.OPEN_MODAL:
       // This would need to be connected to the app's modal system
-      console.log('Modal action:', action.payload);
       break;
 
     case VoiceCommandActionType.CLOSE_MODAL:
       // This would need to be connected to the app's modal system
-      console.log('Close modal action');
       break;
 
     case VoiceCommandActionType.REFRESH_DATA:
       // This would need to be connected to the app's data fetching system
-      console.log('Refresh data action:', action.payload);
       break;
 
     case VoiceCommandActionType.COPY_TO_CLIPBOARD:

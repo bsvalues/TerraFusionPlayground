@@ -16,7 +16,7 @@ const __dirname = path.dirname(__filename);
 
 async function runTest() {
   try {
-    console.log('Loading modules...');
+    // console.log('Loading modules...');
     
     // Import the AgentSystem
     const agentSystemPath = path.join(__dirname, 'server', 'services', 'agent-system.ts');
@@ -43,7 +43,7 @@ async function runTest() {
     const notificationPath = path.join(__dirname, 'server', 'services', 'notification-service.ts');
     const { NotificationService } = await import(notificationPath);
     
-    console.log('Setting up test environment...');
+    // console.log('Setting up test environment...');
     
     // Create required services
     const storage = new MemStorage();
@@ -56,22 +56,22 @@ async function runTest() {
     const agentSystem = new AgentSystem(storage, mcpService, propertyStoryGenerator, ftpService, notificationService);
     
     // Initialize the agent system
-    console.log('Initializing the agent system...');
+    // console.log('Initializing the agent system...');
     await agentSystem.initialize();
-    console.log('Agent system initialized');
+    // console.log('Agent system initialized');
     
     // Make sure the property assessment agent is activated
-    console.log('Starting property assessment agent...');
+    // console.log('Starting property assessment agent...');
     const propertyAssessmentAgent = agentSystem.getAgent('property_assessment');
     if (propertyAssessmentAgent) {
       await propertyAssessmentAgent.start();
-      console.log('Property assessment agent started');
+      // console.log('Property assessment agent started');
     } else {
       throw new Error('Property assessment agent not found');
     }
     
     // Create a test property
-    console.log('Creating test property...');
+    // console.log('Creating test property...');
     const testProperty = {
       propertyId: 'TEST001',
       address: '123 Test Ave, Testville, WA 98765',
@@ -93,32 +93,32 @@ async function runTest() {
     
     // Save the test property
     await storage.createProperty(testProperty);
-    console.log('Test property created with ID:', testProperty.propertyId);
+    // console.log('Test property created with ID:', testProperty.propertyId);
     
     // Use the test property ID
     const testPropertyId = testProperty.propertyId;
     
     // Execute the future value prediction capability
-    console.log(`\nTesting Future Value Prediction for property ${testPropertyId}...`);
+    // console.log(`\nTesting Future Value Prediction for property ${testPropertyId}...`);
     try {
       const result = await agentSystem.executeCapability('property_assessment', 'predictFutureValue', {
         propertyId: testPropertyId,
         yearsAhead: 5
       });
       
-      console.log('\nFuture Value Prediction Results:');
-      console.log('Property ID:', result.propertyId);
-      console.log('Current Value:', result.currentValue);
+      // console.log('\nFuture Value Prediction Results:');
+      // console.log('Property ID:', result.propertyId);
+      // console.log('Current Value:', result.currentValue);
       
       if (result.predictedValues && result.predictedValues.length > 0) {
         const lastPrediction = result.predictedValues[result.predictedValues.length - 1];
-        console.log(`Value in ${lastPrediction.year}:`, lastPrediction.predictedValue);
-        console.log('Growth from present:', lastPrediction.growthFromPresent + '%');
+        // console.log(`Value in ${lastPrediction.year}:`, lastPrediction.predictedValue);
+        // console.log('Growth from present:', lastPrediction.growthFromPresent + '%');
       }
       
       if (result.confidenceIntervals && result.confidenceIntervals.length > 0) {
         const lastInterval = result.confidenceIntervals[result.confidenceIntervals.length - 1];
-        console.log(`Confidence Interval in ${lastInterval.year}:`, 
+        // console.log(`Confidence Interval in ${lastInterval.year}:`, 
                    `${lastInterval.low} - ${lastInterval.high} (±${lastInterval.marginOfError}%)`);
       }
       
@@ -127,14 +127,14 @@ async function runTest() {
         path.join(__dirname, 'future-value-prediction-result.json'),
         JSON.stringify(result, null, 2)
       );
-      console.log('\nResult saved to future-value-prediction-result.json');
+      // console.log('\nResult saved to future-value-prediction-result.json');
       
-      console.log('\n✅ Test completed successfully');
+      // console.log('\n✅ Test completed successfully');
     } catch (error) {
-      console.error('Error executing capability:', error);
+      // console.error('Error executing capability:', error);
     }
   } catch (error) {
-    console.error('Test setup failed:', error);
+    // console.error('Test setup failed:', error);
   }
 }
 

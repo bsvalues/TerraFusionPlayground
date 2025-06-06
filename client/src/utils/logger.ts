@@ -136,7 +136,6 @@ class Logger {
         console.error(message, data);
         break;
       default:
-        console.log(message, data);
     }
 
     // Emit a custom event for log aggregation if needed

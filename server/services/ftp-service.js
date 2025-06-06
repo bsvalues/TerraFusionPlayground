@@ -57,7 +57,6 @@ export class FtpService {
         },
       });
 
-      console.log('FTP Connection successful');
       return true;
     } catch (error) {
       console.error('FTP Connection failed:', error);
@@ -126,7 +125,6 @@ export class FtpService {
       }
 
       await client.downloadTo(localFilePath, remoteFilePath);
-      console.log(`Downloaded ${remoteFilePath} to ${localFilePath}`);
       return true;
     } catch (error) {
       console.error(`Failed to download ${remoteFilePath}:`, error);
@@ -140,7 +138,6 @@ export class FtpService {
    * Initializes the FTP service
    */
   async initialize() {
-    console.log('FTP Service initialized');
     return true;
   }
 
@@ -163,7 +160,6 @@ export class FtpService {
         },
       });
 
-      console.log('Connected to FTP server');
       this.client = client;
       return true;
     } catch (error) {
@@ -178,7 +174,6 @@ export class FtpService {
   async disconnect() {
     if (this.client) {
       this.client.close();
-      console.log('Disconnected from FTP server');
     }
   }
 
@@ -189,8 +184,6 @@ export class FtpService {
    * @returns Synchronization result
    */
   async syncDirectory(remoteDir, options = {}) {
-    console.log(`Syncing directory ${remoteDir} with options:`, options);
-
     // Mock implementation for testing
     return {
       filesDownloaded: 5,

@@ -258,7 +258,6 @@ export class TeamAgentService {
       }
 
       this.initialized = true;
-      console.log('Team Agent Service initialized successfully');
     } catch (error) {
       console.error('Failed to initialize Team Agent Service:', error);
       throw error;
@@ -282,8 +281,6 @@ export class TeamAgentService {
 
         await this.storage.createTeamMember(insertData);
       }
-
-      console.log('Default team members created successfully');
     } catch (error) {
       console.error('Failed to create default team members:', error);
       throw error;
@@ -1129,8 +1126,6 @@ export class TeamAgentService {
       await this.storage.updateTeamMemberStatus(teamMemberId, TeamMemberStatus.BUSY);
 
       // Log activity
-      console.log(`Team member ${teamMember.name} executing capability ${capabilityName}`);
-
       try {
         // Execute the capability
         const result = await capability.execute(parameters);
@@ -1139,8 +1134,6 @@ export class TeamAgentService {
         await this.storage.updateTeamMemberStatus(teamMemberId, TeamMemberStatus.AVAILABLE);
 
         // Log activity completion
-        console.log(`Team member ${teamMember.name} completed capability ${capabilityName}`);
-
         return result;
       } catch (error) {
         // Update team member status back to available
@@ -1251,8 +1244,6 @@ export class TeamAgentService {
           teamMemberRole: teamMember.role,
         },
       });
-
-      console.log(`Notification sent to team member ${teamMember.name}: ${title}`);
     } catch (error) {
       console.error('Error sending team member notification:', error);
     }

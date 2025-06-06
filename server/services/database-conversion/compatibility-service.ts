@@ -632,12 +632,9 @@ import { db } from './client';
 
 // Run migrations
 export async function runMigrations() {
-  console.log('Running migrations...');
-  
   await migrate(db, { migrationsFolder: './migrations' });
   
-  console.log('Migrations completed');
-}
+  }
 
 // Call this function to run migrations
 // runMigrations().catch(console.error);

@@ -14,9 +14,9 @@ const API_BASE = 'http://localhost:5000/api';
 
 // Helper utility to format log messages
 const logSection = (title) => {
-  console.log('\n' + '='.repeat(50));
-  console.log(`${title}`);
-  console.log('='.repeat(50));
+  // console.log('\n' + '='.repeat(50));
+  // console.log(`${title}`);
+  // console.log('='.repeat(50));
 };
 
 // Helper utility to create timestamp prefixes to make test property IDs unique
@@ -38,7 +38,7 @@ async function makeRequest(path, method = 'GET', body = null) {
     const response = await fetch(`${API_BASE}${path}`, options);
     return await response.json();
   } catch (error) {
-    console.error(`Error making request to ${path}:`, error);
+    // console.error(`Error making request to ${path}:`, error);
     throw error;
   }
 }
@@ -81,7 +81,7 @@ async function testAdvancedDataLineage() {
       };
       
       const createdProperty = await makeRequest('/properties', 'POST', testProperty);
-      console.log(`Property created: ${createdProperty.propertyId}`);
+      // console.log(`Property created: ${createdProperty.propertyId}`);
       testProperties.push(createdProperty);
       
       // Note: Since we don't have a direct API for creating lineage records,
@@ -112,7 +112,7 @@ async function testAdvancedDataLineage() {
       };
       
       const updatedProperty = await makeRequest(`/properties/${property.id}`, 'PATCH', propertyUpdate);
-      console.log(`Property ${property.propertyId} value updated to: ${updatedProperty.value}`);
+      // console.log(`Property ${property.propertyId} value updated to: ${updatedProperty.value}`);
       
       // Add a brief delay to ensure unique timestamps
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -123,10 +123,10 @@ async function testAdvancedDataLineage() {
     
     for (const source of sources) {
       const sourceLineage = await makeRequest(`/data-lineage/source/${source}`);
-      console.log(`\nSource '${source}' lineage results:`);
-      console.log(`- Found ${sourceLineage.totalRecords} records`);
-      console.log(`- First record field: ${sourceLineage.lineage[0]?.fieldName}`);
-      console.log(`- First record property: ${sourceLineage.lineage[0]?.propertyId}`);
+      // console.log(`\nSource '${source}' lineage results:`);
+      // console.log(`- Found ${sourceLineage.totalRecords} records`);
+      // console.log(`- First record field: ${sourceLineage.lineage[0]?.fieldName}`);
+      // console.log(`- First record property: ${sourceLineage.lineage[0]?.propertyId}`);
     }
     
     // Step 4: Query property lineage for the first property
@@ -135,13 +135,13 @@ async function testAdvancedDataLineage() {
     const firstProperty = testProperties[0];
     const propertyLineage = await makeRequest(`/data-lineage/property/${firstProperty.propertyId}`);
     
-    console.log(`\nProperty ${firstProperty.propertyId} lineage:`);
-    console.log(`- Total fields with lineage: ${Object.keys(propertyLineage.lineage).length}`);
+    // console.log(`\nProperty ${firstProperty.propertyId} lineage:`);
+    // console.log(`- Total fields with lineage: ${Object.keys(propertyLineage.lineage).length}`);
     
     for (const field in propertyLineage.lineage) {
-      console.log(`\nField '${field}' changes:`);
+      // console.log(`\nField '${field}' changes:`);
       propertyLineage.lineage[field].forEach((record, index) => {
-        console.log(`  ${index + 1}. ${record.oldValue} → ${record.newValue} (${record.source})`);
+        // console.log(`  ${index + 1}. ${record.oldValue} → ${record.newValue} (${record.source})`);
       });
     }
     
@@ -156,37 +156,37 @@ async function testAdvancedDataLineage() {
       `/data-lineage/date-range?startDate=${startOfDay.toISOString()}&endDate=${endOfDay.toISOString()}`
     );
     
-    console.log(`\nDate range lineage results for today:`);
-    console.log(`- Total records: ${dateRangeLineage.totalRecords}`);
-    console.log(`- Unique properties: ${new Set(dateRangeLineage.lineage.map(record => record.propertyId)).size}`);
-    console.log(`- Unique fields: ${new Set(dateRangeLineage.lineage.map(record => record.fieldName)).size}`);
-    console.log(`- Unique sources: ${new Set(dateRangeLineage.lineage.map(record => record.source)).size}`);
+    // console.log(`\nDate range lineage results for today:`);
+    // console.log(`- Total records: ${dateRangeLineage.totalRecords}`);
+    // console.log(`- Unique properties: ${new Set(dateRangeLineage.lineage.map(record => record.propertyId)).size}`);
+    // console.log(`- Unique fields: ${new Set(dateRangeLineage.lineage.map(record => record.fieldName)).size}`);
+    // console.log(`- Unique sources: ${new Set(dateRangeLineage.lineage.map(record => record.source)).size}`);
     
     // Step 6: Query data provenance by getting property-field lineage (more detailed check)
     logSection('6. Querying specific field lineage (similar to provenance)');
     
     for (let i = 0; i < 2; i++) { // Test first 2 properties
       const property = testProperties[i];
-      console.log(`\nData lineage for ${property.propertyId}, field 'value':`);
+      // console.log(`\nData lineage for ${property.propertyId}, field 'value':`);
       
       // Use the field-specific endpoint instead of provenance
       const fieldLineage = await makeRequest(`/data-lineage/property/${property.propertyId}/field/value`);
       
       if (fieldLineage.lineage && fieldLineage.lineage.length > 0) {
-        console.log(`- Changes: ${fieldLineage.lineage.length}`);
-        console.log(`- Current value: ${fieldLineage.lineage[0].newValue}`);
-        console.log(`- First recorded: ${fieldLineage.lineage[fieldLineage.lineage.length-1].changeTimestamp}`);
-        console.log(`- Last modified: ${fieldLineage.lineage[0].changeTimestamp}`);
-        console.log(`- Change sources: ${fieldLineage.lineage.map(c => c.source).join(', ')}`);
+        // console.log(`- Changes: ${fieldLineage.lineage.length}`);
+        // console.log(`- Current value: ${fieldLineage.lineage[0].newValue}`);
+        // console.log(`- First recorded: ${fieldLineage.lineage[fieldLineage.lineage.length-1].changeTimestamp}`);
+        // console.log(`- Last modified: ${fieldLineage.lineage[0].changeTimestamp}`);
+        // console.log(`- Change sources: ${fieldLineage.lineage.map(c => c.source).join(', ')}`);
       } else {
-        console.log(`- No lineage data found for property ${property.propertyId}, field 'value'`);
+        // console.log(`- No lineage data found for property ${property.propertyId}, field 'value'`);
       }
     }
     
     logSection('ADVANCED DATA LINEAGE TESTING COMPLETE');
     
   } catch (error) {
-    console.error('Error during advanced data lineage testing:', error);
+    // console.error('Error during advanced data lineage testing:', error);
   }
 }
 

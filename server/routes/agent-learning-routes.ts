@@ -56,7 +56,7 @@ export function createAgentLearningRoutes(agentSystem: AgentSystem) {
 
       const { agentName, eventType, eventData, sourceContext, priority } = result.data;
 
-      console.log('Agent system registered agents count:', agentSystem.getAllAgents().size);
+      .size);
 
       // Use a fixed agent ID for testing - AI Insights Agent
       const agentId = agentName;
@@ -347,3 +347,4 @@ export function createAgentLearningRoutes(agentSystem: AgentSystem) {
 
   return router;
 }
+

@@ -438,7 +438,7 @@ export function RealUserMonitoring({
   ) => {
     // Log in debug mode
     if (debug) {
-      console.log(`Web Vitals Report (Batch ${batchId}, Attempt ${attemptNumber + 1}):`, payload);
+      console.log(`Sending metrics batch ${batchId} (attempt ${attemptNumber + 1}):`, payload);
     }
 
     // Send the report to the server
@@ -469,7 +469,7 @@ export function RealUserMonitoring({
         }
 
         if (debug) {
-          console.log(`Web Vitals metrics reported successfully (Batch ${batchId})`);
+          console.log(`Successfully sent metrics batch ${batchId}`);
         }
       })
       .catch(error => {
@@ -488,9 +488,7 @@ export function RealUserMonitoring({
           const delay = calculateBackoffDelay(attemptNumber);
 
           if (debug) {
-            console.log(
-              `Retrying batch ${batchId} in ${delay}ms (Attempt ${attemptNumber + 2}/${maxRetryAttempts + 1})`
-            );
+            console.log(`Retrying batch ${batchId} in ${delay}ms (attempt ${attemptNumber + 2})`);
           }
 
           // Schedule retry with exponential backoff
@@ -527,7 +525,7 @@ export function RealUserMonitoring({
     // Apply sampling if configured (random number between 0-1 must be less than samplingRate)
     if (samplingRate < 1.0 && Math.random() > samplingRate) {
       if (debug) {
-        console.log(`Sampling skipped sending metrics (rate: ${samplingRate})`);
+        console.log(`Sampling rate ${samplingRate}: skipping this batch`);
       }
       // Clear the queue but don't send data
       metricsQueue.current = [];
@@ -633,7 +631,7 @@ export function RealUserMonitoring({
 
     // Log in debug mode
     if (debug) {
-      console.log(`Web Vital: ${metric.name}`, metric);
+      console.log(`Received metric: ${metric.name} - ${metric.value}`);
     }
 
     // If there's no active timer, start one for batched reporting
@@ -654,7 +652,7 @@ export function RealUserMonitoring({
     }
 
     if (debug) {
-      console.log(`Attempting to retry ${pendingRetriesRef.current.length} pending batches`);
+      console.log('Retrying pending batches');
     }
 
     // Try to resend each pending batch
@@ -689,7 +687,7 @@ export function RealUserMonitoring({
     // Send any queued metrics synchronously
     if (metricsQueue.current.length > 0) {
       if (debug) {
-        console.log('Sending metrics on beforeunload');
+        console.log('Sending queued metrics before unload');
       }
 
       // Use navigator.sendBeacon if available for more reliable delivery during page unload
@@ -762,7 +760,7 @@ export function RealUserMonitoring({
         try {
           navigator.sendBeacon(reportUrl, blob);
           if (debug) {
-            console.log('Successfully sent metrics using sendBeacon');
+            console.log('Metrics sent with sendBeacon');
           }
         } catch (error) {
           if (debug) {
@@ -784,7 +782,7 @@ export function RealUserMonitoring({
    */
   const handleOnline = () => {
     if (debug) {
-      console.log('Connection restored. Retrying pending batches.');
+      console.log('Online event detected');
     }
     retryPendingBatches();
   };

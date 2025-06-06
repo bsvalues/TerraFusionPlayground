@@ -36,8 +36,6 @@ export class DatabaseConversionService {
     this.dataMigration = new DataMigrationService(storage, mcpService);
     this.dataTransformation = new DataTransformationService(storage, mcpService);
     this.compatibilityLayer = new CompatibilityService(storage, mcpService);
-
-    console.log('Database Conversion Service initialized');
   }
 
   /**
