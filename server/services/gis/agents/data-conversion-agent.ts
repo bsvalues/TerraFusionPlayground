@@ -406,7 +406,7 @@ export class DataConversionAgent extends BaseGISAgent {
       const geoJSONData = geoJSON as GeoJSONFeatureCollection | GeoJSONFeature | GeoJSONGeometry;
 
       await this.createAgentMessage({
-        agentId: String(this.agentId),
+        agentId: this.agentId,
         type: 'INFO',
         content: 'Validating GeoJSON data',
         metadata: { options }
@@ -495,7 +495,7 @@ export class DataConversionAgent extends BaseGISAgent {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       console.error('Error in validateGeoJSON:', errorMessage);
       await this.createAgentMessage({
-        agentId: String(this.agentId),
+        agentId: this.agentId,
         type: 'ERROR',
         content: `Failed to validate GeoJSON: ${errorMessage}`,
         metadata: { params }
@@ -516,7 +516,7 @@ export class DataConversionAgent extends BaseGISAgent {
       }
 
       await this.createAgentMessage({
-        agentId: String(this.agentId),
+        agentId: this.agentId,
         type: 'INFO',
         content: 'Repairing geometries in GeoJSON data',
         metadata: { options }
@@ -582,7 +582,7 @@ export class DataConversionAgent extends BaseGISAgent {
       console.error('Error in repairGeometry:', errorMessage);
       
       await this.createAgentMessage({
-        agentId: String(this.agentId),
+        agentId: this.agentId,
         type: 'ERROR',
         content: `Failed to repair geometries: ${errorMessage}`,
         metadata: { params }
