@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .log-area {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            margin-bottom: 20px;
+            background-color: #f8f8f8;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 8px 12px;
+            margin-right: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #cccccc;
+        }
+        input[type="text"] {
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket Debug Tool</h1>
+        
+        <div class="controls">
+            <div>
+                <label for="ws-url">WebSocket URL:</label>
+                <input type="text" id="ws-url" placeholder="Enter WebSocket URL" value="">
+            </div>
+            <div>
+                <button id="connect-btn">Connect</button>
+                <button id="disconnect-btn" disabled>Disconnect</button>
+                <button id="clear-log-btn">Clear Log</button>
+            </div>
+        </div>
+        
+        <div>
+            <h3>Log:</h3>
+            <div class="log-area" id="log"></div>
+        </div>
+        
+        <div class="controls">
+            <div>
+                <label for="message-input">Message:</label>
+                <input type="text" id="message-input" placeholder="Enter message to send" value='{"type":"ping","timestamp":123456789}'>
+            </div>
+            <div>
+                <button id="send-btn" disabled>Send Message</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // DOM Elements
+        const wsUrlInput = document.getElementById('ws-url');
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const clearLogBtn = document.getElementById('clear-log-btn');
+        const sendBtn = document.getElementById('send-btn');
+        const messageInput = document.getElementById('message-input');
+        const logArea = document.getElementById('log');
+        
+        // WebSocket instance
+        let socket = null;
+        
+        // Initialize
+        function init() {
+            // Set default WebSocket URL with appropriate protocol
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
+            wsUrlInput.value = `${protocol}//${host}/ws`;
+            
+            // Event listeners
+            connectBtn.addEventListener('click', connect);
+            disconnectBtn.addEventListener('click', disconnect);
+            clearLogBtn.addEventListener('click', clearLog);
+            sendBtn.addEventListener('click', sendMessage);
+            
+            // Log initialization
+            log('Debug tool initialized');
+        }
+        
+        // Log function
+        function log(message) {
+            const now = new Date().toISOString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `${now}: ${message}`;
+            logArea.appendChild(logEntry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+        
+        // Clear log
+        function clearLog() {
+            logArea.innerHTML = '';
+        }
+        
+        // Connect to WebSocket
+        function connect() {
+            const url = wsUrlInput.value;
+            if (!url) {
+                log('Error: WebSocket URL is required');
+                return;
+            }
+            
+            try {
+                log(`Connecting to ${url}...`);
+                
+                // Create WebSocket
+                socket = new WebSocket(url);
+                
+                // Connection Events
+                socket.addEventListener('open', (event) => {
+                    log(`Connected to ${url}`);
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                    sendBtn.disabled = false;
+                });
+                
+                socket.addEventListener('message', (event) => {
+                    try {
+                        // Try to parse as JSON
+                        const data = JSON.parse(event.data);
+                        log(`Received: ${JSON.stringify(data, null, 2)}`);
+                    } catch (e) {
+                        // Not JSON, log as string
+                        log(`Received: ${event.data}`);
+                    }
+                });
+                
+                socket.addEventListener('close', (event) => {
+                    const reason = event.reason || 'No reason provided';
+                    log(`Connection closed: Code ${event.code}, Reason: ${reason}`);
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    sendBtn.disabled = true;
+                    socket = null;
+                });
+                
+                socket.addEventListener('error', (event) => {
+                    log('WebSocket error occurred');
+                    console.error('WebSocket error:', event);
+                });
+                
+            } catch (error) {
+                log(`Error creating WebSocket: ${error.message}`);
+            }
+        }
+        
+        // Disconnect from WebSocket
+        function disconnect() {
+            if (!socket) {
+                return;
+            }
+            
+            log('Disconnecting...');
+            socket.close(1000, 'User closed connection');
+        }
+        
+        // Send message
+        function sendMessage() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                log('Cannot send: WebSocket is not connected');
+                return;
+            }
+            
+            const message = messageInput.value;
+            
+            try {
+                // Validate if message is JSON
+                let parsedMsg;
+                try {
+                    parsedMsg = JSON.parse(message);
+                    // If it parses successfully, use the string version
+                    socket.send(message);
+                    log(`Sent: ${message}`);
+                } catch (e) {
+                    // Not valid JSON, send as plain text
+                    socket.send(message);
+                    log(`Sent (as plain text): ${message}`);
+                }
+            } catch (error) {
+                log(`Error sending message: ${error.message}`);
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resilient Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .panel {
+            flex: 1;
+            min-width: 45%;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 3px;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .connecting {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .reconnecting {
+            background-color: #e2e3e5;
+            color: #383d41;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-left: 5px solid #dc3545;
+        }
+        .log {
+            height: 300px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 10px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 5px 5px 5px 0;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        button:disabled {
+            background-color: #cccccc;
+        }
+        button.secondary {
+            background-color: #6c757d;
+        }
+        button.danger {
+            background-color: #dc3545;
+        }
+        input[type="text"] {
+            width: 70%;
+            padding: 8px;
+            margin-right: 5px;
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .controls {
+            margin-bottom: 10px;
+        }
+        .options {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-radius: 3px;
+        }
+        .debug-info {
+            font-size: 0.9em;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 3px;
+        }
+        .debug-info pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 7px;
+            font-size: 12px;
+            font-weight: bold;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: baseline;
+            border-radius: 10px;
+            margin-left: 5px;
+        }
+        .badge-websocket {
+            background-color: #28a745;
+            color: white;
+        }
+        .badge-sse {
+            background-color: #17a2b8;
+            color: white;
+        }
+        .badge-http {
+            background-color: #6c757d;
+            color: white;
+        }
+        .message-direction {
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+        .message-sent {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+        .message-received {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel">
+            <h2>Resilient Connection Test</h2>
+            <p>This demo uses a sophisticated connection manager that automatically handles fallbacks between WebSockets, Server-Sent Events (SSE), and HTTP requests.</p>
+            
+            <div class="options">
+                <h3>Connection Options</h3>
+                <div>
+                    <label for="preferred-transport">Preferred Transport:</label>
+                    <select id="preferred-transport">
+                        <option value="websocket,sse,http">WebSocket → SSE → HTTP</option>
+                        <option value="sse,websocket,http">SSE → WebSocket → HTTP</option>
+                        <option value="http,sse,websocket">HTTP → SSE → WebSocket</option>
+                        <option value="websocket">WebSocket only</option>
+                        <option value="sse">SSE only</option>
+                        <option value="http">HTTP only</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="ws-endpoint">WebSocket Endpoint:</label>
+                    <input type="text" id="ws-endpoint" value="/ws">
+                </div>
+                <div>
+                    <label for="sse-endpoint">SSE Endpoint:</label>
+                    <input type="text" id="sse-endpoint" value="/api/events">
+                </div>
+                <div>
+                    <label for="http-endpoint">HTTP Endpoint:</label>
+                    <input type="text" id="http-endpoint" value="/api/ws-fallback/send">
+                </div>
+                <div>
+                    <label for="reconnect-attempts">Reconnect Attempts:</label>
+                    <input type="number" id="reconnect-attempts" value="5" min="1" max="10">
+                </div>
+                <div>
+                    <label for="reconnect-delay">Reconnect Delay (ms):</label>
+                    <input type="number" id="reconnect-delay" value="1000" min="100" max="5000">
+                </div>
+                <div>
+                    <label for="exponential-backoff">Exponential Backoff:</label>
+                    <input type="checkbox" id="exponential-backoff" checked>
+                </div>
+                <div>
+                    <label for="debug-mode">Debug Mode:</label>
+                    <input type="checkbox" id="debug-mode" checked>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="connect-btn">Connect</button>
+                <button id="disconnect-btn" disabled>Disconnect</button>
+                <button id="clear-log-btn" class="secondary">Clear Log</button>
+                <button id="simulate-failure-btn" class="danger">Simulate Failure</button>
+            </div>
+            
+            <div id="connection-status" class="status disconnected">
+                Status: Disconnected
+            </div>
+            
+            <div class="controls">
+                <input type="text" id="message-input" placeholder="Enter message" value='{"type":"ping","data":"Hello from resilient connection test"}'>
+                <button id="send-btn" disabled>Send Message</button>
+            </div>
+            
+            <div class="log" id="log"></div>
+            
+            <div class="debug-info">
+                <h3>Connection Info</h3>
+                <pre id="connection-info"></pre>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ConnectionState enum
+        const ConnectionState = {
+            DISCONNECTED: 'disconnected',
+            CONNECTING: 'connecting',
+            CONNECTED: 'connected',
+            RECONNECTING: 'reconnecting',
+            ERROR: 'error'
+        };
+        
+        // ConnectionType enum
+        const ConnectionType = {
+            WEBSOCKET: 'websocket',
+            SSE: 'sse',
+            HTTP: 'http'
+        };
+        
+        // MessageDirection enum
+        const MessageDirection = {
+            SENT: 'sent',
+            RECEIVED: 'received'
+        };
+        
+        // DOM elements
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const clearLogBtn = document.getElementById('clear-log-btn');
+        const simulateFailureBtn = document.getElementById('simulate-failure-btn');
+        const connectionStatusDiv = document.getElementById('connection-status');
+        const logDiv = document.getElementById('log');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const connectionInfoPre = document.getElementById('connection-info');
+        
+        // Options elements
+        const preferredTransportSelect = document.getElementById('preferred-transport');
+        const wsEndpointInput = document.getElementById('ws-endpoint');
+        const sseEndpointInput = document.getElementById('sse-endpoint');
+        const httpEndpointInput = document.getElementById('http-endpoint');
+        const reconnectAttemptsInput = document.getElementById('reconnect-attempts');
+        const reconnectDelayInput = document.getElementById('reconnect-delay');
+        const exponentialBackoffCheckbox = document.getElementById('exponential-backoff');
+        const debugModeCheckbox = document.getElementById('debug-mode');
+        
+        // Connection manager
+        let connectionManager = null;
+        
+        // Initialize UI based on LocalStorage
+        function initUI() {
+            // Load saved options
+            const savedOptions = loadOptions();
+            
+            preferredTransportSelect.value = savedOptions.connectionPriority.join(',');
+            wsEndpointInput.value = savedOptions.wsEndpoint;
+            sseEndpointInput.value = savedOptions.sseEndpoint;
+            httpEndpointInput.value = savedOptions.httpEndpoint;
+            reconnectAttemptsInput.value = savedOptions.reconnectAttempts;
+            reconnectDelayInput.value = savedOptions.reconnectDelay;
+            exponentialBackoffCheckbox.checked = savedOptions.exponentialBackoff;
+            debugModeCheckbox.checked = savedOptions.debug;
+            
+            // Add event listeners
+            connectBtn.addEventListener('click', connect);
+            disconnectBtn.addEventListener('click', disconnect);
+            clearLogBtn.addEventListener('click', clearLog);
+            simulateFailureBtn.addEventListener('click', simulateFailure);
+            sendBtn.addEventListener('click', sendMessage);
+            
+            // Log initialization
+            log('Resilient Connection Test initialized');
+            log('Use the controls above to connect and send messages');
+            log('The connection manager will automatically handle fallbacks if a connection method fails');
+        }
+        
+        // Get connection options from UI
+        function getConnectionOptions() {
+            const preferredTransport = preferredTransportSelect.value.split(',');
+            const connectionPriority = preferredTransport.map(type => {
+                switch (type) {
+                    case 'websocket': return ConnectionType.WEBSOCKET;
+                    case 'sse': return ConnectionType.SSE;
+                    case 'http': return ConnectionType.HTTP;
+                    default: return ConnectionType.WEBSOCKET;
+                }
+            });
+            
+            return {
+                wsEndpoint: wsEndpointInput.value,
+                wsProtocol: 'auto',
+                sseEndpoint: sseEndpointInput.value,
+                httpEndpoint: httpEndpointInput.value,
+                autoConnect: false,
+                reconnectAttempts: parseInt(reconnectAttemptsInput.value),
+                reconnectDelay: parseInt(reconnectDelayInput.value),
+                exponentialBackoff: exponentialBackoffCheckbox.checked,
+                heartbeatInterval: 30000,
+                debug: debugModeCheckbox.checked,
+                connectionPriority
+            };
+        }
+        
+        // Save options to LocalStorage
+        function saveOptions(options) {
+            localStorage.setItem('resilientConnectionOptions', JSON.stringify(options));
+        }
+        
+        // Load options from LocalStorage
+        function loadOptions() {
+            const defaultOptions = {
+                wsEndpoint: '/ws',
+                wsProtocol: 'auto',
+                sseEndpoint: '/api/events',
+                httpEndpoint: '/api/ws-fallback/send',
+                autoConnect: false,
+                reconnectAttempts: 5,
+                reconnectDelay: 1000,
+                exponentialBackoff: true,
+                heartbeatInterval: 30000,
+                debug: true,
+                connectionPriority: ['websocket', 'sse', 'http']
+            };
+            
+            const savedOptions = localStorage.getItem('resilientConnectionOptions');
+            return savedOptions ? JSON.parse(savedOptions) : defaultOptions;
+        }
+        
+        // Update UI based on connection state
+        function updateConnectionState(state, connectionType = null) {
+            connectionStatusDiv.className = `status ${state}`;
+            
+            let statusText = `Status: ${state.charAt(0).toUpperCase() + state.slice(1)}`;
+            
+            if (connectionType) {
+                let badgeClass = '';
+                switch (connectionType) {
+                    case ConnectionType.WEBSOCKET:
+                        badgeClass = 'badge-websocket';
+                        break;
+                    case ConnectionType.SSE:
+                        badgeClass = 'badge-sse';
+                        break;
+                    case ConnectionType.HTTP:
+                        badgeClass = 'badge-http';
+                        break;
+                }
+                
+                statusText += ` <span class="badge ${badgeClass}">${connectionType}</span>`;
+            }
+            
+            connectionStatusDiv.innerHTML = statusText;
+            
+            switch (state) {
+                case ConnectionState.CONNECTED:
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                    sendBtn.disabled = false;
+                    break;
+                case ConnectionState.DISCONNECTED:
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    sendBtn.disabled = true;
+                    break;
+                case ConnectionState.CONNECTING:
+                case ConnectionState.RECONNECTING:
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                    sendBtn.disabled = true;
+                    break;
+                case ConnectionState.ERROR:
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    sendBtn.disabled = true;
+                    break;
+            }
+        }
+        
+        // Create connection manager if it doesn't exist
+        function createConnectionManager() {
+            // Get options from UI
+            const options = getConnectionOptions();
+            
+            // Save options
+            saveOptions(options);
+            
+            // Create connection manager
+            connectionManager = new ConnectionManager(options);
+            
+            // Set up event handlers
+            connectionManager.on('connect', handleConnect);
+            connectionManager.on('disconnect', handleDisconnect);
+            connectionManager.on('message', handleMessage);
+            connectionManager.on('error', handleError);
+            connectionManager.on('statechange', handleStateChange);
+            connectionManager.on('reconnecting', handleReconnecting);
+            
+            // Update connection info
+            updateConnectionInfo();
+        }
+        
+        // Connect to server
+        function connect() {
+            log('Connecting...');
+            
+            // Create connection manager if it doesn't exist
+            if (!connectionManager) {
+                createConnectionManager();
+            }
+            
+            // Connect
+            connectionManager.connect();
+            
+            // Update UI
+            updateConnectionState(ConnectionState.CONNECTING);
+        }
+        
+        // Disconnect from server
+        function disconnect() {
+            if (!connectionManager) {
+                return;
+            }
+            
+            log('Disconnecting...');
+            
+            // Disconnect
+            connectionManager.disconnect();
+            
+            // Update UI
+            updateConnectionState(ConnectionState.DISCONNECTED);
+        }
+        
+        // Send a message
+        function sendMessage() {
+            if (!connectionManager) {
+                return;
+            }
+            
+            const messageText = messageInput.value;
+            
+            try {
+                // Try to parse as JSON
+                let message = JSON.parse(messageText);
+                
+                // Add timestamp if not present
+                if (!message.timestamp) {
+                    message.timestamp = new Date().toISOString();
+                }
+                
+                // Send message
+                connectionManager.send(message);
+                
+                log(`Message sent: ${JSON.stringify(message)}`, MessageDirection.SENT);
+            } catch (error) {
+                // Not valid JSON, send as text
+                connectionManager.send({
+                    type: 'text',
+                    text: messageText,
+                    timestamp: new Date().toISOString()
+                });
+                
+                log(`Message sent: ${messageText}`, MessageDirection.SENT);
+            }
+        }
+        
+        // Simulate connection failure
+        function simulateFailure() {
+            if (!connectionManager) {
+                return;
+            }
+            
+            log('Simulating connection failure...');
+            
+            // Force close any WebSocket connection
+            const connInfo = connectionManager.getConnectionInfo();
+            
+            if (connInfo.connectionType === ConnectionType.WEBSOCKET) {
+                // This is a hacky way to force a failure
+                // In a real app, you'd have better ways to test failures
+                const wsConn = connectionManager.wsConnection;
+                if (wsConn) {
+                    wsConn.close(4000, 'Simulated failure');
+                }
+            } else if (connInfo.connectionType === ConnectionType.SSE) {
+                // Force close SSE connection
+                const sseConn = connectionManager.sseConnection;
+                if (sseConn) {
+                    sseConn.close();
+                    
+                    // Dispatch error event manually
+                    const errorEvent = new Event('error');
+                    sseConn.dispatchEvent(errorEvent);
+                }
+            } else {
+                // For HTTP, we'll just force a disconnect and reconnect
+                connectionManager.disconnect();
+                setTimeout(() => connectionManager.connect(), 100);
+            }
+        }
+        
+        // Clear the log
+        function clearLog() {
+            logDiv.innerHTML = '';
+        }
+        
+        // Update connection info display
+        function updateConnectionInfo() {
+            if (!connectionManager) {
+                connectionInfoPre.textContent = 'Connection manager not initialized';
+                return;
+            }
+            
+            const info = connectionManager.getConnectionInfo();
+            connectionInfoPre.textContent = JSON.stringify(info, null, 2);
+        }
+        
+        // Event handlers
+        function handleConnect(event) {
+            log(`Connected via ${event.connectionType}`);
+            updateConnectionState(ConnectionState.CONNECTED, event.connectionType);
+            updateConnectionInfo();
+        }
+        
+        function handleDisconnect(event) {
+            log(`Disconnected. Reason: ${event.reason || 'No reason provided'}`);
+            updateConnectionState(ConnectionState.DISCONNECTED);
+            updateConnectionInfo();
+        }
+        
+        function handleMessage(event) {
+            const direction = event.direction === MessageDirection.SENT ? 'Sent' : 'Received';
+            log(`Message ${direction.toLowerCase()}: ${JSON.stringify(event.message)}`, event.direction);
+            updateConnectionInfo();
+        }
+        
+        function handleError(event) {
+            log(`Error: ${event.error ? event.error.message : 'Unknown error'}`);
+            updateConnectionState(ConnectionState.ERROR);
+            updateConnectionInfo();
+        }
+        
+        function handleStateChange(event) {
+            log(`State changed to ${event.state}`);
+            updateConnectionState(event.state, connectionManager.getConnectionType());
+            updateConnectionInfo();
+        }
+        
+        function handleReconnecting(event) {
+            log(`Reconnecting... Attempt ${event.attempt} of ${connectionManager.options.reconnectAttempts}, delay: ${event.retryDelay}ms`);
+            updateConnectionState(ConnectionState.RECONNECTING);
+            updateConnectionInfo();
+        }
+        
+        // Log a message
+        function log(message, direction = null) {
+            const timestamp = new Date().toISOString();
+            const entry = document.createElement('div');
+            
+            if (direction) {
+                const directionSpan = document.createElement('span');
+                directionSpan.className = `message-direction message-${direction.toLowerCase()}`;
+                directionSpan.textContent = direction === MessageDirection.SENT ? 'SENT' : 'RCVD';
+                entry.appendChild(directionSpan);
+            }
+            
+            const textSpan = document.createElement('span');
+            textSpan.textContent = `${timestamp}: ${message}`;
+            entry.appendChild(textSpan);
+            
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            
+            console.log(`[ResilientConnection] ${message}`);
+        }
+        
+        // ConnectionManager class
+        class ConnectionManager {
+            constructor(options = {}) {
+                // Default options
+                const defaultOptions = {
+                    wsEndpoint: '/ws',
+                    wsProtocol: 'auto',
+                    sseEndpoint: '/api/events',
+                    httpEndpoint: '/api/ws-fallback/send',
+                    autoConnect: false,
+                    reconnectAttempts: 5,
+                    reconnectDelay: 1000,
+                    exponentialBackoff: true,
+                    heartbeatInterval: 30000,
+                    debug: false,
+                    connectionPriority: [
+                        ConnectionType.WEBSOCKET,
+                        ConnectionType.SSE,
+                        ConnectionType.HTTP
+                    ]
+                };
+                
+                // Merge with provided options
+                this.options = { ...defaultOptions, ...options };
+                
+                // Generate client ID
+                this.clientId = this.options.clientId || `client_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+                
+                // Initialize state
+                this.wsConnection = null;
+                this.sseConnection = null;
+                this.httpPollInterval = null;
+                this.heartbeatInterval = null;
+                this.reconnectTimer = null;
+                this.reconnectAttempt = 0;
+                this.pendingMessages = [];
+                this.eventHandlers = new Map();
+                this.currentConnectionType = null;
+                this.currentState = ConnectionState.DISCONNECTED;
+                this.lastMessageId = 0;
+                
+                // Auto-connect if enabled
+                if (this.options.autoConnect) {
+                    this.connect();
+                }
+            }
+            
+            connect() {
+                // Reset state
+                this.reconnectAttempt = 0;
+                
+                this.setState(ConnectionState.CONNECTING);
+                
+                // Try to connect using the first method in the priority list
+                this.tryNextConnectionMethod();
+            }
+            
+            disconnect() {
+                this.log('Disconnecting from all connections');
+                
+                // Clear any reconnect timer
+                if (this.reconnectTimer) {
+                    clearTimeout(this.reconnectTimer);
+                    this.reconnectTimer = null;
+                }
+                
+                // Clear any heartbeat interval
+                if (this.heartbeatInterval) {
+                    clearInterval(this.heartbeatInterval);
+                    this.heartbeatInterval = null;
+                }
+                
+                // Clear any HTTP polling interval
+                if (this.httpPollInterval) {
+                    clearInterval(this.httpPollInterval);
+                    this.httpPollInterval = null;
+                }
+                
+                // Disconnect WebSocket if connected
+                if (this.wsConnection) {
+                    this.wsConnection.close(1000, 'User initiated disconnect');
+                    this.wsConnection = null;
+                }
+                
+                // Disconnect SSE if connected
+                if (this.sseConnection) {
+                    this.sseConnection.close();
+                    this.sseConnection = null;
+                }
+                
+                // Update state
+                this.currentConnectionType = null;
+                this.setState(ConnectionState.DISCONNECTED);
+                
+                // Trigger event
+                this.triggerEvent('disconnect', { reason: 'User initiated disconnect' });
+            }
+            
+            send(message) {
+                // Add client ID to the message if not present
+                const messageToSend = {
+                    ...message,
+                    clientId: this.clientId,
+                    timestamp: message.timestamp || new Date().toISOString(),
+                    messageId: `msg_${++this.lastMessageId}_${Date.now()}`
+                };
+                
+                // Try to send the message
+                let sent = false;
+                
+                if (this.currentState === ConnectionState.CONNECTED) {
+                    switch (this.currentConnectionType) {
+                        case ConnectionType.WEBSOCKET:
+                            sent = this.sendViaWebSocket(messageToSend);
+                            break;
+                        case ConnectionType.SSE:
+                            // SSE is one-way, fallback to HTTP
+                            sent = this.sendViaHttp(messageToSend);
+                            break;
+                        case ConnectionType.HTTP:
+                            sent = this.sendViaHttp(messageToSend);
+                            break;
+                    }
+                }
+                
+                // If failed to send, add to pending messages
+                if (!sent) {
+                    this.pendingMessages.push(messageToSend);
+                    this.log(`Message queued: ${messageToSend.type}`, messageToSend);
+                    
+                    // If not connected, try to reconnect
+                    if (this.currentState !== ConnectionState.CONNECTING && 
+                        this.currentState !== ConnectionState.RECONNECTING) {
+                        this.connect();
+                    }
+                } else {
+                    // Message sent successfully, trigger event
+                    this.triggerEvent('message', { 
+                        message: messageToSend, 
+                        direction: MessageDirection.SENT 
+                    });
+                }
+            }
+            
+            on(eventType, handler) {
+                if (!this.eventHandlers.has(eventType)) {
+                    this.eventHandlers.set(eventType, []);
+                }
+                
+                const handlers = this.eventHandlers.get(eventType);
+                if (handlers) {
+                    handlers.push(handler);
+                }
+            }
+            
+            off(eventType, handler) {
+                if (!this.eventHandlers.has(eventType)) {
+                    return;
+                }
+                
+                // If no handler provided, remove all handlers for this event type
+                if (!handler) {
+                    this.eventHandlers.delete(eventType);
+                    return;
+                }
+                
+                // Otherwise, remove the specific handler
+                const handlers = this.eventHandlers.get(eventType);
+                if (handlers) {
+                    const index = handlers.indexOf(handler);
+                    if (index !== -1) {
+                        handlers.splice(index, 1);
+                    }
+                    
+                    // If no handlers left, remove the event type
+                    if (handlers.length === 0) {
+                        this.eventHandlers.delete(eventType);
+                    }
+                }
+            }
+            
+            getState() {
+                return this.currentState;
+            }
+            
+            getConnectionType() {
+                return this.currentConnectionType;
+            }
+            
+            getClientId() {
+                return this.clientId;
+            }
+            
+            getConnectionInfo() {
+                return {
+                    state: this.currentState,
+                    connectionType: this.currentConnectionType,
+                    clientId: this.clientId,
+                    reconnectAttempt: this.reconnectAttempt,
+                    pendingMessages: this.pendingMessages.length,
+                    options: this.options,
+                    connectionTypes: {
+                        websocket: this.wsConnection !== null,
+                        sse: this.sseConnection !== null,
+                        http: this.httpPollInterval !== null
+                    }
+                };
+            }
+            
+            // Try the next connection method in the priority list
+            tryNextConnectionMethod() {
+                // Get the next connection method to try
+                const availableMethods = this.options.connectionPriority || [];
+                
+                // If we've tried all methods, trigger an error
+                if (this.reconnectAttempt >= this.options.reconnectAttempts) {
+                    this.log('Maximum reconnection attempts reached');
+                    this.setState(ConnectionState.ERROR);
+                    this.triggerEvent('error', { 
+                        error: new Error('Maximum reconnection attempts reached')
+                    });
+                    return;
+                }
+                
+                // Increment the reconnect attempt
+                this.reconnectAttempt++;
+                
+                // Try each method in order
+                for (const method of availableMethods) {
+                    // Skip if this is the current method and it failed
+                    if (method === this.currentConnectionType) {
+                        continue;
+                    }
+                    
+                    // Try to connect with this method
+                    switch (method) {
+                        case ConnectionType.WEBSOCKET:
+                            if (this.connectWebSocket()) {
+                                return;
+                            }
+                            break;
+                        case ConnectionType.SSE:
+                            if (this.connectSSE()) {
+                                return;
+                            }
+                            break;
+                        case ConnectionType.HTTP:
+                            if (this.connectHttp()) {
+                                return;
+                            }
+                            break;
+                    }
+                }
+                
+                // If we get here, all methods failed
+                // Schedule a reconnect after a delay
+                const delay = this.calculateReconnectDelay();
+                
+                this.log(`All connection methods failed, reconnecting in ${delay}ms (attempt ${this.reconnectAttempt}/${this.options.reconnectAttempts})`);
+                
+                this.setState(ConnectionState.RECONNECTING);
+                
+                this.reconnectTimer = setTimeout(() => {
+                    this.tryNextConnectionMethod();
+                }, delay);
+                
+                // Trigger reconnecting event
+                this.triggerEvent('reconnecting', { 
+                    attempt: this.reconnectAttempt,
+                    retryDelay: delay
+                });
+            }
+            
+            // Calculate the reconnect delay using exponential backoff if enabled
+            calculateReconnectDelay() {
+                const baseDelay = this.options.reconnectDelay;
+                
+                if (this.options.exponentialBackoff) {
+                    // Factor increases with each attempt: 1, 1.5, 2.25, 3.375, etc.
+                    const factor = Math.pow(1.5, this.reconnectAttempt - 1);
+                    return Math.min(baseDelay * factor, 30000);  // Cap at 30 seconds
+                }
+                
+                return baseDelay;
+            }
+            
+            // Connect via WebSocket
+            connectWebSocket() {
+                try {
+                    // Clean up any existing WebSocket connection
+                    if (this.wsConnection) {
+                        this.wsConnection.close();
+                        this.wsConnection = null;
+                    }
+                    
+                    // Determine WebSocket URL
+                    const host = window.location.host;
+                    const endpoint = this.options.wsEndpoint || '/ws';
+                    let protocol;
+                    
+                    switch (this.options.wsProtocol) {
+                        case 'wss':
+                            protocol = 'wss:';
+                            break;
+                        case 'ws':
+                            protocol = 'ws:';
+                            break;
+                        case 'auto':
+                        default:
+                            protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                            break;
+                    }
+                    
+                    const url = `${protocol}//${host}${endpoint}`;
+                    
+                    this.log(`Connecting to WebSocket at ${url}`);
+                    
+                    // Create new WebSocket connection
+                    this.wsConnection = new WebSocket(url);
+                    
+                    // Set up event handlers
+                    this.wsConnection.onopen = () => {
+                        this.log('WebSocket connection established');
+                        this.currentConnectionType = ConnectionType.WEBSOCKET;
+                        this.setState(ConnectionState.CONNECTED);
+                        this.reconnectAttempt = 0;
+                        
+                        // Start heartbeat
+                        this.startHeartbeat();
+                        
+                        // Send any pending messages
+                        this.sendPendingMessages();
+                        
+                        // Trigger connect event
+                        this.triggerEvent('connect', { connectionType: ConnectionType.WEBSOCKET });
+                    };
+                    
+                    this.wsConnection.onmessage = (event) => {
+                        try {
+                            // Parse the message
+                            const message = JSON.parse(event.data);
+                            
+                            // Handle heartbeat responses automatically
+                            if (message.type === 'heartbeat') {
+                                this.log('Heartbeat received', message);
+                                return;
+                            }
+                            
+                            this.log('WebSocket message received', message);
+                            
+                            // Trigger message event
+                            this.triggerEvent('message', { 
+                                message, 
+                                direction: MessageDirection.RECEIVED 
+                            });
+                        } catch (error) {
+                            this.log('Error parsing WebSocket message', error);
+                            this.triggerEvent('error', { error: new Error('Error parsing WebSocket message') });
+                        }
+                    };
+                    
+                    this.wsConnection.onclose = (event) => {
+                        this.log(`WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason || 'No reason provided'}`);
+                        
+                        // Clean up
+                        this.wsConnection = null;
+                        
+                        // Only update state if this was the active connection type
+                        if (this.currentConnectionType === ConnectionType.WEBSOCKET) {
+                            this.currentConnectionType = null;
+                            
+                            // If this was a normal closure, don't reconnect
+                            if (event.code === 1000 && this.currentState !== ConnectionState.RECONNECTING) {
+                                this.setState(ConnectionState.DISCONNECTED);
+                                this.triggerEvent('disconnect', { code: event.code, reason: event.reason });
+                            } else {
+                                // Otherwise try the next connection method
+                                this.tryNextConnectionMethod();
+                            }
+                        }
+                    };
+                    
+                    this.wsConnection.onerror = (error) => {
+                        this.log('WebSocket error occurred', error);
+                        this.triggerEvent('error', { 
+                            error: new Error('WebSocket error occurred'),
+                            connectionType: ConnectionType.WEBSOCKET
+                        });
+                        
+                        // The socket will close after this, which will trigger onclose
+                    };
+                    
+                    return true;  // Connection attempt started
+                } catch (error) {
+                    this.log('Error creating WebSocket', error);
+                    return false;  // Connection attempt failed
+                }
+            }
+            
+            // Connect via Server-Sent Events (SSE)
+            connectSSE() {
+                try {
+                    // Clean up any existing SSE connection
+                    if (this.sseConnection) {
+                        this.sseConnection.close();
+                        this.sseConnection = null;
+                    }
+                    
+                    // Determine SSE URL
+                    const endpoint = this.options.sseEndpoint || '/api/events';
+                    const url = `${endpoint}?clientId=${this.clientId}`;
+                    
+                    this.log(`Connecting to SSE at ${url}`);
+                    
+                    // Create new SSE connection
+                    this.sseConnection = new EventSource(url);
+                    
+                    // Set up event handlers
+                    this.sseConnection.onopen = () => {
+                        this.log('SSE connection established');
+                        this.currentConnectionType = ConnectionType.SSE;
+                        this.setState(ConnectionState.CONNECTED);
+                        this.reconnectAttempt = 0;
+                        
+                        // Trigger connect event
+                        this.triggerEvent('connect', { connectionType: ConnectionType.SSE });
+                        
+                        // Since SSE is one-way, we need to send any pending messages via HTTP
+                        this.sendPendingMessages();
+                    };
+                    
+                    this.sseConnection.onmessage = (event) => {
+                        try {
+                            // Parse the message
+                            const message = JSON.parse(event.data);
+                            
+                            this.log('SSE message received', message);
+                            
+                            // Trigger message event
+                            this.triggerEvent('message', { 
+                                message, 
+                                direction: MessageDirection.RECEIVED 
+                            });
+                        } catch (error) {
+                            this.log('Error parsing SSE message', error);
+                            this.triggerEvent('error', { error: new Error('Error parsing SSE message') });
+                        }
+                    };
+                    
+                    this.sseConnection.onerror = (error) => {
+                        this.log('SSE error occurred', error);
+                        
+                        // Clean up
+                        if (this.sseConnection) {
+                            this.sseConnection.close();
+                            this.sseConnection = null;
+                        }
+                        
+                        // Only update state if this was the active connection type
+                        if (this.currentConnectionType === ConnectionType.SSE) {
+                            this.currentConnectionType = null;
+                            
+                            // Trigger error event
+                            this.triggerEvent('error', { 
+                                error: new Error('SSE error occurred'),
+                                connectionType: ConnectionType.SSE
+                            });
+                            
+                            // Try the next connection method
+                            this.tryNextConnectionMethod();
+                        }
+                    };
+                    
+                    return true;  // Connection attempt started
+                } catch (error) {
+                    this.log('Error creating SSE connection', error);
+                    return false;  // Connection attempt failed
+                }
+            }
+            
+            // Connect via HTTP polling
+            connectHttp() {
+                try {
+                    // Clean up any existing HTTP polling
+                    if (this.httpPollInterval) {
+                        clearInterval(this.httpPollInterval);
+                        this.httpPollInterval = null;
+                    }
+                    
+                    this.log('Connecting via HTTP polling');
+                    
+                    // Set up HTTP polling
+                    this.currentConnectionType = ConnectionType.HTTP;
+                    this.setState(ConnectionState.CONNECTED);
+                    this.reconnectAttempt = 0;
+                    
+                    // Trigger connect event
+                    this.triggerEvent('connect', { connectionType: ConnectionType.HTTP });
+                    
+                    // Send any pending messages
+                    this.sendPendingMessages();
+                    
+                    // Set up polling for new messages
+                    this.httpPollInterval = setInterval(() => {
+                        this.log('[HTTP Polling] Polling for data...');
+                        // In a real implementation, you'd make a request to get new messages
+                    }, 5000);  // Poll every 5 seconds
+                    
+                    return true;
+                } catch (error) {
+                    this.log('Error setting up HTTP polling', error);
+                    return false;
+                }
+            }
+            
+            // Send a message via WebSocket
+            sendViaWebSocket(message) {
+                if (!this.wsConnection || this.wsConnection.readyState !== WebSocket.OPEN) {
+                    return false;
+                }
+                
+                try {
+                    const messageStr = JSON.stringify(message);
+                    this.wsConnection.send(messageStr);
+                    this.log('Sent WebSocket message', message);
+                    return true;
+                } catch (error) {
+                    this.log('Error sending WebSocket message', error);
+                    return false;
+                }
+            }
+            
+            // Send a message via HTTP
+            sendViaHttp(message) {
+                const endpoint = this.options.httpEndpoint || '/api/ws-fallback/send';
+                
+                try {
+                    // Use the Fetch API to send the message
+                    fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(message)
+                    })
+                    .then(response => response.json())
+                    .then((data) => {
+                        if (data.success) {
+                            this.log('HTTP message sent successfully', message);
+                            
+                            // If there was a response message, trigger a received event
+                            if (data.message) {
+                                this.triggerEvent('message', { 
+                                    message: data.message, 
+                                    direction: MessageDirection.RECEIVED 
+                                });
+                            }
+                        } else {
+                            this.log('HTTP message failed', data);
+                            this.triggerEvent('error', { error: new Error(data.error || 'HTTP message failed') });
+                        }
+                    })
+                    .catch(error => {
+                        this.log('Error sending HTTP message', error);
+                        this.triggerEvent('error', { error: new Error('Error sending HTTP message') });
+                    });
+                    
+                    // Return true since we've dispatched the request
+                    // (even though we don't know if it succeeded yet)
+                    return true;
+                } catch (error) {
+                    this.log('Error preparing HTTP message', error);
+                    return false;
+                }
+            }
+            
+            // Send any pending messages
+            sendPendingMessages() {
+                if (this.pendingMessages.length === 0) {
+                    return;
+                }
+                
+                this.log(`Sending ${this.pendingMessages.length} pending messages`);
+                
+                // Make a copy of the pending messages
+                const messages = [...this.pendingMessages];
+                
+                // Clear the pending messages
+                this.pendingMessages = [];
+                
+                // Send each message
+                messages.forEach(message => {
+                    this.send(message);
+                });
+            }
+            
+            // Start the heartbeat interval
+            startHeartbeat() {
+                // Clear any existing heartbeat interval
+                if (this.heartbeatInterval) {
+                    clearInterval(this.heartbeatInterval);
+                    this.heartbeatInterval = null;
+                }
+                
+                // Only start heartbeat for WebSocket connections
+                if (this.currentConnectionType !== ConnectionType.WEBSOCKET) {
+                    return;
+                }
+                
+                // Start a new heartbeat interval
+                const interval = this.options.heartbeatInterval || 30000;
+                
+                this.log(`Starting heartbeat with interval ${interval}ms`);
+                
+                this.heartbeatInterval = setInterval(() => {
+                    // Send heartbeat
+                    this.send({
+                        type: 'heartbeat',
+                        timestamp: new Date().toISOString()
+                    });
+                }, interval);
+            }
+            
+            // Update the connection state
+            setState(state) {
+                if (this.currentState !== state) {
+                    this.log(`State changed from ${this.currentState} to ${state}`);
+                    this.currentState = state;
+                    this.triggerEvent('statechange', { state });
+                }
+            }
+            
+            // Trigger an event
+            triggerEvent(type, data) {
+                // Skip if no handlers for this event type
+                if (!this.eventHandlers.has(type)) {
+                    return;
+                }
+                
+                // Create the event object
+                const event = {
+                    type,
+                    connectionType: this.currentConnectionType || ConnectionType.HTTP,
+                    timestamp: new Date().toISOString(),
+                    ...data
+                };
+                
+                // Call all handlers
+                const handlers = this.eventHandlers.get(type) || [];
+                handlers.forEach(handler => {
+                    try {
+                        handler(event);
+                    } catch (error) {
+                        console.error('Error in event handler', error);
+                    }
+                });
+            }
+            
+            // Log a message if debug is enabled
+            log(message, data) {
+                if (!this.options.debug) {
+                    return;
+                }
+                
+                if (data) {
+                    console.log(`[ConnectionManager] ${message}`, data);
+                } else {
+                    console.log(`[ConnectionManager] ${message}`);
+                }
+            }
+        }
+        
+        // Initialize the UI when the page loads
+        window.addEventListener('load', initUI);
+    </script>
+</body>
+</html>
