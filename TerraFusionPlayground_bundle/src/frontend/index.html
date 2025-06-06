@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com;">
+    <meta name="description" content="TerraFusion Playground - Advanced AI Processing Platform">
+    <meta name="theme-color" content="#2563eb">
+    <title>TerraFusion Playground</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container" role="application" aria-label="TerraFusion Playground">
+        <header class="app-header" role="banner">
+            <div class="logo">
+                <i class="fas fa-brain" aria-hidden="true"></i>
+                <h1>TerraFusion Playground</h1>
+            </div>
+            <div class="status-indicator" role="status" aria-live="polite">
+                <span class="status-label">System Status:</span>
+                <span class="status-value" id="systemStatus" aria-label="Current system status">Initializing...</span>
+            </div>
+        </header>
+
+        <main class="app-main" role="main">
+            <section class="input-section" aria-labelledby="input-section-title">
+                <h2 id="input-section-title">Process Data</h2>
+                <div class="input-container">
+                    <label for="inputData" class="sr-only">Enter data to process</label>
+                    <textarea 
+                        id="inputData" 
+                        placeholder="Enter your data here..."
+                        aria-label="Input data"
+                        aria-describedby="input-help"
+                        maxlength="10000"
+                    ></textarea>
+                    <p id="input-help" class="help-text">Press Ctrl+Enter to process data</p>
+                    <button 
+                        id="processButton" 
+                        class="primary-button"
+                        aria-label="Process data"
+                        aria-busy="false"
+                    >
+                        <i class="fas fa-play" aria-hidden="true"></i>
+                        <span>Process</span>
+                    </button>
+                </div>
+            </section>
+
+            <section class="results-section" aria-labelledby="results-section-title">
+                <h2 id="results-section-title">Results</h2>
+                <div class="results-container" id="resultsContainer" role="region" aria-live="polite">
+                    <div class="loading-spinner" id="loadingSpinner" style="display: none;" role="status" aria-label="Processing data">
+                        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                    </div>
+                    <div class="results-content" id="resultsContent"></div>
+                </div>
+            </section>
+
+            <section class="metrics-section" aria-labelledby="metrics-section-title">
+                <h2 id="metrics-section-title">System Metrics</h2>
+                <div class="metrics-grid" role="region" aria-label="System performance metrics">
+                    <div class="metric-card" role="status" aria-label="CPU Usage">
+                        <i class="fas fa-microchip" aria-hidden="true"></i>
+                        <h3>CPU Usage</h3>
+                        <p id="cpuUsage" aria-live="polite">--</p>
+                    </div>
+                    <div class="metric-card" role="status" aria-label="Memory Usage">
+                        <i class="fas fa-memory" aria-hidden="true"></i>
+                        <h3>Memory Usage</h3>
+                        <p id="memoryUsage" aria-live="polite">--</p>
+                    </div>
+                    <div class="metric-card" role="status" aria-label="Response Time">
+                        <i class="fas fa-clock" aria-hidden="true"></i>
+                        <h3>Response Time</h3>
+                        <p id="responseTime" aria-live="polite">--</p>
+                    </div>
+                    <div class="metric-card" role="status" aria-label="Security Status">
+                        <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                        <h3>Security Status</h3>
+                        <p id="securityStatus" aria-live="polite">--</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="app-footer" role="contentinfo">
+            <p>&copy; 2024 TerraFusion Playground. All rights reserved.</p>
+            <nav class="footer-links" aria-label="Footer navigation">
+                <a href="/docs" aria-label="View documentation">Documentation</a>
+                <a href="/support" aria-label="Get support">Support</a>
+                <a href="https://github.com/terrafusion/playground" target="_blank" rel="noopener noreferrer" aria-label="Visit GitHub repository (opens in new tab)">GitHub</a>
+            </nav>
+        </footer>
+    </div>
+
+    <!-- Error Boundary -->
+    <div id="error-boundary" class="error-boundary" role="alert" aria-live="assertive" style="display: none;">
+        <div class="error-content">
+            <h3>Something went wrong</h3>
+            <p id="error-message"></p>
+            <button id="reload-button" class="retry-button">
+                <i class="fas fa-redo" aria-hidden="true"></i>
+                Reload Application
+            </button>
+        </div>
+    </div>
+
+    <!-- Offline Support -->
+    <div id="offline-notice" class="offline-notice" role="alert" aria-live="assertive" style="display: none;">
+        <p>You are currently offline. Some features may be unavailable.</p>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html> 
