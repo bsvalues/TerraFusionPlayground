@@ -15,11 +15,13 @@ The area analysis capability generates a comprehensive analysis of property valu
 **Endpoint:** `POST /api/agent/property-assessment/area-analysis/:zipCode`
 
 **Parameters:**
+
 - `zipCode` (path parameter): The zip code to analyze
 - `propertyType` (optional): Filter by specific property type
 - `timeframe` (optional): Period for trend analysis ('1year', '5years', etc.)
 
 **Features:**
+
 - Area statistics including average, median, and range of property values
 - Property type distribution analysis
 - Historical trend data for the specified timeframe
@@ -32,10 +34,12 @@ This capability identifies properties with valuations that significantly deviate
 **Endpoint:** `POST /api/agent/property-assessment/detect-anomalies/:propertyId`
 
 **Parameters:**
+
 - `propertyId` (path parameter): The property to analyze
 - `threshold` (optional): Deviation threshold to classify as anomaly (default: 0.25 or 25%)
 
 **Features:**
+
 - Statistical comparison with similar properties
 - Multiple anomaly detection metrics (deviation from average, median, z-score)
 - Confidence scoring for property valuations
@@ -48,11 +52,13 @@ Generates detailed reports on neighborhoods (defined by zip code), aggregating p
 **Endpoint:** `POST /api/agent/property-assessment/neighborhood-report/:zipCode`
 
 **Parameters:**
+
 - `zipCode` (path parameter): The zip code to analyze
 - `includeValuationTrends` (optional): Include historical valuation trends
 - `includeDemographics` (optional): Include demographic information
 
 **Features:**
+
 - Comprehensive property distribution by type and value
 - Value distribution across different price ranges
 - Historical trend analysis when requested
@@ -65,10 +71,12 @@ Analyzes how different land uses impact property values, helping to optimize lan
 **Endpoint:** `POST /api/agent/property-assessment/land-use-impact/:propertyId`
 
 **Parameters:**
+
 - `propertyId` (path parameter): The property to analyze
 - `alternativeLandUse` (optional): Specific alternative land use to analyze
 
 **Features:**
+
 - Comparison of current land use value with alternatives
 - Detailed impact analysis for each alternative land use
 - Percentage change in value calculations
@@ -82,10 +90,12 @@ Predicts future property values based on historical trends and property characte
 **Endpoint:** `POST /api/agent/property-assessment/predict-value/:propertyId`
 
 **Parameters:**
+
 - `propertyId` (path parameter): The property to analyze
 - `yearsAhead` (optional): Number of years to predict (default: 5)
 
 **Features:**
+
 - Year-by-year value predictions
 - Confidence intervals that widen with prediction distance
 - Growth rate calculations based on property characteristics

@@ -1,13 +1,13 @@
 /**
  * GIS Module
- * 
+ *
  * This module provides comprehensive GIS functionality:
  * - 3D Terrain Visualization
  * - Advanced Clustering
  * - Viewshed Analysis
  * - Property Extrusion
  * - QGIS Integration
- * 
+ *
  * The module is designed to be self-contained with its own components,
  * contexts, utilities, and pages.
  */

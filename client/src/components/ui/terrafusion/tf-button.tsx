@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 /**
  * TerraFusion Button Types
  */
-export type TFButtonVariant = 
+export type TFButtonVariant =
   | 'default'
   | 'primary'
   | 'secondary'
@@ -49,25 +49,28 @@ export interface TFButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 /**
  * TerraFusion Button Component
- * 
+ *
  * A styled button component for the TerraFusion UI design system
  */
 export const TFButton = forwardRef<HTMLButtonElement, TFButtonProps>(
-  ({
-    children,
-    variant = 'default',
-    size = 'md',
-    loading = false,
-    fullWidth = false,
-    startIcon,
-    endIcon,
-    iconLeft,
-    iconRight,
-    className = '',
-    glassmorphic = false,
-    animated = false,
-    ...props
-  }, ref) => {
+  (
+    {
+      children,
+      variant = 'default',
+      size = 'md',
+      loading = false,
+      fullWidth = false,
+      startIcon,
+      endIcon,
+      iconLeft,
+      iconRight,
+      className = '',
+      glassmorphic = false,
+      animated = false,
+      ...props
+    },
+    ref
+  ) => {
     // Map TerraFusion variant names to Shadcn/UI variant
     const variantMap: Record<TFButtonVariant, string> = {
       default: 'default',
@@ -113,9 +116,7 @@ export const TFButton = forwardRef<HTMLButtonElement, TFButtonProps>(
           <span className="mr-2">{startIcon || iconLeft}</span>
         )}
         {children}
-        {!loading && (endIcon || iconRight) && (
-          <span className="ml-2">{endIcon || iconRight}</span>
-        )}
+        {!loading && (endIcon || iconRight) && <span className="ml-2">{endIcon || iconRight}</span>}
       </Button>
     );
   }

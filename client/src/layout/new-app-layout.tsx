@@ -9,7 +9,7 @@ import { AppBar } from '@/components/design-system/navigation/AppBar';
 import { Sidebar } from '@/components/design-system/navigation/Sidebar';
 
 // Icons
-import { 
+import {
   Home,
   Map,
   FileText,
@@ -264,12 +264,12 @@ const NewAppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   // Find active navigation item
   const getActiveKey = () => {
     if (location === '/') return 'dashboard';
-    const matchingGroup = organizedNavigation.find(group => 
+    const matchingGroup = organizedNavigation.find(group =>
       group.items.some(item => item.href === location)
     );
-    
+
     if (!matchingGroup) return '';
-    
+
     const matchingItem = matchingGroup.items.find(item => item.href === location);
     return matchingItem ? matchingItem.key : '';
   };
@@ -301,12 +301,10 @@ const NewAppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   // Logo component for sidebar
   const logo = (
     <div className="flex items-center gap-2">
-      <img 
-        src="/assets/terrafusion-logo.svg" 
-        alt="TerraFusion" 
-        className="h-8 w-auto"
-      />
-      <span className={`font-semibold text-lg tf-heading transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0' : 'opacity-100'}`}>
+      <img src="/assets/terrafusion-logo.svg" alt="TerraFusion" className="h-8 w-auto" />
+      <span
+        className={`font-semibold text-lg tf-heading transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0' : 'opacity-100'}`}
+      >
         TerraFusion
       </span>
     </div>
@@ -315,30 +313,30 @@ const NewAppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   // User menu component for top bar
   const userMenu = (
     <div className="flex items-center gap-4">
-      <button 
+      <button
         type="button"
         className="p-1.5 text-foreground/70 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors"
         aria-label="Search"
       >
         <Search className="h-5 w-5" />
       </button>
-      
-      <button 
+
+      <button
         type="button"
         className="p-1.5 text-foreground/70 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors"
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
       </button>
-      
-      <button 
+
+      <button
         type="button"
         className="p-1.5 text-foreground/70 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors"
         aria-label="Help"
       >
         <HelpCircle className="h-5 w-5" />
       </button>
-      
+
       <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary to-primary-800 border border-primary-400/30 flex items-center justify-center text-primary-foreground font-medium shadow-md">
         <User className="h-5 w-5" />
       </div>
@@ -348,7 +346,7 @@ const NewAppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   return (
     <AppShell
       header={
-        <AppBar 
+        <AppBar
           logo={logo}
           showMenuToggle={true}
           onMenuClick={toggleMobileSidebar}
@@ -383,10 +381,10 @@ const NewAppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       <div className="flex-1 flex flex-col">
         <main className="flex-1 relative p-4 md:p-6">
           {children}
-          
+
           {/* Floating Voice Command Button */}
           <div className="fixed bottom-6 right-6 z-40">
-            <AgentVoiceCommandButton 
+            <AgentVoiceCommandButton
               onStateChange={handleStateChange}
               onResult={handleVoiceCommandResult}
               agentId="assessment_assistant"
@@ -395,11 +393,11 @@ const NewAppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               className="shadow-lg"
             />
           </div>
-          
+
           {/* Voice Command Results Panel */}
           {showCommandResults && lastResult && (
             <div className="fixed bottom-24 right-6 z-40 w-80 animate-in slide-in-from-right-10 duration-300">
-              <AgentVoiceCommandResults 
+              <AgentVoiceCommandResults
                 result={lastResult}
                 onClose={() => setShowCommandResults(false)}
               />
@@ -407,10 +405,10 @@ const NewAppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           )}
         </main>
       </div>
-      
+
       {/* AI Assistant Sidebar */}
       <AIAssistantSidebar />
-      
+
       {/* Quick Access Menu */}
       <QuickAccessMenu />
     </AppShell>

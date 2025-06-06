@@ -8,7 +8,7 @@ import { Check, AlertTriangle, Bot, Database, BarChart, Network, CpuIcon } from 
 export default function AgentSystemPage() {
   const { connectionStatus, connect } = useAgentWebSocket({
     autoConnect: true,
-    showToasts: true
+    showToasts: true,
   });
 
   // Connect to the agent WebSocket system when the page loads
@@ -26,13 +26,14 @@ export default function AgentSystemPage() {
         <div>
           <h1 className="text-3xl font-bold mb-2">MCP Agent System</h1>
           <p className="text-muted-foreground max-w-2xl">
-            The Model Context Protocol (MCP) Agent System provides AI-powered capabilities for property assessment,
-            data ingestion and reporting through a secure, controlled interface.
+            The Model Context Protocol (MCP) Agent System provides AI-powered capabilities for
+            property assessment, data ingestion and reporting through a secure, controlled
+            interface.
           </p>
         </div>
         <AgentSystemStatus variant="default" />
       </div>
-      
+
       <Tabs defaultValue="control">
         <TabsList className="mb-6">
           <TabsTrigger value="control">
@@ -44,11 +45,11 @@ export default function AgentSystemPage() {
             Architecture
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="control" className="space-y-6">
           <AgentControlPanel />
         </TabsContent>
-        
+
         <TabsContent value="overview" className="space-y-6">
           {/* Agent Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -62,7 +63,8 @@ export default function AgentSystemPage() {
                   <h2 className="text-xl font-semibold">Property Assessment Agent</h2>
                 </div>
                 <p className="text-muted-foreground mb-4">
-                  Advanced AI capabilities for property analysis, valuation, and comparison using multiple data sources.
+                  Advanced AI capabilities for property analysis, valuation, and comparison using
+                  multiple data sources.
                 </p>
                 <ul className="space-y-2 text-sm">
                   <li className="flex items-center">
@@ -84,7 +86,7 @@ export default function AgentSystemPage() {
                 </ul>
               </CardContent>
             </Card>
-            
+
             {/* Data Ingestion Agent Card */}
             <Card>
               <CardContent className="pt-6">
@@ -95,7 +97,8 @@ export default function AgentSystemPage() {
                   <h2 className="text-xl font-semibold">Data Ingestion Agent</h2>
                 </div>
                 <p className="text-muted-foreground mb-4">
-                  Securely imports, validates, and processes property data from multiple sources including PACS systems.
+                  Securely imports, validates, and processes property data from multiple sources
+                  including PACS systems.
                 </p>
                 <ul className="space-y-2 text-sm">
                   <li className="flex items-center">
@@ -117,7 +120,7 @@ export default function AgentSystemPage() {
                 </ul>
               </CardContent>
             </Card>
-            
+
             {/* Reporting Agent Card */}
             <Card>
               <CardContent className="pt-6">
@@ -128,7 +131,8 @@ export default function AgentSystemPage() {
                   <h2 className="text-xl font-semibold">Reporting Agent</h2>
                 </div>
                 <p className="text-muted-foreground mb-4">
-                  Generates detailed property assessment reports and analytics with customizable parameters.
+                  Generates detailed property assessment reports and analytics with customizable
+                  parameters.
                 </p>
                 <ul className="space-y-2 text-sm">
                   <li className="flex items-center">
@@ -151,15 +155,17 @@ export default function AgentSystemPage() {
               </CardContent>
             </Card>
           </div>
-          
+
           {/* MCP Architecture Overview */}
           <Card>
             <CardContent className="pt-6">
               <h2 className="text-xl font-semibold mb-4">MCP Architecture Overview</h2>
               <p className="mb-4">
-                The Model Context Protocol (MCP) architecture provides a secure framework for AI-powered agents to interact with property data and external systems, maintaining data integrity and access controls.
+                The Model Context Protocol (MCP) architecture provides a secure framework for
+                AI-powered agents to interact with property data and external systems, maintaining
+                data integrity and access controls.
               </p>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h3 className="text-lg font-medium mb-2">Key Features</h3>
@@ -182,7 +188,7 @@ export default function AgentSystemPage() {
                     </li>
                   </ul>
                 </div>
-                
+
                 <div>
                   <h3 className="text-lg font-medium mb-2">Security Features</h3>
                   <ul className="space-y-2 text-sm">

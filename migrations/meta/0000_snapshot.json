@@ -156,9 +156,7 @@
         "agent_experiences_experience_id_unique": {
           "name": "agent_experiences_experience_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "experience_id"
-          ]
+          "columns": ["experience_id"]
         }
       },
       "policies": {},
@@ -658,9 +656,7 @@
         "agent_messages_message_id_unique": {
           "name": "agent_messages_message_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "message_id"
-          ]
+          "columns": ["message_id"]
         }
       },
       "policies": {},
@@ -1030,9 +1026,7 @@
         "ai_code_generations_generation_id_unique": {
           "name": "ai_code_generations_generation_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "generation_id"
-          ]
+          "columns": ["generation_id"]
         }
       },
       "policies": {},
@@ -1421,9 +1415,7 @@
         "appeals_appeal_number_unique": {
           "name": "appeals_appeal_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "appeal_number"
-          ]
+          "columns": ["appeal_number"]
         }
       },
       "policies": {},
@@ -1491,12 +1483,8 @@
           "name": "assessment_model_versions_model_id_assessment_models_model_id_fk",
           "tableFrom": "assessment_model_versions",
           "tableTo": "assessment_models",
-          "columnsFrom": [
-            "model_id"
-          ],
-          "columnsTo": [
-            "model_id"
-          ],
+          "columnsFrom": ["model_id"],
+          "columnsTo": ["model_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1623,9 +1611,7 @@
         "assessment_models_model_id_unique": {
           "name": "assessment_models_model_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "model_id"
-          ]
+          "columns": ["model_id"]
         }
       },
       "policies": {},
@@ -2420,9 +2406,7 @@
         "comparable_sales_analyses_analysis_id_unique": {
           "name": "comparable_sales_analyses_analysis_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "analysis_id"
-          ]
+          "columns": ["analysis_id"]
         }
       },
       "policies": {},
@@ -2640,9 +2624,7 @@
         "compliance_reports_report_id_unique": {
           "name": "compliance_reports_report_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "report_id"
-          ]
+          "columns": ["report_id"]
         }
       },
       "policies": {},
@@ -3741,12 +3723,8 @@
           "name": "dev_preview_settings_project_id_dev_projects_project_id_fk",
           "tableFrom": "dev_preview_settings",
           "tableTo": "dev_projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "project_id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["project_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3756,9 +3734,7 @@
         "dev_preview_settings_project_id_unique": {
           "name": "dev_preview_settings_project_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "project_id"
-          ]
+          "columns": ["project_id"]
         }
       },
       "policies": {},
@@ -3845,12 +3821,8 @@
           "name": "dev_project_files_project_id_dev_projects_project_id_fk",
           "tableFrom": "dev_project_files",
           "tableTo": "dev_projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "project_id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["project_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3936,9 +3908,7 @@
         "dev_project_templates_template_id_unique": {
           "name": "dev_project_templates_template_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "template_id"
-          ]
+          "columns": ["template_id"]
         }
       },
       "policies": {},
@@ -4917,9 +4887,7 @@
         "import_staging_staging_id_unique": {
           "name": "import_staging_staging_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "staging_id"
-          ]
+          "columns": ["staging_id"]
         }
       },
       "policies": {},
@@ -5310,9 +5278,7 @@
         "learning_updates_update_id_unique": {
           "name": "learning_updates_update_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "update_id"
-          ]
+          "columns": ["update_id"]
         }
       },
       "policies": {},
@@ -5481,12 +5447,8 @@
           "name": "model_calculations_model_id_assessment_models_model_id_fk",
           "tableFrom": "model_calculations",
           "tableTo": "assessment_models",
-          "columnsFrom": [
-            "model_id"
-          ],
-          "columnsTo": [
-            "model_id"
-          ],
+          "columnsFrom": ["model_id"],
+          "columnsTo": ["model_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -5494,12 +5456,8 @@
           "name": "model_calculations_output_variable_id_model_variables_id_fk",
           "tableFrom": "model_calculations",
           "tableTo": "model_variables",
-          "columnsFrom": [
-            "output_variable_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["output_variable_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5598,12 +5556,8 @@
           "name": "model_components_model_id_assessment_models_model_id_fk",
           "tableFrom": "model_components",
           "tableTo": "assessment_models",
-          "columnsFrom": [
-            "model_id"
-          ],
-          "columnsTo": [
-            "model_id"
-          ],
+          "columnsFrom": ["model_id"],
+          "columnsTo": ["model_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -5706,12 +5660,8 @@
           "name": "model_test_cases_model_id_assessment_models_model_id_fk",
           "tableFrom": "model_test_cases",
           "tableTo": "assessment_models",
-          "columnsFrom": [
-            "model_id"
-          ],
-          "columnsTo": [
-            "model_id"
-          ],
+          "columnsFrom": ["model_id"],
+          "columnsTo": ["model_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -5796,12 +5746,8 @@
           "name": "model_validation_rules_model_id_assessment_models_model_id_fk",
           "tableFrom": "model_validation_rules",
           "tableTo": "assessment_models",
-          "columnsFrom": [
-            "model_id"
-          ],
-          "columnsTo": [
-            "model_id"
-          ],
+          "columnsFrom": ["model_id"],
+          "columnsTo": ["model_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -5920,12 +5866,8 @@
           "name": "model_variables_model_id_assessment_models_model_id_fk",
           "tableFrom": "model_variables",
           "tableTo": "assessment_models",
-          "columnsFrom": [
-            "model_id"
-          ],
-          "columnsTo": [
-            "model_id"
-          ],
+          "columnsFrom": ["model_id"],
+          "columnsTo": ["model_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -6016,9 +5958,7 @@
         "pacs_modules_module_name_unique": {
           "name": "pacs_modules_module_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "module_name"
-          ]
+          "columns": ["module_name"]
         }
       },
       "policies": {},
@@ -6285,12 +6225,8 @@
           "name": "personalized_developer_agents_personality_id_assistant_personalities_id_fk",
           "tableFrom": "personalized_developer_agents",
           "tableTo": "assistant_personalities",
-          "columnsFrom": [
-            "personality_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["personality_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6389,9 +6325,7 @@
         "preview_settings_project_id_unique": {
           "name": "preview_settings_project_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "project_id"
-          ]
+          "columns": ["project_id"]
         }
       },
       "policies": {},
@@ -6498,9 +6432,7 @@
         "project_files_file_id_unique": {
           "name": "project_files_file_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "file_id"
-          ]
+          "columns": ["file_id"]
         }
       },
       "policies": {},
@@ -6626,9 +6558,7 @@
         "project_templates_template_id_unique": {
           "name": "project_templates_template_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "template_id"
-          ]
+          "columns": ["template_id"]
         }
       },
       "policies": {},
@@ -6710,9 +6640,7 @@
         "project_versions_version_id_unique": {
           "name": "project_versions_version_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "version_id"
-          ]
+          "columns": ["version_id"]
         }
       },
       "policies": {},
@@ -6801,9 +6729,7 @@
         "properties_property_id_unique": {
           "name": "properties_property_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "property_id"
-          ]
+          "columns": ["property_id"]
         }
       },
       "policies": {},
@@ -6929,9 +6855,7 @@
         "property_insight_shares_share_id_unique": {
           "name": "property_insight_shares_share_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "share_id"
-          ]
+          "columns": ["share_id"]
         }
       },
       "policies": {},
@@ -7122,12 +7046,8 @@
           "name": "shared_workflow_activities_shared_workflow_id_shared_workflows_id_fk",
           "tableFrom": "shared_workflow_activities",
           "tableTo": "shared_workflows",
-          "columnsFrom": [
-            "shared_workflow_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["shared_workflow_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -7215,12 +7135,8 @@
           "name": "shared_workflow_collaborators_shared_workflow_id_shared_workflows_id_fk",
           "tableFrom": "shared_workflow_collaborators",
           "tableTo": "shared_workflows",
-          "columnsFrom": [
-            "shared_workflow_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["shared_workflow_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -7352,12 +7268,8 @@
           "name": "shared_workflows_workflow_id_workflow_definitions_id_fk",
           "tableFrom": "shared_workflows",
           "tableTo": "workflow_definitions",
-          "columnsFrom": [
-            "workflow_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workflow_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -7367,9 +7279,7 @@
         "shared_workflows_share_code_unique": {
           "name": "shared_workflows_share_code_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "share_code"
-          ]
+          "columns": ["share_code"]
         }
       },
       "policies": {},
@@ -7478,12 +7388,8 @@
           "name": "task_comments_task_id_team_tasks_id_fk",
           "tableFrom": "task_comments",
           "tableTo": "team_tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -7555,12 +7461,8 @@
           "name": "team_feedbacks_task_id_team_tasks_id_fk",
           "tableFrom": "team_feedbacks",
           "tableTo": "team_tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -8015,12 +7917,8 @@
           "name": "user_personality_preferences_personality_id_assistant_personalities_id_fk",
           "tableFrom": "user_personality_preferences",
           "tableTo": "assistant_personalities",
-          "columnsFrom": [
-            "personality_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["personality_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -8087,9 +7985,7 @@
         "users_username_unique": {
           "name": "users_username_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "username"
-          ]
+          "columns": ["username"]
         }
       },
       "policies": {},
@@ -8277,9 +8173,7 @@
         "validation_issues_issue_id_unique": {
           "name": "validation_issues_issue_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "issue_id"
-          ]
+          "columns": ["issue_id"]
         }
       },
       "policies": {},
@@ -8386,9 +8280,7 @@
         "validation_rules_rule_id_unique": {
           "name": "validation_rules_rule_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "rule_id"
-          ]
+          "columns": ["rule_id"]
         }
       },
       "policies": {},
@@ -8943,9 +8835,7 @@
         "workflow_definitions_definition_id_unique": {
           "name": "workflow_definitions_definition_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "definition_id"
-          ]
+          "columns": ["definition_id"]
         }
       },
       "policies": {},
@@ -9126,9 +9016,7 @@
         "workflow_instances_instance_id_unique": {
           "name": "workflow_instances_instance_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "instance_id"
-          ]
+          "columns": ["instance_id"]
         }
       },
       "policies": {},
@@ -9213,12 +9101,8 @@
           "name": "workflow_sessions_shared_workflow_id_shared_workflows_id_fk",
           "tableFrom": "workflow_sessions",
           "tableTo": "shared_workflows",
-          "columnsFrom": [
-            "shared_workflow_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["shared_workflow_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -9228,9 +9112,7 @@
         "workflow_sessions_session_id_unique": {
           "name": "workflow_sessions_session_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "session_id"
-          ]
+          "columns": ["session_id"]
         }
       },
       "policies": {},
@@ -9507,12 +9389,7 @@
     "public.connection_status": {
       "name": "connection_status",
       "schema": "public",
-      "values": [
-        "connected",
-        "disconnected",
-        "error",
-        "testing"
-      ]
+      "values": ["connected", "disconnected", "error", "testing"]
     },
     "public.conversion_status": {
       "name": "conversion_status",

@@ -1,15 +1,15 @@
 /**
  * Enhanced Risk Assessment Engine
- * 
+ *
  * An enhanced version of the RiskAssessmentEngine with improved error handling,
  * logging, and performance monitoring.
  */
 
-import { 
-  RiskAssessmentEngine, 
-  RiskAssessment, 
-  RiskFactor, 
-  RegulatoryFramework 
+import {
+  RiskAssessmentEngine,
+  RiskAssessment,
+  RiskFactor,
+  RegulatoryFramework,
 } from './risk-assessment-engine';
 import { IStorage } from '../storage';
 import { LLMService } from './llm-service';
@@ -23,18 +23,18 @@ export class EnhancedRiskAssessmentEngine extends RiskAssessmentEngine {
   constructor(storage: IStorage, llmService?: LLMService) {
     // Enhance storage with error handling for risk assessment methods
     const enhancedStorage = enhanceMarketStorageMethods(storage);
-    
+
     // Call parent constructor with enhanced storage
     super(enhancedStorage, llmService);
-    
+
     // Store reference to enhanced storage
     this.enhancedStorage = enhancedStorage;
-    
+
     logger.info('Enhanced Risk Assessment Engine initialized', {
-      component: 'EnhancedRiskAssessmentEngine'
+      component: 'EnhancedRiskAssessmentEngine',
     });
   }
-  
+
   /**
    * Override assessPropertyRisks with enhanced error handling
    */
@@ -42,39 +42,39 @@ export class EnhancedRiskAssessmentEngine extends RiskAssessmentEngine {
     const startTime = Date.now();
     logger.debug(`Starting risk assessment for property ${propertyId}`, {
       component: 'EnhancedRiskAssessmentEngine',
-      metadata: { propertyId }
+      metadata: { propertyId },
     });
-    
+
     try {
       // Call parent method
       const result = await super.assessPropertyRisks(propertyId);
-      
+
       const duration = Date.now() - startTime;
       logger.info(`Completed risk assessment for property ${propertyId} in ${duration}ms`, {
         component: 'EnhancedRiskAssessmentEngine',
-        metadata: { 
-          propertyId, 
+        metadata: {
+          propertyId,
           duration,
           overallRiskScore: result.overallRiskScore,
           confidenceScore: result.confidenceScore,
           riskFactorCount: result.riskFactors.length,
-          categoryCount: Object.keys(result.riskCategories).length
-        }
+          categoryCount: Object.keys(result.riskCategories).length,
+        },
       });
-      
+
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
-      
+
       logger.error(`Failed to assess risks for property ${propertyId}`, {
         component: 'EnhancedRiskAssessmentEngine',
-        metadata: { 
-          propertyId, 
+        metadata: {
+          propertyId,
           duration,
-          error
-        }
+          error,
+        },
       });
-      
+
       // Transform error to AppError
       if (error instanceof Error) {
         if (error.message.includes('not found')) {
@@ -83,11 +83,11 @@ export class EnhancedRiskAssessmentEngine extends RiskAssessmentEngine {
           throw ErrorHandler.handleError(error, 'assessPropertyRisks');
         }
       }
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Override getRegulatoryFramework with enhanced error handling
    */
@@ -95,48 +95,48 @@ export class EnhancedRiskAssessmentEngine extends RiskAssessmentEngine {
     const startTime = Date.now();
     logger.debug(`Fetching regulatory framework for region ${region}`, {
       component: 'EnhancedRiskAssessmentEngine',
-      metadata: { region }
+      metadata: { region },
     });
-    
+
     try {
       // Call parent method
       const result = await super.getRegulatoryFramework(region);
-      
+
       const duration = Date.now() - startTime;
       logger.info(`Retrieved regulatory framework for region ${region} in ${duration}ms`, {
         component: 'EnhancedRiskAssessmentEngine',
-        metadata: { 
-          region, 
+        metadata: {
+          region,
           duration,
           zoningRegulationsCount: result.zoningRegulations.length,
           buildingCodesCount: result.buildingCodes.length,
           environmentalRegulationsCount: result.environmentalRegulations.length,
-          taxPoliciesCount: result.taxPolicies.length
-        }
+          taxPoliciesCount: result.taxPolicies.length,
+        },
       });
-      
+
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
-      
+
       logger.error(`Failed to get regulatory framework for region ${region}`, {
         component: 'EnhancedRiskAssessmentEngine',
-        metadata: { 
+        metadata: {
           region,
           duration,
-          error
-        }
+          error,
+        },
       });
-      
+
       // Transform error to AppError
       if (error instanceof Error) {
         throw ErrorHandler.handleError(error, 'getRegulatoryFramework');
       }
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Override getHistoricalRegulatoryChanges with enhanced error handling
    */
@@ -144,45 +144,48 @@ export class EnhancedRiskAssessmentEngine extends RiskAssessmentEngine {
     const startTime = Date.now();
     logger.debug(`Fetching historical regulatory changes for region ${region}`, {
       component: 'EnhancedRiskAssessmentEngine',
-      metadata: { region }
+      metadata: { region },
     });
-    
+
     try {
       // Call parent method
       const result = await super.getHistoricalRegulatoryChanges(region);
-      
+
       const duration = Date.now() - startTime;
-      logger.info(`Retrieved ${result.length} historical regulatory changes for region ${region} in ${duration}ms`, {
-        component: 'EnhancedRiskAssessmentEngine',
-        metadata: { 
-          region, 
-          changesCount: result.length,
-          duration
+      logger.info(
+        `Retrieved ${result.length} historical regulatory changes for region ${region} in ${duration}ms`,
+        {
+          component: 'EnhancedRiskAssessmentEngine',
+          metadata: {
+            region,
+            changesCount: result.length,
+            duration,
+          },
         }
-      });
-      
+      );
+
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
-      
+
       logger.error(`Failed to get historical regulatory changes for region ${region}`, {
         component: 'EnhancedRiskAssessmentEngine',
-        metadata: { 
+        metadata: {
           region,
           duration,
-          error
-        }
+          error,
+        },
       });
-      
+
       // Transform error to AppError
       if (error instanceof Error) {
         throw ErrorHandler.handleError(error, 'getHistoricalRegulatoryChanges');
       }
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Override getEnvironmentalRisks with enhanced error handling
    */
@@ -190,37 +193,37 @@ export class EnhancedRiskAssessmentEngine extends RiskAssessmentEngine {
     const startTime = Date.now();
     logger.debug(`Fetching environmental risks for property ${propertyId}`, {
       component: 'EnhancedRiskAssessmentEngine',
-      metadata: { propertyId }
+      metadata: { propertyId },
     });
-    
+
     try {
       // Call parent method
       const result = await super.getEnvironmentalRisks(propertyId);
-      
+
       const duration = Date.now() - startTime;
       logger.info(`Retrieved environmental risks for property ${propertyId} in ${duration}ms`, {
         component: 'EnhancedRiskAssessmentEngine',
-        metadata: { 
-          propertyId, 
+        metadata: {
+          propertyId,
           risksCount: result.risks?.length || 0,
           hazardsCount: result.hazards?.length || 0,
-          duration
-        }
+          duration,
+        },
       });
-      
+
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
-      
+
       logger.error(`Failed to get environmental risks for property ${propertyId}`, {
         component: 'EnhancedRiskAssessmentEngine',
-        metadata: { 
+        metadata: {
           propertyId,
           duration,
-          error
-        }
+          error,
+        },
       });
-      
+
       // Transform error to AppError
       if (error instanceof Error) {
         if (error.message.includes('not found')) {
@@ -229,11 +232,11 @@ export class EnhancedRiskAssessmentEngine extends RiskAssessmentEngine {
           throw ErrorHandler.handleError(error, 'getEnvironmentalRisks');
         }
       }
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Override calculateCompositScore with enhanced error handling
    */
@@ -243,40 +246,39 @@ export class EnhancedRiskAssessmentEngine extends RiskAssessmentEngine {
       if (scores.length !== weights.length) {
         throw ErrorHandler.validation('Scores and weights arrays must be the same length');
       }
-      
+
       if (weights.reduce((sum, weight) => sum + weight, 0) !== 1) {
         logger.warn('Weights do not sum to 1, normalizing', {
           component: 'EnhancedRiskAssessmentEngine',
-          metadata: { weights }
+          metadata: { weights },
         });
-        
+
         // Normalize weights to sum to 1
         const weightSum = weights.reduce((sum, weight) => sum + weight, 0);
         weights = weights.map(weight => weight / weightSum);
       }
-      
+
       // Call parent method by implementing the calculation directly
       let weightedSum = 0;
       for (let i = 0; i < scores.length; i++) {
         weightedSum += scores[i] * weights[i];
       }
       return weightedSum;
-      
     } catch (error) {
       logger.error('Failed to calculate composite score', {
         component: 'EnhancedRiskAssessmentEngine',
-        metadata: { 
+        metadata: {
           scores,
           weights,
-          error
-        }
+          error,
+        },
       });
-      
+
       // Transform error to AppError
       if (error instanceof Error) {
         throw ErrorHandler.handleError(error, 'calculateCompositeScore');
       }
-      
+
       throw error;
     }
   }

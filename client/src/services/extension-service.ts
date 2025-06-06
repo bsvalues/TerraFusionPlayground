@@ -36,19 +36,19 @@ export class ExtensionService {
     try {
       console.log('Fetching extensions from API...');
       const response = await apiRequest('/api/extensions');
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Failed to get extensions: ${response.statusText}`, errorText);
         throw new Error(`Failed to get extensions: ${response.statusText} - ${errorText}`);
       }
-      
+
       const extensions = await response.json();
       console.log(`Successfully loaded ${extensions.length} extensions`);
       return extensions;
     } catch (error) {
       console.error('Error getting extensions:', error);
-      
+
       // Return empty array instead of throwing to prevent UI from breaking
       return [];
     }
@@ -61,13 +61,15 @@ export class ExtensionService {
     try {
       console.log(`Fetching extension details for ${extensionId}`);
       const response = await apiRequest(`/api/extensions/${extensionId}`);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Failed to get extension ${extensionId}: ${response.statusText}`, errorText);
-        throw new Error(`Failed to get extension ${extensionId}: ${response.statusText} - ${errorText}`);
+        throw new Error(
+          `Failed to get extension ${extensionId}: ${response.statusText} - ${errorText}`
+        );
       }
-      
+
       const extension = await response.json();
       console.log(`Successfully loaded extension ${extensionId}`, extension);
       return extension;
@@ -84,19 +86,19 @@ export class ExtensionService {
     try {
       console.log('Fetching webviews from API...');
       const response = await apiRequest('/api/extensions/webviews');
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Failed to get webviews: ${response.statusText}`, errorText);
         throw new Error(`Failed to get webviews: ${response.statusText} - ${errorText}`);
       }
-      
+
       const webviews = await response.json();
       console.log(`Successfully loaded ${webviews.length} webviews`);
       return webviews;
     } catch (error) {
       console.error('Error getting webviews:', error);
-      
+
       // Return empty array instead of throwing to prevent UI from breaking
       return [];
     }
@@ -108,7 +110,7 @@ export class ExtensionService {
   async getWebviewContent(extensionId: string, webviewId: string): Promise<string> {
     try {
       console.log(`Fetching webview content for ${extensionId}/${webviewId}...`);
-      
+
       // First, ensure the extension is active
       const extensionResponse = await apiRequest(`/api/extensions/${extensionId}`);
       if (!extensionResponse.ok) {
@@ -116,39 +118,43 @@ export class ExtensionService {
         console.error(`Failed to fetch extension ${extensionId}:`, errorText);
         throw new Error(`Extension not available. Details: ${errorText}`);
       }
-      
+
       const extensionData = await extensionResponse.json();
       if (!extensionData.active) {
         console.log(`Extension ${extensionId} is not active. Activating...`);
-        
+
         // Attempt to activate the extension
         const activateResponse = await apiRequest(`/api/extensions/${extensionId}/activate`, {
-          method: 'POST'
+          method: 'POST',
         });
-        
+
         if (!activateResponse.ok) {
           const errorText = await activateResponse.text();
           console.error(`Failed to activate extension ${extensionId}:`, errorText);
           throw new Error(`Failed to activate extension ${extensionId}. Details: ${errorText}`);
         }
-        
+
         console.log(`Extension ${extensionId} activated successfully`);
       }
-      
+
       // Now fetch the webview content
       const response = await apiRequest(`/api/extensions/${extensionId}/webviews/${webviewId}`);
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Failed to get webview content: ${response.statusText}`, errorText);
-        throw new Error(`Failed to get webview content: ${response.statusText}. Details: ${errorText}`);
+        throw new Error(
+          `Failed to get webview content: ${response.statusText}. Details: ${errorText}`
+        );
       }
-      
+
       const contentText = await response.text();
-      console.log(`Successfully loaded webview content for ${extensionId}/${webviewId} (${contentText.length} bytes)`);
+      console.log(
+        `Successfully loaded webview content for ${extensionId}/${webviewId} (${contentText.length} bytes)`
+      );
       return contentText;
     } catch (error) {
       console.error('Error getting webview content:', error);
-      
+
       // Return basic error HTML instead of throwing
       return `
         <!DOCTYPE html>
@@ -194,9 +200,9 @@ export class ExtensionService {
   async activateExtension(extensionId: string): Promise<void> {
     try {
       const response = await apiRequest(`/api/extensions/${extensionId}/activate`, {
-        method: 'POST'
+        method: 'POST',
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to activate extension ${extensionId}: ${response.statusText}`);
       }
@@ -212,9 +218,9 @@ export class ExtensionService {
   async deactivateExtension(extensionId: string): Promise<void> {
     try {
       const response = await apiRequest(`/api/extensions/${extensionId}/deactivate`, {
-        method: 'POST'
+        method: 'POST',
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to deactivate extension ${extensionId}: ${response.statusText}`);
       }
@@ -232,18 +238,18 @@ export class ExtensionService {
       const response = await apiRequest('/api/extensions/commands/execute', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           commandId,
-          args: args || []
-        })
+          args: args || [],
+        }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to execute command ${commandId}: ${response.statusText}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error(`Error executing command ${commandId}:`, error);
@@ -259,11 +265,11 @@ export class ExtensionService {
       const response = await apiRequest(`/api/extensions/${extensionId}/settings`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(settings)
+        body: JSON.stringify(settings),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to update extension settings: ${response.statusText}`);
       }
@@ -280,9 +286,9 @@ export class ExtensionService {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, new Set());
     }
-    
+
     this.eventListeners.get(event)?.add(callback);
-    
+
     // Return unsubscribe function
     return () => {
       this.eventListeners.get(event)?.delete(callback);

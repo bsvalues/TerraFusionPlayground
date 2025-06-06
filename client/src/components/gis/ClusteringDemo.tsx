@@ -9,13 +9,7 @@ import { fromLonLat } from 'ol/proj';
 import { defaults as defaultControls } from 'ol/control';
 import { Feature } from 'ol';
 import 'ol/ol.css';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -47,7 +41,7 @@ interface ClusteringDemoProps {
 
 /**
  * Clustering Demonstration Component
- * 
+ *
  * This component showcases animated clustering for property data:
  * - Demonstrates how clustering groups nearby properties
  * - Shows animation effects when zooming or panning
@@ -62,7 +56,7 @@ const ClusteringDemo = ({
   // Map reference
   const mapRef = useRef<HTMLDivElement>(null);
   const olMapRef = useRef<Map | null>(null);
-  
+
   // State for controls
   const [baseMapType, setBaseMapType] = useState<BaseMapType>('osm');
   const [clusterDistance, setClusterDistance] = useState<number>(40);
@@ -70,20 +64,20 @@ const ClusteringDemo = ({
   const [animationEnabled, setAnimationEnabled] = useState<boolean>(true);
   const [layoutTab, setLayoutTab] = useState<'map' | 'split'>('map');
   const [selectedCluster, setSelectedCluster] = useState<DataPoint[] | null>(null);
-  
+
   // Fetch property data for clustering
   const { data: clusterData, isLoading } = useQuery<DataPoint[]>({
     queryKey: ['/api/gis/clustering-demo/data'],
     staleTime: 60000,
   });
-  
+
   // Initialize OpenLayers map
   useEffect(() => {
     if (!mapRef.current || olMapRef.current) return;
-    
+
     // Create base map layer
     const baseLayer = getBaseMapLayer(baseMapType);
-    
+
     // Create map instance
     const map = new Map({
       target: mapRef.current,
@@ -99,10 +93,10 @@ const ClusteringDemo = ({
         attribution: false,
       }),
     });
-    
+
     // Store map reference
     olMapRef.current = map;
-    
+
     // Cleanup function
     return () => {
       if (olMapRef.current) {
@@ -111,33 +105,30 @@ const ClusteringDemo = ({
       }
     };
   }, []);
-  
+
   // Update base map when type changes
   useEffect(() => {
     if (!olMapRef.current) return;
-    
+
     const map = olMapRef.current;
     const layers = map.getLayers();
-    
+
     // Remove old base layer
     if (layers.getLength() > 0) {
       layers.removeAt(0);
     }
-    
+
     // Add new base layer
     const baseLayer = getBaseMapLayer(baseMapType);
     map.getLayers().insertAt(0, baseLayer);
   }, [baseMapType]);
-  
+
   // Generate random coordinates for testing
   function generateRandomNearbyCoordinate(center: [number, number]): [number, number] {
     const randomOffset = () => (Math.random() - 0.5) * 0.4; // ~20km radius
-    return [
-      center[0] + randomOffset(),
-      center[1] + randomOffset(),
-    ];
+    return [center[0] + randomOffset(), center[1] + randomOffset()];
   }
-  
+
   // Get base map layer based on type
   const getBaseMapLayer = (type: BaseMapType) => {
     switch (type) {
@@ -162,12 +153,13 @@ const ClusteringDemo = ({
         });
     }
   };
-  
+
   // Handle cluster click
   const handleClusterClick = (features: Feature[], coordinate: number[]) => {
     // Convert features to data points
     const dataPoints = features.map(feature => {
-      const id = feature.getId() as string || `property-${Math.random().toString(36).substr(2, 9)}`;
+      const id =
+        (feature.getId() as string) || `property-${Math.random().toString(36).substr(2, 9)}`;
       const properties = feature.getProperties();
       return {
         id,
@@ -175,23 +167,25 @@ const ClusteringDemo = ({
         properties: properties.properties || {},
       };
     });
-    
+
     setSelectedCluster(dataPoints);
   };
-  
+
   return (
-    <div className={cn("h-full flex flex-col", className)}>
+    <div className={cn('h-full flex flex-col', className)}>
       <div className="flex-none p-4 bg-background border-b">
-        <Tabs value={layoutTab} onValueChange={(value) => setLayoutTab(value as 'map' | 'split')}>
+        <Tabs value={layoutTab} onValueChange={value => setLayoutTab(value as 'map' | 'split')}>
           <div className="flex items-center justify-between mb-4">
             <TabsList>
               <TabsTrigger value="map">Map View</TabsTrigger>
               <TabsTrigger value="split">Split View</TabsTrigger>
             </TabsList>
-            
+
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <Label htmlFor="baseMapType" className="text-sm">Base Map:</Label>
+                <Label htmlFor="baseMapType" className="text-sm">
+                  Base Map:
+                </Label>
                 <Select
                   value={baseMapType}
                   onValueChange={(value: BaseMapType) => setBaseMapType(value)}
@@ -208,27 +202,27 @@ const ClusteringDemo = ({
               </div>
             </div>
           </div>
-          
+
           <TabsContent value="map" className="mt-0">
             <div className="grid grid-cols-1 gap-4">
               <div className="col-span-1 h-[calc(100vh-12rem)]">
-                <div 
-                  ref={mapRef} 
+                <div
+                  ref={mapRef}
                   className="w-full h-full rounded-lg border overflow-hidden shadow-sm"
                 />
               </div>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="split" className="mt-0">
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-2 h-[calc(100vh-12rem)]">
-                <div 
-                  ref={mapRef} 
+                <div
+                  ref={mapRef}
                   className="w-full h-full rounded-lg border overflow-hidden shadow-sm"
                 />
               </div>
-              
+
               <div className="col-span-1 h-[calc(100vh-12rem)] overflow-y-auto">
                 <Card>
                   <CardHeader>
@@ -241,7 +235,9 @@ const ClusteringDemo = ({
                     <div className="space-y-6">
                       <div className="space-y-2">
                         <div className="flex justify-between">
-                          <Label htmlFor="clusterDistance">Cluster Distance: {clusterDistance}px</Label>
+                          <Label htmlFor="clusterDistance">
+                            Cluster Distance: {clusterDistance}px
+                          </Label>
                         </div>
                         <Slider
                           id="clusterDistance"
@@ -249,13 +245,13 @@ const ClusteringDemo = ({
                           max={150}
                           step={5}
                           value={[clusterDistance]}
-                          onValueChange={(value) => setClusterDistance(value[0])}
+                          onValueChange={value => setClusterDistance(value[0])}
                         />
                         <p className="text-xs text-muted-foreground">
                           The distance (in pixels) within which points will be clustered together
                         </p>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <Label htmlFor="minDistance">Min Distance: {minDistance}px</Label>
@@ -266,19 +262,19 @@ const ClusteringDemo = ({
                           max={100}
                           step={5}
                           value={[minDistance]}
-                          onValueChange={(value) => setMinDistance(value[0])}
+                          onValueChange={value => setMinDistance(value[0])}
                         />
                         <p className="text-xs text-muted-foreground">
                           The minimum distance between clusters
                         </p>
                       </div>
-                      
+
                       <div className="flex items-center space-x-2">
                         <input
                           type="checkbox"
                           id="animationEnabled"
                           checked={animationEnabled}
-                          onChange={(e) => setAnimationEnabled(e.target.checked)}
+                          onChange={e => setAnimationEnabled(e.target.checked)}
                           className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                         />
                         <Label htmlFor="animationEnabled">Enable Animation</Label>
@@ -286,7 +282,7 @@ const ClusteringDemo = ({
                     </div>
                   </CardContent>
                 </Card>
-                
+
                 {selectedCluster && selectedCluster.length > 0 && (
                   <Card className="mt-4">
                     <CardHeader>
@@ -297,15 +293,15 @@ const ClusteringDemo = ({
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {selectedCluster.map((point) => (
+                        {selectedCluster.map(point => (
                           <div key={point.id} className="p-2 bg-muted rounded-md text-sm">
-                            <div className="font-medium">{point.properties.address || 'Property'}</div>
+                            <div className="font-medium">
+                              {point.properties.address || 'Property'}
+                            </div>
                             <div className="text-xs text-muted-foreground">
                               {point.properties.type} - {point.properties.status}
                             </div>
-                            <div className="text-xs">
-                              Value: {point.properties.value || 'N/A'}
-                            </div>
+                            <div className="text-xs">Value: {point.properties.value || 'N/A'}</div>
                           </div>
                         ))}
                       </div>
@@ -317,7 +313,7 @@ const ClusteringDemo = ({
           </TabsContent>
         </Tabs>
       </div>
-      
+
       {/* Add clustering layer if map is initialized and data is loaded */}
       {olMapRef.current && clusterData && Array.isArray(clusterData) && (
         <AnimatedClusterLayer

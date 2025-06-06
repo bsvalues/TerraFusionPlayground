@@ -4,21 +4,25 @@ import { projectManager } from '../services/development/project-manager';
 import { fileManager } from '../services/development/file-manager';
 import { previewEngine } from '../services/development/preview-engine';
 import { getAICodeAssistant } from '../services/development/ai-code-assistant';
-import { 
-  insertDevProjectSchema, 
-  DevFileType, 
-  insertCodeSnippetSchema, 
-  insertDataVisualizationSchema, 
+import {
+  insertDevProjectSchema,
+  DevFileType,
+  insertCodeSnippetSchema,
+  insertDataVisualizationSchema,
   insertUIComponentTemplateSchema,
   CodeSnippetType,
   VisualizationType,
-  ComponentType
+  ComponentType,
 } from '@shared/schema';
 import { storage } from '../storage';
 import path from 'path';
 
 // Initialize development tool services
-import { CodeSnippetService, DataVisualizationService, ComponentPlaygroundService } from '../services/development';
+import {
+  CodeSnippetService,
+  DataVisualizationService,
+  ComponentPlaygroundService,
+} from '../services/development';
 const codeSnippetService = new CodeSnippetService(storage);
 const dataVisualizationService = new DataVisualizationService(storage);
 const componentPlaygroundService = new ComponentPlaygroundService(storage);
@@ -40,11 +44,11 @@ router.get('/projects/:projectId', async (req, res) => {
   try {
     const { projectId } = req.params;
     const project = await projectManager.getProjectById(projectId);
-    
+
     if (!project) {
       return res.status(404).json({ error: 'Project not found' });
     }
-    
+
     res.json(project);
   } catch (error) {
     console.error('Error getting project:', error);
@@ -55,11 +59,11 @@ router.get('/projects/:projectId', async (req, res) => {
 router.post('/projects', async (req, res) => {
   try {
     const validationResult = insertDevProjectSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
       return res.status(400).json({ error: validationResult.error });
     }
-    
+
     const project = await projectManager.createProject(validationResult.data);
     res.status(201).json(project);
   } catch (error) {
@@ -72,13 +76,13 @@ router.put('/projects/:projectId', async (req, res) => {
   try {
     const { projectId } = req.params;
     const validatedData = insertDevProjectSchema.partial().parse(req.body);
-    
+
     const project = await projectManager.updateProject(projectId, validatedData);
-    
+
     if (!project) {
       return res.status(404).json({ error: 'Project not found' });
     }
-    
+
     res.json(project);
   } catch (error) {
     console.error('Error updating project:', error);
@@ -90,11 +94,11 @@ router.delete('/projects/:projectId', async (req, res) => {
   try {
     const { projectId } = req.params;
     const result = await projectManager.deleteProject(projectId);
-    
+
     if (!result) {
       return res.status(404).json({ error: 'Project not found' });
     }
-    
+
     res.status(204).end();
   } catch (error) {
     console.error('Error deleting project:', error);
@@ -140,8 +144,8 @@ router.get('/templates', (req, res) => {
           { path: 'src/App.js', type: 'FILE' },
           { path: 'src/index.js', type: 'FILE' },
           { path: 'public/index.html', type: 'FILE' },
-          { path: 'package.json', type: 'FILE' }
-        ]
+          { path: 'package.json', type: 'FILE' },
+        ],
       },
       {
         id: 'api-express',
@@ -154,8 +158,8 @@ router.get('/templates', (req, res) => {
           { path: 'src/index.js', type: 'FILE' },
           { path: 'src/routes.js', type: 'FILE' },
           { path: 'src/controllers', type: 'DIRECTORY' },
-          { path: 'package.json', type: 'FILE' }
-        ]
+          { path: 'package.json', type: 'FILE' },
+        ],
       },
       {
         id: 'flask-app',
@@ -168,10 +172,10 @@ router.get('/templates', (req, res) => {
           { path: 'app.py', type: 'FILE' },
           { path: 'templates', type: 'DIRECTORY' },
           { path: 'static', type: 'DIRECTORY' },
-          { path: 'requirements.txt', type: 'FILE' }
-        ]
+          { path: 'requirements.txt', type: 'FILE' },
+        ],
       },
-      
+
       // Assessment-specific Templates
       {
         id: 'assessment-module',
@@ -184,8 +188,8 @@ router.get('/templates', (req, res) => {
           { path: 'src/assessment.js', type: 'FILE' },
           { path: 'src/models', type: 'DIRECTORY' },
           { path: 'src/utils', type: 'DIRECTORY' },
-          { path: 'package.json', type: 'FILE' }
-        ]
+          { path: 'package.json', type: 'FILE' },
+        ],
       },
       {
         id: 'cama-dashboard',
@@ -202,8 +206,8 @@ router.get('/templates', (req, res) => {
           { path: 'src/services/camaService.js', type: 'FILE' },
           { path: 'src/utils/calculationHelpers.js', type: 'FILE' },
           { path: 'public/index.html', type: 'FILE' },
-          { path: 'package.json', type: 'FILE' }
-        ]
+          { path: 'package.json', type: 'FILE' },
+        ],
       },
       {
         id: 'valuation-api',
@@ -220,8 +224,8 @@ router.get('/templates', (req, res) => {
           { path: 'src/models/property.js', type: 'FILE' },
           { path: 'src/models/valuation.js', type: 'FILE' },
           { path: 'src/utils/calculationHelpers.js', type: 'FILE' },
-          { path: 'package.json', type: 'FILE' }
-        ]
+          { path: 'package.json', type: 'FILE' },
+        ],
       },
       {
         id: 'property-data-analyzer',
@@ -239,10 +243,10 @@ router.get('/templates', (req, res) => {
           { path: 'templates/analysis_results.html', type: 'FILE' },
           { path: 'static/css/styles.css', type: 'FILE' },
           { path: 'static/js/charts.js', type: 'FILE' },
-          { path: 'requirements.txt', type: 'FILE' }
-        ]
+          { path: 'requirements.txt', type: 'FILE' },
+        ],
       },
-      
+
       // Demo Templates
       {
         id: 'comp-sales-demo',
@@ -260,8 +264,8 @@ router.get('/templates', (req, res) => {
           { path: 'src/services/mockApiService.js', type: 'FILE' },
           { path: 'src/utils/compHelpers.js', type: 'FILE' },
           { path: 'public/index.html', type: 'FILE' },
-          { path: 'package.json', type: 'FILE' }
-        ]
+          { path: 'package.json', type: 'FILE' },
+        ],
       },
       {
         id: 'market-trend-analyzer',
@@ -280,8 +284,8 @@ router.get('/templates', (req, res) => {
           { path: 'src/utils/trendCalculations.js', type: 'FILE' },
           { path: 'src/utils/predictiveModel.js', type: 'FILE' },
           { path: 'public/index.html', type: 'FILE' },
-          { path: 'package.json', type: 'FILE' }
-        ]
+          { path: 'package.json', type: 'FILE' },
+        ],
       },
       {
         id: 'property-inspect-tool',
@@ -300,11 +304,11 @@ router.get('/templates', (req, res) => {
           { path: 'src/utils/imageProcessing.js', type: 'FILE' },
           { path: 'src/styles/mobile.css', type: 'FILE' },
           { path: 'public/index.html', type: 'FILE' },
-          { path: 'package.json', type: 'FILE' }
-        ]
-      }
+          { path: 'package.json', type: 'FILE' },
+        ],
+      },
     ];
-    
+
     res.json(templates);
   } catch (error) {
     console.error('Error getting templates:', error);
@@ -339,18 +343,18 @@ router.get('/projects/:projectId/files/*', async (req, res) => {
     const { projectId } = req.params;
     // Access wildcard path parameter with proper TypeScript typing
     const filePath = req.params[0] as string;
-    
+
     const file = await fileManager.getFileByPath(projectId, filePath);
-    
+
     if (!file) {
       return res.status(404).json({ error: 'File not found' });
     }
-    
+
     res.json({
       content: file.content,
       path: file.path,
       name: file.name,
-      type: file.type
+      type: file.type,
     });
   } catch (error) {
     console.error('Error getting file:', error);
@@ -362,13 +366,13 @@ router.post('/projects/:projectId/files', async (req, res) => {
   try {
     const { projectId } = req.params;
     const { path: filePath, name, content, type } = req.body;
-    
+
     if (!filePath || !name || !type) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    
+
     const parentPath = path.dirname(filePath) === '.' ? null : path.dirname(filePath);
-    
+
     const file = await fileManager.createFile({
       projectId,
       path: filePath,
@@ -377,9 +381,9 @@ router.post('/projects/:projectId/files', async (req, res) => {
       content: content || '',
       size: content ? Buffer.from(content).length : 0,
       createdBy: req.body.userId || 1, // Default to user ID 1 if not provided
-      parentPath
+      parentPath,
     });
-    
+
     res.status(201).json(file);
   } catch (error) {
     console.error('Error creating file:', error);
@@ -393,17 +397,17 @@ router.put('/projects/:projectId/files/*', async (req, res) => {
     // Access wildcard path parameter with proper TypeScript typing
     const filePath = req.params[0] as string;
     const { content } = req.body;
-    
+
     if (content === undefined) {
       return res.status(400).json({ error: 'Missing content field' });
     }
-    
+
     const updatedFile = await fileManager.updateFile(projectId, filePath, { content });
-    
+
     if (!updatedFile) {
       return res.status(404).json({ error: 'File not found' });
     }
-    
+
     res.json(updatedFile);
   } catch (error) {
     console.error('Error updating file:', error);
@@ -416,13 +420,13 @@ router.delete('/projects/:projectId/files/*', async (req, res) => {
     const { projectId } = req.params;
     // Access wildcard path parameter with proper TypeScript typing
     const filePath = req.params[0] as string;
-    
+
     const result = await fileManager.deleteFile(projectId, filePath);
-    
+
     if (!result) {
       return res.status(404).json({ error: 'File not found' });
     }
-    
+
     res.status(204).end();
   } catch (error) {
     console.error('Error deleting file:', error);
@@ -468,12 +472,12 @@ router.post('/projects/:projectId/preview/stop', async (req, res) => {
 router.post('/ai/generate-code', async (req, res) => {
   try {
     const { prompt, fileContext } = req.body;
-    
+
     if (!prompt) {
       return res.status(400).json({ error: 'Missing prompt field' });
     }
-    
-    const aiCodeAssistant = getAICodeAssistant(); 
+
+    const aiCodeAssistant = getAICodeAssistant();
     const code = await aiCodeAssistant.generateCodeSuggestion(prompt, fileContext);
     res.json({ code });
   } catch (error) {
@@ -485,11 +489,11 @@ router.post('/ai/generate-code', async (req, res) => {
 router.post('/ai/complete-code', async (req, res) => {
   try {
     const { codeSnippet, language } = req.body;
-    
+
     if (!codeSnippet || !language) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    
+
     const aiCodeAssistant = getAICodeAssistant();
     const completedCode = await aiCodeAssistant.completeCode(codeSnippet, language);
     res.json({ code: completedCode });
@@ -502,11 +506,11 @@ router.post('/ai/complete-code', async (req, res) => {
 router.post('/ai/explain-code', async (req, res) => {
   try {
     const { code } = req.body;
-    
+
     if (!code) {
       return res.status(400).json({ error: 'Missing code field' });
     }
-    
+
     const aiCodeAssistant = getAICodeAssistant();
     const explanation = await aiCodeAssistant.explainCode(code);
     res.json({ explanation });
@@ -519,11 +523,11 @@ router.post('/ai/explain-code', async (req, res) => {
 router.post('/ai/fix-bugs', async (req, res) => {
   try {
     const { code, errorMessage } = req.body;
-    
+
     if (!code || !errorMessage) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    
+
     const aiCodeAssistant = getAICodeAssistant();
     const fixedCode = await aiCodeAssistant.fixBugs(code, errorMessage);
     res.json({ code: fixedCode });
@@ -536,11 +540,11 @@ router.post('/ai/fix-bugs', async (req, res) => {
 router.post('/ai/recommend-improvement', async (req, res) => {
   try {
     const { code } = req.body;
-    
+
     if (!code) {
       return res.status(400).json({ error: 'Missing code field' });
     }
-    
+
     const aiCodeAssistant = getAICodeAssistant();
     const recommendations = await aiCodeAssistant.recommendImprovement(code);
     res.json({ recommendations });
@@ -559,17 +563,8 @@ router.post('/ai/recommend-improvement', async (req, res) => {
 // Get all code snippets with optional filtering
 router.get('/code-snippets', async (req, res) => {
   try {
-    const { 
-      language, 
-      type, 
-      search, 
-      tags, 
-      createdBy, 
-      isPublic,
-      limit,
-      offset
-    } = req.query;
-    
+    const { language, type, search, tags, createdBy, isPublic, limit, offset } = req.query;
+
     // Build filter object from query parameters
     const filter: any = {};
     if (language) filter.language = language as string;
@@ -578,13 +573,13 @@ router.get('/code-snippets', async (req, res) => {
     if (tags) filter.tags = (tags as string).split(',');
     if (createdBy) filter.createdBy = parseInt(createdBy as string);
     if (isPublic) filter.isPublic = isPublic === 'true';
-    
+
     // Parse pagination parameters
     const pagination = {
       limit: limit ? parseInt(limit as string) : 20,
-      offset: offset ? parseInt(offset as string) : 0
+      offset: offset ? parseInt(offset as string) : 0,
     };
-    
+
     const snippets = await codeSnippetService.getCodeSnippets(filter, pagination);
     res.json(snippets);
   } catch (error) {
@@ -598,11 +593,11 @@ router.get('/code-snippets/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const snippet = await codeSnippetService.getCodeSnippetById(parseInt(id));
-    
+
     if (!snippet) {
       return res.status(404).json({ error: 'Code snippet not found' });
     }
-    
+
     res.json(snippet);
   } catch (error) {
     console.error('Error getting code snippet:', error);
@@ -614,11 +609,11 @@ router.get('/code-snippets/:id', async (req, res) => {
 router.post('/code-snippets', async (req, res) => {
   try {
     const validationResult = insertCodeSnippetSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
       return res.status(400).json({ error: validationResult.error });
     }
-    
+
     const snippet = await codeSnippetService.createCodeSnippet(validationResult.data);
     res.status(201).json(snippet);
   } catch (error) {
@@ -632,16 +627,13 @@ router.put('/code-snippets/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const validatedData = insertCodeSnippetSchema.partial().parse(req.body);
-    
-    const snippet = await codeSnippetService.updateCodeSnippet(
-      parseInt(id), 
-      validatedData
-    );
-    
+
+    const snippet = await codeSnippetService.updateCodeSnippet(parseInt(id), validatedData);
+
     if (!snippet) {
       return res.status(404).json({ error: 'Code snippet not found' });
     }
-    
+
     res.json(snippet);
   } catch (error) {
     console.error('Error updating code snippet:', error);
@@ -654,11 +646,11 @@ router.delete('/code-snippets/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await codeSnippetService.deleteCodeSnippet(parseInt(id));
-    
+
     if (!result) {
       return res.status(404).json({ error: 'Code snippet not found' });
     }
-    
+
     res.status(204).end();
   } catch (error) {
     console.error('Error deleting code snippet:', error);
@@ -670,17 +662,17 @@ router.delete('/code-snippets/:id', async (req, res) => {
 router.post('/code-snippets/generate', async (req, res) => {
   try {
     const { prompt, language, snippetType } = req.body;
-    
+
     if (!prompt || !language) {
       return res.status(400).json({ error: 'Prompt and language are required' });
     }
-    
+
     const generatedSnippet = await codeSnippetService.generateCodeSnippet(
-      prompt, 
-      language, 
+      prompt,
+      language,
       snippetType || CodeSnippetType.UTILITY
     );
-    
+
     res.json(generatedSnippet);
   } catch (error) {
     console.error('Error generating code snippet:', error);
@@ -693,16 +685,34 @@ router.get('/code-snippets/metadata', async (req, res) => {
   try {
     const metadata = {
       languages: [
-        'javascript', 'typescript', 'python', 'java', 'csharp', 'go',
-        'ruby', 'php', 'swift', 'kotlin', 'rust', 'sql'
+        'javascript',
+        'typescript',
+        'python',
+        'java',
+        'csharp',
+        'go',
+        'ruby',
+        'php',
+        'swift',
+        'kotlin',
+        'rust',
+        'sql',
       ],
       types: Object.values(CodeSnippetType),
       frameworks: [
-        'react', 'angular', 'vue', 'express', 'django', 'flask',
-        'spring', 'laravel', 'aspnet', 'rails'
-      ]
+        'react',
+        'angular',
+        'vue',
+        'express',
+        'django',
+        'flask',
+        'spring',
+        'laravel',
+        'aspnet',
+        'rails',
+      ],
     };
-    
+
     res.json(metadata);
   } catch (error) {
     console.error('Error getting code snippet metadata:', error);
@@ -715,28 +725,21 @@ router.get('/code-snippets/metadata', async (req, res) => {
 // Get all data visualizations with optional filtering
 router.get('/data-visualizations', async (req, res) => {
   try {
-    const { 
-      type, 
-      search, 
-      createdBy, 
-      isPublic,
-      limit,
-      offset
-    } = req.query;
-    
+    const { type, search, createdBy, isPublic, limit, offset } = req.query;
+
     // Build filter object from query parameters
     const filter: any = {};
     if (type) filter.visualizationType = type as string;
     if (search) filter.search = search as string;
     if (createdBy) filter.createdBy = parseInt(createdBy as string);
     if (isPublic) filter.isPublic = isPublic === 'true';
-    
+
     // Parse pagination parameters
     const pagination = {
       limit: limit ? parseInt(limit as string) : 20,
-      offset: offset ? parseInt(offset as string) : 0
+      offset: offset ? parseInt(offset as string) : 0,
     };
-    
+
     const visualizations = await dataVisualizationService.getDataVisualizations(filter, pagination);
     res.json(visualizations);
   } catch (error) {
@@ -750,11 +753,11 @@ router.get('/data-visualizations/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const visualization = await dataVisualizationService.getDataVisualizationById(parseInt(id));
-    
+
     if (!visualization) {
       return res.status(404).json({ error: 'Data visualization not found' });
     }
-    
+
     res.json(visualization);
   } catch (error) {
     console.error('Error getting data visualization:', error);
@@ -766,12 +769,14 @@ router.get('/data-visualizations/:id', async (req, res) => {
 router.post('/data-visualizations', async (req, res) => {
   try {
     const validationResult = insertDataVisualizationSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
       return res.status(400).json({ error: validationResult.error });
     }
-    
-    const visualization = await dataVisualizationService.createDataVisualization(validationResult.data);
+
+    const visualization = await dataVisualizationService.createDataVisualization(
+      validationResult.data
+    );
     res.status(201).json(visualization);
   } catch (error) {
     console.error('Error creating data visualization:', error);
@@ -784,16 +789,16 @@ router.put('/data-visualizations/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const validatedData = insertDataVisualizationSchema.partial().parse(req.body);
-    
+
     const visualization = await dataVisualizationService.updateDataVisualization(
-      parseInt(id), 
+      parseInt(id),
       validatedData
     );
-    
+
     if (!visualization) {
       return res.status(404).json({ error: 'Data visualization not found' });
     }
-    
+
     res.json(visualization);
   } catch (error) {
     console.error('Error updating data visualization:', error);
@@ -806,11 +811,11 @@ router.delete('/data-visualizations/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await dataVisualizationService.deleteDataVisualization(parseInt(id));
-    
+
     if (!result) {
       return res.status(404).json({ error: 'Data visualization not found' });
     }
-    
+
     res.status(204).end();
   } catch (error) {
     console.error('Error deleting data visualization:', error);
@@ -822,17 +827,17 @@ router.delete('/data-visualizations/:id', async (req, res) => {
 router.post('/data-visualizations/generate-config', async (req, res) => {
   try {
     const { dataSource, visualizationType, description } = req.body;
-    
+
     if (!dataSource || !visualizationType) {
       return res.status(400).json({ error: 'Data source and visualization type are required' });
     }
-    
+
     const generatedConfig = await dataVisualizationService.generateVisualizationConfig(
-      dataSource, 
+      dataSource,
       visualizationType as VisualizationType,
       description
     );
-    
+
     res.json(generatedConfig);
   } catch (error) {
     console.error('Error generating visualization config:', error);
@@ -846,15 +851,27 @@ router.get('/data-visualizations/metadata', async (req, res) => {
     const metadata = {
       types: Object.values(VisualizationType),
       libraries: [
-        'recharts', 'chart.js', 'd3', 'highcharts', 'plotly', 
-        'visx', 'nivo', 'victory', 'echarts'
+        'recharts',
+        'chart.js',
+        'd3',
+        'highcharts',
+        'plotly',
+        'visx',
+        'nivo',
+        'victory',
+        'echarts',
       ],
       colorSchemes: [
-        'sequential', 'diverging', 'categorical', 'monochrome',
-        'assessment-blues', 'assessment-greens', 'assessment-yellows'
-      ]
+        'sequential',
+        'diverging',
+        'categorical',
+        'monochrome',
+        'assessment-blues',
+        'assessment-greens',
+        'assessment-yellows',
+      ],
     };
-    
+
     res.json(metadata);
   } catch (error) {
     console.error('Error getting data visualization metadata:', error);
@@ -867,17 +884,8 @@ router.get('/data-visualizations/metadata', async (req, res) => {
 // Get all UI component templates with optional filtering
 router.get('/ui-components', async (req, res) => {
   try {
-    const { 
-      type, 
-      framework,
-      search, 
-      tags,
-      createdBy, 
-      isPublic,
-      limit,
-      offset
-    } = req.query;
-    
+    const { type, framework, search, tags, createdBy, isPublic, limit, offset } = req.query;
+
     // Build filter object from query parameters
     const filter: any = {};
     if (type) filter.componentType = type as string;
@@ -886,13 +894,13 @@ router.get('/ui-components', async (req, res) => {
     if (tags) filter.tags = (tags as string).split(',');
     if (createdBy) filter.createdBy = parseInt(createdBy as string);
     if (isPublic) filter.isPublic = isPublic === 'true';
-    
+
     // Parse pagination parameters
     const pagination = {
       limit: limit ? parseInt(limit as string) : 20,
-      offset: offset ? parseInt(offset as string) : 0
+      offset: offset ? parseInt(offset as string) : 0,
     };
-    
+
     const components = await componentPlaygroundService.getUIComponentTemplates(filter, pagination);
     res.json(components);
   } catch (error) {
@@ -906,11 +914,11 @@ router.get('/ui-components/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const component = await componentPlaygroundService.getUIComponentTemplateById(parseInt(id));
-    
+
     if (!component) {
       return res.status(404).json({ error: 'UI component template not found' });
     }
-    
+
     res.json(component);
   } catch (error) {
     console.error('Error getting UI component template:', error);
@@ -922,12 +930,14 @@ router.get('/ui-components/:id', async (req, res) => {
 router.post('/ui-components', async (req, res) => {
   try {
     const validationResult = insertUIComponentTemplateSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
       return res.status(400).json({ error: validationResult.error });
     }
-    
-    const component = await componentPlaygroundService.createUIComponentTemplate(validationResult.data);
+
+    const component = await componentPlaygroundService.createUIComponentTemplate(
+      validationResult.data
+    );
     res.status(201).json(component);
   } catch (error) {
     console.error('Error creating UI component template:', error);
@@ -940,16 +950,16 @@ router.put('/ui-components/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const validatedData = insertUIComponentTemplateSchema.partial().parse(req.body);
-    
+
     const component = await componentPlaygroundService.updateUIComponentTemplate(
-      parseInt(id), 
+      parseInt(id),
       validatedData
     );
-    
+
     if (!component) {
       return res.status(404).json({ error: 'UI component template not found' });
     }
-    
+
     res.json(component);
   } catch (error) {
     console.error('Error updating UI component template:', error);
@@ -962,11 +972,11 @@ router.delete('/ui-components/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await componentPlaygroundService.deleteUIComponentTemplate(parseInt(id));
-    
+
     if (!result) {
       return res.status(404).json({ error: 'UI component template not found' });
     }
-    
+
     res.status(204).end();
   } catch (error) {
     console.error('Error deleting UI component template:', error);
@@ -978,17 +988,17 @@ router.delete('/ui-components/:id', async (req, res) => {
 router.post('/ui-components/generate', async (req, res) => {
   try {
     const { prompt, framework, componentType } = req.body;
-    
+
     if (!prompt || !framework) {
       return res.status(400).json({ error: 'Prompt and framework are required' });
     }
-    
+
     const generatedComponent = await componentPlaygroundService.generateUIComponent(
-      prompt, 
-      framework, 
+      prompt,
+      framework,
       componentType || ComponentType.FORM
     );
-    
+
     res.json(generatedComponent);
   } catch (error) {
     console.error('Error generating UI component:', error);
@@ -1002,15 +1012,29 @@ router.get('/ui-components/metadata', async (req, res) => {
     const metadata = {
       types: Object.values(ComponentType),
       frameworks: [
-        'react', 'angular', 'vue', 'svelte', 'solid', 'preact',
-        'lit', 'stencil', 'web-components'
+        'react',
+        'angular',
+        'vue',
+        'svelte',
+        'solid',
+        'preact',
+        'lit',
+        'stencil',
+        'web-components',
       ],
       styling: [
-        'css', 'scss', 'styled-components', 'emotion', 'tailwind',
-        'bootstrap', 'material-ui', 'chakra-ui', 'shadcn'
-      ]
+        'css',
+        'scss',
+        'styled-components',
+        'emotion',
+        'tailwind',
+        'bootstrap',
+        'material-ui',
+        'chakra-ui',
+        'shadcn',
+      ],
     };
-    
+
     res.json(metadata);
   } catch (error) {
     console.error('Error getting UI component metadata:', error);

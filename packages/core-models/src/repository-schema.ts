@@ -82,24 +82,24 @@ export const repositoryCategoryRelationSchema = z.object({
 export type RepositoryCategoryRelation = z.infer<typeof repositoryCategoryRelationSchema>;
 
 // Insert schemas (for use with forms and API endpoints)
-export const repositoryInsertSchema = repositorySchema.omit({ 
-  id: true, 
-  createdAt: true, 
-  updatedAt: true, 
-  stars: true, 
-  forks: true 
+export const repositoryInsertSchema = repositorySchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  stars: true,
+  forks: true,
 });
 
-export const repositoryVersionInsertSchema = repositoryVersionSchema.omit({ 
-  id: true, 
-  createdAt: true, 
-  isVerified: true, 
-  downloads: true
+export const repositoryVersionInsertSchema = repositoryVersionSchema.omit({
+  id: true,
+  createdAt: true,
+  isVerified: true,
+  downloads: true,
 });
 
-export const repositoryFeedbackInsertSchema = repositoryFeedbackSchema.omit({ 
-  id: true, 
-  createdAt: true 
+export const repositoryFeedbackInsertSchema = repositoryFeedbackSchema.omit({
+  id: true,
+  createdAt: true,
 });
 
 // Export types for inserts

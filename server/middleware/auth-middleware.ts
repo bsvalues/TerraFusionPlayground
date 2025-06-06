@@ -1,6 +1,6 @@
 /**
  * Authentication Middleware
- * 
+ *
  * This middleware has been modified to bypass token verification for Windows Authentication integration.
  * A default admin user is assigned to all requests.
  */
@@ -16,7 +16,7 @@ const securityService = new SecurityService();
 export enum TokenScope {
   READ_ONLY = 'read_only',
   READ_WRITE = 'read_write',
-  ADMIN = 'admin'
+  ADMIN = 'admin',
 }
 
 // Extend Request type to include user property
@@ -45,25 +45,29 @@ export function verifyToken(req: Request, res: Response, next: NextFunction) {
     userId: 1,
     username: 'county_admin',
     role: 'admin',
-    scope: [TokenScope.READ_ONLY, TokenScope.READ_WRITE, TokenScope.ADMIN].map(s => s.toString())
+    scope: [TokenScope.READ_ONLY, TokenScope.READ_WRITE, TokenScope.ADMIN].map(s => s.toString()),
   };
-  
+
   // Log the bypass for audit purposes
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
-  securityService.logSecurityEvent({
-    eventType: 'authentication',
-    component: 'auth-middleware',
-    userId: 1, // Default admin user ID
-    ipAddress: clientIp,
-    details: {
-      username: 'county_admin',
-      role: 'admin',
-      scope: [TokenScope.READ_ONLY, TokenScope.READ_WRITE, TokenScope.ADMIN].map(s => s.toString()),
-      note: 'Token verification bypassed for Windows Authentication integration'
-    },
-    severity: 'info'
-  }).catch(err => console.error('Failed to log token validation bypass:', err));
-  
+  securityService
+    .logSecurityEvent({
+      eventType: 'authentication',
+      component: 'auth-middleware',
+      userId: 1, // Default admin user ID
+      ipAddress: clientIp,
+      details: {
+        username: 'county_admin',
+        role: 'admin',
+        scope: [TokenScope.READ_ONLY, TokenScope.READ_WRITE, TokenScope.ADMIN].map(s =>
+          s.toString()
+        ),
+        note: 'Token verification bypassed for Windows Authentication integration',
+      },
+      severity: 'info',
+    })
+    .catch(err => console.error('Failed to log token validation bypass:', err));
+
   // Continue to the next middleware or route handler
   next();
 }
@@ -82,33 +86,37 @@ export function requireScope(requiredScope: TokenScope) {
           userId: 1,
           username: 'county_admin',
           role: 'admin',
-          scope: [TokenScope.READ_ONLY, TokenScope.READ_WRITE, TokenScope.ADMIN].map(s => s.toString())
+          scope: [TokenScope.READ_ONLY, TokenScope.READ_WRITE, TokenScope.ADMIN].map(s =>
+            s.toString()
+          ),
         };
       }
-      
+
       // Log authorization bypass for audit purposes
       const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
-      securityService.logSecurityEvent({
-        eventType: 'authorization',
-        component: 'auth-middleware',
-        userId: req.user.userId,
-        ipAddress: clientIp,
-        details: {
-          username: req.user.username,
-          role: req.user.role,
-          requiredScope,
-          userScopes: req.user.scope,
-          note: 'Scope check bypassed for Windows Authentication integration'
-        },
-        severity: 'info'
-      }).catch(err => console.error('Failed to log authorization bypass:', err));
-      
+      securityService
+        .logSecurityEvent({
+          eventType: 'authorization',
+          component: 'auth-middleware',
+          userId: req.user.userId,
+          ipAddress: clientIp,
+          details: {
+            username: req.user.username,
+            role: req.user.role,
+            requiredScope,
+            userScopes: req.user.scope,
+            note: 'Scope check bypassed for Windows Authentication integration',
+          },
+          severity: 'info',
+        })
+        .catch(err => console.error('Failed to log authorization bypass:', err));
+
       // Continue to the next middleware or route handler - bypassing scope check
       next();
     } catch (error) {
       console.error('Error in requireScope middleware:', error);
       return res.status(500).json({
-        message: 'Internal server error during authorization.'
+        message: 'Internal server error during authorization.',
       });
     }
   };
@@ -128,28 +136,30 @@ export function validateApiKey(req: Request, res: Response, next: NextFunction) 
       userId: 1,
       username: 'county_admin',
       role: 'admin',
-      scope: [TokenScope.READ_ONLY, TokenScope.READ_WRITE, TokenScope.ADMIN].map(s => s.toString())
+      scope: [TokenScope.READ_ONLY, TokenScope.READ_WRITE, TokenScope.ADMIN].map(s => s.toString()),
     };
-    
+
     // Log the API key bypass for audit purposes
     const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
-    securityService.logSecurityEvent({
-      eventType: 'authentication',
-      component: 'auth-middleware',
-      userId: 1,
-      ipAddress: clientIp,
-      details: {
-        note: 'API key validation bypassed for Windows Authentication integration'
-      },
-      severity: 'info'
-    }).catch(err => console.error('Failed to log API key validation bypass:', err));
-    
+    securityService
+      .logSecurityEvent({
+        eventType: 'authentication',
+        component: 'auth-middleware',
+        userId: 1,
+        ipAddress: clientIp,
+        details: {
+          note: 'API key validation bypassed for Windows Authentication integration',
+        },
+        severity: 'info',
+      })
+      .catch(err => console.error('Failed to log API key validation bypass:', err));
+
     // Continue to the next middleware or route handler
     next();
   } catch (error) {
     console.error('Error in validateApiKey middleware:', error);
     return res.status(500).json({
-      message: 'Internal server error during API key validation.'
+      message: 'Internal server error during API key validation.',
     });
   }
 }
@@ -166,21 +176,23 @@ export function generateTestToken(userId: number = 1, role: string = 'admin'): s
   if (process.env.NODE_ENV === 'production') {
     throw new Error('Test tokens cannot be generated in production environments');
   }
-  
+
   // Log the test token generation for audit purposes
-  securityService.logSecurityEvent({
-    eventType: 'authentication',
-    component: 'auth-middleware',
-    userId: userId,
-    ipAddress: 'localhost',
-    details: {
-      userId,
-      role,
-      note: 'Test token generation bypassed for Windows Authentication integration'
-    },
-    severity: 'info'
-  }).catch(err => console.error('Failed to log test token generation:', err));
-  
+  securityService
+    .logSecurityEvent({
+      eventType: 'authentication',
+      component: 'auth-middleware',
+      userId: userId,
+      ipAddress: 'localhost',
+      details: {
+        userId,
+        role,
+        note: 'Test token generation bypassed for Windows Authentication integration',
+      },
+      severity: 'info',
+    })
+    .catch(err => console.error('Failed to log test token generation:', err));
+
   // Return a dummy token string since token authentication is bypassed
   return 'windows-auth-integration-dummy-token-' + Date.now();
 }

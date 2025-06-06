@@ -1,6 +1,6 @@
 /**
  * Property Comparison Extension
- * 
+ *
  * This sample extension demonstrates how to create a custom extension
  * for the property assessment platform. It provides tools for comparing
  * properties based on various characteristics.
@@ -15,7 +15,8 @@ export class PropertyComparisonExtension extends BaseExtension {
       id: 'property-comparison',
       name: 'Property Comparison',
       version: '1.0.0',
-      description: 'Advanced tools for comparing properties and analyzing their similarities and differences.',
+      description:
+        'Advanced tools for comparing properties and analyzing their similarities and differences.',
       author: 'SpatialEst Team',
       category: 'assessment',
       settings: [
@@ -24,21 +25,21 @@ export class PropertyComparisonExtension extends BaseExtension {
           label: 'Comparison Radius (miles)',
           description: 'The radius in miles to search for comparable properties',
           type: 'number',
-          default: 1.0
+          default: 1.0,
         },
         {
           id: 'maxResults',
           label: 'Maximum Results',
           description: 'The maximum number of comparable properties to return',
           type: 'number',
-          default: 10
+          default: 10,
         },
         {
           id: 'includeMarketTrends',
           label: 'Include Market Trends',
           description: 'Include market trend analysis in comparisons',
           type: 'boolean',
-          default: true
+          default: true,
         },
         {
           id: 'primaryMetric',
@@ -50,26 +51,22 @@ export class PropertyComparisonExtension extends BaseExtension {
             { value: 'value_per_sqft', label: 'Value per Square Foot' },
             { value: 'total_value', label: 'Total Value' },
             { value: 'improvement_value', label: 'Improvement Value' },
-            { value: 'land_value', label: 'Land Value' }
-          ]
-        }
+            { value: 'land_value', label: 'Land Value' },
+          ],
+        },
       ],
-      requiredPermissions: [
-        'property:read',
-        'assessment:read',
-        'market:read'
-      ]
+      requiredPermissions: ['property:read', 'assessment:read', 'market:read'],
     };
-    
+
     super(metadata);
   }
-  
+
   /**
    * Called when the extension is activated
    */
   public async activate(): Promise<void> {
     logger.info(`Activating ${this.getMetadata().name} extension...`);
-    
+
     // Register webviews
     this.registerWebview(
       'property-comparison-dashboard',
@@ -77,53 +74,53 @@ export class PropertyComparisonExtension extends BaseExtension {
       this.generateComparisonDashboardHtml(),
       'Interactive dashboard for comparing property characteristics and values'
     );
-    
+
     this.registerWebview(
       'comparison-report',
       'Comparison Report Generator',
       this.generateReportGeneratorHtml(),
       'Generate detailed reports comparing multiple properties'
     );
-    
+
     // Register commands
     this.registerCommand(
       'open-comparison-dashboard',
       'Open Comparison Dashboard',
       'extension.propertyComparison.openDashboard'
     );
-    
+
     this.registerCommand(
       'generate-comparison-report',
       'Generate Comparison Report',
       'extension.propertyComparison.generateReport'
     );
-    
+
     this.registerCommand(
       'find-comparable-properties',
       'Find Comparable Properties',
       'extension.propertyComparison.findComparables'
     );
-    
+
     this.registerCommand(
       'analyze-value-distribution',
       'Analyze Value Distribution',
       'extension.propertyComparison.analyzeValueDistribution'
     );
-    
+
     logger.info(`${this.getMetadata().name} extension activated.`);
   }
-  
+
   /**
    * Called when the extension is deactivated
    */
   public async deactivate(): Promise<void> {
     logger.info(`Deactivating ${this.getMetadata().name} extension...`);
-    
+
     // Cleanup resources
-    
+
     logger.info(`${this.getMetadata().name} extension deactivated.`);
   }
-  
+
   /**
    * Generate the HTML for the comparison dashboard webview
    */
@@ -345,7 +342,7 @@ export class PropertyComparisonExtension extends BaseExtension {
       </html>
     `;
   }
-  
+
   /**
    * Generate the HTML for the report generator webview
    */
@@ -545,48 +542,48 @@ export class PropertyComparisonExtension extends BaseExtension {
       </html>
     `;
   }
-  
+
   /**
    * Find comparable properties based on the given property ID
    */
   public async findComparableProperties(propertyId: string, options: any = {}): Promise<any[]> {
     logger.info(`Finding comparable properties for ${propertyId}...`);
-    
+
     // This would actually query the database or API in a real implementation
     // For now, return mock data
-    
+
     logger.info(`Returned ${5} comparable properties.`);
-    
+
     // In a real implementation, this would return actual property data
     return [];
   }
-  
+
   /**
    * Generate a comparison report for the given property IDs
    */
   public async generateComparisonReport(propertyIds: string[], options: any = {}): Promise<any> {
     logger.info(`Generating comparison report for properties: ${propertyIds.join(', ')}...`);
-    
+
     // This would actually generate a report in a real implementation
-    
+
     logger.info('Comparison report generated successfully.');
-    
+
     // In a real implementation, this would return the report data
     return {};
   }
-  
+
   /**
    * Analyze the value distribution for a neighborhood
    */
   public async analyzeValueDistribution(neighborhoodId: string, options: any = {}): Promise<any> {
     logger.info(`Analyzing value distribution for neighborhood ${neighborhoodId}...`);
-    
+
     // This would actually analyze data in a real implementation
-    
+
     // In a real implementation, this would return analysis data
     return {};
   }
-  
+
   /**
    * Hook called when the extension receives a message from the frontend
    */
@@ -594,26 +591,26 @@ export class PropertyComparisonExtension extends BaseExtension {
     if (!message || !message.command) {
       return { error: 'Invalid message format' };
     }
-    
+
     switch (message.command) {
       case 'findComparableProperties':
         return {
           success: true,
-          properties: await this.findComparableProperties(message.propertyId, message.options)
+          properties: await this.findComparableProperties(message.propertyId, message.options),
         };
-        
+
       case 'generateComparisonReport':
         return {
           success: true,
-          report: await this.generateComparisonReport(message.propertyIds, message.options)
+          report: await this.generateComparisonReport(message.propertyIds, message.options),
         };
-        
+
       case 'analyzeValueDistribution':
         return {
           success: true,
-          analysis: await this.analyzeValueDistribution(message.neighborhoodId, message.options)
+          analysis: await this.analyzeValueDistribution(message.neighborhoodId, message.options),
         };
-        
+
       default:
         return { error: `Unknown command: ${message.command}` };
     }

@@ -1,6 +1,6 @@
 /**
  * Agent System Status Component
- * 
+ *
  * Displays the current status of the agent system WebSocket connection
  * and provides controls for connecting/disconnecting.
  */
@@ -10,12 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useEffect, useState } from 'react';
 import { Loader2, Wifi, WifiOff, AlertCircle } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ConnectionStatusIndicator } from './connection-status-indicator';
 import type { ConnectionStatus } from '@/hooks/use-agent-websocket';
 
@@ -24,15 +19,12 @@ interface AgentSystemStatusProps {
   variant?: 'default' | 'compact';
 }
 
-export function AgentSystemStatus({
-  className = '',
-  variant = 'default'
-}: AgentSystemStatusProps) {
+export function AgentSystemStatus({ className = '', variant = 'default' }: AgentSystemStatusProps) {
   const { connectionStatus, connect, disconnect, on } = useAgentWebSocket({
     autoConnect: true,
-    showToasts: true
+    showToasts: true,
   });
-  
+
   const [lastMessageTime, setLastMessageTime] = useState<Date | null>(null);
   const [agentCount, setAgentCount] = useState<number>(0);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
@@ -41,7 +33,7 @@ export function AgentSystemStatus({
   useEffect(() => {
     // Create a flag to track if component is still mounted
     let isMounted = true;
-    
+
     // Set up event listener for all messages
     const messageListener = () => {
       if (isMounted) {
@@ -51,12 +43,12 @@ export function AgentSystemStatus({
 
     // Register the event listener
     let eventUnsubscribe: (() => void) | null = null;
-    
+
     // Only attempt to register if we're connected
     if (connectionStatus === 'connected' && typeof on === 'function') {
       eventUnsubscribe = on('*', messageListener);
     }
-    
+
     // Cleanup function
     return () => {
       isMounted = false;
@@ -81,7 +73,7 @@ export function AgentSystemStatus({
     };
 
     fetchAgentCount();
-    
+
     // Poll every 30 seconds
     const interval = setInterval(fetchAgentCount, 30000);
     return () => clearInterval(interval);
@@ -153,7 +145,9 @@ export function AgentSystemStatus({
               <p>Active Agents: {agentCount}</p>
               <p>Last activity: {formatTimestamp(lastMessageTime)}</p>
               {connectionStatus !== 'connected' && (
-                <p className="text-blue-600 dark:text-blue-400 font-medium mt-1">Auto-polling active</p>
+                <p className="text-blue-600 dark:text-blue-400 font-medium mt-1">
+                  Auto-polling active
+                </p>
               )}
             </div>
           </TooltipContent>
@@ -164,7 +158,7 @@ export function AgentSystemStatus({
 
   // Default expanded view
   return (
-    <div 
+    <div
       className={`border rounded-md p-3 ${className} ${isExpanded ? 'w-64' : 'w-auto'}`}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
@@ -176,11 +170,12 @@ export function AgentSystemStatus({
         </div>
         <ConnectionStatusIndicator />
       </div>
-      
+
       {connectionStatus !== 'connected' && (
         <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded p-1.5 mb-2">
           <p className="text-xs text-blue-700 dark:text-blue-400">
-            <span className="font-semibold">Auto-polling active:</span> Real-time updates using polling (3-10s).
+            <span className="font-semibold">Auto-polling active:</span> Real-time updates using
+            polling (3-10s).
           </p>
         </div>
       )}
@@ -200,20 +195,20 @@ export function AgentSystemStatus({
 
           <div className="flex gap-2">
             {connectionStatus === 'connected' || connectionStatus === 'connecting' ? (
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="w-full text-xs" 
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full text-xs"
                 onClick={() => disconnect()}
                 disabled={connectionStatus === 'connecting'}
               >
                 Disconnect
               </Button>
             ) : (
-              <Button 
-                size="sm" 
-                variant="default" 
-                className="w-full text-xs" 
+              <Button
+                size="sm"
+                variant="default"
+                className="w-full text-xs"
                 onClick={() => connect()}
               >
                 Connect

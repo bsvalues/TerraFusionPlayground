@@ -1,126 +1,290 @@
-import { 
-  users, User, InsertUser, 
-  properties, Property, InsertProperty,
-  landRecords, LandRecord, InsertLandRecord,
-  improvements, Improvement, InsertImprovement,
-  fields, Field, InsertField,
-  appeals, Appeal, InsertAppeal,
-  appealComments, AppealComment, InsertAppealComment,
-  appealEvidence, AppealEvidence, InsertAppealEvidence,
-  auditLogs, AuditLog, InsertAuditLog,
-  aiAgents, AiAgent, InsertAiAgent,
-  systemActivities, SystemActivity, InsertSystemActivity,
-  mcpToolExecutionLogs, MCPToolExecutionLog, InsertMCPToolExecutionLog,
-  pacsModules, PacsModule, InsertPacsModule,
-  agentMessages, AgentMessage, InsertAgentMessage,
-  propertyInsightShares, PropertyInsightShare, InsertPropertyInsightShare,
-  comparableSales, ComparableSale, InsertComparableSale,
-  comparableSalesAnalyses, ComparableSalesAnalysis, InsertComparableSalesAnalysis,
-  comparableAnalysisEntries, ComparableAnalysisEntry, InsertComparableAnalysisEntry,
-  importStaging, StagedProperty, InsertStagedProperty,
-  validationRules, ValidationRule, InsertValidationRule,
-  validationIssues, ValidationIssue, InsertValidationIssue,
-  workflowDefinitions, WorkflowDefinition, InsertWorkflowDefinition,
-  workflowInstances, WorkflowInstance, InsertWorkflowInstance,
-  workflowStepHistory, WorkflowStepHistory, InsertWorkflowStepHistory,
-  complianceReports, ComplianceReport, InsertComplianceReport,
-  agentExperiences, AgentExperience, InsertAgentExperience,
-  learningUpdates, LearningUpdate, InsertLearningUpdate,
-  dataLineageRecords, DataLineageRecord, InsertDataLineageRecord,
-  codeImprovements, CodeImprovement, InsertCodeImprovement,
+import {
+  users,
+  User,
+  InsertUser,
+  properties,
+  Property,
+  InsertProperty,
+  landRecords,
+  LandRecord,
+  InsertLandRecord,
+  improvements,
+  Improvement,
+  InsertImprovement,
+  fields,
+  Field,
+  InsertField,
+  appeals,
+  Appeal,
+  InsertAppeal,
+  appealComments,
+  AppealComment,
+  InsertAppealComment,
+  appealEvidence,
+  AppealEvidence,
+  InsertAppealEvidence,
+  auditLogs,
+  AuditLog,
+  InsertAuditLog,
+  aiAgents,
+  AiAgent,
+  InsertAiAgent,
+  systemActivities,
+  SystemActivity,
+  InsertSystemActivity,
+  mcpToolExecutionLogs,
+  MCPToolExecutionLog,
+  InsertMCPToolExecutionLog,
+  pacsModules,
+  PacsModule,
+  InsertPacsModule,
+  agentMessages,
+  AgentMessage,
+  InsertAgentMessage,
+  propertyInsightShares,
+  PropertyInsightShare,
+  InsertPropertyInsightShare,
+  comparableSales,
+  ComparableSale,
+  InsertComparableSale,
+  comparableSalesAnalyses,
+  ComparableSalesAnalysis,
+  InsertComparableSalesAnalysis,
+  comparableAnalysisEntries,
+  ComparableAnalysisEntry,
+  InsertComparableAnalysisEntry,
+  importStaging,
+  StagedProperty,
+  InsertStagedProperty,
+  validationRules,
+  ValidationRule,
+  InsertValidationRule,
+  validationIssues,
+  ValidationIssue,
+  InsertValidationIssue,
+  workflowDefinitions,
+  WorkflowDefinition,
+  InsertWorkflowDefinition,
+  workflowInstances,
+  WorkflowInstance,
+  InsertWorkflowInstance,
+  workflowStepHistory,
+  WorkflowStepHistory,
+  InsertWorkflowStepHistory,
+  complianceReports,
+  ComplianceReport,
+  InsertComplianceReport,
+  agentExperiences,
+  AgentExperience,
+  InsertAgentExperience,
+  learningUpdates,
+  LearningUpdate,
+  InsertLearningUpdate,
+  dataLineageRecords,
+  DataLineageRecord,
+  InsertDataLineageRecord,
+  codeImprovements,
+  CodeImprovement,
+  InsertCodeImprovement,
   // TaxI_AI Development Platform tables
-  developmentProjects, DevelopmentProject, InsertDevelopmentProject,
-  projectFiles, ProjectFile, InsertProjectFile,
-  projectTemplates, ProjectTemplate, InsertProjectTemplate,
-  projectVersions, ProjectVersion, InsertProjectVersion,
-  previewSettings, PreviewSetting, InsertPreviewSetting,
-  aiCodeGenerations, AiCodeGeneration, InsertAiCodeGeneration,
+  developmentProjects,
+  DevelopmentProject,
+  InsertDevelopmentProject,
+  projectFiles,
+  ProjectFile,
+  InsertProjectFile,
+  projectTemplates,
+  ProjectTemplate,
+  InsertProjectTemplate,
+  projectVersions,
+  ProjectVersion,
+  InsertProjectVersion,
+  previewSettings,
+  PreviewSetting,
+  InsertPreviewSetting,
+  aiCodeGenerations,
+  AiCodeGeneration,
+  InsertAiCodeGeneration,
   // Assessment Model Workbench tables
-  assessmentModels, AssessmentModel, InsertAssessmentModel,
-  modelVariables, ModelVariable, InsertModelVariable,
-  modelComponents, ModelComponent, InsertModelComponent,
-  modelCalculations, ModelCalculation, InsertModelCalculation,
-  modelValidationRules, ModelValidationRule, InsertModelValidationRule,
-  modelTestCases, ModelTestCase, InsertModelTestCase,
-  assessmentModelVersions, AssessmentModelVersion, InsertAssessmentModelVersion,
+  assessmentModels,
+  AssessmentModel,
+  InsertAssessmentModel,
+  modelVariables,
+  ModelVariable,
+  InsertModelVariable,
+  modelComponents,
+  ModelComponent,
+  InsertModelComponent,
+  modelCalculations,
+  ModelCalculation,
+  InsertModelCalculation,
+  modelValidationRules,
+  ModelValidationRule,
+  InsertModelValidationRule,
+  modelTestCases,
+  ModelTestCase,
+  InsertModelTestCase,
+  assessmentModelVersions,
+  AssessmentModelVersion,
+  InsertAssessmentModelVersion,
   // Development Tools
-  codeSnippets, CodeSnippet, InsertCodeSnippet,
-  dataVisualizations, DataVisualization, InsertDataVisualization,
-  uiComponentTemplates, UIComponentTemplate, InsertUIComponentTemplate,
+  codeSnippets,
+  CodeSnippet,
+  InsertCodeSnippet,
+  dataVisualizations,
+  DataVisualization,
+  InsertDataVisualization,
+  uiComponentTemplates,
+  UIComponentTemplate,
+  InsertUIComponentTemplate,
   // TerraFusion Repository Marketplace
-  repositories, Repository, InsertRepository,
-  repositoryVersions, RepositoryVersion, InsertRepositoryVersion,
-  repositoryReviews, RepositoryReview, InsertRepositoryReview,
-  repositoryDependencies, RepositoryDependency, InsertRepositoryDependency,
+  repositories,
+  Repository,
+  InsertRepository,
+  repositoryVersions,
+  RepositoryVersion,
+  InsertRepositoryVersion,
+  repositoryReviews,
+  RepositoryReview,
+  InsertRepositoryReview,
+  repositoryDependencies,
+  RepositoryDependency,
+  InsertRepositoryDependency,
   // Repository Marketplace enums
-  RepositoryType, RepositoryVisibility, RepositoryLicense,
+  RepositoryType,
+  RepositoryVisibility,
+  RepositoryLicense,
   // Database Conversion System
-  databaseConversionProjects, DatabaseConversionProject, InsertDatabaseConversionProject,
-  connectionTemplates, ConnectionTemplate, InsertConnectionTemplate,
-  schemaMappings, SchemaMapping, InsertSchemaMapping,
-  conversionLogs, ConversionLog, InsertConversionLog,
-  compatibilityLayers, CompatibilityLayer, InsertCompatibilityLayer,
+  databaseConversionProjects,
+  DatabaseConversionProject,
+  InsertDatabaseConversionProject,
+  connectionTemplates,
+  ConnectionTemplate,
+  InsertConnectionTemplate,
+  schemaMappings,
+  SchemaMapping,
+  InsertSchemaMapping,
+  conversionLogs,
+  ConversionLog,
+  InsertConversionLog,
+  compatibilityLayers,
+  CompatibilityLayer,
+  InsertCompatibilityLayer,
   // Team collaboration
   // TaxI_AI Development Platform enums
-  ProjectType, ProjectLanguage, ProjectStatus, FileType, PreviewStatus,
+  ProjectType,
+  ProjectLanguage,
+  ProjectStatus,
+  FileType,
+  PreviewStatus,
   // Assessment Model Workbench enums
-  ModelType, ModelStatus, VariableType, DataSourceType,
+  ModelType,
+  ModelStatus,
+  VariableType,
+  DataSourceType,
   // Development Tools enums
-  CodeSnippetType, VisualizationType, ComponentType,
+  CodeSnippetType,
+  VisualizationType,
+  ComponentType,
   // Database Conversion System enums
-  databaseTypeEnum, connectionStatusEnum, conversionStatusEnum,
+  databaseTypeEnum,
+  connectionStatusEnum,
+  conversionStatusEnum,
   // Team collaboration
-  teamMembers, TeamMember, InsertTeamMember,
-  teamTasks, TeamTask, InsertTeamTask,
-  taskComments, TaskComment, InsertTaskComment,
-  basicTeamCollaborationSessions as teamCollaborationSessions, 
-  TeamCollaborationSession, InsertTeamCollaborationSession,
-  teamFeedbacks, TeamFeedback, InsertTeamFeedback,
-  teamKnowledgeBaseItems, TeamKnowledgeBaseItem, InsertTeamKnowledgeBaseItem,
-  sharedWorkflows, SharedWorkflow, InsertSharedWorkflow,
-  sharedWorkflowCollaborators, SharedWorkflowCollaborator, InsertSharedWorkflowCollaborator,
-  sharedWorkflowActivities, SharedWorkflowActivity, InsertSharedWorkflowActivity,
-  workflowSessions, WorkflowSession, InsertWorkflowSession,
+  teamMembers,
+  TeamMember,
+  InsertTeamMember,
+  teamTasks,
+  TeamTask,
+  InsertTeamTask,
+  taskComments,
+  TaskComment,
+  InsertTaskComment,
+  basicTeamCollaborationSessions as teamCollaborationSessions,
+  TeamCollaborationSession,
+  InsertTeamCollaborationSession,
+  teamFeedbacks,
+  TeamFeedback,
+  InsertTeamFeedback,
+  teamKnowledgeBaseItems,
+  TeamKnowledgeBaseItem,
+  InsertTeamKnowledgeBaseItem,
+  sharedWorkflows,
+  SharedWorkflow,
+  InsertSharedWorkflow,
+  sharedWorkflowCollaborators,
+  SharedWorkflowCollaborator,
+  InsertSharedWorkflowCollaborator,
+  sharedWorkflowActivities,
+  SharedWorkflowActivity,
+  InsertSharedWorkflowActivity,
+  workflowSessions,
+  WorkflowSession,
+  InsertWorkflowSession,
   // Enum types needed for validation and workflow
-  RuleCategory, RuleLevel, EntityType, IssueStatus, MessagePriority, MessageEventType, ImprovementType,
-  CollaborationStatus, CollaborationRole
-} from "@shared/schema";
-import { 
-  MarketTrend, 
-  PropertyHistoryDataPoint, 
+  RuleCategory,
+  RuleLevel,
+  EntityType,
+  IssueStatus,
+  MessagePriority,
+  MessageEventType,
+  ImprovementType,
+  CollaborationStatus,
+  CollaborationRole,
+} from '@shared/schema';
+import {
+  MarketTrend,
+  PropertyHistoryDataPoint,
   PropertyAnalysisResult,
   WorkflowOptimizationRequest,
   InsertWorkflowOptimizationRequest,
   WorkflowOptimizationResult,
-  InsertWorkflowOptimizationResult
-} from "@shared/schema";
-import { 
-  GISLayer, InsertGISLayer, 
-  GISFeatureCollection, InsertGISFeatureCollection,
-  GISMapProject, InsertGISMapProject,
-  ETLJob, GISAgentTask, AgentMessage, InsertAgentMessage,
+  InsertWorkflowOptimizationResult,
+} from '@shared/schema';
+import {
+  GISLayer,
+  InsertGISLayer,
+  GISFeatureCollection,
+  InsertGISFeatureCollection,
+  GISMapProject,
+  InsertGISMapProject,
+  ETLJob,
+  GISAgentTask,
+  AgentMessage,
+  InsertAgentMessage,
   SpatialAnalysisResult,
-  LayerType, ETLJobStatus, AgentTaskStatus, SpatialEventType
-} from "@shared/gis-schema";
-import { RegulatoryFramework } from "./services/risk-assessment-engine";
+  LayerType,
+  ETLJobStatus,
+  AgentTaskStatus,
+  SpatialEventType,
+} from '@shared/gis-schema';
+import { RegulatoryFramework } from './services/risk-assessment-engine';
 import pg from 'pg';
-import { drizzle } from "drizzle-orm/node-postgres";
-import { eq, desc, sql } from "drizzle-orm";
-import { 
-  webVitalsMetrics, webVitalsReports, webVitalsAggregates, webVitalsBudgets, webVitalsAlerts,
-  InsertWebVitalsMetric, WebVitalsMetric, 
-  InsertWebVitalsReport, WebVitalsReport,
-  InsertWebVitalsAlert, WebVitalsAlert,
-  InsertWebVitalsBudget, WebVitalsBudget
-} from "../shared/web-vitals-schema";
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { eq, desc, sql } from 'drizzle-orm';
+import {
+  webVitalsMetrics,
+  webVitalsReports,
+  webVitalsAggregates,
+  webVitalsBudgets,
+  webVitalsAlerts,
+  InsertWebVitalsMetric,
+  WebVitalsMetric,
+  InsertWebVitalsReport,
+  WebVitalsReport,
+  InsertWebVitalsAlert,
+  WebVitalsAlert,
+  InsertWebVitalsBudget,
+  WebVitalsBudget,
+} from '../shared/web-vitals-schema';
 
 import {
   getAllPacsModules as fetchAllPacsModules,
   getPacsModuleById as fetchPacsModuleById,
   getPacsModulesByCategory as fetchPacsModulesByCategory,
   updatePacsModuleSyncStatus as updatePacsSyncStatus,
-  upsertPacsModule as upsertPacs
-} from "./pacs-storage";
+  upsertPacsModule as upsertPacs,
+} from './pacs-storage';
 
 // Database row type for PACS modules
 interface PacsModuleRow {
@@ -138,14 +302,21 @@ interface PacsModuleRow {
 }
 
 // Define the storage interface
-import { 
-  GISLayer, InsertGISLayer, 
-  GISFeatureCollection, InsertGISFeatureCollection,
-  GISMapProject, InsertGISMapProject,
-  ETLJob, InsertETLJob, 
-  GISAgentTask, InsertGISAgentTask,
-  AgentMessage, InsertAgentMessage,
-  SpatialEvent, InsertSpatialEvent
+import {
+  GISLayer,
+  InsertGISLayer,
+  GISFeatureCollection,
+  InsertGISFeatureCollection,
+  GISMapProject,
+  InsertGISMapProject,
+  ETLJob,
+  InsertETLJob,
+  GISAgentTask,
+  InsertGISAgentTask,
+  AgentMessage,
+  InsertAgentMessage,
+  SpatialEvent,
+  InsertSpatialEvent,
 } from '@shared/gis-schema';
 
 // Import Agent Health types from agent-health-monitoring-service
@@ -162,10 +333,10 @@ export interface IStorage {
     deviceType?: string;
     limit?: number;
   }): Promise<WebVitalsMetric[]>;
-  
+
   saveWebVitalsReport(data: InsertWebVitalsReport): Promise<void>;
   getWebVitalsReports(limit?: number): Promise<WebVitalsReport[]>;
-  
+
   getWebVitalsAlerts(params: {
     acknowledged?: boolean;
     startDate?: Date;
@@ -173,16 +344,16 @@ export interface IStorage {
     severity?: string;
     limit?: number;
   }): Promise<WebVitalsAlert[]>;
-  
+
   saveWebVitalsAlert(data: InsertWebVitalsAlert): Promise<void>;
   updateWebVitalsAlert(alertId: string, updates: Partial<WebVitalsAlert>): Promise<void>;
-  
+
   getWebVitalsBudgets(params: {
     metricName?: string;
     urlPattern?: string;
     active?: boolean;
   }): Promise<WebVitalsBudget[]>;
-  
+
   // Property Statistics and Assessment APIs
   // Property Statistics methods
   getPropertyStatistics(timeRange: string): Promise<{
@@ -195,8 +366,11 @@ export interface IStorage {
   getPropertyById(propertyId: string): Promise<any>;
   searchProperties(params: any): Promise<{ properties: any[]; total: number }>;
   getNearbyProperties(propertyId: string, radiusMiles: number, limit: number): Promise<any[]>;
-  getPropertyValueHistory(propertyId: string, years: number): Promise<{ date: string; value: number }[]>;
-  
+  getPropertyValueHistory(
+    propertyId: string,
+    years: number
+  ): Promise<{ date: string; value: number }[]>;
+
   // Assessment methods
   getAssessmentMetrics(timeRange: string): Promise<{
     totalAssessments: number;
@@ -210,7 +384,7 @@ export interface IStorage {
   createAssessment(assessmentData: any): Promise<any>;
   updateAssessment(assessmentId: string, updates: any): Promise<any>;
   getAssessmentStatusHistory(assessmentId: string): Promise<any[]>;
-  
+
   // Change Tracking methods
   getRecentPropertyChanges(limit: number): Promise<any[]>;
   getPropertyChanges(propertyId: string, params: any): Promise<any[]>;
@@ -222,10 +396,15 @@ export interface IStorage {
     topChangedProperties: Array<{ propertyId: string; address: string; changeCount: number }>;
   }>;
   recordPropertyChange(changeData: any): Promise<any>;
-  
+
   // TerraFusion Repository Marketplace methods
   // Repository methods
-  getRepositories(filters?: { repositoryType?: string, visibility?: string, tags?: string[], featured?: boolean }): Promise<Repository[]>;
+  getRepositories(filters?: {
+    repositoryType?: string;
+    visibility?: string;
+    tags?: string[];
+    featured?: boolean;
+  }): Promise<Repository[]>;
   getRepositoryById(id: number): Promise<Repository | undefined>;
   getRepositoryByName(name: string): Promise<Repository | undefined>;
   createRepository(repository: InsertRepository): Promise<Repository>;
@@ -236,101 +415,164 @@ export interface IStorage {
   incrementRepositoryDownloads(id: number): Promise<Repository | undefined>;
   getRepositoriesByOwner(ownerId: number): Promise<Repository[]>;
   getFeaturedRepositories(): Promise<Repository[]>;
-  
+
   // Intelligent Development Workflow Optimizer methods
   // Workflow Optimization Request methods
-  getWorkflowOptimizationRequests(filters?: { status?: string, optimizationType?: string, userId?: number, repositoryId?: number }): Promise<WorkflowOptimizationRequest[]>;
+  getWorkflowOptimizationRequests(filters?: {
+    status?: string;
+    optimizationType?: string;
+    userId?: number;
+    repositoryId?: number;
+  }): Promise<WorkflowOptimizationRequest[]>;
   getWorkflowOptimizationRequestById(id: number): Promise<WorkflowOptimizationRequest | undefined>;
-  getWorkflowOptimizationRequestByRequestId(requestId: string): Promise<WorkflowOptimizationRequest | undefined>;
-  createWorkflowOptimizationRequest(request: InsertWorkflowOptimizationRequest): Promise<WorkflowOptimizationRequest>;
-  updateWorkflowOptimizationRequest(id: number, updates: Partial<InsertWorkflowOptimizationRequest>): Promise<WorkflowOptimizationRequest | undefined>;
+  getWorkflowOptimizationRequestByRequestId(
+    requestId: string
+  ): Promise<WorkflowOptimizationRequest | undefined>;
+  createWorkflowOptimizationRequest(
+    request: InsertWorkflowOptimizationRequest
+  ): Promise<WorkflowOptimizationRequest>;
+  updateWorkflowOptimizationRequest(
+    id: number,
+    updates: Partial<InsertWorkflowOptimizationRequest>
+  ): Promise<WorkflowOptimizationRequest | undefined>;
   deleteWorkflowOptimizationRequest(id: number): Promise<boolean>;
-  
+
   // Workflow Optimization Result methods
   getWorkflowOptimizationResults(requestId?: string): Promise<WorkflowOptimizationResult[]>;
   getWorkflowOptimizationResultById(id: number): Promise<WorkflowOptimizationResult | undefined>;
-  createWorkflowOptimizationResult(result: InsertWorkflowOptimizationResult): Promise<WorkflowOptimizationResult>;
-  updateWorkflowOptimizationResult(id: number, updates: Partial<InsertWorkflowOptimizationResult>): Promise<WorkflowOptimizationResult | undefined>;
-  
+  createWorkflowOptimizationResult(
+    result: InsertWorkflowOptimizationResult
+  ): Promise<WorkflowOptimizationResult>;
+  updateWorkflowOptimizationResult(
+    id: number,
+    updates: Partial<InsertWorkflowOptimizationResult>
+  ): Promise<WorkflowOptimizationResult | undefined>;
+
   // Repository Version methods
   getRepositoryVersions(repositoryId: number): Promise<RepositoryVersion[]>;
   getRepositoryVersionById(id: number): Promise<RepositoryVersion | undefined>;
-  getRepositoryVersionByVersion(repositoryId: number, version: string): Promise<RepositoryVersion | undefined>;
+  getRepositoryVersionByVersion(
+    repositoryId: number,
+    version: string
+  ): Promise<RepositoryVersion | undefined>;
   createRepositoryVersion(version: InsertRepositoryVersion): Promise<RepositoryVersion>;
-  updateRepositoryVersion(id: number, updates: Partial<InsertRepositoryVersion>): Promise<RepositoryVersion | undefined>;
+  updateRepositoryVersion(
+    id: number,
+    updates: Partial<InsertRepositoryVersion>
+  ): Promise<RepositoryVersion | undefined>;
   setRepositoryVersionAsLatest(id: number): Promise<RepositoryVersion | undefined>;
   incrementVersionDownloads(id: number): Promise<RepositoryVersion | undefined>;
   getLatestRepositoryVersion(repositoryId: number): Promise<RepositoryVersion | undefined>;
-  
+
   // Repository Review methods
   getRepositoryReviews(repositoryId: number): Promise<RepositoryReview[]>;
   getRepositoryReviewById(id: number): Promise<RepositoryReview | undefined>;
   createRepositoryReview(review: InsertRepositoryReview): Promise<RepositoryReview>;
-  updateRepositoryReview(id: number, updates: Partial<InsertRepositoryReview>): Promise<RepositoryReview | undefined>;
+  updateRepositoryReview(
+    id: number,
+    updates: Partial<InsertRepositoryReview>
+  ): Promise<RepositoryReview | undefined>;
   deleteRepositoryReview(id: number): Promise<boolean>;
   getRepositoryReviewsByUser(userId: number): Promise<RepositoryReview[]>;
   getRepositoryAverageRating(repositoryId: number): Promise<number>;
-  
+
   // Repository Dependency methods
   getRepositoryDependencies(repositoryId: number): Promise<RepositoryDependency[]>;
   getDependentRepositories(dependencyRepoId: number): Promise<RepositoryDependency[]>;
   createRepositoryDependency(dependency: InsertRepositoryDependency): Promise<RepositoryDependency>;
-  updateRepositoryDependency(id: number, updates: Partial<InsertRepositoryDependency>): Promise<RepositoryDependency | undefined>;
+  updateRepositoryDependency(
+    id: number,
+    updates: Partial<InsertRepositoryDependency>
+  ): Promise<RepositoryDependency | undefined>;
   deleteRepositoryDependency(id: number): Promise<boolean>;
-  
+
   // Development Tools methods
   // Code Snippets
-  getCodeSnippets(filters?: { language?: string, snippetType?: string, tags?: string[] }): Promise<CodeSnippet[]>;
+  getCodeSnippets(filters?: {
+    language?: string;
+    snippetType?: string;
+    tags?: string[];
+  }): Promise<CodeSnippet[]>;
   getCodeSnippetById(id: number): Promise<CodeSnippet | undefined>;
   createCodeSnippet(snippet: InsertCodeSnippet): Promise<CodeSnippet>;
-  updateCodeSnippet(id: number, updates: Partial<InsertCodeSnippet>): Promise<CodeSnippet | undefined>;
+  updateCodeSnippet(
+    id: number,
+    updates: Partial<InsertCodeSnippet>
+  ): Promise<CodeSnippet | undefined>;
   deleteCodeSnippet(id: number): Promise<boolean>;
 
   // Data Visualizations
-  getDataVisualizations(filters?: { visualizationType?: string, createdBy?: number }): Promise<DataVisualization[]>;
+  getDataVisualizations(filters?: {
+    visualizationType?: string;
+    createdBy?: number;
+  }): Promise<DataVisualization[]>;
   getDataVisualizationById(id: number): Promise<DataVisualization | undefined>;
   createDataVisualization(visualization: InsertDataVisualization): Promise<DataVisualization>;
-  updateDataVisualization(id: number, updates: Partial<InsertDataVisualization>): Promise<DataVisualization | undefined>;
+  updateDataVisualization(
+    id: number,
+    updates: Partial<InsertDataVisualization>
+  ): Promise<DataVisualization | undefined>;
   deleteDataVisualization(id: number): Promise<boolean>;
 
   // UI Component Templates
-  getUIComponentTemplates(filters?: { componentType?: string, framework?: string, tags?: string[] }): Promise<UIComponentTemplate[]>;
+  getUIComponentTemplates(filters?: {
+    componentType?: string;
+    framework?: string;
+    tags?: string[];
+  }): Promise<UIComponentTemplate[]>;
   getUIComponentTemplateById(id: number): Promise<UIComponentTemplate | undefined>;
   createUIComponentTemplate(template: InsertUIComponentTemplate): Promise<UIComponentTemplate>;
-  updateUIComponentTemplate(id: number, updates: Partial<InsertUIComponentTemplate>): Promise<UIComponentTemplate | undefined>;
+  updateUIComponentTemplate(
+    id: number,
+    updates: Partial<InsertUIComponentTemplate>
+  ): Promise<UIComponentTemplate | undefined>;
   deleteUIComponentTemplate(id: number): Promise<boolean>;
-  
+
   // Database Conversion methods
   // Conversion Project methods
-  createConversionProject(project: InsertDatabaseConversionProject): Promise<DatabaseConversionProject>;
+  createConversionProject(
+    project: InsertDatabaseConversionProject
+  ): Promise<DatabaseConversionProject>;
   getConversionProjects(): Promise<DatabaseConversionProject[]>;
   getConversionProject(id: string): Promise<DatabaseConversionProject | undefined>;
-  updateConversionProject(id: string, updates: Partial<DatabaseConversionProject>): Promise<DatabaseConversionProject | undefined>;
+  updateConversionProject(
+    id: string,
+    updates: Partial<DatabaseConversionProject>
+  ): Promise<DatabaseConversionProject | undefined>;
   deleteConversionProject(id: string): Promise<boolean>;
-  
+
   // Connection Template methods
   createConnectionTemplate(template: InsertConnectionTemplate): Promise<ConnectionTemplate>;
   getConnectionTemplates(isPublic?: boolean): Promise<ConnectionTemplate[]>;
   getConnectionTemplate(id: number): Promise<ConnectionTemplate | undefined>;
-  updateConnectionTemplate(id: number, updates: Partial<InsertConnectionTemplate>): Promise<ConnectionTemplate | undefined>;
+  updateConnectionTemplate(
+    id: number,
+    updates: Partial<InsertConnectionTemplate>
+  ): Promise<ConnectionTemplate | undefined>;
   deleteConnectionTemplate(id: number): Promise<boolean>;
-  
+
   // Schema Mapping methods
   createSchemaMapping(mapping: InsertSchemaMapping): Promise<SchemaMapping>;
   getSchemaMappings(sourceType?: string, targetType?: string): Promise<SchemaMapping[]>;
   getSchemaMapping(id: number): Promise<SchemaMapping | undefined>;
-  updateSchemaMapping(id: number, updates: Partial<InsertSchemaMapping>): Promise<SchemaMapping | undefined>;
+  updateSchemaMapping(
+    id: number,
+    updates: Partial<InsertSchemaMapping>
+  ): Promise<SchemaMapping | undefined>;
   deleteSchemaMapping(id: number): Promise<boolean>;
-  
+
   // Conversion Log methods
   createConversionLog(log: InsertConversionLog): Promise<ConversionLog>;
   getConversionLogs(projectId: string): Promise<ConversionLog[]>;
-  
+
   // Compatibility Layer methods
   createCompatibilityLayer(layer: InsertCompatibilityLayer): Promise<CompatibilityLayer>;
   getCompatibilityLayersByProject(projectId: string): Promise<CompatibilityLayer[]>;
   getCompatibilityLayer(id: number): Promise<CompatibilityLayer | undefined>;
-  updateCompatibilityLayer(id: number, updates: Partial<InsertCompatibilityLayer>): Promise<CompatibilityLayer | undefined>;
+  updateCompatibilityLayer(
+    id: number,
+    updates: Partial<InsertCompatibilityLayer>
+  ): Promise<CompatibilityLayer | undefined>;
 
   // Team Agent methods
   getAllTeamMembers(): Promise<TeamMember[]>;
@@ -340,7 +582,7 @@ export interface IStorage {
   updateTeamMember(id: number, updates: Partial<TeamMember>): Promise<TeamMember | null>;
   updateTeamMemberStatus(id: number, status: string): Promise<TeamMember>;
   deleteTeamMember(id: number): Promise<boolean>;
-  
+
   // Team Task methods
   getAllTeamTasks(): Promise<TeamTask[]>;
   getTeamTaskById(id: string): Promise<TeamTask | null>;
@@ -351,16 +593,23 @@ export interface IStorage {
   updateTeamTaskStatus(id: string, status: string): Promise<TeamTask>;
   assignTeamTask(taskId: string, teamMemberId: number): Promise<TeamTask>;
   deleteTeamTask(id: string): Promise<boolean>;
-  
+
   // Team Collaboration Session methods
   getAllTeamCollaborationSessions(): Promise<TeamCollaborationSession[]>;
   getTeamCollaborationSessionById(id: string): Promise<TeamCollaborationSession | null>;
   getTeamCollaborationSessionsByOrganizer(organizerId: number): Promise<TeamCollaborationSession[]>;
-  getTeamCollaborationSessionsByParticipant(participantId: number): Promise<TeamCollaborationSession[]>;
-  createTeamCollaborationSession(session: InsertTeamCollaborationSession): Promise<TeamCollaborationSession>;
-  updateTeamCollaborationSession(id: string, updates: Partial<TeamCollaborationSession>): Promise<TeamCollaborationSession | null>;
+  getTeamCollaborationSessionsByParticipant(
+    participantId: number
+  ): Promise<TeamCollaborationSession[]>;
+  createTeamCollaborationSession(
+    session: InsertTeamCollaborationSession
+  ): Promise<TeamCollaborationSession>;
+  updateTeamCollaborationSession(
+    id: string,
+    updates: Partial<TeamCollaborationSession>
+  ): Promise<TeamCollaborationSession | null>;
   deleteTeamCollaborationSession(id: string): Promise<boolean>;
-  
+
   // Team Feedback methods
   getAllTeamFeedback(): Promise<TeamFeedback[]>;
   getTeamFeedbackById(id: string): Promise<TeamFeedback | null>;
@@ -368,71 +617,83 @@ export interface IStorage {
   getTeamFeedbackBySender(senderId: number): Promise<TeamFeedback[]>;
   createTeamFeedback(feedback: InsertTeamFeedback): Promise<TeamFeedback>;
   deleteTeamFeedback(id: string): Promise<boolean>;
-  
+
   // Team Knowledge Base methods
   getAllTeamKnowledgeBaseItems(): Promise<TeamKnowledgeBaseItem[]>;
   getTeamKnowledgeBaseItemById(id: string): Promise<TeamKnowledgeBaseItem | null>;
   getTeamKnowledgeBaseItemsByCategory(category: string): Promise<TeamKnowledgeBaseItem[]>;
   getTeamKnowledgeBaseItemsByCreator(creatorId: number): Promise<TeamKnowledgeBaseItem[]>;
   createTeamKnowledgeBaseItem(item: InsertTeamKnowledgeBaseItem): Promise<TeamKnowledgeBaseItem>;
-  updateTeamKnowledgeBaseItem(id: string, updates: Partial<TeamKnowledgeBaseItem>): Promise<TeamKnowledgeBaseItem | null>;
+  updateTeamKnowledgeBaseItem(
+    id: string,
+    updates: Partial<TeamKnowledgeBaseItem>
+  ): Promise<TeamKnowledgeBaseItem | null>;
   deleteTeamKnowledgeBaseItem(id: string): Promise<boolean>;
-  
+
   // GIS Methods
   // GIS Layer methods
   createGISLayer(layer: InsertGISLayer): Promise<GISLayer>;
   getGISLayer(id: number): Promise<GISLayer | undefined>;
-  getGISLayers(filters?: { type?: string, userId?: number }): Promise<GISLayer[]>;
+  getGISLayers(filters?: { type?: string; userId?: number }): Promise<GISLayer[]>;
   updateGISLayer(id: number, updates: Partial<InsertGISLayer>): Promise<GISLayer | undefined>;
   deleteGISLayer(id: number): Promise<boolean>;
-  
+
   // GIS Feature Collection methods
   createGISFeatureCollection(collection: InsertGISFeatureCollection): Promise<GISFeatureCollection>;
   getGISFeatureCollection(id: number): Promise<GISFeatureCollection | undefined>;
   getGISFeatureCollectionsByLayer(layerId: number): Promise<GISFeatureCollection[]>;
-  updateGISFeatureCollection(id: number, updates: Partial<InsertGISFeatureCollection>): Promise<GISFeatureCollection | undefined>;
+  updateGISFeatureCollection(
+    id: number,
+    updates: Partial<InsertGISFeatureCollection>
+  ): Promise<GISFeatureCollection | undefined>;
   deleteGISFeatureCollection(id: number): Promise<boolean>;
-  
+
   // GIS Map Project methods
   createGISMapProject(project: InsertGISMapProject): Promise<GISMapProject>;
   getGISMapProject(id: number): Promise<GISMapProject | undefined>;
   getGISMapProjects(userId?: number): Promise<GISMapProject[]>;
   getPublicGISMapProjects(): Promise<GISMapProject[]>;
-  updateGISMapProject(id: number, updates: Partial<InsertGISMapProject>): Promise<GISMapProject | undefined>;
+  updateGISMapProject(
+    id: number,
+    updates: Partial<InsertGISMapProject>
+  ): Promise<GISMapProject | undefined>;
   deleteGISMapProject(id: number): Promise<boolean>;
-  
+
   // ETL Job methods
   createETLJob(job: InsertETLJob): Promise<ETLJob>;
   getETLJob(id: number): Promise<ETLJob | undefined>;
   getETLJobs(userId?: number): Promise<ETLJob[]>;
   updateETLJob(id: number, updates: Partial<ETLJob>): Promise<ETLJob | undefined>;
-  
+
   // GIS Agent Task methods
   createGISAgentTask(task: InsertGISAgentTask): Promise<GISAgentTask>;
   getGISAgentTask(id: number): Promise<GISAgentTask | undefined>;
   getGISAgentTasks(agentId?: string, status?: string): Promise<GISAgentTask[]>;
   updateGISAgentTask(id: number, updates: Partial<GISAgentTask>): Promise<GISAgentTask | undefined>;
-  
+
   // Agent Message methods
   createAgentMessage(message: InsertAgentMessage): Promise<AgentMessage>;
   getAgentMessage(id: number): Promise<AgentMessage | undefined>;
   getAgentMessagesByParent(parentId: number): Promise<AgentMessage[]>;
   getAgentMessagesByAgent(agentId: string): Promise<AgentMessage[]>;
-  
+
   // Spatial Event methods
   createSpatialEvent(event: InsertSpatialEvent): Promise<SpatialEvent>;
   getSpatialEvents(layerId?: number, type?: string, userId?: number): Promise<SpatialEvent[]>;
 
   // TaxI_AI Development Platform methods - Base Interface
-  
+
   // Development Project methods
   createDevelopmentProject(project: InsertDevelopmentProject): Promise<DevelopmentProject>;
   getDevelopmentProject(projectId: string): Promise<DevelopmentProject | undefined>;
   getAllDevelopmentProjects(): Promise<DevelopmentProject[]>;
   getDevelopmentProjectsByUser(userId: number): Promise<DevelopmentProject[]>;
-  updateDevelopmentProject(projectId: string, updateData: Partial<DevelopmentProject>): Promise<DevelopmentProject | undefined>;
+  updateDevelopmentProject(
+    projectId: string,
+    updateData: Partial<DevelopmentProject>
+  ): Promise<DevelopmentProject | undefined>;
   deleteDevelopmentProject(projectId: string): Promise<boolean>;
-  
+
   // Project File methods
   createProjectFile(file: InsertProjectFile): Promise<ProjectFile>;
   getProjectFile(id: number): Promise<ProjectFile | undefined>;
@@ -440,34 +701,40 @@ export interface IStorage {
   getProjectFileByPath(projectId: number, path: string): Promise<ProjectFile | undefined>;
   updateProjectFile(id: number, updateData: Partial<ProjectFile>): Promise<ProjectFile | undefined>;
   deleteProjectFile(id: number): Promise<boolean>;
-  
+
   // Project Template methods
   createProjectTemplate(template: InsertProjectTemplate): Promise<ProjectTemplate>;
   getProjectTemplate(id: number): Promise<ProjectTemplate | undefined>;
   getAllProjectTemplates(): Promise<ProjectTemplate[]>;
   getProjectTemplatesByType(type: string): Promise<ProjectTemplate[]>;
   getProjectTemplatesByLanguage(language: string): Promise<ProjectTemplate[]>;
-  updateProjectTemplate(id: number, updateData: Partial<ProjectTemplate>): Promise<ProjectTemplate | undefined>;
+  updateProjectTemplate(
+    id: number,
+    updateData: Partial<ProjectTemplate>
+  ): Promise<ProjectTemplate | undefined>;
   deleteProjectTemplate(id: number): Promise<boolean>;
-  
+
   // Project Version methods
   createProjectVersion(version: InsertProjectVersion): Promise<ProjectVersion>;
   getProjectVersion(id: number): Promise<ProjectVersion | undefined>;
   getProjectVersionsByProject(projectId: number): Promise<ProjectVersion[]>;
   restoreProjectVersion(projectId: number, versionId: number): Promise<boolean>;
-  
+
   // Preview Setting methods
   createPreviewSetting(setting: InsertPreviewSetting): Promise<PreviewSetting>;
   getPreviewSetting(id: number): Promise<PreviewSetting | undefined>;
   getPreviewSettingByProject(projectId: number): Promise<PreviewSetting | undefined>;
-  updatePreviewSetting(id: number, updateData: Partial<PreviewSetting>): Promise<PreviewSetting | undefined>;
-  
+  updatePreviewSetting(
+    id: number,
+    updateData: Partial<PreviewSetting>
+  ): Promise<PreviewSetting | undefined>;
+
   // AI Code Generation methods
   createAiCodeGeneration(generation: InsertAiCodeGeneration): Promise<AiCodeGeneration>;
   getAiCodeGeneration(id: number): Promise<AiCodeGeneration | undefined>;
   getAiCodeGenerationsByProject(projectId: number): Promise<AiCodeGeneration[]>;
   getAiCodeGenerationsByUser(userId: number): Promise<AiCodeGeneration[]>;
-  
+
   // Assessment Model Workbench methods
   // Assessment Models
   createAssessmentModel(model: InsertAssessmentModel): Promise<AssessmentModel>;
@@ -477,118 +744,160 @@ export interface IStorage {
   getAssessmentModelsByType(type: ModelType): Promise<AssessmentModel[]>;
   getAssessmentModelsByStatus(status: ModelStatus): Promise<AssessmentModel[]>;
   getAssessmentModelTemplates(): Promise<AssessmentModel[]>;
-  updateAssessmentModel(modelId: string, updateData: Partial<AssessmentModel>): Promise<AssessmentModel | undefined>;
+  updateAssessmentModel(
+    modelId: string,
+    updateData: Partial<AssessmentModel>
+  ): Promise<AssessmentModel | undefined>;
   deleteAssessmentModel(modelId: string): Promise<boolean>;
-  
+
   // Model Variables
   createModelVariable(variable: InsertModelVariable): Promise<ModelVariable>;
   getModelVariable(id: number): Promise<ModelVariable | undefined>;
   getModelVariablesByModel(modelId: string): Promise<ModelVariable[]>;
-  updateModelVariable(id: number, updateData: Partial<ModelVariable>): Promise<ModelVariable | undefined>;
+  updateModelVariable(
+    id: number,
+    updateData: Partial<ModelVariable>
+  ): Promise<ModelVariable | undefined>;
   deleteModelVariable(id: number): Promise<boolean>;
-  
+
   // Model Components
   createModelComponent(component: InsertModelComponent): Promise<ModelComponent>;
   getModelComponent(id: number): Promise<ModelComponent | undefined>;
   getModelComponentsByModel(modelId: string): Promise<ModelComponent[]>;
   getModelComponentsByType(modelId: string, componentType: string): Promise<ModelComponent[]>;
-  updateModelComponent(id: number, updateData: Partial<ModelComponent>): Promise<ModelComponent | undefined>;
+  updateModelComponent(
+    id: number,
+    updateData: Partial<ModelComponent>
+  ): Promise<ModelComponent | undefined>;
   deleteModelComponent(id: number): Promise<boolean>;
-  
+
   // Model Calculations
   createModelCalculation(calculation: InsertModelCalculation): Promise<ModelCalculation>;
   getModelCalculation(id: number): Promise<ModelCalculation | undefined>;
   getModelCalculationsByModel(modelId: string): Promise<ModelCalculation[]>;
-  updateModelCalculation(id: number, updateData: Partial<ModelCalculation>): Promise<ModelCalculation | undefined>;
+  updateModelCalculation(
+    id: number,
+    updateData: Partial<ModelCalculation>
+  ): Promise<ModelCalculation | undefined>;
   deleteModelCalculation(id: number): Promise<boolean>;
-  
+
   // Model Validation Rules
   createModelValidationRule(rule: InsertModelValidationRule): Promise<ModelValidationRule>;
   getModelValidationRule(id: number): Promise<ModelValidationRule | undefined>;
   getModelValidationRulesByModel(modelId: string): Promise<ModelValidationRule[]>;
-  updateModelValidationRule(id: number, updateData: Partial<ModelValidationRule>): Promise<ModelValidationRule | undefined>;
+  updateModelValidationRule(
+    id: number,
+    updateData: Partial<ModelValidationRule>
+  ): Promise<ModelValidationRule | undefined>;
   deleteModelValidationRule(id: number): Promise<boolean>;
-  
+
   // Model Test Cases
   createModelTestCase(testCase: InsertModelTestCase): Promise<ModelTestCase>;
   getModelTestCase(id: number): Promise<ModelTestCase | undefined>;
   getModelTestCasesByModel(modelId: string): Promise<ModelTestCase[]>;
-  updateModelTestCase(id: number, updateData: Partial<ModelTestCase>): Promise<ModelTestCase | undefined>;
+  updateModelTestCase(
+    id: number,
+    updateData: Partial<ModelTestCase>
+  ): Promise<ModelTestCase | undefined>;
   deleteModelTestCase(id: number): Promise<boolean>;
-  updateModelTestCaseResults(id: number, status: string, results: any): Promise<ModelTestCase | undefined>;
-  
+  updateModelTestCaseResults(
+    id: number,
+    status: string,
+    results: any
+  ): Promise<ModelTestCase | undefined>;
+
   // Assessment Model Versions
-  createAssessmentModelVersion(version: InsertAssessmentModelVersion): Promise<AssessmentModelVersion>;
+  createAssessmentModelVersion(
+    version: InsertAssessmentModelVersion
+  ): Promise<AssessmentModelVersion>;
   getAssessmentModelVersion(id: number): Promise<AssessmentModelVersion | undefined>;
   getAssessmentModelVersionsByModel(modelId: string): Promise<AssessmentModelVersion[]>;
   getLatestAssessmentModelVersion(modelId: string): Promise<AssessmentModelVersion | undefined>;
-  
+
   // Data Lineage methods
   createDataLineageRecord(record: InsertDataLineageRecord): Promise<DataLineageRecord>;
   getDataLineageByField(propertyId: string, fieldName: string): Promise<DataLineageRecord[]>;
   getDataLineageByProperty(propertyId: string): Promise<DataLineageRecord[]>;
   getDataLineageByUser(userId: number, limit?: number): Promise<DataLineageRecord[]>;
-  getDataLineageByDateRange(startDate: Date, endDate: Date, limit?: number): Promise<DataLineageRecord[]>;
+  getDataLineageByDateRange(
+    startDate: Date,
+    endDate: Date,
+    limit?: number
+  ): Promise<DataLineageRecord[]>;
   getDataLineageBySource(source: string, limit?: number): Promise<DataLineageRecord[]>;
-  
+
   // Database Conversion methods
   // Conversion Project methods
-  createConversionProject(project: InsertDatabaseConversionProject): Promise<DatabaseConversionProject>;
+  createConversionProject(
+    project: InsertDatabaseConversionProject
+  ): Promise<DatabaseConversionProject>;
   getConversionProjects(): Promise<DatabaseConversionProject[]>;
   getConversionProject(id: string): Promise<DatabaseConversionProject | undefined>;
-  updateConversionProject(id: string, updates: Partial<DatabaseConversionProject>): Promise<DatabaseConversionProject | undefined>;
+  updateConversionProject(
+    id: string,
+    updates: Partial<DatabaseConversionProject>
+  ): Promise<DatabaseConversionProject | undefined>;
   deleteConversionProject(id: string): Promise<boolean>;
-  
+
   // Connection Template methods
   createConnectionTemplate(template: InsertConnectionTemplate): Promise<ConnectionTemplate>;
   getConnectionTemplates(isPublic?: boolean): Promise<ConnectionTemplate[]>;
   getConnectionTemplate(id: number): Promise<ConnectionTemplate | undefined>;
-  updateConnectionTemplate(id: number, updates: Partial<InsertConnectionTemplate>): Promise<ConnectionTemplate | undefined>;
+  updateConnectionTemplate(
+    id: number,
+    updates: Partial<InsertConnectionTemplate>
+  ): Promise<ConnectionTemplate | undefined>;
   deleteConnectionTemplate(id: number): Promise<boolean>;
-  
+
   // Schema Mapping methods
   createSchemaMapping(mapping: InsertSchemaMapping): Promise<SchemaMapping>;
   getSchemaMappings(sourceType?: string, targetType?: string): Promise<SchemaMapping[]>;
   getSchemaMapping(id: number): Promise<SchemaMapping | undefined>;
-  updateSchemaMapping(id: number, updates: Partial<InsertSchemaMapping>): Promise<SchemaMapping | undefined>;
+  updateSchemaMapping(
+    id: number,
+    updates: Partial<InsertSchemaMapping>
+  ): Promise<SchemaMapping | undefined>;
   deleteSchemaMapping(id: number): Promise<boolean>;
-  
+
   // Conversion Log methods
   createConversionLog(log: InsertConversionLog): Promise<ConversionLog>;
   getConversionLogs(projectId: string): Promise<ConversionLog[]>;
-  
+
   // Compatibility Layer methods
   createCompatibilityLayer(layer: InsertCompatibilityLayer): Promise<CompatibilityLayer>;
   getCompatibilityLayersByProject(projectId: string): Promise<CompatibilityLayer[]>;
   getCompatibilityLayer(id: number): Promise<CompatibilityLayer | undefined>;
-  updateCompatibilityLayer(id: number, updates: Partial<InsertCompatibilityLayer>): Promise<CompatibilityLayer | undefined>;
-  
+  updateCompatibilityLayer(
+    id: number,
+    updates: Partial<InsertCompatibilityLayer>
+  ): Promise<CompatibilityLayer | undefined>;
+
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
+
   // Property methods
   getAllProperties(): Promise<Property[]>;
   getProperty(id: number): Promise<Property | undefined>;
   getPropertyByPropertyId(propertyId: string): Promise<Property | undefined>;
   createProperty(property: InsertProperty): Promise<Property>;
   updateProperty(id: number, property: Partial<InsertProperty>): Promise<Property | undefined>;
-  
+
   // Land Record methods
   getLandRecordsByPropertyId(propertyId: string): Promise<LandRecord[]>;
   createLandRecord(landRecord: InsertLandRecord): Promise<LandRecord>;
-  
+
   // Improvement methods
   getImprovementsByPropertyId(propertyId: string): Promise<Improvement[]>;
   createImprovement(improvement: InsertImprovement): Promise<Improvement>;
-  
+
   // Field methods
   getFieldsByPropertyId(propertyId: string): Promise<Field[]>;
   createField(field: InsertField): Promise<Field>;
   getField(id: number): Promise<Field | undefined>;
   updateField(id: number, field: Partial<InsertField>): Promise<Field | undefined>;
-  
+
   // Appeals Management methods
   getAppealsByPropertyId(propertyId: string): Promise<Appeal[]>;
   getAppealsByUserId(userId: number): Promise<Appeal[]>;
@@ -599,30 +908,38 @@ export interface IStorage {
   createAppealComment(comment: InsertAppealComment): Promise<AppealComment>;
   getAppealEvidenceByAppealId(appealId: number): Promise<AppealEvidence[]>;
   createAppealEvidence(evidence: InsertAppealEvidence): Promise<AppealEvidence>;
-  
+
   // Audit Log methods
   createAuditLog(auditLog: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(limit?: number): Promise<AuditLog[]>;
-  
+
   // AI Agent methods
   getAllAiAgents(): Promise<AiAgent[]>;
-  updateAiAgentStatus(id: number, status: string, performance: number): Promise<AiAgent | undefined>;
-  
+  updateAiAgentStatus(
+    id: number,
+    status: string,
+    performance: number
+  ): Promise<AiAgent | undefined>;
+
   // System Activity methods
   getSystemActivities(limit?: number): Promise<SystemActivity[]>;
   createSystemActivity(activity: InsertSystemActivity): Promise<SystemActivity>;
-  
+
   // MCP Tool Execution Logging methods
   createMCPToolExecutionLog(log: InsertMCPToolExecutionLog): Promise<MCPToolExecutionLog>;
   getMCPToolExecutionLogs(limit?: number): Promise<MCPToolExecutionLog[]>;
-  
+
   // PACS Module methods
   getAllPacsModules(): Promise<PacsModule[]>;
   upsertPacsModule(module: InsertPacsModule): Promise<PacsModule>;
   getPacsModuleById(id: number): Promise<PacsModule | undefined>;
   getPacsModulesByCategory(): Promise<PacsModule[]>;
-  updatePacsModuleSyncStatus(id: number, syncStatus: string, lastSyncTimestamp: Date): Promise<PacsModule | undefined>;
-  
+  updatePacsModuleSyncStatus(
+    id: number,
+    syncStatus: string,
+    lastSyncTimestamp: Date
+  ): Promise<PacsModule | undefined>;
+
   // Agent Messages methods
   createAgentMessage(message: InsertAgentMessage): Promise<AgentMessage>;
   getAgentMessageById(id: number): Promise<AgentMessage | undefined>;
@@ -634,72 +951,97 @@ export interface IStorage {
   getRecentAgentMessages(limit?: number): Promise<AgentMessage[]>;
   updateAgentMessageStatus(id: number, status: string): Promise<AgentMessage | undefined>;
   getAgentMessagesForEntity(entityType: EntityType, entityId: string): Promise<AgentMessage[]>;
-  
+
   // Property Insight Sharing methods
   createPropertyInsightShare(share: InsertPropertyInsightShare): Promise<PropertyInsightShare>;
   getPropertyInsightShareById(shareId: string): Promise<PropertyInsightShare | null>;
   getPropertyInsightSharesByPropertyId(propertyId: string): Promise<PropertyInsightShare[]>;
   getAllPropertyInsightShares(): Promise<PropertyInsightShare[]>;
-  updatePropertyInsightShare(shareId: string, updates: Partial<InsertPropertyInsightShare>): Promise<PropertyInsightShare | null>;
+  updatePropertyInsightShare(
+    shareId: string,
+    updates: Partial<InsertPropertyInsightShare>
+  ): Promise<PropertyInsightShare | null>;
   deletePropertyInsightShare(shareId: string): Promise<boolean>;
-  
+
   // Comparable Sales methods
   createComparableSale(comparableSale: InsertComparableSale): Promise<ComparableSale>;
   getComparableSaleById(id: number): Promise<ComparableSale | undefined>;
   getComparableSalesByPropertyId(propertyId: string): Promise<ComparableSale[]>;
   getComparableSalesByStatus(status: string): Promise<ComparableSale[]>;
-  updateComparableSale(id: number, updates: Partial<InsertComparableSale>): Promise<ComparableSale | undefined>;
+  updateComparableSale(
+    id: number,
+    updates: Partial<InsertComparableSale>
+  ): Promise<ComparableSale | undefined>;
   deleteComparableSale(id: number): Promise<boolean>;
-  
+
   // Comparable Sales Analysis methods
-  createComparableSalesAnalysis(analysis: InsertComparableSalesAnalysis): Promise<ComparableSalesAnalysis>;
+  createComparableSalesAnalysis(
+    analysis: InsertComparableSalesAnalysis
+  ): Promise<ComparableSalesAnalysis>;
   getComparableSalesAnalysisById(analysisId: string): Promise<ComparableSalesAnalysis | undefined>;
   getComparableSalesAnalysesByPropertyId(propertyId: string): Promise<ComparableSalesAnalysis[]>;
-  updateComparableSalesAnalysis(analysisId: string, updates: Partial<InsertComparableSalesAnalysis>): Promise<ComparableSalesAnalysis | undefined>;
+  updateComparableSalesAnalysis(
+    analysisId: string,
+    updates: Partial<InsertComparableSalesAnalysis>
+  ): Promise<ComparableSalesAnalysis | undefined>;
   deleteComparableSalesAnalysis(analysisId: string): Promise<boolean>;
-  
+
   // Comparable Analysis Entry methods
-  createComparableAnalysisEntry(entry: InsertComparableAnalysisEntry): Promise<ComparableAnalysisEntry>;
+  createComparableAnalysisEntry(
+    entry: InsertComparableAnalysisEntry
+  ): Promise<ComparableAnalysisEntry>;
   getComparableAnalysisEntriesByAnalysisId(analysisId: string): Promise<ComparableAnalysisEntry[]>;
-  updateComparableAnalysisEntry(id: number, updates: Partial<InsertComparableAnalysisEntry>): Promise<ComparableAnalysisEntry | undefined>;
+  updateComparableAnalysisEntry(
+    id: number,
+    updates: Partial<InsertComparableAnalysisEntry>
+  ): Promise<ComparableAnalysisEntry | undefined>;
   deleteComparableAnalysisEntry(id: number): Promise<boolean>;
-  
+
   // Property Data Staging methods
   createStagedProperty(property: InsertStagedProperty): Promise<StagedProperty>;
   getAllStagedProperties(): Promise<StagedProperty[]>;
   getStagedPropertyById(stagingId: string): Promise<StagedProperty | null>;
-  updateStagedProperty(stagingId: string, updates: Partial<StagedProperty>): Promise<StagedProperty | null>;
+  updateStagedProperty(
+    stagingId: string,
+    updates: Partial<StagedProperty>
+  ): Promise<StagedProperty | null>;
   deleteStagedProperty(stagingId: string): Promise<boolean>;
-  
+
   // Market and Economic Data methods
   getMarketTrends(region?: string): Promise<any[]>;
   getEconomicIndicators(region?: string): Promise<any>;
   findComparableProperties(propertyId: string, count: number): Promise<any[]>;
   getPropertyHistory(propertyId: string): Promise<any>;
   getRegionalHistoricalData(region: string): Promise<any>;
-  
+
   // Property methods (additional)
   // Property Analysis methods
   getPropertyById(propertyId: string): Promise<any>;
   getPropertyHistory(propertyId: string): Promise<PropertyHistoryDataPoint[]>;
   getMarketTrends(region?: string): Promise<MarketTrend[]>;
   findComparableProperties(propertyId: string, count?: number): Promise<Property[]>;
-  
+
   // Regulatory and Risk Data methods
   getRegulatoryFramework(region: string): Promise<any>;
   getHistoricalRegulatoryChanges(region: string): Promise<any[]>;
   getEnvironmentalRisks(propertyId: string): Promise<any>;
-  
+
   // TaxI_AI Development Platform - Project methods
   createDevelopmentProject(project: InsertDevelopmentProject): Promise<DevelopmentProject>;
   findDevelopmentProjectByProjectId(projectId: string): Promise<DevelopmentProject | null>;
   findAllDevelopmentProjects(): Promise<DevelopmentProject[]>;
   findDevelopmentProjectsByUser(userId: number): Promise<DevelopmentProject[]>;
   findDevelopmentProjectsByStatus(status: ProjectStatus): Promise<DevelopmentProject[]>;
-  findDevelopmentProjectsByUserAndStatus(userId: number, status: ProjectStatus): Promise<DevelopmentProject[]>;
-  updateDevelopmentProject(id: number, updates: Partial<DevelopmentProject>): Promise<DevelopmentProject>;
+  findDevelopmentProjectsByUserAndStatus(
+    userId: number,
+    status: ProjectStatus
+  ): Promise<DevelopmentProject[]>;
+  updateDevelopmentProject(
+    id: number,
+    updates: Partial<DevelopmentProject>
+  ): Promise<DevelopmentProject>;
   deleteDevelopmentProject(id: number): Promise<boolean>;
-  
+
   // TaxI_AI Development Platform - File methods
   createProjectFile(file: InsertProjectFile): Promise<ProjectFile>;
   findProjectFileById(id: number): Promise<ProjectFile | null>;
@@ -710,195 +1052,263 @@ export interface IStorage {
   findProjectFilesByPathPrefix(projectId: string, pathPrefix: string): Promise<ProjectFile[]>;
   updateProjectFile(id: number, updates: Partial<ProjectFile>): Promise<ProjectFile>;
   deleteProjectFile(id: number): Promise<boolean>;
-  
+
   // TaxI_AI Development Platform - Template methods
   createProjectTemplate(template: InsertProjectTemplate): Promise<ProjectTemplate>;
   findProjectTemplateByTemplateId(templateId: string): Promise<ProjectTemplate | null>;
   findAllProjectTemplates(): Promise<ProjectTemplate[]>;
   updateProjectTemplate(id: number, updates: Partial<ProjectTemplate>): Promise<ProjectTemplate>;
   deleteProjectTemplate(id: number): Promise<boolean>;
-  
+
   // TaxI_AI Development Platform - Version methods
   createProjectVersion(version: InsertProjectVersion): Promise<ProjectVersion>;
   findProjectVersionByVersionId(versionId: string): Promise<ProjectVersion | null>;
   findProjectVersionsByProjectId(projectId: string): Promise<ProjectVersion[]>;
   updateProjectVersion(id: number, updates: Partial<ProjectVersion>): Promise<ProjectVersion>;
   deleteProjectVersion(id: number): Promise<boolean>;
-  
+
   // TaxI_AI Development Platform - Preview methods
   createPreviewSetting(setting: InsertPreviewSetting): Promise<PreviewSetting>;
   findPreviewSettingByProjectId(projectId: string): Promise<PreviewSetting | null>;
   updatePreviewSetting(id: number, updates: Partial<PreviewSetting>): Promise<PreviewSetting>;
   deletePreviewSetting(id: number): Promise<boolean>;
-  
+
   // TaxI_AI Development Platform - AI Code Generation methods
   createAiCodeGeneration(generation: InsertAiCodeGeneration): Promise<AiCodeGeneration>;
   findAiCodeGenerationByGenerationId(generationId: string): Promise<AiCodeGeneration | null>;
   findAiCodeGenerationsByProjectId(projectId: string): Promise<AiCodeGeneration[]>;
-  
+
   // Assessment Model Workbench Methods
   createAssessmentModel(model: InsertAssessmentModel): Promise<AssessmentModel>;
   getAssessmentModel(id: number): Promise<AssessmentModel | undefined>;
   getAssessmentModelByModelId(modelId: string): Promise<AssessmentModel | undefined>;
   getAllAssessmentModels(): Promise<AssessmentModel[]>;
-  updateAssessmentModel(modelId: string, updateData: Partial<AssessmentModel>): Promise<AssessmentModel | undefined>;
+  updateAssessmentModel(
+    modelId: string,
+    updateData: Partial<AssessmentModel>
+  ): Promise<AssessmentModel | undefined>;
   deleteAssessmentModel(modelId: string): Promise<boolean>;
-  
+
   // Model Variables
   createModelVariable(variable: InsertModelVariable): Promise<ModelVariable>;
   getModelVariable(id: number): Promise<ModelVariable | undefined>;
   getModelVariablesByModel(modelId: string): Promise<ModelVariable[]>;
-  updateModelVariable(id: number, updateData: Partial<ModelVariable>): Promise<ModelVariable | undefined>;
+  updateModelVariable(
+    id: number,
+    updateData: Partial<ModelVariable>
+  ): Promise<ModelVariable | undefined>;
   deleteModelVariable(id: number): Promise<boolean>;
-  
+
   // Model Components
   createModelComponent(component: InsertModelComponent): Promise<ModelComponent>;
   getModelComponent(id: number): Promise<ModelComponent | undefined>;
   getModelComponentsByModel(modelId: string): Promise<ModelComponent[]>;
-  updateModelComponent(id: number, updateData: Partial<ModelComponent>): Promise<ModelComponent | undefined>;
+  updateModelComponent(
+    id: number,
+    updateData: Partial<ModelComponent>
+  ): Promise<ModelComponent | undefined>;
   deleteModelComponent(id: number): Promise<boolean>;
-  
+
   // Model Calculations
   createModelCalculation(calculation: InsertModelCalculation): Promise<ModelCalculation>;
   getModelCalculation(id: number): Promise<ModelCalculation | undefined>;
   getModelCalculationsByModel(modelId: string): Promise<ModelCalculation[]>;
-  updateModelCalculation(id: number, updateData: Partial<ModelCalculation>): Promise<ModelCalculation | undefined>;
+  updateModelCalculation(
+    id: number,
+    updateData: Partial<ModelCalculation>
+  ): Promise<ModelCalculation | undefined>;
   deleteModelCalculation(id: number): Promise<boolean>;
-  
+
   // Model Validation Rules
   createModelValidationRule(rule: InsertModelValidationRule): Promise<ModelValidationRule>;
   getModelValidationRule(id: number): Promise<ModelValidationRule | undefined>;
   getModelValidationRulesByModel(modelId: string): Promise<ModelValidationRule[]>;
-  updateModelValidationRule(id: number, updateData: Partial<ModelValidationRule>): Promise<ModelValidationRule | undefined>;
+  updateModelValidationRule(
+    id: number,
+    updateData: Partial<ModelValidationRule>
+  ): Promise<ModelValidationRule | undefined>;
   deleteModelValidationRule(id: number): Promise<boolean>;
-  
+
   // Model Test Cases
   createModelTestCase(testCase: InsertModelTestCase): Promise<ModelTestCase>;
   getModelTestCase(id: number): Promise<ModelTestCase | undefined>;
   getModelTestCasesByModel(modelId: string): Promise<ModelTestCase[]>;
-  updateModelTestCase(id: number, updateData: Partial<ModelTestCase>): Promise<ModelTestCase | undefined>;
-  updateModelTestCaseResults(id: number, status: string, results: any): Promise<ModelTestCase | undefined>;
+  updateModelTestCase(
+    id: number,
+    updateData: Partial<ModelTestCase>
+  ): Promise<ModelTestCase | undefined>;
+  updateModelTestCaseResults(
+    id: number,
+    status: string,
+    results: any
+  ): Promise<ModelTestCase | undefined>;
   deleteModelTestCase(id: number): Promise<boolean>;
-  
+
   // Assessment Model Versions
-  createAssessmentModelVersion(version: InsertAssessmentModelVersion): Promise<AssessmentModelVersion>;
+  createAssessmentModelVersion(
+    version: InsertAssessmentModelVersion
+  ): Promise<AssessmentModelVersion>;
   getAssessmentModelVersion(id: number): Promise<AssessmentModelVersion | undefined>;
   getAssessmentModelVersionsByModel(modelId: string): Promise<AssessmentModelVersion[]>;
   getLatestAssessmentModelVersion(modelId: string): Promise<AssessmentModelVersion | undefined>;
   updateAiCodeGeneration(id: number, updates: Partial<AiCodeGeneration>): Promise<AiCodeGeneration>;
   deleteAiCodeGeneration(id: number): Promise<boolean>;
-  
+
   // Validation Rules methods
   createValidationRule(rule: InsertValidationRule): Promise<ValidationRule>;
   getValidationRuleById(ruleId: string): Promise<ValidationRule | null>;
   getAllValidationRules(): Promise<ValidationRule[]>;
   getValidationRulesByEntityType(entityType: string): Promise<ValidationRule[]>;
-  updateValidationRule(ruleId: string, updates: Partial<ValidationRule>): Promise<ValidationRule | null>;
+  updateValidationRule(
+    ruleId: string,
+    updates: Partial<ValidationRule>
+  ): Promise<ValidationRule | null>;
   deleteValidationRule(ruleId: string): Promise<boolean>;
-  
+
   // Validation Issues methods
   createValidationIssue(issue: Omit<ValidationIssue, 'id' | 'createdAt'>): Promise<ValidationIssue>;
   getValidationIssueById(issueId: string): Promise<ValidationIssue | null>;
-  getValidationIssues(options?: { 
-    propertyId?: string, 
-    entityType?: string, 
-    entityId?: string, 
-    ruleId?: string, 
-    level?: string, 
-    status?: string 
+  getValidationIssues(options?: {
+    propertyId?: string;
+    entityType?: string;
+    entityId?: string;
+    ruleId?: string;
+    level?: string;
+    status?: string;
   }): Promise<ValidationIssue[]>;
-  updateValidationIssue(issueId: string, updates: Partial<ValidationIssue>): Promise<ValidationIssue | null>;
+  updateValidationIssue(
+    issueId: string,
+    updates: Partial<ValidationIssue>
+  ): Promise<ValidationIssue | null>;
   deleteValidationIssue(issueId: string): Promise<boolean>;
-  
+
   // Workflow Definition methods
   createWorkflowDefinition(workflow: InsertWorkflowDefinition): Promise<WorkflowDefinition>;
   getWorkflowDefinitionById(definitionId: string): Promise<WorkflowDefinition | null>;
   getAllWorkflowDefinitions(): Promise<WorkflowDefinition[]>;
-  updateWorkflowDefinition(definitionId: string, updates: Partial<WorkflowDefinition>): Promise<WorkflowDefinition | null>;
+  updateWorkflowDefinition(
+    definitionId: string,
+    updates: Partial<WorkflowDefinition>
+  ): Promise<WorkflowDefinition | null>;
   deleteWorkflowDefinition(definitionId: string): Promise<boolean>;
-  
+
   // Workflow Instance methods
   createWorkflowInstance(instance: InsertWorkflowInstance): Promise<WorkflowInstance>;
   getWorkflowInstanceById(instanceId: string): Promise<WorkflowInstance | null>;
-  getWorkflowInstances(options?: { 
-    status?: string, 
-    definitionId?: string, 
-    entityType?: string, 
-    entityId?: string, 
-    assignedTo?: number, 
-    priority?: string,
-    startedAfter?: Date,
-    startedBefore?: Date,
-    dueAfter?: Date,
-    dueBefore?: Date
+  getWorkflowInstances(options?: {
+    status?: string;
+    definitionId?: string;
+    entityType?: string;
+    entityId?: string;
+    assignedTo?: number;
+    priority?: string;
+    startedAfter?: Date;
+    startedBefore?: Date;
+    dueAfter?: Date;
+    dueBefore?: Date;
   }): Promise<WorkflowInstance[]>;
-  updateWorkflowInstance(instanceId: string, updates: Partial<WorkflowInstance>): Promise<WorkflowInstance | null>;
+  updateWorkflowInstance(
+    instanceId: string,
+    updates: Partial<WorkflowInstance>
+  ): Promise<WorkflowInstance | null>;
   deleteWorkflowInstance(instanceId: string): Promise<boolean>;
-  
+
   // Workflow Step History methods
   createWorkflowStepHistory(stepHistory: InsertWorkflowStepHistory): Promise<WorkflowStepHistory>;
   getWorkflowStepHistoryByInstance(instanceId: string): Promise<WorkflowStepHistory[]>;
-  getStepHistoryByInstanceAndStep(instanceId: string, stepId: string): Promise<WorkflowStepHistory[]>;
-  updateWorkflowStepHistory(id: number, updates: Partial<WorkflowStepHistory>): Promise<WorkflowStepHistory | null>;
-  
+  getStepHistoryByInstanceAndStep(
+    instanceId: string,
+    stepId: string
+  ): Promise<WorkflowStepHistory[]>;
+  updateWorkflowStepHistory(
+    id: number,
+    updates: Partial<WorkflowStepHistory>
+  ): Promise<WorkflowStepHistory | null>;
+
   // Compliance Report methods
   createComplianceReport(report: InsertComplianceReport): Promise<ComplianceReport>;
   getComplianceReportById(reportId: string): Promise<ComplianceReport | null>;
   getComplianceReportsByYear(year: number): Promise<ComplianceReport[]>;
   getComplianceReportsByType(reportType: string): Promise<ComplianceReport[]>;
-  updateComplianceReport(reportId: string, updates: Partial<ComplianceReport>): Promise<ComplianceReport | null>;
-  updateComplianceReportStatus(reportId: string, status: string, submittedBy?: number): Promise<ComplianceReport | null>;
-  
+  updateComplianceReport(
+    reportId: string,
+    updates: Partial<ComplianceReport>
+  ): Promise<ComplianceReport | null>;
+  updateComplianceReportStatus(
+    reportId: string,
+    status: string,
+    submittedBy?: number
+  ): Promise<ComplianceReport | null>;
+
   // Washington State Specific Compliance Reports
   createEqualizationReport(report: any): Promise<any>; // Equalization ratio report (RCW 84.48)
   getEqualizationReportByYear(year: number): Promise<any | undefined>;
   createRevaluationCycleReport(report: any): Promise<any>; // Revaluation cycle report (WAC 458-07-015)
-  getRevaluationCycleReportByYear(year: number): Promise<any | undefined>;  
+  getRevaluationCycleReportByYear(year: number): Promise<any | undefined>;
   createExemptionVerificationReport(report: any): Promise<any>; // Exemption verification report
   getExemptionVerificationReportByYear(year: number): Promise<any | undefined>;
   createAppealComplianceReport(report: any): Promise<any>; // Appeal compliance report
   getAppealComplianceReportByYear(year: number): Promise<any | undefined>;
   getAppealsByTaxYear(taxYear: number): Promise<Appeal[]>;
   getAllExemptions(taxYear: number): Promise<any[]>;
-  
+
   // Validation methods
-  createValidationRule(rule: Omit<ValidationRule, 'id' | 'createdAt' | 'updatedAt'>): Promise<ValidationRule>;
+  createValidationRule(
+    rule: Omit<ValidationRule, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<ValidationRule>;
   getValidationRuleById(ruleId: string): Promise<ValidationRule | null>;
-  getAllValidationRules(options?: { 
-    category?: RuleCategory, 
-    level?: RuleLevel,
-    entityType?: EntityType,
-    active?: boolean 
+  getAllValidationRules(options?: {
+    category?: RuleCategory;
+    level?: RuleLevel;
+    entityType?: EntityType;
+    active?: boolean;
   }): Promise<ValidationRule[]>;
   getValidationRulesByEntityType(entityType: EntityType): Promise<ValidationRule[]>;
-  updateValidationRule(ruleId: string, updates: Partial<ValidationRule>): Promise<ValidationRule | null>;
+  updateValidationRule(
+    ruleId: string,
+    updates: Partial<ValidationRule>
+  ): Promise<ValidationRule | null>;
   deleteValidationRule(ruleId: string): Promise<boolean>;
-  
+
   // Validation issues methods
   createValidationIssue(issue: Omit<ValidationIssue, 'id' | 'createdAt'>): Promise<ValidationIssue>;
   getValidationIssueById(issueId: string): Promise<ValidationIssue | null>;
   getValidationIssues(options?: {
-    entityId?: string, 
-    entityType?: EntityType,
-    ruleId?: string,
-    level?: RuleLevel,
-    status?: IssueStatus,
-    createdAfter?: Date,
-    createdBefore?: Date
+    entityId?: string;
+    entityType?: EntityType;
+    ruleId?: string;
+    level?: RuleLevel;
+    status?: IssueStatus;
+    createdAfter?: Date;
+    createdBefore?: Date;
   }): Promise<ValidationIssue[]>;
-  updateValidationIssue(issueId: string, updates: Partial<ValidationIssue>): Promise<ValidationIssue | null>;
-  resolveValidationIssue(issueId: string, resolution: string, userId?: number): Promise<ValidationIssue | null>;
+  updateValidationIssue(
+    issueId: string,
+    updates: Partial<ValidationIssue>
+  ): Promise<ValidationIssue | null>;
+  resolveValidationIssue(
+    issueId: string,
+    resolution: string,
+    userId?: number
+  ): Promise<ValidationIssue | null>;
   acknowledgeValidationIssue(issueId: string, notes?: string): Promise<ValidationIssue | null>;
-  waiveValidationIssue(issueId: string, reason: string, userId?: number): Promise<ValidationIssue | null>;
-  
+  waiveValidationIssue(
+    issueId: string,
+    reason: string,
+    userId?: number
+  ): Promise<ValidationIssue | null>;
+
   // Code Improvement methods
   createCodeImprovement(improvement: InsertCodeImprovement): Promise<CodeImprovement>;
   getCodeImprovements(): Promise<CodeImprovement[]>;
   getCodeImprovementById(id: string): Promise<CodeImprovement | null>;
   getCodeImprovementsByAgent(agentId: string): Promise<CodeImprovement[]>;
   getCodeImprovementsByType(type: ImprovementType): Promise<CodeImprovement[]>;
-  updateCodeImprovementStatus(id: string, status: 'pending' | 'approved' | 'rejected' | 'implemented'): Promise<CodeImprovement | null>;
-  
+  updateCodeImprovementStatus(
+    id: string,
+    status: 'pending' | 'approved' | 'rejected' | 'implemented'
+  ): Promise<CodeImprovement | null>;
+
   // Collaborative Workflow methods
   createSharedWorkflow(workflow: InsertSharedWorkflow): Promise<SharedWorkflow>;
   getSharedWorkflowById(id: number): Promise<SharedWorkflow | null>;
@@ -906,110 +1316,159 @@ export interface IStorage {
   getSharedWorkflowsByUser(userId: number): Promise<SharedWorkflow[]>;
   getSharedWorkflowsByWorkflowId(workflowId: number): Promise<SharedWorkflow[]>;
   getPublicSharedWorkflows(): Promise<SharedWorkflow[]>;
-  updateSharedWorkflow(id: number, updates: Partial<InsertSharedWorkflow>): Promise<SharedWorkflow | null>;
+  updateSharedWorkflow(
+    id: number,
+    updates: Partial<InsertSharedWorkflow>
+  ): Promise<SharedWorkflow | null>;
   deleteSharedWorkflow(id: number): Promise<boolean>;
-  
+
   // Shared Workflow Collaborator methods
-  addCollaborator(collaborator: InsertSharedWorkflowCollaborator): Promise<SharedWorkflowCollaborator>;
+  addCollaborator(
+    collaborator: InsertSharedWorkflowCollaborator
+  ): Promise<SharedWorkflowCollaborator>;
   getCollaboratorsByWorkflowId(sharedWorkflowId: number): Promise<SharedWorkflowCollaborator[]>;
   getCollaboratorsByUserId(userId: number): Promise<SharedWorkflowCollaborator[]>;
-  updateCollaboratorRole(id: number, role: CollaborationRole): Promise<SharedWorkflowCollaborator | null>;
+  updateCollaboratorRole(
+    id: number,
+    role: CollaborationRole
+  ): Promise<SharedWorkflowCollaborator | null>;
   removeCollaborator(id: number): Promise<boolean>;
-  
+
   // Shared Workflow Activity methods
   logWorkflowActivity(activity: InsertSharedWorkflowActivity): Promise<SharedWorkflowActivity>;
-  getWorkflowActivities(sharedWorkflowId: number, limit?: number): Promise<SharedWorkflowActivity[]>;
-  
+  getWorkflowActivities(
+    sharedWorkflowId: number,
+    limit?: number
+  ): Promise<SharedWorkflowActivity[]>;
+
   // Workflow Session methods
   createWorkflowSession(session: InsertWorkflowSession): Promise<WorkflowSession>;
   getActiveWorkflowSessions(sharedWorkflowId: number): Promise<WorkflowSession[]>;
   updateWorkflowSessionStatus(sessionId: string, status: string): Promise<WorkflowSession | null>;
-  updateWorkflowSessionParticipants(sessionId: string, participants: any[]): Promise<WorkflowSession | null>;
+  updateWorkflowSessionParticipants(
+    sessionId: string,
+    participants: any[]
+  ): Promise<WorkflowSession | null>;
   endWorkflowSession(sessionId: string): Promise<WorkflowSession | null>;
-  
+
   // Workflow methods
-  createWorkflowDefinition(definition: Omit<WorkflowDefinition, 'definitionId' | 'createdAt'>): Promise<WorkflowDefinition>;
+  createWorkflowDefinition(
+    definition: Omit<WorkflowDefinition, 'definitionId' | 'createdAt'>
+  ): Promise<WorkflowDefinition>;
   getWorkflowDefinitionById(definitionId: string): Promise<WorkflowDefinition | null>;
   getAllWorkflowDefinitions(active?: boolean): Promise<WorkflowDefinition[]>;
-  updateWorkflowDefinition(definitionId: string, updates: Partial<WorkflowDefinition>): Promise<WorkflowDefinition | null>;
+  updateWorkflowDefinition(
+    definitionId: string,
+    updates: Partial<WorkflowDefinition>
+  ): Promise<WorkflowDefinition | null>;
   activateWorkflowDefinition(definitionId: string): Promise<boolean>;
   deactivateWorkflowDefinition(definitionId: string): Promise<boolean>;
-  
+
   // Workflow instance methods
-  createWorkflowInstance(instance: Omit<WorkflowInstance, 'instanceId' | 'createdAt' | 'lastUpdated'>): Promise<WorkflowInstance>;
+  createWorkflowInstance(
+    instance: Omit<WorkflowInstance, 'instanceId' | 'createdAt' | 'lastUpdated'>
+  ): Promise<WorkflowInstance>;
   getWorkflowInstanceById(instanceId: string): Promise<WorkflowInstance | null>;
   getWorkflowInstancesByDefinitionId(definitionId: string): Promise<WorkflowInstance[]>;
   getWorkflowInstancesByEntityId(entityId: string, entityType: string): Promise<WorkflowInstance[]>;
   getWorkflowInstancesByAssignee(assigneeId: number): Promise<WorkflowInstance[]>;
-  updateWorkflowInstance(instanceId: string, updates: Partial<WorkflowInstance>): Promise<WorkflowInstance | null>;
-  
+  updateWorkflowInstance(
+    instanceId: string,
+    updates: Partial<WorkflowInstance>
+  ): Promise<WorkflowInstance | null>;
+
   // Workflow step history methods
-  createWorkflowStepHistory(stepHistory: Omit<WorkflowStepHistory, 'id' | 'createdAt'>): Promise<WorkflowStepHistory>;
+  createWorkflowStepHistory(
+    stepHistory: Omit<WorkflowStepHistory, 'id' | 'createdAt'>
+  ): Promise<WorkflowStepHistory>;
   getWorkflowStepHistoryByInstanceId(instanceId: string): Promise<WorkflowStepHistory[]>;
-  
+
   // Agent Experiences methods
   createAgentExperience(experience: InsertAgentExperience): Promise<AgentExperience>;
   getAgentExperienceById(experienceId: string): Promise<AgentExperience | null>;
   getAgentExperiencesByAgentId(agentId: string): Promise<AgentExperience[]>;
   getAgentExperiencesByEntityType(entityType: string): Promise<AgentExperience[]>;
   getAgentExperiencesByPriority(minPriority: number, limit?: number): Promise<AgentExperience[]>;
-  updateAgentExperiencePriority(experienceId: string, priority: number): Promise<AgentExperience | null>;
+  updateAgentExperiencePriority(
+    experienceId: string,
+    priority: number
+  ): Promise<AgentExperience | null>;
   markAgentExperienceAsUsed(experienceId: string): Promise<AgentExperience | null>;
-  
+
   // Agent Health Monitoring methods
   getAgentHealthByAgentId(agentId: string): Promise<AgentHealth | null>;
   getAllAgentHealth(): Promise<AgentHealth[]>;
   createAgentHealth(health: AgentHealth): Promise<AgentHealth>;
   updateAgentHealth(health: AgentHealth): Promise<AgentHealth>;
-  
+
   // Learning Updates methods
   createLearningUpdate(update: InsertLearningUpdate): Promise<LearningUpdate>;
   getLearningUpdateById(updateId: string): Promise<LearningUpdate | null>;
   getRecentLearningUpdates(limit?: number): Promise<LearningUpdate[]>;
   getLearningUpdatesByType(updateType: string): Promise<LearningUpdate[]>;
-  
+
   // GIS Layer methods
   createGISLayer(layer: InsertGISLayer): Promise<GISLayer>;
   getGISLayer(id: number): Promise<GISLayer | undefined>;
-  getGISLayers(filters?: { type?: string, userId?: number }): Promise<GISLayer[]>;
+  getGISLayers(filters?: { type?: string; userId?: number }): Promise<GISLayer[]>;
   updateGISLayer(id: number, updates: Partial<InsertGISLayer>): Promise<GISLayer | undefined>;
   deleteGISLayer(id: number): Promise<boolean>;
-  
+
   // GIS Feature Collection methods
   createGISFeatureCollection(collection: InsertGISFeatureCollection): Promise<GISFeatureCollection>;
   getGISFeatureCollection(id: number): Promise<GISFeatureCollection | undefined>;
   getGISFeatureCollectionsByLayer(layerId: number): Promise<GISFeatureCollection[]>;
-  updateGISFeatureCollection(id: number, updates: Partial<InsertGISFeatureCollection>): Promise<GISFeatureCollection | undefined>;
+  updateGISFeatureCollection(
+    id: number,
+    updates: Partial<InsertGISFeatureCollection>
+  ): Promise<GISFeatureCollection | undefined>;
   deleteGISFeatureCollection(id: number): Promise<boolean>;
-  
+
   // GIS Map Project methods
   createGISMapProject(project: InsertGISMapProject): Promise<GISMapProject>;
   getGISMapProject(id: number): Promise<GISMapProject | undefined>;
   getGISMapProjects(userId?: number): Promise<GISMapProject[]>;
   getPublicGISMapProjects(): Promise<GISMapProject[]>;
-  updateGISMapProject(id: number, updates: Partial<InsertGISMapProject>): Promise<GISMapProject | undefined>;
+  updateGISMapProject(
+    id: number,
+    updates: Partial<InsertGISMapProject>
+  ): Promise<GISMapProject | undefined>;
   deleteGISMapProject(id: number): Promise<boolean>;
-  
+
   // ETL Job methods
-  createETLJob(job: { id: string, config: any, status: string, createdAt: Date, updatedAt: Date }): Promise<ETLJob>;
+  createETLJob(job: {
+    id: string;
+    config: any;
+    status: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }): Promise<ETLJob>;
   getETLJob(id: string): Promise<ETLJob | undefined>;
   getETLJobs(userId?: number): Promise<ETLJob[]>;
   updateETLJob(id: string, updates: Partial<ETLJob>): Promise<ETLJob | undefined>;
-  
+
   // GIS Agent Task methods
   createAgentTask(task: GISAgentTask): Promise<GISAgentTask>;
   getAgentTask(id: string): Promise<GISAgentTask | null>;
   getAgentTasks(agentId?: string, status?: string): Promise<GISAgentTask[]>;
   updateAgentTask(id: string, updates: Partial<GISAgentTask>): Promise<GISAgentTask | undefined>;
-  
+
   // Agent Message methods
   createAgentMessage(message: InsertAgentMessage): Promise<AgentMessage>;
   getAgentMessage(id: number): Promise<AgentMessage | undefined>;
   getUnprocessedAgentMessages(topic: string): Promise<AgentMessage[]>;
   updateAgentMessage(id: string, updates: Partial<AgentMessage>): Promise<AgentMessage | undefined>;
-  
+
   // Spatial Analysis methods
-  createSpatialAnalysis(analysis: { name: string, analysisType: string, inputData: any, resultData: any, parameters?: any, metadata?: any, userId?: number }): Promise<SpatialAnalysisResult>;
+  createSpatialAnalysis(analysis: {
+    name: string;
+    analysisType: string;
+    inputData: any;
+    resultData: any;
+    parameters?: any;
+    metadata?: any;
+    userId?: number;
+  }): Promise<SpatialAnalysisResult>;
   getSpatialAnalysis(id: number): Promise<SpatialAnalysisResult | undefined>;
   getSpatialAnalysesByUser(userId: number): Promise<SpatialAnalysisResult[]>;
   getSpatialAnalysesByType(analysisType: string): Promise<SpatialAnalysisResult[]>;
@@ -1026,15 +1485,15 @@ export class MemStorage implements IStorage {
       medianValue: 275000,
       changesCount: 1243,
       typeDistribution: {
-        'Residential': 8920,
-        'Commercial': 1750,
-        'Industrial': 650,
-        'Agricultural': 1230,
-        'Other': 300
-      }
+        Residential: 8920,
+        Commercial: 1750,
+        Industrial: 650,
+        Agricultural: 1230,
+        Other: 300,
+      },
     };
   }
-  
+
   async getPropertyById(propertyId: string) {
     // In a real application, this would query from a database
     return {
@@ -1044,8 +1503,8 @@ export class MemStorage implements IStorage {
       city: 'Benton County',
       state: 'WA',
       zipCode: '99338',
-      latitude: 46.2 + (Math.random() * 0.5),
-      longitude: -119.2 + (Math.random() * 0.5),
+      latitude: 46.2 + Math.random() * 0.5,
+      longitude: -119.2 + Math.random() * 0.5,
       propertyType: 'Residential',
       assessedValue: 285000,
       lastAssessmentDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
@@ -1053,16 +1512,16 @@ export class MemStorage implements IStorage {
       squareFeet: 2200,
       lotSize: 0.25,
       bedrooms: 4,
-      bathrooms: 2.5
+      bathrooms: 2.5,
     };
   }
-  
+
   async searchProperties(params: any) {
     // In a real application, this would query from a database with filters
     const totalItems = 45;
     const pageSize = params.limit || 20;
     const currentPage = params.page || 1;
-    
+
     const properties = Array(Math.min(pageSize, totalItems - (currentPage - 1) * pageSize))
       .fill(0)
       .map((_, index) => {
@@ -1074,53 +1533,57 @@ export class MemStorage implements IStorage {
           city: 'Benton County',
           propertyType: ['Residential', 'Commercial', 'Industrial', 'Agricultural'][index % 4],
           assessedValue: Math.floor(Math.random() * 500000) + 150000,
-          lastAssessmentDate: new Date(Date.now() - (Math.floor(Math.random() * 365) * 24 * 60 * 60 * 1000)),
-          status: ['Current', 'Under Review', 'Appeal Pending'][index % 3]
+          lastAssessmentDate: new Date(
+            Date.now() - Math.floor(Math.random() * 365) * 24 * 60 * 60 * 1000
+          ),
+          status: ['Current', 'Under Review', 'Appeal Pending'][index % 3],
         };
       });
-    
+
     return { properties, total: totalItems };
   }
-  
+
   async getNearbyProperties(propertyId: string, radiusMiles: number, limit: number) {
     // In a real application, this would query from a database with geospatial functions
-    return Array(limit).fill(0).map((_, index) => {
-      return {
-        id: `${Number(propertyId) + index + 1}`,
-        parcelId: `P-${Number(propertyId) + index + 1}`,
-        address: `${Math.floor(Math.random() * 9000) + 1000} ${['Main', 'Oak', 'Maple', 'Pine'][index % 4]} ${['St', 'Ave', 'Blvd', 'Dr'][index % 4]}`,
-        distanceMiles: (Math.random() * radiusMiles).toFixed(2),
-        assessedValue: Math.floor(Math.random() * 500000) + 150000,
-        propertyType: ['Residential', 'Commercial', 'Industrial', 'Agricultural'][index % 4],
-        squareFeet: Math.floor(Math.random() * 3000) + 1000
-      };
-    });
+    return Array(limit)
+      .fill(0)
+      .map((_, index) => {
+        return {
+          id: `${Number(propertyId) + index + 1}`,
+          parcelId: `P-${Number(propertyId) + index + 1}`,
+          address: `${Math.floor(Math.random() * 9000) + 1000} ${['Main', 'Oak', 'Maple', 'Pine'][index % 4]} ${['St', 'Ave', 'Blvd', 'Dr'][index % 4]}`,
+          distanceMiles: (Math.random() * radiusMiles).toFixed(2),
+          assessedValue: Math.floor(Math.random() * 500000) + 150000,
+          propertyType: ['Residential', 'Commercial', 'Industrial', 'Agricultural'][index % 4],
+          squareFeet: Math.floor(Math.random() * 3000) + 1000,
+        };
+      });
   }
-  
+
   async getPropertyValueHistory(propertyId: string, years: number) {
     // In a real application, this would query from a database with historical values
     const endDate = new Date();
     const startDate = new Date();
     startDate.setFullYear(startDate.getFullYear() - years);
-    
+
     const valuations: { date: string; value: number }[] = [];
     const startValue = 150000 + Math.floor(Math.random() * 100000);
     let currentValue = startValue;
-    
+
     for (let year = startDate.getFullYear(); year <= endDate.getFullYear(); year++) {
       // Add some realistic growth and fluctuations
       const annualGrowth = 1 + (Math.random() * 0.08 - 0.01); // -1% to 7% annual change
       currentValue = Math.floor(currentValue * annualGrowth);
-      
+
       valuations.push({
         date: `${year}-01-01`,
-        value: currentValue
+        value: currentValue,
       });
     }
-    
+
     return valuations;
   }
-  
+
   // Assessment methods
   async getAssessmentMetrics(timeRange: string) {
     // In a real application, this would query from a database
@@ -1138,54 +1601,56 @@ export class MemStorage implements IStorage {
         { date: '2023-07', value: 275000 },
         { date: '2024-01', value: 282000 },
         { date: '2024-07', value: 290000 },
-        { date: '2025-01', value: 295000 }
-      ]
+        { date: '2025-01', value: 295000 },
+      ],
     };
   }
-  
+
   async getAssessmentById(assessmentId: string) {
     // In a real application, this would query from a database
     return {
       id: assessmentId,
       propertyId: `1${assessmentId}`,
       assessor: `Assessor ${Math.floor(Math.random() * 10) + 1}`,
-      startDate: new Date(Date.now() - (Math.floor(Math.random() * 90) * 24 * 60 * 60 * 1000)),
-      endDate: new Date(Date.now() - (Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000)),
+      startDate: new Date(Date.now() - Math.floor(Math.random() * 90) * 24 * 60 * 60 * 1000),
+      endDate: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000),
       assessedValue: Math.floor(Math.random() * 500000) + 150000,
       previousValue: Math.floor(Math.random() * 450000) + 140000,
-      status: ['In Progress', 'Completed', 'On Hold', 'Under Review'][Math.floor(Math.random() * 4)],
+      status: ['In Progress', 'Completed', 'On Hold', 'Under Review'][
+        Math.floor(Math.random() * 4)
+      ],
       notes: 'Property assessment completed with standard valuation method',
-      appealEligible: Math.random() > 0.7
+      appealEligible: Math.random() > 0.7,
     };
   }
-  
+
   async getPropertyAssessments(propertyId: string) {
     // In a real application, this would query from a database
     const count = 5 + Math.floor(Math.random() * 5);
     const assessments = [];
-    
+
     const endDate = new Date();
-    
+
     for (let i = 0; i < count; i++) {
       const yearOffset = i + 1;
       const startDate = new Date(endDate);
       startDate.setFullYear(endDate.getFullYear() - yearOffset);
-      
+
       assessments.push({
-        id: `${i+1}`,
+        id: `${i + 1}`,
         propertyId,
         assessor: `Assessor ${Math.floor(Math.random() * 10) + 1}`,
         startDate,
-        endDate: new Date(startDate.getTime() + (30 * 24 * 60 * 60 * 1000)),
-        assessedValue: Math.floor(Math.random() * 500000) + 150000 - (yearOffset * 10000), // Value generally increases over time
+        endDate: new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000),
+        assessedValue: Math.floor(Math.random() * 500000) + 150000 - yearOffset * 10000, // Value generally increases over time
         status: 'Completed',
-        notes: `${yearOffset} year old assessment record`
+        notes: `${yearOffset} year old assessment record`,
       });
     }
-    
+
     return assessments;
   }
-  
+
   async createAssessment(assessmentData: any) {
     // In a real application, this would insert into a database
     return {
@@ -1193,25 +1658,25 @@ export class MemStorage implements IStorage {
       ...assessmentData,
       startDate: new Date(),
       status: 'In Progress',
-      createdAt: new Date()
+      createdAt: new Date(),
     };
   }
-  
+
   async updateAssessment(assessmentId: string, updates: any) {
     // In a real application, this would update in a database
     return {
       id: assessmentId,
       propertyId: updates.propertyId || `1${assessmentId}`,
       assessor: updates.assessor || `Assessor ${Math.floor(Math.random() * 10) + 1}`,
-      startDate: updates.startDate || new Date(Date.now() - (60 * 24 * 60 * 60 * 1000)),
+      startDate: updates.startDate || new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
       endDate: updates.endDate,
       assessedValue: updates.assessedValue || Math.floor(Math.random() * 500000) + 150000,
       status: updates.status || 'In Progress',
       notes: updates.notes || '',
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
   }
-  
+
   async getAssessmentStatusHistory(assessmentId: string) {
     // In a real application, this would query from a database
     return [
@@ -1220,87 +1685,131 @@ export class MemStorage implements IStorage {
         assessmentId,
         status: 'Created',
         changedBy: 'System',
-        timestamp: new Date(Date.now() - (90 * 24 * 60 * 60 * 1000)),
-        notes: 'Assessment created in system'
+        timestamp: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+        notes: 'Assessment created in system',
       },
       {
         id: '2',
         assessmentId,
         status: 'Assigned',
         changedBy: 'Admin User',
-        timestamp: new Date(Date.now() - (85 * 24 * 60 * 60 * 1000)),
-        notes: 'Assigned to field assessor'
+        timestamp: new Date(Date.now() - 85 * 24 * 60 * 60 * 1000),
+        notes: 'Assigned to field assessor',
       },
       {
         id: '3',
         assessmentId,
         status: 'In Progress',
         changedBy: 'Field Assessor',
-        timestamp: new Date(Date.now() - (70 * 24 * 60 * 60 * 1000)),
-        notes: 'Initial site visit completed'
+        timestamp: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000),
+        notes: 'Initial site visit completed',
       },
       {
         id: '4',
         assessmentId,
         status: 'Under Review',
         changedBy: 'Field Assessor',
-        timestamp: new Date(Date.now() - (45 * 24 * 60 * 60 * 1000)),
-        notes: 'Preliminary valuation submitted for review'
+        timestamp: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+        notes: 'Preliminary valuation submitted for review',
       },
       {
         id: '5',
         assessmentId,
         status: 'Completed',
         changedBy: 'Senior Assessor',
-        timestamp: new Date(Date.now() - (30 * 24 * 60 * 60 * 1000)),
-        notes: 'Final valuation approved'
-      }
+        timestamp: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        notes: 'Final valuation approved',
+      },
     ];
   }
-  
+
   // Change Tracking methods
   async getRecentPropertyChanges(limit: number) {
     // In a real application, this would query from a database
-    return Array(limit).fill(0).map((_, index) => {
-      const id = index + 1;
-      return {
-        id: `${id}`,
-        propertyId: `${Math.floor(Math.random() * 100) + 1}`,
-        address: `${Math.floor(Math.random() * 9000) + 1000} ${['Main', 'Oak', 'Maple', 'Pine'][index % 4]} ${['St', 'Ave', 'Blvd', 'Dr'][index % 4]}`,
-        changeType: ['Value Update', 'Owner Change', 'Property Feature', 'Zoning', 'Tax Status'][index % 5],
-        fieldName: ['assessedValue', 'owner', 'squareFeet', 'zoning', 'taxStatus'][index % 5],
-        oldValue: index % 5 === 0 ? '250000' : index % 5 === 1 ? 'John Doe' : index % 5 === 2 ? '2000' : index % 5 === 3 ? 'R1' : 'Current',
-        newValue: index % 5 === 0 ? '275000' : index % 5 === 1 ? 'Jane Smith' : index % 5 === 2 ? '2500' : index % 5 === 3 ? 'R2' : 'Exempt',
-        changedBy: `User ${Math.floor(Math.random() * 10) + 1}`,
-        timestamp: new Date(Date.now() - (Math.floor(Math.random() * 14) * 24 * 60 * 60 * 1000))
-      };
-    });
+    return Array(limit)
+      .fill(0)
+      .map((_, index) => {
+        const id = index + 1;
+        return {
+          id: `${id}`,
+          propertyId: `${Math.floor(Math.random() * 100) + 1}`,
+          address: `${Math.floor(Math.random() * 9000) + 1000} ${['Main', 'Oak', 'Maple', 'Pine'][index % 4]} ${['St', 'Ave', 'Blvd', 'Dr'][index % 4]}`,
+          changeType: ['Value Update', 'Owner Change', 'Property Feature', 'Zoning', 'Tax Status'][
+            index % 5
+          ],
+          fieldName: ['assessedValue', 'owner', 'squareFeet', 'zoning', 'taxStatus'][index % 5],
+          oldValue:
+            index % 5 === 0
+              ? '250000'
+              : index % 5 === 1
+                ? 'John Doe'
+                : index % 5 === 2
+                  ? '2000'
+                  : index % 5 === 3
+                    ? 'R1'
+                    : 'Current',
+          newValue:
+            index % 5 === 0
+              ? '275000'
+              : index % 5 === 1
+                ? 'Jane Smith'
+                : index % 5 === 2
+                  ? '2500'
+                  : index % 5 === 3
+                    ? 'R2'
+                    : 'Exempt',
+          changedBy: `User ${Math.floor(Math.random() * 10) + 1}`,
+          timestamp: new Date(Date.now() - Math.floor(Math.random() * 14) * 24 * 60 * 60 * 1000),
+        };
+      });
   }
-  
+
   async getPropertyChanges(propertyId: string, params: any) {
     // In a real application, this would query from a database with filters
-    return Array(10).fill(0).map((_, index) => {
-      const id = index + 1;
-      return {
-        id: `${id}`,
-        propertyId,
-        address: `${Math.floor(Math.random() * 9000) + 1000} Main St`,
-        changeType: ['Value Update', 'Owner Change', 'Property Feature', 'Zoning', 'Tax Status'][index % 5],
-        fieldName: ['assessedValue', 'owner', 'squareFeet', 'zoning', 'taxStatus'][index % 5],
-        oldValue: index % 5 === 0 ? '250000' : index % 5 === 1 ? 'John Doe' : index % 5 === 2 ? '2000' : index % 5 === 3 ? 'R1' : 'Current',
-        newValue: index % 5 === 0 ? '275000' : index % 5 === 1 ? 'Jane Smith' : index % 5 === 2 ? '2500' : index % 5 === 3 ? 'R2' : 'Exempt',
-        changedBy: `User ${Math.floor(Math.random() * 10) + 1}`,
-        timestamp: new Date(Date.now() - (Math.floor(Math.random() * 365) * 24 * 60 * 60 * 1000))
-      };
-    });
+    return Array(10)
+      .fill(0)
+      .map((_, index) => {
+        const id = index + 1;
+        return {
+          id: `${id}`,
+          propertyId,
+          address: `${Math.floor(Math.random() * 9000) + 1000} Main St`,
+          changeType: ['Value Update', 'Owner Change', 'Property Feature', 'Zoning', 'Tax Status'][
+            index % 5
+          ],
+          fieldName: ['assessedValue', 'owner', 'squareFeet', 'zoning', 'taxStatus'][index % 5],
+          oldValue:
+            index % 5 === 0
+              ? '250000'
+              : index % 5 === 1
+                ? 'John Doe'
+                : index % 5 === 2
+                  ? '2000'
+                  : index % 5 === 3
+                    ? 'R1'
+                    : 'Current',
+          newValue:
+            index % 5 === 0
+              ? '275000'
+              : index % 5 === 1
+                ? 'Jane Smith'
+                : index % 5 === 2
+                  ? '2500'
+                  : index % 5 === 3
+                    ? 'R2'
+                    : 'Exempt',
+          changedBy: `User ${Math.floor(Math.random() * 10) + 1}`,
+          timestamp: new Date(Date.now() - Math.floor(Math.random() * 365) * 24 * 60 * 60 * 1000),
+        };
+      });
   }
-  
+
   async searchPropertyChanges(searchParams: any) {
     // In a real application, this would query from a database with filters
     const totalItems = 45;
     const pageSize = searchParams.limit || 20;
     const currentPage = searchParams.page || 1;
-    
+
     const changes = Array(Math.min(pageSize, totalItems - (currentPage - 1) * pageSize))
       .fill(0)
       .map((_, index) => {
@@ -1309,18 +1818,38 @@ export class MemStorage implements IStorage {
           id: `${id}`,
           propertyId: searchParams.propertyId || `${Math.floor(Math.random() * 100) + 1}`,
           address: `${Math.floor(Math.random() * 9000) + 1000} ${['Main', 'Oak', 'Maple', 'Pine'][index % 4]} ${['St', 'Ave', 'Blvd', 'Dr'][index % 4]}`,
-          changeType: ['Value Update', 'Owner Change', 'Property Feature', 'Zoning', 'Tax Status'][index % 5],
+          changeType: ['Value Update', 'Owner Change', 'Property Feature', 'Zoning', 'Tax Status'][
+            index % 5
+          ],
           fieldName: ['assessedValue', 'owner', 'squareFeet', 'zoning', 'taxStatus'][index % 5],
-          oldValue: index % 5 === 0 ? '250000' : index % 5 === 1 ? 'John Doe' : index % 5 === 2 ? '2000' : index % 5 === 3 ? 'R1' : 'Current',
-          newValue: index % 5 === 0 ? '275000' : index % 5 === 1 ? 'Jane Smith' : index % 5 === 2 ? '2500' : index % 5 === 3 ? 'R2' : 'Exempt',
+          oldValue:
+            index % 5 === 0
+              ? '250000'
+              : index % 5 === 1
+                ? 'John Doe'
+                : index % 5 === 2
+                  ? '2000'
+                  : index % 5 === 3
+                    ? 'R1'
+                    : 'Current',
+          newValue:
+            index % 5 === 0
+              ? '275000'
+              : index % 5 === 1
+                ? 'Jane Smith'
+                : index % 5 === 2
+                  ? '2500'
+                  : index % 5 === 3
+                    ? 'R2'
+                    : 'Exempt',
           changedBy: searchParams.changedBy || `User ${Math.floor(Math.random() * 10) + 1}`,
-          timestamp: new Date(Date.now() - (Math.floor(Math.random() * 365) * 24 * 60 * 60 * 1000))
+          timestamp: new Date(Date.now() - Math.floor(Math.random() * 365) * 24 * 60 * 60 * 1000),
         };
       });
-    
+
     return { changes, total: totalItems };
   }
-  
+
   async getChangeStatistics(timeRange: string) {
     // In a real application, this would query from a database
     return {
@@ -1329,32 +1858,32 @@ export class MemStorage implements IStorage {
         'Value Update': 1250,
         'Owner Change': 376,
         'Property Feature': 425,
-        'Zoning': 188,
-        'Tax Status': 125
+        Zoning: 188,
+        'Tax Status': 125,
       },
       changesByTime: [
         { date: '2025-01', count: 220 },
         { date: '2025-02', count: 245 },
         { date: '2025-03', count: 215 },
-        { date: '2025-04', count: 230 }
+        { date: '2025-04', count: 230 },
       ],
       topChangedProperties: [
         { propertyId: '12', address: '1234 Main St', changeCount: 12 },
         { propertyId: '45', address: '5678 Oak Ave', changeCount: 9 },
         { propertyId: '78', address: '910 Pine Blvd', changeCount: 7 },
         { propertyId: '32', address: '2468 Maple Dr', changeCount: 6 },
-        { propertyId: '56', address: '1357 Cedar Ln', changeCount: 6 }
-      ]
+        { propertyId: '56', address: '1357 Cedar Ln', changeCount: 6 },
+      ],
     };
   }
-  
+
   async recordPropertyChange(changeData: any) {
     // In a real application, this would insert into a database
     return {
       id: Date.now().toString(),
       ...changeData,
       timestamp: new Date(),
-      changedBy: changeData.changedBy || 'System'
+      changedBy: changeData.changedBy || 'System',
     };
   }
   private users: Map<number, User>;
@@ -1377,17 +1906,17 @@ export class MemStorage implements IStorage {
   private comparableSalesAnalyses: Map<string, ComparableSalesAnalysis>;
   private comparableAnalysisEntries: Map<number, ComparableAnalysisEntry>;
   private stagedProperties: Map<string, StagedProperty>;
-  
+
   // TerraFusion Repository Marketplace Maps
   private repositories: Map<number, Repository>;
   private repositoryVersions: Map<number, RepositoryVersion>;
   private repositoryReviews: Map<number, RepositoryReview>;
   private repositoryDependencies: Map<number, RepositoryDependency>;
-  
+
   // Intelligent Development Workflow Optimizer Maps
   private workflowOptimizationRequests: Map<number, WorkflowOptimizationRequest>;
   private workflowOptimizationResults: Map<number, WorkflowOptimizationResult>;
-  
+
   // Development Tools Maps
   private codeSnippets: Map<number, CodeSnippet>;
   private dataVisualizations: Map<number, DataVisualization>;
@@ -1397,7 +1926,7 @@ export class MemStorage implements IStorage {
   private workflowDefinitions: Map<string, WorkflowDefinition>;
   private workflowInstances: Map<string, WorkflowInstance>;
   private workflowStepHistory: Map<number, WorkflowStepHistory>;
-  
+
   // Database Conversion Maps
   private databaseConversionProjects: Map<string, DatabaseConversionProject>;
   private connectionTemplates: Map<number, ConnectionTemplate>;
@@ -1408,7 +1937,7 @@ export class MemStorage implements IStorage {
   private equalizationReports: Map<string, any>; // Washington-specific equalization ratio reports
   private revaluationCycleReports: Map<string, any>; // Washington-specific revaluation cycle reports
   private exemptionVerificationReports: Map<string, any>; // Washington-specific exemption verification reports
-  
+
   // TaxI_AI Development Platform storage
   private developmentProjects: Map<number, DevelopmentProject>;
   private projectFiles: Map<number, ProjectFile>;
@@ -1416,7 +1945,7 @@ export class MemStorage implements IStorage {
   private projectVersions: Map<number, ProjectVersion>;
   private previewSettings: Map<number, PreviewSetting>;
   private aiCodeGenerations: Map<number, AiCodeGeneration>;
-  
+
   // Assessment Model Workbench data structures
   private assessmentModels: AssessmentModel[];
   private modelVariables: ModelVariable[];
@@ -1426,7 +1955,7 @@ export class MemStorage implements IStorage {
   private modelTestCases: ModelTestCase[];
   private assessmentModelVersions: AssessmentModelVersion[];
   private appealComplianceReports: Map<string, any>; // Washington-specific appeal compliance reports
-  
+
   // Team Agent Storage
   private teamMembers: Map<number, TeamMember>;
   private teamTasks: Map<string, TeamTask>;
@@ -1441,7 +1970,7 @@ export class MemStorage implements IStorage {
   private sharedWorkflowCollaborators: Map<number, SharedWorkflowCollaborator>; // Collaborators for shared workflows
   private sharedWorkflowActivities: Map<number, SharedWorkflowActivity>; // Activities within shared workflows
   private workflowSessions: Map<string, WorkflowSession>; // Real-time sessions for collaborative work
-  
+
   // GIS Storage
   private gisLayers: Map<number, GISLayer>; // GIS layers
   private gisFeatureCollections: Map<number, GISFeatureCollection>; // GIS feature collections
@@ -1450,7 +1979,7 @@ export class MemStorage implements IStorage {
   private gisAgentTasks: Map<string, GISAgentTask>; // GIS agent tasks
   private agentMessages: Map<number, AgentMessage>; // Agent messages
   private spatialAnalysisResults: Map<number, SpatialAnalysisResult>; // Spatial analysis results
-  
+
   private currentUserId: number;
   private currentPropertyId: number;
   private currentLandRecordId: number;
@@ -1469,7 +1998,7 @@ export class MemStorage implements IStorage {
   private currentMCPToolExecutionLogId: number;
   private currentWorkflowStepHistoryId: number;
   private currentAgentMessageId: number;
-  
+
   // Team Agent counters
   private currentTeamMemberId: number;
   private currentTeamTaskId: number;
@@ -1477,7 +2006,7 @@ export class MemStorage implements IStorage {
   private currentTeamCollaborationSessionId: number;
   private currentTeamFeedbackId: number;
   private currentTeamKnowledgeBaseItemId: number;
-  
+
   // TaxI_AI Development Platform counters
   private currentDevelopmentProjectId: number;
   private currentProjectFileId: number;
@@ -1485,28 +2014,28 @@ export class MemStorage implements IStorage {
   private currentProjectVersionId: number;
   private currentPreviewSettingId: number;
   private currentAiCodeGenerationId: number;
-  
+
   // Development Tools counters
   private currentCodeSnippetId: number;
   private currentDataVisualizationId: number;
   private currentUIComponentTemplateId: number;
-  
+
   // Database Conversion counters
   private currentConnectionTemplateId: number;
   private currentSchemaMappingId: number;
   private currentConversionLogId: number;
   private currentCompatibilityLayerId: number;
-  
+
   // TerraFusion Repository Marketplace counters
   private currentRepositoryId: number;
   private currentRepositoryVersionId: number;
   private currentRepositoryReviewId: number;
   private currentRepositoryDependencyId: number;
-  
+
   // Intelligent Development Workflow Optimizer counters
   private currentWorkflowOptimizationRequestId: number;
   private currentWorkflowOptimizationResultId: number;
-  
+
   // GIS counters
   private currentGISLayerId: number;
   private currentGISFeatureCollectionId: number;
@@ -1551,7 +2080,7 @@ export class MemStorage implements IStorage {
     this.sharedWorkflowCollaborators = new Map<number, SharedWorkflowCollaborator>();
     this.sharedWorkflowActivities = new Map<number, SharedWorkflowActivity>();
     this.workflowSessions = new Map<string, WorkflowSession>();
-    
+
     // Initialize TaxI_AI Development Platform maps
     this.developmentProjects = new Map<number, DevelopmentProject>();
     this.projectFiles = new Map<number, ProjectFile>();
@@ -1559,35 +2088,35 @@ export class MemStorage implements IStorage {
     this.projectVersions = new Map<number, ProjectVersion>();
     this.previewSettings = new Map<number, PreviewSetting>();
     this.aiCodeGenerations = new Map<number, AiCodeGeneration>();
-    
+
     // Initialize TerraFusion Repository Marketplace maps
     this.repositories = new Map<number, Repository>();
     this.repositoryVersions = new Map<number, RepositoryVersion>();
     this.repositoryReviews = new Map<number, RepositoryReview>();
     this.repositoryDependencies = new Map<number, RepositoryDependency>();
-    
+
     // Initialize Intelligent Development Workflow Optimizer maps
     this.workflowOptimizationRequests = new Map<number, WorkflowOptimizationRequest>();
     this.workflowOptimizationResults = new Map<number, WorkflowOptimizationResult>();
-    
+
     // Initialize Development Tools maps
     this.codeSnippets = new Map<number, CodeSnippet>();
     this.dataVisualizations = new Map<number, DataVisualization>();
     this.uiComponentTemplates = new Map<number, UIComponentTemplate>();
-    
+
     // Initialize Database Conversion maps
     this.databaseConversionProjects = new Map<string, DatabaseConversionProject>();
     this.connectionTemplates = new Map<number, ConnectionTemplate>();
     this.schemaMappings = new Map<number, SchemaMapping>();
     this.conversionLogs = new Map<number, ConversionLog>();
     this.compatibilityLayers = new Map<number, CompatibilityLayer>();
-    
+
     // Initialize counters with values
     this.currentUserId = 1;
     this.currentWorkflowOptimizationRequestId = 1;
     this.currentWorkflowOptimizationResultId = 1;
     this.currentRepositoryId = 1;
-    
+
     // Initialize Assessment Model Workbench arrays
     this.assessmentModels = [];
     this.modelVariables = [];
@@ -1596,7 +2125,7 @@ export class MemStorage implements IStorage {
     this.modelValidationRules = [];
     this.modelTestCases = [];
     this.assessmentModelVersions = [];
-    
+
     // Initialize Team Agent maps
     this.teamMembers = new Map<number, TeamMember>();
     this.teamTasks = new Map<string, TeamTask>();
@@ -1604,7 +2133,7 @@ export class MemStorage implements IStorage {
     this.teamCollaborationSessions = new Map<string, TeamCollaborationSession>();
     this.teamFeedback = new Map<string, TeamFeedback>();
     this.teamKnowledgeBaseItems = new Map<string, TeamKnowledgeBaseItem>();
-    
+
     // Initialize GIS maps
     this.gisLayers = new Map<number, GISLayer>();
     this.gisFeatureCollections = new Map<number, GISFeatureCollection>();
@@ -1612,7 +2141,7 @@ export class MemStorage implements IStorage {
     this.etlJobs = new Map<string, ETLJob>();
     this.gisAgentTasks = new Map<string, GISAgentTask>();
     this.spatialAnalysisResults = new Map<number, SpatialAnalysisResult>();
-    
+
     this.currentUserId = 1;
     this.currentPropertyId = 1;
     this.currentLandRecordId = 1;
@@ -1631,7 +2160,7 @@ export class MemStorage implements IStorage {
     this.currentMCPToolExecutionLogId = 1;
     this.currentWorkflowStepHistoryId = 1;
     this.currentAgentMessageId = 1;
-    
+
     // Initialize Team Agent counters
     this.currentTeamMemberId = 1;
     this.currentTeamTaskId = 1;
@@ -1639,7 +2168,7 @@ export class MemStorage implements IStorage {
     this.currentTeamCollaborationSessionId = 1;
     this.currentTeamFeedbackId = 1;
     this.currentTeamKnowledgeBaseItemId = 1;
-    
+
     // Initialize TaxI_AI Development Platform counters
     this.currentDevelopmentProjectId = 1;
     this.currentProjectFileId = 1;
@@ -1647,34 +2176,34 @@ export class MemStorage implements IStorage {
     this.currentProjectVersionId = 1;
     this.currentPreviewSettingId = 1;
     this.currentAiCodeGenerationId = 1;
-    
+
     // Initialize Development Tools counters
     this.currentCodeSnippetId = 1;
     this.currentDataVisualizationId = 1;
     this.currentUIComponentTemplateId = 1;
-    
+
     // Initialize Database Conversion counters
     this.currentConnectionTemplateId = 1;
     this.currentSchemaMappingId = 1;
     this.currentConversionLogId = 1;
     this.currentCompatibilityLayerId = 1;
-    
+
     // Initialize TerraFusion Repository Marketplace counters
     this.currentRepositoryId = 1;
     this.currentRepositoryVersionId = 1;
     this.currentRepositoryReviewId = 1;
     this.currentRepositoryDependencyId = 1;
-    
+
     // Initialize Intelligent Development Workflow Optimizer counters
     this.currentWorkflowOptimizationRequestId = 1;
     this.currentWorkflowOptimizationResultId = 1;
-    
+
     // Initialize GIS counters
     this.currentGISLayerId = 1;
-    this.currentGISFeatureCollectionId = 1; 
+    this.currentGISFeatureCollectionId = 1;
     this.currentGISMapProjectId = 1;
     this.currentSpatialAnalysisResultId = 1;
-    
+
     // Initialize with sample data
     this.seedData();
   }
@@ -1685,40 +2214,38 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    return Array.from(this.users.values()).find(user => user.username === username);
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
     const timestamp = new Date();
-    const user: User = { 
-      ...insertUser, 
-      id, 
+    const user: User = {
+      ...insertUser,
+      id,
       createdAt: timestamp,
-      role: insertUser.role || 'user',       // Ensure role is always defined
-      email: insertUser.email || null        // Ensure email is always defined or null
+      role: insertUser.role || 'user', // Ensure role is always defined
+      email: insertUser.email || null, // Ensure email is always defined or null
     };
     this.users.set(id, user);
     return user;
   }
-  
+
   // Property methods
   async getAllProperties(): Promise<Property[]> {
     return Array.from(this.properties.values());
   }
-  
+
   async getProperty(id: number): Promise<Property | undefined> {
     return this.properties.get(id);
   }
-  
+
   async getPropertyByPropertyId(propertyId: string): Promise<Property | undefined> {
     return Array.from(this.properties.values()).find(
-      (property) => property.propertyId === propertyId,
+      property => property.propertyId === propertyId
     );
   }
-  
+
   async getPropertyById(propertyId: string): Promise<any> {
     const property = await this.getPropertyByPropertyId(propertyId);
     if (!property) {
@@ -1726,47 +2253,53 @@ export class MemStorage implements IStorage {
     }
     return property;
   }
-  
+
   async getComparableProperties(propertyId: string, count: number = 5): Promise<Property[]> {
     // Get the target property
     const targetProperty = await this.getPropertyByPropertyId(propertyId);
     if (!targetProperty) {
       return [];
     }
-    
+
     // Get all properties except the target one
     const allProperties = await this.getAllProperties();
     const otherProperties = allProperties.filter(p => p.propertyId !== propertyId);
-    
+
     // Sort by similarity (using property type and acres as simple similarity metrics)
     const sortedProperties = otherProperties.sort((a, b) => {
       // Same property type gets priority
-      if (a.propertyType === targetProperty.propertyType && b.propertyType !== targetProperty.propertyType) {
+      if (
+        a.propertyType === targetProperty.propertyType &&
+        b.propertyType !== targetProperty.propertyType
+      ) {
         return -1;
       }
-      if (b.propertyType === targetProperty.propertyType && a.propertyType !== targetProperty.propertyType) {
+      if (
+        b.propertyType === targetProperty.propertyType &&
+        a.propertyType !== targetProperty.propertyType
+      ) {
         return 1;
       }
-      
+
       // Similar acreage gets priority
       const aAcres = parseFloat(a.acres);
       const bAcres = parseFloat(b.acres);
       const targetAcres = parseFloat(targetProperty.acres);
-      
+
       const aDiff = Math.abs(aAcres - targetAcres);
       const bDiff = Math.abs(bAcres - targetAcres);
-      
+
       return aDiff - bDiff;
     });
-    
+
     // Return the top N most similar properties
     return sortedProperties.slice(0, count);
   }
-  
+
   async getPropertyHistory(propertyId: string): Promise<PropertyHistoryDataPoint[]> {
     // Get data lineage records for this property
     const lineageRecords = await this.getDataLineageByProperty(propertyId);
-    
+
     // Convert to history data points
     const historyPoints: PropertyHistoryDataPoint[] = lineageRecords.map(record => ({
       date: record.changeTimestamp,
@@ -1774,13 +2307,13 @@ export class MemStorage implements IStorage {
       oldValue: record.oldValue,
       newValue: record.newValue,
       source: record.source,
-      userId: record.userId
+      userId: record.userId,
     }));
-    
+
     // Sort by date, newest first
     return historyPoints.sort((a, b) => b.date.getTime() - a.date.getTime());
   }
-  
+
   async getMarketTrends(): Promise<MarketTrend[]> {
     // In a real implementation, this would fetch actual market trends
     // For now, we'll return mock data
@@ -1792,7 +2325,7 @@ export class MemStorage implements IStorage {
         changePercentage: 5.2,
         startDate: new Date(new Date().setFullYear(new Date().getFullYear() - 1)),
         endDate: new Date(),
-        avgValue: 320000
+        avgValue: 320000,
       },
       {
         region: 'Benton County',
@@ -1801,7 +2334,7 @@ export class MemStorage implements IStorage {
         changePercentage: 3.8,
         startDate: new Date(new Date().setMonth(new Date().getMonth() - 3)),
         endDate: new Date(),
-        avgDaysOnMarket: 28
+        avgDaysOnMarket: 28,
       },
       {
         region: 'Benton County',
@@ -1810,18 +2343,18 @@ export class MemStorage implements IStorage {
         changePercentage: -2.1,
         startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)),
         endDate: new Date(),
-        totalProperties: 182
-      }
+        totalProperties: 182,
+      },
     ];
   }
-  
+
   async createProperty(insertProperty: InsertProperty): Promise<Property> {
     const id = this.currentPropertyId++;
     const timestamp = new Date();
-    const property: Property = { 
-      ...insertProperty, 
-      id, 
-      createdAt: timestamp, 
+    const property: Property = {
+      ...insertProperty,
+      id,
+      createdAt: timestamp,
       lastUpdated: timestamp,
       // Ensure required fields are properly typed
       status: insertProperty.status || 'active',
@@ -1830,44 +2363,49 @@ export class MemStorage implements IStorage {
       // Ensure value is either a string or null
       value: insertProperty.value === undefined ? null : insertProperty.value,
       // Ensure extraFields is always an object
-      extraFields: insertProperty.extraFields || {}
+      extraFields: insertProperty.extraFields || {},
     };
     this.properties.set(id, property);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Created new property: ${property.address}`,
       entityType: 'property',
-      entityId: property.propertyId
+      entityId: property.propertyId,
     });
-    
+
     return property;
   }
-  
-  async updateProperty(id: number, updateData: Partial<InsertProperty>, userId: number = 1, source: 'import' | 'manual' | 'api' | 'calculated' | 'validated' | 'correction' = 'manual'): Promise<Property | undefined> {
+
+  async updateProperty(
+    id: number,
+    updateData: Partial<InsertProperty>,
+    userId: number = 1,
+    source: 'import' | 'manual' | 'api' | 'calculated' | 'validated' | 'correction' = 'manual'
+  ): Promise<Property | undefined> {
     const property = this.properties.get(id);
     if (!property) return undefined;
-    
+
     const timestamp = new Date();
-    const updatedProperty = { 
-      ...property, 
-      ...updateData, 
-      lastUpdated: timestamp 
+    const updatedProperty = {
+      ...property,
+      ...updateData,
+      lastUpdated: timestamp,
     };
-    
+
     // Track changes for data lineage
     for (const key in updateData) {
       if (property[key] !== updatedProperty[key]) {
         const oldValue = property[key] === undefined ? null : property[key];
         const newValue = updatedProperty[key] === undefined ? null : updatedProperty[key];
-        
+
         // Only track if values actually changed
         if (oldValue !== newValue) {
           // Convert values to strings for storage
           const oldValueStr = typeof oldValue === 'string' ? oldValue : JSON.stringify(oldValue);
           const newValueStr = typeof newValue === 'string' ? newValue : JSON.stringify(newValue);
-          
+
           await this.createDataLineageRecord({
             propertyId: property.propertyId,
             fieldName: key,
@@ -1876,38 +2414,37 @@ export class MemStorage implements IStorage {
             changeTimestamp: timestamp,
             source,
             userId,
-            sourceDetails: { updateOperation: 'updateProperty', entityId: id }
+            sourceDetails: { updateOperation: 'updateProperty', entityId: id },
           });
         }
       }
     }
-    
+
     this.properties.set(id, updatedProperty);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Updated property: ${property.address}`,
       entityType: 'property',
-      entityId: property.propertyId
+      entityId: property.propertyId,
     });
-    
+
     return updatedProperty;
   }
-  
+
   // Land Record methods
   async getLandRecordsByPropertyId(propertyId: string): Promise<LandRecord[]> {
-    return Array.from(this.landRecords.values())
-      .filter(record => record.propertyId === propertyId);
+    return Array.from(this.landRecords.values()).filter(record => record.propertyId === propertyId);
   }
-  
+
   async createLandRecord(insertLandRecord: InsertLandRecord): Promise<LandRecord> {
     const id = this.currentLandRecordId++;
     const timestamp = new Date();
-    const landRecord: LandRecord = { 
-      ...insertLandRecord, 
-      id, 
-      createdAt: timestamp, 
+    const landRecord: LandRecord = {
+      ...insertLandRecord,
+      id,
+      createdAt: timestamp,
       lastUpdated: timestamp,
       // Ensure nullable fields are properly set
       topography: insertLandRecord.topography !== undefined ? insertLandRecord.topography : null,
@@ -1915,34 +2452,35 @@ export class MemStorage implements IStorage {
       depth: insertLandRecord.depth !== undefined ? insertLandRecord.depth : null,
       shape: insertLandRecord.shape !== undefined ? insertLandRecord.shape : null,
       utilities: insertLandRecord.utilities !== undefined ? insertLandRecord.utilities : null,
-      floodZone: insertLandRecord.floodZone !== undefined ? insertLandRecord.floodZone : null
+      floodZone: insertLandRecord.floodZone !== undefined ? insertLandRecord.floodZone : null,
     };
     this.landRecords.set(id, landRecord);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Added land record for property ID: ${landRecord.propertyId}`,
       entityType: 'landRecord',
-      entityId: landRecord.propertyId
+      entityId: landRecord.propertyId,
     });
-    
+
     return landRecord;
   }
-  
+
   // Improvement methods
   async getImprovementsByPropertyId(propertyId: string): Promise<Improvement[]> {
-    return Array.from(this.improvements.values())
-      .filter(improvement => improvement.propertyId === propertyId);
+    return Array.from(this.improvements.values()).filter(
+      improvement => improvement.propertyId === propertyId
+    );
   }
-  
+
   async createImprovement(insertImprovement: InsertImprovement): Promise<Improvement> {
     const id = this.currentImprovementId++;
     const timestamp = new Date();
-    const improvement: Improvement = { 
-      ...insertImprovement, 
-      id, 
-      createdAt: timestamp, 
+    const improvement: Improvement = {
+      ...insertImprovement,
+      id,
+      createdAt: timestamp,
       lastUpdated: timestamp,
       // Ensure nullable fields are properly set
       yearBuilt: insertImprovement.yearBuilt !== undefined ? insertImprovement.yearBuilt : null,
@@ -1950,78 +2488,82 @@ export class MemStorage implements IStorage {
       bedrooms: insertImprovement.bedrooms !== undefined ? insertImprovement.bedrooms : null,
       bathrooms: insertImprovement.bathrooms !== undefined ? insertImprovement.bathrooms : null,
       quality: insertImprovement.quality !== undefined ? insertImprovement.quality : null,
-      condition: insertImprovement.condition !== undefined ? insertImprovement.condition : null
+      condition: insertImprovement.condition !== undefined ? insertImprovement.condition : null,
     };
     this.improvements.set(id, improvement);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Added improvement (${improvement.improvementType}) for property ID: ${improvement.propertyId}`,
       entityType: 'improvement',
-      entityId: improvement.propertyId
+      entityId: improvement.propertyId,
     });
-    
+
     return improvement;
   }
-  
+
   // Field methods
   async getFieldsByPropertyId(propertyId: string): Promise<Field[]> {
-    return Array.from(this.fields.values())
-      .filter(field => field.propertyId === propertyId);
+    return Array.from(this.fields.values()).filter(field => field.propertyId === propertyId);
   }
-  
+
   async createField(insertField: InsertField): Promise<Field> {
     const id = this.currentFieldId++;
     const timestamp = new Date();
-    const field: Field = { 
-      ...insertField, 
-      id, 
-      createdAt: timestamp, 
+    const field: Field = {
+      ...insertField,
+      id,
+      createdAt: timestamp,
       lastUpdated: timestamp,
       // Ensure fieldValue is properly set
-      fieldValue: insertField.fieldValue !== undefined ? insertField.fieldValue : null
+      fieldValue: insertField.fieldValue !== undefined ? insertField.fieldValue : null,
     };
     this.fields.set(id, field);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Added field (${field.fieldType}) for property ID: ${field.propertyId}`,
       entityType: 'field',
-      entityId: field.propertyId
+      entityId: field.propertyId,
     });
-    
+
     return field;
   }
-  
+
   async getField(id: number): Promise<Field | undefined> {
     return this.fields.get(id);
   }
-  
-  async updateField(id: number, updateData: Partial<InsertField>, userId: number = 1, source: 'import' | 'manual' | 'api' | 'calculated' | 'validated' | 'correction' = 'manual'): Promise<Field | undefined> {
+
+  async updateField(
+    id: number,
+    updateData: Partial<InsertField>,
+    userId: number = 1,
+    source: 'import' | 'manual' | 'api' | 'calculated' | 'validated' | 'correction' = 'manual'
+  ): Promise<Field | undefined> {
     const field = this.fields.get(id);
     if (!field) return undefined;
-    
+
     const timestamp = new Date();
-    const updatedField = { 
-      ...field, 
-      ...updateData, 
-      lastUpdated: timestamp 
+    const updatedField = {
+      ...field,
+      ...updateData,
+      lastUpdated: timestamp,
     };
-    
+
     // Track changes for data lineage
     for (const key in updateData) {
       if (field[key] !== updatedField[key]) {
         const oldValue = field[key] === undefined ? null : field[key];
         const newValue = updatedField[key] === undefined ? null : updatedField[key];
-        
+
         // Only track if values actually changed
         if (oldValue !== newValue) {
           // Convert values to strings for storage
           const oldValueStr = typeof oldValue === 'string' ? oldValue : JSON.stringify(oldValue);
           const newValueStr = typeof newValue === 'string' ? newValue : JSON.stringify(newValue);
-          
+
           // Use the field's property ID for data lineage tracking
           await this.createDataLineageRecord({
             propertyId: field.propertyId,
@@ -2031,43 +2573,41 @@ export class MemStorage implements IStorage {
             changeTimestamp: timestamp,
             source,
             userId,
-            sourceDetails: { updateOperation: 'updateField', entityId: id }
+            sourceDetails: { updateOperation: 'updateField', entityId: id },
           });
         }
       }
     }
-    
+
     this.fields.set(id, updatedField);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Updated field (${field.fieldType}) for property ID: ${field.propertyId}`,
       entityType: 'field',
-      entityId: field.propertyId
+      entityId: field.propertyId,
     });
-    
+
     return updatedField;
   }
-  
+
   // Appeals Management methods
   async getAppealsByPropertyId(propertyId: string): Promise<Appeal[]> {
-    return Array.from(this.appeals.values())
-      .filter(appeal => appeal.propertyId === propertyId);
+    return Array.from(this.appeals.values()).filter(appeal => appeal.propertyId === propertyId);
   }
-  
+
   async getAppealsByUserId(userId: number): Promise<Appeal[]> {
-    return Array.from(this.appeals.values())
-      .filter(appeal => appeal.userId === userId);
+    return Array.from(this.appeals.values()).filter(appeal => appeal.userId === userId);
   }
-  
+
   async createAppeal(insertAppeal: InsertAppeal): Promise<Appeal> {
     const id = this.currentAppealId++;
     const timestamp = new Date();
-    const appeal: Appeal = { 
-      ...insertAppeal, 
-      id, 
-      createdAt: timestamp, 
+    const appeal: Appeal = {
+      ...insertAppeal,
+      id,
+      createdAt: timestamp,
       lastUpdated: timestamp,
       // Ensure all required fields are set with proper defaults
       status: insertAppeal.status || 'submitted',
@@ -2079,71 +2619,76 @@ export class MemStorage implements IStorage {
       assignedTo: insertAppeal.assignedTo || null,
       dateReceived: insertAppeal.dateReceived || timestamp,
       // Required fields that might not be in the insert schema
-      decision: null, 
-      decisionReason: null, 
+      decision: null,
+      decisionReason: null,
       decisionDate: null,
-      notificationSent: false
+      notificationSent: false,
     };
     this.appeals.set(id, appeal);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 3, // Citizen Interaction Agent
       activity: `New appeal submitted for property ID: ${appeal.propertyId}`,
       entityType: 'appeal',
-      entityId: appeal.propertyId
+      entityId: appeal.propertyId,
     });
-    
+
     return appeal;
   }
-  
+
   async updateAppealStatus(id: number, status: string): Promise<Appeal | undefined> {
     const appeal = this.appeals.get(id);
     if (!appeal) return undefined;
-    
+
     const timestamp = new Date();
-    const updatedAppeal = { 
-      ...appeal, 
-      status, 
-      lastUpdated: timestamp 
+    const updatedAppeal = {
+      ...appeal,
+      status,
+      lastUpdated: timestamp,
     };
-    
+
     this.appeals.set(id, updatedAppeal);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 3, // Citizen Interaction Agent
       activity: `Appeal status updated to ${status} for property ID: ${appeal.propertyId}`,
       entityType: 'appeal',
-      entityId: appeal.propertyId
+      entityId: appeal.propertyId,
     });
-    
+
     return updatedAppeal;
   }
-  
-  async updateAppeal(id: number, updates: Partial<Appeal>, userId: number = 1, source: 'import' | 'manual' | 'api' | 'calculated' | 'validated' | 'correction' = 'manual'): Promise<Appeal | undefined> {
+
+  async updateAppeal(
+    id: number,
+    updates: Partial<Appeal>,
+    userId: number = 1,
+    source: 'import' | 'manual' | 'api' | 'calculated' | 'validated' | 'correction' = 'manual'
+  ): Promise<Appeal | undefined> {
     const appeal = this.appeals.get(id);
     if (!appeal) return undefined;
-    
+
     const timestamp = new Date();
-    const updatedAppeal = { 
-      ...appeal, 
-      ...updates, 
-      lastUpdated: timestamp 
+    const updatedAppeal = {
+      ...appeal,
+      ...updates,
+      lastUpdated: timestamp,
     };
-    
+
     // Track changes for data lineage
     for (const key in updates) {
       if (appeal[key] !== updatedAppeal[key]) {
         const oldValue = appeal[key] === undefined ? null : appeal[key];
         const newValue = updatedAppeal[key] === undefined ? null : updatedAppeal[key];
-        
+
         // Only track if values actually changed
         if (oldValue !== newValue) {
           // Convert values to strings for storage
           const oldValueStr = typeof oldValue === 'string' ? oldValue : JSON.stringify(oldValue);
           const newValueStr = typeof newValue === 'string' ? newValue : JSON.stringify(newValue);
-          
+
           // Use the appeal's property ID for data lineage tracking
           await this.createDataLineageRecord({
             propertyId: appeal.propertyId,
@@ -2153,108 +2698,110 @@ export class MemStorage implements IStorage {
             changeTimestamp: timestamp,
             source,
             userId,
-            sourceDetails: { updateOperation: 'updateAppeal', entityId: id }
+            sourceDetails: { updateOperation: 'updateAppeal', entityId: id },
           });
         }
       }
     }
-    
+
     this.appeals.set(id, updatedAppeal);
-    
+
     // Create system activity if significant changes
     if (updates.status || updates.decision) {
       await this.createSystemActivity({
         agentId: 3, // Citizen Interaction Agent
         activity: `Appeal updated for property ID: ${appeal.propertyId}`,
         entityType: 'appeal',
-        entityId: appeal.propertyId
+        entityId: appeal.propertyId,
       });
     }
-    
+
     return updatedAppeal;
   }
-  
+
   async getAppealCommentsByAppealId(appealId: number): Promise<AppealComment[]> {
-    return Array.from(this.appealComments.values())
-      .filter(comment => comment.appealId === appealId);
+    return Array.from(this.appealComments.values()).filter(
+      comment => comment.appealId === appealId
+    );
   }
-  
+
   async createAppealComment(insertComment: InsertAppealComment): Promise<AppealComment> {
     const id = this.currentAppealCommentId++;
     const timestamp = new Date();
-    const comment: AppealComment = { 
-      ...insertComment, 
-      id, 
+    const comment: AppealComment = {
+      ...insertComment,
+      id,
       createdAt: timestamp,
       // Ensure internalOnly is properly set
-      internalOnly: insertComment.internalOnly !== undefined ? insertComment.internalOnly : null
+      internalOnly: insertComment.internalOnly !== undefined ? insertComment.internalOnly : null,
     };
     this.appealComments.set(id, comment);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 3, // Citizen Interaction Agent
       activity: `New comment added to appeal ID: ${comment.appealId}`,
       entityType: 'appealComment',
-      entityId: String(comment.appealId)
+      entityId: String(comment.appealId),
     });
-    
+
     return comment;
   }
-  
+
   async getAppealEvidenceByAppealId(appealId: number): Promise<AppealEvidence[]> {
-    return Array.from(this.appealEvidence.values())
-      .filter(evidence => evidence.appealId === appealId);
+    return Array.from(this.appealEvidence.values()).filter(
+      evidence => evidence.appealId === appealId
+    );
   }
-  
+
   async createAppealEvidence(insertEvidence: InsertAppealEvidence): Promise<AppealEvidence> {
     const id = this.currentAppealEvidenceId++;
     const timestamp = new Date();
-    const evidence: AppealEvidence = { 
-      ...insertEvidence, 
-      id, 
+    const evidence: AppealEvidence = {
+      ...insertEvidence,
+      id,
       createdAt: timestamp,
       // Ensure optional fields are properly set
       fileSize: insertEvidence.fileSize !== undefined ? insertEvidence.fileSize : null,
-      description: insertEvidence.description !== undefined ? insertEvidence.description : null
+      description: insertEvidence.description !== undefined ? insertEvidence.description : null,
     };
     this.appealEvidence.set(id, evidence);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 3, // Citizen Interaction Agent
       activity: `New evidence uploaded for appeal ID: ${evidence.appealId}`,
       entityType: 'appealEvidence',
-      entityId: String(evidence.appealId)
+      entityId: String(evidence.appealId),
     });
-    
+
     return evidence;
   }
-  
+
   // Audit Log methods
   async createAuditLog(insertAuditLog: InsertAuditLog): Promise<AuditLog> {
     const id = this.currentAuditLogId++;
     const timestamp = new Date();
-    const auditLog: AuditLog = { 
-      ...insertAuditLog, 
-      id, 
+    const auditLog: AuditLog = {
+      ...insertAuditLog,
+      id,
       timestamp,
       // Ensure nullable fields are properly set
       userId: insertAuditLog.userId !== undefined ? insertAuditLog.userId : null,
       entityId: insertAuditLog.entityId !== undefined ? insertAuditLog.entityId : null,
       details: insertAuditLog.details || null,
-      ipAddress: insertAuditLog.ipAddress !== undefined ? insertAuditLog.ipAddress : null
+      ipAddress: insertAuditLog.ipAddress !== undefined ? insertAuditLog.ipAddress : null,
     };
     this.auditLogs.set(id, auditLog);
     return auditLog;
   }
-  
+
   async getAuditLogs(limit: number = 100): Promise<AuditLog[]> {
     return Array.from(this.auditLogs.values())
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, limit);
   }
-  
+
   // Data Lineage methods
   async createDataLineageRecord(record: InsertDataLineageRecord): Promise<DataLineageRecord> {
     const id = this.dataLineageRecords.size + 1;
@@ -2262,32 +2809,36 @@ export class MemStorage implements IStorage {
     const lineageRecord: DataLineageRecord = {
       ...record,
       id,
-      createdAt: timestamp
+      createdAt: timestamp,
     };
     this.dataLineageRecords.set(id, lineageRecord);
     return lineageRecord;
   }
-  
+
   async getDataLineageByField(propertyId: string, fieldName: string): Promise<DataLineageRecord[]> {
     return Array.from(this.dataLineageRecords.values())
       .filter(record => record.propertyId === propertyId && record.fieldName === fieldName)
       .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime());
   }
-  
+
   async getDataLineageByProperty(propertyId: string): Promise<DataLineageRecord[]> {
     return Array.from(this.dataLineageRecords.values())
       .filter(record => record.propertyId === propertyId)
       .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime());
   }
-  
+
   async getDataLineageByUser(userId: number, limit: number = 100): Promise<DataLineageRecord[]> {
     return Array.from(this.dataLineageRecords.values())
       .filter(record => record.userId === userId)
       .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime())
       .slice(0, limit);
   }
-  
-  async getDataLineageByDateRange(startDate: Date, endDate: Date, limit: number = 100): Promise<DataLineageRecord[]> {
+
+  async getDataLineageByDateRange(
+    startDate: Date,
+    endDate: Date,
+    limit: number = 100
+  ): Promise<DataLineageRecord[]> {
     return Array.from(this.dataLineageRecords.values())
       .filter(record => {
         const timestamp = record.changeTimestamp.getTime();
@@ -2296,48 +2847,52 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime())
       .slice(0, limit);
   }
-  
+
   async getDataLineageBySource(source: string, limit: number = 100): Promise<DataLineageRecord[]> {
     return Array.from(this.dataLineageRecords.values())
       .filter(record => record.source === source)
       .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime())
       .slice(0, limit);
   }
-  
+
   // AI Agent methods
   async getAllAiAgents(): Promise<AiAgent[]> {
     return Array.from(this.aiAgents.values());
   }
-  
-  async updateAiAgentStatus(id: number, status: string, performance: number): Promise<AiAgent | undefined> {
+
+  async updateAiAgentStatus(
+    id: number,
+    status: string,
+    performance: number
+  ): Promise<AiAgent | undefined> {
     const agent = this.aiAgents.get(id);
     if (!agent) return undefined;
-    
+
     const timestamp = new Date();
-    const updatedAgent = { 
-      ...agent, 
-      status, 
+    const updatedAgent = {
+      ...agent,
+      status,
       performance,
-      lastActivity: timestamp 
+      lastActivity: timestamp,
     };
-    
+
     this.aiAgents.set(id, updatedAgent);
     return updatedAgent;
   }
-  
+
   // System Activity methods
   async getSystemActivities(limit: number = 100): Promise<SystemActivity[]> {
     return Array.from(this.systemActivities.values())
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, limit);
   }
-  
+
   async createSystemActivity(insertActivity: InsertSystemActivity): Promise<SystemActivity> {
     const id = this.currentSystemActivityId++;
     const timestamp = new Date();
-    const activity: SystemActivity = { 
-      ...insertActivity, 
-      id, 
+    const activity: SystemActivity = {
+      ...insertActivity,
+      id,
       timestamp,
       // Ensure nullable fields are properly set
       agentId: insertActivity.agentId !== undefined ? insertActivity.agentId : null,
@@ -2347,7 +2902,7 @@ export class MemStorage implements IStorage {
     this.systemActivities.set(id, activity);
     return activity;
   }
-  
+
   // MCP Tool Execution Log methods
   async createMCPToolExecutionLog(log: InsertMCPToolExecutionLog): Promise<MCPToolExecutionLog> {
     const id = this.currentMCPToolExecutionLogId++;
@@ -2355,469 +2910,507 @@ export class MemStorage implements IStorage {
     const mcpToolExecutionLog: MCPToolExecutionLog = {
       ...log,
       id,
-      createdAt: timestamp
+      createdAt: timestamp,
     };
     this.mcpToolExecutionLogs.set(id, mcpToolExecutionLog);
     return mcpToolExecutionLog;
   }
 
   // Validation methods
-  async createValidationRule(rule: Omit<ValidationRule, 'id' | 'createdAt' | 'updatedAt'>): Promise<ValidationRule> {
+  async createValidationRule(
+    rule: Omit<ValidationRule, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<ValidationRule> {
     const id = `rule_${crypto.randomUUID()}`;
     const timestamp = new Date();
     const validationRule: ValidationRule = {
       ...rule,
       id,
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
+
     this.validationRules.set(id, validationRule);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Created validation rule: ${rule.name}`,
       entityType: 'validation_rule',
-      entityId: id
+      entityId: id,
     });
-    
+
     return validationRule;
   }
-  
+
   async getValidationRuleById(ruleId: string): Promise<ValidationRule | null> {
     const rule = this.validationRules.get(ruleId);
     return rule || null;
   }
-  
-  async getAllValidationRules(options?: { 
-    category?: RuleCategory, 
-    level?: RuleLevel,
-    entityType?: EntityType,
-    active?: boolean 
+
+  async getAllValidationRules(options?: {
+    category?: RuleCategory;
+    level?: RuleLevel;
+    entityType?: EntityType;
+    active?: boolean;
   }): Promise<ValidationRule[]> {
     let rules = Array.from(this.validationRules.values());
-    
+
     if (options) {
       if (options.category !== undefined) {
         rules = rules.filter(rule => rule.category === options.category);
       }
-      
+
       if (options.level !== undefined) {
         rules = rules.filter(rule => rule.level === options.level);
       }
-      
+
       if (options.entityType !== undefined) {
         rules = rules.filter(rule => rule.entityType === options.entityType);
       }
-      
+
       if (options.active !== undefined) {
         rules = rules.filter(rule => rule.active === options.active);
       }
     }
-    
+
     return rules;
   }
-  
+
   async getValidationRulesByEntityType(entityType: EntityType): Promise<ValidationRule[]> {
-    return Array.from(this.validationRules.values())
-      .filter(rule => rule.entityType === entityType);
+    return Array.from(this.validationRules.values()).filter(rule => rule.entityType === entityType);
   }
-  
-  async updateValidationRule(ruleId: string, updates: Partial<ValidationRule>): Promise<ValidationRule | null> {
+
+  async updateValidationRule(
+    ruleId: string,
+    updates: Partial<ValidationRule>
+  ): Promise<ValidationRule | null> {
     const rule = this.validationRules.get(ruleId);
     if (!rule) return null;
-    
+
     const timestamp = new Date();
-    const updatedRule = { 
-      ...rule, 
-      ...updates, 
-      updatedAt: timestamp 
+    const updatedRule = {
+      ...rule,
+      ...updates,
+      updatedAt: timestamp,
     };
-    
+
     this.validationRules.set(ruleId, updatedRule);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Updated validation rule: ${rule.name}`,
       entityType: 'validation_rule',
-      entityId: ruleId
+      entityId: ruleId,
     });
-    
+
     return updatedRule;
   }
-  
+
   async deleteValidationRule(ruleId: string): Promise<boolean> {
     const rule = this.validationRules.get(ruleId);
     if (!rule) return false;
-    
+
     const result = this.validationRules.delete(ruleId);
-    
+
     if (result) {
       // Create system activity
       await this.createSystemActivity({
         agentId: 1, // Data Management Agent
         activity: `Deleted validation rule: ${rule.name}`,
         entityType: 'validation_rule',
-        entityId: ruleId
+        entityId: ruleId,
       });
     }
-    
+
     return result;
   }
-  
+
   // Validation issues methods
-  async createValidationIssue(issue: Omit<ValidationIssue, 'id' | 'createdAt'>): Promise<ValidationIssue> {
+  async createValidationIssue(
+    issue: Omit<ValidationIssue, 'id' | 'createdAt'>
+  ): Promise<ValidationIssue> {
     const id = `issue_${crypto.randomUUID()}`;
     const timestamp = new Date();
     const validationIssue: ValidationIssue = {
       ...issue,
       id,
-      createdAt: timestamp
+      createdAt: timestamp,
     };
-    
+
     this.validationIssues.set(id, validationIssue);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Created validation issue for ${issue.entityType} ${issue.entityId}: ${issue.message}`,
       entityType: issue.entityType,
-      entityId: issue.entityId
+      entityId: issue.entityId,
     });
-    
+
     return validationIssue;
   }
-  
+
   async getValidationIssueById(issueId: string): Promise<ValidationIssue | null> {
     const issue = this.validationIssues.get(issueId);
     return issue || null;
   }
-  
+
   async getValidationIssues(options?: {
-    entityId?: string, 
-    entityType?: EntityType,
-    ruleId?: string,
-    level?: RuleLevel,
-    status?: IssueStatus,
-    createdAfter?: Date,
-    createdBefore?: Date
+    entityId?: string;
+    entityType?: EntityType;
+    ruleId?: string;
+    level?: RuleLevel;
+    status?: IssueStatus;
+    createdAfter?: Date;
+    createdBefore?: Date;
   }): Promise<ValidationIssue[]> {
     let issues = Array.from(this.validationIssues.values());
-    
+
     if (options) {
       if (options.entityId !== undefined) {
         issues = issues.filter(issue => issue.entityId === options.entityId);
       }
-      
+
       if (options.entityType !== undefined) {
         issues = issues.filter(issue => issue.entityType === options.entityType);
       }
-      
+
       if (options.ruleId !== undefined) {
         issues = issues.filter(issue => issue.ruleId === options.ruleId);
       }
-      
+
       if (options.level !== undefined) {
         issues = issues.filter(issue => issue.level === options.level);
       }
-      
+
       if (options.status !== undefined) {
         issues = issues.filter(issue => issue.status === options.status);
       }
-      
+
       if (options.createdAfter !== undefined) {
         issues = issues.filter(issue => issue.createdAt >= options.createdAfter!);
       }
-      
+
       if (options.createdBefore !== undefined) {
         issues = issues.filter(issue => issue.createdAt <= options.createdBefore!);
       }
     }
-    
+
     return issues;
   }
-  
-  async updateValidationIssue(issueId: string, updates: Partial<ValidationIssue>): Promise<ValidationIssue | null> {
+
+  async updateValidationIssue(
+    issueId: string,
+    updates: Partial<ValidationIssue>
+  ): Promise<ValidationIssue | null> {
     const issue = this.validationIssues.get(issueId);
     if (!issue) return null;
-    
-    const updatedIssue = { 
-      ...issue, 
-      ...updates
+
+    const updatedIssue = {
+      ...issue,
+      ...updates,
     };
-    
+
     this.validationIssues.set(issueId, updatedIssue);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Updated validation issue: ${issue.message}`,
       entityType: issue.entityType,
-      entityId: issue.entityId
+      entityId: issue.entityId,
     });
-    
+
     return updatedIssue;
   }
-  
-  async resolveValidationIssue(issueId: string, resolution: string, userId?: number): Promise<ValidationIssue | null> {
+
+  async resolveValidationIssue(
+    issueId: string,
+    resolution: string,
+    userId?: number
+  ): Promise<ValidationIssue | null> {
     const issue = this.validationIssues.get(issueId);
     if (!issue) return null;
-    
-    const resolvedIssue = { 
-      ...issue, 
+
+    const resolvedIssue = {
+      ...issue,
       status: 'resolved' as IssueStatus,
       resolution,
       resolvedBy: userId || null,
-      resolvedAt: new Date()
+      resolvedAt: new Date(),
     };
-    
+
     this.validationIssues.set(issueId, resolvedIssue);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Resolved validation issue: ${resolution}`,
       entityType: issue.entityType,
-      entityId: issue.entityId
+      entityId: issue.entityId,
     });
-    
+
     return resolvedIssue;
   }
-  
-  async acknowledgeValidationIssue(issueId: string, notes?: string): Promise<ValidationIssue | null> {
+
+  async acknowledgeValidationIssue(
+    issueId: string,
+    notes?: string
+  ): Promise<ValidationIssue | null> {
     const issue = this.validationIssues.get(issueId);
     if (!issue) return null;
-    
-    const acknowledgedIssue = { 
-      ...issue, 
+
+    const acknowledgedIssue = {
+      ...issue,
       status: 'acknowledged' as IssueStatus,
-      notes: notes || issue.notes
+      notes: notes || issue.notes,
     };
-    
+
     this.validationIssues.set(issueId, acknowledgedIssue);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Acknowledged validation issue: ${issue.message}`,
       entityType: issue.entityType,
-      entityId: issue.entityId
+      entityId: issue.entityId,
     });
-    
+
     return acknowledgedIssue;
   }
-  
-  async waiveValidationIssue(issueId: string, reason: string, userId?: number): Promise<ValidationIssue | null> {
+
+  async waiveValidationIssue(
+    issueId: string,
+    reason: string,
+    userId?: number
+  ): Promise<ValidationIssue | null> {
     const issue = this.validationIssues.get(issueId);
     if (!issue) return null;
-    
-    const waivedIssue = { 
-      ...issue, 
+
+    const waivedIssue = {
+      ...issue,
       status: 'waived' as IssueStatus,
       waiver: reason,
       waivedBy: userId || null,
-      waivedAt: new Date()
+      waivedAt: new Date(),
     };
-    
+
     this.validationIssues.set(issueId, waivedIssue);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Waived validation issue: ${reason}`,
       entityType: issue.entityType,
-      entityId: issue.entityId
+      entityId: issue.entityId,
     });
-    
+
     return waivedIssue;
   }
-  
+
   // Workflow methods
-  async createWorkflowDefinition(definition: Omit<WorkflowDefinition, 'definitionId' | 'createdAt'>): Promise<WorkflowDefinition> {
+  async createWorkflowDefinition(
+    definition: Omit<WorkflowDefinition, 'definitionId' | 'createdAt'>
+  ): Promise<WorkflowDefinition> {
     const definitionId = `wfdef_${crypto.randomUUID()}`;
     const timestamp = new Date();
     const workflowDefinition: WorkflowDefinition = {
       ...definition,
       definitionId,
-      createdAt: timestamp
+      createdAt: timestamp,
     };
-    
+
     this.workflowDefinitions.set(definitionId, workflowDefinition);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Created workflow definition: ${definition.name}`,
       entityType: 'workflow_definition',
-      entityId: definitionId
+      entityId: definitionId,
     });
-    
+
     return workflowDefinition;
   }
-  
+
   async getWorkflowDefinitionById(definitionId: string): Promise<WorkflowDefinition | null> {
     const definition = this.workflowDefinitions.get(definitionId);
     return definition || null;
   }
-  
+
   async getAllWorkflowDefinitions(active?: boolean): Promise<WorkflowDefinition[]> {
     let definitions = Array.from(this.workflowDefinitions.values());
-    
+
     if (active !== undefined) {
       definitions = definitions.filter(def => def.isActive === active);
     }
-    
+
     return definitions;
   }
-  
-  async updateWorkflowDefinition(definitionId: string, updates: Partial<WorkflowDefinition>): Promise<WorkflowDefinition | null> {
+
+  async updateWorkflowDefinition(
+    definitionId: string,
+    updates: Partial<WorkflowDefinition>
+  ): Promise<WorkflowDefinition | null> {
     const definition = this.workflowDefinitions.get(definitionId);
     if (!definition) return null;
-    
-    const updatedDefinition = { 
-      ...definition, 
-      ...updates 
+
+    const updatedDefinition = {
+      ...definition,
+      ...updates,
     };
-    
+
     this.workflowDefinitions.set(definitionId, updatedDefinition);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Updated workflow definition: ${definition.name}`,
       entityType: 'workflow_definition',
-      entityId: definitionId
+      entityId: definitionId,
     });
-    
+
     return updatedDefinition;
   }
-  
+
   async activateWorkflowDefinition(definitionId: string): Promise<boolean> {
     const definition = this.workflowDefinitions.get(definitionId);
     if (!definition) return false;
-    
-    const activatedDefinition = { 
-      ...definition, 
-      isActive: true 
+
+    const activatedDefinition = {
+      ...definition,
+      isActive: true,
     };
-    
+
     this.workflowDefinitions.set(definitionId, activatedDefinition);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Activated workflow definition: ${definition.name}`,
       entityType: 'workflow_definition',
-      entityId: definitionId
+      entityId: definitionId,
     });
-    
+
     return true;
   }
-  
+
   async deactivateWorkflowDefinition(definitionId: string): Promise<boolean> {
     const definition = this.workflowDefinitions.get(definitionId);
     if (!definition) return false;
-    
-    const deactivatedDefinition = { 
-      ...definition, 
-      isActive: false 
+
+    const deactivatedDefinition = {
+      ...definition,
+      isActive: false,
     };
-    
+
     this.workflowDefinitions.set(definitionId, deactivatedDefinition);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Deactivated workflow definition: ${definition.name}`,
       entityType: 'workflow_definition',
-      entityId: definitionId
+      entityId: definitionId,
     });
-    
+
     return true;
   }
-  
+
   // Workflow instance methods
-  async createWorkflowInstance(instance: Omit<WorkflowInstance, 'instanceId' | 'createdAt' | 'lastUpdated'>): Promise<WorkflowInstance> {
+  async createWorkflowInstance(
+    instance: Omit<WorkflowInstance, 'instanceId' | 'createdAt' | 'lastUpdated'>
+  ): Promise<WorkflowInstance> {
     const instanceId = `wf_${crypto.randomUUID()}`;
     const timestamp = new Date();
     const workflowInstance: WorkflowInstance = {
       ...instance,
       instanceId,
       createdAt: timestamp,
-      lastUpdated: timestamp
+      lastUpdated: timestamp,
     };
-    
+
     this.workflowInstances.set(instanceId, workflowInstance);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Created workflow instance for definition: ${instance.definitionId}`,
       entityType: instance.entityType,
-      entityId: instance.entityId
+      entityId: instance.entityId,
     });
-    
+
     return workflowInstance;
   }
-  
+
   async getWorkflowInstanceById(instanceId: string): Promise<WorkflowInstance | null> {
     const instance = this.workflowInstances.get(instanceId);
     return instance || null;
   }
-  
+
   async getWorkflowInstancesByDefinitionId(definitionId: string): Promise<WorkflowInstance[]> {
-    return Array.from(this.workflowInstances.values())
-      .filter(instance => instance.definitionId === definitionId);
+    return Array.from(this.workflowInstances.values()).filter(
+      instance => instance.definitionId === definitionId
+    );
   }
-  
-  async getWorkflowInstancesByEntityId(entityId: string, entityType: string): Promise<WorkflowInstance[]> {
-    return Array.from(this.workflowInstances.values())
-      .filter(instance => instance.entityId === entityId && instance.entityType === entityType);
+
+  async getWorkflowInstancesByEntityId(
+    entityId: string,
+    entityType: string
+  ): Promise<WorkflowInstance[]> {
+    return Array.from(this.workflowInstances.values()).filter(
+      instance => instance.entityId === entityId && instance.entityType === entityType
+    );
   }
-  
+
   async getWorkflowInstancesByAssignee(assigneeId: number): Promise<WorkflowInstance[]> {
-    return Array.from(this.workflowInstances.values())
-      .filter(instance => instance.assigneeId === assigneeId);
+    return Array.from(this.workflowInstances.values()).filter(
+      instance => instance.assigneeId === assigneeId
+    );
   }
-  
-  async updateWorkflowInstance(instanceId: string, updates: Partial<WorkflowInstance>): Promise<WorkflowInstance | null> {
+
+  async updateWorkflowInstance(
+    instanceId: string,
+    updates: Partial<WorkflowInstance>
+  ): Promise<WorkflowInstance | null> {
     const instance = this.workflowInstances.get(instanceId);
     if (!instance) return null;
-    
+
     const timestamp = new Date();
-    const updatedInstance = { 
-      ...instance, 
-      ...updates, 
-      lastUpdated: timestamp 
+    const updatedInstance = {
+      ...instance,
+      ...updates,
+      lastUpdated: timestamp,
     };
-    
+
     this.workflowInstances.set(instanceId, updatedInstance);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Updated workflow instance: ${instance.instanceId}`,
       entityType: instance.entityType,
-      entityId: instance.entityId
+      entityId: instance.entityId,
     });
-    
+
     return updatedInstance;
   }
-  
+
   // Workflow step history methods
-  async createWorkflowStepHistory(stepHistory: Omit<WorkflowStepHistory, 'id' | 'createdAt'>): Promise<WorkflowStepHistory> {
+  async createWorkflowStepHistory(
+    stepHistory: Omit<WorkflowStepHistory, 'id' | 'createdAt'>
+  ): Promise<WorkflowStepHistory> {
     const id = this.currentWorkflowStepHistoryId++;
     const timestamp = new Date();
     const workflowStepHistory: WorkflowStepHistory = {
       ...stepHistory,
       id,
-      createdAt: timestamp
+      createdAt: timestamp,
     };
-    
+
     this.workflowStepHistory.set(id, workflowStepHistory);
-    
+
     // Get the workflow instance to reference in the activity log
     const instance = await this.getWorkflowInstanceById(stepHistory.instanceId);
     if (instance) {
@@ -2826,13 +3419,13 @@ export class MemStorage implements IStorage {
         agentId: 1, // Data Management Agent
         activity: `Workflow step transition: ${stepHistory.fromStep} → ${stepHistory.toStep}`,
         entityType: instance.entityType,
-        entityId: instance.entityId
+        entityId: instance.entityId,
       });
     }
-    
+
     return workflowStepHistory;
   }
-  
+
   async getWorkflowStepHistoryByInstanceId(instanceId: string): Promise<WorkflowStepHistory[]> {
     return Array.from(this.workflowStepHistory.values())
       .filter(history => history.instanceId === instanceId)
@@ -2850,27 +3443,31 @@ export class MemStorage implements IStorage {
     // Use the specialized function from pacs-storage.ts
     return fetchAllPacsModules(this.pacsModules);
   }
-  
+
   async upsertPacsModule(insertModule: InsertPacsModule): Promise<PacsModule> {
     // Use the specialized function from pacs-storage.ts
     return upsertPacs(this.pacsModules, this.currentPacsModuleId, insertModule);
   }
-  
+
   async getPacsModuleById(id: number): Promise<PacsModule | undefined> {
     // Use the specialized function from pacs-storage.ts
     return fetchPacsModuleById(this.pacsModules, id);
   }
-  
+
   async getPacsModulesByCategory(): Promise<PacsModule[]> {
     // Use the specialized function from pacs-storage.ts
     return fetchPacsModulesByCategory(this.pacsModules);
   }
-  
-  async updatePacsModuleSyncStatus(id: number, syncStatus: string, lastSyncTimestamp: Date): Promise<PacsModule | undefined> {
+
+  async updatePacsModuleSyncStatus(
+    id: number,
+    syncStatus: string,
+    lastSyncTimestamp: Date
+  ): Promise<PacsModule | undefined> {
     // Use the specialized function from pacs-storage.ts
     return updatePacsSyncStatus(this.pacsModules, id, syncStatus, lastSyncTimestamp);
   }
-  
+
   // Agent Messages methods
   async createAgentMessage(message: InsertAgentMessage): Promise<AgentMessage> {
     const id = ++this.currentAgentMessageId;
@@ -2880,9 +3477,9 @@ export class MemStorage implements IStorage {
       id,
       createdAt: timestamp,
       updatedAt: timestamp,
-      status: message.status || 'pending' // Default status is pending
+      status: message.status || 'pending', // Default status is pending
     };
-    
+
     this.agentMessages.set(id, newMessage);
     return newMessage;
   }
@@ -2892,28 +3489,29 @@ export class MemStorage implements IStorage {
   }
 
   async getAgentMessagesByType(messageType: MessageEventType): Promise<AgentMessage[]> {
-    return Array.from(this.agentMessages.values())
-      .filter(message => message.messageType === messageType);
+    return Array.from(this.agentMessages.values()).filter(
+      message => message.messageType === messageType
+    );
   }
 
   async getAgentMessagesByPriority(priority: MessagePriority): Promise<AgentMessage[]> {
-    return Array.from(this.agentMessages.values())
-      .filter(message => message.priority === priority);
+    return Array.from(this.agentMessages.values()).filter(message => message.priority === priority);
   }
 
   async getAgentMessagesBySourceAgent(sourceAgentId: string): Promise<AgentMessage[]> {
-    return Array.from(this.agentMessages.values())
-      .filter(message => message.senderAgentId === sourceAgentId);
+    return Array.from(this.agentMessages.values()).filter(
+      message => message.senderAgentId === sourceAgentId
+    );
   }
 
   async getAgentMessagesByTargetAgent(targetAgentId: string): Promise<AgentMessage[]> {
-    return Array.from(this.agentMessages.values())
-      .filter(message => message.receiverAgentId === targetAgentId);
+    return Array.from(this.agentMessages.values()).filter(
+      message => message.receiverAgentId === targetAgentId
+    );
   }
 
   async getAgentMessagesByStatus(status: string): Promise<AgentMessage[]> {
-    return Array.from(this.agentMessages.values())
-      .filter(message => message.status === status);
+    return Array.from(this.agentMessages.values()).filter(message => message.status === status);
   }
 
   async getRecentAgentMessages(limit: number = 100): Promise<AgentMessage[]> {
@@ -2927,30 +3525,33 @@ export class MemStorage implements IStorage {
     if (!message) {
       return undefined;
     }
-    
+
     const updatedMessage: AgentMessage = {
       ...message,
       status,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.agentMessages.set(id, updatedMessage);
     return updatedMessage;
   }
 
-  async getAgentMessagesForEntity(entityType: EntityType, entityId: string): Promise<AgentMessage[]> {
-    return Array.from(this.agentMessages.values())
-      .filter(message => 
-        message.entityType === entityType && 
-        message.entityId === entityId
-      );
+  async getAgentMessagesForEntity(
+    entityType: EntityType,
+    entityId: string
+  ): Promise<AgentMessage[]> {
+    return Array.from(this.agentMessages.values()).filter(
+      message => message.entityType === entityType && message.entityId === entityId
+    );
   }
-  
+
   // Property Insight Sharing methods
-  async createPropertyInsightShare(insertShare: InsertPropertyInsightShare): Promise<PropertyInsightShare> {
+  async createPropertyInsightShare(
+    insertShare: InsertPropertyInsightShare
+  ): Promise<PropertyInsightShare> {
     const id = this.currentPropertyInsightShareId++;
     const timestamp = new Date();
-    
+
     // Create a complete PropertyInsightShare object with defaults for required fields
     const share: PropertyInsightShare = {
       ...insertShare,
@@ -2960,93 +3561,99 @@ export class MemStorage implements IStorage {
       accessCount: 0,
       // Set defaults for fields that might be undefined but are required by the PropertyInsightShare type
       password: insertShare.password || null,
-      format: insertShare.format || "detailed",
+      format: insertShare.format || 'detailed',
       createdBy: insertShare.createdBy || null,
       allowedDomains: insertShare.allowedDomains || null,
       expiresAt: insertShare.expiresAt || null,
       isPublic: insertShare.isPublic ?? true,
       // Handle propertyName and propertyAddress values (null if undefined)
       propertyName: insertShare.propertyName || null,
-      propertyAddress: insertShare.propertyAddress || null
+      propertyAddress: insertShare.propertyAddress || null,
     };
-    
+
     this.propertyInsightShares.set(share.shareId, share);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Analysis Agent
       activity: `Created property insight share for property ID: ${share.propertyId}`,
       entityType: 'propertyInsight',
-      entityId: share.propertyId
+      entityId: share.propertyId,
     });
-    
+
     return share;
   }
-  
+
   async getPropertyInsightShareById(shareId: string): Promise<PropertyInsightShare | null> {
     const share = this.propertyInsightShares.get(shareId);
     if (!share) return null;
-    
+
     // Check if share has expired
     if (share.expiresAt && new Date(share.expiresAt) < new Date()) {
       return null;
     }
-    
+
     return share;
   }
-  
+
   async getPropertyInsightSharesByPropertyId(propertyId: string): Promise<PropertyInsightShare[]> {
     return Array.from(this.propertyInsightShares.values())
       .filter((share: PropertyInsightShare) => share.propertyId.includes(propertyId))
-      .filter((share: PropertyInsightShare) => !share.expiresAt || new Date(share.expiresAt) >= new Date());
+      .filter(
+        (share: PropertyInsightShare) => !share.expiresAt || new Date(share.expiresAt) >= new Date()
+      );
   }
-  
-  async updatePropertyInsightShare(shareId: string, updates: Partial<InsertPropertyInsightShare>): Promise<PropertyInsightShare | null> {
+
+  async updatePropertyInsightShare(
+    shareId: string,
+    updates: Partial<InsertPropertyInsightShare>
+  ): Promise<PropertyInsightShare | null> {
     const share = this.propertyInsightShares.get(shareId);
     if (!share) return null;
-    
+
     const timestamp = new Date();
     const updatedShare: PropertyInsightShare = {
       ...share,
-      ...updates as any, // Type assertion to handle accessCount update
-      updatedAt: timestamp
+      ...(updates as any), // Type assertion to handle accessCount update
+      updatedAt: timestamp,
     };
-    
+
     this.propertyInsightShares.set(shareId, updatedShare);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Analysis Agent
       activity: `Updated property insight share for property ID: ${share.propertyId}`,
       entityType: 'propertyInsight',
-      entityId: share.propertyId
+      entityId: share.propertyId,
     });
-    
+
     return updatedShare;
   }
-  
+
   async getAllPropertyInsightShares(): Promise<PropertyInsightShare[]> {
-    return Array.from(this.propertyInsightShares.values())
-      .filter((share: PropertyInsightShare) => !share.expiresAt || new Date(share.expiresAt) >= new Date());
+    return Array.from(this.propertyInsightShares.values()).filter(
+      (share: PropertyInsightShare) => !share.expiresAt || new Date(share.expiresAt) >= new Date()
+    );
   }
-  
+
   async deletePropertyInsightShare(shareId: string): Promise<boolean> {
     const share = this.propertyInsightShares.get(shareId);
     if (!share) return false;
-    
+
     this.propertyInsightShares.delete(shareId);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Analysis Agent
       activity: `Deleted property insight share for property ID: ${share.propertyId}`,
       entityType: 'propertyInsight',
-      entityId: share.propertyId
+      entityId: share.propertyId,
     });
-    
+
     return true;
   }
-  
+
   // Property Statistics methods
   async getPropertyStatistics(timeRange: string): Promise<{
     totalProperties: number;
@@ -3056,36 +3663,34 @@ export class MemStorage implements IStorage {
     typeDistribution: Record<string, number>;
   }> {
     const properties = Array.from(this.properties.values());
-    
+
     // Calculate total assessed value
     const totalAssessedValue = properties.reduce((sum, property) => {
       const value = property.value ? parseFloat(property.value) : 0;
       return sum + value;
     }, 0);
-    
+
     // Calculate type distribution
     const typeDistribution: Record<string, number> = {};
     properties.forEach(property => {
       const type = property.propertyType || 'Unknown';
       typeDistribution[type] = (typeDistribution[type] || 0) + 1;
     });
-    
+
     // Calculate median value
     const values = properties
-      .map(property => property.value ? parseFloat(property.value) : 0)
+      .map(property => (property.value ? parseFloat(property.value) : 0))
       .sort((a, b) => a - b);
-    
+
     const mid = Math.floor(values.length / 2);
-    const medianValue = values.length % 2 === 0
-      ? (values[mid - 1] + values[mid]) / 2
-      : values[mid];
-    
+    const medianValue = values.length % 2 === 0 ? (values[mid - 1] + values[mid]) / 2 : values[mid];
+
     return {
       totalProperties: properties.length,
       totalAssessedValue,
       medianValue,
       changesCount: 245, // Mock data for now
-      typeDistribution
+      typeDistribution,
     };
   }
 
@@ -3095,71 +3700,78 @@ export class MemStorage implements IStorage {
 
   async searchProperties(params: any): Promise<{ properties: any[]; total: number }> {
     const properties = Array.from(this.properties.values());
-    
+
     // Filter properties based on search parameters
     const filtered = properties.filter(property => {
       let match = true;
-      
+
       if (params.query) {
         const query = params.query.toLowerCase();
         const addressMatch = property.address?.toLowerCase().includes(query);
         const idMatch = property.propertyId?.toString().includes(query);
         match = match && (addressMatch || idMatch);
       }
-      
+
       if (params.propertyType) {
         match = match && property.propertyType === params.propertyType;
       }
-      
+
       if (params.minValue) {
         const value = property.value ? parseFloat(property.value) : 0;
         match = match && value >= params.minValue;
       }
-      
+
       if (params.maxValue) {
         const value = property.value ? parseFloat(property.value) : 0;
         match = match && value <= params.maxValue;
       }
-      
+
       if (params.zipCode) {
         match = match && property.zipCode === params.zipCode;
       }
-      
+
       return match;
     });
-    
+
     // Paginate results
     const page = params.page || 1;
     const limit = params.limit || 20;
     const start = (page - 1) * limit;
     const end = start + limit;
-    
+
     return {
       properties: filtered.slice(start, end),
-      total: filtered.length
+      total: filtered.length,
     };
   }
 
-  async getNearbyProperties(propertyId: string, radiusMiles: number, limit: number): Promise<any[]> {
+  async getNearbyProperties(
+    propertyId: string,
+    radiusMiles: number,
+    limit: number
+  ): Promise<any[]> {
     // This is a mock implementation
     const properties = Array.from(this.properties.values());
     return properties.slice(0, limit);
   }
 
-  async getPropertyValueHistory(propertyId: string, years: number): Promise<{ date: string; value: number }[]> {
+  async getPropertyValueHistory(
+    propertyId: string,
+    years: number
+  ): Promise<{ date: string; value: number }[]> {
     // This is a mock implementation
     const currentValue = 250000;
     const history: { date: string; value: number }[] = [];
-    
+
     for (let i = 0; i < years; i++) {
       const year = 2025 - i;
-      const value = currentValue * (1 - (i * 0.03)); // 3% decrease per year going back
+      const value = currentValue * (1 - i * 0.03); // 3% decrease per year going back
       history.push({
         date: `${year}-01-01`,
-        value: Math.round(value)
+        value: Math.round(value),
       });
     }
-    
+
     return history;
   }
 
@@ -3181,8 +3793,8 @@ export class MemStorage implements IStorage {
         { date: '2025-01', value: 245000 },
         { date: '2025-02', value: 248000 },
         { date: '2025-03', value: 252000 },
-        { date: '2025-04', value: 257000 }
-      ]
+        { date: '2025-04', value: 257000 },
+      ],
     };
   }
 
@@ -3195,7 +3807,7 @@ export class MemStorage implements IStorage {
       assessmentDate: new Date(),
       assessor: 'John Smith',
       status: 'Completed',
-      notes: 'Annual assessment completed with no issues.'
+      notes: 'Annual assessment completed with no issues.',
     };
   }
 
@@ -3206,10 +3818,10 @@ export class MemStorage implements IStorage {
         id: '1',
         propertyId,
         assessedValue: 250000,
-        assessmentDate: new Date(Date.now() - (365 * 24 * 60 * 60 * 1000)),
+        assessmentDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
         assessor: 'Jane Doe',
         status: 'Completed',
-        notes: 'Annual assessment completed with no issues.'
+        notes: 'Annual assessment completed with no issues.',
       },
       {
         id: '2',
@@ -3218,8 +3830,8 @@ export class MemStorage implements IStorage {
         assessmentDate: new Date(),
         assessor: 'John Smith',
         status: 'Completed',
-        notes: 'Annual assessment completed with no issues.'
-      }
+        notes: 'Annual assessment completed with no issues.',
+      },
     ];
   }
 
@@ -3229,7 +3841,7 @@ export class MemStorage implements IStorage {
       id: Date.now().toString(),
       ...assessmentData,
       assessmentDate: new Date(),
-      status: 'Pending'
+      status: 'Pending',
     };
   }
 
@@ -3242,7 +3854,7 @@ export class MemStorage implements IStorage {
       assessmentDate: new Date(),
       assessor: updates.assessor || 'John Smith',
       status: updates.status || 'Completed',
-      notes: updates.notes || 'Annual assessment completed with no issues.'
+      notes: updates.notes || 'Annual assessment completed with no issues.',
     };
   }
 
@@ -3254,56 +3866,56 @@ export class MemStorage implements IStorage {
         assessmentId,
         status: 'Created',
         changedBy: 'System',
-        timestamp: new Date(Date.now() - (90 * 24 * 60 * 60 * 1000)),
-        notes: 'Assessment created in system'
+        timestamp: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+        notes: 'Assessment created in system',
       },
       {
         id: '2',
         assessmentId,
         status: 'Assigned',
         changedBy: 'Manager',
-        timestamp: new Date(Date.now() - (75 * 24 * 60 * 60 * 1000)),
-        notes: 'Assessment assigned to John Smith'
+        timestamp: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000),
+        notes: 'Assessment assigned to John Smith',
       },
       {
         id: '3',
         assessmentId,
         status: 'In Progress',
         changedBy: 'Assessor',
-        timestamp: new Date(Date.now() - (60 * 24 * 60 * 60 * 1000)),
-        notes: 'Initial review started'
+        timestamp: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+        notes: 'Initial review started',
       },
       {
         id: '4',
         assessmentId,
         status: 'Under Review',
         changedBy: 'Assessor',
-        timestamp: new Date(Date.now() - (45 * 24 * 60 * 60 * 1000)),
-        notes: 'Preliminary valuation submitted for review'
+        timestamp: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+        notes: 'Preliminary valuation submitted for review',
       },
       {
         id: '5',
         assessmentId,
         status: 'Completed',
         changedBy: 'Senior Assessor',
-        timestamp: new Date(Date.now() - (30 * 24 * 60 * 60 * 1000)),
-        notes: 'Final valuation approved'
-      }
+        timestamp: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        notes: 'Final valuation approved',
+      },
     ];
   }
-  
+
   // Comparable Sales methods
   async createComparableSale(insertComparableSale: InsertComparableSale): Promise<ComparableSale> {
     const id = this.currentComparableSaleId++;
     const timestamp = new Date();
-    
+
     const comparableSale: ComparableSale = {
       ...insertComparableSale,
       id,
       createdAt: timestamp,
       lastUpdated: timestamp,
       // Ensure required fields are properly set
-      status: insertComparableSale.status || "active",
+      status: insertComparableSale.status || 'active',
       // Ensure optional fields are properly set
       saleDate: insertComparableSale.saleDate || null,
       salePrice: insertComparableSale.salePrice || null,
@@ -3311,98 +3923,101 @@ export class MemStorage implements IStorage {
       distanceInMiles: insertComparableSale.distanceInMiles || null,
       similarityScore: insertComparableSale.similarityScore || null,
       adjustmentFactors: insertComparableSale.adjustmentFactors || null,
-      notes: insertComparableSale.notes || null
+      notes: insertComparableSale.notes || null,
     };
-    
+
     this.comparableSales.set(id, comparableSale);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Property Analysis Agent
       activity: `Added comparable sale for property ID: ${comparableSale.propertyId}`,
       entityType: 'comparableSale',
-      entityId: comparableSale.propertyId
+      entityId: comparableSale.propertyId,
     });
-    
+
     return comparableSale;
   }
-  
+
   async getComparableSaleById(id: number): Promise<ComparableSale | undefined> {
     return this.comparableSales.get(id);
   }
-  
+
   async getComparableSalesByPropertyId(propertyId: string): Promise<ComparableSale[]> {
-    return Array.from(this.comparableSales.values())
-      .filter(sale => sale.propertyId === propertyId);
+    return Array.from(this.comparableSales.values()).filter(sale => sale.propertyId === propertyId);
   }
-  
+
   async getComparableSalesByStatus(status: string): Promise<ComparableSale[]> {
-    return Array.from(this.comparableSales.values())
-      .filter(sale => sale.status === status);
+    return Array.from(this.comparableSales.values()).filter(sale => sale.status === status);
   }
-  
+
   async getAllComparableSales(): Promise<ComparableSale[]> {
     return Array.from(this.comparableSales.values());
   }
-  
-  async updateComparableSale(id: number, updates: Partial<InsertComparableSale>): Promise<ComparableSale | undefined> {
+
+  async updateComparableSale(
+    id: number,
+    updates: Partial<InsertComparableSale>
+  ): Promise<ComparableSale | undefined> {
     const comparableSale = this.comparableSales.get(id);
     if (!comparableSale) return undefined;
-    
+
     const timestamp = new Date();
     const updatedSale = {
       ...comparableSale,
       ...updates,
-      lastUpdated: timestamp
+      lastUpdated: timestamp,
     };
-    
+
     this.comparableSales.set(id, updatedSale);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Property Analysis Agent
       activity: `Updated comparable sale for property ID: ${comparableSale.propertyId}`,
       entityType: 'comparableSale',
-      entityId: comparableSale.propertyId
+      entityId: comparableSale.propertyId,
     });
-    
+
     return updatedSale;
   }
-  
+
   async deleteComparableSale(id: number): Promise<boolean> {
     if (!this.comparableSales.has(id)) {
       return false;
     }
-    
+
     const comparableSale = this.comparableSales.get(id);
     this.comparableSales.delete(id);
-    
+
     // Create system activity
     if (comparableSale) {
       await this.createSystemActivity({
         agentId: 2, // Property Analysis Agent
         activity: `Deleted comparable sale for property ID: ${comparableSale.propertyId}`,
         entityType: 'comparableSale',
-        entityId: comparableSale.propertyId
+        entityId: comparableSale.propertyId,
       });
     }
-    
+
     return true;
   }
-  
+
   // Comparable Sales Analysis methods
-  async createComparableSalesAnalysis(insertAnalysis: InsertComparableSalesAnalysis): Promise<ComparableSalesAnalysis> {
+  async createComparableSalesAnalysis(
+    insertAnalysis: InsertComparableSalesAnalysis
+  ): Promise<ComparableSalesAnalysis> {
     const analysisId = insertAnalysis.analysisId;
     const timestamp = new Date();
-    
+
     const analysis: ComparableSalesAnalysis = {
       ...insertAnalysis,
       id: this.currentPropertyInsightShareId++, // Reuse counter for simplicity
       createdAt: timestamp,
       lastUpdated: timestamp,
       // Ensure required fields are properly set
-      status: insertAnalysis.status || "draft",
-      methodology: insertAnalysis.methodology || "direct_comparison",
+      status: insertAnalysis.status || 'draft',
+      methodology: insertAnalysis.methodology || 'direct_comparison',
       // Ensure optional fields are properly set
       description: insertAnalysis.description || null,
       valueConclusion: insertAnalysis.valueConclusion || null,
@@ -3410,138 +4025,155 @@ export class MemStorage implements IStorage {
       marketConditions: insertAnalysis.marketConditions || null,
       reviewedBy: insertAnalysis.reviewedBy || null,
       reviewNotes: insertAnalysis.reviewNotes || null,
-      reviewDate: insertAnalysis.reviewDate || null
+      reviewDate: insertAnalysis.reviewDate || null,
     };
-    
+
     this.comparableSalesAnalyses.set(analysisId, analysis);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Property Analysis Agent
       activity: `Created comparable sales analysis: ${analysis.title}`,
       entityType: 'comparableSalesAnalysis',
-      entityId: analysis.propertyId
+      entityId: analysis.propertyId,
     });
-    
+
     return analysis;
   }
-  
-  async getComparableSalesAnalysisById(analysisId: string): Promise<ComparableSalesAnalysis | undefined> {
+
+  async getComparableSalesAnalysisById(
+    analysisId: string
+  ): Promise<ComparableSalesAnalysis | undefined> {
     return this.comparableSalesAnalyses.get(analysisId);
   }
-  
-  async getComparableSalesAnalysesByPropertyId(propertyId: string): Promise<ComparableSalesAnalysis[]> {
-    return Array.from(this.comparableSalesAnalyses.values())
-      .filter(analysis => analysis.propertyId === propertyId);
+
+  async getComparableSalesAnalysesByPropertyId(
+    propertyId: string
+  ): Promise<ComparableSalesAnalysis[]> {
+    return Array.from(this.comparableSalesAnalyses.values()).filter(
+      analysis => analysis.propertyId === propertyId
+    );
   }
-  
+
   async getAllComparableSalesAnalyses(): Promise<ComparableSalesAnalysis[]> {
     return Array.from(this.comparableSalesAnalyses.values());
   }
-  
-  async updateComparableSalesAnalysis(analysisId: string, updates: Partial<InsertComparableSalesAnalysis>): Promise<ComparableSalesAnalysis | undefined> {
+
+  async updateComparableSalesAnalysis(
+    analysisId: string,
+    updates: Partial<InsertComparableSalesAnalysis>
+  ): Promise<ComparableSalesAnalysis | undefined> {
     const analysis = this.comparableSalesAnalyses.get(analysisId);
     if (!analysis) return undefined;
-    
+
     const timestamp = new Date();
     const updatedAnalysis = {
       ...analysis,
       ...updates,
-      lastUpdated: timestamp
+      lastUpdated: timestamp,
     };
-    
+
     this.comparableSalesAnalyses.set(analysisId, updatedAnalysis);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Property Analysis Agent
       activity: `Updated comparable sales analysis: ${analysis.title}`,
       entityType: 'comparableSalesAnalysis',
-      entityId: analysis.propertyId
+      entityId: analysis.propertyId,
     });
-    
+
     return updatedAnalysis;
   }
-  
+
   async deleteComparableSalesAnalysis(analysisId: string): Promise<boolean> {
     if (!this.comparableSalesAnalyses.has(analysisId)) {
       return false;
     }
-    
+
     const analysis = this.comparableSalesAnalyses.get(analysisId);
     this.comparableSalesAnalyses.delete(analysisId);
-    
+
     // Create system activity
     if (analysis) {
       await this.createSystemActivity({
         agentId: 2, // Property Analysis Agent
         activity: `Deleted comparable sales analysis: ${analysis.title}`,
         entityType: 'comparableSalesAnalysis',
-        entityId: analysis.propertyId
+        entityId: analysis.propertyId,
       });
     }
-    
+
     return true;
   }
-  
+
   // Comparable Analysis Entry methods
-  async createComparableAnalysisEntry(insertEntry: InsertComparableAnalysisEntry): Promise<ComparableAnalysisEntry> {
+  async createComparableAnalysisEntry(
+    insertEntry: InsertComparableAnalysisEntry
+  ): Promise<ComparableAnalysisEntry> {
     const id = this.currentComparableAnalysisEntryId++;
     const timestamp = new Date();
-    
+
     const entry: ComparableAnalysisEntry = {
       ...insertEntry,
       id,
       createdAt: timestamp,
       // Ensure required fields are properly set
-      includeInFinalValue: insertEntry.includeInFinalValue !== undefined ? insertEntry.includeInFinalValue : true,
-      weight: insertEntry.weight || "1",
+      includeInFinalValue:
+        insertEntry.includeInFinalValue !== undefined ? insertEntry.includeInFinalValue : true,
+      weight: insertEntry.weight || '1',
       // Ensure optional fields are properly set
       adjustedValue: insertEntry.adjustedValue || null,
-      notes: insertEntry.notes || null
+      notes: insertEntry.notes || null,
     };
-    
+
     this.comparableAnalysisEntries.set(id, entry);
-    
+
     // No system activity for entries as they're detailed components
-    
+
     return entry;
   }
-  
-  async getComparableAnalysisEntriesByAnalysisId(analysisId: string): Promise<ComparableAnalysisEntry[]> {
-    return Array.from(this.comparableAnalysisEntries.values())
-      .filter(entry => entry.analysisId === analysisId);
+
+  async getComparableAnalysisEntriesByAnalysisId(
+    analysisId: string
+  ): Promise<ComparableAnalysisEntry[]> {
+    return Array.from(this.comparableAnalysisEntries.values()).filter(
+      entry => entry.analysisId === analysisId
+    );
   }
-  
+
   async getComparableAnalysisEntryById(id: number): Promise<ComparableAnalysisEntry | undefined> {
     return this.comparableAnalysisEntries.get(id);
   }
-  
-  async updateComparableAnalysisEntry(id: number, updates: Partial<InsertComparableAnalysisEntry>): Promise<ComparableAnalysisEntry | undefined> {
+
+  async updateComparableAnalysisEntry(
+    id: number,
+    updates: Partial<InsertComparableAnalysisEntry>
+  ): Promise<ComparableAnalysisEntry | undefined> {
     const entry = this.comparableAnalysisEntries.get(id);
     if (!entry) return undefined;
-    
+
     const updatedEntry = {
       ...entry,
-      ...updates
+      ...updates,
     };
-    
+
     this.comparableAnalysisEntries.set(id, updatedEntry);
-    
+
     // No system activity for entries as they're detailed components
-    
+
     return updatedEntry;
   }
-  
+
   async deleteComparableAnalysisEntry(id: number): Promise<boolean> {
     if (!this.comparableAnalysisEntries.has(id)) {
       return false;
     }
-    
+
     this.comparableAnalysisEntries.delete(id);
     return true;
   }
-  
+
   // Seed initial data
   // Property Data Staging methods
   async createStagedProperty(property: InsertStagedProperty): Promise<StagedProperty> {
@@ -3555,72 +4187,75 @@ export class MemStorage implements IStorage {
       source: property.source,
       stagingId: property.stagingId,
       propertyData: property.propertyData,
-      validationErrors: property.validationErrors || null
+      validationErrors: property.validationErrors || null,
     };
-    
+
     this.stagedProperties.set(property.stagingId, stagedProperty);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Staged new property with ID: ${property.stagingId}`,
       entityType: 'stagedProperty',
-      entityId: property.stagingId
+      entityId: property.stagingId,
     });
-    
+
     return stagedProperty;
   }
-  
+
   async getAllStagedProperties(): Promise<StagedProperty[]> {
     return Array.from(this.stagedProperties.values());
   }
-  
+
   async getStagedPropertyById(stagingId: string): Promise<StagedProperty | null> {
     const stagedProperty = this.stagedProperties.get(stagingId);
     return stagedProperty || null;
   }
-  
-  async updateStagedProperty(stagingId: string, updates: Partial<StagedProperty>): Promise<StagedProperty | null> {
+
+  async updateStagedProperty(
+    stagingId: string,
+    updates: Partial<StagedProperty>
+  ): Promise<StagedProperty | null> {
     const stagedProperty = this.stagedProperties.get(stagingId);
     if (!stagedProperty) return null;
-    
+
     const timestamp = new Date();
     const updatedStagedProperty = {
       ...stagedProperty,
       ...updates,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
+
     this.stagedProperties.set(stagingId, updatedStagedProperty);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Updated staged property with ID: ${stagingId}`,
       entityType: 'stagedProperty',
-      entityId: stagingId
+      entityId: stagingId,
     });
-    
+
     return updatedStagedProperty;
   }
-  
+
   async deleteStagedProperty(stagingId: string): Promise<boolean> {
     const exists = this.stagedProperties.has(stagingId);
     if (!exists) return false;
-    
+
     this.stagedProperties.delete(stagingId);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Deleted staged property with ID: ${stagingId}`,
       entityType: 'stagedProperty',
-      entityId: stagingId
+      entityId: stagingId,
     });
-    
+
     return true;
   }
-  
+
   // Market and Economic Data methods
   async getMarketTrends(region: string): Promise<MarketTrend[]> {
     // Log the access to market trends
@@ -3628,14 +4263,18 @@ export class MemStorage implements IStorage {
       agentId: 5, // Market Analysis Agent
       activity: `Retrieved market trends for region: ${region}`,
       entityType: 'marketTrends',
-      entityId: region
+      entityId: region,
     });
-    
+
     // Determine most likely zip code for this region
-    const zipCode = region.includes('Benton') ? '97330' : 
-                    region.includes('Portland') ? '97201' : 
-                    region.includes('Salem') ? '97301' : '97330';
-    
+    const zipCode = region.includes('Benton')
+      ? '97330'
+      : region.includes('Portland')
+        ? '97201'
+        : region.includes('Salem')
+          ? '97301'
+          : '97330';
+
     // Return market trends for the region
     return [
       {
@@ -3643,29 +4282,29 @@ export class MemStorage implements IStorage {
         timeframe: '1_year',
         value: 450000,
         trend: 'increasing',
-        confidence: 0.85
+        confidence: 0.85,
       },
       {
         metric: 'days_on_market',
         timeframe: '3_months',
         value: 12,
         trend: 'decreasing',
-        confidence: 0.78
+        confidence: 0.78,
       },
       {
         metric: 'price_per_sqft',
         timeframe: '6_months',
         value: 275,
         trend: 'stable',
-        confidence: 0.92
+        confidence: 0.92,
       },
       {
         metric: 'inventory_level',
         timeframe: '1_month',
         value: 1.8,
         trend: 'decreasing',
-        confidence: 0.88
-      }
+        confidence: 0.88,
+      },
     ];
   }
 
@@ -3675,41 +4314,41 @@ export class MemStorage implements IStorage {
       agentId: 5, // Market Analysis Agent
       activity: `Retrieved economic indicators for region: ${region}`,
       entityType: 'economicIndicators',
-      entityId: region
+      entityId: region,
     });
-    
+
     // Return economic indicators for the region
     return [
       {
         name: 'interest_rate',
         value: 6.25,
         impact: 'negative',
-        significance: 0.9
+        significance: 0.9,
       },
       {
         name: 'unemployment_rate',
         value: 3.8,
         impact: 'positive',
-        significance: 0.75
+        significance: 0.75,
       },
       {
         name: 'local_gdp_growth',
         value: 2.7,
         impact: 'positive',
-        significance: 0.82
+        significance: 0.82,
       },
       {
         name: 'construction_permits',
         value: 1250,
         impact: 'negative',
-        significance: 0.69
+        significance: 0.69,
       },
       {
         name: 'population_growth',
         value: 1.5,
         impact: 'positive',
-        significance: 0.85
-      }
+        significance: 0.85,
+      },
     ];
   }
 
@@ -3719,78 +4358,78 @@ export class MemStorage implements IStorage {
     if (!targetProperty) {
       return [];
     }
-    
+
     // Get all properties
     const allProperties = await this.getAllProperties();
-    
+
     // Remove the target property from the list
     const otherProperties = allProperties.filter(p => p.propertyId !== propertyId);
-    
+
     // Get property type for filtering
     const propertyType = targetProperty.propertyType;
-    
+
     // Get improvements for the target property
     const targetImprovements = await this.getImprovementsByPropertyId(propertyId);
-    
+
     // Extract key metrics for comparison
     const targetMetrics = {
       propertyType: propertyType,
       squareFeet: targetImprovements.length > 0 ? targetImprovements[0].squareFeet : null,
       bedrooms: targetImprovements.length > 0 ? targetImprovements[0].bedrooms : null,
-      bathrooms: targetImprovements.length > 0 ? targetImprovements[0].bathrooms : null
+      bathrooms: targetImprovements.length > 0 ? targetImprovements[0].bathrooms : null,
     };
-    
+
     // Create a scoring function for properties based on similarity
     const scoreProperty = async (property: Property) => {
       const improvements = await this.getImprovementsByPropertyId(property.propertyId);
-      
+
       // Basic score starts with property type match
       let score = property.propertyType === targetMetrics.propertyType ? 100 : 0;
-      
+
       // If we have improvements to compare
       if (improvements.length > 0 && targetImprovements.length > 0) {
         const imp = improvements[0];
-        
+
         // Square footage similarity (within 20% = good)
         if (imp.squareFeet && targetMetrics.squareFeet) {
           const sqftDiff = Math.abs(Number(imp.squareFeet) - Number(targetMetrics.squareFeet));
           const sqftRatio = sqftDiff / Number(targetMetrics.squareFeet);
           score += (1 - Math.min(sqftRatio, 1)) * 50; // Max 50 points for size
         }
-        
+
         // Bedroom match
         if (imp.bedrooms && targetMetrics.bedrooms) {
           const bedroomDiff = Math.abs(Number(imp.bedrooms) - Number(targetMetrics.bedrooms));
           score += bedroomDiff === 0 ? 25 : bedroomDiff === 1 ? 15 : 0;
         }
-        
+
         // Bathroom match
         if (imp.bathrooms && targetMetrics.bathrooms) {
           const bathroomDiff = Math.abs(Number(imp.bathrooms) - Number(targetMetrics.bathrooms));
           score += bathroomDiff === 0 ? 25 : bathroomDiff === 1 ? 15 : 0;
         }
       }
-      
+
       return { property, score };
     };
-    
+
     // Score all properties
     const scoredProperties = await Promise.all(otherProperties.map(scoreProperty));
-    
+
     // Sort by score and take the top 'count'
     const comparables = scoredProperties
       .sort((a, b) => b.score - a.score)
       .slice(0, count)
       .map(item => item.property);
-    
+
     // Log the comparable search
     await this.createSystemActivity({
       agentId: 5, // Market Analysis Agent
       activity: `Found ${comparables.length} comparable properties for: ${propertyId}`,
       entityType: 'propertyComparables',
-      entityId: propertyId
+      entityId: propertyId,
     });
-    
+
     return comparables;
   }
 
@@ -3800,64 +4439,64 @@ export class MemStorage implements IStorage {
       agentId: 5, // Market Analysis Agent
       activity: `Retrieved property history for: ${propertyId}`,
       entityType: 'propertyHistory',
-      entityId: propertyId
+      entityId: propertyId,
     });
-    
+
     // Get the property
     const property = await this.getPropertyByPropertyId(propertyId);
     if (!property) {
       return { history: [] };
     }
-    
+
     const currentYear = new Date().getFullYear();
-    
+
     // Generate a simulated history of valuations and significant events
     const valueChanges = [];
     let baseValue = property.value ? Number(property.value) * 0.8 : 300000; // Start 20% lower or default
-    
+
     // Generate 10 years of history or less if property is newer
     for (let year = currentYear - 10; year <= currentYear; year++) {
       // Apply a random adjustment between -2% and +8% each year
       const yearlyChange = baseValue * (Math.random() * 0.1 - 0.02);
       baseValue += yearlyChange;
-      
+
       valueChanges.push({
         year: year,
         value: Math.round(baseValue),
         percentChange: Math.round((yearlyChange / (baseValue - yearlyChange)) * 100 * 10) / 10,
-        assessmentType: 'Annual Valuation'
+        assessmentType: 'Annual Valuation',
       });
     }
-    
+
     // Add some significant property events
     const events = [
       {
         date: `${currentYear - 8}-06-15`,
         type: 'Sale',
-        description: `Property sold for $${Math.round(valueChanges[2].value).toLocaleString()}`
+        description: `Property sold for $${Math.round(valueChanges[2].value).toLocaleString()}`,
       },
       {
         date: `${currentYear - 6}-03-22`,
         type: 'Improvement',
-        description: 'Major kitchen renovation completed'
+        description: 'Major kitchen renovation completed',
       },
       {
         date: `${currentYear - 4}-09-05`,
         type: 'Appeal',
-        description: 'Valuation appealed by owner - No change'
+        description: 'Valuation appealed by owner - No change',
       },
       {
         date: `${currentYear - 2}-05-30`,
         type: 'Zoning',
-        description: 'Area rezoned to allow mixed-use development'
-      }
+        description: 'Area rezoned to allow mixed-use development',
+      },
     ];
-    
+
     return {
       propertyId: propertyId,
       address: property.address,
       valueHistory: valueChanges,
-      events: events
+      events: events,
     };
   }
 
@@ -3867,23 +4506,28 @@ export class MemStorage implements IStorage {
       agentId: 5, // Market Analysis Agent
       activity: `Retrieved regional historical data for: ${region}`,
       entityType: 'regionalData',
-      entityId: region
+      entityId: region,
     });
-    
+
     const currentYear = new Date().getFullYear();
     const startYear = currentYear - 10;
-    
+
     // Generate baseline median values depending on region
-    let baselineMedianValue = region.includes('Benton') ? 350000 : 
-                             region.includes('Portland') ? 450000 : 
-                             region.includes('Salem') ? 325000 : 
-                             region.includes('Eugene') ? 375000 : 400000;
-    
+    let baselineMedianValue = region.includes('Benton')
+      ? 350000
+      : region.includes('Portland')
+        ? 450000
+        : region.includes('Salem')
+          ? 325000
+          : region.includes('Eugene')
+            ? 375000
+            : 400000;
+
     // Generate annual median values with realistic growth patterns
     const annualMedianValues = [];
     const annualGrowthRates = [];
     let priorValue = baselineMedianValue * 0.7; // Start 30% lower 10 years ago
-    
+
     for (let year = startYear; year <= currentYear; year++) {
       // Growth rate pattern with recession in 2020 and recovery thereafter
       let growthRate;
@@ -3902,21 +4546,21 @@ export class MemStorage implements IStorage {
       } else {
         growthRate = 0.04 + (Math.random() * 0.03 - 0.01); // Random 3-6% growth
       }
-      
+
       const newValue = priorValue * (1 + growthRate);
       annualMedianValues.push({
         year: year,
-        value: Math.round(newValue)
+        value: Math.round(newValue),
       });
-      
+
       annualGrowthRates.push({
         year: year,
-        rate: Math.round(growthRate * 1000) / 10 // Convert to percentage with one decimal
+        rate: Math.round(growthRate * 1000) / 10, // Convert to percentage with one decimal
       });
-      
+
       priorValue = newValue;
     }
-    
+
     // Generate inventory data
     const inventoryLevels = [];
     for (let year = startYear; year <= currentYear; year++) {
@@ -3924,48 +4568,53 @@ export class MemStorage implements IStorage {
       // 2020-2022 had very low inventory
       let inventoryMonths;
       if (year >= 2020 && year <= 2022) {
-        inventoryMonths = 1.0 + (Math.random() * 0.5);
+        inventoryMonths = 1.0 + Math.random() * 0.5;
       } else if (year >= 2023) {
-        inventoryMonths = 2.0 + (Math.random() * 0.8);
+        inventoryMonths = 2.0 + Math.random() * 0.8;
       } else {
-        inventoryMonths = 3.5 + (Math.random() * 1.5);
+        inventoryMonths = 3.5 + Math.random() * 1.5;
       }
-      
+
       inventoryLevels.push({
         year: year,
-        months: Math.round(inventoryMonths * 10) / 10
+        months: Math.round(inventoryMonths * 10) / 10,
       });
     }
-    
+
     // Generate population data
     const populationData = [];
-    let population = region.includes('Benton') ? 95000 : 
-                    region.includes('Portland') ? 650000 : 
-                    region.includes('Salem') ? 175000 : 
-                    region.includes('Eugene') ? 170000 : 120000;
-    
+    let population = region.includes('Benton')
+      ? 95000
+      : region.includes('Portland')
+        ? 650000
+        : region.includes('Salem')
+          ? 175000
+          : region.includes('Eugene')
+            ? 170000
+            : 120000;
+
     for (let year = startYear; year <= currentYear; year++) {
       // Population growth is typically 1-2% annually
-      const growthRate = 0.01 + (Math.random() * 0.01);
+      const growthRate = 0.01 + Math.random() * 0.01;
       population = Math.round(population * (1 + growthRate));
-      
+
       populationData.push({
         year: year,
         population: population,
-        growthRate: Math.round(growthRate * 1000) / 10
+        growthRate: Math.round(growthRate * 1000) / 10,
       });
     }
-    
+
     return {
       region: region,
       period: `${startYear}-${currentYear}`,
       medianValues: annualMedianValues,
       growthRates: annualGrowthRates,
       inventory: inventoryLevels,
-      population: populationData
+      population: populationData,
     };
   }
-  
+
   // Regulatory and Risk Data methods
   async getRegulatoryFramework(region: string): Promise<RegulatoryFramework> {
     // Log the access
@@ -3973,110 +4622,110 @@ export class MemStorage implements IStorage {
       agentId: 5, // Market Analysis Agent
       activity: `Retrieved regulatory framework for: ${region}`,
       entityType: 'regulatoryFramework',
-      entityId: region
+      entityId: region,
     });
-    
+
     return {
       region: region,
       zoningRegulations: [
         {
-          code: "R-1",
-          name: "Single Family Residential",
-          description: "Low-density residential zoning for single-family dwellings",
-          maxDensity: "6 units per acre",
-          heightLimit: "35 feet",
+          code: 'R-1',
+          name: 'Single Family Residential',
+          description: 'Low-density residential zoning for single-family dwellings',
+          maxDensity: '6 units per acre',
+          heightLimit: '35 feet',
           setbacks: {
-            front: "20 feet",
-            side: "5 feet",
-            rear: "15 feet"
-          }
+            front: '20 feet',
+            side: '5 feet',
+            rear: '15 feet',
+          },
         },
         {
-          code: "R-2",
-          name: "Medium Density Residential",
-          description: "Medium-density residential zoning allowing duplexes and townhomes",
-          maxDensity: "12 units per acre",
-          heightLimit: "35 feet",
+          code: 'R-2',
+          name: 'Medium Density Residential',
+          description: 'Medium-density residential zoning allowing duplexes and townhomes',
+          maxDensity: '12 units per acre',
+          heightLimit: '35 feet',
           setbacks: {
-            front: "15 feet",
-            side: "5 feet",
-            rear: "10 feet"
-          }
+            front: '15 feet',
+            side: '5 feet',
+            rear: '10 feet',
+          },
         },
         {
-          code: "C-1",
-          name: "Neighborhood Commercial",
-          description: "Small-scale commercial uses serving neighborhood needs",
-          maxDensity: "N/A",
-          heightLimit: "35 feet",
+          code: 'C-1',
+          name: 'Neighborhood Commercial',
+          description: 'Small-scale commercial uses serving neighborhood needs',
+          maxDensity: 'N/A',
+          heightLimit: '35 feet',
           setbacks: {
-            front: "10 feet",
-            side: "10 feet if adjacent to residential",
-            rear: "10 feet if adjacent to residential"
-          }
-        }
+            front: '10 feet',
+            side: '10 feet if adjacent to residential',
+            rear: '10 feet if adjacent to residential',
+          },
+        },
       ],
       buildingCodes: [
         {
-          code: "IBC 2021",
-          name: "International Building Code 2021",
-          adoption: "January 1, 2023",
-          scope: "All commercial construction"
+          code: 'IBC 2021',
+          name: 'International Building Code 2021',
+          adoption: 'January 1, 2023',
+          scope: 'All commercial construction',
         },
         {
-          code: "IRC 2021",
-          name: "International Residential Code 2021",
-          adoption: "January 1, 2023",
-          scope: "All residential construction"
+          code: 'IRC 2021',
+          name: 'International Residential Code 2021',
+          adoption: 'January 1, 2023',
+          scope: 'All residential construction',
         },
         {
-          code: "IECC 2021",
-          name: "International Energy Conservation Code 2021",
-          adoption: "January 1, 2023",
-          scope: "Energy efficiency standards for all construction"
-        }
+          code: 'IECC 2021',
+          name: 'International Energy Conservation Code 2021',
+          adoption: 'January 1, 2023',
+          scope: 'Energy efficiency standards for all construction',
+        },
       ],
       environmentalRegulations: [
         {
-          code: "ESA-OV",
-          name: "Environmentally Sensitive Areas Overlay",
-          description: "Regulations protecting wetlands, streams, and habitats",
-          requirements: "Buffer zones, mitigation for impacts, special permits"
+          code: 'ESA-OV',
+          name: 'Environmentally Sensitive Areas Overlay',
+          description: 'Regulations protecting wetlands, streams, and habitats',
+          requirements: 'Buffer zones, mitigation for impacts, special permits',
         },
         {
-          code: "FP-OV",
-          name: "Floodplain Overlay",
-          description: "Regulations for development in FEMA designated floodplains",
-          requirements: "Elevated structures, floodproofing, special permits"
+          code: 'FP-OV',
+          name: 'Floodplain Overlay',
+          description: 'Regulations for development in FEMA designated floodplains',
+          requirements: 'Elevated structures, floodproofing, special permits',
         },
         {
-          code: "ESI",
-          name: "Environmental Site Investigation",
-          description: "Requirements for sites with potential contamination",
-          requirements: "Phase I/II Environmental Assessments, remediation plans"
-        }
+          code: 'ESI',
+          name: 'Environmental Site Investigation',
+          description: 'Requirements for sites with potential contamination',
+          requirements: 'Phase I/II Environmental Assessments, remediation plans',
+        },
       ],
       taxPolicies: [
         {
-          name: "Property Tax Limitation",
-          description: "Annual increases in assessed value limited to 3% for existing properties",
-          implementation: "1997",
-          exceptions: "New construction, major improvements, property use changes"
+          name: 'Property Tax Limitation',
+          description: 'Annual increases in assessed value limited to 3% for existing properties',
+          implementation: '1997',
+          exceptions: 'New construction, major improvements, property use changes',
         },
         {
           name: "Veterans' Exemption",
-          description: "Partial property tax exemption for qualifying veterans",
-          amount: "$4,000 - $8,000 depending on disability status",
-          application: "Annual filing required"
+          description: 'Partial property tax exemption for qualifying veterans',
+          amount: '$4,000 - $8,000 depending on disability status',
+          application: 'Annual filing required',
         },
         {
-          name: "Senior Deferral Program",
-          description: "Tax deferral for qualifying seniors",
-          eligibility: "Age 62+, income limits apply",
-          application: "Annual filing required"
-        }
+          name: 'Senior Deferral Program',
+          description: 'Tax deferral for qualifying seniors',
+          eligibility: 'Age 62+, income limits apply',
+          application: 'Annual filing required',
+        },
       ],
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     };
   }
 
@@ -4086,68 +4735,68 @@ export class MemStorage implements IStorage {
       agentId: 5, // Market Analysis Agent
       activity: `Retrieved historical regulatory changes for: ${region}`,
       entityType: 'regulatoryChanges',
-      entityId: region
+      entityId: region,
     });
-    
+
     const currentYear = new Date().getFullYear();
-    
+
     return [
       {
         date: `${currentYear - 10}-05-15`,
-        category: "Zoning",
-        description: "Comprehensive Plan Update - Increased density in transit corridors",
-        impact: "Positive impact on multi-family and mixed-use property values",
-        marketEffect: "High"
+        category: 'Zoning',
+        description: 'Comprehensive Plan Update - Increased density in transit corridors',
+        impact: 'Positive impact on multi-family and mixed-use property values',
+        marketEffect: 'High',
       },
       {
         date: `${currentYear - 8}-07-01`,
-        category: "Building Code",
-        description: "Adoption of 2015 International Building Code",
-        impact: "Increased construction costs for new development",
-        marketEffect: "Medium"
+        category: 'Building Code',
+        description: 'Adoption of 2015 International Building Code',
+        impact: 'Increased construction costs for new development',
+        marketEffect: 'Medium',
       },
       {
         date: `${currentYear - 6}-01-15`,
-        category: "Environmental",
-        description: "Expanded Wetland Protection Ordinance - Added buffer requirements",
-        impact: "Reduced developable land area in certain zones",
-        marketEffect: "Medium-High"
+        category: 'Environmental',
+        description: 'Expanded Wetland Protection Ordinance - Added buffer requirements',
+        impact: 'Reduced developable land area in certain zones',
+        marketEffect: 'Medium-High',
       },
       {
         date: `${currentYear - 5}-03-22`,
-        category: "Tax Policy",
-        description: "School bond measure passed - Property tax rate increase of $1.20 per $1,000",
-        impact: "Increased carrying costs for property owners",
-        marketEffect: "Low-Medium"
+        category: 'Tax Policy',
+        description: 'School bond measure passed - Property tax rate increase of $1.20 per $1,000',
+        impact: 'Increased carrying costs for property owners',
+        marketEffect: 'Low-Medium',
       },
       {
         date: `${currentYear - 3}-09-10`,
-        category: "Zoning",
-        description: "Accessory Dwelling Unit (ADU) ordinance - Reduced restrictions",
-        impact: "Increased property utilization options in residential zones",
-        marketEffect: "Medium"
+        category: 'Zoning',
+        description: 'Accessory Dwelling Unit (ADU) ordinance - Reduced restrictions',
+        impact: 'Increased property utilization options in residential zones',
+        marketEffect: 'Medium',
       },
       {
         date: `${currentYear - 2}-11-05`,
-        category: "Environmental",
-        description: "Updated Flood Insurance Rate Maps (FIRM) - Expanded floodplain areas",
-        impact: "Increased insurance costs and building requirements in affected areas",
-        marketEffect: "High"
+        category: 'Environmental',
+        description: 'Updated Flood Insurance Rate Maps (FIRM) - Expanded floodplain areas',
+        impact: 'Increased insurance costs and building requirements in affected areas',
+        marketEffect: 'High',
       },
       {
         date: `${currentYear - 1}-04-01`,
-        category: "Building Code",
-        description: "Adoption of 2021 International Energy Conservation Code",
-        impact: "Increased construction costs for energy efficiency compliance",
-        marketEffect: "Medium"
+        category: 'Building Code',
+        description: 'Adoption of 2021 International Energy Conservation Code',
+        impact: 'Increased construction costs for energy efficiency compliance',
+        marketEffect: 'Medium',
       },
       {
         date: `${currentYear}-01-15`,
-        category: "Zoning",
-        description: "Mixed-Use Overlay District expanded to additional commercial corridors",
-        impact: "Increased development potential for affected commercial properties",
-        marketEffect: "High"
-      }
+        category: 'Zoning',
+        description: 'Mixed-Use Overlay District expanded to additional commercial corridors',
+        impact: 'Increased development potential for affected commercial properties',
+        marketEffect: 'High',
+      },
     ];
   }
 
@@ -4157,107 +4806,136 @@ export class MemStorage implements IStorage {
     if (!property) {
       return { risks: [] };
     }
-    
+
     // Log the access
     await this.createSystemActivity({
       agentId: 6, // Risk Assessment Agent
       activity: `Retrieved environmental risks for property: ${propertyId}`,
       entityType: 'environmentalRisks',
-      entityId: propertyId
+      entityId: propertyId,
     });
-    
+
     // Use property ID to determine some pseudo-random but consistent risks
     const propertyIdNum = parseInt(propertyId.replace(/\D/g, '')) || 0;
-    
+
     // Flood risk - based on last digit
-    const floodRiskLevel = propertyIdNum % 10 <= 2 ? 'High' : 
-                          propertyIdNum % 10 <= 5 ? 'Medium' : 'Low';
-                          
+    const floodRiskLevel =
+      propertyIdNum % 10 <= 2 ? 'High' : propertyIdNum % 10 <= 5 ? 'Medium' : 'Low';
+
     // Wildfire risk - based on second-to-last digit
-    const wildfireRiskLevel = Math.floor((propertyIdNum % 100) / 10) <= 2 ? 'High' : 
-                             Math.floor((propertyIdNum % 100) / 10) <= 5 ? 'Medium' : 'Low';
-                             
+    const wildfireRiskLevel =
+      Math.floor((propertyIdNum % 100) / 10) <= 2
+        ? 'High'
+        : Math.floor((propertyIdNum % 100) / 10) <= 5
+          ? 'Medium'
+          : 'Low';
+
     // Earthquake risk - based on third-to-last digit
-    const earthquakeRiskLevel = Math.floor((propertyIdNum % 1000) / 100) <= 2 ? 'High' : 
-                               Math.floor((propertyIdNum % 1000) / 100) <= 5 ? 'Medium' : 'Low';
-    
+    const earthquakeRiskLevel =
+      Math.floor((propertyIdNum % 1000) / 100) <= 2
+        ? 'High'
+        : Math.floor((propertyIdNum % 1000) / 100) <= 5
+          ? 'Medium'
+          : 'Low';
+
     return {
       propertyId: propertyId,
       address: property.address,
       risks: [
         {
-          type: "Flood",
+          type: 'Flood',
           level: floodRiskLevel,
-          description: floodRiskLevel === 'High' ? 
-                      "Property is located in or near FEMA designated 100-year floodplain" : 
-                      floodRiskLevel === 'Medium' ? 
-                      "Property is located in or near FEMA designated 500-year floodplain" : 
-                      "Property is not located in a designated floodplain",
-          mitigationOptions: floodRiskLevel !== 'Low' ? [
-            "Elevate structure above base flood elevation",
-            "Install flood vents in foundation",
-            "Implement proper site grading and drainage",
-            "Consider flood insurance even if not in mandatory purchase area"
-          ] : [],
-          insuranceConsiderations: floodRiskLevel !== 'Low' ? "Flood insurance recommended or required" : "Standard coverage typically sufficient"
+          description:
+            floodRiskLevel === 'High'
+              ? 'Property is located in or near FEMA designated 100-year floodplain'
+              : floodRiskLevel === 'Medium'
+                ? 'Property is located in or near FEMA designated 500-year floodplain'
+                : 'Property is not located in a designated floodplain',
+          mitigationOptions:
+            floodRiskLevel !== 'Low'
+              ? [
+                  'Elevate structure above base flood elevation',
+                  'Install flood vents in foundation',
+                  'Implement proper site grading and drainage',
+                  'Consider flood insurance even if not in mandatory purchase area',
+                ]
+              : [],
+          insuranceConsiderations:
+            floodRiskLevel !== 'Low'
+              ? 'Flood insurance recommended or required'
+              : 'Standard coverage typically sufficient',
         },
         {
-          type: "Wildfire",
+          type: 'Wildfire',
           level: wildfireRiskLevel,
-          description: wildfireRiskLevel === 'High' ? 
-                      "Property is located in a Wildland-Urban Interface (WUI) high-risk zone" : 
-                      wildfireRiskLevel === 'Medium' ? 
-                      "Property is located near areas with elevated wildfire potential" : 
-                      "Property is in an area with low historical wildfire activity",
-          mitigationOptions: wildfireRiskLevel !== 'Low' ? [
-            "Create defensible space around structures",
-            "Use fire-resistant building materials",
-            "Implement ember-resistant venting",
-            "Maintain and manage vegetation"
-          ] : [],
-          insuranceConsiderations: wildfireRiskLevel === 'High' ? "Specialized coverage likely required, high premiums" : 
-                                  wildfireRiskLevel === 'Medium' ? "Standard coverage with wildfire endorsement recommended" : 
-                                  "Standard coverage typically sufficient"
+          description:
+            wildfireRiskLevel === 'High'
+              ? 'Property is located in a Wildland-Urban Interface (WUI) high-risk zone'
+              : wildfireRiskLevel === 'Medium'
+                ? 'Property is located near areas with elevated wildfire potential'
+                : 'Property is in an area with low historical wildfire activity',
+          mitigationOptions:
+            wildfireRiskLevel !== 'Low'
+              ? [
+                  'Create defensible space around structures',
+                  'Use fire-resistant building materials',
+                  'Implement ember-resistant venting',
+                  'Maintain and manage vegetation',
+                ]
+              : [],
+          insuranceConsiderations:
+            wildfireRiskLevel === 'High'
+              ? 'Specialized coverage likely required, high premiums'
+              : wildfireRiskLevel === 'Medium'
+                ? 'Standard coverage with wildfire endorsement recommended'
+                : 'Standard coverage typically sufficient',
         },
         {
-          type: "Earthquake",
+          type: 'Earthquake',
           level: earthquakeRiskLevel,
-          description: earthquakeRiskLevel === 'High' ? 
-                      "Property is located in an area with significant seismic activity potential" : 
-                      earthquakeRiskLevel === 'Medium' ? 
-                      "Property is located in an area with moderate seismic risk" : 
-                      "Property is in an area with low seismic activity potential",
-          mitigationOptions: earthquakeRiskLevel !== 'Low' ? [
-            "Structural retrofitting",
-            "Foundation bolting and bracing",
-            "Flexible utility connections",
-            "Secure heavy furniture and appliances"
-          ] : [],
-          insuranceConsiderations: earthquakeRiskLevel !== 'Low' ? "Separate earthquake insurance policy recommended" : "Optional earthquake endorsement may be considered"
-        }
+          description:
+            earthquakeRiskLevel === 'High'
+              ? 'Property is located in an area with significant seismic activity potential'
+              : earthquakeRiskLevel === 'Medium'
+                ? 'Property is located in an area with moderate seismic risk'
+                : 'Property is in an area with low seismic activity potential',
+          mitigationOptions:
+            earthquakeRiskLevel !== 'Low'
+              ? [
+                  'Structural retrofitting',
+                  'Foundation bolting and bracing',
+                  'Flexible utility connections',
+                  'Secure heavy furniture and appliances',
+                ]
+              : [],
+          insuranceConsiderations:
+            earthquakeRiskLevel !== 'Low'
+              ? 'Separate earthquake insurance policy recommended'
+              : 'Optional earthquake endorsement may be considered',
+        },
       ],
       environmentalHazards: [
         {
-          type: "Soil Contamination",
-          probability: propertyIdNum % 7 === 0 ? "Medium" : "Low",
-          description: "Historical land use in the area included some industrial activity"
+          type: 'Soil Contamination',
+          probability: propertyIdNum % 7 === 0 ? 'Medium' : 'Low',
+          description: 'Historical land use in the area included some industrial activity',
         },
         {
-          type: "Radon",
-          probability: propertyIdNum % 5 === 0 ? "Medium" : "Low",
-          description: "Area has known radon potential based on geological characteristics"
-        }
+          type: 'Radon',
+          probability: propertyIdNum % 5 === 0 ? 'Medium' : 'Low',
+          description: 'Area has known radon potential based on geological characteristics',
+        },
       ],
       assessmentDate: new Date(),
       recommendations: [
-        "Conduct professional environmental site assessment for detailed analysis",
-        "Review FEMA flood maps and consider elevation certificate if in flood zone",
-        "Implement appropriate risk mitigation measures based on identified risks",
-        "Review insurance coverage to ensure adequate protection against identified hazards"
-      ]
+        'Conduct professional environmental site assessment for detailed analysis',
+        'Review FEMA flood maps and consider elevation certificate if in flood zone',
+        'Implement appropriate risk mitigation measures based on identified risks',
+        'Review insurance coverage to ensure adequate protection against identified hazards',
+      ],
     };
   }
-  
+
   // Seed workflow optimizer data with sample requests and results
   private seedWorkflowOptimizerData() {
     // Create a completed code quality optimization request
@@ -4276,10 +4954,10 @@ export class MemStorage implements IStorage {
       tags: ['refactoring', 'maintainability'],
       settings: null,
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 23) // 23 hours ago
+      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 23), // 23 hours ago
     };
     this.workflowOptimizationRequests.set(codeQualityRequest.id, codeQualityRequest);
-    
+
     // Create code quality optimization result
     const codeQualityResult = {
       id: this.currentWorkflowOptimizationResultId++,
@@ -4289,7 +4967,8 @@ export class MemStorage implements IStorage {
         {
           id: crypto.randomUUID(),
           title: 'Improve function parameter validation',
-          description: 'Add proper parameter validation at the beginning of functions to prevent unexpected behavior',
+          description:
+            'Add proper parameter validation at the beginning of functions to prevent unexpected behavior',
           code: 'function processData(data) {\n  if (!data) return null;\n  // Rest of the function\n}',
           filePath: 'server/routes/api.js',
           lineNumbers: [15, 25],
@@ -4299,13 +4978,14 @@ export class MemStorage implements IStorage {
           implementationSteps: [
             'Identify functions with missing validation',
             'Add appropriate checks for required parameters',
-            'Return early if validation fails'
-          ]
+            'Return early if validation fails',
+          ],
         },
         {
           id: crypto.randomUUID(),
           title: 'Extract duplicate code into helper functions',
-          description: 'Multiple routes contain similar data processing logic that could be extracted into shared helper functions',
+          description:
+            'Multiple routes contain similar data processing logic that could be extracted into shared helper functions',
           code: 'function formatResponse(data) {\n  return {\n    success: true,\n    data,\n    timestamp: new Date()\n  };\n}',
           filePath: 'server/utils/helpers.js',
           lineNumbers: null,
@@ -4315,17 +4995,17 @@ export class MemStorage implements IStorage {
           implementationSteps: [
             'Identify duplicate code patterns',
             'Create helper functions in utils folder',
-            'Replace duplicate code with helper function calls'
-          ]
-        }
+            'Replace duplicate code with helper function calls',
+          ],
+        },
       ],
       improvementScore: 72,
       runTime: 5600,
       modelUsed: 'gpt-4o',
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 23) // 23 hours ago
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 23), // 23 hours ago
     };
     this.workflowOptimizationResults.set(codeQualityResult.id, codeQualityResult);
-    
+
     // Create a completed performance optimization request
     const perfRequestId = crypto.randomUUID();
     const perfRequest = {
@@ -4342,20 +5022,22 @@ export class MemStorage implements IStorage {
       tags: ['database', 'api', 'optimization'],
       settings: null,
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48), // 2 days ago
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 47) // 47 hours ago
+      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 47), // 47 hours ago
     };
     this.workflowOptimizationRequests.set(perfRequest.id, perfRequest);
-    
+
     // Create performance optimization result
     const perfResult = {
       id: this.currentWorkflowOptimizationResultId++,
       requestId: perfRequestId,
-      summary: 'Identified several performance bottlenecks in database queries and API response handling',
+      summary:
+        'Identified several performance bottlenecks in database queries and API response handling',
       recommendationsJson: [
         {
           id: crypto.randomUUID(),
           title: 'Add database indexes',
-          description: 'Missing indexes on frequently queried columns are causing slow performance on large datasets',
+          description:
+            'Missing indexes on frequently queried columns are causing slow performance on large datasets',
           code: 'CREATE INDEX idx_property_type ON properties(property_type);\nCREATE INDEX idx_status ON properties(status);',
           filePath: 'server/db/schema.sql',
           lineNumbers: null,
@@ -4364,13 +5046,14 @@ export class MemStorage implements IStorage {
           category: 'database',
           implementationSteps: [
             'Add indexes to frequently queried columns',
-            'Test query performance before and after'
-          ]
+            'Test query performance before and after',
+          ],
         },
         {
           id: crypto.randomUUID(),
           title: 'Implement query pagination',
-          description: 'Large result sets are being returned without pagination, causing increased memory usage and slow responses',
+          description:
+            'Large result sets are being returned without pagination, causing increased memory usage and slow responses',
           code: 'function getProperties(page = 1, limit = 20) {\n  const offset = (page - 1) * limit;\n  return db.query("SELECT * FROM properties LIMIT $1 OFFSET $2", [limit, offset]);\n}',
           filePath: 'server/services/property-service.js',
           lineNumbers: [45, 55],
@@ -4380,17 +5063,17 @@ export class MemStorage implements IStorage {
           implementationSteps: [
             'Add pagination parameters to API endpoints',
             'Modify database queries to include LIMIT and OFFSET',
-            'Update API response to include pagination metadata'
-          ]
-        }
+            'Update API response to include pagination metadata',
+          ],
+        },
       ],
       improvementScore: 85,
       runTime: 6200,
       modelUsed: 'gpt-4o',
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 47) // 47 hours ago
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 47), // 47 hours ago
     };
     this.workflowOptimizationResults.set(perfResult.id, perfResult);
-    
+
     // Create an in-progress security optimization request
     const securityRequestId = crypto.randomUUID();
     const securityRequest = {
@@ -4407,7 +5090,7 @@ export class MemStorage implements IStorage {
       tags: ['security', 'vulnerabilities'],
       settings: null,
       createdAt: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-      updatedAt: new Date(Date.now() - 1000 * 60 * 30) // 30 minutes ago
+      updatedAt: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
     };
     this.workflowOptimizationRequests.set(securityRequest.id, securityRequest);
   }
@@ -4419,12 +5102,12 @@ export class MemStorage implements IStorage {
       password: 'admin123', // In a real app, this would be hashed
       name: 'John Davis',
       role: 'administrator',
-      email: 'admin@example.com'
+      email: 'admin@example.com',
     });
-    
+
     // Seed Workflow Optimization Requests and Results
     this.seedWorkflowOptimizerData();
-    
+
     // Seed AI Agents
     const agentNames = [
       'Data Management Agent',
@@ -4432,9 +5115,9 @@ export class MemStorage implements IStorage {
       'Citizen Interaction Agent',
       'Quality Control & Audit Agent',
       'Legal & Compliance Agent',
-      'Integration & Reporting Agent'
+      'Integration & Reporting Agent',
     ];
-    
+
     agentNames.forEach((name, index) => {
       const id = this.currentAiAgentId++;
       const performance = 85 + Math.floor(Math.random() * 15); // 85-99
@@ -4445,11 +5128,11 @@ export class MemStorage implements IStorage {
         status: index === 5 ? 'syncing' : 'active', // Make the last one "syncing"
         lastActivity: new Date(),
         performance,
-        createdAt: new Date()
+        createdAt: new Date(),
       };
       this.aiAgents.set(id, agent);
     });
-    
+
     // Seed Properties - Benton County Washington
     const propertyData = [
       {
@@ -4459,7 +5142,7 @@ export class MemStorage implements IStorage {
         propertyType: 'Residential',
         acres: '0.23',
         value: '325000',
-        status: 'active'
+        status: 'active',
       },
       {
         propertyId: 'BC002',
@@ -4468,7 +5151,7 @@ export class MemStorage implements IStorage {
         propertyType: 'Commercial',
         acres: '1.5',
         value: '1750000',
-        status: 'active'
+        status: 'active',
       },
       {
         propertyId: 'BC003',
@@ -4477,7 +5160,7 @@ export class MemStorage implements IStorage {
         propertyType: 'Residential',
         acres: '0.95',
         value: '485000',
-        status: 'active'
+        status: 'active',
       },
       {
         propertyId: 'BC004',
@@ -4486,7 +5169,7 @@ export class MemStorage implements IStorage {
         propertyType: 'Commercial',
         acres: '1.2',
         value: '1250000',
-        status: 'active'
+        status: 'active',
       },
       {
         propertyId: 'BC005',
@@ -4495,7 +5178,7 @@ export class MemStorage implements IStorage {
         propertyType: 'Government',
         acres: '2.7',
         value: '0', // Exempt - County Courthouse
-        status: 'exempt'
+        status: 'exempt',
       },
       {
         propertyId: 'BC006',
@@ -4504,14 +5187,14 @@ export class MemStorage implements IStorage {
         propertyType: 'Residential',
         acres: '0.35',
         value: '285000',
-        status: 'active'
-      }
+        status: 'active',
+      },
     ];
-    
+
     propertyData.forEach(propData => {
       this.createProperty(propData);
     });
-    
+
     // Seed sample appeals data
     const appealData = [
       {
@@ -4531,14 +5214,15 @@ export class MemStorage implements IStorage {
         decisionReason: null,
         decisionDate: null,
         assignedTo: 2,
-        notificationSent: false
+        notificationSent: false,
       },
       {
         propertyId: 'BC002',
         userId: 1,
         appealNumber: 'A2023-002',
         reason: 'Comparable properties are valued lower',
-        details: 'Similar commercial properties in the area are assessed at $150-175 per sq ft, but this property is assessed at $225 per sq ft',
+        details:
+          'Similar commercial properties in the area are assessed at $150-175 per sq ft, but this property is assessed at $225 per sq ft',
         status: 'scheduled',
         appealType: 'valuation',
         evidenceUrls: null,
@@ -4550,10 +5234,10 @@ export class MemStorage implements IStorage {
         decisionReason: null,
         decisionDate: null,
         assignedTo: 2,
-        notificationSent: true
-      }
+        notificationSent: true,
+      },
     ];
-    
+
     // Create sample appeals
     appealData.forEach(appeal => {
       this.createAppeal(appeal);
@@ -4563,15 +5247,15 @@ export class MemStorage implements IStorage {
     this.createAppealComment({
       appealId: 1,
       userId: 1,
-      comment: 'I have submitted the floor plan documentation as evidence.'
+      comment: 'I have submitted the floor plan documentation as evidence.',
     });
-    
+
     this.createAppealComment({
       appealId: 1,
       userId: 2, // assessor
-      comment: 'Thank you for your submission. We will review the floor plan document.'
+      comment: 'Thank you for your submission. We will review the floor plan document.',
     });
-    
+
     // Create sample appeal evidence
     this.createAppealEvidence({
       appealId: 1,
@@ -4580,91 +5264,93 @@ export class MemStorage implements IStorage {
       fileName: 'floor_plan.pdf',
       fileSize: 1024 * 500, // 500KB
       fileUrl: 'https://example.com/evidence/floor_plan.pdf',
-      description: 'Property floor plan showing correct square footage'
+      description: 'Property floor plan showing correct square footage',
     });
-    
+
     // Seed System Activities for Benton County Washington
     const activityData = [
       {
         agentId: 3,
         activity: 'Processed a new appeal for 1320 N Louisiana St, Kennewick',
         entityType: 'appeal',
-        entityId: 'BC001'
+        entityId: 'BC001',
       },
       {
         agentId: 1,
         activity: 'Imported 156 new records from PACS:Land Benton County',
         entityType: 'import',
-        entityId: 'PACS:Land'
+        entityId: 'PACS:Land',
       },
       {
         agentId: 2,
         activity: 'Completed batch recalculation for Kennewick Commercial District',
         entityType: 'valuation',
-        entityId: 'KCD1'
+        entityId: 'KCD1',
       },
       {
         agentId: 4,
         activity: 'Flagged anomaly in valuation for 8524 W Gage Blvd, Kennewick',
         entityType: 'property',
-        entityId: 'BC002'
+        entityId: 'BC002',
       },
       {
         agentId: 2,
         activity: 'Updated property records for West Richland residential zone',
         entityType: 'property',
-        entityId: 'BC003'
+        entityId: 'BC003',
       },
       {
         agentId: 1,
         activity: 'New agricultural exemption processed for Benton City property',
         entityType: 'exemption',
-        entityId: 'BC006'
+        entityId: 'BC006',
       },
       {
         agentId: 5,
         activity: 'Verified compliance with Washington State assessment guidelines',
         entityType: 'compliance',
-        entityId: 'WACG-2023'
+        entityId: 'WACG-2023',
       },
       {
         agentId: null,
         activity: 'Scheduled automated backup of Benton County database',
         entityType: 'system',
-        entityId: 'backup'
-      }
+        entityId: 'backup',
+      },
     ];
-    
+
     // Create activities with different timestamps
     let timeOffset = 0;
     activityData.forEach(activity => {
       const timestamp = new Date();
       timestamp.setMinutes(timestamp.getMinutes() - timeOffset);
       timeOffset += 15; // Each activity is 15 minutes apart
-      
+
       const id = this.currentSystemActivityId++;
       const systemActivity: SystemActivity = {
         ...activity,
         id,
-        timestamp
+        timestamp,
       };
-      
+
       this.systemActivities.set(id, systemActivity);
     });
   }
 
   // Database Conversion methods implementation
-  async createConversionProject(project: InsertDatabaseConversionProject): Promise<DatabaseConversionProject> {
+  async createConversionProject(
+    project: InsertDatabaseConversionProject
+  ): Promise<DatabaseConversionProject> {
     const timestamp = new Date();
     const newProject: DatabaseConversionProject = {
       ...project,
       createdAt: timestamp,
       updatedAt: timestamp,
-      status: project.status || conversionStatusEnum.enum.pending
+      status: project.status || conversionStatusEnum.enum.pending,
     };
-    
+
     this.databaseConversionProjects.set(project.projectId, newProject);
-    
+
     // Create system activity
     await this.createSystemActivity({
       activity_type: 'database_conversion_project_created',
@@ -4672,52 +5358,55 @@ export class MemStorage implements IStorage {
       details: {
         projectId: project.projectId,
         name: project.name,
-        sourceType: project.sourceType
-      }
+        sourceType: project.sourceType,
+      },
     });
-    
+
     return newProject;
   }
-  
+
   async getConversionProjects(): Promise<DatabaseConversionProject[]> {
     return Array.from(this.databaseConversionProjects.values());
   }
-  
+
   async getConversionProject(id: string): Promise<DatabaseConversionProject | undefined> {
     return this.databaseConversionProjects.get(id);
   }
-  
-  async updateConversionProject(id: string, updates: Partial<DatabaseConversionProject>): Promise<DatabaseConversionProject | undefined> {
+
+  async updateConversionProject(
+    id: string,
+    updates: Partial<DatabaseConversionProject>
+  ): Promise<DatabaseConversionProject | undefined> {
     const project = this.databaseConversionProjects.get(id);
     if (!project) return undefined;
-    
+
     const updatedProject = {
       ...project,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.databaseConversionProjects.set(id, updatedProject);
-    
+
     // Create system activity
     await this.createSystemActivity({
       activity_type: 'database_conversion_project_updated',
       component: 'Database Conversion',
       details: {
         projectId: id,
-        updates: Object.keys(updates)
-      }
+        updates: Object.keys(updates),
+      },
     });
-    
+
     return updatedProject;
   }
-  
+
   async deleteConversionProject(id: string): Promise<boolean> {
     const project = this.databaseConversionProjects.get(id);
     if (!project) return false;
-    
+
     const success = this.databaseConversionProjects.delete(id);
-    
+
     if (success) {
       // Create system activity
       await this.createSystemActivity({
@@ -4725,14 +5414,14 @@ export class MemStorage implements IStorage {
         component: 'Database Conversion',
         details: {
           projectId: id,
-          name: project.name
-        }
+          name: project.name,
+        },
       });
     }
-    
+
     return success;
   }
-  
+
   // Connection Template methods
   async createConnectionTemplate(template: InsertConnectionTemplate): Promise<ConnectionTemplate> {
     const id = this.currentConnectionTemplateId++;
@@ -4741,14 +5430,14 @@ export class MemStorage implements IStorage {
       ...template,
       id,
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
+
     this.connectionTemplates.set(id, newTemplate);
-    
+
     return newTemplate;
   }
-  
+
   async getConnectionTemplates(isPublic?: boolean): Promise<ConnectionTemplate[]> {
     const templates = Array.from(this.connectionTemplates.values());
     if (isPublic !== undefined) {
@@ -4756,29 +5445,32 @@ export class MemStorage implements IStorage {
     }
     return templates;
   }
-  
+
   async getConnectionTemplate(id: number): Promise<ConnectionTemplate | undefined> {
     return this.connectionTemplates.get(id);
   }
-  
-  async updateConnectionTemplate(id: number, updates: Partial<InsertConnectionTemplate>): Promise<ConnectionTemplate | undefined> {
+
+  async updateConnectionTemplate(
+    id: number,
+    updates: Partial<InsertConnectionTemplate>
+  ): Promise<ConnectionTemplate | undefined> {
     const template = this.connectionTemplates.get(id);
     if (!template) return undefined;
-    
+
     const updatedTemplate = {
       ...template,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.connectionTemplates.set(id, updatedTemplate);
     return updatedTemplate;
   }
-  
+
   async deleteConnectionTemplate(id: number): Promise<boolean> {
     return this.connectionTemplates.delete(id);
   }
-  
+
   // Schema Mapping methods
   async createSchemaMapping(mapping: InsertSchemaMapping): Promise<SchemaMapping> {
     const id = this.currentSchemaMappingId++;
@@ -4787,49 +5479,52 @@ export class MemStorage implements IStorage {
       ...mapping,
       id,
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
+
     this.schemaMappings.set(id, newMapping);
     return newMapping;
   }
-  
+
   async getSchemaMappings(sourceType?: string, targetType?: string): Promise<SchemaMapping[]> {
     let mappings = Array.from(this.schemaMappings.values());
-    
+
     if (sourceType) {
       mappings = mappings.filter(mapping => mapping.sourceType === sourceType);
     }
-    
+
     if (targetType) {
       mappings = mappings.filter(mapping => mapping.targetType === targetType);
     }
-    
+
     return mappings;
   }
-  
+
   async getSchemaMapping(id: number): Promise<SchemaMapping | undefined> {
     return this.schemaMappings.get(id);
   }
-  
-  async updateSchemaMapping(id: number, updates: Partial<InsertSchemaMapping>): Promise<SchemaMapping | undefined> {
+
+  async updateSchemaMapping(
+    id: number,
+    updates: Partial<InsertSchemaMapping>
+  ): Promise<SchemaMapping | undefined> {
     const mapping = this.schemaMappings.get(id);
     if (!mapping) return undefined;
-    
+
     const updatedMapping = {
       ...mapping,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.schemaMappings.set(id, updatedMapping);
     return updatedMapping;
   }
-  
+
   async deleteSchemaMapping(id: number): Promise<boolean> {
     return this.schemaMappings.delete(id);
   }
-  
+
   // Conversion Log methods
   async createConversionLog(log: InsertConversionLog): Promise<ConversionLog> {
     const id = this.currentConversionLogId++;
@@ -4837,19 +5532,19 @@ export class MemStorage implements IStorage {
     const newLog: ConversionLog = {
       ...log,
       id,
-      createdAt: timestamp
+      createdAt: timestamp,
     };
-    
+
     this.conversionLogs.set(id, newLog);
     return newLog;
   }
-  
+
   async getConversionLogs(projectId: string): Promise<ConversionLog[]> {
     return Array.from(this.conversionLogs.values())
       .filter(log => log.projectId === projectId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
-  
+
   // Compatibility Layer methods
   async createCompatibilityLayer(layer: InsertCompatibilityLayer): Promise<CompatibilityLayer> {
     const id = this.currentCompatibilityLayerId++;
@@ -4858,32 +5553,36 @@ export class MemStorage implements IStorage {
       ...layer,
       id,
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
+
     this.compatibilityLayers.set(id, newLayer);
     return newLayer;
   }
-  
+
   async getCompatibilityLayersByProject(projectId: string): Promise<CompatibilityLayer[]> {
-    return Array.from(this.compatibilityLayers.values())
-      .filter(layer => layer.projectId === projectId);
+    return Array.from(this.compatibilityLayers.values()).filter(
+      layer => layer.projectId === projectId
+    );
   }
-  
+
   async getCompatibilityLayer(id: number): Promise<CompatibilityLayer | undefined> {
     return this.compatibilityLayers.get(id);
   }
-  
-  async updateCompatibilityLayer(id: number, updates: Partial<InsertCompatibilityLayer>): Promise<CompatibilityLayer | undefined> {
+
+  async updateCompatibilityLayer(
+    id: number,
+    updates: Partial<InsertCompatibilityLayer>
+  ): Promise<CompatibilityLayer | undefined> {
     const layer = this.compatibilityLayers.get(id);
     if (!layer) return undefined;
-    
+
     const updatedLayer = {
       ...layer,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.compatibilityLayers.set(id, updatedLayer);
     return updatedLayer;
   }
@@ -4899,31 +5598,30 @@ export class MemStorage implements IStorage {
   }
 
   async getTeamMembersByRole(role: string): Promise<TeamMember[]> {
-    return Array.from(this.teamMembers.values())
-      .filter(member => member.role === role);
+    return Array.from(this.teamMembers.values()).filter(member => member.role === role);
   }
 
   async createTeamMember(member: InsertTeamMember): Promise<TeamMember> {
     const id = this.currentTeamMemberId++;
     const timestamp = new Date();
-    
+
     const newMember: TeamMember = {
       ...member,
       id,
       joinedAt: timestamp,
       lastActive: timestamp,
-      avatar: member.avatar || null
+      avatar: member.avatar || null,
     };
-    
+
     this.teamMembers.set(id, newMember);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_member_created',
       component: 'team',
       status: 'success',
-      details: { teamMember: newMember }
+      details: { teamMember: newMember },
     });
-    
+
     return newMember;
   }
 
@@ -4932,22 +5630,22 @@ export class MemStorage implements IStorage {
     if (!member) {
       return null;
     }
-    
+
     const updatedMember = {
       ...member,
       ...updates,
-      lastActive: new Date()
+      lastActive: new Date(),
     };
-    
+
     this.teamMembers.set(id, updatedMember);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_member_updated',
       component: 'team',
       status: 'success',
-      details: { teamMemberId: id, updates }
+      details: { teamMemberId: id, updates },
     });
-    
+
     return updatedMember;
   }
 
@@ -4956,16 +5654,16 @@ export class MemStorage implements IStorage {
     if (!member) {
       throw new Error(`Team member with ID ${id} not found`);
     }
-    
+
     const updatedMember = await this.updateTeamMember(id, { status, lastActive: new Date() });
-    
+
     await this.createSystemActivity({
       activity_type: 'team_member_status_updated',
       component: 'team',
       status: 'success',
-      details: { teamMemberId: id, newStatus: status }
+      details: { teamMemberId: id, newStatus: status },
     });
-    
+
     return updatedMember!;
   }
 
@@ -4974,16 +5672,16 @@ export class MemStorage implements IStorage {
     if (!exists) {
       return false;
     }
-    
+
     this.teamMembers.delete(id);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_member_deleted',
       component: 'team',
       status: 'success',
-      details: { teamMemberId: id }
+      details: { teamMemberId: id },
     });
-    
+
     return true;
   }
 
@@ -4998,19 +5696,17 @@ export class MemStorage implements IStorage {
   }
 
   async getTeamTasksByAssignee(assigneeId: number): Promise<TeamTask[]> {
-    return Array.from(this.teamTasks.values())
-      .filter(task => task.assignedTo === assigneeId);
+    return Array.from(this.teamTasks.values()).filter(task => task.assignedTo === assigneeId);
   }
 
   async getTeamTasksByStatus(status: string): Promise<TeamTask[]> {
-    return Array.from(this.teamTasks.values())
-      .filter(task => task.status === status);
+    return Array.from(this.teamTasks.values()).filter(task => task.status === status);
   }
 
   async createTeamTask(task: InsertTask): Promise<TeamTask> {
     const id = `task_${this.currentTeamTaskId++}`;
     const timestamp = new Date();
-    
+
     const newTask: TeamTask = {
       ...task,
       id,
@@ -5022,18 +5718,18 @@ export class MemStorage implements IStorage {
       assignedTo: task.assignedTo || null,
       dueDate: task.dueDate || null,
       estimatedHours: task.estimatedHours || null,
-      actualHours: task.actualHours || null
+      actualHours: task.actualHours || null,
     };
-    
+
     this.teamTasks.set(id, newTask);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_task_created',
       component: 'team',
       status: 'success',
-      details: { task: newTask }
+      details: { task: newTask },
     });
-    
+
     return newTask;
   }
 
@@ -5042,22 +5738,22 @@ export class MemStorage implements IStorage {
     if (!task) {
       return null;
     }
-    
+
     const updatedTask = {
       ...task,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.teamTasks.set(id, updatedTask);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_task_updated',
       component: 'team',
       status: 'success',
-      details: { taskId: id, updates }
+      details: { taskId: id, updates },
     });
-    
+
     return updatedTask;
   }
 
@@ -5066,16 +5762,16 @@ export class MemStorage implements IStorage {
     if (!task) {
       throw new Error(`Task with ID ${id} not found`);
     }
-    
+
     const updatedTask = await this.updateTeamTask(id, { status, updatedAt: new Date() });
-    
+
     await this.createSystemActivity({
       activity_type: 'team_task_status_updated',
       component: 'team',
       status: 'success',
-      details: { taskId: id, newStatus: status }
+      details: { taskId: id, newStatus: status },
     });
-    
+
     return updatedTask!;
   }
 
@@ -5084,24 +5780,24 @@ export class MemStorage implements IStorage {
     if (!task) {
       throw new Error(`Task with ID ${taskId} not found`);
     }
-    
+
     const member = await this.getTeamMemberById(teamMemberId);
     if (!member) {
       throw new Error(`Team member with ID ${teamMemberId} not found`);
     }
-    
-    const updatedTask = await this.updateTeamTask(taskId, { 
+
+    const updatedTask = await this.updateTeamTask(taskId, {
       assignedTo: teamMemberId,
-      updatedAt: new Date() 
+      updatedAt: new Date(),
     });
-    
+
     await this.createSystemActivity({
       activity_type: 'team_task_assigned',
       component: 'team',
       status: 'success',
-      details: { taskId, teamMemberId, taskTitle: task.title }
+      details: { taskId, teamMemberId, taskTitle: task.title },
     });
-    
+
     return updatedTask!;
   }
 
@@ -5110,16 +5806,16 @@ export class MemStorage implements IStorage {
     if (!exists) {
       return false;
     }
-    
+
     this.teamTasks.delete(id);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_task_deleted',
       component: 'team',
       status: 'success',
-      details: { taskId: id }
+      details: { taskId: id },
     });
-    
+
     return true;
   }
 
@@ -5133,19 +5829,27 @@ export class MemStorage implements IStorage {
     return session || null;
   }
 
-  async getTeamCollaborationSessionsByOrganizer(organizerId: number): Promise<TeamCollaborationSession[]> {
-    return Array.from(this.teamCollaborationSessions.values())
-      .filter(session => session.organizer === organizerId);
+  async getTeamCollaborationSessionsByOrganizer(
+    organizerId: number
+  ): Promise<TeamCollaborationSession[]> {
+    return Array.from(this.teamCollaborationSessions.values()).filter(
+      session => session.organizer === organizerId
+    );
   }
 
-  async getTeamCollaborationSessionsByParticipant(participantId: number): Promise<TeamCollaborationSession[]> {
-    return Array.from(this.teamCollaborationSessions.values())
-      .filter(session => session.participants.includes(participantId));
+  async getTeamCollaborationSessionsByParticipant(
+    participantId: number
+  ): Promise<TeamCollaborationSession[]> {
+    return Array.from(this.teamCollaborationSessions.values()).filter(session =>
+      session.participants.includes(participantId)
+    );
   }
 
-  async createTeamCollaborationSession(session: InsertTeamCollaborationSession): Promise<TeamCollaborationSession> {
+  async createTeamCollaborationSession(
+    session: InsertTeamCollaborationSession
+  ): Promise<TeamCollaborationSession> {
     const id = `session_${this.currentTeamCollaborationSessionId++}`;
-    
+
     const newSession: TeamCollaborationSession = {
       ...session,
       id,
@@ -5154,41 +5858,44 @@ export class MemStorage implements IStorage {
       notes: session.notes || null,
       recordingUrl: session.recordingUrl || null,
       agenda: session.agenda || [],
-      taskIds: session.taskIds || []
+      taskIds: session.taskIds || [],
     };
-    
+
     this.teamCollaborationSessions.set(id, newSession);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_collaboration_session_created',
       component: 'team',
       status: 'success',
-      details: { session: newSession }
+      details: { session: newSession },
     });
-    
+
     return newSession;
   }
 
-  async updateTeamCollaborationSession(id: string, updates: Partial<TeamCollaborationSession>): Promise<TeamCollaborationSession | null> {
+  async updateTeamCollaborationSession(
+    id: string,
+    updates: Partial<TeamCollaborationSession>
+  ): Promise<TeamCollaborationSession | null> {
     const session = this.teamCollaborationSessions.get(id);
     if (!session) {
       return null;
     }
-    
+
     const updatedSession = {
       ...session,
-      ...updates
+      ...updates,
     };
-    
+
     this.teamCollaborationSessions.set(id, updatedSession);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_collaboration_session_updated',
       component: 'team',
       status: 'success',
-      details: { sessionId: id, updates }
+      details: { sessionId: id, updates },
     });
-    
+
     return updatedSession;
   }
 
@@ -5197,16 +5904,16 @@ export class MemStorage implements IStorage {
     if (!exists) {
       return false;
     }
-    
+
     this.teamCollaborationSessions.delete(id);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_collaboration_session_deleted',
       component: 'team',
       status: 'success',
-      details: { sessionId: id }
+      details: { sessionId: id },
     });
-    
+
     return true;
   }
 
@@ -5221,57 +5928,62 @@ export class MemStorage implements IStorage {
   }
 
   async getTeamFeedbackByReceiver(receiverId: number): Promise<TeamFeedback[]> {
-    return Array.from(this.teamFeedback.values())
-      .filter(feedback => feedback.receiverId === receiverId);
+    return Array.from(this.teamFeedback.values()).filter(
+      feedback => feedback.receiverId === receiverId
+    );
   }
 
   async getTeamFeedbackByProvider(providerId: number): Promise<TeamFeedback[]> {
-    return Array.from(this.teamFeedback.values())
-      .filter(feedback => feedback.providerId === providerId);
+    return Array.from(this.teamFeedback.values()).filter(
+      feedback => feedback.providerId === providerId
+    );
   }
 
   async createTeamFeedback(feedback: InsertTeamFeedback): Promise<TeamFeedback> {
     const id = `feedback_${this.currentTeamFeedbackId++}`;
     const timestamp = new Date();
-    
+
     const newFeedback: TeamFeedback = {
       ...feedback,
       id,
-      createdAt: timestamp
+      createdAt: timestamp,
     };
-    
+
     this.teamFeedback.set(id, newFeedback);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_feedback_created',
       component: 'team',
       status: 'success',
-      details: { feedback: newFeedback }
+      details: { feedback: newFeedback },
     });
-    
+
     return newFeedback;
   }
 
-  async updateTeamFeedback(id: string, updates: Partial<TeamFeedback>): Promise<TeamFeedback | null> {
+  async updateTeamFeedback(
+    id: string,
+    updates: Partial<TeamFeedback>
+  ): Promise<TeamFeedback | null> {
     const feedback = this.teamFeedback.get(id);
     if (!feedback) {
       return null;
     }
-    
+
     const updatedFeedback = {
       ...feedback,
-      ...updates
+      ...updates,
     };
-    
+
     this.teamFeedback.set(id, updatedFeedback);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_feedback_updated',
       component: 'team',
       status: 'success',
-      details: { feedbackId: id, updates }
+      details: { feedbackId: id, updates },
     });
-    
+
     return updatedFeedback;
   }
 
@@ -5280,16 +5992,16 @@ export class MemStorage implements IStorage {
     if (!exists) {
       return false;
     }
-    
+
     this.teamFeedback.delete(id);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_feedback_deleted',
       component: 'team',
       status: 'success',
-      details: { feedbackId: id }
+      details: { feedbackId: id },
     });
-    
+
     return true;
   }
 
@@ -5304,55 +6016,61 @@ export class MemStorage implements IStorage {
   }
 
   async getTeamKnowledgeBaseItemsByCategory(category: string): Promise<TeamKnowledgeBaseItem[]> {
-    return Array.from(this.teamKnowledgeBaseItems.values())
-      .filter(item => item.category === category);
+    return Array.from(this.teamKnowledgeBaseItems.values()).filter(
+      item => item.category === category
+    );
   }
 
-  async createTeamKnowledgeBaseItem(item: InsertTeamKnowledgeBaseItem): Promise<TeamKnowledgeBaseItem> {
+  async createTeamKnowledgeBaseItem(
+    item: InsertTeamKnowledgeBaseItem
+  ): Promise<TeamKnowledgeBaseItem> {
     const id = `kb_${this.currentTeamKnowledgeBaseItemId++}`;
     const timestamp = new Date();
-    
+
     const newItem: TeamKnowledgeBaseItem = {
       ...item,
       id,
       createdAt: timestamp,
       updatedAt: timestamp,
-      tags: item.tags || []
+      tags: item.tags || [],
     };
-    
+
     this.teamKnowledgeBaseItems.set(id, newItem);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_kb_item_created',
       component: 'team',
       status: 'success',
-      details: { knowledgeBaseItem: newItem }
+      details: { knowledgeBaseItem: newItem },
     });
-    
+
     return newItem;
   }
 
-  async updateTeamKnowledgeBaseItem(id: string, updates: Partial<TeamKnowledgeBaseItem>): Promise<TeamKnowledgeBaseItem | null> {
+  async updateTeamKnowledgeBaseItem(
+    id: string,
+    updates: Partial<TeamKnowledgeBaseItem>
+  ): Promise<TeamKnowledgeBaseItem | null> {
     const item = this.teamKnowledgeBaseItems.get(id);
     if (!item) {
       return null;
     }
-    
+
     const updatedItem = {
       ...item,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.teamKnowledgeBaseItems.set(id, updatedItem);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_kb_item_updated',
       component: 'team',
       status: 'success',
-      details: { itemId: id, updates }
+      details: { itemId: id, updates },
     });
-    
+
     return updatedItem;
   }
 
@@ -5361,16 +6079,16 @@ export class MemStorage implements IStorage {
     if (!exists) {
       return false;
     }
-    
+
     this.teamKnowledgeBaseItems.delete(id);
-    
+
     await this.createSystemActivity({
       activity_type: 'team_kb_item_deleted',
       component: 'team',
       status: 'success',
-      details: { itemId: id }
+      details: { itemId: id },
     });
-    
+
     return true;
   }
 
@@ -5385,29 +6103,28 @@ export class MemStorage implements IStorage {
   }
 
   async getTaskCommentsByTaskId(taskId: string): Promise<TaskComment[]> {
-    return Array.from(this.taskComments.values())
-      .filter(comment => comment.taskId === taskId);
+    return Array.from(this.taskComments.values()).filter(comment => comment.taskId === taskId);
   }
 
   async createTaskComment(comment: InsertTaskComment): Promise<TaskComment> {
     const id = `comment_${this.currentTaskCommentId++}`;
     const timestamp = new Date();
-    
+
     const newComment: TaskComment = {
       ...comment,
       id,
-      createdAt: timestamp
+      createdAt: timestamp,
     };
-    
+
     this.taskComments.set(id, newComment);
-    
+
     await this.createSystemActivity({
       activity_type: 'task_comment_created',
       component: 'team',
       status: 'success',
-      details: { comment: newComment }
+      details: { comment: newComment },
     });
-    
+
     return newComment;
   }
 
@@ -5416,21 +6133,21 @@ export class MemStorage implements IStorage {
     if (!comment) {
       return null;
     }
-    
+
     const updatedComment = {
       ...comment,
-      ...updates
+      ...updates,
     };
-    
+
     this.taskComments.set(id, updatedComment);
-    
+
     await this.createSystemActivity({
       activity_type: 'task_comment_updated',
       component: 'team',
       status: 'success',
-      details: { commentId: id, updates }
+      details: { commentId: id, updates },
     });
-    
+
     return updatedComment;
   }
 
@@ -5439,19 +6156,19 @@ export class MemStorage implements IStorage {
     if (!exists) {
       return false;
     }
-    
+
     this.taskComments.delete(id);
-    
+
     await this.createSystemActivity({
       activity_type: 'task_comment_deleted',
       component: 'team',
       status: 'success',
-      details: { commentId: id }
+      details: { commentId: id },
     });
-    
+
     return true;
   }
-  
+
   // GIS Layer methods implementation
   async createGISLayer(layer: InsertGISLayer): Promise<GISLayer> {
     const id = this.currentGISLayerId++;
@@ -5462,166 +6179,175 @@ export class MemStorage implements IStorage {
       createdAt: timestamp,
       updatedAt: timestamp,
       visible: layer.visible ?? true,
-      opacity: layer.opacity ?? "1.0",
-      zIndex: layer.zIndex ?? 0
+      opacity: layer.opacity ?? '1.0',
+      zIndex: layer.zIndex ?? 0,
     };
     this.gisLayers.set(id, gisLayer);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Created GIS Layer: ${gisLayer.name}`,
       entityType: 'gis_layer',
-      entityId: `${gisLayer.id}`
+      entityId: `${gisLayer.id}`,
     });
-    
+
     return gisLayer;
   }
-  
+
   async getGISLayer(id: number): Promise<GISLayer | undefined> {
     return this.gisLayers.get(id);
   }
-  
-  async getGISLayers(filters?: { type?: string, userId?: number }): Promise<GISLayer[]> {
+
+  async getGISLayers(filters?: { type?: string; userId?: number }): Promise<GISLayer[]> {
     let layers = Array.from(this.gisLayers.values());
-    
+
     if (filters) {
       if (filters.type) {
         layers = layers.filter(layer => layer.type === filters.type);
       }
-      
+
       if (filters.userId) {
         layers = layers.filter(layer => layer.userId === filters.userId);
       }
     }
-    
+
     return layers.sort((a, b) => a.zIndex - b.zIndex);
   }
-  
-  async updateGISLayer(id: number, updates: Partial<InsertGISLayer>): Promise<GISLayer | undefined> {
+
+  async updateGISLayer(
+    id: number,
+    updates: Partial<InsertGISLayer>
+  ): Promise<GISLayer | undefined> {
     const layer = this.gisLayers.get(id);
     if (!layer) return undefined;
-    
+
     const timestamp = new Date();
     const updatedLayer: GISLayer = {
       ...layer,
       ...updates,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
+
     this.gisLayers.set(id, updatedLayer);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Updated GIS Layer: ${layer.name}`,
       entityType: 'gis_layer',
-      entityId: `${layer.id}`
+      entityId: `${layer.id}`,
     });
-    
+
     return updatedLayer;
   }
-  
+
   async deleteGISLayer(id: number): Promise<boolean> {
     const layer = this.gisLayers.get(id);
     if (!layer) return false;
-    
+
     // Delete all feature collections associated with this layer
     const featureCollections = await this.getGISFeatureCollectionsByLayer(id);
     for (const collection of featureCollections) {
       await this.deleteGISFeatureCollection(collection.id);
     }
-    
+
     const success = this.gisLayers.delete(id);
-    
+
     if (success) {
       // Create system activity
       await this.createSystemActivity({
         agentId: 1, // Data Management Agent
         activity: `Deleted GIS Layer: ${layer.name}`,
         entityType: 'gis_layer',
-        entityId: `${layer.id}`
+        entityId: `${layer.id}`,
       });
     }
-    
+
     return success;
   }
-  
+
   // GIS Feature Collection methods implementation
-  async createGISFeatureCollection(collection: InsertGISFeatureCollection): Promise<GISFeatureCollection> {
+  async createGISFeatureCollection(
+    collection: InsertGISFeatureCollection
+  ): Promise<GISFeatureCollection> {
     const id = this.currentGISFeatureCollectionId++;
     const timestamp = new Date();
     const featureCollection: GISFeatureCollection = {
       ...collection,
       id,
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
     this.gisFeatureCollections.set(id, featureCollection);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Created GIS Feature Collection: ${featureCollection.name}`,
       entityType: 'gis_feature_collection',
-      entityId: `${featureCollection.id}`
+      entityId: `${featureCollection.id}`,
     });
-    
+
     return featureCollection;
   }
-  
+
   async getGISFeatureCollection(id: number): Promise<GISFeatureCollection | undefined> {
     return this.gisFeatureCollections.get(id);
   }
-  
+
   async getGISFeatureCollectionsByLayer(layerId: number): Promise<GISFeatureCollection[]> {
-    return Array.from(this.gisFeatureCollections.values())
-      .filter(collection => collection.layerId === layerId);
+    return Array.from(this.gisFeatureCollections.values()).filter(
+      collection => collection.layerId === layerId
+    );
   }
-  
-  async updateGISFeatureCollection(id: number, updates: Partial<InsertGISFeatureCollection>): Promise<GISFeatureCollection | undefined> {
+
+  async updateGISFeatureCollection(
+    id: number,
+    updates: Partial<InsertGISFeatureCollection>
+  ): Promise<GISFeatureCollection | undefined> {
     const collection = this.gisFeatureCollections.get(id);
     if (!collection) return undefined;
-    
+
     const timestamp = new Date();
     const updatedCollection: GISFeatureCollection = {
       ...collection,
       ...updates,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
+
     this.gisFeatureCollections.set(id, updatedCollection);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Updated GIS Feature Collection: ${collection.name}`,
       entityType: 'gis_feature_collection',
-      entityId: `${collection.id}`
+      entityId: `${collection.id}`,
     });
-    
+
     return updatedCollection;
   }
-  
+
   async deleteGISFeatureCollection(id: number): Promise<boolean> {
     const collection = this.gisFeatureCollections.get(id);
     if (!collection) return false;
-    
+
     const success = this.gisFeatureCollections.delete(id);
-    
+
     if (success) {
       // Create system activity
       await this.createSystemActivity({
         agentId: 1, // Data Management Agent
         activity: `Deleted GIS Feature Collection: ${collection.name}`,
         entityType: 'gis_feature_collection',
-        entityId: `${collection.id}`
+        entityId: `${collection.id}`,
       });
     }
-    
+
     return success;
   }
-  
+
   // GIS Map Project methods implementation
   async createGISMapProject(project: InsertGISMapProject): Promise<GISMapProject> {
     const id = this.currentGISMapProjectId++;
@@ -5632,209 +6358,221 @@ export class MemStorage implements IStorage {
       createdAt: timestamp,
       updatedAt: timestamp,
       isPublic: project.isPublic ?? false,
-      layers: project.layers ?? []
+      layers: project.layers ?? [],
     };
     this.gisMapProjects.set(id, mapProject);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Created GIS Map Project: ${mapProject.name}`,
       entityType: 'gis_map_project',
-      entityId: `${mapProject.id}`
+      entityId: `${mapProject.id}`,
     });
-    
+
     return mapProject;
   }
-  
+
   async getGISMapProject(id: number): Promise<GISMapProject | undefined> {
     return this.gisMapProjects.get(id);
   }
-  
+
   async getGISMapProjects(userId?: number): Promise<GISMapProject[]> {
     let projects = Array.from(this.gisMapProjects.values());
-    
+
     if (userId) {
       projects = projects.filter(project => project.userId === userId);
     }
-    
+
     return projects.sort((a, b) => a.name.localeCompare(b.name));
   }
-  
+
   async getPublicGISMapProjects(): Promise<GISMapProject[]> {
     return Array.from(this.gisMapProjects.values())
       .filter(project => project.isPublic)
       .sort((a, b) => a.name.localeCompare(b.name));
   }
-  
-  async updateGISMapProject(id: number, updates: Partial<InsertGISMapProject>): Promise<GISMapProject | undefined> {
+
+  async updateGISMapProject(
+    id: number,
+    updates: Partial<InsertGISMapProject>
+  ): Promise<GISMapProject | undefined> {
     const project = this.gisMapProjects.get(id);
     if (!project) return undefined;
-    
+
     const timestamp = new Date();
     const updatedProject: GISMapProject = {
       ...project,
       ...updates,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
+
     this.gisMapProjects.set(id, updatedProject);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Updated GIS Map Project: ${project.name}`,
       entityType: 'gis_map_project',
-      entityId: `${project.id}`
+      entityId: `${project.id}`,
     });
-    
+
     return updatedProject;
   }
-  
+
   async deleteGISMapProject(id: number): Promise<boolean> {
     const project = this.gisMapProjects.get(id);
     if (!project) return false;
-    
+
     const success = this.gisMapProjects.delete(id);
-    
+
     if (success) {
       // Create system activity
       await this.createSystemActivity({
         agentId: 1, // Data Management Agent
         activity: `Deleted GIS Map Project: ${project.name}`,
         entityType: 'gis_map_project',
-        entityId: `${project.id}`
+        entityId: `${project.id}`,
       });
     }
-    
+
     return success;
   }
-  
+
   // ETL Job methods implementation
-  async createETLJob(job: { id: string, config: any, status: string, createdAt: Date, updatedAt: Date }): Promise<ETLJob> {
+  async createETLJob(job: {
+    id: string;
+    config: any;
+    status: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }): Promise<ETLJob> {
     const etlJob: ETLJob = {
       ...job,
       result: null,
-      completedAt: null
+      completedAt: null,
     };
     this.etlJobs.set(job.id, etlJob);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Created ETL Job: ${job.id}`,
       entityType: 'etl_job',
-      entityId: job.id
+      entityId: job.id,
     });
-    
+
     return etlJob;
   }
-  
+
   async getETLJob(id: string): Promise<ETLJob | undefined> {
     return this.etlJobs.get(id);
   }
-  
+
   async getETLJobs(userId?: number): Promise<ETLJob[]> {
     let jobs = Array.from(this.etlJobs.values());
-    
+
     if (userId) {
       jobs = jobs.filter(job => job.userId === userId);
     }
-    
+
     return jobs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
-  
+
   async updateETLJob(id: string, updates: Partial<ETLJob>): Promise<ETLJob | undefined> {
     const job = this.etlJobs.get(id);
     if (!job) return undefined;
-    
+
     const updatedJob: ETLJob = {
       ...job,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.etlJobs.set(id, updatedJob);
-    
+
     // If job is completed, add timestamp
     if (updates.status === 'completed' && !updatedJob.completedAt) {
       updatedJob.completedAt = new Date();
       this.etlJobs.set(id, updatedJob);
     }
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Updated ETL Job: ${job.id} (Status: ${updatedJob.status})`,
       entityType: 'etl_job',
-      entityId: job.id
+      entityId: job.id,
     });
-    
+
     return updatedJob;
   }
-  
+
   // GIS Agent Task methods implementation
   async createAgentTask(task: GISAgentTask): Promise<GISAgentTask> {
     this.gisAgentTasks.set(task.id, task);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Created GIS Agent Task: ${task.taskType}`,
       entityType: 'gis_agent_task',
-      entityId: task.id
+      entityId: task.id,
     });
-    
+
     return task;
   }
-  
+
   async getAgentTask(id: string): Promise<GISAgentTask | null> {
     return this.gisAgentTasks.get(id) || null;
   }
-  
+
   async getAgentTasks(agentId?: string, status?: string): Promise<GISAgentTask[]> {
     let tasks = Array.from(this.gisAgentTasks.values());
-    
+
     if (agentId) {
       tasks = tasks.filter(task => task.agentId === agentId);
     }
-    
+
     if (status) {
       tasks = tasks.filter(task => task.status === status);
     }
-    
+
     return tasks.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
-  
-  async updateAgentTask(id: string, updates: Partial<GISAgentTask>): Promise<GISAgentTask | undefined> {
+
+  async updateAgentTask(
+    id: string,
+    updates: Partial<GISAgentTask>
+  ): Promise<GISAgentTask | undefined> {
     const task = this.gisAgentTasks.get(id);
     if (!task) return undefined;
-    
+
     const updatedTask: GISAgentTask = {
       ...task,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.gisAgentTasks.set(id, updatedTask);
-    
+
     // If task is completed, add timestamp
     if (updates.status === 'completed' && !updatedTask.completedAt) {
       updatedTask.completedAt = new Date();
       this.gisAgentTasks.set(id, updatedTask);
     }
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Updated GIS Agent Task: ${task.taskType} (Status: ${updatedTask.status})`,
       entityType: 'gis_agent_task',
-      entityId: task.id
+      entityId: task.id,
     });
-    
+
     return updatedTask;
   }
-  
+
   // Agent Message methods implementation
   async createAgentMessage(message: InsertAgentMessage): Promise<AgentMessage> {
     const id = this.currentAgentMessageId++;
@@ -5842,70 +6580,82 @@ export class MemStorage implements IStorage {
       ...message,
       id,
       processed: false,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
     this.agentMessages.set(id, agentMessage);
     return agentMessage;
   }
-  
+
   async getAgentMessage(id: number): Promise<AgentMessage | undefined> {
     return this.agentMessages.get(id);
   }
-  
+
   async getUnprocessedAgentMessages(topic: string): Promise<AgentMessage[]> {
-    return Array.from(this.agentMessages.values())
-      .filter(message => message.topic === topic && !message.processed);
+    return Array.from(this.agentMessages.values()).filter(
+      message => message.topic === topic && !message.processed
+    );
   }
-  
-  async updateAgentMessage(id: string, updates: Partial<AgentMessage>): Promise<AgentMessage | undefined> {
+
+  async updateAgentMessage(
+    id: string,
+    updates: Partial<AgentMessage>
+  ): Promise<AgentMessage | undefined> {
     const numericId = parseInt(id);
     if (isNaN(numericId)) return undefined;
-    
+
     const message = this.agentMessages.get(numericId);
     if (!message) return undefined;
-    
+
     const updatedMessage: AgentMessage = {
       ...message,
-      ...updates
+      ...updates,
     };
-    
+
     this.agentMessages.set(numericId, updatedMessage);
     return updatedMessage;
   }
-  
+
   // Spatial Analysis methods implementation
-  async createSpatialAnalysis(analysis: { name: string, analysisType: string, inputData: any, resultData: any, parameters?: any, metadata?: any, userId?: number }): Promise<SpatialAnalysisResult> {
+  async createSpatialAnalysis(analysis: {
+    name: string;
+    analysisType: string;
+    inputData: any;
+    resultData: any;
+    parameters?: any;
+    metadata?: any;
+    userId?: number;
+  }): Promise<SpatialAnalysisResult> {
     const id = this.currentSpatialAnalysisResultId++;
     const result: SpatialAnalysisResult = {
       ...analysis,
       id,
       parameters: analysis.parameters || {},
       metadata: analysis.metadata || {},
-      createdAt: new Date()
+      createdAt: new Date(),
     };
     this.spatialAnalysisResults.set(id, result);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 1, // Data Management Agent
       activity: `Created Spatial Analysis: ${result.name} (Type: ${result.analysisType})`,
       entityType: 'spatial_analysis',
-      entityId: `${result.id}`
+      entityId: `${result.id}`,
     });
-    
+
     return result;
   }
-  
+
   async getSpatialAnalysis(id: number): Promise<SpatialAnalysisResult | undefined> {
     return this.spatialAnalysisResults.get(id);
   }
-  
+
   async getSpatialAnalysesByUser(userId: number): Promise<SpatialAnalysisResult[]> {
     return Array.from(this.spatialAnalysisResults.values())
       .filter(analysis => analysis.userId === userId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
-  
+
   async getSpatialAnalysesByType(analysisType: string): Promise<SpatialAnalysisResult[]> {
     return Array.from(this.spatialAnalysisResults.values())
       .filter(analysis => analysis.analysisType === analysisType)
@@ -5916,11 +6666,11 @@ export class MemStorage implements IStorage {
 // Create a PostgreSQL implementation of the storage interface
 export class PgStorage implements IStorage {
   // Web Vitals Performance Monitoring Methods
-  
+
   async saveWebVitalsMetric(data: InsertWebVitalsMetric): Promise<void> {
     await this.db.insert(webVitalsMetrics).values(data);
   }
-  
+
   async getWebVitalsMetrics(params: {
     startDate?: Date;
     endDate?: Date;
@@ -5930,47 +6680,48 @@ export class PgStorage implements IStorage {
     limit?: number;
   }): Promise<WebVitalsMetric[]> {
     let query = this.db.select().from(webVitalsMetrics);
-    
+
     if (params.startDate) {
       query = query.where(sql`timestamp >= ${params.startDate}`);
     }
-    
+
     if (params.endDate) {
       query = query.where(sql`timestamp <= ${params.endDate}`);
     }
-    
+
     if (params.metricName) {
       query = query.where(eq(webVitalsMetrics.name, params.metricName));
     }
-    
+
     if (params.url) {
       query = query.where(eq(webVitalsMetrics.url, params.url));
     }
-    
+
     if (params.deviceType) {
       query = query.where(eq(webVitalsMetrics.deviceType, params.deviceType));
     }
-    
+
     query = query.orderBy(desc(webVitalsMetrics.timestamp));
-    
+
     if (params.limit) {
       query = query.limit(params.limit);
     }
-    
+
     return await query;
   }
-  
+
   async saveWebVitalsReport(data: InsertWebVitalsReport): Promise<void> {
     await this.db.insert(webVitalsReports).values(data);
   }
-  
+
   async getWebVitalsReports(limit: number = 100): Promise<WebVitalsReport[]> {
-    return await this.db.select()
+    return await this.db
+      .select()
       .from(webVitalsReports)
       .orderBy(desc(webVitalsReports.timestamp))
       .limit(limit);
   }
-  
+
   async getWebVitalsAlerts(params: {
     acknowledged?: boolean;
     startDate?: Date;
@@ -5979,61 +6730,59 @@ export class PgStorage implements IStorage {
     limit?: number;
   }): Promise<WebVitalsAlert[]> {
     let query = this.db.select().from(webVitalsAlerts);
-    
+
     if (params.acknowledged !== undefined) {
       query = query.where(eq(webVitalsAlerts.acknowledged, params.acknowledged));
     }
-    
+
     if (params.startDate) {
       query = query.where(sql`detected_at >= ${params.startDate}`);
     }
-    
+
     if (params.endDate) {
       query = query.where(sql`detected_at <= ${params.endDate}`);
     }
-    
+
     if (params.severity) {
       query = query.where(eq(webVitalsAlerts.severity, params.severity));
     }
-    
+
     query = query.orderBy(desc(webVitalsAlerts.detectedAt));
-    
+
     if (params.limit) {
       query = query.limit(params.limit);
     }
-    
+
     return await query;
   }
-  
+
   async saveWebVitalsAlert(data: InsertWebVitalsAlert): Promise<void> {
     await this.db.insert(webVitalsAlerts).values(data);
   }
-  
+
   async updateWebVitalsAlert(alertId: string, updates: Partial<WebVitalsAlert>): Promise<void> {
-    await this.db.update(webVitalsAlerts)
-      .set(updates)
-      .where(eq(webVitalsAlerts.id, alertId));
+    await this.db.update(webVitalsAlerts).set(updates).where(eq(webVitalsAlerts.id, alertId));
   }
-  
+
   async getWebVitalsBudgets(params: {
     metricName?: string;
     urlPattern?: string;
     active?: boolean;
   }): Promise<WebVitalsBudget[]> {
     let query = this.db.select().from(webVitalsBudgets);
-    
+
     if (params.metricName) {
       query = query.where(eq(webVitalsBudgets.metricName, params.metricName));
     }
-    
+
     if (params.urlPattern) {
       query = query.where(eq(webVitalsBudgets.urlPattern, params.urlPattern));
     }
-    
+
     if (params.active !== undefined) {
       query = query.where(eq(webVitalsBudgets.active, params.active));
     }
-    
+
     return await query;
   }
   private pool: pg.Pool;
@@ -6047,215 +6796,231 @@ export class PgStorage implements IStorage {
     const result = await this.db.select().from(teamMembers);
     return result;
   }
-  
+
   async getTeamMemberById(id: number): Promise<TeamMember | null> {
     const results = await this.db.select().from(teamMembers).where(eq(teamMembers.id, id));
     return results.length > 0 ? results[0] : null;
   }
-  
+
   async getTeamMembersByRole(role: string): Promise<TeamMember[]> {
     return await this.db.select().from(teamMembers).where(eq(teamMembers.role, role));
   }
-  
+
   async createTeamMember(member: InsertTeamMember): Promise<TeamMember> {
     const results = await this.db.insert(teamMembers).values(member).returning();
     return results[0];
   }
-  
+
   async updateTeamMember(id: number, updates: Partial<TeamMember>): Promise<TeamMember | null> {
-    const results = await this.db.update(teamMembers)
+    const results = await this.db
+      .update(teamMembers)
       .set(updates)
       .where(eq(teamMembers.id, id))
       .returning();
     return results.length > 0 ? results[0] : null;
   }
-  
+
   async updateTeamMemberStatus(id: number, status: string): Promise<TeamMember> {
-    const results = await this.db.update(teamMembers)
-      .set({ 
-        status, 
-        lastActive: new Date() 
+    const results = await this.db
+      .update(teamMembers)
+      .set({
+        status,
+        lastActive: new Date(),
       })
       .where(eq(teamMembers.id, id))
       .returning();
-    
+
     if (results.length === 0) {
       throw new Error(`Team member with ID ${id} not found`);
     }
-    
+
     return results[0];
   }
-  
+
   async deleteTeamMember(id: number): Promise<boolean> {
-    const results = await this.db.delete(teamMembers)
-      .where(eq(teamMembers.id, id))
-      .returning();
-    
+    const results = await this.db.delete(teamMembers).where(eq(teamMembers.id, id)).returning();
+
     return results.length > 0;
   }
-  
+
   // Team Collaboration Session methods
   async getAllTeamCollaborationSessions(): Promise<TeamCollaborationSession[]> {
     return await this.db.select().from(teamCollaborationSessions);
   }
-  
+
   async getTeamCollaborationSessionById(id: string): Promise<TeamCollaborationSession | null> {
-    const results = await this.db.select().from(teamCollaborationSessions)
+    const results = await this.db
+      .select()
+      .from(teamCollaborationSessions)
       .where(eq(teamCollaborationSessions.id, id));
     return results.length > 0 ? results[0] : null;
   }
-  
-  async getTeamCollaborationSessionsByOrganizer(organizerId: number): Promise<TeamCollaborationSession[]> {
-    return await this.db.select().from(teamCollaborationSessions)
+
+  async getTeamCollaborationSessionsByOrganizer(
+    organizerId: number
+  ): Promise<TeamCollaborationSession[]> {
+    return await this.db
+      .select()
+      .from(teamCollaborationSessions)
       .where(eq(teamCollaborationSessions.organizer, organizerId));
   }
-  
-  async getTeamCollaborationSessionsByParticipant(participantId: number): Promise<TeamCollaborationSession[]> {
+
+  async getTeamCollaborationSessionsByParticipant(
+    participantId: number
+  ): Promise<TeamCollaborationSession[]> {
     // This requires a more complex query since participants is an array
     const sessions = await this.db.select().from(teamCollaborationSessions);
-    return sessions.filter(session => 
-      session.participants.includes(participantId)
-    );
+    return sessions.filter(session => session.participants.includes(participantId));
   }
-  
-  async createTeamCollaborationSession(session: InsertTeamCollaborationSession): Promise<TeamCollaborationSession> {
-    const results = await this.db.insert(teamCollaborationSessions)
-      .values(session)
-      .returning();
+
+  async createTeamCollaborationSession(
+    session: InsertTeamCollaborationSession
+  ): Promise<TeamCollaborationSession> {
+    const results = await this.db.insert(teamCollaborationSessions).values(session).returning();
     return results[0];
   }
-  
-  async updateTeamCollaborationSession(id: string, updates: Partial<TeamCollaborationSession>): Promise<TeamCollaborationSession | null> {
-    const results = await this.db.update(teamCollaborationSessions)
+
+  async updateTeamCollaborationSession(
+    id: string,
+    updates: Partial<TeamCollaborationSession>
+  ): Promise<TeamCollaborationSession | null> {
+    const results = await this.db
+      .update(teamCollaborationSessions)
       .set(updates)
       .where(eq(teamCollaborationSessions.id, id))
       .returning();
     return results.length > 0 ? results[0] : null;
   }
-  
+
   async deleteTeamCollaborationSession(id: string): Promise<boolean> {
-    const results = await this.db.delete(teamCollaborationSessions)
+    const results = await this.db
+      .delete(teamCollaborationSessions)
       .where(eq(teamCollaborationSessions.id, id))
       .returning();
     return results.length > 0;
   }
-  
+
   // Team Knowledge Base methods
   async getAllTeamKnowledgeBaseItems(): Promise<TeamKnowledgeBaseItem[]> {
     return await this.db.select().from(teamKnowledgeBaseItems);
   }
-  
+
   async getTeamKnowledgeBaseItemById(id: number): Promise<TeamKnowledgeBaseItem | null> {
-    const results = await this.db.select().from(teamKnowledgeBaseItems)
+    const results = await this.db
+      .select()
+      .from(teamKnowledgeBaseItems)
       .where(eq(teamKnowledgeBaseItems.id, id));
     return results.length > 0 ? results[0] : null;
   }
-  
+
   async getTeamKnowledgeBaseItemsByCategory(category: string): Promise<TeamKnowledgeBaseItem[]> {
-    return await this.db.select().from(teamKnowledgeBaseItems)
+    return await this.db
+      .select()
+      .from(teamKnowledgeBaseItems)
       .where(eq(teamKnowledgeBaseItems.category, category));
   }
-  
-  async createTeamKnowledgeBaseItem(item: InsertTeamKnowledgeBaseItem): Promise<TeamKnowledgeBaseItem> {
-    const results = await this.db.insert(teamKnowledgeBaseItems)
-      .values(item)
-      .returning();
+
+  async createTeamKnowledgeBaseItem(
+    item: InsertTeamKnowledgeBaseItem
+  ): Promise<TeamKnowledgeBaseItem> {
+    const results = await this.db.insert(teamKnowledgeBaseItems).values(item).returning();
     return results[0];
   }
-  
-  async updateTeamKnowledgeBaseItem(id: number, updates: Partial<TeamKnowledgeBaseItem>): Promise<TeamKnowledgeBaseItem | null> {
-    const results = await this.db.update(teamKnowledgeBaseItems)
+
+  async updateTeamKnowledgeBaseItem(
+    id: number,
+    updates: Partial<TeamKnowledgeBaseItem>
+  ): Promise<TeamKnowledgeBaseItem | null> {
+    const results = await this.db
+      .update(teamKnowledgeBaseItems)
       .set({
         ...updates,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(teamKnowledgeBaseItems.id, id))
       .returning();
     return results.length > 0 ? results[0] : null;
   }
-  
+
   async deleteTeamKnowledgeBaseItem(id: number): Promise<boolean> {
-    const results = await this.db.delete(teamKnowledgeBaseItems)
+    const results = await this.db
+      .delete(teamKnowledgeBaseItems)
       .where(eq(teamKnowledgeBaseItems.id, id))
       .returning();
     return results.length > 0;
   }
-  
+
   // Team Tasks methods
   async getAllTeamTasks(): Promise<TeamTask[]> {
     return await this.db.select().from(teamTasks);
   }
-  
+
   async getTeamTaskById(id: string): Promise<TeamTask | null> {
-    const results = await this.db.select().from(teamTasks)
-      .where(eq(teamTasks.id, id));
+    const results = await this.db.select().from(teamTasks).where(eq(teamTasks.id, id));
     return results.length > 0 ? results[0] : null;
   }
-  
+
   async getTeamTasksByAssignee(assigneeId: number): Promise<TeamTask[]> {
-    return await this.db.select().from(teamTasks)
-      .where(eq(teamTasks.assignedTo, assigneeId));
+    return await this.db.select().from(teamTasks).where(eq(teamTasks.assignedTo, assigneeId));
   }
-  
+
   async getTeamTasksByStatus(status: string): Promise<TeamTask[]> {
-    return await this.db.select().from(teamTasks)
-      .where(eq(teamTasks.status, status));
+    return await this.db.select().from(teamTasks).where(eq(teamTasks.status, status));
   }
-  
+
   async createTeamTask(task: InsertTeamTask): Promise<TeamTask> {
-    const results = await this.db.insert(teamTasks)
-      .values(task)
-      .returning();
+    const results = await this.db.insert(teamTasks).values(task).returning();
     return results[0];
   }
-  
+
   async updateTeamTask(id: string, updates: Partial<TeamTask>): Promise<TeamTask | null> {
-    const results = await this.db.update(teamTasks)
+    const results = await this.db
+      .update(teamTasks)
       .set({
         ...updates,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(teamTasks.id, id))
       .returning();
     return results.length > 0 ? results[0] : null;
   }
-  
+
   async updateTeamTaskStatus(id: string, status: string): Promise<TeamTask> {
-    const results = await this.db.update(teamTasks)
+    const results = await this.db
+      .update(teamTasks)
       .set({
         status,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(teamTasks.id, id))
       .returning();
-    
+
     if (results.length === 0) {
       throw new Error(`Team task with ID ${id} not found`);
     }
-    
+
     return results[0];
   }
-  
+
   async assignTeamTask(taskId: string, teamMemberId: number): Promise<TeamTask> {
-    const results = await this.db.update(teamTasks)
+    const results = await this.db
+      .update(teamTasks)
       .set({
         assignedTo: teamMemberId,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(teamTasks.id, taskId))
       .returning();
-    
+
     if (results.length === 0) {
       throw new Error(`Team task with ID ${taskId} not found`);
     }
-    
+
     return results[0];
   }
-  
+
   async deleteTeamTask(id: string): Promise<boolean> {
-    const results = await this.db.delete(teamTasks)
-      .where(eq(teamTasks.id, id))
-      .returning();
+    const results = await this.db.delete(teamTasks).where(eq(teamTasks.id, id)).returning();
     return results.length > 0;
   }
 
@@ -6263,20 +7028,49 @@ export class PgStorage implements IStorage {
     this.pool = new pg.Pool({
       connectionString: process.env.DATABASE_URL,
     });
-    this.db = drizzle(this.pool, { schema: { 
-      users, properties, landRecords, improvements, fields, 
-      appeals, appealComments, appealEvidence, auditLogs,
-      aiAgents, systemActivities, mcpToolExecutionLogs, pacsModules, propertyInsightShares,
-      comparableSales, comparableSalesAnalyses, comparableAnalysisEntries,
-      importStaging,
-      webVitalsMetrics, webVitalsReports, webVitalsAggregates, webVitalsBudgets, webVitalsAlerts,
-      // Team collaboration
-      teamMembers, teamTasks, taskComments, teamCollaborationSessions, teamFeedbacks, teamKnowledgeBaseItems,
-      sharedWorkflows, sharedWorkflowCollaborators, sharedWorkflowActivities, workflowSessions,
-      // Development Tools
-      codeSnippets, dataVisualizations, uiComponentTemplates
-    }});
-    
+    this.db = drizzle(this.pool, {
+      schema: {
+        users,
+        properties,
+        landRecords,
+        improvements,
+        fields,
+        appeals,
+        appealComments,
+        appealEvidence,
+        auditLogs,
+        aiAgents,
+        systemActivities,
+        mcpToolExecutionLogs,
+        pacsModules,
+        propertyInsightShares,
+        comparableSales,
+        comparableSalesAnalyses,
+        comparableAnalysisEntries,
+        importStaging,
+        webVitalsMetrics,
+        webVitalsReports,
+        webVitalsAggregates,
+        webVitalsBudgets,
+        webVitalsAlerts,
+        // Team collaboration
+        teamMembers,
+        teamTasks,
+        taskComments,
+        teamCollaborationSessions,
+        teamFeedbacks,
+        teamKnowledgeBaseItems,
+        sharedWorkflows,
+        sharedWorkflowCollaborators,
+        sharedWorkflowActivities,
+        workflowSessions,
+        // Development Tools
+        codeSnippets,
+        dataVisualizations,
+        uiComponentTemplates,
+      },
+    });
+
     // Initialize in-memory maps for PACS methods
     this.pacsModules = new Map();
     this.currentPacsModuleId = 1;
@@ -6309,7 +7103,10 @@ export class PgStorage implements IStorage {
   }
 
   async getPropertyByPropertyId(propertyId: string): Promise<Property | undefined> {
-    const results = await this.db.select().from(properties).where(eq(properties.propertyId, propertyId));
+    const results = await this.db
+      .select()
+      .from(properties)
+      .where(eq(properties.propertyId, propertyId));
     return results[0];
   }
 
@@ -6318,8 +7115,15 @@ export class PgStorage implements IStorage {
     return results[0];
   }
 
-  async updateProperty(id: number, updateData: Partial<InsertProperty>): Promise<Property | undefined> {
-    const results = await this.db.update(properties).set(updateData).where(eq(properties.id, id)).returning();
+  async updateProperty(
+    id: number,
+    updateData: Partial<InsertProperty>
+  ): Promise<Property | undefined> {
+    const results = await this.db
+      .update(properties)
+      .set(updateData)
+      .where(eq(properties.id, id))
+      .returning();
     return results[0];
   }
 
@@ -6359,7 +7163,11 @@ export class PgStorage implements IStorage {
   }
 
   async updateField(id: number, updateData: Partial<InsertField>): Promise<Field | undefined> {
-    const results = await this.db.update(fields).set(updateData).where(eq(fields.id, id)).returning();
+    const results = await this.db
+      .update(fields)
+      .set(updateData)
+      .where(eq(fields.id, id))
+      .returning();
     return results[0];
   }
 
@@ -6378,15 +7186,23 @@ export class PgStorage implements IStorage {
   }
 
   async updateAppealStatus(id: number, status: string): Promise<Appeal | undefined> {
-    const results = await this.db.update(appeals).set({ status }).where(eq(appeals.id, id)).returning();
+    const results = await this.db
+      .update(appeals)
+      .set({ status })
+      .where(eq(appeals.id, id))
+      .returning();
     return results[0];
   }
-  
+
   async updateAppeal(id: number, updates: Partial<Appeal>): Promise<Appeal | undefined> {
-    const results = await this.db.update(appeals).set({ 
-      ...updates,
-      lastUpdated: new Date()
-    }).where(eq(appeals.id, id)).returning();
+    const results = await this.db
+      .update(appeals)
+      .set({
+        ...updates,
+        lastUpdated: new Date(),
+      })
+      .where(eq(appeals.id, id))
+      .returning();
     return results[0];
   }
 
@@ -6415,7 +7231,10 @@ export class PgStorage implements IStorage {
   }
 
   async getAuditLogs(limit?: number): Promise<AuditLog[]> {
-    const query = this.db.select().from(auditLogs).orderBy((eb) => eb.desc(auditLogs.timestamp));
+    const query = this.db
+      .select()
+      .from(auditLogs)
+      .orderBy(eb => eb.desc(auditLogs.timestamp));
     if (limit) {
       query.limit(limit);
     }
@@ -6427,8 +7246,13 @@ export class PgStorage implements IStorage {
     return await this.db.select().from(aiAgents);
   }
 
-  async updateAiAgentStatus(id: number, status: string, performance: number): Promise<AiAgent | undefined> {
-    const results = await this.db.update(aiAgents)
+  async updateAiAgentStatus(
+    id: number,
+    status: string,
+    performance: number
+  ): Promise<AiAgent | undefined> {
+    const results = await this.db
+      .update(aiAgents)
       .set({ status, performance, lastActivity: new Date() })
       .where(eq(aiAgents.id, id))
       .returning();
@@ -6438,10 +7262,11 @@ export class PgStorage implements IStorage {
   // System Activity methods
   async getSystemActivities(limit?: number): Promise<SystemActivity[]> {
     // Fix SQL syntax error by correctly using orderBy with the desc function
-    const query = this.db.select()
+    const query = this.db
+      .select()
       .from(systemActivities)
-      .orderBy((eb) => eb.desc(systemActivities.timestamp));
-    
+      .orderBy(eb => eb.desc(systemActivities.timestamp));
+
     if (limit) {
       query.limit(limit);
     }
@@ -6461,13 +7286,15 @@ export class PgStorage implements IStorage {
 
   async upsertPacsModule(module: InsertPacsModule): Promise<PacsModule> {
     // Check if module exists
-    const existing = await this.db.select()
+    const existing = await this.db
+      .select()
       .from(pacsModules)
       .where(eq(pacsModules.moduleName, module.moduleName));
-    
+
     if (existing.length > 0) {
       // Update
-      const results = await this.db.update(pacsModules)
+      const results = await this.db
+        .update(pacsModules)
         .set({
           source: module.source,
           integration: module.integration,
@@ -6475,52 +7302,54 @@ export class PgStorage implements IStorage {
           category: module.category,
           apiEndpoints: module.apiEndpoints,
           dataSchema: module.dataSchema,
-          syncStatus: module.syncStatus
+          syncStatus: module.syncStatus,
         })
         .where(eq(pacsModules.id, existing[0].id))
         .returning();
       return results[0];
     } else {
       // Insert
-      const results = await this.db.insert(pacsModules)
-        .values(module)
-        .returning();
+      const results = await this.db.insert(pacsModules).values(module).returning();
       return results[0];
     }
   }
 
   async getPacsModuleById(id: number): Promise<PacsModule | undefined> {
-    const results = await this.db.select()
-      .from(pacsModules)
-      .where(eq(pacsModules.id, id));
+    const results = await this.db.select().from(pacsModules).where(eq(pacsModules.id, id));
     return results[0];
   }
 
   async getPacsModulesByCategory(): Promise<PacsModule[]> {
-    return await this.db.select().from(pacsModules)
-      .orderBy(pacsModules.category);
+    return await this.db.select().from(pacsModules).orderBy(pacsModules.category);
   }
 
-  async updatePacsModuleSyncStatus(id: number, syncStatus: string, lastSyncTimestamp: Date): Promise<PacsModule | undefined> {
-    const results = await this.db.update(pacsModules)
-      .set({ 
-        syncStatus: syncStatus, 
-        lastSyncTimestamp: lastSyncTimestamp 
+  async updatePacsModuleSyncStatus(
+    id: number,
+    syncStatus: string,
+    lastSyncTimestamp: Date
+  ): Promise<PacsModule | undefined> {
+    const results = await this.db
+      .update(pacsModules)
+      .set({
+        syncStatus: syncStatus,
+        lastSyncTimestamp: lastSyncTimestamp,
       })
       .where(eq(pacsModules.id, id))
       .returning();
     return results[0];
   }
-  
+
   // Property Insight Sharing methods
-  async createPropertyInsightShare(insertShare: InsertPropertyInsightShare): Promise<PropertyInsightShare> {
+  async createPropertyInsightShare(
+    insertShare: InsertPropertyInsightShare
+  ): Promise<PropertyInsightShare> {
     const results = await this.db.insert(propertyInsightShares).values(insertShare).returning();
     return results[0];
   }
-  
+
   async getAllPropertyInsightShares(): Promise<PropertyInsightShare[]> {
     const results = await this.db.select().from(propertyInsightShares);
-    
+
     // Filter out expired shares
     return results.filter((share: any) => {
       // Explicitly cast the share to PropertyInsightShare
@@ -6528,23 +7357,28 @@ export class PgStorage implements IStorage {
       return !typedShare.expiresAt || new Date(typedShare.expiresAt) >= new Date();
     });
   }
-  
+
   async getPropertyInsightShareById(shareId: string): Promise<PropertyInsightShare | null> {
-    const results = await this.db.select().from(propertyInsightShares).where(eq(propertyInsightShares.shareId, shareId));
+    const results = await this.db
+      .select()
+      .from(propertyInsightShares)
+      .where(eq(propertyInsightShares.shareId, shareId));
     if (results.length === 0) return null;
-    
+
     // Check if share has expired
     if (results[0].expiresAt && new Date(results[0].expiresAt) < new Date()) {
       return null;
     }
-    
+
     return results[0];
   }
-  
+
   async getPropertyInsightSharesByPropertyId(propertyId: string): Promise<PropertyInsightShare[]> {
-    const results = await this.db.select().from(propertyInsightShares)
+    const results = await this.db
+      .select()
+      .from(propertyInsightShares)
       .where(eq(propertyInsightShares.propertyId, propertyId));
-    
+
     // Filter out expired shares
     return results.filter((share: any) => {
       // Explicitly cast the share to PropertyInsightShare
@@ -6552,73 +7386,86 @@ export class PgStorage implements IStorage {
       return !typedShare.expiresAt || new Date(typedShare.expiresAt) >= new Date();
     });
   }
-  
-  async updatePropertyInsightShare(shareId: string, updates: Partial<InsertPropertyInsightShare> | any): Promise<PropertyInsightShare | null> {
+
+  async updatePropertyInsightShare(
+    shareId: string,
+    updates: Partial<InsertPropertyInsightShare> | any
+  ): Promise<PropertyInsightShare | null> {
     // The 'any' type is used here to handle the accessCount field which is not part of InsertPropertyInsightShare
-    
+
     const updatesWithTimestamp = {
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
-    const results = await this.db.update(propertyInsightShares)
+
+    const results = await this.db
+      .update(propertyInsightShares)
       .set(updatesWithTimestamp as any) // Type assertion to allow accessCount update
       .where(eq(propertyInsightShares.shareId, shareId))
       .returning();
-      
+
     if (results.length === 0) return null;
     return results[0];
   }
-  
+
   async deletePropertyInsightShare(shareId: string): Promise<boolean> {
-    const results = await this.db.delete(propertyInsightShares)
+    const results = await this.db
+      .delete(propertyInsightShares)
       .where(eq(propertyInsightShares.shareId, shareId))
       .returning();
-      
+
     return results.length > 0;
   }
-  
+
   // Property Data Staging methods
   async createStagedProperty(property: InsertStagedProperty): Promise<StagedProperty> {
     const results = await this.db.insert(importStaging).values(property).returning();
     return results[0];
   }
-  
+
   async getAllStagedProperties(): Promise<StagedProperty[]> {
     return await this.db.select().from(importStaging);
   }
-  
+
   async getStagedPropertyById(stagingId: string): Promise<StagedProperty | null> {
-    const results = await this.db.select().from(importStaging)
+    const results = await this.db
+      .select()
+      .from(importStaging)
       .where(eq(importStaging.stagingId, stagingId));
     return results.length > 0 ? results[0] : null;
   }
-  
-  async updateStagedProperty(stagingId: string, updates: Partial<StagedProperty>): Promise<StagedProperty | null> {
+
+  async updateStagedProperty(
+    stagingId: string,
+    updates: Partial<StagedProperty>
+  ): Promise<StagedProperty | null> {
     const updatesWithTimestamp = {
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
-    const results = await this.db.update(importStaging)
+
+    const results = await this.db
+      .update(importStaging)
       .set(updatesWithTimestamp)
       .where(eq(importStaging.stagingId, stagingId))
       .returning();
-      
+
     return results.length > 0 ? results[0] : null;
   }
-  
+
   async deleteStagedProperty(stagingId: string): Promise<boolean> {
-    const results = await this.db.delete(importStaging)
+    const results = await this.db
+      .delete(importStaging)
       .where(eq(importStaging.stagingId, stagingId))
       .returning();
-      
+
     return results.length > 0;
   }
-  
+
   // MCP Tool Execution Logging methods
   async createMCPToolExecutionLog(log: InsertMCPToolExecutionLog): Promise<MCPToolExecutionLog> {
-    const result = await this.db.insert(mcpToolExecutionLogs)
+    const result = await this.db
+      .insert(mcpToolExecutionLogs)
       .values({
         tool_name: log.toolName,
         request_id: log.requestId,
@@ -6629,358 +7476,429 @@ export class PgStorage implements IStorage {
         result: log.result || null,
         error: log.error || null,
         start_time: log.startTime,
-        end_time: log.endTime
+        end_time: log.endTime,
       })
       .returning();
-      
+
     return result[0];
   }
-  
+
   async getMCPToolExecutionLogs(limit: number = 100): Promise<MCPToolExecutionLog[]> {
-    const results = await this.db.select()
+    const results = await this.db
+      .select()
       .from(mcpToolExecutionLogs)
-      .orderBy((eb) => eb.desc(mcpToolExecutionLogs.createdAt))
+      .orderBy(eb => eb.desc(mcpToolExecutionLogs.createdAt))
       .limit(limit);
-      
+
     return results;
   }
-  
+
   // Validation methods
-  async createValidationRule(rule: Omit<ValidationRule, 'id' | 'createdAt' | 'updatedAt'>): Promise<ValidationRule> {
+  async createValidationRule(
+    rule: Omit<ValidationRule, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<ValidationRule> {
     const timestamp = new Date();
-    const result = await this.db.insert(validationRules).values({
-      ...rule,
-      createdAt: timestamp,
-      updatedAt: timestamp
-    }).returning();
-    
+    const result = await this.db
+      .insert(validationRules)
+      .values({
+        ...rule,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      })
+      .returning();
+
     return result[0];
   }
-  
+
   async getValidationRuleById(ruleId: string): Promise<ValidationRule | null> {
-    const results = await this.db.select()
+    const results = await this.db
+      .select()
       .from(validationRules)
       .where(eq(validationRules.id, ruleId));
-      
+
     return results.length > 0 ? results[0] : null;
   }
-  
-  async getAllValidationRules(options?: { 
-    category?: RuleCategory, 
-    level?: RuleLevel,
-    entityType?: EntityType,
-    active?: boolean 
+
+  async getAllValidationRules(options?: {
+    category?: RuleCategory;
+    level?: RuleLevel;
+    entityType?: EntityType;
+    active?: boolean;
   }): Promise<ValidationRule[]> {
     let query = this.db.select().from(validationRules);
-    
+
     if (options) {
       if (options.category !== undefined) {
         query = query.where(eq(validationRules.category, options.category));
       }
-      
+
       if (options.level !== undefined) {
         query = query.where(eq(validationRules.level, options.level));
       }
-      
+
       if (options.entityType !== undefined) {
         query = query.where(eq(validationRules.entityType, options.entityType));
       }
-      
+
       if (options.active !== undefined) {
         query = query.where(eq(validationRules.isActive, options.active));
       }
     }
-    
+
     return await query;
   }
-  
+
   async getValidationRulesByEntityType(entityType: EntityType): Promise<ValidationRule[]> {
-    const results = await this.db.select()
+    const results = await this.db
+      .select()
       .from(validationRules)
       .where(eq(validationRules.entityType, entityType));
-      
+
     return results;
   }
-  
-  async updateValidationRule(ruleId: string, updates: Partial<ValidationRule>): Promise<ValidationRule | null> {
+
+  async updateValidationRule(
+    ruleId: string,
+    updates: Partial<ValidationRule>
+  ): Promise<ValidationRule | null> {
     const timestamp = new Date();
     const updatedData = {
       ...updates,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
-    const results = await this.db.update(validationRules)
+
+    const results = await this.db
+      .update(validationRules)
       .set(updatedData)
       .where(eq(validationRules.id, ruleId))
       .returning();
-      
+
     return results.length > 0 ? results[0] : null;
   }
-  
+
   async deleteValidationRule(ruleId: string): Promise<boolean> {
-    const results = await this.db.delete(validationRules)
+    const results = await this.db
+      .delete(validationRules)
       .where(eq(validationRules.id, ruleId))
       .returning();
-      
+
     return results.length > 0;
   }
-  
+
   // Validation issues methods
-  async createValidationIssue(issue: Omit<ValidationIssue, 'id' | 'createdAt'>): Promise<ValidationIssue> {
+  async createValidationIssue(
+    issue: Omit<ValidationIssue, 'id' | 'createdAt'>
+  ): Promise<ValidationIssue> {
     const timestamp = new Date();
-    const results = await this.db.insert(validationIssues).values({
-      ...issue,
-      createdAt: timestamp
-    }).returning();
-    
+    const results = await this.db
+      .insert(validationIssues)
+      .values({
+        ...issue,
+        createdAt: timestamp,
+      })
+      .returning();
+
     return results[0];
   }
-  
+
   async getValidationIssueById(issueId: string): Promise<ValidationIssue | null> {
-    const results = await this.db.select()
+    const results = await this.db
+      .select()
       .from(validationIssues)
       .where(eq(validationIssues.id, issueId));
-      
+
     return results.length > 0 ? results[0] : null;
   }
-  
+
   async getValidationIssues(options?: {
-    entityId?: string, 
-    entityType?: EntityType,
-    ruleId?: string,
-    level?: RuleLevel,
-    status?: IssueStatus,
-    createdAfter?: Date,
-    createdBefore?: Date
+    entityId?: string;
+    entityType?: EntityType;
+    ruleId?: string;
+    level?: RuleLevel;
+    status?: IssueStatus;
+    createdAfter?: Date;
+    createdBefore?: Date;
   }): Promise<ValidationIssue[]> {
     let query = this.db.select().from(validationIssues);
-    
+
     if (options) {
       if (options.entityId !== undefined) {
         query = query.where(eq(validationIssues.entityId, options.entityId));
       }
-      
+
       if (options.entityType !== undefined) {
         query = query.where(eq(validationIssues.entityType, options.entityType));
       }
-      
+
       if (options.ruleId !== undefined) {
         query = query.where(eq(validationIssues.ruleId, options.ruleId));
       }
-      
+
       if (options.level !== undefined) {
         query = query.where(eq(validationIssues.level, options.level));
       }
-      
+
       if (options.status !== undefined) {
         query = query.where(eq(validationIssues.status, options.status));
       }
-      
+
       if (options.createdAfter !== undefined) {
         query = query.where(sql`${validationIssues.createdAt} >= ${options.createdAfter}`);
       }
-      
+
       if (options.createdBefore !== undefined) {
         query = query.where(sql`${validationIssues.createdAt} <= ${options.createdBefore}`);
       }
     }
-    
+
     return await query;
   }
-  
-  async updateValidationIssue(issueId: string, updates: Partial<ValidationIssue>): Promise<ValidationIssue | null> {
-    const results = await this.db.update(validationIssues)
+
+  async updateValidationIssue(
+    issueId: string,
+    updates: Partial<ValidationIssue>
+  ): Promise<ValidationIssue | null> {
+    const results = await this.db
+      .update(validationIssues)
       .set(updates)
       .where(eq(validationIssues.id, issueId))
       .returning();
-      
+
     return results.length > 0 ? results[0] : null;
   }
-  
-  async resolveValidationIssue(issueId: string, resolution: string, userId?: number): Promise<ValidationIssue | null> {
+
+  async resolveValidationIssue(
+    issueId: string,
+    resolution: string,
+    userId?: number
+  ): Promise<ValidationIssue | null> {
     const timestamp = new Date();
     const updates = {
       status: 'resolved' as IssueStatus,
       resolution,
       resolvedBy: userId || null,
-      resolvedAt: timestamp
+      resolvedAt: timestamp,
     };
-    
-    const results = await this.db.update(validationIssues)
+
+    const results = await this.db
+      .update(validationIssues)
       .set(updates)
       .where(eq(validationIssues.id, issueId))
       .returning();
-      
+
     return results.length > 0 ? results[0] : null;
   }
-  
-  async acknowledgeValidationIssue(issueId: string, notes?: string): Promise<ValidationIssue | null> {
+
+  async acknowledgeValidationIssue(
+    issueId: string,
+    notes?: string
+  ): Promise<ValidationIssue | null> {
     const updates: any = {
-      status: 'acknowledged' as IssueStatus
+      status: 'acknowledged' as IssueStatus,
     };
-    
+
     if (notes !== undefined) {
       updates.notes = notes;
     }
-    
-    const results = await this.db.update(validationIssues)
+
+    const results = await this.db
+      .update(validationIssues)
       .set(updates)
       .where(eq(validationIssues.id, issueId))
       .returning();
-      
+
     return results.length > 0 ? results[0] : null;
   }
-  
-  async waiveValidationIssue(issueId: string, reason: string, userId?: number): Promise<ValidationIssue | null> {
+
+  async waiveValidationIssue(
+    issueId: string,
+    reason: string,
+    userId?: number
+  ): Promise<ValidationIssue | null> {
     const timestamp = new Date();
     const updates = {
       status: 'waived' as IssueStatus,
       waiver: reason,
       waivedBy: userId || null,
-      waivedAt: timestamp
+      waivedAt: timestamp,
     };
-    
-    const results = await this.db.update(validationIssues)
+
+    const results = await this.db
+      .update(validationIssues)
       .set(updates)
       .where(eq(validationIssues.id, issueId))
       .returning();
-      
+
     return results.length > 0 ? results[0] : null;
   }
-  
+
   // Workflow methods
-  async createWorkflowDefinition(definition: Omit<WorkflowDefinition, 'definitionId' | 'createdAt'>): Promise<WorkflowDefinition> {
+  async createWorkflowDefinition(
+    definition: Omit<WorkflowDefinition, 'definitionId' | 'createdAt'>
+  ): Promise<WorkflowDefinition> {
     const timestamp = new Date();
-    const results = await this.db.insert(workflowDefinitions).values({
-      ...definition,
-      createdAt: timestamp
-    }).returning();
-    
+    const results = await this.db
+      .insert(workflowDefinitions)
+      .values({
+        ...definition,
+        createdAt: timestamp,
+      })
+      .returning();
+
     return results[0];
   }
-  
+
   async getWorkflowDefinitionById(definitionId: string): Promise<WorkflowDefinition | null> {
-    const results = await this.db.select()
+    const results = await this.db
+      .select()
       .from(workflowDefinitions)
       .where(eq(workflowDefinitions.definitionId, definitionId));
-      
+
     return results.length > 0 ? results[0] : null;
   }
-  
+
   async getAllWorkflowDefinitions(active?: boolean): Promise<WorkflowDefinition[]> {
     let query = this.db.select().from(workflowDefinitions);
-    
+
     if (active !== undefined) {
       query = query.where(eq(workflowDefinitions.isActive, active));
     }
-    
+
     return await query;
   }
-  
-  async updateWorkflowDefinition(definitionId: string, updates: Partial<WorkflowDefinition>): Promise<WorkflowDefinition | null> {
-    const results = await this.db.update(workflowDefinitions)
+
+  async updateWorkflowDefinition(
+    definitionId: string,
+    updates: Partial<WorkflowDefinition>
+  ): Promise<WorkflowDefinition | null> {
+    const results = await this.db
+      .update(workflowDefinitions)
       .set(updates)
       .where(eq(workflowDefinitions.definitionId, definitionId))
       .returning();
-      
+
     return results.length > 0 ? results[0] : null;
   }
-  
+
   async activateWorkflowDefinition(definitionId: string): Promise<boolean> {
-    const results = await this.db.update(workflowDefinitions)
+    const results = await this.db
+      .update(workflowDefinitions)
       .set({ isActive: true })
       .where(eq(workflowDefinitions.definitionId, definitionId))
       .returning();
-      
+
     return results.length > 0;
   }
-  
+
   async deactivateWorkflowDefinition(definitionId: string): Promise<boolean> {
-    const results = await this.db.update(workflowDefinitions)
+    const results = await this.db
+      .update(workflowDefinitions)
       .set({ isActive: false })
       .where(eq(workflowDefinitions.definitionId, definitionId))
       .returning();
-      
+
     return results.length > 0;
   }
-  
+
   // Workflow instance methods
-  async createWorkflowInstance(instance: Omit<WorkflowInstance, 'instanceId' | 'createdAt' | 'lastUpdated'>): Promise<WorkflowInstance> {
+  async createWorkflowInstance(
+    instance: Omit<WorkflowInstance, 'instanceId' | 'createdAt' | 'lastUpdated'>
+  ): Promise<WorkflowInstance> {
     const timestamp = new Date();
-    const results = await this.db.insert(workflowInstances).values({
-      ...instance,
-      createdAt: timestamp,
-      lastUpdated: timestamp
-    }).returning();
-    
+    const results = await this.db
+      .insert(workflowInstances)
+      .values({
+        ...instance,
+        createdAt: timestamp,
+        lastUpdated: timestamp,
+      })
+      .returning();
+
     return results[0];
   }
-  
+
   async getWorkflowInstanceById(instanceId: string): Promise<WorkflowInstance | null> {
-    const results = await this.db.select()
+    const results = await this.db
+      .select()
       .from(workflowInstances)
       .where(eq(workflowInstances.instanceId, instanceId));
-      
+
     return results.length > 0 ? results[0] : null;
   }
-  
+
   async getWorkflowInstancesByDefinitionId(definitionId: string): Promise<WorkflowInstance[]> {
-    const results = await this.db.select()
+    const results = await this.db
+      .select()
       .from(workflowInstances)
       .where(eq(workflowInstances.definitionId, definitionId));
-      
+
     return results;
   }
-  
-  async getWorkflowInstancesByEntityId(entityId: string, entityType: string): Promise<WorkflowInstance[]> {
-    const results = await this.db.select()
+
+  async getWorkflowInstancesByEntityId(
+    entityId: string,
+    entityType: string
+  ): Promise<WorkflowInstance[]> {
+    const results = await this.db
+      .select()
       .from(workflowInstances)
       .where(eq(workflowInstances.entityId, entityId))
       .where(eq(workflowInstances.entityType, entityType));
-      
+
     return results;
   }
-  
+
   async getWorkflowInstancesByAssignee(assigneeId: number): Promise<WorkflowInstance[]> {
-    const results = await this.db.select()
+    const results = await this.db
+      .select()
       .from(workflowInstances)
       .where(eq(workflowInstances.assignedTo, assigneeId));
-      
+
     return results;
   }
-  
-  async updateWorkflowInstance(instanceId: string, updates: Partial<WorkflowInstance>): Promise<WorkflowInstance | null> {
+
+  async updateWorkflowInstance(
+    instanceId: string,
+    updates: Partial<WorkflowInstance>
+  ): Promise<WorkflowInstance | null> {
     const timestamp = new Date();
     const updatedData = {
       ...updates,
-      lastUpdated: timestamp
+      lastUpdated: timestamp,
     };
-    
-    const results = await this.db.update(workflowInstances)
+
+    const results = await this.db
+      .update(workflowInstances)
       .set(updatedData)
       .where(eq(workflowInstances.instanceId, instanceId))
       .returning();
-      
+
     return results.length > 0 ? results[0] : null;
   }
-  
+
   // Workflow step history methods
-  async createWorkflowStepHistory(stepHistory: Omit<WorkflowStepHistory, 'id' | 'createdAt'>): Promise<WorkflowStepHistory> {
+  async createWorkflowStepHistory(
+    stepHistory: Omit<WorkflowStepHistory, 'id' | 'createdAt'>
+  ): Promise<WorkflowStepHistory> {
     const timestamp = new Date();
-    const results = await this.db.insert(workflowStepHistory).values({
-      ...stepHistory,
-      createdAt: timestamp
-    }).returning();
-    
+    const results = await this.db
+      .insert(workflowStepHistory)
+      .values({
+        ...stepHistory,
+        createdAt: timestamp,
+      })
+      .returning();
+
     return results[0];
   }
-  
+
   async getWorkflowStepHistoryByInstanceId(instanceId: string): Promise<WorkflowStepHistory[]> {
-    const results = await this.db.select()
+    const results = await this.db
+      .select()
       .from(workflowStepHistory)
       .where(eq(workflowStepHistory.instanceId, instanceId))
       .orderBy(workflowStepHistory.createdAt);
-      
+
     return results;
   }
 
@@ -6988,7 +7906,7 @@ export class PgStorage implements IStorage {
   async createComplianceReport(report: InsertComplianceReport): Promise<ComplianceReport> {
     const timestamp = new Date();
     const reportId = report.reportId || `report-${Date.now()}`;
-    
+
     const complianceReport: ComplianceReport = {
       ...report,
       reportId,
@@ -6996,96 +7914,103 @@ export class PgStorage implements IStorage {
       lastUpdated: timestamp,
       status: report.status || 'draft',
       submittedBy: report.submittedBy || null,
-      submittedDate: report.submittedDate || null
+      submittedDate: report.submittedDate || null,
     };
-    
+
     this.complianceReports.set(reportId, complianceReport);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Compliance Agent
       activity: `Created ${report.reportType} compliance report for ${report.year}`,
       entityType: 'complianceReport',
-      entityId: reportId
+      entityId: reportId,
     });
-    
+
     return complianceReport;
   }
-  
+
   async getComplianceReportById(reportId: string): Promise<ComplianceReport | null> {
     const report = this.complianceReports.get(reportId);
     return report || null;
   }
-  
+
   async getComplianceReportsByYear(year: number): Promise<ComplianceReport[]> {
-    return Array.from(this.complianceReports.values())
-      .filter(report => report.year === year);
+    return Array.from(this.complianceReports.values()).filter(report => report.year === year);
   }
-  
+
   async getComplianceReportsByType(reportType: string): Promise<ComplianceReport[]> {
-    return Array.from(this.complianceReports.values())
-      .filter(report => report.reportType === reportType);
+    return Array.from(this.complianceReports.values()).filter(
+      report => report.reportType === reportType
+    );
   }
-  
-  async updateComplianceReport(reportId: string, updates: Partial<ComplianceReport>): Promise<ComplianceReport | null> {
+
+  async updateComplianceReport(
+    reportId: string,
+    updates: Partial<ComplianceReport>
+  ): Promise<ComplianceReport | null> {
     const report = this.complianceReports.get(reportId);
     if (!report) return null;
-    
+
     const timestamp = new Date();
     const updatedReport = {
       ...report,
       ...updates,
-      lastUpdated: timestamp
+      lastUpdated: timestamp,
     };
-    
+
     this.complianceReports.set(reportId, updatedReport);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Compliance Agent
       activity: `Updated ${report.reportType} compliance report for ${report.year}`,
       entityType: 'complianceReport',
-      entityId: reportId
+      entityId: reportId,
     });
-    
+
     return updatedReport;
   }
-  
-  async updateComplianceReportStatus(reportId: string, status: string, submittedBy?: number): Promise<ComplianceReport | null> {
+
+  async updateComplianceReportStatus(
+    reportId: string,
+    status: string,
+    submittedBy?: number
+  ): Promise<ComplianceReport | null> {
     const report = this.complianceReports.get(reportId);
     if (!report) return null;
-    
+
     const timestamp = new Date();
     const updatedReport = {
       ...report,
       status,
-      lastUpdated: timestamp
+      lastUpdated: timestamp,
     };
-    
+
     // If status is 'submitted', update submission details
     if (status === 'submitted') {
       updatedReport.submittedBy = submittedBy || null;
       updatedReport.submittedDate = timestamp;
     }
-    
+
     this.complianceReports.set(reportId, updatedReport);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Compliance Agent
       activity: `Updated status to ${status} for ${report.reportType} compliance report (${report.year})`,
       entityType: 'complianceReport',
-      entityId: reportId
+      entityId: reportId,
     });
-    
+
     return updatedReport;
   }
-  
+
   // Washington State Specific Compliance Reports
   async createEqualizationReport(report: any): Promise<any> {
     const timestamp = new Date();
     const reportId = `equalization-${report.year}-${Date.now()}`;
-    
+
     const equalizationReport = {
       ...report,
       reportId,
@@ -7094,31 +8019,30 @@ export class PgStorage implements IStorage {
       status: report.status || 'draft',
       reportType: 'equalization',
       submittedBy: report.submittedBy || null,
-      submittedDate: report.submittedDate || null
+      submittedDate: report.submittedDate || null,
     };
-    
+
     this.equalizationReports.set(reportId, equalizationReport);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Compliance Agent
       activity: `Created Equalization Report for ${report.year}`,
       entityType: 'equalizationReport',
-      entityId: reportId
+      entityId: reportId,
     });
-    
+
     return equalizationReport;
   }
-  
+
   async getEqualizationReportByYear(year: number): Promise<any | undefined> {
-    return Array.from(this.equalizationReports.values())
-      .find(report => report.year === year);
+    return Array.from(this.equalizationReports.values()).find(report => report.year === year);
   }
-  
+
   async createRevaluationCycleReport(report: any): Promise<any> {
     const timestamp = new Date();
     const reportId = `revaluation-${report.year}-${Date.now()}`;
-    
+
     const revaluationReport = {
       ...report,
       reportId,
@@ -7127,31 +8051,30 @@ export class PgStorage implements IStorage {
       status: report.status || 'draft',
       reportType: 'revaluation',
       submittedBy: report.submittedBy || null,
-      submittedDate: report.submittedDate || null
+      submittedDate: report.submittedDate || null,
     };
-    
+
     this.revaluationCycleReports.set(reportId, revaluationReport);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Compliance Agent
       activity: `Created Revaluation Cycle Report for ${report.year}`,
       entityType: 'revaluationReport',
-      entityId: reportId
+      entityId: reportId,
     });
-    
+
     return revaluationReport;
   }
-  
+
   async getRevaluationCycleReportByYear(year: number): Promise<any | undefined> {
-    return Array.from(this.revaluationCycleReports.values())
-      .find(report => report.year === year);
+    return Array.from(this.revaluationCycleReports.values()).find(report => report.year === year);
   }
-  
+
   async createExemptionVerificationReport(report: any): Promise<any> {
     const timestamp = new Date();
     const reportId = `exemption-${report.year}-${Date.now()}`;
-    
+
     const exemptionReport = {
       ...report,
       reportId,
@@ -7160,31 +8083,32 @@ export class PgStorage implements IStorage {
       status: report.status || 'draft',
       reportType: 'exemption',
       submittedBy: report.submittedBy || null,
-      submittedDate: report.submittedDate || null
+      submittedDate: report.submittedDate || null,
     };
-    
+
     this.exemptionVerificationReports.set(reportId, exemptionReport);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Compliance Agent
       activity: `Created Exemption Verification Report for ${report.year}`,
       entityType: 'exemptionReport',
-      entityId: reportId
+      entityId: reportId,
     });
-    
+
     return exemptionReport;
   }
-  
+
   async getExemptionVerificationReportByYear(year: number): Promise<any | undefined> {
-    return Array.from(this.exemptionVerificationReports.values())
-      .find(report => report.year === year);
+    return Array.from(this.exemptionVerificationReports.values()).find(
+      report => report.year === year
+    );
   }
-  
+
   async createAppealComplianceReport(report: any): Promise<any> {
     const timestamp = new Date();
     const reportId = `appeal-compliance-${report.year}-${Date.now()}`;
-    
+
     const appealReport = {
       ...report,
       reportId,
@@ -7193,48 +8117,47 @@ export class PgStorage implements IStorage {
       status: report.status || 'draft',
       reportType: 'appeal-compliance',
       submittedBy: report.submittedBy || null,
-      submittedDate: report.submittedDate || null
+      submittedDate: report.submittedDate || null,
     };
-    
+
     this.appealComplianceReports.set(reportId, appealReport);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 2, // Compliance Agent
       activity: `Created Appeal Compliance Report for ${report.year}`,
       entityType: 'appealComplianceReport',
-      entityId: reportId
+      entityId: reportId,
     });
-    
+
     return appealReport;
   }
-  
+
   async getAppealComplianceReportByYear(year: number): Promise<any | undefined> {
-    return Array.from(this.appealComplianceReports.values())
-      .find(report => report.year === year);
+    return Array.from(this.appealComplianceReports.values()).find(report => report.year === year);
   }
-  
+
   async getAppealsByTaxYear(taxYear: number): Promise<Appeal[]> {
-    return Array.from(this.appeals.values())
-      .filter(appeal => {
-        // Check if the appeal has a tax year field or use the created date's year
-        const appealYear = appeal.taxYear || appeal.createdAt.getFullYear();
-        return appealYear === taxYear;
-      });
+    return Array.from(this.appeals.values()).filter(appeal => {
+      // Check if the appeal has a tax year field or use the created date's year
+      const appealYear = appeal.taxYear || appeal.createdAt.getFullYear();
+      return appealYear === taxYear;
+    });
   }
-  
+
   async getAllExemptions(taxYear: number): Promise<any[]> {
     // Get all properties with exemptions for the given tax year
     return Array.from(this.properties.values())
       .filter(property => {
         // Check if the property has exemption data
-        const hasExemption = property.propertyType === 'exempt' || 
-                            (property.extraFields && property.extraFields.exemptionType);
-        
+        const hasExemption =
+          property.propertyType === 'exempt' ||
+          (property.extraFields && property.extraFields.exemptionType);
+
         // Check if the exemption is valid for this tax year
-        const exemptionYear = property.extraFields?.exemptionYear || 
-                             property.lastUpdated.getFullYear();
-        
+        const exemptionYear =
+          property.extraFields?.exemptionYear || property.lastUpdated.getFullYear();
+
         return hasExemption && exemptionYear === taxYear;
       })
       .map(property => {
@@ -7245,7 +8168,7 @@ export class PgStorage implements IStorage {
           exemptionAmount: property.extraFields?.exemptionAmount || '0',
           exemptionYear: property.extraFields?.exemptionYear || property.lastUpdated.getFullYear(),
           ownerName: property.ownerName,
-          parcelNumber: property.parcelNumber
+          parcelNumber: property.parcelNumber,
         };
       });
   }
@@ -7259,110 +8182,119 @@ export class PgStorage implements IStorage {
       createdAt: timestamp,
       usedInTraining: false,
       priority: experience.metadata?.priority || 0,
-      lastUpdated: timestamp
+      lastUpdated: timestamp,
     };
-    
+
     this.agentExperiences.set(experience.experienceId, newExperience);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 7, // MCP Coordinator Agent
       activity: `Recorded agent experience from ${experience.agentName}`,
       entityType: experience.metadata?.entityType || 'unknown',
-      entityId: experience.metadata?.entityId || experience.experienceId
+      entityId: experience.metadata?.entityId || experience.experienceId,
     });
-    
+
     return newExperience;
   }
-  
+
   async getAgentExperienceById(experienceId: string): Promise<AgentExperience | null> {
     const experience = this.agentExperiences.get(experienceId);
     return experience || null;
   }
-  
+
   async getAgentExperiencesByAgentId(agentId: string): Promise<AgentExperience[]> {
-    return Array.from(this.agentExperiences.values())
-      .filter(experience => experience.agentId === agentId);
+    return Array.from(this.agentExperiences.values()).filter(
+      experience => experience.agentId === agentId
+    );
   }
-  
+
   async getAgentExperiencesByEntityType(entityType: string): Promise<AgentExperience[]> {
-    return Array.from(this.agentExperiences.values())
-      .filter(experience => experience.metadata?.entityType === entityType);
+    return Array.from(this.agentExperiences.values()).filter(
+      experience => experience.metadata?.entityType === entityType
+    );
   }
-  
-  async getAgentExperiencesByPriority(minPriority: number, limit: number = 10): Promise<AgentExperience[]> {
+
+  async getAgentExperiencesByPriority(
+    minPriority: number,
+    limit: number = 10
+  ): Promise<AgentExperience[]> {
     return Array.from(this.agentExperiences.values())
       .filter(experience => experience.priority >= minPriority)
       .sort((a, b) => b.priority - a.priority)
       .slice(0, limit);
   }
-  
-  async updateAgentExperiencePriority(experienceId: string, priority: number): Promise<AgentExperience | null> {
+
+  async updateAgentExperiencePriority(
+    experienceId: string,
+    priority: number
+  ): Promise<AgentExperience | null> {
     const experience = this.agentExperiences.get(experienceId);
     if (!experience) return null;
-    
+
     const updatedExperience: AgentExperience = {
       ...experience,
       priority,
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     };
-    
+
     this.agentExperiences.set(experienceId, updatedExperience);
     return updatedExperience;
   }
-  
+
   async markAgentExperienceAsUsed(experienceId: string): Promise<AgentExperience | null> {
     const experience = this.agentExperiences.get(experienceId);
     if (!experience) return null;
-    
+
     const updatedExperience: AgentExperience = {
       ...experience,
       usedInTraining: true,
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     };
-    
+
     this.agentExperiences.set(experienceId, updatedExperience);
     return updatedExperience;
   }
-  
+
   // Learning Updates methods
   async createLearningUpdate(update: InsertLearningUpdate): Promise<LearningUpdate> {
     const timestamp = new Date();
     const newUpdate: LearningUpdate = {
       ...update,
       id: update.updateId, // Use the provided updateId as the id
-      createdAt: timestamp
+      createdAt: timestamp,
     };
-    
+
     this.learningUpdates.set(update.updateId, newUpdate);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agentId: 7, // MCP Coordinator Agent
       activity: `Generated learning update of type ${update.updateType}`,
       entityType: 'learning_update',
-      entityId: update.updateId
+      entityId: update.updateId,
     });
-    
+
     return newUpdate;
   }
-  
+
   async getLearningUpdateById(updateId: string): Promise<LearningUpdate | null> {
     const update = this.learningUpdates.get(updateId);
     return update || null;
   }
-  
+
   async getRecentLearningUpdates(limit: number = 10): Promise<LearningUpdate[]> {
     return Array.from(this.learningUpdates.values())
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, limit);
   }
-  
+
   async getLearningUpdatesByType(updateType: string): Promise<LearningUpdate[]> {
-    return Array.from(this.learningUpdates.values())
-      .filter(update => update.updateType === updateType);
+    return Array.from(this.learningUpdates.values()).filter(
+      update => update.updateType === updateType
+    );
   }
-  
+
   // Code Improvement methods
   async createCodeImprovement(improvement: InsertCodeImprovement): Promise<CodeImprovement> {
     const timestamp = new Date();
@@ -7372,77 +8304,82 @@ export class PgStorage implements IStorage {
       updatedAt: timestamp,
       // Convert JSON to proper structure if needed
       affectedFiles: improvement.affectedFiles || [],
-      suggestedChanges: improvement.suggestedChanges || []
+      suggestedChanges: improvement.suggestedChanges || [],
     };
-    
+
     this.codeImprovements.set(improvement.id, codeImprovement);
-    
+
     // Create system activity for the improvement
     await this.createSystemActivity({
       agentId: typeof improvement.agentId === 'number' ? improvement.agentId : 1,
       activity: `Agent suggested code improvement: ${improvement.title}`,
       entityType: 'codeImprovement',
-      entityId: improvement.id
+      entityId: improvement.id,
     });
-    
+
     return codeImprovement;
   }
-  
+
   async getCodeImprovements(): Promise<CodeImprovement[]> {
     return Array.from(this.codeImprovements.values());
   }
-  
+
   async getCodeImprovementById(id: string): Promise<CodeImprovement | null> {
     const improvement = this.codeImprovements.get(id);
     return improvement || null;
   }
-  
+
   async getCodeImprovementsByAgent(agentId: string): Promise<CodeImprovement[]> {
-    return Array.from(this.codeImprovements.values())
-      .filter(improvement => improvement.agentId.toString() === agentId);
+    return Array.from(this.codeImprovements.values()).filter(
+      improvement => improvement.agentId.toString() === agentId
+    );
   }
-  
+
   async getCodeImprovementsByType(type: ImprovementType): Promise<CodeImprovement[]> {
-    return Array.from(this.codeImprovements.values())
-      .filter(improvement => improvement.type === type);
+    return Array.from(this.codeImprovements.values()).filter(
+      improvement => improvement.type === type
+    );
   }
-  
-  async updateCodeImprovementStatus(id: string, status: 'pending' | 'approved' | 'rejected' | 'implemented'): Promise<CodeImprovement | null> {
+
+  async updateCodeImprovementStatus(
+    id: string,
+    status: 'pending' | 'approved' | 'rejected' | 'implemented'
+  ): Promise<CodeImprovement | null> {
     const improvement = this.codeImprovements.get(id);
     if (!improvement) return null;
-    
+
     const updated = {
       ...improvement,
       status,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.codeImprovements.set(id, updated);
-    
+
     // Create system activity for the status update
     await this.createSystemActivity({
       agentId: typeof improvement.agentId === 'number' ? improvement.agentId : 1,
       activity: `Code improvement status updated to ${status}: ${improvement.title}`,
       entityType: 'codeImprovement',
-      entityId: improvement.id
+      entityId: improvement.id,
     });
-    
+
     return updated;
   }
-  
+
   // Data Lineage methods
   async createDataLineageRecord(record: InsertDataLineageRecord): Promise<DataLineageRecord> {
     const id = this.dataLineageRecords.size + 1;
     const timestamp = new Date();
-    
+
     const newRecord: DataLineageRecord = {
       ...record,
       id,
-      createdAt: timestamp
+      createdAt: timestamp,
     };
-    
+
     this.dataLineageRecords.set(id, newRecord);
-    
+
     // Create system activity for audit trail
     await this.createSystemActivity({
       activity_type: 'data_change',
@@ -7451,61 +8388,55 @@ export class PgStorage implements IStorage {
       details: {
         propertyId: record.propertyId,
         fieldName: record.fieldName,
-        source: record.source
-      }
+        source: record.source,
+      },
     });
-    
+
     return newRecord;
   }
-  
+
   async getDataLineageByField(propertyId: string, fieldName: string): Promise<DataLineageRecord[]> {
     return Array.from(this.dataLineageRecords.values())
       .filter(record => record.propertyId === propertyId && record.fieldName === fieldName)
       .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime());
   }
-  
+
   async getDataLineageByProperty(propertyId: string): Promise<DataLineageRecord[]> {
     return Array.from(this.dataLineageRecords.values())
       .filter(record => record.propertyId === propertyId)
       .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime());
   }
-  
+
   async getDataLineageByUser(userId: number, limit: number = 100): Promise<DataLineageRecord[]> {
     return Array.from(this.dataLineageRecords.values())
       .filter(record => record.userId === userId)
       .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime())
       .slice(0, limit);
   }
-  
+
   async getDataLineageByDateRange(
     startDate: Date,
     endDate: Date,
     limit: number = 100
   ): Promise<DataLineageRecord[]> {
     return Array.from(this.dataLineageRecords.values())
-      .filter(record => 
-        record.changeTimestamp >= startDate && 
-        record.changeTimestamp <= endDate
-      )
+      .filter(record => record.changeTimestamp >= startDate && record.changeTimestamp <= endDate)
       .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime())
       .slice(0, limit);
   }
-  
-  async getDataLineageBySource(
-    source: string,
-    limit: number = 100
-  ): Promise<DataLineageRecord[]> {
+
+  async getDataLineageBySource(source: string, limit: number = 100): Promise<DataLineageRecord[]> {
     return Array.from(this.dataLineageRecords.values())
       .filter(record => record.source === source)
       .sort((a, b) => b.changeTimestamp.getTime() - a.changeTimestamp.getTime())
       .slice(0, limit);
   }
-  
+
   // Shared Workflow methods
   async createSharedWorkflow(workflow: InsertSharedWorkflow): Promise<SharedWorkflow> {
     const id = this.sharedWorkflows.size + 1;
     const timestamp = new Date();
-    
+
     const sharedWorkflow: SharedWorkflow = {
       id,
       workflowId: workflow.workflowId,
@@ -7520,11 +8451,11 @@ export class PgStorage implements IStorage {
       expiresAt: workflow.expiresAt || null,
       settings: workflow.settings || {},
       viewCount: 0,
-      lastViewed: null
+      lastViewed: null,
     };
-    
+
     this.sharedWorkflows.set(id, sharedWorkflow);
-    
+
     // Log activity
     await this.createSystemActivity({
       activity_type: 'workflow_shared',
@@ -7532,104 +8463,111 @@ export class PgStorage implements IStorage {
       details: {
         workflow_id: workflow.workflowId,
         owner_id: workflow.ownerId,
-        name: workflow.name
-      }
+        name: workflow.name,
+      },
     });
-    
+
     return sharedWorkflow;
   }
-  
+
   async getSharedWorkflowById(id: number): Promise<SharedWorkflow | null> {
     const workflow = this.sharedWorkflows.get(id);
     return workflow || null;
   }
-  
+
   async getSharedWorkflowByShareCode(shareCode: string): Promise<SharedWorkflow | null> {
-    const workflow = Array.from(this.sharedWorkflows.values())
-      .find(w => w.shareCode === shareCode);
+    const workflow = Array.from(this.sharedWorkflows.values()).find(w => w.shareCode === shareCode);
     return workflow || null;
   }
-  
+
   async getSharedWorkflowsByUser(userId: number): Promise<SharedWorkflow[]> {
-    return Array.from(this.sharedWorkflows.values())
-      .filter(workflow => workflow.ownerId === userId);
+    return Array.from(this.sharedWorkflows.values()).filter(
+      workflow => workflow.ownerId === userId
+    );
   }
-  
+
   async getSharedWorkflowsByWorkflowId(workflowId: number): Promise<SharedWorkflow[]> {
-    return Array.from(this.sharedWorkflows.values())
-      .filter(workflow => workflow.workflowId === workflowId);
+    return Array.from(this.sharedWorkflows.values()).filter(
+      workflow => workflow.workflowId === workflowId
+    );
   }
-  
+
   async getPublicSharedWorkflows(): Promise<SharedWorkflow[]> {
-    return Array.from(this.sharedWorkflows.values())
-      .filter(workflow => workflow.isPublic && workflow.status === 'active');
+    return Array.from(this.sharedWorkflows.values()).filter(
+      workflow => workflow.isPublic && workflow.status === 'active'
+    );
   }
-  
-  async updateSharedWorkflow(id: number, updates: Partial<InsertSharedWorkflow>): Promise<SharedWorkflow | null> {
+
+  async updateSharedWorkflow(
+    id: number,
+    updates: Partial<InsertSharedWorkflow>
+  ): Promise<SharedWorkflow | null> {
     const workflow = this.sharedWorkflows.get(id);
     if (!workflow) return null;
-    
+
     const updatedWorkflow: SharedWorkflow = {
       ...workflow,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.sharedWorkflows.set(id, updatedWorkflow);
-    
+
     await this.createSystemActivity({
       activity_type: 'workflow_updated',
       component: 'workflow_collaboration',
       details: {
         workflow_id: workflow.workflowId,
-        shared_workflow_id: id
-      }
+        shared_workflow_id: id,
+      },
     });
-    
+
     return updatedWorkflow;
   }
-  
+
   async deleteSharedWorkflow(id: number): Promise<boolean> {
     const workflow = this.sharedWorkflows.get(id);
     if (!workflow) return false;
-    
+
     // First delete all related records
     const collaborators = await this.getCollaboratorsByWorkflowId(id);
     for (const collaborator of collaborators) {
       this.sharedWorkflowCollaborators.delete(collaborator.id);
     }
-    
+
     const activities = await this.getWorkflowActivities(id);
     for (const activity of activities) {
       this.sharedWorkflowActivities.delete(activity.id);
     }
-    
+
     // Delete all active sessions
     const sessions = await this.getActiveWorkflowSessions(id);
     for (const session of sessions) {
       this.workflowSessions.delete(session.sessionId);
     }
-    
+
     // Finally delete the workflow itself
     this.sharedWorkflows.delete(id);
-    
+
     await this.createSystemActivity({
       activity_type: 'workflow_deleted',
       component: 'workflow_collaboration',
       details: {
         workflow_id: workflow.workflowId,
-        shared_workflow_id: id
-      }
+        shared_workflow_id: id,
+      },
     });
-    
+
     return true;
   }
-  
+
   // Collaborator methods
-  async addCollaborator(collaborator: InsertSharedWorkflowCollaborator): Promise<SharedWorkflowCollaborator> {
+  async addCollaborator(
+    collaborator: InsertSharedWorkflowCollaborator
+  ): Promise<SharedWorkflowCollaborator> {
     const id = this.sharedWorkflowCollaborators.size + 1;
     const timestamp = new Date();
-    
+
     const newCollaborator: SharedWorkflowCollaborator = {
       id,
       sharedWorkflowId: collaborator.sharedWorkflowId,
@@ -7640,14 +8578,14 @@ export class PgStorage implements IStorage {
       status: collaborator.status || 'pending',
       createdAt: timestamp,
       updatedAt: timestamp,
-      lastActive: null
+      lastActive: null,
     };
-    
+
     this.sharedWorkflowCollaborators.set(id, newCollaborator);
-    
+
     // Get the workflow name
     const workflow = await this.getSharedWorkflowById(collaborator.sharedWorkflowId);
-    
+
     await this.createSystemActivity({
       activity_type: 'collaborator_added',
       component: 'workflow_collaboration',
@@ -7655,77 +8593,89 @@ export class PgStorage implements IStorage {
         shared_workflow_id: collaborator.sharedWorkflowId,
         workflow_name: workflow?.name || 'Unknown',
         user_id: collaborator.userId,
-        role: collaborator.role || 'viewer'
-      }
+        role: collaborator.role || 'viewer',
+      },
     });
-    
+
     return newCollaborator;
   }
-  
-  async getCollaboratorsByWorkflowId(sharedWorkflowId: number): Promise<SharedWorkflowCollaborator[]> {
-    return Array.from(this.sharedWorkflowCollaborators.values())
-      .filter(collaborator => collaborator.sharedWorkflowId === sharedWorkflowId);
+
+  async getCollaboratorsByWorkflowId(
+    sharedWorkflowId: number
+  ): Promise<SharedWorkflowCollaborator[]> {
+    return Array.from(this.sharedWorkflowCollaborators.values()).filter(
+      collaborator => collaborator.sharedWorkflowId === sharedWorkflowId
+    );
   }
-  
+
   async getCollaboratorsByUserId(userId: number): Promise<SharedWorkflowCollaborator[]> {
-    return Array.from(this.sharedWorkflowCollaborators.values())
-      .filter(collaborator => collaborator.userId === userId);
+    return Array.from(this.sharedWorkflowCollaborators.values()).filter(
+      collaborator => collaborator.userId === userId
+    );
   }
-  
-  async updateCollaboratorRole(id: number, role: CollaborationRole): Promise<SharedWorkflowCollaborator | null> {
+
+  async updateCollaboratorRole(
+    id: number,
+    role: CollaborationRole
+  ): Promise<SharedWorkflowCollaborator | null> {
     const collaborator = this.sharedWorkflowCollaborators.get(id);
     if (!collaborator) return null;
-    
+
     const updatedCollaborator: SharedWorkflowCollaborator = {
       ...collaborator,
       role,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.sharedWorkflowCollaborators.set(id, updatedCollaborator);
-    
+
     await this.createSystemActivity({
       activity_type: 'collaborator_role_updated',
       component: 'workflow_collaboration',
       details: {
         shared_workflow_id: collaborator.sharedWorkflowId,
         user_id: collaborator.userId,
-        role: role
-      }
+        role: role,
+      },
     });
-    
+
     return updatedCollaborator;
   }
-  
+
   // Workflow Activity methods
-  async logWorkflowActivity(activity: InsertSharedWorkflowActivity): Promise<SharedWorkflowActivity> {
+  async logWorkflowActivity(
+    activity: InsertSharedWorkflowActivity
+  ): Promise<SharedWorkflowActivity> {
     const id = this.sharedWorkflowActivities.size + 1;
     const timestamp = new Date();
-    
+
     const newActivity: SharedWorkflowActivity = {
       id,
       sharedWorkflowId: activity.sharedWorkflowId,
       userId: activity.userId,
       activityType: activity.activityType,
       details: activity.details || {},
-      createdAt: timestamp
+      createdAt: timestamp,
     };
-    
+
     this.sharedWorkflowActivities.set(id, newActivity);
     return newActivity;
   }
-  
-  async getWorkflowActivities(sharedWorkflowId: number, limit: number = 100): Promise<SharedWorkflowActivity[]> {
+
+  async getWorkflowActivities(
+    sharedWorkflowId: number,
+    limit: number = 100
+  ): Promise<SharedWorkflowActivity[]> {
     return Array.from(this.sharedWorkflowActivities.values())
       .filter(activity => activity.sharedWorkflowId === sharedWorkflowId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, limit);
   }
-  
+
   // Workflow Session methods
   async createWorkflowSession(session: InsertWorkflowSession): Promise<WorkflowSession> {
     const timestamp = new Date();
-    
+
     const newSession: WorkflowSession = {
       sessionId: session.sessionId,
       sharedWorkflowId: session.sharedWorkflowId,
@@ -7737,524 +8687,545 @@ export class PgStorage implements IStorage {
       participants: session.participants || [],
       data: session.data || {},
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
+
     this.workflowSessions.set(session.sessionId, newSession);
-    
+
     await this.createSystemActivity({
       activity_type: 'collaboration_session_started',
       component: 'workflow_collaboration',
       details: {
         shared_workflow_id: session.sharedWorkflowId,
         session_id: session.sessionId,
-        created_by: session.createdBy
-      }
+        created_by: session.createdBy,
+      },
     });
-    
+
     return newSession;
   }
-  
+
   async getActiveWorkflowSessions(sharedWorkflowId: number): Promise<WorkflowSession[]> {
-    return Array.from(this.workflowSessions.values())
-      .filter(session => 
-        session.sharedWorkflowId === sharedWorkflowId && 
-        session.status === 'active'
-      );
+    return Array.from(this.workflowSessions.values()).filter(
+      session => session.sharedWorkflowId === sharedWorkflowId && session.status === 'active'
+    );
   }
-  
-  async updateWorkflowSessionStatus(sessionId: string, status: string): Promise<WorkflowSession | null> {
+
+  async updateWorkflowSessionStatus(
+    sessionId: string,
+    status: string
+  ): Promise<WorkflowSession | null> {
     const session = this.workflowSessions.get(sessionId);
     if (!session) return null;
-    
+
     const updatedSession: WorkflowSession = {
       ...session,
       status,
       lastActivity: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.workflowSessions.set(sessionId, updatedSession);
-    
+
     await this.createSystemActivity({
       activity_type: 'collaboration_session_status_updated',
       component: 'workflow_collaboration',
       details: {
         shared_workflow_id: session.sharedWorkflowId,
         session_id: sessionId,
-        status: status
-      }
+        status: status,
+      },
     });
-    
+
     return updatedSession;
   }
-  
-  async updateWorkflowSessionParticipants(sessionId: string, participants: any[]): Promise<WorkflowSession | null> {
+
+  async updateWorkflowSessionParticipants(
+    sessionId: string,
+    participants: any[]
+  ): Promise<WorkflowSession | null> {
     const session = this.workflowSessions.get(sessionId);
     if (!session) return null;
-    
+
     const updatedSession: WorkflowSession = {
       ...session,
       participants,
       lastActivity: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.workflowSessions.set(sessionId, updatedSession);
-    
+
     await this.createSystemActivity({
       activity_type: 'collaboration_session_participants_updated',
       component: 'workflow_collaboration',
       details: {
         shared_workflow_id: session.sharedWorkflowId,
         session_id: sessionId,
-        participant_count: participants.length
-      }
+        participant_count: participants.length,
+      },
     });
-    
+
     return updatedSession;
   }
-  
+
   async endWorkflowSession(sessionId: string): Promise<WorkflowSession | null> {
     const session = this.workflowSessions.get(sessionId);
     if (!session) return null;
-    
+
     const timestamp = new Date();
     const updatedSession: WorkflowSession = {
       ...session,
       status: 'ended',
       endTime: timestamp,
       lastActivity: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
+
     this.workflowSessions.set(sessionId, updatedSession);
-    
+
     await this.createSystemActivity({
       activity_type: 'collaboration_session_ended',
       component: 'workflow_collaboration',
       details: {
         shared_workflow_id: session.sharedWorkflowId,
         session_id: sessionId,
-        duration_minutes: Math.round((timestamp.getTime() - session.startTime.getTime()) / 60000)
-      }
+        duration_minutes: Math.round((timestamp.getTime() - session.startTime.getTime()) / 60000),
+      },
     });
-    
+
     return updatedSession;
   }
-  
+
   // Helper method to generate unique share codes
   private generateShareCode(): string {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     const length = 10;
     let result = '';
-    
+
     // Create a reasonably unique code
     for (let i = 0; i < length; i++) {
       result += characters.charAt(Math.floor(Math.random() * characters.length));
     }
-    
+
     // Ensure it's not already in use
-    const existing = Array.from(this.sharedWorkflows.values())
-      .find(wf => wf.shareCode === result);
-      
+    const existing = Array.from(this.sharedWorkflows.values()).find(wf => wf.shareCode === result);
+
     if (existing) {
       // If collision, try again
       return this.generateShareCode();
     }
-    
+
     return result;
   }
-  
+
   // =========================================================================
   // TaxI_AI Development Platform Implementation
   // =========================================================================
-  
+
   // Development Project methods implementation
   async createDevelopmentProject(project: InsertDevelopmentProject): Promise<DevelopmentProject> {
     const projectId = `proj_${Date.now()}`;
     const timestamp = new Date();
-    
+
     const newProject: DevelopmentProject = {
       ...project,
       project_id: projectId,
       createdAt: timestamp,
       updatedAt: timestamp,
-      status: project.status || ProjectStatus.DRAFT
+      status: project.status || ProjectStatus.DRAFT,
     };
-    
+
     this.developmentProjects.set(projectId, newProject);
-    
+
     await this.createSystemActivity({
       activity_type: 'development_project_created',
       component: 'development_platform',
       status: 'success',
-      details: { projectId }
+      details: { projectId },
     });
-    
+
     return newProject;
   }
-  
+
   async getDevelopmentProject(projectId: string): Promise<DevelopmentProject | undefined> {
     return this.developmentProjects.get(projectId);
   }
-  
+
   async getAllDevelopmentProjects(): Promise<DevelopmentProject[]> {
     return Array.from(this.developmentProjects.values());
   }
-  
+
   async getDevelopmentProjectsByUser(userId: number): Promise<DevelopmentProject[]> {
-    return Array.from(this.developmentProjects.values())
-      .filter(project => project.createdBy === userId);
+    return Array.from(this.developmentProjects.values()).filter(
+      project => project.createdBy === userId
+    );
   }
-  
-  async updateDevelopmentProject(projectId: string, updateData: Partial<DevelopmentProject>): Promise<DevelopmentProject | undefined> {
+
+  async updateDevelopmentProject(
+    projectId: string,
+    updateData: Partial<DevelopmentProject>
+  ): Promise<DevelopmentProject | undefined> {
     const project = this.developmentProjects.get(projectId);
     if (!project) {
       return undefined;
     }
-    
+
     const updatedProject: DevelopmentProject = {
       ...project,
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.developmentProjects.set(projectId, updatedProject);
-    
+
     await this.createSystemActivity({
       activity_type: 'development_project_updated',
       component: 'development_platform',
       status: 'success',
-      details: { projectId }
+      details: { projectId },
     });
-    
+
     return updatedProject;
   }
-  
+
   async deleteDevelopmentProject(projectId: string): Promise<boolean> {
     const project = this.developmentProjects.get(projectId);
     if (!project) {
       return false;
     }
-    
+
     // Delete all related files
     const projectFiles = await this.getProjectFilesByProject(projectId);
     for (const file of projectFiles) {
       await this.deleteProjectFile(file.id);
     }
-    
+
     // Delete any preview settings
     const previewSetting = await this.getPreviewSettingByProject(projectId);
     if (previewSetting) {
       await this.deletePreviewSetting(previewSetting.id);
     }
-    
+
     this.developmentProjects.delete(projectId);
-    
+
     await this.createSystemActivity({
       activity_type: 'development_project_deleted',
       component: 'development_platform',
       status: 'success',
-      details: { projectId }
+      details: { projectId },
     });
-    
+
     return true;
   }
-  
+
   // Match the extended interface methods for backward compatibility
   async findDevelopmentProjectByProjectId(projectId: string): Promise<DevelopmentProject | null> {
-    const project = Array.from(this.developmentProjects.values())
-      .find(p => p.projectId === projectId);
+    const project = Array.from(this.developmentProjects.values()).find(
+      p => p.projectId === projectId
+    );
     return project || null;
   }
-  
+
   async findAllDevelopmentProjects(): Promise<DevelopmentProject[]> {
     return this.getAllDevelopmentProjects();
   }
-  
+
   async findDevelopmentProjectsByStatus(status: ProjectStatus): Promise<DevelopmentProject[]> {
-    return Array.from(this.developmentProjects.values())
-      .filter(project => project.status === status);
+    return Array.from(this.developmentProjects.values()).filter(
+      project => project.status === status
+    );
   }
-  
-  async findDevelopmentProjectsByUserAndStatus(userId: number, status: ProjectStatus): Promise<DevelopmentProject[]> {
-    return Array.from(this.developmentProjects.values())
-      .filter(project => project.createdBy === userId && project.status === status);
+
+  async findDevelopmentProjectsByUserAndStatus(
+    userId: number,
+    status: ProjectStatus
+  ): Promise<DevelopmentProject[]> {
+    return Array.from(this.developmentProjects.values()).filter(
+      project => project.createdBy === userId && project.status === status
+    );
   }
-  
+
   // Project File methods implementation
   async createProjectFile(file: InsertProjectFile): Promise<ProjectFile> {
     const id = this.currentProjectFileId++;
     const timestamp = new Date();
-    
+
     const newFile: ProjectFile = {
       ...file,
       id,
       createdAt: timestamp,
       updatedAt: timestamp,
-      fileId: `file_${id}`
+      fileId: `file_${id}`,
     };
-    
+
     this.projectFiles.set(id, newFile);
-    
+
     await this.createSystemActivity({
       activity_type: 'project_file_created',
       component: 'development_platform',
       status: 'success',
-      details: { fileId: newFile.fileId, projectId: file.projectId }
+      details: { fileId: newFile.fileId, projectId: file.projectId },
     });
-    
+
     return newFile;
   }
-  
+
   async getProjectFile(id: number): Promise<ProjectFile | undefined> {
     return this.projectFiles.get(id);
   }
-  
+
   async getProjectFilesByProject(projectId: string): Promise<ProjectFile[]> {
-    return Array.from(this.projectFiles.values())
-      .filter(file => file.projectId === projectId);
+    return Array.from(this.projectFiles.values()).filter(file => file.projectId === projectId);
   }
-  
+
   async getProjectFileByPath(projectId: string, path: string): Promise<ProjectFile | undefined> {
-    return Array.from(this.projectFiles.values())
-      .find(file => file.projectId === projectId && file.path === path);
+    return Array.from(this.projectFiles.values()).find(
+      file => file.projectId === projectId && file.path === path
+    );
   }
-  
-  async updateProjectFile(id: number, updateData: Partial<ProjectFile>): Promise<ProjectFile | undefined> {
+
+  async updateProjectFile(
+    id: number,
+    updateData: Partial<ProjectFile>
+  ): Promise<ProjectFile | undefined> {
     const file = this.projectFiles.get(id);
     if (!file) {
       return undefined;
     }
-    
+
     const updatedFile: ProjectFile = {
       ...file,
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.projectFiles.set(id, updatedFile);
-    
+
     await this.createSystemActivity({
       activity_type: 'project_file_updated',
       component: 'development_platform',
       status: 'success',
-      details: { fileId: file.fileId, projectId: file.projectId }
+      details: { fileId: file.fileId, projectId: file.projectId },
     });
-    
+
     return updatedFile;
   }
-  
+
   async deleteProjectFile(id: number): Promise<boolean> {
     const file = this.projectFiles.get(id);
     if (!file) {
       return false;
     }
-    
+
     this.projectFiles.delete(id);
-    
+
     await this.createSystemActivity({
       activity_type: 'project_file_deleted',
       component: 'development_platform',
       status: 'success',
-      details: { fileId: file.fileId, projectId: file.projectId }
+      details: { fileId: file.fileId, projectId: file.projectId },
     });
-    
+
     return true;
   }
-  
+
   // Match the extended interface methods for backward compatibility
   async findProjectFileById(id: number): Promise<ProjectFile | null> {
     const file = await this.getProjectFile(id);
     return file || null;
   }
-  
+
   async findProjectFileByFileId(fileId: string): Promise<ProjectFile | null> {
-    const file = Array.from(this.projectFiles.values())
-      .find(f => f.fileId === fileId);
+    const file = Array.from(this.projectFiles.values()).find(f => f.fileId === fileId);
     return file || null;
   }
-  
+
   async findProjectFileByPath(projectId: string, path: string): Promise<ProjectFile | null> {
-    const file = Array.from(this.projectFiles.values())
-      .find(f => f.projectId === projectId && f.path === path);
+    const file = Array.from(this.projectFiles.values()).find(
+      f => f.projectId === projectId && f.path === path
+    );
     return file || null;
   }
-  
+
   async findProjectFilesByProjectId(projectId: string): Promise<ProjectFile[]> {
-    return Array.from(this.projectFiles.values())
-      .filter(file => file.projectId === projectId);
+    return Array.from(this.projectFiles.values()).filter(file => file.projectId === projectId);
   }
-  
-  async findProjectFilesByParentPath(projectId: string, parentPath: string): Promise<ProjectFile[]> {
-    return Array.from(this.projectFiles.values())
-      .filter(file => 
-        file.projectId === projectId && 
-        file.parentPath === parentPath
-      );
+
+  async findProjectFilesByParentPath(
+    projectId: string,
+    parentPath: string
+  ): Promise<ProjectFile[]> {
+    return Array.from(this.projectFiles.values()).filter(
+      file => file.projectId === projectId && file.parentPath === parentPath
+    );
   }
-  
-  async findProjectFilesByPathPrefix(projectId: string, pathPrefix: string): Promise<ProjectFile[]> {
-    return Array.from(this.projectFiles.values())
-      .filter(file => 
-        file.projectId === projectId && 
-        file.path.startsWith(pathPrefix)
-      );
+
+  async findProjectFilesByPathPrefix(
+    projectId: string,
+    pathPrefix: string
+  ): Promise<ProjectFile[]> {
+    return Array.from(this.projectFiles.values()).filter(
+      file => file.projectId === projectId && file.path.startsWith(pathPrefix)
+    );
   }
-  
+
   // Project Template methods implementation
   async createProjectTemplate(template: InsertProjectTemplate): Promise<ProjectTemplate> {
     const id = this.currentProjectTemplateId++;
     const timestamp = new Date();
-    
+
     const newTemplate: ProjectTemplate = {
       ...template,
       id,
       createdAt: timestamp,
       updatedAt: timestamp,
-      templateId: `templ_${id}`
+      templateId: `templ_${id}`,
     };
-    
+
     this.projectTemplates.set(id, newTemplate);
-    
+
     await this.createSystemActivity({
       activity_type: 'project_template_created',
       component: 'development_platform',
       status: 'success',
-      details: { templateId: newTemplate.templateId }
+      details: { templateId: newTemplate.templateId },
     });
-    
+
     return newTemplate;
   }
-  
+
   async getProjectTemplate(id: number): Promise<ProjectTemplate | undefined> {
     return this.projectTemplates.get(id);
   }
-  
+
   async getAllProjectTemplates(): Promise<ProjectTemplate[]> {
     return Array.from(this.projectTemplates.values());
   }
-  
+
   async getProjectTemplatesByType(type: string): Promise<ProjectTemplate[]> {
-    return Array.from(this.projectTemplates.values())
-      .filter(template => template.type === type);
+    return Array.from(this.projectTemplates.values()).filter(template => template.type === type);
   }
-  
+
   async getProjectTemplatesByLanguage(language: string): Promise<ProjectTemplate[]> {
-    return Array.from(this.projectTemplates.values())
-      .filter(template => template.language === language);
+    return Array.from(this.projectTemplates.values()).filter(
+      template => template.language === language
+    );
   }
-  
-  async updateProjectTemplate(id: number, updateData: Partial<ProjectTemplate>): Promise<ProjectTemplate | undefined> {
+
+  async updateProjectTemplate(
+    id: number,
+    updateData: Partial<ProjectTemplate>
+  ): Promise<ProjectTemplate | undefined> {
     const template = this.projectTemplates.get(id);
     if (!template) {
       return undefined;
     }
-    
+
     const updatedTemplate: ProjectTemplate = {
       ...template,
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.projectTemplates.set(id, updatedTemplate);
-    
+
     await this.createSystemActivity({
       activity_type: 'project_template_updated',
       component: 'development_platform',
       status: 'success',
-      details: { templateId: template.templateId }
+      details: { templateId: template.templateId },
     });
-    
+
     return updatedTemplate;
   }
-  
+
   async deleteProjectTemplate(id: number): Promise<boolean> {
     const template = this.projectTemplates.get(id);
     if (!template) {
       return false;
     }
-    
+
     this.projectTemplates.delete(id);
-    
+
     await this.createSystemActivity({
       activity_type: 'project_template_deleted',
       component: 'development_platform',
       status: 'success',
-      details: { templateId: template.templateId }
+      details: { templateId: template.templateId },
     });
-    
+
     return true;
   }
-  
+
   // Match the extended interface methods for backward compatibility
   async findProjectTemplateByTemplateId(templateId: string): Promise<ProjectTemplate | null> {
-    const template = Array.from(this.projectTemplates.values())
-      .find(t => t.templateId === templateId);
+    const template = Array.from(this.projectTemplates.values()).find(
+      t => t.templateId === templateId
+    );
     return template || null;
   }
-  
+
   async findAllProjectTemplates(): Promise<ProjectTemplate[]> {
     return this.getAllProjectTemplates();
   }
-  
+
   // Project Version methods implementation
   async createProjectVersion(version: InsertProjectVersion): Promise<ProjectVersion> {
     const id = this.currentProjectVersionId++;
     const timestamp = new Date();
-    
+
     const newVersion: ProjectVersion = {
       ...version,
       id,
       createdAt: timestamp,
-      versionId: `ver_${id}`
+      versionId: `ver_${id}`,
     };
-    
+
     this.projectVersions.set(id, newVersion);
-    
+
     await this.createSystemActivity({
       activity_type: 'project_version_created',
       component: 'development_platform',
       status: 'success',
-      details: { versionId: newVersion.versionId, projectId: version.projectId }
+      details: { versionId: newVersion.versionId, projectId: version.projectId },
     });
-    
+
     return newVersion;
   }
-  
+
   async getProjectVersion(id: number): Promise<ProjectVersion | undefined> {
     return this.projectVersions.get(id);
   }
-  
+
   async getProjectVersionsByProject(projectId: string): Promise<ProjectVersion[]> {
     return Array.from(this.projectVersions.values())
       .filter(version => version.projectId === projectId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // newest first
   }
-  
+
   async restoreProjectVersion(projectId: string, versionId: number): Promise<boolean> {
     const project = this.developmentProjects.get(projectId);
     if (!project) {
       return false;
     }
-    
+
     const version = this.projectVersions.get(versionId);
     if (!version || version.projectId !== projectId) {
       return false;
     }
-    
+
     // Get all files for this version
     if (!version.files) {
       return false;
     }
-    
+
     // Clear existing files for the project
     const currentFiles = await this.getProjectFilesByProject(projectId);
     for (const file of currentFiles) {
       await this.deleteProjectFile(file.id);
     }
-    
+
     // Restore files from the version
     const versionFiles = Array.isArray(version.files) ? version.files : [];
     for (const file of versionFiles) {
@@ -8265,47 +9236,46 @@ export class PgStorage implements IStorage {
         parentPath: file.parentPath || null,
         content: file.content,
         type: file.type,
-        size: file.size
+        size: file.size,
       });
     }
-    
+
     // Update project with version metadata if needed
     await this.updateDevelopmentProject(projectId, {
       updatedAt: new Date(),
-      restoredFromVersion: version.versionId
+      restoredFromVersion: version.versionId,
     });
-    
+
     await this.createSystemActivity({
       activity_type: 'project_version_restored',
       component: 'development_platform',
       status: 'success',
-      details: { 
-        versionId: version.versionId, 
-        projectId: project.projectId 
-      }
+      details: {
+        versionId: version.versionId,
+        projectId: project.projectId,
+      },
     });
-    
+
     return true;
   }
-  
+
   // Match the extended interface methods for backward compatibility
   async findProjectVersionByVersionId(versionId: string): Promise<ProjectVersion | null> {
-    const version = Array.from(this.projectVersions.values())
-      .find(v => v.versionId === versionId);
+    const version = Array.from(this.projectVersions.values()).find(v => v.versionId === versionId);
     return version || null;
   }
-  
+
   async findProjectVersionsByProjectId(projectId: string): Promise<ProjectVersion[]> {
     return Array.from(this.projectVersions.values())
       .filter(version => version.projectId === projectId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
-  
+
   // Preview Setting methods implementation
   async createPreviewSetting(setting: InsertPreviewSetting): Promise<PreviewSetting> {
     const id = this.currentPreviewSettingId++;
     const timestamp = new Date();
-    
+
     const newSetting: PreviewSetting = {
       ...setting,
       id,
@@ -8317,162 +9287,169 @@ export class PgStorage implements IStorage {
       lastStarted: setting.lastStarted || null,
       lastStopped: setting.lastStopped || null,
       autoRefresh: setting.autoRefresh || false,
-      configFile: setting.configFile || null
+      configFile: setting.configFile || null,
     };
-    
+
     this.previewSettings.set(id, newSetting);
-    
+
     await this.createSystemActivity({
       activity_type: 'preview_setting_created',
       component: 'development_platform',
       status: 'success',
-      details: { projectId: setting.projectId }
+      details: { projectId: setting.projectId },
     });
-    
+
     return newSetting;
   }
-  
+
   async getPreviewSetting(id: number): Promise<PreviewSetting | undefined> {
     return this.previewSettings.get(id);
   }
-  
+
   async getPreviewSettingByProject(projectId: string): Promise<PreviewSetting | undefined> {
-    return Array.from(this.previewSettings.values())
-      .find(setting => setting.projectId === projectId);
+    return Array.from(this.previewSettings.values()).find(
+      setting => setting.projectId === projectId
+    );
   }
-  
-  async updatePreviewSetting(id: number, updateData: Partial<PreviewSetting>): Promise<PreviewSetting | undefined> {
+
+  async updatePreviewSetting(
+    id: number,
+    updateData: Partial<PreviewSetting>
+  ): Promise<PreviewSetting | undefined> {
     const setting = this.previewSettings.get(id);
     if (!setting) {
       return undefined;
     }
-    
+
     const updatedSetting: PreviewSetting = {
       ...setting,
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.previewSettings.set(id, updatedSetting);
-    
+
     await this.createSystemActivity({
       activity_type: 'preview_setting_updated',
       component: 'development_platform',
       status: 'success',
-      details: { projectId: setting.projectId }
+      details: { projectId: setting.projectId },
     });
-    
+
     return updatedSetting;
   }
-  
+
   async deletePreviewSetting(id: number): Promise<boolean> {
     const setting = this.previewSettings.get(id);
     if (!setting) {
       return false;
     }
-    
+
     this.previewSettings.delete(id);
-    
+
     await this.createSystemActivity({
       activity_type: 'preview_setting_deleted',
       component: 'development_platform',
       status: 'success',
-      details: { projectId: setting.projectId }
+      details: { projectId: setting.projectId },
     });
-    
+
     return true;
   }
-  
+
   // Match the extended interface methods for backward compatibility
   async findPreviewSettingByProjectId(projectId: string): Promise<PreviewSetting | null> {
-    const setting = Array.from(this.previewSettings.values())
-      .find(s => s.projectId === projectId);
+    const setting = Array.from(this.previewSettings.values()).find(s => s.projectId === projectId);
     return setting || null;
   }
-  
+
   // AI Code Generation methods implementation
   async createAiCodeGeneration(generation: InsertAiCodeGeneration): Promise<AiCodeGeneration> {
     const id = this.currentAiCodeGenerationId++;
     const timestamp = new Date();
-    
+
     const newGeneration: AiCodeGeneration = {
       ...generation,
       id,
       createdAt: timestamp,
-      generationId: `gen_${id}`
+      generationId: `gen_${id}`,
     };
-    
+
     this.aiCodeGenerations.set(id, newGeneration);
-    
+
     await this.createSystemActivity({
       activity_type: 'ai_code_generation_created',
       component: 'development_platform',
       status: 'success',
-      details: { 
-        generationId: newGeneration.generationId, 
-        projectId: generation.projectId 
-      }
+      details: {
+        generationId: newGeneration.generationId,
+        projectId: generation.projectId,
+      },
     });
-    
+
     return newGeneration;
   }
-  
+
   async getAiCodeGeneration(id: number): Promise<AiCodeGeneration | undefined> {
     return this.aiCodeGenerations.get(id);
   }
-  
+
   async getAiCodeGenerationsByProject(projectId: string): Promise<AiCodeGeneration[]> {
     return Array.from(this.aiCodeGenerations.values())
       .filter(generation => generation.projectId === projectId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // newest first
   }
-  
+
   async getAiCodeGenerationsByUser(userId: number): Promise<AiCodeGeneration[]> {
     return Array.from(this.aiCodeGenerations.values())
       .filter(generation => generation.userId === userId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // newest first
   }
-  
+
   // Match the extended interface methods for backward compatibility
   async findAiCodeGenerationByGenerationId(generationId: string): Promise<AiCodeGeneration | null> {
-    const generation = Array.from(this.aiCodeGenerations.values())
-      .find(g => g.generationId === generationId);
+    const generation = Array.from(this.aiCodeGenerations.values()).find(
+      g => g.generationId === generationId
+    );
     return generation || null;
   }
-  
+
   async findAiCodeGenerationsByProjectId(projectId: string): Promise<AiCodeGeneration[]> {
     return Array.from(this.aiCodeGenerations.values())
       .filter(generation => generation.projectId === projectId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
-  
-  async updateAiCodeGeneration(id: number, updates: Partial<AiCodeGeneration>): Promise<AiCodeGeneration> {
+
+  async updateAiCodeGeneration(
+    id: number,
+    updates: Partial<AiCodeGeneration>
+  ): Promise<AiCodeGeneration> {
     const generation = this.aiCodeGenerations.get(id);
     if (!generation) {
       throw new Error(`AI Code Generation with id ${id} not found`);
     }
-    
+
     const updatedGeneration: AiCodeGeneration = {
       ...generation,
-      ...updates
+      ...updates,
     };
-    
+
     this.aiCodeGenerations.set(id, updatedGeneration);
     return updatedGeneration;
   }
-  
+
   async deleteAiCodeGeneration(id: number): Promise<boolean> {
     const exists = this.aiCodeGenerations.has(id);
     if (!exists) {
       return false;
     }
-    
+
     this.aiCodeGenerations.delete(id);
     return true;
   }
-  
+
   // Assessment Model Workbench Implementation
-  
+
   // Assessment Model operations
   async createAssessmentModel(model: InsertAssessmentModel): Promise<AssessmentModel> {
     const timestamp = new Date();
@@ -8484,39 +9461,42 @@ export class PgStorage implements IStorage {
     this.assessmentModels.push(newModel);
     return newModel;
   }
-  
+
   async getAssessmentModel(id: number): Promise<AssessmentModel | undefined> {
     return this.assessmentModels.find(model => model.id === id);
   }
-  
+
   async getAssessmentModelByModelId(modelId: string): Promise<AssessmentModel | undefined> {
     return this.assessmentModels.find(model => model.modelId === modelId);
   }
-  
+
   async getAllAssessmentModels(): Promise<AssessmentModel[]> {
     return [...this.assessmentModels];
   }
-  
-  async updateAssessmentModel(modelId: string, updateData: Partial<AssessmentModel>): Promise<AssessmentModel | undefined> {
+
+  async updateAssessmentModel(
+    modelId: string,
+    updateData: Partial<AssessmentModel>
+  ): Promise<AssessmentModel | undefined> {
     const index = this.assessmentModels.findIndex(model => model.modelId === modelId);
     if (index === -1) return undefined;
-    
+
     const updatedModel = {
       ...this.assessmentModels[index],
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.assessmentModels[index] = updatedModel;
     return updatedModel;
   }
-  
+
   async deleteAssessmentModel(modelId: string): Promise<boolean> {
     const initialLength = this.assessmentModels.length;
     this.assessmentModels = this.assessmentModels.filter(model => model.modelId !== modelId);
     return this.assessmentModels.length < initialLength;
   }
-  
+
   // Model Variables operations
   async createModelVariable(variable: InsertModelVariable): Promise<ModelVariable> {
     const timestamp = new Date();
@@ -8528,35 +9508,38 @@ export class PgStorage implements IStorage {
     this.modelVariables.push(newVariable);
     return newVariable;
   }
-  
+
   async getModelVariable(id: number): Promise<ModelVariable | undefined> {
     return this.modelVariables.find(variable => variable.id === id);
   }
-  
+
   async getModelVariablesByModel(modelId: string): Promise<ModelVariable[]> {
     return this.modelVariables.filter(variable => variable.modelId === modelId);
   }
-  
-  async updateModelVariable(id: number, updateData: Partial<ModelVariable>): Promise<ModelVariable | undefined> {
+
+  async updateModelVariable(
+    id: number,
+    updateData: Partial<ModelVariable>
+  ): Promise<ModelVariable | undefined> {
     const index = this.modelVariables.findIndex(variable => variable.id === id);
     if (index === -1) return undefined;
-    
+
     const updatedVariable = {
       ...this.modelVariables[index],
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.modelVariables[index] = updatedVariable;
     return updatedVariable;
   }
-  
+
   async deleteModelVariable(id: number): Promise<boolean> {
     const initialLength = this.modelVariables.length;
     this.modelVariables = this.modelVariables.filter(variable => variable.id !== id);
     return this.modelVariables.length < initialLength;
   }
-  
+
   // Model Components operations
   async createModelComponent(component: InsertModelComponent): Promise<ModelComponent> {
     const timestamp = new Date();
@@ -8568,35 +9551,38 @@ export class PgStorage implements IStorage {
     this.modelComponents.push(newComponent);
     return newComponent;
   }
-  
+
   async getModelComponent(id: number): Promise<ModelComponent | undefined> {
     return this.modelComponents.find(component => component.id === id);
   }
-  
+
   async getModelComponentsByModel(modelId: string): Promise<ModelComponent[]> {
     return this.modelComponents.filter(component => component.modelId === modelId);
   }
-  
-  async updateModelComponent(id: number, updateData: Partial<ModelComponent>): Promise<ModelComponent | undefined> {
+
+  async updateModelComponent(
+    id: number,
+    updateData: Partial<ModelComponent>
+  ): Promise<ModelComponent | undefined> {
     const index = this.modelComponents.findIndex(component => component.id === id);
     if (index === -1) return undefined;
-    
+
     const updatedComponent = {
       ...this.modelComponents[index],
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.modelComponents[index] = updatedComponent;
     return updatedComponent;
   }
-  
+
   async deleteModelComponent(id: number): Promise<boolean> {
     const initialLength = this.modelComponents.length;
     this.modelComponents = this.modelComponents.filter(component => component.id !== id);
     return this.modelComponents.length < initialLength;
   }
-  
+
   // Model Calculations operations
   async createModelCalculation(calculation: InsertModelCalculation): Promise<ModelCalculation> {
     const timestamp = new Date();
@@ -8608,35 +9594,38 @@ export class PgStorage implements IStorage {
     this.modelCalculations.push(newCalculation);
     return newCalculation;
   }
-  
+
   async getModelCalculation(id: number): Promise<ModelCalculation | undefined> {
     return this.modelCalculations.find(calculation => calculation.id === id);
   }
-  
+
   async getModelCalculationsByModel(modelId: string): Promise<ModelCalculation[]> {
     return this.modelCalculations.filter(calculation => calculation.modelId === modelId);
   }
-  
-  async updateModelCalculation(id: number, updateData: Partial<ModelCalculation>): Promise<ModelCalculation | undefined> {
+
+  async updateModelCalculation(
+    id: number,
+    updateData: Partial<ModelCalculation>
+  ): Promise<ModelCalculation | undefined> {
     const index = this.modelCalculations.findIndex(calculation => calculation.id === id);
     if (index === -1) return undefined;
-    
+
     const updatedCalculation = {
       ...this.modelCalculations[index],
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.modelCalculations[index] = updatedCalculation;
     return updatedCalculation;
   }
-  
+
   async deleteModelCalculation(id: number): Promise<boolean> {
     const initialLength = this.modelCalculations.length;
     this.modelCalculations = this.modelCalculations.filter(calculation => calculation.id !== id);
     return this.modelCalculations.length < initialLength;
   }
-  
+
   // Model Validation Rules operations
   async createModelValidationRule(rule: InsertModelValidationRule): Promise<ModelValidationRule> {
     const timestamp = new Date();
@@ -8648,35 +9637,38 @@ export class PgStorage implements IStorage {
     this.modelValidationRules.push(newRule);
     return newRule;
   }
-  
+
   async getModelValidationRule(id: number): Promise<ModelValidationRule | undefined> {
     return this.modelValidationRules.find(rule => rule.id === id);
   }
-  
+
   async getModelValidationRulesByModel(modelId: string): Promise<ModelValidationRule[]> {
     return this.modelValidationRules.filter(rule => rule.modelId === modelId);
   }
-  
-  async updateModelValidationRule(id: number, updateData: Partial<ModelValidationRule>): Promise<ModelValidationRule | undefined> {
+
+  async updateModelValidationRule(
+    id: number,
+    updateData: Partial<ModelValidationRule>
+  ): Promise<ModelValidationRule | undefined> {
     const index = this.modelValidationRules.findIndex(rule => rule.id === id);
     if (index === -1) return undefined;
-    
+
     const updatedRule = {
       ...this.modelValidationRules[index],
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.modelValidationRules[index] = updatedRule;
     return updatedRule;
   }
-  
+
   async deleteModelValidationRule(id: number): Promise<boolean> {
     const initialLength = this.modelValidationRules.length;
     this.modelValidationRules = this.modelValidationRules.filter(rule => rule.id !== id);
     return this.modelValidationRules.length < initialLength;
   }
-  
+
   // Model Test Cases operations
   async createModelTestCase(testCase: InsertModelTestCase): Promise<ModelTestCase> {
     const timestamp = new Date();
@@ -8685,89 +9677,100 @@ export class PgStorage implements IStorage {
       createdAt: timestamp,
       updatedAt: timestamp,
       status: testCase.status || 'pending',
-      results: testCase.results || null
+      results: testCase.results || null,
     };
     this.modelTestCases.push(newTestCase);
     return newTestCase;
   }
-  
+
   async getModelTestCase(id: number): Promise<ModelTestCase | undefined> {
     return this.modelTestCases.find(testCase => testCase.id === id);
   }
-  
+
   async getModelTestCasesByModel(modelId: string): Promise<ModelTestCase[]> {
     return this.modelTestCases.filter(testCase => testCase.modelId === modelId);
   }
-  
-  async updateModelTestCase(id: number, updateData: Partial<ModelTestCase>): Promise<ModelTestCase | undefined> {
+
+  async updateModelTestCase(
+    id: number,
+    updateData: Partial<ModelTestCase>
+  ): Promise<ModelTestCase | undefined> {
     const index = this.modelTestCases.findIndex(testCase => testCase.id === id);
     if (index === -1) return undefined;
-    
+
     const updatedTestCase = {
       ...this.modelTestCases[index],
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.modelTestCases[index] = updatedTestCase;
     return updatedTestCase;
   }
-  
-  async updateModelTestCaseResults(id: number, status: string, results: any): Promise<ModelTestCase | undefined> {
+
+  async updateModelTestCaseResults(
+    id: number,
+    status: string,
+    results: any
+  ): Promise<ModelTestCase | undefined> {
     const index = this.modelTestCases.findIndex(testCase => testCase.id === id);
     if (index === -1) return undefined;
-    
+
     const updatedTestCase = {
       ...this.modelTestCases[index],
       status,
       results,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.modelTestCases[index] = updatedTestCase;
     return updatedTestCase;
   }
-  
+
   async deleteModelTestCase(id: number): Promise<boolean> {
     const initialLength = this.modelTestCases.length;
     this.modelTestCases = this.modelTestCases.filter(testCase => testCase.id !== id);
     return this.modelTestCases.length < initialLength;
   }
-  
+
   // Assessment Model Versions operations
-  async createAssessmentModelVersion(version: InsertAssessmentModelVersion): Promise<AssessmentModelVersion> {
+  async createAssessmentModelVersion(
+    version: InsertAssessmentModelVersion
+  ): Promise<AssessmentModelVersion> {
     const timestamp = new Date();
     const newVersion: AssessmentModelVersion = {
       ...version,
       createdAt: timestamp,
       version: version.version || 1,
       status: version.status || 'draft',
-      notes: version.notes || null
+      notes: version.notes || null,
     };
     this.assessmentModelVersions.push(newVersion);
     return newVersion;
   }
-  
+
   async getAssessmentModelVersion(id: number): Promise<AssessmentModelVersion | undefined> {
     return this.assessmentModelVersions.find(version => version.id === id);
   }
-  
+
   async getAssessmentModelVersionsByModel(modelId: string): Promise<AssessmentModelVersion[]> {
     return this.assessmentModelVersions.filter(version => version.modelId === modelId);
   }
-  
-  async getLatestAssessmentModelVersion(modelId: string): Promise<AssessmentModelVersion | undefined> {
+
+  async getLatestAssessmentModelVersion(
+    modelId: string
+  ): Promise<AssessmentModelVersion | undefined> {
     const versions = this.assessmentModelVersions
       .filter(version => version.modelId === modelId)
       .sort((a, b) => b.version - a.version);
-    
+
     return versions.length > 0 ? versions[0] : undefined;
   }
 
   // ========================================================================
   // Assessment Model Workbench Methods
   // ========================================================================
-  
+
   // Assessment Models
   async createAssessmentModel(model: InsertAssessmentModel): Promise<AssessmentModel> {
     const timestamp = new Date();
@@ -8776,11 +9779,11 @@ export class PgStorage implements IStorage {
       modelId: crypto.randomUUID(),
       createdAt: timestamp,
       updatedAt: timestamp,
-      ...model
+      ...model,
     };
-    
+
     this.assessmentModels.push(newModel);
-    
+
     // Create system activity for tracking
     await this.createSystemActivity({
       activity_type: 'created',
@@ -8788,39 +9791,42 @@ export class PgStorage implements IStorage {
       details: {
         modelId: newModel.modelId,
         modelName: newModel.name,
-        modelType: newModel.type
-      }
+        modelType: newModel.type,
+      },
     });
-    
+
     return newModel;
   }
-  
+
   async getAssessmentModel(id: number): Promise<AssessmentModel | undefined> {
     return this.assessmentModels.find(model => model.id === id);
   }
-  
+
   async getAssessmentModelByModelId(modelId: string): Promise<AssessmentModel | undefined> {
     return this.assessmentModels.find(model => model.modelId === modelId);
   }
-  
+
   async getAllAssessmentModels(): Promise<AssessmentModel[]> {
     return [...this.assessmentModels];
   }
-  
-  async updateAssessmentModel(modelId: string, updateData: Partial<AssessmentModel>): Promise<AssessmentModel | undefined> {
+
+  async updateAssessmentModel(
+    modelId: string,
+    updateData: Partial<AssessmentModel>
+  ): Promise<AssessmentModel | undefined> {
     const modelIndex = this.assessmentModels.findIndex(model => model.modelId === modelId);
     if (modelIndex === -1) {
       return undefined;
     }
-    
+
     const updatedModel = {
       ...this.assessmentModels[modelIndex],
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.assessmentModels[modelIndex] = updatedModel;
-    
+
     // Create system activity for tracking
     await this.createSystemActivity({
       activity_type: 'updated',
@@ -8828,33 +9834,33 @@ export class PgStorage implements IStorage {
       details: {
         modelId: updatedModel.modelId,
         modelName: updatedModel.name,
-        modelType: updatedModel.type
-      }
+        modelType: updatedModel.type,
+      },
     });
-    
+
     return updatedModel;
   }
-  
+
   async deleteAssessmentModel(modelId: string): Promise<boolean> {
     const originalLength = this.assessmentModels.length;
     this.assessmentModels = this.assessmentModels.filter(model => model.modelId !== modelId);
-    
+
     const deleted = originalLength > this.assessmentModels.length;
-    
+
     if (deleted) {
       // Create system activity for tracking
       await this.createSystemActivity({
         activity_type: 'deleted',
         component: 'assessment_model',
         details: {
-          modelId: modelId
-        }
+          modelId: modelId,
+        },
       });
     }
-    
+
     return deleted;
   }
-  
+
   // Model Variables
   async createModelVariable(variable: InsertModelVariable): Promise<ModelVariable> {
     const timestamp = new Date();
@@ -8862,44 +9868,47 @@ export class PgStorage implements IStorage {
       id: this.modelVariables.length + 1,
       createdAt: timestamp,
       updatedAt: timestamp,
-      ...variable
+      ...variable,
     };
-    
+
     this.modelVariables.push(newVariable);
-    
+
     return newVariable;
   }
-  
+
   async getModelVariable(id: number): Promise<ModelVariable | undefined> {
     return this.modelVariables.find(variable => variable.id === id);
   }
-  
+
   async getModelVariablesByModel(modelId: string): Promise<ModelVariable[]> {
     return this.modelVariables.filter(variable => variable.modelId === modelId);
   }
-  
-  async updateModelVariable(id: number, updateData: Partial<ModelVariable>): Promise<ModelVariable | undefined> {
+
+  async updateModelVariable(
+    id: number,
+    updateData: Partial<ModelVariable>
+  ): Promise<ModelVariable | undefined> {
     const variableIndex = this.modelVariables.findIndex(variable => variable.id === id);
     if (variableIndex === -1) {
       return undefined;
     }
-    
+
     const updatedVariable = {
       ...this.modelVariables[variableIndex],
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.modelVariables[variableIndex] = updatedVariable;
     return updatedVariable;
   }
-  
+
   async deleteModelVariable(id: number): Promise<boolean> {
     const originalLength = this.modelVariables.length;
     this.modelVariables = this.modelVariables.filter(variable => variable.id !== id);
     return originalLength > this.modelVariables.length;
   }
-  
+
   // Model Components
   async createModelComponent(component: InsertModelComponent): Promise<ModelComponent> {
     const timestamp = new Date();
@@ -8907,44 +9916,47 @@ export class PgStorage implements IStorage {
       id: this.modelComponents.length + 1,
       createdAt: timestamp,
       updatedAt: timestamp,
-      ...component
+      ...component,
     };
-    
+
     this.modelComponents.push(newComponent);
-    
+
     return newComponent;
   }
-  
+
   async getModelComponent(id: number): Promise<ModelComponent | undefined> {
     return this.modelComponents.find(component => component.id === id);
   }
-  
+
   async getModelComponentsByModel(modelId: string): Promise<ModelComponent[]> {
     return this.modelComponents.filter(component => component.modelId === modelId);
   }
-  
-  async updateModelComponent(id: number, updateData: Partial<ModelComponent>): Promise<ModelComponent | undefined> {
+
+  async updateModelComponent(
+    id: number,
+    updateData: Partial<ModelComponent>
+  ): Promise<ModelComponent | undefined> {
     const componentIndex = this.modelComponents.findIndex(component => component.id === id);
     if (componentIndex === -1) {
       return undefined;
     }
-    
+
     const updatedComponent = {
       ...this.modelComponents[componentIndex],
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.modelComponents[componentIndex] = updatedComponent;
     return updatedComponent;
   }
-  
+
   async deleteModelComponent(id: number): Promise<boolean> {
     const originalLength = this.modelComponents.length;
     this.modelComponents = this.modelComponents.filter(component => component.id !== id);
     return originalLength > this.modelComponents.length;
   }
-  
+
   // Model Calculations
   async createModelCalculation(calculation: InsertModelCalculation): Promise<ModelCalculation> {
     const timestamp = new Date();
@@ -8952,44 +9964,47 @@ export class PgStorage implements IStorage {
       id: this.modelCalculations.length + 1,
       createdAt: timestamp,
       updatedAt: timestamp,
-      ...calculation
+      ...calculation,
     };
-    
+
     this.modelCalculations.push(newCalculation);
-    
+
     return newCalculation;
   }
-  
+
   async getModelCalculation(id: number): Promise<ModelCalculation | undefined> {
     return this.modelCalculations.find(calculation => calculation.id === id);
   }
-  
+
   async getModelCalculationsByModel(modelId: string): Promise<ModelCalculation[]> {
     return this.modelCalculations.filter(calculation => calculation.modelId === modelId);
   }
-  
-  async updateModelCalculation(id: number, updateData: Partial<ModelCalculation>): Promise<ModelCalculation | undefined> {
+
+  async updateModelCalculation(
+    id: number,
+    updateData: Partial<ModelCalculation>
+  ): Promise<ModelCalculation | undefined> {
     const calculationIndex = this.modelCalculations.findIndex(calculation => calculation.id === id);
     if (calculationIndex === -1) {
       return undefined;
     }
-    
+
     const updatedCalculation = {
       ...this.modelCalculations[calculationIndex],
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.modelCalculations[calculationIndex] = updatedCalculation;
     return updatedCalculation;
   }
-  
+
   async deleteModelCalculation(id: number): Promise<boolean> {
     const originalLength = this.modelCalculations.length;
     this.modelCalculations = this.modelCalculations.filter(calculation => calculation.id !== id);
     return originalLength > this.modelCalculations.length;
   }
-  
+
   // Model Validation Rules
   async createModelValidationRule(rule: InsertModelValidationRule): Promise<ModelValidationRule> {
     const timestamp = new Date();
@@ -8997,44 +10012,47 @@ export class PgStorage implements IStorage {
       id: this.modelValidationRules.length + 1,
       createdAt: timestamp,
       updatedAt: timestamp,
-      ...rule
+      ...rule,
     };
-    
+
     this.modelValidationRules.push(newRule);
-    
+
     return newRule;
   }
-  
+
   async getModelValidationRule(id: number): Promise<ModelValidationRule | undefined> {
     return this.modelValidationRules.find(rule => rule.id === id);
   }
-  
+
   async getModelValidationRulesByModel(modelId: string): Promise<ModelValidationRule[]> {
     return this.modelValidationRules.filter(rule => rule.modelId === modelId);
   }
-  
-  async updateModelValidationRule(id: number, updateData: Partial<ModelValidationRule>): Promise<ModelValidationRule | undefined> {
+
+  async updateModelValidationRule(
+    id: number,
+    updateData: Partial<ModelValidationRule>
+  ): Promise<ModelValidationRule | undefined> {
     const ruleIndex = this.modelValidationRules.findIndex(rule => rule.id === id);
     if (ruleIndex === -1) {
       return undefined;
     }
-    
+
     const updatedRule = {
       ...this.modelValidationRules[ruleIndex],
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.modelValidationRules[ruleIndex] = updatedRule;
     return updatedRule;
   }
-  
+
   async deleteModelValidationRule(id: number): Promise<boolean> {
     const originalLength = this.modelValidationRules.length;
     this.modelValidationRules = this.modelValidationRules.filter(rule => rule.id !== id);
     return originalLength > this.modelValidationRules.length;
   }
-  
+
   // Model Test Cases
   async createModelTestCase(testCase: InsertModelTestCase): Promise<ModelTestCase> {
     const timestamp = new Date();
@@ -9043,74 +10061,83 @@ export class PgStorage implements IStorage {
       createdAt: timestamp,
       updatedAt: timestamp,
       ...testCase,
-      status: testCase.status || 'pending'
+      status: testCase.status || 'pending',
     };
-    
+
     this.modelTestCases.push(newTestCase);
-    
+
     return newTestCase;
   }
-  
+
   async getModelTestCase(id: number): Promise<ModelTestCase | undefined> {
     return this.modelTestCases.find(testCase => testCase.id === id);
   }
-  
+
   async getModelTestCasesByModel(modelId: string): Promise<ModelTestCase[]> {
     return this.modelTestCases.filter(testCase => testCase.modelId === modelId);
   }
-  
-  async updateModelTestCase(id: number, updateData: Partial<ModelTestCase>): Promise<ModelTestCase | undefined> {
+
+  async updateModelTestCase(
+    id: number,
+    updateData: Partial<ModelTestCase>
+  ): Promise<ModelTestCase | undefined> {
     const testCaseIndex = this.modelTestCases.findIndex(testCase => testCase.id === id);
     if (testCaseIndex === -1) {
       return undefined;
     }
-    
+
     const updatedTestCase = {
       ...this.modelTestCases[testCaseIndex],
       ...updateData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.modelTestCases[testCaseIndex] = updatedTestCase;
     return updatedTestCase;
   }
-  
-  async updateModelTestCaseResults(id: number, status: string, results: any): Promise<ModelTestCase | undefined> {
+
+  async updateModelTestCaseResults(
+    id: number,
+    status: string,
+    results: any
+  ): Promise<ModelTestCase | undefined> {
     const testCaseIndex = this.modelTestCases.findIndex(testCase => testCase.id === id);
     if (testCaseIndex === -1) {
       return undefined;
     }
-    
+
     const updatedTestCase = {
       ...this.modelTestCases[testCaseIndex],
       status: status,
       results: results,
       lastRun: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.modelTestCases[testCaseIndex] = updatedTestCase;
     return updatedTestCase;
   }
-  
+
   async deleteModelTestCase(id: number): Promise<boolean> {
     const originalLength = this.modelTestCases.length;
     this.modelTestCases = this.modelTestCases.filter(testCase => testCase.id !== id);
     return originalLength > this.modelTestCases.length;
   }
-  
+
   // Assessment Model Versions
-  async createAssessmentModelVersion(version: InsertAssessmentModelVersion): Promise<AssessmentModelVersion> {
+  async createAssessmentModelVersion(
+    version: InsertAssessmentModelVersion
+  ): Promise<AssessmentModelVersion> {
     const timestamp = new Date();
     const newVersion: AssessmentModelVersion = {
       id: this.assessmentModelVersions.length + 1,
       versionId: crypto.randomUUID(),
       createdAt: timestamp,
-      ...version
+      ...version,
     };
-    
+
     this.assessmentModelVersions.push(newVersion);
-    
+
     // Create system activity for tracking
     await this.createSystemActivity({
       activity_type: 'created',
@@ -9118,34 +10145,40 @@ export class PgStorage implements IStorage {
       details: {
         modelId: newVersion.modelId,
         versionNumber: newVersion.versionNumber,
-        versionId: newVersion.versionId
-      }
+        versionId: newVersion.versionId,
+      },
     });
-    
+
     return newVersion;
   }
-  
+
   async getAssessmentModelVersion(id: number): Promise<AssessmentModelVersion | undefined> {
     return this.assessmentModelVersions.find(version => version.id === id);
   }
-  
+
   async getAssessmentModelVersionsByModel(modelId: string): Promise<AssessmentModelVersion[]> {
     return this.assessmentModelVersions
       .filter(version => version.modelId === modelId)
       .sort((a, b) => parseInt(b.versionNumber) - parseInt(a.versionNumber)); // newest first
   }
-  
-  async getLatestAssessmentModelVersion(modelId: string): Promise<AssessmentModelVersion | undefined> {
+
+  async getLatestAssessmentModelVersion(
+    modelId: string
+  ): Promise<AssessmentModelVersion | undefined> {
     const versions = await this.getAssessmentModelVersionsByModel(modelId);
     return versions.length > 0 ? versions[0] : undefined;
   }
 
   // Development Tools Implementation
   // CODE SNIPPETS
-  
-  async getCodeSnippets(filters?: { language?: string, snippetType?: string, tags?: string[] }): Promise<CodeSnippet[]> {
+
+  async getCodeSnippets(filters?: {
+    language?: string;
+    snippetType?: string;
+    tags?: string[];
+  }): Promise<CodeSnippet[]> {
     let snippets = Array.from(this.codeSnippets.values());
-    
+
     // Apply filters if provided
     if (filters) {
       if (filters.language) {
@@ -9161,7 +10194,7 @@ export class PgStorage implements IStorage {
         });
       }
     }
-    
+
     return snippets;
   }
 
@@ -9172,7 +10205,7 @@ export class PgStorage implements IStorage {
   async createCodeSnippet(snippet: InsertCodeSnippet): Promise<CodeSnippet> {
     const id = this.currentCodeSnippetId++;
     const timestamp = new Date();
-    
+
     const newSnippet: CodeSnippet = {
       ...snippet,
       id,
@@ -9184,73 +10217,81 @@ export class PgStorage implements IStorage {
       tags: snippet.tags || [],
       isPublic: snippet.isPublic !== undefined ? snippet.isPublic : true,
       aiGenerated: snippet.aiGenerated !== undefined ? snippet.aiGenerated : false,
-      aiModel: snippet.aiModel || null
+      aiModel: snippet.aiModel || null,
     };
-    
+
     this.codeSnippets.set(id, newSnippet);
-    
+
     await this.createSystemActivity({
       activity_type: 'code_snippet_created',
       component: 'development_tools',
-      details: { snippetId: id, name: newSnippet.name }
+      details: { snippetId: id, name: newSnippet.name },
     });
-    
+
     return newSnippet;
   }
 
-  async updateCodeSnippet(id: number, updates: Partial<InsertCodeSnippet>): Promise<CodeSnippet | undefined> {
+  async updateCodeSnippet(
+    id: number,
+    updates: Partial<InsertCodeSnippet>
+  ): Promise<CodeSnippet | undefined> {
     const existingSnippet = this.codeSnippets.get(id);
     if (!existingSnippet) return undefined;
-    
+
     const updatedSnippet: CodeSnippet = {
       ...existingSnippet,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.codeSnippets.set(id, updatedSnippet);
-    
+
     await this.createSystemActivity({
       activity_type: 'code_snippet_updated',
       component: 'development_tools',
-      details: { snippetId: id, name: updatedSnippet.name }
+      details: { snippetId: id, name: updatedSnippet.name },
     });
-    
+
     return updatedSnippet;
   }
 
   async deleteCodeSnippet(id: number): Promise<boolean> {
     const snippet = this.codeSnippets.get(id);
     if (!snippet) return false;
-    
+
     const result = this.codeSnippets.delete(id);
-    
+
     if (result) {
       await this.createSystemActivity({
         activity_type: 'code_snippet_deleted',
         component: 'development_tools',
-        details: { snippetId: id, name: snippet.name }
+        details: { snippetId: id, name: snippet.name },
       });
     }
-    
+
     return result;
   }
 
   // DATA VISUALIZATIONS
-  
-  async getDataVisualizations(filters?: { visualizationType?: string, createdBy?: number }): Promise<DataVisualization[]> {
+
+  async getDataVisualizations(filters?: {
+    visualizationType?: string;
+    createdBy?: number;
+  }): Promise<DataVisualization[]> {
     let visualizations = Array.from(this.dataVisualizations.values());
-    
+
     // Apply filters if provided
     if (filters) {
       if (filters.visualizationType) {
-        visualizations = visualizations.filter(viz => viz.visualizationType === filters.visualizationType);
+        visualizations = visualizations.filter(
+          viz => viz.visualizationType === filters.visualizationType
+        );
       }
       if (filters.createdBy) {
         visualizations = visualizations.filter(viz => viz.createdBy === filters.createdBy);
       }
     }
-    
+
     return visualizations;
   }
 
@@ -9258,10 +10299,12 @@ export class PgStorage implements IStorage {
     return this.dataVisualizations.get(id);
   }
 
-  async createDataVisualization(visualization: InsertDataVisualization): Promise<DataVisualization> {
+  async createDataVisualization(
+    visualization: InsertDataVisualization
+  ): Promise<DataVisualization> {
     const id = this.currentDataVisualizationId++;
     const timestamp = new Date();
-    
+
     const newVisualization: DataVisualization = {
       ...visualization,
       id,
@@ -9271,63 +10314,70 @@ export class PgStorage implements IStorage {
       // Set default values for nullable fields
       description: visualization.description || null,
       isPublic: visualization.isPublic !== undefined ? visualization.isPublic : true,
-      previewImage: visualization.previewImage || null
+      previewImage: visualization.previewImage || null,
     };
-    
+
     this.dataVisualizations.set(id, newVisualization);
-    
+
     await this.createSystemActivity({
       activity_type: 'data_visualization_created',
       component: 'development_tools',
-      details: { visualizationId: id, name: newVisualization.name }
+      details: { visualizationId: id, name: newVisualization.name },
     });
-    
+
     return newVisualization;
   }
 
-  async updateDataVisualization(id: number, updates: Partial<InsertDataVisualization>): Promise<DataVisualization | undefined> {
+  async updateDataVisualization(
+    id: number,
+    updates: Partial<InsertDataVisualization>
+  ): Promise<DataVisualization | undefined> {
     const existingVisualization = this.dataVisualizations.get(id);
     if (!existingVisualization) return undefined;
-    
+
     const updatedVisualization: DataVisualization = {
       ...existingVisualization,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.dataVisualizations.set(id, updatedVisualization);
-    
+
     await this.createSystemActivity({
       activity_type: 'data_visualization_updated',
       component: 'development_tools',
-      details: { visualizationId: id, name: updatedVisualization.name }
+      details: { visualizationId: id, name: updatedVisualization.name },
     });
-    
+
     return updatedVisualization;
   }
 
   async deleteDataVisualization(id: number): Promise<boolean> {
     const visualization = this.dataVisualizations.get(id);
     if (!visualization) return false;
-    
+
     const result = this.dataVisualizations.delete(id);
-    
+
     if (result) {
       await this.createSystemActivity({
         activity_type: 'data_visualization_deleted',
         component: 'development_tools',
-        details: { visualizationId: id, name: visualization.name }
+        details: { visualizationId: id, name: visualization.name },
       });
     }
-    
+
     return result;
   }
 
   // UI COMPONENT TEMPLATES
-  
-  async getUIComponentTemplates(filters?: { componentType?: string, framework?: string, tags?: string[] }): Promise<UIComponentTemplate[]> {
+
+  async getUIComponentTemplates(filters?: {
+    componentType?: string;
+    framework?: string;
+    tags?: string[];
+  }): Promise<UIComponentTemplate[]> {
     let templates = Array.from(this.uiComponentTemplates.values());
-    
+
     // Apply filters if provided
     if (filters) {
       if (filters.componentType) {
@@ -9343,7 +10393,7 @@ export class PgStorage implements IStorage {
         });
       }
     }
-    
+
     return templates;
   }
 
@@ -9351,10 +10401,12 @@ export class PgStorage implements IStorage {
     return this.uiComponentTemplates.get(id);
   }
 
-  async createUIComponentTemplate(template: InsertUIComponentTemplate): Promise<UIComponentTemplate> {
+  async createUIComponentTemplate(
+    template: InsertUIComponentTemplate
+  ): Promise<UIComponentTemplate> {
     const id = this.currentUIComponentTemplateId++;
     const timestamp = new Date();
-    
+
     const newTemplate: UIComponentTemplate = {
       ...template,
       id,
@@ -9365,99 +10417,107 @@ export class PgStorage implements IStorage {
       description: template.description || null,
       tags: template.tags || [],
       isPublic: template.isPublic !== undefined ? template.isPublic : true,
-      previewImage: template.previewImage || null
+      previewImage: template.previewImage || null,
     };
-    
+
     this.uiComponentTemplates.set(id, newTemplate);
-    
+
     await this.createSystemActivity({
       activity_type: 'ui_component_template_created',
       component: 'development_tools',
-      details: { templateId: id, name: newTemplate.name }
+      details: { templateId: id, name: newTemplate.name },
     });
-    
+
     return newTemplate;
   }
 
-  async updateUIComponentTemplate(id: number, updates: Partial<InsertUIComponentTemplate>): Promise<UIComponentTemplate | undefined> {
+  async updateUIComponentTemplate(
+    id: number,
+    updates: Partial<InsertUIComponentTemplate>
+  ): Promise<UIComponentTemplate | undefined> {
     const existingTemplate = this.uiComponentTemplates.get(id);
     if (!existingTemplate) return undefined;
-    
+
     const updatedTemplate: UIComponentTemplate = {
       ...existingTemplate,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.uiComponentTemplates.set(id, updatedTemplate);
-    
+
     await this.createSystemActivity({
       activity_type: 'ui_component_template_updated',
       component: 'development_tools',
-      details: { templateId: id, name: updatedTemplate.name }
+      details: { templateId: id, name: updatedTemplate.name },
     });
-    
+
     return updatedTemplate;
   }
 
   async deleteUIComponentTemplate(id: number): Promise<boolean> {
     const template = this.uiComponentTemplates.get(id);
     if (!template) return false;
-    
+
     const result = this.uiComponentTemplates.delete(id);
-    
+
     if (result) {
       await this.createSystemActivity({
         activity_type: 'ui_component_template_deleted',
         component: 'development_tools',
-        details: { templateId: id, name: template.name }
+        details: { templateId: id, name: template.name },
       });
     }
-    
+
     return result;
   }
 
   // TerraFusion Repository Marketplace methods
   // Repository methods
-  async getRepositories(filters?: { repositoryType?: string, visibility?: string, tags?: string[], featured?: boolean }): Promise<Repository[]> {
+  async getRepositories(filters?: {
+    repositoryType?: string;
+    visibility?: string;
+    tags?: string[];
+    featured?: boolean;
+  }): Promise<Repository[]> {
     let repositories = Array.from(this.repositories.values());
-    
+
     // Apply filters if provided
     if (filters) {
       if (filters.repositoryType) {
         repositories = repositories.filter(repo => repo.repositoryType === filters.repositoryType);
       }
-      
+
       if (filters.visibility) {
         repositories = repositories.filter(repo => repo.visibility === filters.visibility);
       }
-      
+
       if (filters.tags && filters.tags.length > 0) {
-        repositories = repositories.filter(repo => 
-          repo.tags && filters.tags?.some(tag => repo.tags?.includes(tag))
+        repositories = repositories.filter(
+          repo => repo.tags && filters.tags?.some(tag => repo.tags?.includes(tag))
         );
       }
-      
+
       if (filters.featured) {
         repositories = repositories.filter(repo => repo.featured);
       }
     }
-    
+
     return repositories;
   }
-  
+
   async getRepositoryById(id: number): Promise<Repository | undefined> {
     return this.repositories.get(id);
   }
-  
+
   async getRepositoryByName(name: string): Promise<Repository | undefined> {
     return Array.from(this.repositories.values()).find(repo => repo.name === name);
   }
-  
+
   async createRepository(repository: InsertRepository): Promise<Repository> {
     const id = this.currentRepositoryId++;
     const timestamp = new Date();
-    
+
     const newRepository: Repository = {
       ...repository,
       id,
@@ -9467,400 +10527,438 @@ export class PgStorage implements IStorage {
       forks: 0,
       downloads: 0,
       featured: false,
-      metadata: null
+      metadata: null,
     };
-    
+
     this.repositories.set(id, newRepository);
     return newRepository;
   }
-  
-  async updateRepository(id: number, updates: Partial<InsertRepository>): Promise<Repository | undefined> {
+
+  async updateRepository(
+    id: number,
+    updates: Partial<InsertRepository>
+  ): Promise<Repository | undefined> {
     const repository = this.repositories.get(id);
     if (!repository) {
       return undefined;
     }
-    
+
     const updatedRepo: Repository = {
       ...repository,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.repositories.set(id, updatedRepo);
     return updatedRepo;
   }
-  
+
   async deleteRepository(id: number): Promise<boolean> {
     const exists = this.repositories.has(id);
     if (!exists) {
       return false;
     }
-    
+
     // Delete the repository
     this.repositories.delete(id);
-    
+
     // Also delete associated versions, reviews, and dependencies
-    const versions = Array.from(this.repositoryVersions.values())
-      .filter(version => version.repositoryId === id);
-    
-    const reviews = Array.from(this.repositoryReviews.values())
-      .filter(review => review.repositoryId === id);
-    
-    const dependencies = Array.from(this.repositoryDependencies.values())
-      .filter(dep => dep.repositoryId === id || dep.dependencyRepoId === id);
-    
+    const versions = Array.from(this.repositoryVersions.values()).filter(
+      version => version.repositoryId === id
+    );
+
+    const reviews = Array.from(this.repositoryReviews.values()).filter(
+      review => review.repositoryId === id
+    );
+
+    const dependencies = Array.from(this.repositoryDependencies.values()).filter(
+      dep => dep.repositoryId === id || dep.dependencyRepoId === id
+    );
+
     for (const version of versions) {
       this.repositoryVersions.delete(version.id);
     }
-    
+
     for (const review of reviews) {
       this.repositoryReviews.delete(review.id);
     }
-    
+
     for (const dependency of dependencies) {
       this.repositoryDependencies.delete(dependency.id);
     }
-    
+
     return true;
   }
-  
+
   async incrementRepositoryStars(id: number): Promise<Repository | undefined> {
     const repository = this.repositories.get(id);
     if (!repository) {
       return undefined;
     }
-    
+
     const updatedRepo: Repository = {
       ...repository,
       stars: repository.stars + 1,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.repositories.set(id, updatedRepo);
     return updatedRepo;
   }
-  
+
   async incrementRepositoryForks(id: number): Promise<Repository | undefined> {
     const repository = this.repositories.get(id);
     if (!repository) {
       return undefined;
     }
-    
+
     const updatedRepo: Repository = {
       ...repository,
       forks: repository.forks + 1,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.repositories.set(id, updatedRepo);
     return updatedRepo;
   }
-  
+
   async incrementRepositoryDownloads(id: number): Promise<Repository | undefined> {
     const repository = this.repositories.get(id);
     if (!repository) {
       return undefined;
     }
-    
+
     const updatedRepo: Repository = {
       ...repository,
       downloads: repository.downloads + 1,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.repositories.set(id, updatedRepo);
     return updatedRepo;
   }
-  
+
   async getRepositoriesByOwner(ownerId: number): Promise<Repository[]> {
-    return Array.from(this.repositories.values())
-      .filter(repo => repo.ownerId === ownerId);
+    return Array.from(this.repositories.values()).filter(repo => repo.ownerId === ownerId);
   }
-  
+
   async getFeaturedRepositories(): Promise<Repository[]> {
-    return Array.from(this.repositories.values())
-      .filter(repo => repo.featured);
+    return Array.from(this.repositories.values()).filter(repo => repo.featured);
   }
-  
+
   // Repository Version methods
   async getRepositoryVersions(repositoryId: number): Promise<RepositoryVersion[]> {
-    return Array.from(this.repositoryVersions.values())
-      .filter(version => version.repositoryId === repositoryId);
+    return Array.from(this.repositoryVersions.values()).filter(
+      version => version.repositoryId === repositoryId
+    );
   }
-  
+
   async getRepositoryVersionById(id: number): Promise<RepositoryVersion | undefined> {
     return this.repositoryVersions.get(id);
   }
-  
-  async getRepositoryVersionByVersion(repositoryId: number, version: string): Promise<RepositoryVersion | undefined> {
-    return Array.from(this.repositoryVersions.values())
-      .find(v => v.repositoryId === repositoryId && v.version === version);
+
+  async getRepositoryVersionByVersion(
+    repositoryId: number,
+    version: string
+  ): Promise<RepositoryVersion | undefined> {
+    return Array.from(this.repositoryVersions.values()).find(
+      v => v.repositoryId === repositoryId && v.version === version
+    );
   }
-  
+
   async createRepositoryVersion(version: InsertRepositoryVersion): Promise<RepositoryVersion> {
     const id = this.currentRepositoryVersionId++;
     const timestamp = new Date();
-    
+
     const newVersion: RepositoryVersion = {
       ...version,
       id,
       createdAt: timestamp,
       updatedAt: timestamp,
-      downloads: 0
+      downloads: 0,
     };
-    
+
     this.repositoryVersions.set(id, newVersion);
-    
+
     // If this is the first version or marked as latest, update other versions
     if (newVersion.isLatest) {
       await this.setRepositoryVersionAsLatest(id);
     }
-    
+
     return newVersion;
   }
-  
-  async updateRepositoryVersion(id: number, updates: Partial<InsertRepositoryVersion>): Promise<RepositoryVersion | undefined> {
+
+  async updateRepositoryVersion(
+    id: number,
+    updates: Partial<InsertRepositoryVersion>
+  ): Promise<RepositoryVersion | undefined> {
     const version = this.repositoryVersions.get(id);
     if (!version) {
       return undefined;
     }
-    
+
     const updatedVersion: RepositoryVersion = {
       ...version,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.repositoryVersions.set(id, updatedVersion);
-    
+
     // If the version is being set as latest, update other versions
     if (updates.isLatest) {
       await this.setRepositoryVersionAsLatest(id);
     }
-    
+
     return updatedVersion;
   }
-  
+
   async setRepositoryVersionAsLatest(id: number): Promise<RepositoryVersion | undefined> {
     const version = this.repositoryVersions.get(id);
     if (!version) {
       return undefined;
     }
-    
+
     // Set all other versions of this repository to not be latest
-    const otherVersions = Array.from(this.repositoryVersions.values())
-      .filter(v => v.repositoryId === version.repositoryId && v.id !== id);
-    
+    const otherVersions = Array.from(this.repositoryVersions.values()).filter(
+      v => v.repositoryId === version.repositoryId && v.id !== id
+    );
+
     for (const otherVersion of otherVersions) {
       otherVersion.isLatest = false;
       this.repositoryVersions.set(otherVersion.id, otherVersion);
     }
-    
+
     // Set this version as latest
     version.isLatest = true;
     this.repositoryVersions.set(id, version);
-    
+
     return version;
   }
-  
+
   async incrementVersionDownloads(id: number): Promise<RepositoryVersion | undefined> {
     const version = this.repositoryVersions.get(id);
     if (!version) {
       return undefined;
     }
-    
+
     const updatedVersion: RepositoryVersion = {
       ...version,
       downloads: version.downloads + 1,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.repositoryVersions.set(id, updatedVersion);
-    
+
     // Also increment the parent repository's downloads
     await this.incrementRepositoryDownloads(version.repositoryId);
-    
+
     return updatedVersion;
   }
-  
+
   async getLatestRepositoryVersion(repositoryId: number): Promise<RepositoryVersion | undefined> {
-    return Array.from(this.repositoryVersions.values())
-      .find(version => version.repositoryId === repositoryId && version.isLatest);
+    return Array.from(this.repositoryVersions.values()).find(
+      version => version.repositoryId === repositoryId && version.isLatest
+    );
   }
-  
+
   // Repository Review methods
   async getRepositoryReviews(repositoryId: number): Promise<RepositoryReview[]> {
-    return Array.from(this.repositoryReviews.values())
-      .filter(review => review.repositoryId === repositoryId);
+    return Array.from(this.repositoryReviews.values()).filter(
+      review => review.repositoryId === repositoryId
+    );
   }
-  
+
   async getRepositoryReviewById(id: number): Promise<RepositoryReview | undefined> {
     return this.repositoryReviews.get(id);
   }
-  
+
   async createRepositoryReview(review: InsertRepositoryReview): Promise<RepositoryReview> {
     const id = this.currentRepositoryReviewId++;
     const timestamp = new Date();
-    
+
     const newReview: RepositoryReview = {
       ...review,
       id,
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
+
     this.repositoryReviews.set(id, newReview);
     return newReview;
   }
-  
-  async updateRepositoryReview(id: number, updates: Partial<InsertRepositoryReview>): Promise<RepositoryReview | undefined> {
+
+  async updateRepositoryReview(
+    id: number,
+    updates: Partial<InsertRepositoryReview>
+  ): Promise<RepositoryReview | undefined> {
     const review = this.repositoryReviews.get(id);
     if (!review) {
       return undefined;
     }
-    
+
     const updatedReview: RepositoryReview = {
       ...review,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.repositoryReviews.set(id, updatedReview);
     return updatedReview;
   }
-  
+
   async deleteRepositoryReview(id: number): Promise<boolean> {
     const exists = this.repositoryReviews.has(id);
     if (!exists) {
       return false;
     }
-    
+
     this.repositoryReviews.delete(id);
     return true;
   }
-  
+
   async getRepositoryReviewsByUser(userId: number): Promise<RepositoryReview[]> {
-    return Array.from(this.repositoryReviews.values())
-      .filter(review => review.userId === userId);
+    return Array.from(this.repositoryReviews.values()).filter(review => review.userId === userId);
   }
-  
+
   async getRepositoryAverageRating(repositoryId: number): Promise<number> {
     const reviews = await this.getRepositoryReviews(repositoryId);
-    
+
     if (reviews.length === 0) {
       return 0;
     }
-    
+
     const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
     return sum / reviews.length;
   }
-  
+
   // Repository Dependency methods
   async getRepositoryDependencies(repositoryId: number): Promise<RepositoryDependency[]> {
-    return Array.from(this.repositoryDependencies.values())
-      .filter(dependency => dependency.repositoryId === repositoryId);
+    return Array.from(this.repositoryDependencies.values()).filter(
+      dependency => dependency.repositoryId === repositoryId
+    );
   }
-  
+
   async getDependentRepositories(dependencyRepoId: number): Promise<RepositoryDependency[]> {
-    return Array.from(this.repositoryDependencies.values())
-      .filter(dependency => dependency.dependencyRepoId === dependencyRepoId);
+    return Array.from(this.repositoryDependencies.values()).filter(
+      dependency => dependency.dependencyRepoId === dependencyRepoId
+    );
   }
-  
-  async createRepositoryDependency(dependency: InsertRepositoryDependency): Promise<RepositoryDependency> {
+
+  async createRepositoryDependency(
+    dependency: InsertRepositoryDependency
+  ): Promise<RepositoryDependency> {
     const id = this.currentRepositoryDependencyId++;
     const timestamp = new Date();
-    
+
     const newDependency: RepositoryDependency = {
       ...dependency,
       id,
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
+
     this.repositoryDependencies.set(id, newDependency);
     return newDependency;
   }
-  
-  async updateRepositoryDependency(id: number, updates: Partial<InsertRepositoryDependency>): Promise<RepositoryDependency | undefined> {
+
+  async updateRepositoryDependency(
+    id: number,
+    updates: Partial<InsertRepositoryDependency>
+  ): Promise<RepositoryDependency | undefined> {
     const dependency = this.repositoryDependencies.get(id);
     if (!dependency) {
       return undefined;
     }
-    
+
     const updatedDependency: RepositoryDependency = {
       ...dependency,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.repositoryDependencies.set(id, updatedDependency);
     return updatedDependency;
   }
-  
+
   async deleteRepositoryDependency(id: number): Promise<boolean> {
     const exists = this.repositoryDependencies.has(id);
     if (!exists) {
       return false;
     }
-    
+
     this.repositoryDependencies.delete(id);
     return true;
   }
-  
+
   async getRepositoryDependency(id: number): Promise<RepositoryDependency | undefined> {
     return this.repositoryDependencies.get(id);
   }
 
   // Intelligent Development Workflow Optimizer methods
   // Workflow Optimization Request methods
-  async getWorkflowOptimizationRequests(filters?: { status?: string, optimizationType?: string, userId?: number, repositoryId?: number }): Promise<WorkflowOptimizationRequest[]> {
+  async getWorkflowOptimizationRequests(filters?: {
+    status?: string;
+    optimizationType?: string;
+    userId?: number;
+    repositoryId?: number;
+  }): Promise<WorkflowOptimizationRequest[]> {
     // Initialize the map if it doesn't exist
     if (!this.workflowOptimizationRequests) {
-      console.log("Initializing workflowOptimizationRequests map");
+      console.log('Initializing workflowOptimizationRequests map');
       this.workflowOptimizationRequests = new Map<number, WorkflowOptimizationRequest>();
       // Seed some initial data
       this.seedWorkflowOptimizerData();
     }
-    
+
     let requests = Array.from(this.workflowOptimizationRequests.values());
     console.log(`Found ${requests.length} workflow optimization requests in storage`);
-    
+
     // Apply filters if provided
     if (filters) {
       if (filters.status) {
         requests = requests.filter(request => request.status === filters.status);
       }
-      
+
       if (filters.optimizationType) {
-        requests = requests.filter(request => request.optimizationType === filters.optimizationType);
+        requests = requests.filter(
+          request => request.optimizationType === filters.optimizationType
+        );
       }
-      
+
       if (filters.userId) {
         requests = requests.filter(request => request.userId === filters.userId);
       }
-      
+
       if (filters.repositoryId) {
         requests = requests.filter(request => request.repositoryId === filters.repositoryId);
       }
     }
-    
+
     return requests;
   }
-  
-  async getWorkflowOptimizationRequestById(id: number): Promise<WorkflowOptimizationRequest | undefined> {
+
+  async getWorkflowOptimizationRequestById(
+    id: number
+  ): Promise<WorkflowOptimizationRequest | undefined> {
     return this.workflowOptimizationRequests.get(id);
   }
-  
-  async getWorkflowOptimizationRequestByRequestId(requestId: string): Promise<WorkflowOptimizationRequest | undefined> {
-    return Array.from(this.workflowOptimizationRequests.values())
-      .find(request => request.requestId === requestId);
+
+  async getWorkflowOptimizationRequestByRequestId(
+    requestId: string
+  ): Promise<WorkflowOptimizationRequest | undefined> {
+    return Array.from(this.workflowOptimizationRequests.values()).find(
+      request => request.requestId === requestId
+    );
   }
-  
-  async createWorkflowOptimizationRequest(request: InsertWorkflowOptimizationRequest): Promise<WorkflowOptimizationRequest> {
+
+  async createWorkflowOptimizationRequest(
+    request: InsertWorkflowOptimizationRequest
+  ): Promise<WorkflowOptimizationRequest> {
     const id = this.currentWorkflowOptimizationRequestId++;
     const timestamp = new Date();
     const requestId = crypto.randomUUID();
-    
+
     const newRequest: WorkflowOptimizationRequest = {
       ...request,
       id,
@@ -9868,172 +10966,182 @@ export class PgStorage implements IStorage {
       status: request.status || WorkflowOptimizationStatus.PENDING,
       priority: request.priority || WorkflowOptimizationPriority.MEDIUM,
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
-    
+
     this.workflowOptimizationRequests.set(id, newRequest);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agent_id: 1, // Using agent_id to match expected schema
       activity: `Created workflow optimization request: ${newRequest.title}`,
       entity_type: 'workflow_optimization',
-      entity_id: newRequest.requestId
+      entity_id: newRequest.requestId,
     });
-    
+
     return newRequest;
   }
-  
-  async updateWorkflowOptimizationRequest(id: number, updates: Partial<InsertWorkflowOptimizationRequest>): Promise<WorkflowOptimizationRequest | undefined> {
+
+  async updateWorkflowOptimizationRequest(
+    id: number,
+    updates: Partial<InsertWorkflowOptimizationRequest>
+  ): Promise<WorkflowOptimizationRequest | undefined> {
     const request = this.workflowOptimizationRequests.get(id);
     if (!request) {
       return undefined;
     }
-    
+
     const updatedRequest: WorkflowOptimizationRequest = {
       ...request,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.workflowOptimizationRequests.set(id, updatedRequest);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agent_id: 1, // Using agent_id to match expected schema
       activity: `Updated workflow optimization request: ${updatedRequest.title}`,
       entity_type: 'workflow_optimization',
-      entity_id: updatedRequest.requestId
+      entity_id: updatedRequest.requestId,
     });
-    
+
     return updatedRequest;
   }
-  
+
   async deleteWorkflowOptimizationRequest(id: number): Promise<boolean> {
     const request = this.workflowOptimizationRequests.get(id);
     if (!request) {
       return false;
     }
-    
+
     // Also delete any associated results
     const results = await this.getWorkflowOptimizationResults(request.requestId);
     for (const result of results) {
       this.workflowOptimizationResults.delete(result.id);
     }
-    
+
     this.workflowOptimizationRequests.delete(id);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agent_id: 1, // Using agent_id to match expected schema
       activity: `Deleted workflow optimization request: ${request.title}`,
       entity_type: 'workflow_optimization',
-      entity_id: request.requestId
+      entity_id: request.requestId,
     });
-    
+
     return true;
   }
-  
+
   // Workflow Optimization Result methods
   async getWorkflowOptimizationResults(requestId?: string): Promise<WorkflowOptimizationResult[]> {
     // Initialize the map if it doesn't exist
     if (!this.workflowOptimizationResults) {
-      console.log("Initializing workflowOptimizationResults map");
+      console.log('Initializing workflowOptimizationResults map');
       this.workflowOptimizationResults = new Map<number, WorkflowOptimizationResult>();
-      
+
       // If the requests map doesn't exist either, seed the data
       if (!this.workflowOptimizationRequests) {
         this.seedWorkflowOptimizerData();
       }
     }
-    
+
     let results = Array.from(this.workflowOptimizationResults.values());
     console.log(`Found ${results.length} workflow optimization results in storage`);
-    
+
     if (requestId) {
       results = results.filter(result => result.requestId === requestId);
       console.log(`Filtered to ${results.length} results for requestId ${requestId}`);
     }
-    
+
     return results;
   }
-  
-  async getWorkflowOptimizationResultById(id: number): Promise<WorkflowOptimizationResult | undefined> {
+
+  async getWorkflowOptimizationResultById(
+    id: number
+  ): Promise<WorkflowOptimizationResult | undefined> {
     return this.workflowOptimizationResults.get(id);
   }
-  
-  async createWorkflowOptimizationResult(result: InsertWorkflowOptimizationResult): Promise<WorkflowOptimizationResult> {
+
+  async createWorkflowOptimizationResult(
+    result: InsertWorkflowOptimizationResult
+  ): Promise<WorkflowOptimizationResult> {
     const id = this.currentWorkflowOptimizationResultId++;
     const timestamp = new Date();
-    
+
     const newResult: WorkflowOptimizationResult = {
       ...result,
       id,
-      createdAt: timestamp
+      createdAt: timestamp,
     };
-    
+
     this.workflowOptimizationResults.set(id, newResult);
-    
+
     // Update the corresponding request to completed status
     const request = await this.getWorkflowOptimizationRequestByRequestId(result.requestId);
     if (request) {
       await this.updateWorkflowOptimizationRequest(request.id, {
-        status: WorkflowOptimizationStatus.COMPLETED
+        status: WorkflowOptimizationStatus.COMPLETED,
       });
     }
-    
+
     // Create system activity
     await this.createSystemActivity({
       agent_id: 1, // Using agent_id to match expected schema
       activity: `Created workflow optimization result for request ID: ${result.requestId}`,
       entity_type: 'workflow_optimization_result',
-      entity_id: result.requestId
+      entity_id: result.requestId,
     });
-    
+
     return newResult;
   }
-  
-  async updateWorkflowOptimizationResult(id: number, updates: Partial<InsertWorkflowOptimizationResult>): Promise<WorkflowOptimizationResult | undefined> {
+
+  async updateWorkflowOptimizationResult(
+    id: number,
+    updates: Partial<InsertWorkflowOptimizationResult>
+  ): Promise<WorkflowOptimizationResult | undefined> {
     const result = this.workflowOptimizationResults.get(id);
     if (!result) {
       return undefined;
     }
-    
+
     const updatedResult: WorkflowOptimizationResult = {
       ...result,
-      ...updates
+      ...updates,
     };
-    
+
     this.workflowOptimizationResults.set(id, updatedResult);
-    
+
     // Create system activity
     await this.createSystemActivity({
       agent_id: 1, // Using agent_id to match expected schema
       activity: `Updated workflow optimization result ID: ${result.id}`,
       entity_type: 'workflow_optimization_result',
-      entity_id: result.requestId
+      entity_id: result.requestId,
     });
-    
+
     return updatedResult;
   }
-  
+
   // Agent Health Monitoring methods
   private agentHealthRecords: Map<string, AgentHealth> = new Map();
-  
+
   async getAgentHealthByAgentId(agentId: string): Promise<AgentHealth | null> {
     const health = this.agentHealthRecords.get(agentId);
     return health || null;
   }
-  
+
   async getAllAgentHealth(): Promise<AgentHealth[]> {
     return Array.from(this.agentHealthRecords.values());
   }
-  
+
   async createAgentHealth(health: AgentHealth): Promise<AgentHealth> {
     this.agentHealthRecords.set(health.agentId, health);
     return health;
   }
-  
+
   async updateAgentHealth(health: AgentHealth): Promise<AgentHealth> {
     this.agentHealthRecords.set(health.agentId, health);
     return health;

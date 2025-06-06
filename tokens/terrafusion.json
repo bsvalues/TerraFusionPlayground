@@ -72,7 +72,7 @@
         },
         "gray": {
           "value": "hsl(210, 10%, 50%)",
-          "type": "color", 
+          "type": "color",
           "description": "Main gray for secondary text"
         },
         "gray-light": {
@@ -220,7 +220,7 @@
       },
       "body": {
         "value": "'Inter', system-ui, sans-serif",
-        "type": "fontFamily", 
+        "type": "fontFamily",
         "description": "Used for body text"
       },
       "mono": {

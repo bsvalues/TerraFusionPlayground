@@ -32,28 +32,28 @@ export interface Tool {
    * Unique identifier for the tool
    */
   name: string;
-  
+
   /**
    * Human-readable description of what the tool does
    */
   description: string;
-  
+
   /**
    * Tool parameter definitions for validation and documentation
    */
   parameters: Record<string, ToolParameter>;
-  
+
   /**
    * Categories this tool belongs to (for organization)
    */
   categories?: string[];
-  
+
   /**
    * Function to validate the arguments before execution
    * Throws an error if validation fails
    */
   validateArgs?: (args: any) => void;
-  
+
   /**
    * Execute the tool with the given arguments
    * @param args Arguments for the tool
@@ -70,7 +70,7 @@ export abstract class BaseTool implements Tool {
   description: string;
   parameters: Record<string, ToolParameter>;
   categories?: string[];
-  
+
   constructor(
     name: string,
     description: string,
@@ -82,7 +82,7 @@ export abstract class BaseTool implements Tool {
     this.parameters = parameters;
     this.categories = categories;
   }
-  
+
   /**
    * Default validation method
    * Override for custom validation logic
@@ -95,7 +95,7 @@ export abstract class BaseTool implements Tool {
       }
     }
   }
-  
+
   /**
    * Abstract method that must be implemented by subclasses
    */

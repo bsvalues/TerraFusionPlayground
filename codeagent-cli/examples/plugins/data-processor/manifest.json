@@ -3,18 +3,10 @@
   "version": "1.0.0",
   "description": "A plugin for processing and transforming various data formats",
   "author": "CodeAgent Team",
-  "tools": [
-    "tools/csvParser.js",
-    "tools/jsonTransformer.js",
-    "tools/xmlProcessor.js"
-  ],
+  "tools": ["tools/csvParser.js", "tools/jsonTransformer.js", "tools/xmlProcessor.js"],
   "hooks": {
-    "beforeCommand": [
-      "hooks/dataContextHook.js"
-    ],
-    "afterCommand": [
-      "hooks/dataSummaryHook.js"
-    ]
+    "beforeCommand": ["hooks/dataContextHook.js"],
+    "afterCommand": ["hooks/dataSummaryHook.js"]
   },
   "commands": [],
   "tags": ["data", "csv", "json", "xml", "transform", "processing"],

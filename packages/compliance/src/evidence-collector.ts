@@ -1,6 +1,6 @@
 /**
  * Evidence Collector
- * 
+ *
  * Collects, manages, and organizes evidence for compliance audits.
  * This module supports:
  * - Automated evidence collection
@@ -19,7 +19,7 @@ export enum EvidenceType {
   LOG = 'log',
   CONFIG = 'configuration',
   REPORT = 'report',
-  OTHER = 'other'
+  OTHER = 'other',
 }
 
 // Evidence status
@@ -28,7 +28,7 @@ export enum EvidenceStatus {
   COLLECTED = 'collected',
   APPROVED = 'approved',
   REJECTED = 'rejected',
-  EXPIRED = 'expired'
+  EXPIRED = 'expired',
 }
 
 // Evidence interface
@@ -75,12 +75,12 @@ export class EvidenceCollector extends EventEmitter {
    */
   public initialize(): void {
     this.logger.info('Initializing evidence collector', this.config);
-    
+
     // Start automatic evidence collection if configured
     if (this.config.automaticCollection && this.config.collectionFrequency) {
       this.startAutomaticCollection();
     }
-    
+
     this.emit('initialized', { config: this.config });
   }
 
@@ -92,15 +92,15 @@ export class EvidenceCollector extends EventEmitter {
       this.logger.error('Cannot start automatic collection without a frequency');
       return;
     }
-    
+
     this.logger.info('Starting automatic evidence collection', {
-      frequency: this.config.collectionFrequency
+      frequency: this.config.collectionFrequency,
     });
-    
+
     this.collectionIntervalId = setInterval(() => {
       this.collectAutomaticEvidence();
     }, this.config.collectionFrequency);
-    
+
     this.emit('collection:started');
   }
 
@@ -111,7 +111,7 @@ export class EvidenceCollector extends EventEmitter {
     if (this.collectionIntervalId) {
       clearInterval(this.collectionIntervalId);
       this.collectionIntervalId = undefined;
-      
+
       this.logger.info('Stopped automatic evidence collection');
       this.emit('collection:stopped');
     }
@@ -122,7 +122,7 @@ export class EvidenceCollector extends EventEmitter {
    */
   private collectAutomaticEvidence(): void {
     this.logger.debug('Running automatic evidence collection');
-    
+
     // This would integrate with various systems to collect evidence
     // For demonstration, we'll just log the operation
     this.logger.info('Automatic evidence collection completed');
@@ -133,24 +133,24 @@ export class EvidenceCollector extends EventEmitter {
    */
   public collectEvidence(evidence: Omit<Evidence, 'id' | 'collectDate' | 'status'>): Evidence {
     const id = `evidence-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     const newEvidence: Evidence = {
       ...evidence,
       id,
       collectDate: new Date(),
-      status: EvidenceStatus.COLLECTED
+      status: EvidenceStatus.COLLECTED,
     };
-    
+
     this.evidence.set(id, newEvidence);
-    
+
     this.logger.info('Evidence collected', {
       evidenceId: id,
       name: newEvidence.name,
-      type: newEvidence.type
+      type: newEvidence.type,
     });
-    
+
     this.emit('evidence:collected', newEvidence);
-    
+
     return newEvidence;
   }
 
@@ -159,27 +159,27 @@ export class EvidenceCollector extends EventEmitter {
    */
   public approveEvidence(id: string, approver: string): Evidence | null {
     const evidence = this.evidence.get(id);
-    
+
     if (!evidence) {
       this.logger.error('Evidence not found', { evidenceId: id });
       return null;
     }
-    
+
     const updatedEvidence: Evidence = {
       ...evidence,
       status: EvidenceStatus.APPROVED,
-      approver
+      approver,
     };
-    
+
     this.evidence.set(id, updatedEvidence);
-    
+
     this.logger.info('Evidence approved', {
       evidenceId: id,
-      approver
+      approver,
     });
-    
+
     this.emit('evidence:approved', updatedEvidence);
-    
+
     return updatedEvidence;
   }
 
@@ -188,30 +188,30 @@ export class EvidenceCollector extends EventEmitter {
    */
   public rejectEvidence(id: string, reason: string): Evidence | null {
     const evidence = this.evidence.get(id);
-    
+
     if (!evidence) {
       this.logger.error('Evidence not found', { evidenceId: id });
       return null;
     }
-    
+
     const updatedEvidence: Evidence = {
       ...evidence,
       status: EvidenceStatus.REJECTED,
       metadata: {
         ...evidence.metadata,
-        rejectionReason: reason
-      }
+        rejectionReason: reason,
+      },
     };
-    
+
     this.evidence.set(id, updatedEvidence);
-    
+
     this.logger.info('Evidence rejected', {
       evidenceId: id,
-      reason
+      reason,
     });
-    
+
     this.emit('evidence:rejected', updatedEvidence);
-    
+
     return updatedEvidence;
   }
 
@@ -233,9 +233,7 @@ export class EvidenceCollector extends EventEmitter {
    * Get evidence for a specific control
    */
   public getEvidenceForControl(controlId: string): Evidence[] {
-    return this.getAllEvidence().filter(
-      evidence => evidence.controlIds.includes(controlId)
-    );
+    return this.getAllEvidence().filter(evidence => evidence.controlIds.includes(controlId));
   }
 
   /**
@@ -244,27 +242,31 @@ export class EvidenceCollector extends EventEmitter {
   public checkExpiredEvidence(): Evidence[] {
     const now = new Date();
     const expiredEvidence: Evidence[] = [];
-    
+
     for (const evidence of this.evidence.values()) {
-      if (evidence.expiryDate && evidence.expiryDate < now && evidence.status !== EvidenceStatus.EXPIRED) {
+      if (
+        evidence.expiryDate &&
+        evidence.expiryDate < now &&
+        evidence.status !== EvidenceStatus.EXPIRED
+      ) {
         // Update status to expired
         const updatedEvidence: Evidence = {
           ...evidence,
-          status: EvidenceStatus.EXPIRED
+          status: EvidenceStatus.EXPIRED,
         };
-        
+
         this.evidence.set(evidence.id, updatedEvidence);
         expiredEvidence.push(updatedEvidence);
-        
+
         this.logger.info('Evidence expired', {
           evidenceId: evidence.id,
-          name: evidence.name
+          name: evidence.name,
         });
-        
+
         this.emit('evidence:expired', updatedEvidence);
       }
     }
-    
+
     return expiredEvidence;
   }
 
@@ -275,34 +277,34 @@ export class EvidenceCollector extends EventEmitter {
     const now = Date.now();
     const retentionThreshold = now - this.config.retentionPeriod;
     const retentionDate = new Date(retentionThreshold);
-    
+
     const expiredIds: string[] = [];
-    
+
     for (const [id, evidence] of this.evidence.entries()) {
       if (evidence.collectDate.getTime() < retentionThreshold) {
         expiredIds.push(id);
       }
     }
-    
+
     // Remove expired evidence
     for (const id of expiredIds) {
       const evidence = this.evidence.get(id);
       this.evidence.delete(id);
-      
+
       if (evidence) {
         this.logger.info('Evidence removed due to retention policy', {
           evidenceId: id,
           name: evidence.name,
-          age: Math.floor((now - evidence.collectDate.getTime()) / (1000 * 60 * 60 * 24)) + ' days'
+          age: Math.floor((now - evidence.collectDate.getTime()) / (1000 * 60 * 60 * 24)) + ' days',
         });
-        
+
         this.emit('evidence:removed', evidence);
       }
     }
-    
+
     this.logger.info('Evidence cleanup completed', {
       removedCount: expiredIds.length,
-      retentionThreshold: retentionDate.toISOString()
+      retentionThreshold: retentionDate.toISOString(),
     });
   }
 }

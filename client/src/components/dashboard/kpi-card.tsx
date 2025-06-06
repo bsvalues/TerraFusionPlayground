@@ -1,6 +1,5 @@
-
-import { Card, CardContent } from "@/components/ui/card";
-import { ReactNode } from "react";
+import { Card, CardContent } from '@/components/ui/card';
+import { ReactNode } from 'react';
 
 interface KPICardProps {
   title: string;
@@ -15,17 +14,17 @@ interface KPICardProps {
   error?: string;
 }
 
-const KPICard: React.FC<KPICardProps> = ({ 
-  title, 
-  value, 
-  icon, 
-  actionLabel = "View all", 
-  actionUrl = "#",
-  valueColor = "text-gray-900",
+const KPICard: React.FC<KPICardProps> = ({
+  title,
+  value,
+  icon,
+  actionLabel = 'View all',
+  actionUrl = '#',
+  valueColor = 'text-gray-900',
   trend,
   subtitle,
   isLoading,
-  error
+  error,
 }) => {
   if (isLoading) {
     return (
@@ -70,8 +69,8 @@ const KPICard: React.FC<KPICardProps> = ({
         </div>
         <div className="bg-primary-blue-light/5 px-5 py-3 border-t border-primary-blue-light/20">
           <div className="text-sm">
-            <a 
-              href={actionUrl} 
+            <a
+              href={actionUrl}
               className="font-medium text-primary-teal hover:text-primary-teal-dark tf-font-body transition-colors"
             >
               {actionLabel}

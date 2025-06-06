@@ -29,7 +29,7 @@ const sidebars = {
       type: 'category',
       label: 'Plugin Marketplace',
       items: ['marketplace/overview', 'marketplace/plugins'],
-    }
+    },
   ],
 };
 

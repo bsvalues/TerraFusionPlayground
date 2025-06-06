@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode } from 'react';
 
 interface DashboardCardProps {
   title: string;
@@ -18,40 +18,45 @@ export function DashboardCard({
   description,
   icon,
   trend,
-  className = "",
+  className = '',
 }: DashboardCardProps) {
   return (
     <div
       className={`p-6 rounded-xl relative bg-tf-dark-blue/90 border border-tf-primary/20 ${className}`}
       style={{
-        boxShadow: "0 0 20px rgba(0,229,255,0.1)",
+        boxShadow: '0 0 20px rgba(0,229,255,0.1)',
       }}
     >
       {/* Tiny TerraFusion watermark */}
       <div className="absolute top-3 left-3 w-4 h-4 opacity-10">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-          <path 
-            d="M12 2L2 7L12 12L22 7L12 2Z" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-full h-full"
+        >
+          <path
+            d="M12 2L2 7L12 12L22 7L12 2Z"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             className="text-tf-primary"
           />
-          <path 
-            d="M2 17L12 22L22 17" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
+          <path
+            d="M2 17L12 22L22 17"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             className="text-tf-primary"
           />
-          <path 
-            d="M2 12L12 17L22 12" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
+          <path
+            d="M2 12L12 17L22 12"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             className="text-tf-primary"
           />
         </svg>
@@ -68,21 +73,19 @@ export function DashboardCard({
           <p className="text-[clamp(2.2rem,4vw+1rem,3.5rem)] font-bold text-white leading-none">
             {metric}
           </p>
-          
+
           {trend && (
-            <span 
+            <span
               className={`ml-2 text-sm flex items-center ${
-                trend.isPositive ? "text-emerald-500" : "text-red-500"
+                trend.isPositive ? 'text-emerald-500' : 'text-red-500'
               }`}
             >
-              {trend.isPositive ? "↑" : "↓"} {Math.abs(trend.value)}%
+              {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
             </span>
           )}
         </div>
 
-        {description && (
-          <p className="text-sm text-tf-primary/50">{description}</p>
-        )}
+        {description && <p className="text-sm text-tf-primary/50">{description}</p>}
       </div>
 
       {/* Optional bottom glow effect */}

@@ -1,6 +1,6 @@
 /**
  * Extension System Interface Definitions
- * 
+ *
  * This file defines the core interfaces for the extension system,
  * including extension metadata, contexts, and event handling.
  */
@@ -96,7 +96,7 @@ export interface ExtensionContext {
   readonly storage: IStorage;
   readonly logger: ExtensionLogger;
   readonly settings: Record<string, any>;
-  
+
   registerCommand(command: string, callback: (...args: any[]) => any): void;
   registerWebviewPanel(id: string, title: string, content: string): void;
   registerMenuItem(item: ExtensionMenuItem): void;
@@ -108,7 +108,7 @@ export interface ExtensionContext {
  */
 export interface IExtension {
   readonly metadata: ExtensionMetadata;
-  
+
   activate(context: ExtensionContext): Promise<void>;
   deactivate(): Promise<void>;
 }

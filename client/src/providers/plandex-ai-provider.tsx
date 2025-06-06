@@ -1,17 +1,17 @@
 /**
  * Plandex AI Provider
- * 
+ *
  * This context provider manages the state and provides access to Plandex AI
  * functionality throughout the application.
  */
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { 
-  PlandexAIClientService, 
+import {
+  PlandexAIClientService,
   CodeGenerationRequest,
   CodeCompletionRequest,
   BugFixRequest,
-  CodeExplanationRequest
+  CodeExplanationRequest,
 } from '@/services/plandex-ai-service';
 import { useToast } from '@/hooks/use-toast';
 
@@ -63,7 +63,7 @@ export const PlandexAIProvider: React.FC<PlandexAIProviderProps> = ({ children }
       toast({
         title: 'Plandex AI Not Available',
         description: 'Plandex AI service is not available. Please check API key configuration.',
-        variant: 'destructive'
+        variant: 'destructive',
       });
       return '';
     }
@@ -74,7 +74,7 @@ export const PlandexAIProvider: React.FC<PlandexAIProviderProps> = ({ children }
       toast({
         title: 'Code Generation Failed',
         description: (error as Error).message,
-        variant: 'destructive'
+        variant: 'destructive',
       });
       return '';
     }
@@ -86,7 +86,7 @@ export const PlandexAIProvider: React.FC<PlandexAIProviderProps> = ({ children }
       toast({
         title: 'Plandex AI Not Available',
         description: 'Plandex AI service is not available. Please check API key configuration.',
-        variant: 'destructive'
+        variant: 'destructive',
       });
       return '';
     }
@@ -97,7 +97,7 @@ export const PlandexAIProvider: React.FC<PlandexAIProviderProps> = ({ children }
       toast({
         title: 'Code Completion Failed',
         description: (error as Error).message,
-        variant: 'destructive'
+        variant: 'destructive',
       });
       return '';
     }
@@ -109,7 +109,7 @@ export const PlandexAIProvider: React.FC<PlandexAIProviderProps> = ({ children }
       toast({
         title: 'Plandex AI Not Available',
         description: 'Plandex AI service is not available. Please check API key configuration.',
-        variant: 'destructive'
+        variant: 'destructive',
       });
       return '';
     }
@@ -120,7 +120,7 @@ export const PlandexAIProvider: React.FC<PlandexAIProviderProps> = ({ children }
       toast({
         title: 'Bug Fixing Failed',
         description: (error as Error).message,
-        variant: 'destructive'
+        variant: 'destructive',
       });
       return '';
     }
@@ -132,7 +132,7 @@ export const PlandexAIProvider: React.FC<PlandexAIProviderProps> = ({ children }
       toast({
         title: 'Plandex AI Not Available',
         description: 'Plandex AI service is not available. Please check API key configuration.',
-        variant: 'destructive'
+        variant: 'destructive',
       });
       return '';
     }
@@ -143,7 +143,7 @@ export const PlandexAIProvider: React.FC<PlandexAIProviderProps> = ({ children }
       toast({
         title: 'Code Explanation Failed',
         description: (error as Error).message,
-        variant: 'destructive'
+        variant: 'destructive',
       });
       return '';
     }
@@ -156,14 +156,10 @@ export const PlandexAIProvider: React.FC<PlandexAIProviderProps> = ({ children }
     generateCode,
     completeCode,
     fixBugs,
-    explainCode
+    explainCode,
   };
 
-  return (
-    <PlandexAIContext.Provider value={contextValue}>
-      {children}
-    </PlandexAIContext.Provider>
-  );
+  return <PlandexAIContext.Provider value={contextValue}>{children}</PlandexAIContext.Provider>;
 };
 
 /**
@@ -171,10 +167,10 @@ export const PlandexAIProvider: React.FC<PlandexAIProviderProps> = ({ children }
  */
 export const usePlandexAI = (): PlandexAIContextType => {
   const context = useContext(PlandexAIContext);
-  
+
   if (!context) {
     throw new Error('usePlandexAI must be used within a PlandexAIProvider');
   }
-  
+
   return context;
 };

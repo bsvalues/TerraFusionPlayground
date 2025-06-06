@@ -6,7 +6,7 @@ import {
   insertSharedWorkflowCollaboratorSchema,
   insertSharedWorkflowActivitySchema,
   insertWorkflowSessionSchema,
-  CollaborationRole
+  CollaborationRole,
 } from '../../shared/schema';
 import z from 'zod';
 
@@ -17,18 +17,18 @@ router.post('/shared-workflows', async (req: Request, res: Response) => {
   try {
     const validatedData = insertSharedWorkflowSchema.parse(req.body);
     const sharedWorkflow = await storage.createSharedWorkflow(validatedData);
-    
+
     res.status(201).json(sharedWorkflow);
   } catch (error) {
     console.error('Error creating shared workflow:', error);
-    
+
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        error: 'Validation error', 
-        details: error.errors 
+      return res.status(400).json({
+        error: 'Validation error',
+        details: error.errors,
       });
     }
-    
+
     res.status(500).json({ error: 'Failed to create shared workflow' });
   }
 });
@@ -37,17 +37,17 @@ router.post('/shared-workflows', async (req: Request, res: Response) => {
 router.get('/shared-workflows/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    
+
     if (isNaN(id)) {
       return res.status(400).json({ error: 'Invalid ID format' });
     }
-    
+
     const sharedWorkflow = await storage.getSharedWorkflowById(id);
-    
+
     if (!sharedWorkflow) {
       return res.status(404).json({ error: 'Shared workflow not found' });
     }
-    
+
     res.json(sharedWorkflow);
   } catch (error) {
     console.error('Error retrieving shared workflow:', error);
@@ -59,21 +59,21 @@ router.get('/shared-workflows/:id', async (req: Request, res: Response) => {
 router.get('/shared-workflows/code/:shareCode', async (req: Request, res: Response) => {
   try {
     const shareCode = req.params.shareCode;
-    
+
     const sharedWorkflow = await storage.getSharedWorkflowByShareCode(shareCode);
-    
+
     if (!sharedWorkflow) {
       return res.status(404).json({ error: 'Shared workflow not found' });
     }
-    
+
     // Increment view count
     if (sharedWorkflow) {
       await storage.updateSharedWorkflow(sharedWorkflow.id, {
         viewCount: sharedWorkflow.viewCount + 1,
-        lastViewed: new Date()
+        lastViewed: new Date(),
       });
     }
-    
+
     res.json(sharedWorkflow);
   } catch (error) {
     console.error('Error retrieving shared workflow by share code:', error);
@@ -85,11 +85,11 @@ router.get('/shared-workflows/code/:shareCode', async (req: Request, res: Respon
 router.get('/users/:userId/shared-workflows', async (req: Request, res: Response) => {
   try {
     const userId = parseInt(req.params.userId);
-    
+
     if (isNaN(userId)) {
       return res.status(400).json({ error: 'Invalid user ID format' });
     }
-    
+
     const sharedWorkflows = await storage.getSharedWorkflowsByUser(userId);
     res.json(sharedWorkflows);
   } catch (error) {
@@ -102,23 +102,23 @@ router.get('/users/:userId/shared-workflows', async (req: Request, res: Response
 router.get('/users/:userId/collaborated-workflows', async (req: Request, res: Response) => {
   try {
     const userId = parseInt(req.params.userId);
-    
+
     if (isNaN(userId)) {
       return res.status(400).json({ error: 'Invalid user ID format' });
     }
-    
+
     const collaborations = await storage.getCollaboratorsByUserId(userId);
-    
+
     // Fetch the actual workflow details for each collaboration
-    const workflowPromises = collaborations.map(collab => 
+    const workflowPromises = collaborations.map(collab =>
       storage.getSharedWorkflowById(collab.sharedWorkflowId)
     );
-    
+
     const workflows = await Promise.all(workflowPromises);
-    
+
     // Filter out any null results (workflows that might have been deleted)
     const validWorkflows = workflows.filter(wf => wf !== null);
-    
+
     res.json(validWorkflows);
   } catch (error) {
     console.error('Error retrieving user collaborated workflows:', error);
@@ -141,34 +141,34 @@ router.get('/shared-workflows/public', async (req: Request, res: Response) => {
 router.patch('/shared-workflows/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    
+
     if (isNaN(id)) {
       return res.status(400).json({ error: 'Invalid ID format' });
     }
-    
+
     const existingWorkflow = await storage.getSharedWorkflowById(id);
-    
+
     if (!existingWorkflow) {
       return res.status(404).json({ error: 'Shared workflow not found' });
     }
-    
+
     // Validate incoming data (partial validation)
     const updateSchema = insertSharedWorkflowSchema.partial();
     const validatedData = updateSchema.parse(req.body);
-    
+
     const updatedWorkflow = await storage.updateSharedWorkflow(id, validatedData);
-    
+
     res.json(updatedWorkflow);
   } catch (error) {
     console.error('Error updating shared workflow:', error);
-    
+
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        error: 'Validation error', 
-        details: error.errors 
+      return res.status(400).json({
+        error: 'Validation error',
+        details: error.errors,
       });
     }
-    
+
     res.status(500).json({ error: 'Failed to update shared workflow' });
   }
 });
@@ -177,17 +177,17 @@ router.patch('/shared-workflows/:id', async (req: Request, res: Response) => {
 router.delete('/shared-workflows/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    
+
     if (isNaN(id)) {
       return res.status(400).json({ error: 'Invalid ID format' });
     }
-    
+
     const deleted = await storage.deleteSharedWorkflow(id);
-    
+
     if (!deleted) {
       return res.status(404).json({ error: 'Shared workflow not found' });
     }
-    
+
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting shared workflow:', error);
@@ -199,26 +199,26 @@ router.delete('/shared-workflows/:id', async (req: Request, res: Response) => {
 router.post('/shared-workflows/:id/collaborators', async (req: Request, res: Response) => {
   try {
     const sharedWorkflowId = parseInt(req.params.id);
-    
+
     if (isNaN(sharedWorkflowId)) {
       return res.status(400).json({ error: 'Invalid shared workflow ID format' });
     }
-    
+
     const existingWorkflow = await storage.getSharedWorkflowById(sharedWorkflowId);
-    
+
     if (!existingWorkflow) {
       return res.status(404).json({ error: 'Shared workflow not found' });
     }
-    
+
     // Add the workflow ID to the request body
     const collaboratorData = {
       ...req.body,
-      sharedWorkflowId
+      sharedWorkflowId,
     };
-    
+
     const validatedData = insertSharedWorkflowCollaboratorSchema.parse(collaboratorData);
     const collaborator = await storage.addCollaborator(validatedData);
-    
+
     // Log the activity
     await storage.logWorkflowActivity({
       sharedWorkflowId,
@@ -227,21 +227,21 @@ router.post('/shared-workflows/:id/collaborators', async (req: Request, res: Res
       details: {
         collaboratorId: collaborator.id,
         userId: collaborator.userId,
-        role: collaborator.role
-      }
+        role: collaborator.role,
+      },
     });
-    
+
     res.status(201).json(collaborator);
   } catch (error) {
     console.error('Error adding collaborator:', error);
-    
+
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        error: 'Validation error', 
-        details: error.errors 
+      return res.status(400).json({
+        error: 'Validation error',
+        details: error.errors,
       });
     }
-    
+
     res.status(500).json({ error: 'Failed to add collaborator' });
   }
 });
@@ -250,17 +250,17 @@ router.post('/shared-workflows/:id/collaborators', async (req: Request, res: Res
 router.get('/shared-workflows/:id/collaborators', async (req: Request, res: Response) => {
   try {
     const sharedWorkflowId = parseInt(req.params.id);
-    
+
     if (isNaN(sharedWorkflowId)) {
       return res.status(400).json({ error: 'Invalid shared workflow ID format' });
     }
-    
+
     const existingWorkflow = await storage.getSharedWorkflowById(sharedWorkflowId);
-    
+
     if (!existingWorkflow) {
       return res.status(404).json({ error: 'Shared workflow not found' });
     }
-    
+
     const collaborators = await storage.getCollaboratorsByWorkflowId(sharedWorkflowId);
     res.json(collaborators);
   } catch (error) {
@@ -273,23 +273,26 @@ router.get('/shared-workflows/:id/collaborators', async (req: Request, res: Resp
 router.patch('/shared-workflows/collaborators/:id/role', async (req: Request, res: Response) => {
   try {
     const collaboratorId = parseInt(req.params.id);
-    
+
     if (isNaN(collaboratorId)) {
       return res.status(400).json({ error: 'Invalid collaborator ID format' });
     }
-    
+
     const { role } = req.body;
-    
+
     if (!role || !Object.values(CollaborationRole).includes(role as CollaborationRole)) {
       return res.status(400).json({ error: 'Invalid role specified' });
     }
-    
-    const updatedCollaborator = await storage.updateCollaboratorRole(collaboratorId, role as CollaborationRole);
-    
+
+    const updatedCollaborator = await storage.updateCollaboratorRole(
+      collaboratorId,
+      role as CollaborationRole
+    );
+
     if (!updatedCollaborator) {
       return res.status(404).json({ error: 'Collaborator not found' });
     }
-    
+
     res.json(updatedCollaborator);
   } catch (error) {
     console.error('Error updating collaborator role:', error);
@@ -301,11 +304,11 @@ router.patch('/shared-workflows/collaborators/:id/role', async (req: Request, re
 router.delete('/shared-workflows/collaborators/:id', async (req: Request, res: Response) => {
   try {
     const collaboratorId = parseInt(req.params.id);
-    
+
     if (isNaN(collaboratorId)) {
       return res.status(400).json({ error: 'Invalid collaborator ID format' });
     }
-    
+
     // Note: We'll need to implement this method in the storage interface
     // For now, we'll return a not implemented error
     res.status(501).json({ error: 'Not implemented yet' });
@@ -319,20 +322,20 @@ router.delete('/shared-workflows/collaborators/:id', async (req: Request, res: R
 router.get('/shared-workflows/:id/activities', async (req: Request, res: Response) => {
   try {
     const sharedWorkflowId = parseInt(req.params.id);
-    
+
     if (isNaN(sharedWorkflowId)) {
       return res.status(400).json({ error: 'Invalid shared workflow ID format' });
     }
-    
+
     const existingWorkflow = await storage.getSharedWorkflowById(sharedWorkflowId);
-    
+
     if (!existingWorkflow) {
       return res.status(404).json({ error: 'Shared workflow not found' });
     }
-    
+
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
     const activities = await storage.getWorkflowActivities(sharedWorkflowId, limit);
-    
+
     res.json(activities);
   } catch (error) {
     console.error('Error retrieving workflow activities:', error);
@@ -344,37 +347,37 @@ router.get('/shared-workflows/:id/activities', async (req: Request, res: Respons
 router.post('/shared-workflows/:id/activities', async (req: Request, res: Response) => {
   try {
     const sharedWorkflowId = parseInt(req.params.id);
-    
+
     if (isNaN(sharedWorkflowId)) {
       return res.status(400).json({ error: 'Invalid shared workflow ID format' });
     }
-    
+
     const existingWorkflow = await storage.getSharedWorkflowById(sharedWorkflowId);
-    
+
     if (!existingWorkflow) {
       return res.status(404).json({ error: 'Shared workflow not found' });
     }
-    
+
     // Add the workflow ID to the request body
     const activityData = {
       ...req.body,
-      sharedWorkflowId
+      sharedWorkflowId,
     };
-    
+
     const validatedData = insertSharedWorkflowActivitySchema.parse(activityData);
     const activity = await storage.logWorkflowActivity(validatedData);
-    
+
     res.status(201).json(activity);
   } catch (error) {
     console.error('Error logging workflow activity:', error);
-    
+
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        error: 'Validation error', 
-        details: error.errors 
+      return res.status(400).json({
+        error: 'Validation error',
+        details: error.errors,
       });
     }
-    
+
     res.status(500).json({ error: 'Failed to log workflow activity' });
   }
 });
@@ -383,41 +386,41 @@ router.post('/shared-workflows/:id/activities', async (req: Request, res: Respon
 router.post('/shared-workflows/:id/sessions', async (req: Request, res: Response) => {
   try {
     const sharedWorkflowId = parseInt(req.params.id);
-    
+
     if (isNaN(sharedWorkflowId)) {
       return res.status(400).json({ error: 'Invalid shared workflow ID format' });
     }
-    
+
     const existingWorkflow = await storage.getSharedWorkflowById(sharedWorkflowId);
-    
+
     if (!existingWorkflow) {
       return res.status(404).json({ error: 'Shared workflow not found' });
     }
-    
+
     // Generate a unique session ID
     const sessionId = uuidv4();
-    
+
     // Add the workflow ID and session ID to the request body
     const sessionData = {
       ...req.body,
       sessionId,
-      sharedWorkflowId
+      sharedWorkflowId,
     };
-    
+
     const validatedData = insertWorkflowSessionSchema.parse(sessionData);
     const session = await storage.createWorkflowSession(validatedData);
-    
+
     res.status(201).json(session);
   } catch (error) {
     console.error('Error creating workflow session:', error);
-    
+
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        error: 'Validation error', 
-        details: error.errors 
+      return res.status(400).json({
+        error: 'Validation error',
+        details: error.errors,
       });
     }
-    
+
     res.status(500).json({ error: 'Failed to create workflow session' });
   }
 });
@@ -426,17 +429,17 @@ router.post('/shared-workflows/:id/sessions', async (req: Request, res: Response
 router.get('/shared-workflows/:id/sessions', async (req: Request, res: Response) => {
   try {
     const sharedWorkflowId = parseInt(req.params.id);
-    
+
     if (isNaN(sharedWorkflowId)) {
       return res.status(400).json({ error: 'Invalid shared workflow ID format' });
     }
-    
+
     const existingWorkflow = await storage.getSharedWorkflowById(sharedWorkflowId);
-    
+
     if (!existingWorkflow) {
       return res.status(404).json({ error: 'Shared workflow not found' });
     }
-    
+
     const sessions = await storage.getActiveWorkflowSessions(sharedWorkflowId);
     res.json(sessions);
   } catch (error) {
@@ -450,17 +453,17 @@ router.patch('/workflow-sessions/:sessionId/status', async (req: Request, res: R
   try {
     const { sessionId } = req.params;
     const { status } = req.body;
-    
+
     if (!status) {
       return res.status(400).json({ error: 'Status is required' });
     }
-    
+
     const updatedSession = await storage.updateWorkflowSessionStatus(sessionId, status);
-    
+
     if (!updatedSession) {
       return res.status(404).json({ error: 'Session not found' });
     }
-    
+
     res.json(updatedSession);
   } catch (error) {
     console.error('Error updating session status:', error);
@@ -473,17 +476,17 @@ router.patch('/workflow-sessions/:sessionId/participants', async (req: Request, 
   try {
     const { sessionId } = req.params;
     const { participants } = req.body;
-    
+
     if (!participants || !Array.isArray(participants)) {
       return res.status(400).json({ error: 'Participants array is required' });
     }
-    
+
     const updatedSession = await storage.updateWorkflowSessionParticipants(sessionId, participants);
-    
+
     if (!updatedSession) {
       return res.status(404).json({ error: 'Session not found' });
     }
-    
+
     res.json(updatedSession);
   } catch (error) {
     console.error('Error updating session participants:', error);
@@ -495,13 +498,13 @@ router.patch('/workflow-sessions/:sessionId/participants', async (req: Request, 
 router.patch('/workflow-sessions/:sessionId/end', async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
-    
+
     const endedSession = await storage.endWorkflowSession(sessionId);
-    
+
     if (!endedSession) {
       return res.status(404).json({ error: 'Session not found' });
     }
-    
+
     res.json(endedSession);
   } catch (error) {
     console.error('Error ending session:', error);

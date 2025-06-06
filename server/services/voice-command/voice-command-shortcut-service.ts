@@ -1,15 +1,15 @@
 /**
  * Voice Command Shortcut Service
- * 
+ *
  * This service manages customizable voice command shortcuts. Shortcuts allow users
  * to create personalized short phrases that expand to more complex commands.
  */
 
 import { db } from '../../db';
-import { 
+import {
   voiceCommandShortcuts,
   InsertVoiceCommandShortcut,
-  VoiceCommandType
+  VoiceCommandType,
 } from '@shared/schema';
 import { eq, and, desc, sql, asc } from 'drizzle-orm';
 
@@ -21,19 +21,17 @@ export class VoiceCommandShortcutService {
     try {
       // Check if shortcut already exists for this user
       const existingShortcut = await this.findShortcutByPhrase(
-        shortcutData.userId, 
+        shortcutData.userId,
         shortcutData.shortcutPhrase
       );
-      
+
       if (existingShortcut) {
         throw new Error('A shortcut with this phrase already exists for this user');
       }
-      
+
       // Insert the new shortcut
-      const [result] = await db.insert(voiceCommandShortcuts)
-        .values(shortcutData)
-        .returning();
-      
+      const [result] = await db.insert(voiceCommandShortcuts).values(shortcutData).returning();
+
       return result;
     } catch (error) {
       console.error('Error creating voice command shortcut:', error);
@@ -44,18 +42,22 @@ export class VoiceCommandShortcutService {
   /**
    * Update an existing voice command shortcut
    */
-  async updateShortcut(shortcutId: number, shortcutData: Partial<InsertVoiceCommandShortcut>): Promise<any> {
+  async updateShortcut(
+    shortcutId: number,
+    shortcutData: Partial<InsertVoiceCommandShortcut>
+  ): Promise<any> {
     try {
       // If shortcut phrase is changed, check if new phrase already exists
       if (shortcutData.shortcutPhrase) {
         const shortcut = await this.getShortcutById(shortcutId);
-        
+
         if (!shortcut) {
           throw new Error('Shortcut not found');
         }
-        
+
         // Check if the new phrase already exists for this user (excluding this shortcut)
-        const existingShortcut = await db.select()
+        const existingShortcut = await db
+          .select()
           .from(voiceCommandShortcuts)
           .where(
             and(
@@ -65,18 +67,19 @@ export class VoiceCommandShortcutService {
             )
           )
           .limit(1);
-        
+
         if (existingShortcut.length > 0) {
           throw new Error('A shortcut with this phrase already exists for this user');
         }
       }
-      
+
       // Update the shortcut
-      const [result] = await db.update(voiceCommandShortcuts)
+      const [result] = await db
+        .update(voiceCommandShortcuts)
         .set(shortcutData)
         .where(eq(voiceCommandShortcuts.id, shortcutId))
         .returning();
-      
+
       return result;
     } catch (error) {
       console.error('Error updating voice command shortcut:', error);
@@ -89,9 +92,10 @@ export class VoiceCommandShortcutService {
    */
   async deleteShortcut(shortcutId: number): Promise<boolean> {
     try {
-      const result = await db.delete(voiceCommandShortcuts)
+      const result = await db
+        .delete(voiceCommandShortcuts)
         .where(eq(voiceCommandShortcuts.id, shortcutId));
-      
+
       return true;
     } catch (error) {
       console.error('Error deleting voice command shortcut:', error);
@@ -104,10 +108,11 @@ export class VoiceCommandShortcutService {
    */
   async getShortcutById(shortcutId: number): Promise<any> {
     try {
-      const [shortcut] = await db.select()
+      const [shortcut] = await db
+        .select()
         .from(voiceCommandShortcuts)
         .where(eq(voiceCommandShortcuts.id, shortcutId));
-      
+
       return shortcut || null;
     } catch (error) {
       console.error('Error getting voice command shortcut:', error);
@@ -120,7 +125,8 @@ export class VoiceCommandShortcutService {
    */
   async getUserShortcuts(userId: number): Promise<any[]> {
     try {
-      return await db.select()
+      return await db
+        .select()
         .from(voiceCommandShortcuts)
         .where(eq(voiceCommandShortcuts.userId, userId))
         .orderBy(desc(voiceCommandShortcuts.priority), asc(voiceCommandShortcuts.shortcutPhrase));
@@ -135,7 +141,8 @@ export class VoiceCommandShortcutService {
    */
   async getGlobalShortcuts(): Promise<any[]> {
     try {
-      return await db.select()
+      return await db
+        .select()
         .from(voiceCommandShortcuts)
         .where(eq(voiceCommandShortcuts.isGlobal, true))
         .orderBy(desc(voiceCommandShortcuts.priority), asc(voiceCommandShortcuts.shortcutPhrase));
@@ -150,7 +157,8 @@ export class VoiceCommandShortcutService {
    */
   async getAllAvailableShortcuts(userId: number): Promise<any[]> {
     try {
-      return await db.select()
+      return await db
+        .select()
         .from(voiceCommandShortcuts)
         .where(
           sql`${voiceCommandShortcuts.userId} = ${userId} OR ${voiceCommandShortcuts.isGlobal} = true`
@@ -168,7 +176,8 @@ export class VoiceCommandShortcutService {
   async findShortcutByPhrase(userId: number, phrase: string): Promise<any> {
     try {
       // First check user-specific shortcuts
-      const [userShortcut] = await db.select()
+      const [userShortcut] = await db
+        .select()
         .from(voiceCommandShortcuts)
         .where(
           and(
@@ -179,21 +188,23 @@ export class VoiceCommandShortcutService {
         )
         .orderBy(desc(voiceCommandShortcuts.priority))
         .limit(1);
-      
+
       if (userShortcut) {
         // Update last used timestamp and usage count
-        await db.update(voiceCommandShortcuts)
+        await db
+          .update(voiceCommandShortcuts)
           .set({
             lastUsed: new Date(),
-            usageCount: sql`${voiceCommandShortcuts.usageCount} + 1`
+            usageCount: sql`${voiceCommandShortcuts.usageCount} + 1`,
           })
           .where(eq(voiceCommandShortcuts.id, userShortcut.id));
-        
+
         return userShortcut;
       }
-      
+
       // Then check global shortcuts
-      const [globalShortcut] = await db.select()
+      const [globalShortcut] = await db
+        .select()
         .from(voiceCommandShortcuts)
         .where(
           and(
@@ -204,19 +215,20 @@ export class VoiceCommandShortcutService {
         )
         .orderBy(desc(voiceCommandShortcuts.priority))
         .limit(1);
-      
+
       if (globalShortcut) {
         // Update last used timestamp and usage count
-        await db.update(voiceCommandShortcuts)
+        await db
+          .update(voiceCommandShortcuts)
           .set({
             lastUsed: new Date(),
-            usageCount: sql`${voiceCommandShortcuts.usageCount} + 1`
+            usageCount: sql`${voiceCommandShortcuts.usageCount} + 1`,
           })
           .where(eq(voiceCommandShortcuts.id, globalShortcut.id));
-        
+
         return globalShortcut;
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error finding shortcut by phrase:', error);
@@ -232,35 +244,36 @@ export class VoiceCommandShortcutService {
     try {
       // Get all available shortcuts for this user
       const shortcuts = await this.getAllAvailableShortcuts(userId);
-      
+
       if (!shortcuts.length) {
         return rawCommand;
       }
-      
+
       // Sort shortcuts by length (descending) to match longer phrases first
       shortcuts.sort((a, b) => b.shortcutPhrase.length - a.shortcutPhrase.length);
-      
+
       let expandedCommand = rawCommand;
-      
+
       // Check each shortcut and replace if found
       for (const shortcut of shortcuts) {
         if (!shortcut.isEnabled) continue;
-        
+
         // Case insensitive regex match (but don't replace within words)
         const regex = new RegExp(`\\b${escapeRegExp(shortcut.shortcutPhrase)}\\b`, 'gi');
         if (regex.test(expandedCommand)) {
           expandedCommand = expandedCommand.replace(regex, shortcut.expandedCommand);
-          
+
           // Update shortcut usage stats
-          await db.update(voiceCommandShortcuts)
+          await db
+            .update(voiceCommandShortcuts)
             .set({
               lastUsed: new Date(),
-              usageCount: sql`${voiceCommandShortcuts.usageCount} + 1`
+              usageCount: sql`${voiceCommandShortcuts.usageCount} + 1`,
             })
             .where(eq(voiceCommandShortcuts.id, shortcut.id));
         }
       }
-      
+
       return expandedCommand;
     } catch (error) {
       console.error('Error expanding command:', error);
@@ -274,41 +287,39 @@ export class VoiceCommandShortcutService {
   async getShortcutUsageStats(userId: number): Promise<any> {
     try {
       const shortcuts = await this.getUserShortcuts(userId);
-      
+
       // Calculate total usage count
       const totalUsage = shortcuts.reduce((total, shortcut) => total + shortcut.usageCount, 0);
-      
+
       // Calculate usage by command type
       const usageByType: Record<string, number> = {};
-      
+
       shortcuts.forEach(shortcut => {
         if (!usageByType[shortcut.commandType]) {
           usageByType[shortcut.commandType] = 0;
         }
         usageByType[shortcut.commandType] += shortcut.usageCount;
       });
-      
+
       // Get most used shortcuts
-      const mostUsed = [...shortcuts]
-        .sort((a, b) => b.usageCount - a.usageCount)
-        .slice(0, 5);
-      
+      const mostUsed = [...shortcuts].sort((a, b) => b.usageCount - a.usageCount).slice(0, 5);
+
       // Get recently used shortcuts
       const recentlyUsed = [...shortcuts]
         .filter(s => s.lastUsed)
         .sort((a, b) => new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime())
         .slice(0, 5);
-      
+
       // Get never used shortcuts
       const neverUsed = shortcuts.filter(s => s.usageCount === 0);
-      
+
       return {
         totalShortcuts: shortcuts.length,
         totalUsage,
         usageByType,
         mostUsed,
         recentlyUsed,
-        neverUsed: neverUsed.length
+        neverUsed: neverUsed.length,
       };
     } catch (error) {
       console.error('Error getting shortcut usage stats:', error);
@@ -324,36 +335,36 @@ export class VoiceCommandShortcutService {
       const defaultShortcuts: InsertVoiceCommandShortcut[] = [
         {
           userId,
-          shortcutPhrase: "show props",
-          expandedCommand: "show me all properties in the system",
+          shortcutPhrase: 'show props',
+          expandedCommand: 'show me all properties in the system',
           commandType: VoiceCommandType.DATA_QUERY,
-          description: "Lists all available properties",
+          description: 'Lists all available properties',
           priority: 10,
           isEnabled: true,
-          isGlobal: false
+          isGlobal: false,
         },
         {
           userId,
-          shortcutPhrase: "goto dash",
-          expandedCommand: "navigate to dashboard",
+          shortcutPhrase: 'goto dash',
+          expandedCommand: 'navigate to dashboard',
           commandType: VoiceCommandType.NAVIGATION,
-          description: "Navigate to the main dashboard",
+          description: 'Navigate to the main dashboard',
           priority: 10,
           isEnabled: true,
-          isGlobal: false
+          isGlobal: false,
         },
         {
           userId,
-          shortcutPhrase: "new assessment",
-          expandedCommand: "create new property assessment",
+          shortcutPhrase: 'new assessment',
+          expandedCommand: 'create new property assessment',
           commandType: VoiceCommandType.PROPERTY_ASSESSMENT,
-          description: "Start a new property assessment",
+          description: 'Start a new property assessment',
           priority: 5,
           isEnabled: true,
-          isGlobal: false
-        }
+          isGlobal: false,
+        },
       ];
-      
+
       // Create each default shortcut
       for (const shortcut of defaultShortcuts) {
         await this.createShortcut(shortcut);

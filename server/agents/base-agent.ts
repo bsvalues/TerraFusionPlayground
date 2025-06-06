@@ -1,6 +1,6 @@
 /**
  * Base Agent
- * 
+ *
  * This abstract class serves as the foundation for all agents in the system.
  * It provides common functionality and interface for communication with the MCP.
  */
@@ -18,12 +18,7 @@ export abstract class BaseAgent {
   protected mcpService: MCPService;
   protected capabilities: Map<string, Function> = new Map();
 
-  constructor(
-    id: string,
-    name: string,
-    storage: IStorage,
-    mcpService: MCPService
-  ) {
+  constructor(id: string, name: string, storage: IStorage, mcpService: MCPService) {
     this.id = id;
     this.name = name;
     this.storage = storage;

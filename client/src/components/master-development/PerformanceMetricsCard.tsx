@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { BadgeInfo, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 
 interface PerformanceMetric {
@@ -24,29 +24,36 @@ const PerformanceMetricsCard = ({
   description,
   metrics,
   overallStatus = 'unknown',
-  lastUpdated
+  lastUpdated,
 }: PerformanceMetricsCardProps) => {
-  
   // Helper function to determine status color
   const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'healthy': return 'bg-green-500';
-      case 'warning': return 'bg-amber-500';
-      case 'critical': return 'bg-red-500';
-      default: return 'bg-gray-500';
+    switch (status) {
+      case 'healthy':
+        return 'bg-green-500';
+      case 'warning':
+        return 'bg-amber-500';
+      case 'critical':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-500';
     }
   };
-  
+
   // Helper function to get status icon
   const getStatusIcon = (status: string) => {
-    switch(status) {
-      case 'healthy': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'warning': return <AlertTriangle className="w-4 h-4 text-amber-500" />;
-      case 'critical': return <XCircle className="w-4 h-4 text-red-500" />;
-      default: return <BadgeInfo className="w-4 h-4 text-gray-500" />;
+    switch (status) {
+      case 'healthy':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'warning':
+        return <AlertTriangle className="w-4 h-4 text-amber-500" />;
+      case 'critical':
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      default:
+        return <BadgeInfo className="w-4 h-4 text-gray-500" />;
     }
   };
-  
+
   // Helper function to determine progress color
   const getProgressColor = (value: number, threshold: number) => {
     if (value <= threshold * 0.6) return 'bg-green-500';
@@ -82,10 +89,10 @@ const PerformanceMetricsCard = ({
                 </span>
               </div>
               <div className="flex items-center">
-                <Progress 
-                  value={(metric.value / metric.threshold) * 100} 
-                  max={100} 
-                  className={`h-1.5 ${getProgressColor(metric.value, metric.threshold)}`} 
+                <Progress
+                  value={(metric.value / metric.threshold) * 100}
+                  max={100}
+                  className={`h-1.5 ${getProgressColor(metric.value, metric.threshold)}`}
                 />
                 <span className="text-xs text-gray-500 ml-2">
                   Threshold: {metric.threshold} {metric.unit}

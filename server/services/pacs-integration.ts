@@ -1,10 +1,10 @@
 /**
  * PACS Integration Service Interface
- * 
+ *
  * This file defines the interface for integrating with the Property Appraisal and Collection System (PACS).
  */
 
-import { PacsModule } from "../../shared/schema";
+import { PacsModule } from '../../shared/schema';
 
 /**
  * PACS Integration Service Interface

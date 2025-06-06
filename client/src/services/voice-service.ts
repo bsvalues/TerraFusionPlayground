@@ -1,6 +1,6 @@
 /**
  * Voice Service
- * 
+ *
  * This service handles voice recording in the browser, including:
  * - Requesting microphone permissions
  * - Starting and stopping recordings
@@ -44,7 +44,7 @@ class VoiceService {
     try {
       this.mediaRecorder = new MediaRecorder(this.stream);
 
-      this.mediaRecorder.ondataavailable = (event) => {
+      this.mediaRecorder.ondataavailable = event => {
         if (event.data.size > 0) {
           this.audioChunks.push(event.data);
         }
@@ -73,7 +73,7 @@ class VoiceService {
         resolve(audioBlob);
       };
 
-      this.mediaRecorder.onerror = (event) => {
+      this.mediaRecorder.onerror = event => {
         reject(event.error);
       };
 
@@ -110,7 +110,7 @@ class VoiceService {
       this.stream.getTracks().forEach(track => track.stop());
       this.stream = null;
     }
-    
+
     this.mediaRecorder = null;
     this.audioChunks = [];
     this.setStateCallback = null;

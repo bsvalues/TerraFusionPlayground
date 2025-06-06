@@ -16,7 +16,7 @@ export interface TerrainVisualizationCardProps {
   /** Array of elevation data points */
   elevationData: ElevationDataPoint[];
   /** Color gradient for visualization */
-  colorGradient?: 'terrain' | 'primary' | 'rainbow' | 'heat'; 
+  colorGradient?: 'terrain' | 'primary' | 'rainbow' | 'heat';
   /** Optional height for the visualization */
   height?: number;
   /** Optional card variant */
@@ -29,7 +29,7 @@ export interface TerrainVisualizationCardProps {
 
 /**
  * TerrainVisualizationCard Component
- * 
+ *
  * A specialized card for displaying 3D terrain visualizations
  */
 export const TerrainVisualizationCard: React.FC<TerrainVisualizationCardProps> = ({
@@ -40,10 +40,10 @@ export const TerrainVisualizationCard: React.FC<TerrainVisualizationCardProps> =
   height = 300,
   variant = 'glass',
   className,
-  onClick
+  onClick,
 }) => {
   return (
-    <DashboardChartCard 
+    <DashboardChartCard
       title={title}
       description={description}
       variant={variant}
@@ -51,7 +51,7 @@ export const TerrainVisualizationCard: React.FC<TerrainVisualizationCardProps> =
       onClick={onClick}
     >
       <div style={{ height: `${height}px` }} className="w-full">
-        <ElevationChart 
+        <ElevationChart
           data={elevationData}
           colorScheme={colorGradient}
           rotateEnabled={true}

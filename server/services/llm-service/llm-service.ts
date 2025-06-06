@@ -1,6 +1,6 @@
 /**
  * LLM Service
- * 
+ *
  * Provides a unified interface for interacting with large language models
  * from different providers (OpenAI, Anthropic, Perplexity).
  */
@@ -13,7 +13,7 @@ import { IStorage } from '../../storage';
 export enum LLMProvider {
   OPENAI = 'openai',
   ANTHROPIC = 'anthropic',
-  PERPLEXITY = 'perplexity'
+  PERPLEXITY = 'perplexity',
 }
 
 // LLM Configuration interface
@@ -41,10 +41,10 @@ export class LLMService {
   private openaiClient: OpenAI | null = null;
   private anthropicClient: Anthropic | null = null;
   private defaultConfig: LLMConfig;
-  
+
   constructor(storage: IStorage, defaultConfig?: Partial<LLMConfig>) {
     this.storage = storage;
-    
+
     this.defaultConfig = {
       provider: LLMProvider.OPENAI,
       model: 'gpt-4o',
@@ -53,13 +53,13 @@ export class LLMService {
       topP: 1.0,
       frequencyPenalty: 0.0,
       presencePenalty: 0.0,
-      ...defaultConfig
+      ...defaultConfig,
     };
-    
+
     // Initialize clients
     this.initializeClients();
   }
-  
+
   /**
    * Initialize the LLM clients
    */
@@ -68,22 +68,22 @@ export class LLMService {
     if (process.env.OPENAI_API_KEY) {
       this.openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     }
-    
+
     // Initialize Anthropic client if API key is available
     if (process.env.ANTHROPIC_API_KEY) {
       this.anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     }
   }
-  
+
   /**
    * Get completion from an LLM
    */
   async getCompletion(prompt: string, config?: Partial<LLMConfig>): Promise<string> {
     const mergedConfig: LLMConfig = {
       ...this.defaultConfig,
-      ...config
+      ...config,
     };
-    
+
     switch (mergedConfig.provider) {
       case LLMProvider.OPENAI:
         return this.getOpenAICompletion(prompt, mergedConfig);
@@ -95,16 +95,16 @@ export class LLMService {
         throw new Error(`Unsupported LLM provider: ${mergedConfig.provider}`);
     }
   }
-  
+
   /**
    * Get chat completion from an LLM
    */
   async getChatCompletion(messages: Message[], config?: Partial<LLMConfig>): Promise<string> {
     const mergedConfig: LLMConfig = {
       ...this.defaultConfig,
-      ...config
+      ...config,
     };
-    
+
     switch (mergedConfig.provider) {
       case LLMProvider.OPENAI:
         return this.getOpenAIChatCompletion(messages, mergedConfig);
@@ -116,7 +116,7 @@ export class LLMService {
         throw new Error(`Unsupported LLM provider: ${mergedConfig.provider}`);
     }
   }
-  
+
   /**
    * Get completion from OpenAI
    */
@@ -124,7 +124,7 @@ export class LLMService {
     if (!this.openaiClient) {
       throw new Error('OpenAI client not initialized. Check if OPENAI_API_KEY is set.');
     }
-    
+
     try {
       // Use chat completion API for all models - the newest OpenAI model is "gpt-4o" which was released May 13, 2024
       const response = await this.openaiClient.chat.completions.create({
@@ -134,16 +134,16 @@ export class LLMService {
         max_tokens: config.maxTokens,
         top_p: config.topP,
         frequency_penalty: config.frequencyPenalty,
-        presence_penalty: config.presencePenalty
+        presence_penalty: config.presencePenalty,
       });
-      
+
       return response.choices[0].message.content || '';
     } catch (error) {
       console.error('Error getting OpenAI completion:', error);
       throw new Error(`OpenAI API error: ${error.message}`);
     }
   }
-  
+
   /**
    * Get chat completion from OpenAI
    */
@@ -151,7 +151,7 @@ export class LLMService {
     if (!this.openaiClient) {
       throw new Error('OpenAI client not initialized. Check if OPENAI_API_KEY is set.');
     }
-    
+
     try {
       // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
       const response = await this.openaiClient.chat.completions.create({
@@ -161,16 +161,16 @@ export class LLMService {
         max_tokens: config.maxTokens,
         top_p: config.topP,
         frequency_penalty: config.frequencyPenalty,
-        presence_penalty: config.presencePenalty
+        presence_penalty: config.presencePenalty,
       });
-      
+
       return response.choices[0].message.content || '';
     } catch (error) {
       console.error('Error getting OpenAI chat completion:', error);
       throw new Error(`OpenAI API error: ${error.message}`);
     }
   }
-  
+
   /**
    * Get completion from Anthropic
    */
@@ -178,7 +178,7 @@ export class LLMService {
     if (!this.anthropicClient) {
       throw new Error('Anthropic client not initialized. Check if ANTHROPIC_API_KEY is set.');
     }
-    
+
     try {
       // the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
       const response = await this.anthropicClient.messages.create({
@@ -187,22 +187,25 @@ export class LLMService {
         messages: [{ role: 'user', content: prompt }],
         temperature: config.temperature,
       });
-      
+
       return response.content[0].text;
     } catch (error) {
       console.error('Error getting Anthropic completion:', error);
       throw new Error(`Anthropic API error: ${error.message}`);
     }
   }
-  
+
   /**
    * Get chat completion from Anthropic
    */
-  private async getAnthropicChatCompletion(messages: Message[], config: LLMConfig): Promise<string> {
+  private async getAnthropicChatCompletion(
+    messages: Message[],
+    config: LLMConfig
+  ): Promise<string> {
     if (!this.anthropicClient) {
       throw new Error('Anthropic client not initialized. Check if ANTHROPIC_API_KEY is set.');
     }
-    
+
     try {
       // the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
       const response = await this.anthropicClient.messages.create({
@@ -210,39 +213,42 @@ export class LLMService {
         max_tokens: config.maxTokens,
         messages: messages.map(msg => ({
           role: msg.role,
-          content: msg.content
+          content: msg.content,
         })),
         temperature: config.temperature,
       });
-      
+
       return response.content[0].text;
     } catch (error) {
       console.error('Error getting Anthropic chat completion:', error);
       throw new Error(`Anthropic API error: ${error.message}`);
     }
   }
-  
+
   /**
    * Get completion from Perplexity
    */
   private async getPerplexityCompletion(prompt: string, config: LLMConfig): Promise<string> {
     return this.getPerplexityChatCompletion([{ role: 'user', content: prompt }], config);
   }
-  
+
   /**
    * Get chat completion from Perplexity
    */
-  private async getPerplexityChatCompletion(messages: Message[], config: LLMConfig): Promise<string> {
+  private async getPerplexityChatCompletion(
+    messages: Message[],
+    config: LLMConfig
+  ): Promise<string> {
     if (!process.env.PERPLEXITY_API_KEY) {
       throw new Error('Perplexity API key not set. Check if PERPLEXITY_API_KEY is set.');
     }
-    
+
     try {
       const response = await fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           model: 'llama-3.1-sonar-small-128k-online',
@@ -257,14 +263,14 @@ export class LLMService {
           return_images: false,
           return_related_questions: false,
           search_recency_filter: 'month',
-          top_k: 0
-        })
+          top_k: 0,
+        }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       return data.choices[0].message.content;
     } catch (error) {
@@ -272,7 +278,7 @@ export class LLMService {
       throw new Error(`Perplexity API error: ${error.message}`);
     }
   }
-  
+
   /**
    * Analyze code for improvements
    */
@@ -280,19 +286,20 @@ export class LLMService {
     const messages: Message[] = [
       {
         role: 'system',
-        content: 'You are a senior software engineer specializing in code analysis and improvements. Analyze the provided code based on the prompt and provide specific, actionable feedback.'
+        content:
+          'You are a senior software engineer specializing in code analysis and improvements. Analyze the provided code based on the prompt and provide specific, actionable feedback.',
       },
       {
         role: 'user',
-        content: `Code to analyze:\n\`\`\`\n${code}\n\`\`\`\n\nPrompt: ${prompt}`
-      }
+        content: `Code to analyze:\n\`\`\`\n${code}\n\`\`\`\n\nPrompt: ${prompt}`,
+      },
     ];
-    
+
     return this.getChatCompletion(messages, {
-      temperature: 0.2 // Lower temperature for more precise/technical responses
+      temperature: 0.2, // Lower temperature for more precise/technical responses
     });
   }
-  
+
   /**
    * Enhance GIS data with contextual information
    */
@@ -310,13 +317,13 @@ export class LLMService {
     3. Potential data quality issues
     4. Recommended visualization approaches
     `;
-    
+
     const response = await this.getCompletion(prompt, {
       temperature: 0.3,
       provider: LLMProvider.OPENAI,
-      model: 'gpt-4o'
+      model: 'gpt-4o',
     });
-    
+
     try {
       // Parse the response as JSON
       return JSON.parse(response);
@@ -325,15 +332,19 @@ export class LLMService {
       // Return a structured version of the text response
       return {
         error: 'Could not parse response as JSON',
-        textResponse: response
+        textResponse: response,
       };
     }
   }
-  
+
   /**
    * Generate a style configuration for GIS data visualization
    */
-  async generateMapStyling(dataAttributes: string[], dataType: 'categorical' | 'numerical', purpose: string): Promise<any> {
+  async generateMapStyling(
+    dataAttributes: string[],
+    dataType: 'categorical' | 'numerical',
+    purpose: string
+  ): Promise<any> {
     const prompt = `
     Generate an optimal styling configuration for a GIS map with the following specifications:
     
@@ -350,13 +361,13 @@ export class LLMService {
     
     Format your response as valid JSON.
     `;
-    
+
     const response = await this.getCompletion(prompt, {
       temperature: 0.4,
       provider: LLMProvider.OPENAI,
       model: 'gpt-4o',
     });
-    
+
     try {
       // Parse the response as JSON
       return JSON.parse(response);
@@ -365,29 +376,29 @@ export class LLMService {
       // Attempt basic formatting as a fallback
       return {
         error: 'Could not parse response as JSON',
-        textResponse: response
+        textResponse: response,
       };
     }
   }
-  
+
   /**
    * Get available LLM providers
    */
   getAvailableProviders(): LLMProvider[] {
     const providers: LLMProvider[] = [];
-    
+
     if (this.openaiClient) {
       providers.push(LLMProvider.OPENAI);
     }
-    
+
     if (this.anthropicClient) {
       providers.push(LLMProvider.ANTHROPIC);
     }
-    
+
     if (process.env.PERPLEXITY_API_KEY) {
       providers.push(LLMProvider.PERPLEXITY);
     }
-    
+
     return providers;
   }
 }

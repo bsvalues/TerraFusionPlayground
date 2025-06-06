@@ -1,24 +1,13 @@
 /**
  * Property Market Analysis Component
- * 
+ *
  * A comprehensive component that displays market trends, economic indicators,
  * future value predictions, and risk assessment for a property.
  */
 
 import React, { useState } from 'react';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from '@/components/ui/tabs';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MarketTrendsPanel } from './market/MarketTrendsPanel';
 import { EconomicIndicatorsPanel } from './market/EconomicIndicatorsPanel';
 import { FutureValuePrediction } from './market/FutureValuePrediction';
@@ -29,7 +18,7 @@ import {
   CircleDollarSign,
   ShieldAlert,
   AreaChart,
-  Component
+  Component,
 } from 'lucide-react';
 
 interface PropertyMarketAnalysisProps {
@@ -41,10 +30,10 @@ interface PropertyMarketAnalysisProps {
 export function PropertyMarketAnalysis({
   propertyId,
   propertyAddress,
-  className = ''
+  className = '',
 }: PropertyMarketAnalysisProps) {
   const [activeTab, setActiveTab] = useState('market-trends');
-  
+
   return (
     <div className={className}>
       <Card className="mb-6">
@@ -59,9 +48,9 @@ export function PropertyMarketAnalysis({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs 
-            defaultValue="market-trends" 
-            value={activeTab} 
+          <Tabs
+            defaultValue="market-trends"
+            value={activeTab}
             onValueChange={setActiveTab}
             className="space-y-4"
           >
@@ -83,7 +72,7 @@ export function PropertyMarketAnalysis({
                 <span>Risk Assessment</span>
               </TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="market-trends" className="pt-4">
               <div className="space-y-1 mb-4">
                 <h3 className="text-lg font-medium">Market Trends</h3>
@@ -93,7 +82,7 @@ export function PropertyMarketAnalysis({
               </div>
               <MarketTrendsPanel propertyId={propertyId} />
             </TabsContent>
-            
+
             <TabsContent value="economic-indicators" className="pt-4">
               <div className="space-y-1 mb-4">
                 <h3 className="text-lg font-medium">Economic Indicators</h3>
@@ -103,7 +92,7 @@ export function PropertyMarketAnalysis({
               </div>
               <EconomicIndicatorsPanel propertyId={propertyId} />
             </TabsContent>
-            
+
             <TabsContent value="future-value" className="pt-4">
               <div className="space-y-1 mb-4">
                 <h3 className="text-lg font-medium">Future Value Prediction</h3>
@@ -113,7 +102,7 @@ export function PropertyMarketAnalysis({
               </div>
               <FutureValuePrediction propertyId={propertyId} />
             </TabsContent>
-            
+
             <TabsContent value="risk-assessment" className="pt-4">
               <div className="space-y-1 mb-4">
                 <h3 className="text-lg font-medium">Risk Assessment</h3>

@@ -1,6 +1,6 @@
 /**
  * FTP Cron Job Setup Script
- * 
+ *
  * This script sets up a scheduled task to run the FTP synchronization process
  * at regular intervals. It uses node-cron to handle the scheduling.
  */
@@ -31,7 +31,7 @@ let isJobRunning = false;
 
 /**
  * Run the FTP sync process
- * 
+ *
  * @param {boolean} oneTimeSync If true, this is a one-time sync rather than a scheduled job
  */
 function runFtpSync(oneTimeSync = false) {
@@ -40,15 +40,17 @@ function runFtpSync(oneTimeSync = false) {
     logger.warn('FTP sync job is already running, skipping this execution');
     return;
   }
-  
+
   // Check if lock file exists (additional safety check for multiple processes)
   if (fs.existsSync(lockFilePath)) {
     const lockStats = fs.statSync(lockFilePath);
     const lockAgeHours = (Date.now() - lockStats.mtimeMs) / (1000 * 60 * 60);
-    
+
     // If lock file is older than 6 hours, it's likely a stale lock
     if (lockAgeHours < 6) {
-      logger.warn(`FTP sync lock file exists (created ${lockAgeHours.toFixed(2)} hours ago), skipping this execution`);
+      logger.warn(
+        `FTP sync lock file exists (created ${lockAgeHours.toFixed(2)} hours ago), skipping this execution`
+      );
       return;
     } else {
       logger.warn(`Removing stale FTP sync lock file (${lockAgeHours.toFixed(2)} hours old)`);
@@ -60,7 +62,7 @@ function runFtpSync(oneTimeSync = false) {
       }
     }
   }
-  
+
   // Set running flag and create lock file
   isJobRunning = true;
   try {
@@ -70,16 +72,16 @@ function runFtpSync(oneTimeSync = false) {
     isJobRunning = false;
     return;
   }
-  
+
   // Log the start of synchronization
   logger.info(`Starting ${oneTimeSync ? 'one-time' : 'scheduled'} FTP synchronization`);
-  
+
   // Run the synchronization
   synchronizeBentonCountyFTP()
-    .then((result) => {
+    .then(result => {
       logger.info(`FTP synchronization completed: ${result.filesDownloaded} files synchronized`);
     })
-    .catch((error) => {
+    .catch(error => {
       logger.error(`FTP synchronization failed: ${error.message}`);
     })
     .finally(() => {
@@ -91,7 +93,7 @@ function runFtpSync(oneTimeSync = false) {
       } catch (unlinkError) {
         logger.warn(`Failed to remove lock file: ${unlinkError.message}`);
       }
-      
+
       isJobRunning = false;
       logger.info('FTP synchronization job finished');
     });
@@ -99,23 +101,24 @@ function runFtpSync(oneTimeSync = false) {
 
 /**
  * Schedule the FTP sync job using a cron expression
- * 
+ *
  * @param {string} cronExpression The cron expression for scheduling
  */
-function scheduleFtpSync(cronExpression = '0 */6 * * *') { // Default: Every 6 hours
+function scheduleFtpSync(cronExpression = '0 */6 * * *') {
+  // Default: Every 6 hours
   // Validate the cron expression
   if (!cron.validate(cronExpression)) {
     throw new Error(`Invalid cron expression: ${cronExpression}`);
   }
-  
+
   logger.info(`Scheduling FTP synchronization with cron expression: ${cronExpression}`);
-  
+
   // Schedule the job
   const job = cron.schedule(cronExpression, () => {
     logger.info(`Running scheduled FTP synchronization (schedule: ${cronExpression})`);
     runFtpSync(false);
   });
-  
+
   return job;
 }
 
@@ -131,26 +134,23 @@ function runOneTimeSync() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   // Check for command line arguments
   const args = process.argv.slice(2);
-  
+
   if (args.includes('--now') || args.includes('-n')) {
     // Run a one-time sync now
     runOneTimeSync();
   } else if (args.includes('--schedule') || args.includes('-s')) {
     // Get custom schedule if provided
-    const scheduleIndex = Math.max(
-      args.indexOf('--schedule'), 
-      args.indexOf('-s')
-    );
-    
+    const scheduleIndex = Math.max(args.indexOf('--schedule'), args.indexOf('-s'));
+
     let cronExpression = '0 */6 * * *'; // Default: every 6 hours
-    
+
     if (scheduleIndex !== -1 && args.length > scheduleIndex + 1) {
       cronExpression = args[scheduleIndex + 1];
     }
-    
+
     // Schedule the job
     const job = scheduleFtpSync(cronExpression);
-    
+
     // Keep the script running
     console.log(`FTP synchronization scheduled with expression: ${cronExpression}`);
     console.log('Press Ctrl+C to stop the scheduler');
@@ -158,7 +158,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     // Print usage
     console.log('Usage:');
     console.log('  node setup-ftp-cron.js --now | -n     Run a one-time sync immediately');
-    console.log('  node setup-ftp-cron.js --schedule | -s [expression]   Schedule sync with optional cron expression');
+    console.log(
+      '  node setup-ftp-cron.js --schedule | -s [expression]   Schedule sync with optional cron expression'
+    );
     console.log('Default cron expression (runs every 6 hours): 0 */6 * * *');
   }
 }

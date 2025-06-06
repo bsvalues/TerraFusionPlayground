@@ -1,6 +1,6 @@
 /**
  * Plandex AI Service
- * 
+ *
  * This service integrates with the Plandex AI API to provide specialized
  * code generation, completion, bug fixing, and explanation capabilities.
  */
@@ -67,7 +67,7 @@ export class PlandexAIService {
       context: request.context,
       maxTokens: request.maxTokens || this.maxTokens,
       temperature: request.temperature || this.temperature,
-      model: this.defaultModel
+      model: this.defaultModel,
     });
 
     return response.code;
@@ -82,7 +82,7 @@ export class PlandexAIService {
       language: request.language,
       maxTokens: request.maxTokens || this.maxTokens,
       temperature: request.temperature || this.temperature,
-      model: this.defaultModel
+      model: this.defaultModel,
     });
 
     return response.completion;
@@ -96,7 +96,7 @@ export class PlandexAIService {
       buggyCode: request.buggyCode,
       errorMessage: request.errorMessage,
       language: request.language,
-      model: this.defaultModel
+      model: this.defaultModel,
     });
 
     return response.fixedCode;
@@ -110,7 +110,7 @@ export class PlandexAIService {
       code: request.code,
       language: request.language,
       detailLevel: request.detailLevel || 'detailed',
-      model: this.defaultModel
+      model: this.defaultModel,
     });
 
     return response.explanation;
@@ -125,9 +125,9 @@ export class PlandexAIService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
+          Authorization: `Bearer ${this.apiKey}`,
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {

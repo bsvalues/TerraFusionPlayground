@@ -1,6 +1,6 @@
 /**
  * Map Provider Service
- * 
+ *
  * A unified service for managing map providers with QGIS as the primary focus.
  * This service enables our TerraFusion platform to seamlessly work with different
  * mapping backends while maintaining a consistent interface.
@@ -37,13 +37,14 @@ interface MapProviderState {
 export const useMapProvider = create<MapProviderState>((set, get) => ({
   // Default to QGIS as our primary focus
   currentProvider: 'qgis',
-  
+
   // Provider configurations
   providers: {
     qgis: {
       type: 'qgis',
       name: 'QGIS',
-      description: 'Open-source Geographic Information System with advanced spatial analysis capabilities',
+      description:
+        'Open-source Geographic Information System with advanced spatial analysis capabilities',
       isOpenSource: true,
       apiKeyRequired: false,
       logoUrl: '/qgis-logo.svg',
@@ -53,9 +54,9 @@ export const useMapProvider = create<MapProviderState>((set, get) => ({
         'Advanced spatial analysis tools',
         'Extensive plugin ecosystem',
         'Desktop-to-web workflow',
-        'Community-driven development'
+        'Community-driven development',
       ],
-      isEnabled: true
+      isEnabled: true,
     },
     mapbox: {
       type: 'mapbox',
@@ -64,7 +65,7 @@ export const useMapProvider = create<MapProviderState>((set, get) => ({
       isOpenSource: false,
       apiKeyRequired: true,
       website: 'https://mapbox.com',
-      isEnabled: false
+      isEnabled: false,
     },
     arcgis: {
       type: 'arcgis',
@@ -73,7 +74,7 @@ export const useMapProvider = create<MapProviderState>((set, get) => ({
       isOpenSource: false,
       apiKeyRequired: true,
       website: 'https://www.esri.com/en-us/arcgis/about-arcgis/overview',
-      isEnabled: false
+      isEnabled: false,
     },
     google: {
       type: 'google',
@@ -82,24 +83,24 @@ export const useMapProvider = create<MapProviderState>((set, get) => ({
       isOpenSource: false,
       apiKeyRequired: true,
       website: 'https://maps.google.com',
-      isEnabled: false
-    }
+      isEnabled: false,
+    },
   },
-  
+
   // Set the current map provider
-  setCurrentProvider: (provider) => {
+  setCurrentProvider: provider => {
     if (get().isProviderEnabled(provider)) {
       set({ currentProvider: provider });
     } else {
       console.warn(`Provider ${provider} is not enabled`);
     }
   },
-  
+
   // Check if a provider is enabled
-  isProviderEnabled: (provider) => {
+  isProviderEnabled: provider => {
     return get().providers[provider]?.isEnabled || false;
   },
-  
+
   // Enable or disable a provider
   enableProvider: (provider, enabled) => {
     set(state => ({
@@ -107,21 +108,22 @@ export const useMapProvider = create<MapProviderState>((set, get) => ({
         ...state.providers,
         [provider]: {
           ...state.providers[provider],
-          isEnabled: enabled
-        }
-      }
+          isEnabled: enabled,
+        },
+      },
     }));
-    
+
     // If disabling the current provider, switch to a different enabled provider
     if (!enabled && get().currentProvider === provider) {
-      const fallbackProvider = Object.entries(get().providers)
-        .find(([key, config]) => config.isEnabled && key !== provider);
-      
+      const fallbackProvider = Object.entries(get().providers).find(
+        ([key, config]) => config.isEnabled && key !== provider
+      );
+
       if (fallbackProvider) {
         set({ currentProvider: fallbackProvider[0] as MapProviderType });
       }
     }
-  }
+  },
 }));
 
 /**
@@ -138,11 +140,15 @@ export function useCurrentMapProvider() {
 export function getMapProviderAttribution(provider: MapProviderType): string {
   switch (provider) {
     case 'qgis':
-      return '© <a href="https://qgis.org" target="_blank" rel="noopener">QGIS</a> | ' +
-             'OpenStreetMap contributors | <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
+      return (
+        '© <a href="https://qgis.org" target="_blank" rel="noopener">QGIS</a> | ' +
+        'OpenStreetMap contributors | <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+      );
     case 'mapbox':
-      return '© <a href="https://www.mapbox.com/" target="_blank" rel="noopener">Mapbox</a> | ' +
-             '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+      return (
+        '© <a href="https://www.mapbox.com/" target="_blank" rel="noopener">Mapbox</a> | ' +
+        '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+      );
     case 'arcgis':
       return '© <a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a>';
     case 'google':

@@ -6,42 +6,40 @@ import { ChevronRight, ExternalLink, MoreVertical } from 'lucide-react';
 /**
  * DataCard variants using class-variance-authority
  */
-const dataCardVariants = cva(
-  "rounded-lg overflow-hidden transition-shadow",
-  {
-    variants: {
-      variant: {
-        default: "bg-card text-card-foreground shadow-sm",
-        glass: "tf-card-glass",
-        outline: "border border-border bg-transparent",
-        primary: "bg-primary/10 text-foreground",
-        filled: "bg-primary text-primary-foreground",
-        gradient: "bg-gradient-to-br from-primary/20 to-primary/5 text-foreground",
-      },
-      size: {
-        sm: "min-h-[200px]",
-        md: "min-h-[300px]",
-        lg: "min-h-[400px]",
-        xl: "min-h-[500px]",
-        auto: "min-h-0",
-      },
-      elevation: {
-        flat: "shadow-none",
-        low: "shadow-sm",
-        medium: "shadow-md",
-        high: "shadow-lg",
-      },
+const dataCardVariants = cva('rounded-lg overflow-hidden transition-shadow', {
+  variants: {
+    variant: {
+      default: 'bg-card text-card-foreground shadow-sm',
+      glass: 'tf-card-glass',
+      outline: 'border border-border bg-transparent',
+      primary: 'bg-primary/10 text-foreground',
+      filled: 'bg-primary text-primary-foreground',
+      gradient: 'bg-gradient-to-br from-primary/20 to-primary/5 text-foreground',
     },
-    defaultVariants: {
-      variant: "default",
-      size: "md",
-      elevation: "medium",
+    size: {
+      sm: 'min-h-[200px]',
+      md: 'min-h-[300px]',
+      lg: 'min-h-[400px]',
+      xl: 'min-h-[500px]',
+      auto: 'min-h-0',
     },
-  }
-);
+    elevation: {
+      flat: 'shadow-none',
+      low: 'shadow-sm',
+      medium: 'shadow-md',
+      high: 'shadow-lg',
+    },
+  },
+  defaultVariants: {
+    variant: 'default',
+    size: 'md',
+    elevation: 'medium',
+  },
+});
 
-export interface DataCardProps extends React.HTMLAttributes<HTMLDivElement>,
-  VariantProps<typeof dataCardVariants> {
+export interface DataCardProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof dataCardVariants> {
   /**
    * Title of the card
    */
@@ -94,7 +92,7 @@ export interface DataCardProps extends React.HTMLAttributes<HTMLDivElement>,
 
 /**
  * A component for displaying data visualizations with metadata.
- * 
+ *
  * @example
  * ```tsx
  * <DataCard
@@ -133,15 +131,15 @@ export const DataCard: React.FC<DataCardProps> = ({
     md: 'p-6',
     lg: 'p-8',
   };
-  
+
   // Generate the content area class based on whether we have a chart or children
   const contentAreaClass = cn(
-    "relative",
-    !fixedHeight && "h-auto",
-    fixedHeight && size !== 'auto' && "h-full",
+    'relative',
+    !fixedHeight && 'h-auto',
+    fixedHeight && size !== 'auto' && 'h-full',
     paddingMap[padding]
   );
-  
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -156,10 +154,10 @@ export const DataCard: React.FC<DataCardProps> = ({
         </div>
       );
     }
-    
+
     if (error) {
       return (
-        <div className={cn(contentAreaClass, "flex flex-col items-center justify-center")}>
+        <div className={cn(contentAreaClass, 'flex flex-col items-center justify-center')}>
           <div className="rounded-full bg-destructive/10 p-3 text-destructive">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -182,23 +180,19 @@ export const DataCard: React.FC<DataCardProps> = ({
         </div>
       );
     }
-    
-    return (
-      <div className={contentAreaClass}>
-        {chart || children}
-      </div>
-    );
+
+    return <div className={contentAreaClass}>{chart || children}</div>;
   };
-  
+
   const CardContainer = linkUrl ? 'a' : 'div';
-  const cardProps = linkUrl ? { href: linkUrl, target: "_blank", rel: "noopener noreferrer" } : {};
-  
+  const cardProps = linkUrl ? { href: linkUrl, target: '_blank', rel: 'noopener noreferrer' } : {};
+
   return (
     <CardContainer
       className={cn(
         dataCardVariants({ variant, size, elevation }),
-        linkUrl && "cursor-pointer hover:shadow-md transition-shadow",
-        fixedHeight && size !== 'auto' && "flex flex-col",
+        linkUrl && 'cursor-pointer hover:shadow-md transition-shadow',
+        fixedHeight && size !== 'auto' && 'flex flex-col',
         className
       )}
       {...cardProps}
@@ -206,10 +200,12 @@ export const DataCard: React.FC<DataCardProps> = ({
     >
       {/* Header section */}
       {(title || description || actions || showMenu) && (
-        <div className={cn(
-          "flex items-start justify-between border-b border-border/30",
-          paddingMap[padding]
-        )}>
+        <div
+          className={cn(
+            'flex items-start justify-between border-b border-border/30',
+            paddingMap[padding]
+          )}
+        >
           {/* Title and description */}
           <div>
             {title && (
@@ -218,18 +214,14 @@ export const DataCard: React.FC<DataCardProps> = ({
                 {linkUrl && <ExternalLink className="ml-2 inline h-4 w-4" />}
               </h3>
             )}
-            {description && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                {description}
-              </p>
-            )}
+            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
           </div>
-          
+
           {/* Actions and menu */}
           <div className="flex items-center gap-2 ml-4">
             {actions}
             {showMenu && (
-              <button 
+              <button
                 className="p-1 rounded-full hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary/25"
                 aria-label="Menu"
               >
@@ -240,20 +232,15 @@ export const DataCard: React.FC<DataCardProps> = ({
           </div>
         </div>
       )}
-      
+
       {/* Main content area */}
       {renderContent()}
-      
+
       {/* Footer */}
       {footer && (
-        <div className={cn(
-          "mt-auto border-t border-border/30", 
-          paddingMap[padding]
-        )}>
-          {footer}
-        </div>
+        <div className={cn('mt-auto border-t border-border/30', paddingMap[padding])}>{footer}</div>
       )}
-      
+
       {/* Link indicator */}
       {linkUrl && (
         <div className="absolute bottom-3 right-3 flex items-center text-xs text-muted-foreground">

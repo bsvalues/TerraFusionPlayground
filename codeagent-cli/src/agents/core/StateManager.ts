@@ -1,6 +1,6 @@
 /**
  * StateManager.ts
- * 
+ *
  * Manages persisting and retrieving agent state
  */
 
@@ -25,7 +25,7 @@ export interface StorageProvider {
 export class FileSystemStorageProvider implements StorageProvider {
   private basePath: string;
   private logger: LogService;
-  
+
   /**
    * Constructor
    * @param basePath Base path for storage
@@ -33,11 +33,11 @@ export class FileSystemStorageProvider implements StorageProvider {
   constructor(basePath: string) {
     this.basePath = basePath;
     this.logger = new LogService('FileSystemStorage');
-    
+
     // Ensure directory exists
     this.ensureDirectory();
   }
-  
+
   /**
    * Ensure base directory exists
    */
@@ -45,10 +45,12 @@ export class FileSystemStorageProvider implements StorageProvider {
     try {
       await fs.mkdir(this.basePath, { recursive: true });
     } catch (error) {
-      this.logger.error(`Error creating directory: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `Error creating directory: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
-  
+
   /**
    * Get full path for a key
    * @param key Storage key
@@ -58,7 +60,7 @@ export class FileSystemStorageProvider implements StorageProvider {
     const safeKey = key.replace(/\.\./g, '').replace(/[/\\]/g, '_');
     return join(this.basePath, `${safeKey}.json`);
   }
-  
+
   /**
    * Save data to storage
    * @param key Storage key
@@ -70,11 +72,13 @@ export class FileSystemStorageProvider implements StorageProvider {
       const json = JSON.stringify(data, null, 2);
       await fs.writeFile(path, json, 'utf-8');
     } catch (error) {
-      this.logger.error(`Error saving data: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `Error saving data: ${error instanceof Error ? error.message : String(error)}`
+      );
       throw error;
     }
   }
-  
+
   /**
    * Load data from storage
    * @param key Storage key
@@ -88,11 +92,13 @@ export class FileSystemStorageProvider implements StorageProvider {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return null;
       }
-      this.logger.error(`Error loading data: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `Error loading data: ${error instanceof Error ? error.message : String(error)}`
+      );
       throw error;
     }
   }
-  
+
   /**
    * Delete data from storage
    * @param key Storage key
@@ -106,11 +112,13 @@ export class FileSystemStorageProvider implements StorageProvider {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return false;
       }
-      this.logger.error(`Error deleting data: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `Error deleting data: ${error instanceof Error ? error.message : String(error)}`
+      );
       throw error;
     }
   }
-  
+
   /**
    * Check if key exists in storage
    * @param key Storage key
@@ -124,7 +132,7 @@ export class FileSystemStorageProvider implements StorageProvider {
       return false;
     }
   }
-  
+
   /**
    * List keys in storage
    * @param prefix Optional prefix to filter by
@@ -137,7 +145,9 @@ export class FileSystemStorageProvider implements StorageProvider {
         .map(file => file.slice(0, -5)) // Remove .json extension
         .filter(key => !prefix || key.startsWith(prefix));
     } catch (error) {
-      this.logger.error(`Error listing keys: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `Error listing keys: ${error instanceof Error ? error.message : String(error)}`
+      );
       throw error;
     }
   }
@@ -149,7 +159,7 @@ export class FileSystemStorageProvider implements StorageProvider {
 export class MemoryStorageProvider implements StorageProvider {
   private storage: Map<string, any>;
   private logger: LogService;
-  
+
   /**
    * Constructor
    */
@@ -157,7 +167,7 @@ export class MemoryStorageProvider implements StorageProvider {
     this.storage = new Map<string, any>();
     this.logger = new LogService('MemoryStorage');
   }
-  
+
   /**
    * Save data to storage
    * @param key Storage key
@@ -166,7 +176,7 @@ export class MemoryStorageProvider implements StorageProvider {
   public async save(key: string, data: any): Promise<void> {
     this.storage.set(key, JSON.parse(JSON.stringify(data)));
   }
-  
+
   /**
    * Load data from storage
    * @param key Storage key
@@ -175,7 +185,7 @@ export class MemoryStorageProvider implements StorageProvider {
     const data = this.storage.get(key);
     return data ? JSON.parse(JSON.stringify(data)) : null;
   }
-  
+
   /**
    * Delete data from storage
    * @param key Storage key
@@ -183,7 +193,7 @@ export class MemoryStorageProvider implements StorageProvider {
   public async delete(key: string): Promise<boolean> {
     return this.storage.delete(key);
   }
-  
+
   /**
    * Check if key exists in storage
    * @param key Storage key
@@ -191,14 +201,13 @@ export class MemoryStorageProvider implements StorageProvider {
   public async exists(key: string): Promise<boolean> {
     return this.storage.has(key);
   }
-  
+
   /**
    * List keys in storage
    * @param prefix Optional prefix to filter by
    */
   public async listKeys(prefix?: string): Promise<string[]> {
-    return Array.from(this.storage.keys())
-      .filter(key => !prefix || key.startsWith(prefix));
+    return Array.from(this.storage.keys()).filter(key => !prefix || key.startsWith(prefix));
   }
 }
 
@@ -209,7 +218,7 @@ export class StateManager {
   private static instance: StateManager;
   private provider: StorageProvider;
   private logger: LogService;
-  
+
   /**
    * Private constructor (use getInstance)
    */
@@ -217,7 +226,7 @@ export class StateManager {
     this.provider = provider;
     this.logger = new LogService('StateManager');
   }
-  
+
   /**
    * Get singleton instance
    * @param provider Optional storage provider
@@ -225,12 +234,13 @@ export class StateManager {
   public static getInstance(provider?: StorageProvider): StateManager {
     if (!StateManager.instance) {
       // Default to file system storage
-      const defaultProvider = provider || new FileSystemStorageProvider(join(process.cwd(), '.codeagent', 'state'));
+      const defaultProvider =
+        provider || new FileSystemStorageProvider(join(process.cwd(), '.codeagent', 'state'));
       StateManager.instance = new StateManager(defaultProvider);
     }
     return StateManager.instance;
   }
-  
+
   /**
    * Change storage provider
    * @param provider New storage provider
@@ -239,7 +249,7 @@ export class StateManager {
     this.provider = provider;
     this.logger.info('Storage provider changed');
   }
-  
+
   /**
    * Save agent state
    * @param agentId Agent ID
@@ -250,11 +260,11 @@ export class StateManager {
     await this.provider.save(key, {
       timestamp: new Date().toISOString(),
       agentId,
-      state
+      state,
     });
     this.logger.debug(`Saved state for agent ${agentId}`);
   }
-  
+
   /**
    * Load agent state
    * @param agentId Agent ID
@@ -264,7 +274,7 @@ export class StateManager {
     const data = await this.provider.load(key);
     return data?.state || null;
   }
-  
+
   /**
    * Delete agent state
    * @param agentId Agent ID
@@ -273,7 +283,7 @@ export class StateManager {
     const key = `agent:${agentId}:state`;
     return await this.provider.delete(key);
   }
-  
+
   /**
    * Save task result
    * @param taskId Task ID
@@ -284,11 +294,11 @@ export class StateManager {
     await this.provider.save(key, {
       timestamp: new Date().toISOString(),
       taskId,
-      result
+      result,
     });
     this.logger.debug(`Saved result for task ${taskId}`);
   }
-  
+
   /**
    * Load task result
    * @param taskId Task ID
@@ -298,7 +308,7 @@ export class StateManager {
     const data = await this.provider.load(key);
     return data?.result || null;
   }
-  
+
   /**
    * Delete task result
    * @param taskId Task ID
@@ -307,7 +317,7 @@ export class StateManager {
     const key = `task:${taskId}:result`;
     return await this.provider.delete(key);
   }
-  
+
   /**
    * Save custom data
    * @param namespace Namespace
@@ -320,11 +330,11 @@ export class StateManager {
       timestamp: new Date().toISOString(),
       namespace,
       key,
-      data
+      data,
     });
     this.logger.debug(`Saved data for ${namespace}:${key}`);
   }
-  
+
   /**
    * Load custom data
    * @param namespace Namespace
@@ -335,7 +345,7 @@ export class StateManager {
     const stored = await this.provider.load(storageKey);
     return stored?.data || null;
   }
-  
+
   /**
    * Delete custom data
    * @param namespace Namespace
@@ -345,7 +355,7 @@ export class StateManager {
     const storageKey = `data:${namespace}:${key}`;
     return await this.provider.delete(storageKey);
   }
-  
+
   /**
    * List all saved states for an agent
    * @param agentId Agent ID
@@ -356,7 +366,7 @@ export class StateManager {
     // Strip prefix from keys
     return keys.map(key => key.substring(prefix.length));
   }
-  
+
   /**
    * List all saved data in a namespace
    * @param namespace Namespace

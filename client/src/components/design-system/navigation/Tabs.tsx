@@ -16,64 +16,64 @@ const TabsContext = createContext<TabsContextType>({
 /**
  * Tabs container variants
  */
-const tabsVariants = cva("", {
+const tabsVariants = cva('', {
   variants: {
     variant: {
-      default: "",
-      pills: "",
-      underline: "",
-      enclosed: "",
-      vertical: "flex",
+      default: '',
+      pills: '',
+      underline: '',
+      enclosed: '',
+      vertical: 'flex',
     },
     size: {
-      sm: "",
-      md: "",
-      lg: "",
+      sm: '',
+      md: '',
+      lg: '',
     },
   },
   compoundVariants: [
     {
-      variant: "vertical",
-      className: "flex-row",
+      variant: 'vertical',
+      className: 'flex-row',
     },
   ],
   defaultVariants: {
-    variant: "default",
-    size: "md",
+    variant: 'default',
+    size: 'md',
   },
 });
 
 /**
  * TabsList variants
  */
-const tabsListVariants = cva("flex", {
+const tabsListVariants = cva('flex', {
   variants: {
     variant: {
-      default: "bg-muted p-1 rounded-md",
-      pills: "space-x-1",
-      underline: "space-x-4 border-b border-border",
-      enclosed: "space-x-1",
-      vertical: "flex-col",
+      default: 'bg-muted p-1 rounded-md',
+      pills: 'space-x-1',
+      underline: 'space-x-4 border-b border-border',
+      enclosed: 'space-x-1',
+      vertical: 'flex-col',
     },
     size: {
-      sm: "text-sm",
-      md: "text-base",
-      lg: "text-lg",
+      sm: 'text-sm',
+      md: 'text-base',
+      lg: 'text-lg',
     },
   },
   compoundVariants: [
     {
-      variant: ["default", "pills", "enclosed", "underline"],
-      className: "flex-row",
+      variant: ['default', 'pills', 'enclosed', 'underline'],
+      className: 'flex-row',
     },
     {
-      variant: "vertical",
-      className: "flex-col mr-6 border-r border-border pr-2 space-y-1",
+      variant: 'vertical',
+      className: 'flex-col mr-6 border-r border-border pr-2 space-y-1',
     },
   ],
   defaultVariants: {
-    variant: "default",
-    size: "md",
+    variant: 'default',
+    size: 'md',
   },
 });
 
@@ -81,47 +81,49 @@ const tabsListVariants = cva("flex", {
  * TabsTrigger variants
  */
 const tabsTriggerVariants = cva(
-  "flex items-center justify-center whitespace-nowrap font-medium transition-all disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+  'flex items-center justify-center whitespace-nowrap font-medium transition-all disabled:pointer-events-none disabled:opacity-50 cursor-pointer',
   {
     variants: {
       variant: {
-        default: "data-[state=active]:bg-background data-[state=active]:text-foreground",
-        pills: "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground",
-        underline: "border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground",
-        enclosed: "border border-transparent data-[state=active]:border-border data-[state=active]:border-b-transparent data-[state=active]:bg-background",
-        vertical: "data-[state=active]:bg-muted data-[state=active]:text-foreground justify-start",
+        default: 'data-[state=active]:bg-background data-[state=active]:text-foreground',
+        pills: 'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground',
+        underline:
+          'border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground',
+        enclosed:
+          'border border-transparent data-[state=active]:border-border data-[state=active]:border-b-transparent data-[state=active]:bg-background',
+        vertical: 'data-[state=active]:bg-muted data-[state=active]:text-foreground justify-start',
       },
       size: {
-        sm: "px-2.5 py-1 text-sm",
-        md: "px-3 py-1.5",
-        lg: "px-4 py-2 text-lg",
+        sm: 'px-2.5 py-1 text-sm',
+        md: 'px-3 py-1.5',
+        lg: 'px-4 py-2 text-lg',
       },
     },
     compoundVariants: [
       {
-        variant: "default",
-        className: "rounded-sm",
+        variant: 'default',
+        className: 'rounded-sm',
       },
       {
-        variant: "pills",
-        className: "rounded-md",
+        variant: 'pills',
+        className: 'rounded-md',
       },
       {
-        variant: "underline",
-        className: "rounded-none px-1 pb-3",
+        variant: 'underline',
+        className: 'rounded-none px-1 pb-3',
       },
       {
-        variant: "enclosed",
-        className: "rounded-t-md -mb-px",
+        variant: 'enclosed',
+        className: 'rounded-t-md -mb-px',
       },
       {
-        variant: "vertical",
-        className: "rounded-md py-2 px-3",
+        variant: 'vertical',
+        className: 'rounded-md py-2 px-3',
       },
     ],
     defaultVariants: {
-      variant: "default",
-      size: "md",
+      variant: 'default',
+      size: 'md',
     },
   }
 );
@@ -130,31 +132,32 @@ const tabsTriggerVariants = cva(
  * TabsContent variants
  */
 const tabsContentVariants = cva(
-  "mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+  'mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
   {
     variants: {
       variant: {
-        default: "",
-        pills: "",
-        underline: "pt-4",
-        enclosed: "border-t border-border pt-4",
-        vertical: "",
+        default: '',
+        pills: '',
+        underline: 'pt-4',
+        enclosed: 'border-t border-border pt-4',
+        vertical: '',
       },
       animate: {
-        none: "",
-        fade: "transition-opacity animate-in fade-in-75",
-        slide: "transition-all animate-in slide-in-from-right-1",
+        none: '',
+        fade: 'transition-opacity animate-in fade-in-75',
+        slide: 'transition-all animate-in slide-in-from-right-1',
       },
     },
     defaultVariants: {
-      variant: "default",
-      animate: "fade",
+      variant: 'default',
+      animate: 'fade',
     },
   }
 );
 
-export interface TabsProps extends React.HTMLAttributes<HTMLDivElement>,
-  VariantProps<typeof tabsVariants> {
+export interface TabsProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof tabsVariants> {
   /**
    * Default active tab value
    */
@@ -179,9 +182,9 @@ export interface TabsProps extends React.HTMLAttributes<HTMLDivElement>,
 
 /**
  * Tabs component
- * 
+ *
  * A component for organizing content into multiple tabs.
- * 
+ *
  * @example
  * ```tsx
  * <Tabs defaultValue="tab1">
@@ -195,25 +198,28 @@ export interface TabsProps extends React.HTMLAttributes<HTMLDivElement>,
  * ```
  */
 export const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
-  ({ 
-    className, 
-    variant, 
-    size,
-    defaultValue, 
-    value, 
-    onValueChange, 
-    fullWidth,
-    animate = "fade",
-    children, 
-    ...props 
-  }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      defaultValue,
+      value,
+      onValueChange,
+      fullWidth,
+      animate = 'fade',
+      children,
+      ...props
+    },
+    ref
+  ) => {
     const [activeTab, setActiveTab] = useState(value || defaultValue || '');
 
     const handleTabChange = (newValue: string) => {
       if (!value) {
         setActiveTab(newValue);
       }
-      
+
       if (onValueChange) {
         onValueChange(newValue);
       }
@@ -228,11 +234,7 @@ export const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
       >
         <div
           ref={ref}
-          className={cn(
-            tabsVariants({ variant, size }),
-            fullWidth && "w-full",
-            className
-          )}
+          className={cn(tabsVariants({ variant, size }), fullWidth && 'w-full', className)}
           {...props}
         >
           {children}
@@ -242,10 +244,11 @@ export const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
   }
 );
 
-Tabs.displayName = "Tabs";
+Tabs.displayName = 'Tabs';
 
-export interface TabsListProps extends React.HTMLAttributes<HTMLDivElement>,
-  VariantProps<typeof tabsListVariants> {
+export interface TabsListProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof tabsListVariants> {
   /**
    * Whether tabs should take up full width
    */
@@ -260,11 +263,7 @@ export const TabsList = React.forwardRef<HTMLDivElement, TabsListProps>(
     return (
       <div
         ref={ref}
-        className={cn(
-          tabsListVariants({ variant, size }),
-          fullWidth && "w-full",
-          className
-        )}
+        className={cn(tabsListVariants({ variant, size }), fullWidth && 'w-full', className)}
         role="tablist"
         {...props}
       />
@@ -272,10 +271,11 @@ export const TabsList = React.forwardRef<HTMLDivElement, TabsListProps>(
   }
 );
 
-TabsList.displayName = "TabsList";
+TabsList.displayName = 'TabsList';
 
-export interface TabsTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-  VariantProps<typeof tabsTriggerVariants> {
+export interface TabsTriggerProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof tabsTriggerVariants> {
   /**
    * Value of the tab
    */
@@ -298,17 +298,10 @@ export interface TabsTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonE
  * TabsTrigger component
  */
 export const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
-  ({ 
-    className, 
-    variant, 
-    size, 
-    value, 
-    fullWidth,
-    icon,
-    iconPosition = 'left',
-    children, 
-    ...props 
-  }, ref) => {
+  (
+    { className, variant, size, value, fullWidth, icon, iconPosition = 'left', children, ...props },
+    ref
+  ) => {
     const { activeTab, setActiveTab } = useContext(TabsContext);
     const isActive = activeTab === value;
 
@@ -318,12 +311,8 @@ export const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>
         role="tab"
         type="button"
         aria-selected={isActive}
-        data-state={isActive ? "active" : "inactive"}
-        className={cn(
-          tabsTriggerVariants({ variant, size }),
-          fullWidth && "w-full",
-          className
-        )}
+        data-state={isActive ? 'active' : 'inactive'}
+        className={cn(tabsTriggerVariants({ variant, size }), fullWidth && 'w-full', className)}
         onClick={() => setActiveTab(value)}
         {...props}
       >
@@ -335,10 +324,11 @@ export const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>
   }
 );
 
-TabsTrigger.displayName = "TabsTrigger";
+TabsTrigger.displayName = 'TabsTrigger';
 
-export interface TabsContentProps extends React.HTMLAttributes<HTMLDivElement>,
-  VariantProps<typeof tabsContentVariants> {
+export interface TabsContentProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof tabsContentVariants> {
   /**
    * Value of the tab this content belongs to
    */
@@ -366,11 +356,8 @@ export const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
         ref={ref}
         role="tabpanel"
         aria-hidden={!isActive}
-        data-state={isActive ? "active" : "inactive"}
-        className={cn(
-          tabsContentVariants({ variant, animate }),
-          className
-        )}
+        data-state={isActive ? 'active' : 'inactive'}
+        className={cn(tabsContentVariants({ variant, animate }), className)}
         {...props}
       >
         {children}
@@ -379,6 +366,6 @@ export const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
   }
 );
 
-TabsContent.displayName = "TabsContent";
+TabsContent.displayName = 'TabsContent';
 
 // Components already exported above

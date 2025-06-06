@@ -31,12 +31,14 @@ codeagent ask "Parse the sales.csv file using data_processor_csv_parser"
 ```
 
 Parameters:
+
 - `file`: Path to the CSV file (required)
 - `delimiter`: CSV delimiter character (default: ',')
 - `headers`: Whether the CSV has headers (default: true)
 - `outputFormat`: Output format (json or array) (default: 'json')
 
 Example:
+
 ```bash
 codeagent ask "Use data_processor_csv_parser to parse customer_data.csv with delimiter=';'"
 ```
@@ -50,12 +52,14 @@ codeagent ask "Transform data.json using data_processor_json_transformer"
 ```
 
 Parameters:
+
 - `input`: JSON string or path to JSON file (required)
 - `transform`: JavaScript transform expression (e.g., "item => ({ ...item, processed: true })") (required)
 - `filter`: JavaScript filter expression (e.g., "item => item.value > 10") (optional)
 - `output`: Output file path (optional)
 
 Example:
+
 ```bash
 codeagent ask "Use data_processor_json_transformer to transform users.json with transform='item => ({ name: item.name, email: item.email })' and filter='item => item.active === true' and output='active_users.json'"
 ```
@@ -129,16 +133,19 @@ codeagent ask "Process all CSV files in data directory and transform them to JSO
 This plugin was created with the CodeAgent Plugin Configuration Wizard. To modify the plugin:
 
 1. Edit the configuration:
+
 ```bash
 codeagent plugin --wizard data-processor
 ```
 
 2. Modify the settings:
+
 ```bash
 codeagent plugin-settings --edit data-processor
 ```
 
 3. Reinstall the plugin:
+
 ```bash
 codeagent plugin --install /path/to/data-processor
 ```

@@ -1,18 +1,13 @@
 /**
  * Data Normalization Agent
- * 
+ *
  * This agent is responsible for normalizing and cleaning GIS data.
  * It can detect and fix common data quality issues in spatial datasets.
  */
 
 import { v4 as uuidv4 } from 'uuid';
 import { IStorage } from '../../../storage';
-import { 
-  GISAgentType, 
-  GISTaskType, 
-  TaskStatus, 
-  IGISAgent 
-} from '../agent-orchestration-service';
+import { GISAgentType, GISTaskType, TaskStatus, IGISAgent } from '../agent-orchestration-service';
 import { GISAgentTask, InsertAgentMessage } from '@shared/gis-schema';
 
 export class DataNormalizationAgent implements IGISAgent {
@@ -22,10 +17,10 @@ export class DataNormalizationAgent implements IGISAgent {
   public description: string;
   public capabilities: string[];
   public status: 'AVAILABLE' | 'BUSY' | 'OFFLINE';
-  
+
   private storage: IStorage;
   private isInitialized: boolean = false;
-  
+
   constructor(storage: IStorage, id?: string) {
     this.id = id || `data-normalization-agent-${uuidv4()}`;
     this.type = GISAgentType.DATA_NORMALIZATION;
@@ -37,12 +32,12 @@ export class DataNormalizationAgent implements IGISAgent {
       'normalize-attribute-names',
       'standardize-data-types',
       'remove-duplicates',
-      'fill-missing-values'
+      'fill-missing-values',
     ];
     this.status = 'OFFLINE';
     this.storage = storage;
   }
-  
+
   /**
    * Initialize the agent
    */
@@ -50,7 +45,7 @@ export class DataNormalizationAgent implements IGISAgent {
     if (this.isInitialized) {
       return;
     }
-    
+
     try {
       console.log(`Initializing ${this.name} (${this.id})...`);
 
@@ -59,7 +54,7 @@ export class DataNormalizationAgent implements IGISAgent {
         agentId: this.id,
         type: 'INFO',
         content: `Agent ${this.name} (${this.id}) initialized`,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
 
       this.status = 'AVAILABLE';
@@ -71,7 +66,7 @@ export class DataNormalizationAgent implements IGISAgent {
       throw error;
     }
   }
-  
+
   /**
    * Process a task
    * @param task The task to process
@@ -79,18 +74,18 @@ export class DataNormalizationAgent implements IGISAgent {
    */
   public async processTask(task: GISAgentTask): Promise<any> {
     console.log(`${this.name} (${this.id}) processing task ${task.id}...`);
-    
+
     try {
       // Log task start
       await this.logMessage('INFO', `Processing task ${task.id}: ${task.taskType}`);
-      
+
       // Validate the task
       if (!task.data) {
         throw new Error('Task data is required');
       }
-      
+
       let result;
-      
+
       // Process the task based on its type
       switch (task.taskType) {
         case GISTaskType.DATA_CLEANING:
@@ -99,10 +94,10 @@ export class DataNormalizationAgent implements IGISAgent {
         default:
           throw new Error(`Unsupported task type: ${task.taskType}`);
       }
-      
+
       // Log task completion
       await this.logMessage('INFO', `Task ${task.id} completed successfully`);
-      
+
       return result;
     } catch (error) {
       // Log task failure
@@ -110,7 +105,7 @@ export class DataNormalizationAgent implements IGISAgent {
       throw error;
     }
   }
-  
+
   /**
    * Clean and normalize GIS data
    * @param data The data to clean and normalize
@@ -118,11 +113,11 @@ export class DataNormalizationAgent implements IGISAgent {
    */
   private async cleanData(data: any): Promise<any> {
     const { dataset, options } = data;
-    
+
     if (!dataset) {
       throw new Error('Dataset is required for data cleaning');
     }
-    
+
     // Set default options if not provided
     const cleaningOptions = {
       normalizeAttributeNames: true,
@@ -130,15 +125,18 @@ export class DataNormalizationAgent implements IGISAgent {
       removeDuplicates: true,
       fillMissingValues: false,
       fixCoordinateIssues: true,
-      ...options
+      ...options,
     };
-    
-    await this.logMessage('INFO', `Cleaning GIS data with options: ${JSON.stringify(cleaningOptions)}`);
-    
+
+    await this.logMessage(
+      'INFO',
+      `Cleaning GIS data with options: ${JSON.stringify(cleaningOptions)}`
+    );
+
     try {
       // Create a copy of the dataset to avoid modifying the original
       const cleanedDataset = JSON.parse(JSON.stringify(dataset));
-      
+
       // Track changes made to the dataset
       const changes = {
         attributesNormalized: [],
@@ -147,35 +145,35 @@ export class DataNormalizationAgent implements IGISAgent {
         missingValuesFilled: 0,
         coordinatesFixed: 0,
         totalFeaturesProcessed: 0,
-        totalAttributesProcessed: 0
+        totalAttributesProcessed: 0,
       };
-      
+
       // Process features in dataset
       if (cleanedDataset.features && Array.isArray(cleanedDataset.features)) {
         // Count total features
         const initialFeatureCount = cleanedDataset.features.length;
         changes.totalFeaturesProcessed = initialFeatureCount;
-        
+
         // Normalize attribute names if enabled
         if (cleaningOptions.normalizeAttributeNames) {
           changes.attributesNormalized = this.normalizeAttributeNames(cleanedDataset);
         }
-        
+
         // Standardize data types if enabled
         if (cleaningOptions.standardizeDataTypes) {
           changes.dataTypesStandardized = this.standardizeDataTypes(cleanedDataset);
         }
-        
+
         // Fix coordinate issues if enabled
         if (cleaningOptions.fixCoordinateIssues) {
           changes.coordinatesFixed = this.fixCoordinateIssues(cleanedDataset);
         }
-        
+
         // Fill missing values if enabled
         if (cleaningOptions.fillMissingValues) {
           changes.missingValuesFilled = this.fillMissingValues(cleanedDataset);
         }
-        
+
         // Remove duplicates if enabled
         if (cleaningOptions.removeDuplicates) {
           const initialFeatures = cleanedDataset.features.length;
@@ -183,7 +181,7 @@ export class DataNormalizationAgent implements IGISAgent {
           changes.duplicatesRemoved = initialFeatures - cleanedDataset.features.length;
         }
       }
-      
+
       // Create cleaning result
       const cleaningResult = {
         cleanedDataset,
@@ -192,24 +190,27 @@ export class DataNormalizationAgent implements IGISAgent {
         summary: {
           featuresProcessed: changes.totalFeaturesProcessed,
           attributesProcessed: changes.totalAttributesProcessed,
-          issuesFixed: 
-            changes.attributesNormalized.length + 
-            changes.dataTypesStandardized.length + 
-            changes.duplicatesRemoved + 
-            changes.missingValuesFilled + 
-            changes.coordinatesFixed
-        }
+          issuesFixed:
+            changes.attributesNormalized.length +
+            changes.dataTypesStandardized.length +
+            changes.duplicatesRemoved +
+            changes.missingValuesFilled +
+            changes.coordinatesFixed,
+        },
       };
-      
-      await this.logMessage('INFO', `Data cleaning completed with ${cleaningResult.summary.issuesFixed} issues fixed`);
-      
+
+      await this.logMessage(
+        'INFO',
+        `Data cleaning completed with ${cleaningResult.summary.issuesFixed} issues fixed`
+      );
+
       return cleaningResult;
     } catch (error) {
       await this.logMessage('ERROR', `Data cleaning error: ${error.message}`);
       throw new Error(`Data cleaning failed: ${error.message}`);
     }
   }
-  
+
   /**
    * Normalize attribute names in the dataset
    * @param dataset The dataset to normalize
@@ -217,48 +218,48 @@ export class DataNormalizationAgent implements IGISAgent {
    */
   private normalizeAttributeNames(dataset: any): string[] {
     const normalizedAttributes: string[] = [];
-    
+
     // Example implementation - normalize attribute names
     if (dataset.features && dataset.features.length > 0) {
       // Get a sample feature to extract properties
       const sampleFeature = dataset.features[0];
-      
+
       if (sampleFeature.properties) {
         const properties = sampleFeature.properties;
         const oldKeys = Object.keys(properties);
-        
+
         // Create a mapping of old keys to normalized keys
         const keyMap: Record<string, string> = {};
-        
+
         for (const oldKey of oldKeys) {
           // Convert to camelCase
           const newKey = this.toCamelCase(oldKey);
-          
+
           if (oldKey !== newKey) {
             keyMap[oldKey] = newKey;
             normalizedAttributes.push(`${oldKey} -> ${newKey}`);
           }
         }
-        
+
         // Apply the key mapping to all features
         for (const feature of dataset.features) {
           if (feature.properties) {
             const newProperties: Record<string, any> = {};
-            
+
             for (const [oldKey, value] of Object.entries(feature.properties)) {
               const newKey = keyMap[oldKey] || oldKey;
               newProperties[newKey] = value;
             }
-            
+
             feature.properties = newProperties;
           }
         }
       }
     }
-    
+
     return normalizedAttributes;
   }
-  
+
   /**
    * Convert a string to camelCase
    * @param str The string to convert
@@ -267,19 +268,21 @@ export class DataNormalizationAgent implements IGISAgent {
   private toCamelCase(str: string): string {
     // Replace non-alphanumeric characters with spaces
     const cleanedStr = str.replace(/[^a-zA-Z0-9]/g, ' ');
-    
+
     // Split on spaces
     const words = cleanedStr.split(/\s+/);
-    
+
     // Convert to camelCase
-    return words.map((word, index) => {
-      if (index === 0) {
-        return word.toLowerCase();
-      }
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    }).join('');
+    return words
+      .map((word, index) => {
+        if (index === 0) {
+          return word.toLowerCase();
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join('');
   }
-  
+
   /**
    * Standardize data types in the dataset
    * @param dataset The dataset to standardize
@@ -287,12 +290,12 @@ export class DataNormalizationAgent implements IGISAgent {
    */
   private standardizeDataTypes(dataset: any): string[] {
     const standardizedAttributes: string[] = [];
-    
+
     // Example implementation - standardize data types
     if (dataset.features && dataset.features.length > 0) {
       // Get all attribute names
       const attributeNames = new Set<string>();
-      
+
       // Collect all possible attribute names
       for (const feature of dataset.features) {
         if (feature.properties) {
@@ -301,48 +304,48 @@ export class DataNormalizationAgent implements IGISAgent {
           }
         }
       }
-      
+
       // For each attribute, determine the best data type
       const attributeTypes: Record<string, string> = {};
-      
+
       for (const attributeName of attributeNames) {
         // Collect non-null values for the attribute
         const values = dataset.features
           .map(f => f.properties?.[attributeName])
           .filter(v => v !== null && v !== undefined);
-        
+
         if (values.length === 0) {
           continue;
         }
-        
+
         // Determine the best type for the attribute
         const bestType = this.determineBestType(values);
         attributeTypes[attributeName] = bestType;
-        
+
         // Convert all values to the best type
         let convertedCount = 0;
-        
+
         for (const feature of dataset.features) {
           if (feature.properties && feature.properties[attributeName] !== undefined) {
             const oldValue = feature.properties[attributeName];
             const newValue = this.convertToType(oldValue, bestType);
-            
+
             if (oldValue !== newValue) {
               feature.properties[attributeName] = newValue;
               convertedCount++;
             }
           }
         }
-        
+
         if (convertedCount > 0) {
           standardizedAttributes.push(`${attributeName} -> ${bestType} (${convertedCount} values)`);
         }
       }
     }
-    
+
     return standardizedAttributes;
   }
-  
+
   /**
    * Determine the best data type for a list of values
    * @param values The values to analyze
@@ -355,7 +358,7 @@ export class DataNormalizationAgent implements IGISAgent {
     let boolCount = 0;
     let dateCount = 0;
     let stringCount = 0;
-    
+
     for (const value of values) {
       if (typeof value === 'number') {
         if (Number.isInteger(value)) {
@@ -374,9 +377,9 @@ export class DataNormalizationAgent implements IGISAgent {
         }
       }
     }
-    
+
     const total = values.length;
-    
+
     // Determine the best type based on the distribution
     if (boolCount / total > 0.8) {
       return 'boolean';
@@ -392,7 +395,7 @@ export class DataNormalizationAgent implements IGISAgent {
       return 'string';
     }
   }
-  
+
   /**
    * Convert a value to a specific type
    * @param value The value to convert
@@ -403,7 +406,7 @@ export class DataNormalizationAgent implements IGISAgent {
     if (value === null || value === undefined) {
       return value;
     }
-    
+
     switch (type) {
       case 'integer':
         if (typeof value === 'string') {
@@ -450,11 +453,11 @@ export class DataNormalizationAgent implements IGISAgent {
       case 'string':
         return String(value);
     }
-    
+
     // Return the original value if conversion fails
     return value;
   }
-  
+
   /**
    * Fix coordinate issues in the dataset
    * @param dataset The dataset to fix
@@ -462,13 +465,13 @@ export class DataNormalizationAgent implements IGISAgent {
    */
   private fixCoordinateIssues(dataset: any): number {
     let fixedCount = 0;
-    
+
     // Example implementation - fix coordinate issues
     if (dataset.features && dataset.features.length > 0) {
       for (const feature of dataset.features) {
         if (feature.geometry && feature.geometry.coordinates) {
           const coordinates = feature.geometry.coordinates;
-          
+
           // Handle different geometry types
           switch (feature.geometry.type) {
             case 'Point':
@@ -523,10 +526,10 @@ export class DataNormalizationAgent implements IGISAgent {
         }
       }
     }
-    
+
     return fixedCount;
   }
-  
+
   /**
    * Fix issues in point coordinates
    * @param point The point coordinates to fix
@@ -536,24 +539,24 @@ export class DataNormalizationAgent implements IGISAgent {
     if (!point || point.length < 2) {
       return false;
     }
-    
+
     let fixed = false;
-    
+
     // Fix invalid longitude values (beyond -180 to 180)
     if (point[0] < -180 || point[0] > 180) {
-      point[0] = ((point[0] + 180) % 360 + 360) % 360 - 180;
+      point[0] = ((((point[0] + 180) % 360) + 360) % 360) - 180;
       fixed = true;
     }
-    
+
     // Fix invalid latitude values (beyond -90 to 90)
     if (point[1] < -90 || point[1] > 90) {
       point[1] = Math.max(-90, Math.min(90, point[1]));
       fixed = true;
     }
-    
+
     return fixed;
   }
-  
+
   /**
    * Fill missing values in the dataset
    * @param dataset The dataset to fill
@@ -561,12 +564,12 @@ export class DataNormalizationAgent implements IGISAgent {
    */
   private fillMissingValues(dataset: any): number {
     let filledCount = 0;
-    
+
     // Example implementation - fill missing values
     if (dataset.features && dataset.features.length > 0) {
       // Get all attribute names
       const attributeNames = new Set<string>();
-      
+
       // Collect all possible attribute names
       for (const feature of dataset.features) {
         if (feature.properties) {
@@ -575,23 +578,23 @@ export class DataNormalizationAgent implements IGISAgent {
           }
         }
       }
-      
+
       // For each attribute, compute default values
       const defaultValues: Record<string, any> = {};
-      
+
       for (const attributeName of attributeNames) {
         // Collect non-null values for the attribute
         const values = dataset.features
           .map(f => f.properties?.[attributeName])
           .filter(v => v !== null && v !== undefined);
-        
+
         if (values.length === 0) {
           continue;
         }
-        
+
         // Compute a default value based on the data type
         const type = this.determineBestType(values);
-        
+
         switch (type) {
           case 'integer':
           case 'float':
@@ -614,25 +617,28 @@ export class DataNormalizationAgent implements IGISAgent {
             break;
         }
       }
-      
+
       // Fill missing values in all features
       for (const feature of dataset.features) {
         if (!feature.properties) {
           feature.properties = {};
         }
-        
+
         for (const [attributeName, defaultValue] of Object.entries(defaultValues)) {
-          if (feature.properties[attributeName] === null || feature.properties[attributeName] === undefined) {
+          if (
+            feature.properties[attributeName] === null ||
+            feature.properties[attributeName] === undefined
+          ) {
             feature.properties[attributeName] = defaultValue;
             filledCount++;
           }
         }
       }
     }
-    
+
     return filledCount;
   }
-  
+
   /**
    * Remove duplicate features from the dataset
    * @param dataset The dataset to deduplicate
@@ -641,26 +647,26 @@ export class DataNormalizationAgent implements IGISAgent {
     if (!dataset.features || !Array.isArray(dataset.features)) {
       return;
     }
-    
+
     // Example implementation - remove duplicates
-    
+
     // Create a map to track unique features
     const uniqueFeatures = new Map<string, any>();
-    
+
     for (const feature of dataset.features) {
       // Create a key that uniquely identifies the feature
       const key = this.createFeatureKey(feature);
-      
+
       // Only keep the first occurrence of each feature
       if (!uniqueFeatures.has(key)) {
         uniqueFeatures.set(key, feature);
       }
     }
-    
+
     // Replace the features array with the unique features
     dataset.features = Array.from(uniqueFeatures.values());
   }
-  
+
   /**
    * Create a key that uniquely identifies a feature
    * @param feature The feature to create a key for
@@ -670,10 +676,10 @@ export class DataNormalizationAgent implements IGISAgent {
     // Create a key based on the feature's geometry and properties
     const geometryKey = feature.geometry ? JSON.stringify(feature.geometry) : 'null';
     const propertiesKey = feature.properties ? JSON.stringify(feature.properties) : 'null';
-    
+
     return `${geometryKey}|${propertiesKey}`;
   }
-  
+
   /**
    * Log a message from the agent
    * @param type The message type
@@ -685,16 +691,16 @@ export class DataNormalizationAgent implements IGISAgent {
         agentId: this.id,
         type,
         content,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
-      
+
       await this.storage.createAgentMessage(message);
     } catch (error) {
       console.error(`Failed to log message from agent ${this.id}:`, error);
       // Don't throw here, as this is a non-critical operation
     }
   }
-  
+
   /**
    * Shutdown the agent
    */
@@ -702,13 +708,13 @@ export class DataNormalizationAgent implements IGISAgent {
     if (!this.isInitialized) {
       return;
     }
-    
+
     try {
       console.log(`Shutting down ${this.name} (${this.id})...`);
-      
+
       // Log agent shutdown
       await this.logMessage('INFO', `Agent ${this.name} (${this.id}) shutting down`);
-      
+
       this.status = 'OFFLINE';
       this.isInitialized = false;
       console.log(`${this.name} (${this.id}) shut down successfully`);

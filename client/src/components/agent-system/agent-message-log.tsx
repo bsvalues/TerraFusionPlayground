@@ -1,6 +1,6 @@
 /**
  * Agent Message Log Component
- * 
+ *
  * Displays real-time agent messages and activities in a scrollable log format.
  * Captures and formats various message types from the agent WebSocket system.
  */
@@ -9,21 +9,17 @@ import { useAgentWebSocket } from '@/hooks/use-agent-websocket';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  Collapsible, 
-  CollapsibleContent, 
-  CollapsibleTrigger 
-} from '@/components/ui/collapsible';
-import { 
-  AlertCircle, 
-  MessageSquare, 
-  Clock, 
-  Info, 
-  AlertTriangle, 
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  AlertCircle,
+  MessageSquare,
+  Clock,
+  Info,
+  AlertTriangle,
   Activity,
-  Trash2, 
+  Trash2,
   Zap,
-  Download 
+  Download,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 
@@ -33,7 +29,7 @@ export enum AgentLogType {
   ACTIVITY = 'activity',
   NOTIFICATION = 'notification',
   COORDINATION = 'coordination',
-  ERROR = 'error'
+  ERROR = 'error',
 }
 
 // Represents an entry in the agent message log
@@ -60,7 +56,7 @@ export function AgentMessageLog({
   maxMessages = 100,
   className = '',
   showControls = true,
-  height = 'h-96'
+  height = 'h-96',
 }: AgentMessageLogProps) {
   const [messages, setMessages] = useState<AgentLogEntry[]>([]);
   const [filter, setFilter] = useState<AgentLogType | null>(null);
@@ -93,7 +89,7 @@ export function AgentMessageLog({
   useEffect(() => {
     // Each handler converts incoming messages to our AgentLogEntry format
     const handlers = [
-      on('agent_message', (data) => {
+      on('agent_message', data => {
         addMessage({
           id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           type: AgentLogType.MESSAGE,
@@ -101,50 +97,50 @@ export function AgentMessageLog({
           content: data.message,
           sender: data.message.senderId,
           recipient: data.message.recipientId,
-          priority: data.message.priority
+          priority: data.message.priority,
         });
       }),
-      
-      on('agent_activity', (data) => {
+
+      on('agent_activity', data => {
         addMessage({
           id: `act_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           type: AgentLogType.ACTIVITY,
           timestamp: new Date(),
           content: data.message,
-          sender: data.message.senderId
+          sender: data.message.senderId,
         });
       }),
-      
-      on('agent_coordination', (data) => {
+
+      on('agent_coordination', data => {
         addMessage({
           id: `coord_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           type: AgentLogType.COORDINATION,
           timestamp: new Date(),
           content: data.message,
           sender: data.message.senderId,
-          recipient: data.message.recipientId
+          recipient: data.message.recipientId,
         });
       }),
-      
-      on('notification', (data) => {
+
+      on('notification', data => {
         addMessage({
           id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           type: AgentLogType.NOTIFICATION,
           timestamp: new Date(),
           content: data,
-          level: data.level || 'info'
+          level: data.level || 'info',
         });
       }),
-      
-      on('error', (data) => {
+
+      on('error', data => {
         addMessage({
           id: `err_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           type: AgentLogType.ERROR,
           timestamp: new Date(),
           content: data,
-          level: 'error'
+          level: 'error',
         });
-      })
+      }),
     ];
 
     // Add an initial message when connecting
@@ -154,7 +150,7 @@ export function AgentMessageLog({
         type: AgentLogType.NOTIFICATION,
         timestamp: new Date(),
         content: { message: 'Connected to agent system' },
-        level: 'info'
+        level: 'info',
       });
     }
 
@@ -173,10 +169,10 @@ export function AgentMessageLog({
       exportDate: new Date().toISOString(),
       messages: messages.map(message => ({
         ...message,
-        timestamp: message.timestamp.toISOString()
-      }))
+        timestamp: message.timestamp.toISOString(),
+      })),
     };
-    
+
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -188,9 +184,7 @@ export function AgentMessageLog({
     URL.revokeObjectURL(url);
   };
 
-  const filteredMessages = filter 
-    ? messages.filter(message => message.type === filter)
-    : messages;
+  const filteredMessages = filter ? messages.filter(message => message.type === filter) : messages;
 
   const getMessageIcon = (type: AgentLogType) => {
     switch (type) {
@@ -216,7 +210,7 @@ export function AgentMessageLog({
     if (level === 'warning') {
       return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
     }
-    
+
     switch (type) {
       case AgentLogType.MESSAGE:
         return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
@@ -232,10 +226,8 @@ export function AgentMessageLog({
   };
 
   const toggleExpand = (id: string) => {
-    setMessages(prev => 
-      prev.map(msg => 
-        msg.id === id ? { ...msg, expanded: !msg.expanded } : msg
-      )
+    setMessages(prev =>
+      prev.map(msg => (msg.id === id ? { ...msg, expanded: !msg.expanded } : msg))
     );
   };
 
@@ -299,42 +291,32 @@ export function AgentMessageLog({
               <Clock className="h-3 w-3 mr-1" />
               {autoScroll ? 'Disable' : 'Enable'} Auto-scroll
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs"
-              onClick={clearMessages}
-            >
+            <Button variant="outline" size="sm" className="text-xs" onClick={clearMessages}>
               <Trash2 className="h-3 w-3 mr-1" />
               Clear
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs"
-              onClick={exportMessages}
-            >
+            <Button variant="outline" size="sm" className="text-xs" onClick={exportMessages}>
               <Download className="h-3 w-3 mr-1" />
               Export
             </Button>
           </div>
         </div>
       )}
-      
+
       <ScrollArea className={`${height} px-4`} ref={scrollRef}>
         {filteredMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <Info className="h-8 w-8 mb-2 opacity-50" />
             <p>No agent messages yet</p>
             <p className="text-xs">
-              {connectionStatus === 'connected' 
-                ? 'Waiting for activity...' 
+              {connectionStatus === 'connected'
+                ? 'Waiting for activity...'
                 : 'Connect to the agent system to see messages'}
             </p>
           </div>
         ) : (
           <div className="space-y-2 py-4">
-            {filteredMessages.map((message) => (
+            {filteredMessages.map(message => (
               <Collapsible
                 key={message.id}
                 open={message.expanded}
@@ -347,9 +329,12 @@ export function AgentMessageLog({
                       <div className="font-medium text-sm">
                         {message.type === AgentLogType.MESSAGE && 'Agent Message'}
                         {message.type === AgentLogType.ACTIVITY && 'Agent Activity'}
-                        {message.type === AgentLogType.NOTIFICATION && 
-                          (message.level === 'error' ? 'Error' :
-                           message.level === 'warning' ? 'Warning' : 'Notification')}
+                        {message.type === AgentLogType.NOTIFICATION &&
+                          (message.level === 'error'
+                            ? 'Error'
+                            : message.level === 'warning'
+                              ? 'Warning'
+                              : 'Notification')}
                         {message.type === AgentLogType.COORDINATION && 'Coordination'}
                         {message.type === AgentLogType.ERROR && 'Error'}
                       </div>
@@ -376,12 +361,14 @@ export function AgentMessageLog({
                     </CollapsibleTrigger>
                   </div>
                 </div>
-                
+
                 <CollapsibleContent>
                   <div className="border-t mt-2 pt-2">
                     {message.type === AgentLogType.NOTIFICATION && (
                       <div className="text-sm">
-                        {message.content.title && <p className="font-bold">{message.content.title}</p>}
+                        {message.content.title && (
+                          <p className="font-bold">{message.content.title}</p>
+                        )}
                         <p>{message.content.message}</p>
                       </div>
                     )}
@@ -391,8 +378,8 @@ export function AgentMessageLog({
                         <p>{message.content.message}</p>
                       </div>
                     )}
-                    {(message.type === AgentLogType.MESSAGE || 
-                      message.type === AgentLogType.ACTIVITY || 
+                    {(message.type === AgentLogType.MESSAGE ||
+                      message.type === AgentLogType.ACTIVITY ||
                       message.type === AgentLogType.COORDINATION) && (
                       <pre className="text-xs bg-black/10 p-2 rounded overflow-auto">
                         {JSON.stringify(message.content, null, 2)}

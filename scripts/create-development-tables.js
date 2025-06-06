@@ -1,9 +1,9 @@
 /**
  * Development Platform Database Tables Setup Script
- * 
+ *
  * This script creates all the required database tables for the TaxI_AI Development Platform.
  * It sets up the dev_projects, dev_project_files, and dev_preview_settings tables.
- * 
+ *
  * Usage: node scripts/create-development-tables.js
  */
 
@@ -81,7 +81,7 @@ if (require.main === module) {
       console.log('Development tables creation complete');
       process.exit(0);
     })
-    .catch((error) => {
+    .catch(error => {
       console.error('Failed to create development tables:', error);
       process.exit(1);
     });

@@ -1,6 +1,6 @@
 /**
  * Logger for the compliance module
- * 
+ *
  * Provides structured logging capabilities with appropriate
  * security and privacy controls for compliance-related logs.
  */
@@ -9,7 +9,7 @@ export enum LogLevel {
   DEBUG = 'debug',
   INFO = 'info',
   WARN = 'warn',
-  ERROR = 'error'
+  ERROR = 'error',
 }
 
 export interface LogEntry {
@@ -82,7 +82,7 @@ export class Logger {
       level,
       message,
       component: this.component,
-      data
+      data,
     };
 
     // Process the log entry

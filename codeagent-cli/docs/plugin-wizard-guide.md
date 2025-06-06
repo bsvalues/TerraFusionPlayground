@@ -29,6 +29,7 @@ codeagent plugin --wizard my-plugin
 The wizard guides you through the process of creating a new plugin with the following steps:
 
 1. **Basic Information**
+
    - Plugin name (must be unique)
    - Version number
    - Description
@@ -36,12 +37,14 @@ The wizard guides you through the process of creating a new plugin with the foll
    - Repository URL (optional)
 
 2. **Features Selection**
+
    - Tools: Extend agent capabilities
    - Hooks: Run code at specific lifecycle events
    - Commands: Add new CLI commands
    - Settings: Configurable plugin options
 
 3. **Configuration for Each Feature**
+
    - Tools: Define tool files
    - Hooks: Select hook types and define hook files
    - Commands: Define command files

@@ -9,17 +9,29 @@ import { Grid } from '@/components/design-system/layout/Grid';
 import { Section } from '@/components/design-system/layout/Section';
 import { Metric } from '@/components/design-system/data-display/Metric';
 import { DataCard } from '@/components/design-system/data-display/DataCard';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/design-system/data-display/Table';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/design-system/navigation/Tabs';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/design-system/data-display/Table';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@/components/design-system/navigation/Tabs';
 
 // Icons
-import { 
-  Building, 
-  FileSpreadsheet, 
-  MapPin, 
-  TrendingUp, 
-  TrendingDown, 
-  ArrowUpRight, 
+import {
+  Building,
+  FileSpreadsheet,
+  MapPin,
+  TrendingUp,
+  TrendingDown,
+  ArrowUpRight,
   ArrowDownRight,
   Home,
   Calendar,
@@ -29,7 +41,7 @@ import {
   BarChart3,
   PieChart,
   LineChart,
-  Download
+  Download,
 } from 'lucide-react';
 
 // Service imports for real data
@@ -40,23 +52,23 @@ import { getRecentPropertyChanges } from '@/services/change-tracking-service';
 const NewDashboard: React.FC = () => {
   // State for dashboard data
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year'>('month');
-  
+
   // Fetch real property statistics data
   const propertyStatsQuery = useQuery({
     queryKey: ['/api/property-statistics', timeRange],
-    queryFn: () => getPropertyStatistics(timeRange)
+    queryFn: () => getPropertyStatistics(timeRange),
   });
-  
+
   // Fetch real assessment metrics
   const assessmentMetricsQuery = useQuery({
     queryKey: ['/api/assessment-metrics', timeRange],
-    queryFn: () => getAssessmentMetrics(timeRange)
+    queryFn: () => getAssessmentMetrics(timeRange),
   });
-  
+
   // Fetch real recent changes
   const recentChangesQuery = useQuery({
     queryKey: ['/api/property-changes/recent'],
-    queryFn: () => getRecentPropertyChanges(10) // Fetch 10 most recent changes
+    queryFn: () => getRecentPropertyChanges(10), // Fetch 10 most recent changes
   });
 
   return (
@@ -72,9 +84,9 @@ const NewDashboard: React.FC = () => {
 
         {/* Time range selector */}
         <div className="flex justify-end mb-4">
-          <Tabs 
-            value={timeRange} 
-            onValueChange={(value) => setTimeRange(value as any)}
+          <Tabs
+            value={timeRange}
+            onValueChange={value => setTimeRange(value as any)}
             variant="pills"
           >
             <TabsList>
@@ -97,7 +109,7 @@ const NewDashboard: React.FC = () => {
             </TabsList>
           </Tabs>
         </div>
-        
+
         {/* Key metrics */}
         <Section title="Key Metrics" description="Overview of property assessment statistics">
           <Grid cols={4} colsMd={2} colsSm={1} gap={4}>
@@ -105,40 +117,40 @@ const NewDashboard: React.FC = () => {
             <Metric
               label="Total Properties"
               value={propertyStatsQuery.data?.totalProperties || 0}
-              valueFormatter={(val) => Number(val).toLocaleString()}
+              valueFormatter={val => Number(val).toLocaleString()}
               delta={propertyStatsQuery.data?.propertyDelta}
               icon={<Building className="h-5 w-5" />}
               variant="stacked"
               isLoading={propertyStatsQuery.isLoading}
             />
-            
+
             {/* Assessed Value Metric */}
             <Metric
               label="Total Assessed Value"
               value={propertyStatsQuery.data?.totalAssessedValue || 0}
-              valueFormatter={(val) => `$${Number(val).toLocaleString()}`}
+              valueFormatter={val => `$${Number(val).toLocaleString()}`}
               delta={propertyStatsQuery.data?.valueDelta}
               icon={<FileSpreadsheet className="h-5 w-5" />}
               variant="stacked"
               isLoading={propertyStatsQuery.isLoading}
             />
-            
+
             {/* Median Value Metric */}
             <Metric
               label="Median Property Value"
               value={propertyStatsQuery.data?.medianValue || 0}
-              valueFormatter={(val) => `$${Number(val).toLocaleString()}`}
+              valueFormatter={val => `$${Number(val).toLocaleString()}`}
               delta={propertyStatsQuery.data?.medianDelta}
               icon={<TrendingUp className="h-5 w-5" />}
               variant="stacked"
               isLoading={propertyStatsQuery.isLoading}
             />
-            
+
             {/* Property Changes Metric */}
             <Metric
               label="Property Changes"
               value={propertyStatsQuery.data?.changesCount || 0}
-              valueFormatter={(val) => Number(val).toLocaleString()}
+              valueFormatter={val => Number(val).toLocaleString()}
               delta={propertyStatsQuery.data?.changesDelta}
               icon={<MapPin className="h-5 w-5" />}
               variant="stacked"
@@ -146,9 +158,12 @@ const NewDashboard: React.FC = () => {
             />
           </Grid>
         </Section>
-        
+
         {/* Data visualizations */}
-        <Section title="Data Analytics" description="Property assessment visualizations and analytics">
+        <Section
+          title="Data Analytics"
+          description="Property assessment visualizations and analytics"
+        >
           <Grid cols={2} colsSm={1} gap={4}>
             {/* Assessment Value Trends */}
             <DataCard
@@ -176,7 +191,7 @@ const NewDashboard: React.FC = () => {
                 </button>
               }
             />
-            
+
             {/* Property Distribution */}
             <DataCard
               title="Property Type Distribution"
@@ -205,7 +220,7 @@ const NewDashboard: React.FC = () => {
             />
           </Grid>
         </Section>
-        
+
         {/* Recent Activity */}
         <Section title="Recent Activity" description="Latest property assessment changes">
           <DataCard
@@ -227,23 +242,25 @@ const NewDashboard: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentChangesQuery.data?.map((change) => (
+                {recentChangesQuery.data?.map(change => (
                   <TableRow key={change.id}>
                     <TableCell>{change.propertyId}</TableCell>
                     <TableCell>{change.address}</TableCell>
                     <TableCell>{change.changeType}</TableCell>
-                    <TableCell>{typeof change.oldValue === 'number' ? 
-                      `$${Number(change.oldValue).toLocaleString()}` : 
-                      change.oldValue}
+                    <TableCell>
+                      {typeof change.oldValue === 'number'
+                        ? `$${Number(change.oldValue).toLocaleString()}`
+                        : change.oldValue}
                     </TableCell>
-                    <TableCell>{typeof change.newValue === 'number' ? 
-                      `$${Number(change.newValue).toLocaleString()}` : 
-                      change.newValue}
+                    <TableCell>
+                      {typeof change.newValue === 'number'
+                        ? `$${Number(change.newValue).toLocaleString()}`
+                        : change.newValue}
                     </TableCell>
                     <TableCell>{new Date(change.timestamp).toLocaleDateString()}</TableCell>
                   </TableRow>
                 ))}
-                
+
                 {/* Show a message if no data */}
                 {recentChangesQuery.data && recentChangesQuery.data.length === 0 && (
                   <TableRow>
@@ -256,7 +273,7 @@ const NewDashboard: React.FC = () => {
             </Table>
           </DataCard>
         </Section>
-        
+
         {/* Alert Cards */}
         <Section title="Alerts & Notifications" description="Important updates requiring attention">
           <Grid cols={3} colsMd={2} colsSm={1} gap={4}>
@@ -271,11 +288,13 @@ const NewDashboard: React.FC = () => {
                   <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-3 text-emerald-600 dark:text-emerald-400 mb-3">
                     <AlertCircle className="h-6 w-6" />
                   </div>
-                  <p className="text-sm text-muted-foreground">All systems are synchronized and up-to-date</p>
+                  <p className="text-sm text-muted-foreground">
+                    All systems are synchronized and up-to-date
+                  </p>
                 </div>
               }
             />
-            
+
             <DataCard
               title="Field Validation Errors"
               description="3 properties need attention"
@@ -287,12 +306,14 @@ const NewDashboard: React.FC = () => {
                   <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-3 text-amber-600 dark:text-amber-400 mb-3">
                     <AlertCircle className="h-6 w-6" />
                   </div>
-                  <p className="text-sm text-muted-foreground">Field validation errors detected in 3 properties</p>
+                  <p className="text-sm text-muted-foreground">
+                    Field validation errors detected in 3 properties
+                  </p>
                 </div>
               }
               linkUrl="/data-validation"
             />
-            
+
             <DataCard
               title="Pending Approvals"
               description="8 items awaiting review"
@@ -304,7 +325,9 @@ const NewDashboard: React.FC = () => {
                   <div className="rounded-full bg-blue-100 dark:bg-blue-900/30 p-3 text-blue-600 dark:text-blue-400 mb-3">
                     <Users className="h-6 w-6" />
                   </div>
-                  <p className="text-sm text-muted-foreground">8 assessments are awaiting your approval</p>
+                  <p className="text-sm text-muted-foreground">
+                    8 assessments are awaiting your approval
+                  </p>
                 </div>
               }
               linkUrl="/approvals"

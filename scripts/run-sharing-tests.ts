@@ -1,4 +1,3 @@
-
 import { SharingUtilsService } from '../server/services/sharing-utils';
 import fs from 'fs';
 import path from 'path';
@@ -13,12 +12,12 @@ const testShare = {
   propertyId: 'BC001',
   title: 'Test Property Insight',
   insightType: 'story',
-  insightData: { 
+  insightData: {
     text: 'This is a test property insight for BC001.',
     sections: [
       { title: 'Overview', content: 'This property is located in Benton County.' },
-      { title: 'Valuation', content: 'The assessed value is $250,000.' }
-    ]
+      { title: 'Valuation', content: 'The assessed value is $250,000.' },
+    ],
   },
   format: 'detailed',
   createdBy: 1,
@@ -28,7 +27,7 @@ const testShare = {
   updatedAt: new Date(),
   isPublic: true,
   password: null,
-  allowedDomains: null
+  allowedDomains: null,
 };
 
 async function run() {
@@ -40,31 +39,31 @@ async function run() {
       margin: 4,
       color: {
         dark: '#000000',
-        light: '#FFFFFF'
-      }
+        light: '#FFFFFF',
+      },
     };
-    
+
     const qrCodeDataUrl = await sharingUtils.generateQRCode(testShare.shareId, qrOptions);
     console.log('QR code data URL received, length:', qrCodeDataUrl.length);
-    
+
     // Save QR code to file
-    const base64Data = qrCodeDataUrl.replace(/^data:image/png;base64,/, '');
+    const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, '');
     const filePath = path.join(__dirname, '..', 'test-qrcode.png');
     fs.writeFileSync(filePath, base64Data, 'base64');
     console.log(`QR code saved to ${filePath}`);
-    
+
     // Test PDF export data
     console.log('Preparing PDF export data...');
     const pdfOptions = {
       title: 'Test Property Insight Report',
-      author: 'Benton County Assessor\'s Office',
+      author: "Benton County Assessor's Office",
       includeImages: true,
-      includeMetadata: true
+      includeMetadata: true,
     };
-    
+
     const pdfData = sharingUtils.preparePDFExportData(testShare, pdfOptions);
     console.log('PDF export data:', JSON.stringify(pdfData, null, 2));
-    
+
     console.log('All tests completed successfully!');
   } catch (error) {
     console.error('Test failed:', error);

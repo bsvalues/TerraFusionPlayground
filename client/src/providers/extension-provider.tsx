@@ -53,12 +53,9 @@ export function ExtensionProvider({ children }: ExtensionProviderProps) {
   const refreshExtensions = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      await Promise.all([
-        fetchExtensions(),
-        fetchWebviews()
-      ]);
+      await Promise.all([fetchExtensions(), fetchWebviews()]);
     } finally {
       setIsLoading(false);
     }
@@ -123,11 +120,7 @@ export function ExtensionProvider({ children }: ExtensionProviderProps) {
     updateExtensionSettings,
   };
 
-  return (
-    <ExtensionContext.Provider value={value}>
-      {children}
-    </ExtensionContext.Provider>
-  );
+  return <ExtensionContext.Provider value={value}>{children}</ExtensionContext.Provider>;
 }
 
 export function useExtension() {

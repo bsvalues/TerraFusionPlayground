@@ -1,12 +1,12 @@
 import { db } from '../../db';
 import { eq } from 'drizzle-orm';
-import { 
-  devProjects, 
-  DevProjectType, 
+import {
+  devProjects,
+  DevProjectType,
   DevProjectStatus,
   insertDevProjectSchema,
   type DevProject,
-  type InsertDevProject
+  type InsertDevProject,
 } from '../../../shared/schema';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -27,15 +27,18 @@ class ProjectManager implements ProjectManagerInterface {
    */
   async createProject(project: InsertDevProject): Promise<DevProject> {
     const validatedData = insertDevProjectSchema.parse(project);
-    
+
     const projectId = uuidv4();
-    const newProject = await db.insert(devProjects).values({
-      ...validatedData,
-      projectId,
-      lastUpdated: new Date(),
-      createdAt: new Date()
-    }).returning();
-    
+    const newProject = await db
+      .insert(devProjects)
+      .values({
+        ...validatedData,
+        projectId,
+        lastUpdated: new Date(),
+        createdAt: new Date(),
+      })
+      .returning();
+
     return newProject[0];
   }
 
@@ -58,14 +61,14 @@ class ProjectManager implements ProjectManagerInterface {
    * Update a project
    */
   async updateProject(
-    projectId: string, 
+    projectId: string,
     project: Partial<InsertDevProject>
   ): Promise<DevProject | null> {
     const result = await db
       .update(devProjects)
       .set({
         ...project,
-        lastUpdated: new Date()
+        lastUpdated: new Date(),
       })
       .where(eq(devProjects.projectId, projectId))
       .returning();
@@ -103,15 +106,7 @@ class ProjectManager implements ProjectManagerInterface {
    * Get available programming languages
    */
   getProjectLanguages(): string[] {
-    return [
-      'javascript',
-      'typescript',
-      'python',
-      'go',
-      'rust',
-      'java',
-      'csharp',
-    ];
+    return ['javascript', 'typescript', 'python', 'go', 'rust', 'java', 'csharp'];
   }
 }
 

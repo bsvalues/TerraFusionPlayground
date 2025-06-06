@@ -1,6 +1,6 @@
 /**
  * FTP Data Processor Service
- * 
+ *
  * This service helps process and transform data files that have been downloaded
  * from the FTP server. It handles various formats commonly used in property assessment
  * systems, including CSV, fixed-width formats, and XML files.
@@ -43,7 +43,7 @@ interface ProcessingResult {
 
 /**
  * FTP Data Processor Service
- * 
+ *
  * This service provides utilities for processing various data formats
  * commonly used in property assessment and tax data.
  */
@@ -54,7 +54,7 @@ export class FtpDataProcessor {
 
   /**
    * Constructor
-   * 
+   *
    * @param storage Storage interface
    * @param downloadDir Directory where FTP files are downloaded to
    * @param outputDir Directory where processed files will be saved
@@ -76,19 +76,22 @@ export class FtpDataProcessor {
 
   /**
    * Process a file from the downloads directory
-   * 
+   *
    * @param filePath Relative path to the file in the downloads directory
    * @param options Processing options
    * @returns Processing results
    */
-  public async processFile(filePath: string, options: ProcessingOptions = {}): Promise<ProcessingResult> {
+  public async processFile(
+    filePath: string,
+    options: ProcessingOptions = {}
+  ): Promise<ProcessingResult> {
     const startTime = Date.now();
     const fullPath = path.join(this.downloadDir, filePath);
     const result: ProcessingResult = {
       recordsProcessed: 0,
       recordsSkipped: 0,
       errors: [],
-      duration: 0
+      duration: 0,
     };
 
     // Verify file exists
@@ -144,7 +147,6 @@ export class FtpDataProcessor {
 
         fs.writeFileSync(outputPath, JSON.stringify(processedData, null, 2));
         result.outputPath = outputPath;
-
       } else if (targetFormat === 'db') {
         // Store directly in database
         if (!options.tableName) {
@@ -153,10 +155,12 @@ export class FtpDataProcessor {
           await this.storeInDatabase(processedData, options.tableName, options.batchSize || 100);
         }
       }
-
     } catch (error: any) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error('Error processing FTP data:', { error: errorMessage, context: { file: filePath, timestamp: new Date().toISOString() }});
+      logger.error('Error processing FTP data:', {
+        error: errorMessage,
+        context: { file: filePath, timestamp: new Date().toISOString() },
+      });
 
       // Emit error event for monitoring
       //this.emit('processingError', { //this.emit is not defined in this class
@@ -174,7 +178,7 @@ export class FtpDataProcessor {
 
   /**
    * Detect the format of a file based on its content and extension
-   * 
+   *
    * @param filePath Path to the file
    * @returns Detected format
    */
@@ -213,7 +217,7 @@ export class FtpDataProcessor {
 
   /**
    * Process a CSV file
-   * 
+   *
    * @param filePath Path to the CSV file
    * @param options Processing options
    * @returns Processed data as array of objects
@@ -228,7 +232,7 @@ export class FtpDataProcessor {
       delimiter,
       columns: hasHeaderRow,
       skip_empty_lines: true,
-      trim: true
+      trim: true,
     };
 
     const records = csvParse(fileContent, parseOptions);
@@ -237,12 +241,15 @@ export class FtpDataProcessor {
 
   /**
    * Process a fixed-width file
-   * 
+   *
    * @param filePath Path to the fixed-width file
    * @param options Processing options
    * @returns Processed data as array of objects
    */
-  private async processFixedWidthFile(filePath: string, options: ProcessingOptions): Promise<any[]> {
+  private async processFixedWidthFile(
+    filePath: string,
+    options: ProcessingOptions
+  ): Promise<any[]> {
     const fileContent = fs.readFileSync(filePath, 'utf8');
     const lines = fileContent.split('\n').filter(line => line.trim().length > 0);
     const result: any[] = [];
@@ -279,7 +286,7 @@ export class FtpDataProcessor {
 
   /**
    * Process an XML file
-   * 
+   *
    * @param filePath Path to the XML file
    * @param options Processing options
    * @returns Processed data as array of objects
@@ -326,7 +333,7 @@ export class FtpDataProcessor {
 
   /**
    * Process a JSON file
-   * 
+   *
    * @param filePath Path to the JSON file
    * @param options Processing options
    * @returns Processed data as array of objects
@@ -361,7 +368,7 @@ export class FtpDataProcessor {
 
   /**
    * Apply field mappings to transform data
-   * 
+   *
    * @param data Array of data records
    * @param mappings Field mappings
    * @returns Transformed data
@@ -382,12 +389,16 @@ export class FtpDataProcessor {
 
   /**
    * Store processed data in the database
-   * 
+   *
    * @param data Data to store
    * @param tableName Target table name
    * @param batchSize Batch size for bulk inserts
    */
-  private async storeInDatabase(data: any[], tableName: string, batchSize: number = 100): Promise<void> {
+  private async storeInDatabase(
+    data: any[],
+    tableName: string,
+    batchSize: number = 100
+  ): Promise<void> {
     try {
       // Process in batches to avoid memory issues with large datasets
       for (let i = 0; i < data.length; i += batchSize) {
@@ -408,12 +419,15 @@ export class FtpDataProcessor {
 
   /**
    * Process all files in a directory
-   * 
+   *
    * @param dirPath Relative path to directory in the downloads folder
    * @param options Processing options
    * @returns Array of processing results
    */
-  public async processDirectory(dirPath: string, options: ProcessingOptions = {}): Promise<ProcessingResult[]> {
+  public async processDirectory(
+    dirPath: string,
+    options: ProcessingOptions = {}
+  ): Promise<ProcessingResult[]> {
     const results: ProcessingResult[] = [];
     const fullDirPath = path.join(this.downloadDir, dirPath);
 
@@ -422,12 +436,13 @@ export class FtpDataProcessor {
         recordsProcessed: 0,
         recordsSkipped: 0,
         errors: [`Directory not found: ${fullDirPath}`],
-        duration: 0
+        duration: 0,
       };
       return [result];
     }
 
-    const files = fs.readdirSync(fullDirPath)
+    const files = fs
+      .readdirSync(fullDirPath)
       .filter(file => fs.statSync(path.join(fullDirPath, file)).isFile());
 
     for (const file of files) {
@@ -441,7 +456,7 @@ export class FtpDataProcessor {
 
   /**
    * Get a summary of files in the downloads directory
-   * 
+   *
    * @param dirPath Optional subdirectory
    * @returns Summary of files by type and size
    */
@@ -455,15 +470,15 @@ export class FtpDataProcessor {
     const summary = {
       totalFiles: 0,
       totalSize: 0,
-      byExtension: {} as Record<string, { count: number, size: number }>,
+      byExtension: {} as Record<string, { count: number; size: number }>,
       byType: {
         csv: 0,
         xml: 0,
         json: 0,
         text: 0,
-        other: 0
+        other: 0,
       },
-      recentFiles: [] as Array<{ name: string, path: string, size: number, modified: Date }>
+      recentFiles: [] as Array<{ name: string; path: string; size: number; modified: Date }>,
     };
 
     const processDirectory = (dirPath: string) => {
@@ -506,7 +521,7 @@ export class FtpDataProcessor {
             name: item,
             path: itemPath.replace(this.downloadDir, '').replace(/\\/g, '/'),
             size: stats.size,
-            modified: stats.mtime
+            modified: stats.mtime,
           });
         }
       }

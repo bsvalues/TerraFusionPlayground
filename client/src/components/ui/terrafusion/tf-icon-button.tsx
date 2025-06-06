@@ -22,7 +22,7 @@ export interface TFIconButtonProps extends Omit<ButtonProps, 'asChild'> {
 
 /**
  * TerraFusion Icon Button Component
- * 
+ *
  * A specialized button that displays only an icon
  */
 export const TFIconButton: React.FC<TFIconButtonProps> = ({
@@ -55,13 +55,13 @@ export const TFIconButton: React.FC<TFIconButtonProps> = ({
       >
         {icon}
       </Button>
-      
+
       {showBadge && (
         <div className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-medium text-white">
           {badgeCount && badgeCount > 0 ? (badgeCount > 99 ? '99+' : badgeCount) : ''}
         </div>
       )}
-      
+
       {tooltip && (
         <div className="absolute -bottom-8 left-1/2 hidden -translate-x-1/2 -translate-y-2 transform rounded bg-slate-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 peer-hover:block peer-hover:opacity-100">
           {tooltip}

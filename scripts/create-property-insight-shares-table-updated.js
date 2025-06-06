@@ -1,6 +1,6 @@
 /**
  * Property Insight Shares Table Creation (Updated)
- * 
+ *
  * This script creates the property_insight_shares table for storing
  * shareable property insights, including the new propertyName and propertyAddress fields.
  */
@@ -25,12 +25,12 @@ async function createPropertyInsightSharesTable() {
         AND table_name = 'property_insight_shares'
       );
     `;
-    
+
     const tableExists = await client.query(checkTableQuery);
-    
+
     if (tableExists.rows[0].exists) {
       console.log('property_insight_shares table already exists, checking for column updates');
-      
+
       // Check if propertyName column exists
       const checkPropertyNameQuery = `
         SELECT EXISTS (
@@ -40,16 +40,16 @@ async function createPropertyInsightSharesTable() {
           AND column_name = 'property_name'
         );
       `;
-      
+
       const propertyNameExists = await client.query(checkPropertyNameQuery);
-      
+
       if (!propertyNameExists.rows[0].exists) {
         console.log('Adding property_name column...');
         await client.query(`ALTER TABLE property_insight_shares ADD COLUMN property_name TEXT;`);
       } else {
         console.log('property_name column already exists');
       }
-      
+
       // Check if propertyAddress column exists
       const checkPropertyAddressQuery = `
         SELECT EXISTS (
@@ -59,16 +59,16 @@ async function createPropertyInsightSharesTable() {
           AND column_name = 'property_address'
         );
       `;
-      
+
       const propertyAddressExists = await client.query(checkPropertyAddressQuery);
-      
+
       if (!propertyAddressExists.rows[0].exists) {
         console.log('Adding property_address column...');
         await client.query(`ALTER TABLE property_insight_shares ADD COLUMN property_address TEXT;`);
       } else {
         console.log('property_address column already exists');
       }
-      
+
       return;
     }
 
@@ -99,8 +99,12 @@ async function createPropertyInsightSharesTable() {
     console.log('Successfully created property_insight_shares table');
 
     // Create indexes for faster lookups
-    await client.query(`CREATE INDEX idx_property_insight_shares_property_id ON property_insight_shares(property_id);`);
-    await client.query(`CREATE INDEX idx_property_insight_shares_share_id ON property_insight_shares(share_id);`);
+    await client.query(
+      `CREATE INDEX idx_property_insight_shares_property_id ON property_insight_shares(property_id);`
+    );
+    await client.query(
+      `CREATE INDEX idx_property_insight_shares_share_id ON property_insight_shares(share_id);`
+    );
     console.log('Successfully created indexes for property_insight_shares table');
   } catch (error) {
     console.error('Error creating property_insight_shares table:', error);

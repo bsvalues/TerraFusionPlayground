@@ -1,6 +1,6 @@
 /**
  * LLM Service
- * 
+ *
  * Provides a unified interface for interacting with various LLM providers.
  */
 
@@ -10,7 +10,7 @@ import {
   ChatCompletionRequest,
   EmbeddingRequest,
   LLMResponse,
-  LLMRequestOptions
+  LLMRequestOptions,
 } from '../models/llm-types';
 
 /**
@@ -21,27 +21,27 @@ export interface LLMProviderConfig {
    * Provider type
    */
   type: LLMProviderType;
-  
+
   /**
    * API key or authentication token
    */
   apiKey: string;
-  
+
   /**
    * API endpoint URL (for custom or Azure OpenAI)
    */
   apiUrl?: string;
-  
+
   /**
    * Organization ID (for OpenAI)
    */
   organizationId?: string;
-  
+
   /**
    * Default model to use
    */
   defaultModel?: string;
-  
+
   /**
    * Default request options
    */
@@ -56,27 +56,27 @@ export interface LLMService {
    * Initialize the LLM service
    */
   initialize(): Promise<void>;
-  
+
   /**
    * Generate a text completion
    */
   complete(request: CompletionRequest): Promise<LLMResponse>;
-  
+
   /**
    * Generate a chat completion
    */
   chat(request: ChatCompletionRequest): Promise<LLMResponse>;
-  
+
   /**
    * Generate text embeddings
    */
   embed(request: EmbeddingRequest): Promise<number[][]>;
-  
+
   /**
    * Check if the service is ready
    */
   isReady(): boolean;
-  
+
   /**
    * Get available models
    */
@@ -89,11 +89,11 @@ export interface LLMService {
 export abstract class BaseLLMService implements LLMService {
   protected config: LLMProviderConfig;
   protected isInitialized: boolean = false;
-  
+
   constructor(config: LLMProviderConfig) {
     this.config = config;
   }
-  
+
   /**
    * Initialize the service
    */
@@ -101,34 +101,34 @@ export abstract class BaseLLMService implements LLMService {
     // Base initialization
     this.isInitialized = true;
   }
-  
+
   /**
    * Check if service is ready
    */
   public isReady(): boolean {
     return this.isInitialized;
   }
-  
+
   /**
    * Generate a text completion
    */
   public abstract complete(request: CompletionRequest): Promise<LLMResponse>;
-  
+
   /**
    * Generate a chat completion
    */
   public abstract chat(request: ChatCompletionRequest): Promise<LLMResponse>;
-  
+
   /**
    * Generate text embeddings
    */
   public abstract embed(request: EmbeddingRequest): Promise<number[][]>;
-  
+
   /**
    * Get available models
    */
   public abstract getAvailableModels(): Promise<string[]>;
-  
+
   /**
    * Merge default options with request options
    */
@@ -136,7 +136,7 @@ export abstract class BaseLLMService implements LLMService {
     return {
       model: this.config.defaultModel || '',
       ...this.config.defaultOptions,
-      ...options
+      ...options,
     };
   }
 }

@@ -1,8 +1,8 @@
 /**
  * WebSocket Connection Manager
- * 
+ *
  * Provides WebSocket connectivity with auto-reconnect and SSE fallback
- * 
+ *
  * Features:
  * - Auto-connect to WebSocket on initialization
  * - Auto-reconnect with exponential backoff if connection fails
@@ -20,14 +20,16 @@ class ConnectionManager {
       maxReconnectDelay: options.maxReconnectDelay || 30000,
       reconnectBackoffFactor: options.reconnectBackoffFactor || 2,
       autoConnect: options.autoConnect !== false,
-      debug: options.debug || false
+      debug: options.debug || false,
     };
-    
+
     // DOM Elements
     this.elements = {
       statusIndicator: document.getElementById(options.statusIndicatorId || 'status-indicator'),
       connectionStatus: document.getElementById(options.connectionStatusId || 'connection-status'),
-      connectionDetails: document.getElementById(options.connectionDetailsId || 'connection-details'),
+      connectionDetails: document.getElementById(
+        options.connectionDetailsId || 'connection-details'
+      ),
       messageLog: document.getElementById(options.messageLogId || 'message-log'),
       messageInput: document.getElementById(options.messageInputId || 'message-input'),
       sendButton: document.getElementById(options.sendButtonId || 'send-button'),
@@ -36,10 +38,14 @@ class ConnectionManager {
       connectSSEButton: document.getElementById(options.connectSSEButtonId || 'connect-sse-button'),
       sentCount: document.getElementById(options.sentCountId || 'sent-count'),
       receivedCount: document.getElementById(options.receivedCountId || 'received-count'),
-      connectionAttempts: document.getElementById(options.connectionAttemptsId || 'connection-attempts'),
-      reconnectionCount: document.getElementById(options.reconnectionCountId || 'reconnection-count')
+      connectionAttempts: document.getElementById(
+        options.connectionAttemptsId || 'connection-attempts'
+      ),
+      reconnectionCount: document.getElementById(
+        options.reconnectionCountId || 'reconnection-count'
+      ),
     };
-    
+
     // Check if all required elements exist
     const requiredElements = ['statusIndicator', 'connectionStatus'];
     for (const element of requiredElements) {
@@ -47,7 +53,7 @@ class ConnectionManager {
         console.error(`Required element not found: ${element}`);
       }
     }
-    
+
     // Connection state
     this.socket = null;
     this.eventSource = null;
@@ -56,17 +62,17 @@ class ConnectionManager {
     this.connectionMode = null;
     this.reconnectInterval = null;
     this.reconnectAttempt = 0;
-    
+
     // Bind event handlers for DOM elements
     this.bindEvents();
-    
+
     // Auto-connect if configured
     if (this.config.autoConnect) {
       this.log('Auto-connecting to WebSocket...');
       this.connectWebSocket();
     }
   }
-  
+
   /**
    * Bind event handlers to DOM elements
    */
@@ -74,15 +80,15 @@ class ConnectionManager {
     if (this.elements.connectButton) {
       this.elements.connectButton.addEventListener('click', () => this.connectWebSocket());
     }
-    
+
     if (this.elements.connectSSEButton) {
       this.elements.connectSSEButton.addEventListener('click', () => this.connectSSE());
     }
-    
+
     if (this.elements.disconnectButton) {
       this.elements.disconnectButton.addEventListener('click', () => this.disconnect());
     }
-    
+
     if (this.elements.sendButton && this.elements.messageInput) {
       const sendMessage = () => {
         const message = this.elements.messageInput.value.trim();
@@ -91,16 +97,16 @@ class ConnectionManager {
           this.elements.messageInput.value = '';
         }
       };
-      
+
       this.elements.sendButton.addEventListener('click', sendMessage);
-      this.elements.messageInput.addEventListener('keypress', (event) => {
+      this.elements.messageInput.addEventListener('keypress', event => {
         if (event.key === 'Enter') {
           sendMessage();
         }
       });
     }
   }
-  
+
   /**
    * Update the connection status UI
    */
@@ -109,7 +115,7 @@ class ConnectionManager {
     if (this.elements.statusIndicator) {
       this.elements.statusIndicator.classList.remove('connected', 'disconnected', 'reconnecting');
     }
-    
+
     if (connected) {
       // Set connected state
       if (this.elements.statusIndicator) {
@@ -117,17 +123,17 @@ class ConnectionManager {
         const statusIcon = this.elements.statusIndicator.querySelector('.status-icon');
         if (statusIcon) statusIcon.textContent = '🟢';
       }
-      
+
       if (this.elements.connectionStatus) {
         this.elements.connectionStatus.textContent = `Connected (${mode})`;
       }
-      
+
       if (this.elements.messageInput) this.elements.messageInput.disabled = false;
       if (this.elements.sendButton) this.elements.sendButton.disabled = false;
       if (this.elements.disconnectButton) this.elements.disconnectButton.disabled = false;
       if (this.elements.connectButton) this.elements.connectButton.disabled = true;
       if (this.elements.connectSSEButton) this.elements.connectSSEButton.disabled = true;
-      
+
       this.connectionMode = mode;
     } else if (this.reconnectInterval) {
       // Set reconnecting state
@@ -136,17 +142,17 @@ class ConnectionManager {
         const statusIcon = this.elements.statusIndicator.querySelector('.status-icon');
         if (statusIcon) statusIcon.textContent = '🟡';
       }
-      
+
       if (this.elements.connectionStatus) {
         this.elements.connectionStatus.textContent = 'Reconnecting...';
       }
-      
+
       if (this.elements.messageInput) this.elements.messageInput.disabled = true;
       if (this.elements.sendButton) this.elements.sendButton.disabled = true;
       if (this.elements.disconnectButton) this.elements.disconnectButton.disabled = false;
       if (this.elements.connectButton) this.elements.connectButton.disabled = false;
       if (this.elements.connectSSEButton) this.elements.connectSSEButton.disabled = false;
-      
+
       this.connectionMode = null;
     } else {
       // Set disconnected state
@@ -155,38 +161,38 @@ class ConnectionManager {
         const statusIcon = this.elements.statusIndicator.querySelector('.status-icon');
         if (statusIcon) statusIcon.textContent = '🔴';
       }
-      
+
       if (this.elements.connectionStatus) {
         this.elements.connectionStatus.textContent = 'Disconnected';
       }
-      
+
       if (this.elements.messageInput) this.elements.messageInput.disabled = true;
       if (this.elements.sendButton) this.elements.sendButton.disabled = true;
       if (this.elements.disconnectButton) this.elements.disconnectButton.disabled = true;
       if (this.elements.connectButton) this.elements.connectButton.disabled = false;
       if (this.elements.connectSSEButton) this.elements.connectSSEButton.disabled = false;
-      
+
       this.connectionMode = null;
     }
-    
+
     if (this.elements.connectionDetails) {
       this.elements.connectionDetails.textContent = details;
     }
   }
-  
+
   /**
    * Add a message to the log
    */
   addMessageToLog(message, type, direction = null) {
     if (!this.elements.messageLog) return;
-    
+
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${type}`;
-    
+
     // Create badge based on message type/direction
     const badge = document.createElement('span');
     badge.className = `badge ${direction || type}`;
-    
+
     if (direction === 'sent') {
       badge.textContent = 'SENT';
       this.messageCounter.sent++;
@@ -206,12 +212,12 @@ class ConnectionManager {
     } else if (type === 'error') {
       badge.textContent = 'ERROR';
     }
-    
+
     // Create timestamp
     const timestamp = document.createElement('span');
     timestamp.className = 'timestamp';
     timestamp.textContent = new Date().toLocaleTimeString();
-    
+
     // Message content
     let content;
     if (typeof message === 'object') {
@@ -221,18 +227,18 @@ class ConnectionManager {
     } else {
       content = document.createTextNode(message);
     }
-    
+
     // Assemble message div
     messageDiv.appendChild(badge);
     messageDiv.appendChild(document.createTextNode(' '));
     messageDiv.appendChild(timestamp);
     messageDiv.appendChild(document.createElement('br'));
     messageDiv.appendChild(content);
-    
+
     this.elements.messageLog.appendChild(messageDiv);
     this.elements.messageLog.scrollTop = this.elements.messageLog.scrollHeight;
   }
-  
+
   /**
    * Connect to WebSocket
    */
@@ -240,55 +246,55 @@ class ConnectionManager {
     if (this.socket) {
       this.socket.close();
     }
-    
+
     this.messageCounter.attempts++;
     if (this.elements.connectionAttempts) {
       this.elements.connectionAttempts.textContent = this.messageCounter.attempts;
     }
-    
+
     try {
       // Use correct WebSocket protocol based on page protocol
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}${this.config.wsPath}`;
-      
+
       this.addMessageToLog(`Attempting to connect to WebSocket: ${wsUrl}`, 'info');
       this.socket = new WebSocket(wsUrl);
-      
-      this.socket.onopen = (event) => {
+
+      this.socket.onopen = event => {
         this.updateConnectionStatus(true, 'WebSocket', `Connected to ${wsUrl}`);
         this.addMessageToLog('WebSocket connection established', 'info');
-        
+
         // Reset reconnect attempt counter and clear interval
         this.reconnectAttempt = 0;
         if (this.reconnectInterval) {
           clearInterval(this.reconnectInterval);
           this.reconnectInterval = null;
         }
-        
+
         // If we were previously using SSE, close it
         if (this.eventSource) {
           this.addMessageToLog('WebSocket reconnected, closing SSE fallback', 'info');
           this.eventSource.close();
           this.eventSource = null;
         }
-        
+
         // Call onopen callback if provided
         if (typeof this.config.onopen === 'function') {
           this.config.onopen(event);
         }
       };
-      
-      this.socket.onmessage = (event) => {
+
+      this.socket.onmessage = event => {
         try {
           const data = JSON.parse(event.data);
-          
+
           // Handle ping messages differently
           if (data.type === 'ping' || data.type === 'heartbeat') {
             this.log('Heartbeat received:', data);
             // Don't add heartbeats to the message log to avoid spam
           } else {
             this.addMessageToLog(data, 'received', 'received');
-            
+
             // Call onmessage callback if provided
             if (typeof this.config.onmessage === 'function') {
               this.config.onmessage(data);
@@ -296,33 +302,36 @@ class ConnectionManager {
           }
         } catch (error) {
           this.addMessageToLog(`Received raw message: ${event.data}`, 'received', 'received');
-          
+
           // Call onmessage callback if provided
           if (typeof this.config.onmessage === 'function') {
             this.config.onmessage(event.data);
           }
         }
       };
-      
-      this.socket.onerror = (error) => {
+
+      this.socket.onerror = error => {
         this.addMessageToLog(`WebSocket error: ${error.message || 'Unknown error'}`, 'error');
-        
+
         // Call onerror callback if provided
         if (typeof this.config.onerror === 'function') {
           this.config.onerror(error);
         }
-        
+
         this.fallbackToSSE();
       };
-      
-      this.socket.onclose = (event) => {
+
+      this.socket.onclose = event => {
         this.updateConnectionStatus(false);
-        
+
         if (event.wasClean) {
-          this.addMessageToLog(`WebSocket closed cleanly, code=${event.code}, reason=${event.reason}`, 'info');
+          this.addMessageToLog(
+            `WebSocket closed cleanly, code=${event.code}, reason=${event.reason}`,
+            'info'
+          );
         } else {
           this.addMessageToLog('WebSocket connection died', 'error');
-          
+
           // Only auto-fallback to SSE if we're not already connected via SSE
           if (this.connectionMode !== 'SSE') {
             this.fallbackToSSE();
@@ -331,7 +340,7 @@ class ConnectionManager {
             this.scheduleWebSocketReconnect();
           }
         }
-        
+
         // Call onclose callback if provided
         if (typeof this.config.onclose === 'function') {
           this.config.onclose(event);
@@ -342,7 +351,7 @@ class ConnectionManager {
       this.fallbackToSSE();
     }
   }
-  
+
   /**
    * Connect to SSE
    */
@@ -350,42 +359,42 @@ class ConnectionManager {
     if (this.eventSource) {
       this.eventSource.close();
     }
-    
+
     if (this.socket) {
       this.socket.close();
       this.socket = null;
     }
-    
+
     this.messageCounter.attempts++;
     if (this.elements.connectionAttempts) {
       this.elements.connectionAttempts.textContent = this.messageCounter.attempts;
     }
-    
+
     try {
       this.clientId = `client_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
       const sseUrl = `${this.config.ssePath}?clientId=${this.clientId}`;
-      
+
       this.addMessageToLog(`Attempting to connect to SSE: ${sseUrl}`, 'info');
       this.eventSource = new EventSource(sseUrl);
-      
-      this.eventSource.onopen = (event) => {
+
+      this.eventSource.onopen = event => {
         this.updateConnectionStatus(true, 'SSE', `Connected to ${sseUrl}`);
         this.addMessageToLog('SSE connection established', 'info');
         this.messageCounter.reconnects++;
         if (this.elements.reconnectionCount) {
           this.elements.reconnectionCount.textContent = this.messageCounter.reconnects;
         }
-        
+
         // Call onopen callback if provided
         if (typeof this.config.sseOnopen === 'function') {
           this.config.sseOnopen(event);
         }
       };
-      
-      this.eventSource.onmessage = (event) => {
+
+      this.eventSource.onmessage = event => {
         try {
           const data = JSON.parse(event.data);
-          
+
           // Record the client ID if provided
           if (data.clientId) {
             this.clientId = data.clientId;
@@ -393,14 +402,14 @@ class ConnectionManager {
               this.elements.connectionDetails.textContent = `Using SSE with client ID: ${this.clientId}`;
             }
           }
-          
+
           // Handle heartbeat messages differently
           if (data.type === 'heartbeat') {
             this.log('Heartbeat received:', data);
             // Don't add heartbeats to the message log to avoid spam
           } else {
             this.addMessageToLog(data, 'received', 'received');
-            
+
             // Call onmessage callback if provided
             if (typeof this.config.sseOnmessage === 'function') {
               this.config.sseOnmessage(data);
@@ -408,19 +417,19 @@ class ConnectionManager {
           }
         } catch (error) {
           this.addMessageToLog(`Received raw SSE message: ${event.data}`, 'received', 'received');
-          
+
           // Call onmessage callback if provided
           if (typeof this.config.sseOnmessage === 'function') {
             this.config.sseOnmessage(event.data);
           }
         }
       };
-      
-      this.eventSource.onerror = (error) => {
+
+      this.eventSource.onerror = error => {
         this.addMessageToLog(`SSE error: ${error.message || 'Unknown error'}`, 'error');
         this.eventSource.close();
         this.updateConnectionStatus(false);
-        
+
         // Call onerror callback if provided
         if (typeof this.config.sseOnerror === 'function') {
           this.config.sseOnerror(error);
@@ -431,20 +440,21 @@ class ConnectionManager {
       this.updateConnectionStatus(false);
     }
   }
-  
+
   /**
    * Calculate reconnect delay with exponential backoff
    */
   calculateReconnectDelay() {
     // Exponential backoff with a maximum delay
     const delay = Math.min(
-      this.config.initialReconnectDelay * Math.pow(this.config.reconnectBackoffFactor, this.reconnectAttempt),
+      this.config.initialReconnectDelay *
+        Math.pow(this.config.reconnectBackoffFactor, this.reconnectAttempt),
       this.config.maxReconnectDelay
     );
     this.reconnectAttempt++;
     return delay;
   }
-  
+
   /**
    * Schedule WebSocket reconnection
    */
@@ -452,13 +462,16 @@ class ConnectionManager {
     if (this.reconnectInterval) {
       clearInterval(this.reconnectInterval);
     }
-    
+
     const delay = this.calculateReconnectDelay();
-    this.addMessageToLog(`Scheduling WebSocket reconnect in ${delay/1000} seconds (attempt ${this.reconnectAttempt})`, 'info');
-    
+    this.addMessageToLog(
+      `Scheduling WebSocket reconnect in ${delay / 1000} seconds (attempt ${this.reconnectAttempt})`,
+      'info'
+    );
+
     // Update UI to show reconnecting state
     this.updateConnectionStatus(false);
-    
+
     this.reconnectInterval = setInterval(() => {
       if (this.connectionMode !== 'WebSocket') {
         this.addMessageToLog('Attempting to reconnect WebSocket...', 'info');
@@ -471,7 +484,7 @@ class ConnectionManager {
       }
     }, delay);
   }
-  
+
   /**
    * Fall back to SSE when WebSocket fails
    */
@@ -482,11 +495,11 @@ class ConnectionManager {
       this.elements.reconnectionCount.textContent = this.messageCounter.reconnects;
     }
     this.connectSSE();
-    
+
     // Schedule WebSocket reconnection attempts
     this.scheduleWebSocketReconnect();
   }
-  
+
   /**
    * Send a message through the current connection
    */
@@ -494,7 +507,7 @@ class ConnectionManager {
     if (typeof message === 'string') {
       message = { message };
     }
-    
+
     // Add client ID and timestamp if not present
     if (!message.clientId) {
       message.clientId = this.clientId;
@@ -502,14 +515,18 @@ class ConnectionManager {
     if (!message.timestamp) {
       message.timestamp = new Date().toISOString();
     }
-    
-    if (this.connectionMode === 'WebSocket' && this.socket && this.socket.readyState === WebSocket.OPEN) {
+
+    if (
+      this.connectionMode === 'WebSocket' &&
+      this.socket &&
+      this.socket.readyState === WebSocket.OPEN
+    ) {
       // Send via WebSocket
       const data = {
         action: 'echo',
-        ...message
+        ...message,
       };
-      
+
       this.socket.send(JSON.stringify(data));
       this.addMessageToLog(data, 'sent', 'sent');
       return true;
@@ -517,31 +534,31 @@ class ConnectionManager {
       // Send via HTTP POST to SSE endpoint
       const data = {
         type: 'message',
-        ...message
+        ...message,
       };
-      
+
       fetch('/api/events/broadcast', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       })
-      .then(response => response.json())
-      .then(result => {
-        this.addMessageToLog(data, 'sent', 'sent');
-        this.log('Message sent via SSE API:', result);
-      })
-      .catch(error => {
-        this.addMessageToLog(`Error sending message: ${error.message}`, 'error');
-      });
+        .then(response => response.json())
+        .then(result => {
+          this.addMessageToLog(data, 'sent', 'sent');
+          this.log('Message sent via SSE API:', result);
+        })
+        .catch(error => {
+          this.addMessageToLog(`Error sending message: ${error.message}`, 'error');
+        });
       return true;
     } else {
       this.addMessageToLog('Cannot send message - no active connection', 'error');
       return false;
     }
   }
-  
+
   /**
    * Disconnect from all connections
    */
@@ -550,21 +567,21 @@ class ConnectionManager {
       this.socket.close();
       this.socket = null;
     }
-    
+
     if (this.eventSource) {
       this.eventSource.close();
       this.eventSource = null;
     }
-    
+
     if (this.reconnectInterval) {
       clearInterval(this.reconnectInterval);
       this.reconnectInterval = null;
     }
-    
+
     this.updateConnectionStatus(false);
     this.addMessageToLog('Disconnected by user', 'info');
   }
-  
+
   /**
    * Get the current connection state
    */
@@ -577,10 +594,10 @@ class ConnectionManager {
       clientId: this.clientId,
       messageCounter: { ...this.messageCounter },
       webSocketState: this.socket ? this.socket.readyState : null,
-      sseConnected: this.eventSource !== null
+      sseConnected: this.eventSource !== null,
     };
   }
-  
+
   /**
    * Log debug messages if debug is enabled
    */

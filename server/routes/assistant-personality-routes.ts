@@ -1,16 +1,16 @@
 /**
  * AI Assistant Personality Routes
- * 
+ *
  * This file defines the API routes for managing AI assistant personalities,
  * allowing users to create, update, and customize assistant interactions.
  */
 
 import { Request, Response, Router } from 'express';
 import { assistantPersonalityService } from '../services/assistant-personality-service';
-import { 
-  insertAssistantPersonalitySchema, 
+import {
+  insertAssistantPersonalitySchema,
   insertPersonalityTemplateSchema,
-  InsertAssistantPersonality
+  InsertAssistantPersonality,
 } from '@shared/schema';
 import { logger } from '../utils/logger';
 
@@ -24,7 +24,9 @@ router.get('/templates', async (req: Request, res: Response) => {
     const templates = await assistantPersonalityService.getPersonalityTemplates();
     res.json(templates);
   } catch (error) {
-    logger.error(`AssistantPersonalityRoutes: Error retrieving personality templates - ${error.message}`);
+    logger.error(
+      `AssistantPersonalityRoutes: Error retrieving personality templates - ${error.message}`
+    );
     res.status(500).json({ error: 'Failed to retrieve personality templates' });
   }
 });
@@ -57,15 +59,18 @@ router.get('/personalities/default', async (req: Request, res: Response) => {
     }
 
     const userId = req.user.userId;
-    const defaultPersonality = await assistantPersonalityService.getDefaultPersonalityForUser(userId);
-    
+    const defaultPersonality =
+      await assistantPersonalityService.getDefaultPersonalityForUser(userId);
+
     if (!defaultPersonality) {
       return res.status(404).json({ error: 'No default personality found' });
     }
-    
+
     res.json(defaultPersonality);
   } catch (error) {
-    logger.error(`AssistantPersonalityRoutes: Error retrieving default personality - ${error.message}`);
+    logger.error(
+      `AssistantPersonalityRoutes: Error retrieving default personality - ${error.message}`
+    );
     res.status(500).json({ error: 'Failed to retrieve default personality' });
   }
 });
@@ -76,30 +81,34 @@ router.get('/personalities/default', async (req: Request, res: Response) => {
 router.get('/personalities/:id', async (req: Request, res: Response) => {
   try {
     const personalityId = parseInt(req.params.id);
-    
+
     if (isNaN(personalityId)) {
       return res.status(400).json({ error: 'Invalid personality ID' });
     }
-    
+
     const personality = await assistantPersonalityService.getPersonalityById(personalityId);
-    
+
     if (!personality) {
       return res.status(404).json({ error: 'Personality not found' });
     }
-    
+
     // Check if the user has access to this personality
     if (!req.user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    
+
     const userId = req.user.userId;
     if (personality.userId !== userId && !personality.isPublic) {
-      return res.status(403).json({ error: 'You do not have permission to access this personality' });
+      return res
+        .status(403)
+        .json({ error: 'You do not have permission to access this personality' });
     }
-    
+
     res.json(personality);
   } catch (error) {
-    logger.error(`AssistantPersonalityRoutes: Error retrieving personality ID: ${req.params.id} - ${error.message}`);
+    logger.error(
+      `AssistantPersonalityRoutes: Error retrieving personality ID: ${req.params.id} - ${error.message}`
+    );
     res.status(500).json({ error: 'Failed to retrieve personality' });
   }
 });
@@ -116,16 +125,18 @@ router.post('/personalities', async (req: Request, res: Response) => {
     const userId = req.user.userId;
     const result = insertAssistantPersonalitySchema.safeParse({
       ...req.body,
-      userId
+      userId,
     });
 
     if (!result.success) {
-      return res.status(400).json({ error: 'Invalid personality data', details: result.error.format() });
+      return res
+        .status(400)
+        .json({ error: 'Invalid personality data', details: result.error.format() });
     }
 
     const personalityData = result.data as InsertAssistantPersonality;
     const newPersonality = await assistantPersonalityService.createPersonality(personalityData);
-    
+
     res.status(201).json(newPersonality);
   } catch (error) {
     logger.error(`AssistantPersonalityRoutes: Error creating personality - ${error.message}`);
@@ -144,22 +155,24 @@ router.post('/personalities/from-template/:templateId', async (req: Request, res
 
     const userId = req.user.userId;
     const templateId = parseInt(req.params.templateId);
-    
+
     if (isNaN(templateId)) {
       return res.status(400).json({ error: 'Invalid template ID' });
     }
-    
+
     const customData = req.body || {};
-    
+
     const newPersonality = await assistantPersonalityService.createPersonalityFromTemplate(
       templateId,
       userId,
       customData
     );
-    
+
     res.status(201).json(newPersonality);
   } catch (error) {
-    logger.error(`AssistantPersonalityRoutes: Error creating personality from template ID: ${req.params.templateId} - ${error.message}`);
+    logger.error(
+      `AssistantPersonalityRoutes: Error creating personality from template ID: ${req.params.templateId} - ${error.message}`
+    );
     res.status(500).json({ error: 'Failed to create personality from template' });
   }
 });
@@ -175,25 +188,27 @@ router.put('/personalities/:id', async (req: Request, res: Response) => {
 
     const userId = req.user.userId;
     const personalityId = parseInt(req.params.id);
-    
+
     if (isNaN(personalityId)) {
       return res.status(400).json({ error: 'Invalid personality ID' });
     }
-    
+
     const updatedPersonality = await assistantPersonalityService.updatePersonality(
       personalityId,
       userId,
       req.body
     );
-    
+
     res.json(updatedPersonality);
   } catch (error) {
-    logger.error(`AssistantPersonalityRoutes: Error updating personality ID: ${req.params.id} - ${error.message}`);
-    
+    logger.error(
+      `AssistantPersonalityRoutes: Error updating personality ID: ${req.params.id} - ${error.message}`
+    );
+
     if (error.message?.includes('not found') || error.message?.includes('permission')) {
       return res.status(403).json({ error: error.message });
     }
-    
+
     res.status(500).json({ error: 'Failed to update personality' });
   }
 });
@@ -209,21 +224,23 @@ router.delete('/personalities/:id', async (req: Request, res: Response) => {
 
     const userId = req.user.userId;
     const personalityId = parseInt(req.params.id);
-    
+
     if (isNaN(personalityId)) {
       return res.status(400).json({ error: 'Invalid personality ID' });
     }
-    
+
     await assistantPersonalityService.deletePersonality(personalityId, userId);
-    
+
     res.status(204).send();
   } catch (error) {
-    logger.error(`AssistantPersonalityRoutes: Error deleting personality ID: ${req.params.id} - ${error.message}`);
-    
+    logger.error(
+      `AssistantPersonalityRoutes: Error deleting personality ID: ${req.params.id} - ${error.message}`
+    );
+
     if (error.message?.includes('not found') || error.message?.includes('permission')) {
       return res.status(403).json({ error: error.message });
     }
-    
+
     res.status(500).json({ error: 'Failed to delete personality' });
   }
 });
@@ -239,21 +256,23 @@ router.post('/personalities/:id/set-default', async (req: Request, res: Response
 
     const userId = req.user.userId;
     const personalityId = parseInt(req.params.id);
-    
+
     if (isNaN(personalityId)) {
       return res.status(400).json({ error: 'Invalid personality ID' });
     }
-    
+
     await assistantPersonalityService.setDefaultPersonality(personalityId, userId);
-    
+
     res.status(200).json({ success: true });
   } catch (error) {
-    logger.error(`AssistantPersonalityRoutes: Error setting default personality ID: ${req.params.id} - ${error.message}`);
-    
+    logger.error(
+      `AssistantPersonalityRoutes: Error setting default personality ID: ${req.params.id} - ${error.message}`
+    );
+
     if (error.message?.includes('not found') || error.message?.includes('permission')) {
       return res.status(403).json({ error: error.message });
     }
-    
+
     res.status(500).json({ error: 'Failed to set default personality' });
   }
 });

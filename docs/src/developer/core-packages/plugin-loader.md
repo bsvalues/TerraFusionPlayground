@@ -44,12 +44,12 @@ export interface Plugin {
   isPremium: boolean;
   price?: number;
   requiredPermissions: string[];
-  
+
   initialize(context: PluginContext): Promise<void>;
   activate(): Promise<void>;
   deactivate(): Promise<void>;
   getCapabilities(): PluginCapability[];
-  
+
   // Optional methods
   onSettingsChange?(settings: Record<string, any>): Promise<void>;
   onUserAction?(action: string, payload: any): Promise<any>;
@@ -66,70 +66,64 @@ export class PluginLoader {
   private plugins: Map<string, LoadedPlugin> = new Map();
   private registry: PluginRegistry;
   private paymentProcessor: PluginPaymentProcessor;
-  
-  constructor(
-    registry: PluginRegistry,
-    paymentProcessor: PluginPaymentProcessor
-  ) {
+
+  constructor(registry: PluginRegistry, paymentProcessor: PluginPaymentProcessor) {
     this.registry = registry;
     this.paymentProcessor = paymentProcessor;
   }
-  
+
   async discoverPlugins(): Promise<PluginMetadata[]> {
     return this.registry.discoverAvailablePlugins();
   }
-  
+
   async loadPlugin(pluginId: string, context: PluginContext): Promise<LoadedPlugin> {
     const pluginMetadata = await this.registry.getPluginMetadata(pluginId);
-    
+
     // Check if premium and validate license
     if (pluginMetadata.isPremium) {
-      const hasValidLicense = await this.paymentProcessor.checkLicense(
-        pluginId, 
-        context.userId
-      );
-      
+      const hasValidLicense = await this.paymentProcessor.checkLicense(pluginId, context.userId);
+
       if (!hasValidLicense) {
         throw new Error(`No valid license for premium plugin: ${pluginId}`);
       }
     }
-    
+
     // Load and initialize the plugin
     const pluginModule = await this.registry.loadPluginModule(pluginId);
     const plugin = new pluginModule.default() as Plugin;
-    
+
     await plugin.initialize(context);
-    
+
     const loadedPlugin = {
       instance: plugin,
       metadata: pluginMetadata,
       status: 'loaded',
     };
-    
+
     this.plugins.set(pluginId, loadedPlugin);
     return loadedPlugin;
   }
-  
+
   async activatePlugin(pluginId: string): Promise<void> {
     const loadedPlugin = this.plugins.get(pluginId);
     if (!loadedPlugin) {
       throw new Error(`Plugin not loaded: ${pluginId}`);
     }
-    
+
     await loadedPlugin.instance.activate();
     loadedPlugin.status = 'active';
   }
-  
+
   async deactivatePlugin(pluginId: string): Promise<void> {
     const loadedPlugin = this.plugins.get(pluginId);
     if (!loadedPlugin || loadedPlugin.status !== 'active') {
       throw new Error(`Plugin not active: ${pluginId}`);
     }
-    
+
     await loadedPlugin.instance.deactivate();
     loadedPlugin.status = 'loaded';
   }
-  
+
   // Additional methods...
 }
 ```
@@ -143,12 +137,12 @@ Premium plugins use the payment processor for license validation:
 export class PluginPaymentProcessor {
   private stripeClient: Stripe;
   private licenseStore: LicenseStore;
-  
+
   constructor(stripeApiKey: string, licenseStore: LicenseStore) {
     this.stripeClient = new Stripe(stripeApiKey);
     this.licenseStore = licenseStore;
   }
-  
+
   async createSubscription(
     userId: string,
     pluginId: string,
@@ -160,7 +154,7 @@ export class PluginPaymentProcessor {
       items: [{ price: await this.getPluginPriceId(pluginId) }],
       default_payment_method: paymentMethodId,
     });
-    
+
     // Store license information
     await this.licenseStore.storeLicense({
       userId,
@@ -169,24 +163,21 @@ export class PluginPaymentProcessor {
       status: 'active',
       expiresAt: new Date(subscription.current_period_end * 1000),
     });
-    
+
     return subscription.id;
   }
-  
+
   async checkLicense(pluginId: string, userId: string): Promise<boolean> {
     const license = await this.licenseStore.getLicense(userId, pluginId);
-    
+
     if (!license) {
       return false;
     }
-    
+
     // Check if license is active and not expired
-    return (
-      license.status === 'active' && 
-      license.expiresAt > new Date()
-    );
+    return license.status === 'active' && license.expiresAt > new Date();
   }
-  
+
   // Additional methods for managing subscriptions, handling webhooks, etc.
 }
 ```
@@ -220,7 +211,9 @@ console.log('Available plugins:', availablePlugins);
 const pluginContext = {
   userId: 'user-123',
   permissionLevel: 'admin',
-  settings: { /* plugin-specific settings */ },
+  settings: {
+    /* plugin-specific settings */
+  },
 };
 
 await pluginLoader.loadPlugin('my-awesome-plugin', pluginContext);
@@ -235,27 +228,18 @@ const capabilities = loadedPlugin.instance.getCapabilities();
 
 ```typescript
 // Check if user has access to a premium plugin
-const hasAccess = await paymentProcessor.checkLicense(
-  'premium-analysis-plugin',
-  'user-123'
-);
+const hasAccess = await paymentProcessor.checkLicense('premium-analysis-plugin', 'user-123');
 
 if (!hasAccess) {
   // Show purchase UI
-  const stripeElements = createStripeElements(
-    paymentProcessor.getPublicKey()
-  );
-  
+  const stripeElements = createStripeElements(paymentProcessor.getPublicKey());
+
   // When payment method is submitted
   const paymentMethodId = await collectPaymentMethod(stripeElements);
-  
+
   // Create subscription
-  await paymentProcessor.createSubscription(
-    'user-123',
-    'premium-analysis-plugin',
-    paymentMethodId
-  );
-  
+  await paymentProcessor.createSubscription('user-123', 'premium-analysis-plugin', paymentMethodId);
+
   // Now load the plugin
   await pluginLoader.loadPlugin('premium-analysis-plugin', pluginContext);
 }

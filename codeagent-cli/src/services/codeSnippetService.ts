@@ -73,7 +73,7 @@ export class CodeSnippetService extends EventEmitter {
    */
   constructor(baseDir?: string) {
     super();
-    
+
     // Set up directories
     const codeagentDir = baseDir || path.join(os.homedir(), '.codeagent');
     this.snippetsDir = path.join(codeagentDir, 'snippets');
@@ -91,18 +91,18 @@ export class CodeSnippetService extends EventEmitter {
     try {
       // Create snippets directory if it doesn't exist
       await fs.mkdir(this.snippetsDir, { recursive: true });
-      
+
       // Try to load snippets from file
       try {
         const data = await fs.readFile(this.snippetsFile, 'utf-8');
         const snippetsArray = JSON.parse(data) as CodeSnippet[];
-        
+
         // Populate map
         this.snippets.clear();
         snippetsArray.forEach(snippet => {
           this.snippets.set(snippet.id, snippet);
         });
-        
+
         this.emit('loaded', { count: this.snippets.size });
       } catch (error) {
         // File doesn't exist or is invalid, create a new one
@@ -113,10 +113,12 @@ export class CodeSnippetService extends EventEmitter {
           throw error;
         }
       }
-      
+
       this.initialized = true;
     } catch (error) {
-      this.emit('error', { message: `Failed to initialize snippet service: ${(error as Error).message}` });
+      this.emit('error', {
+        message: `Failed to initialize snippet service: ${(error as Error).message}`,
+      });
       throw error;
     }
   }
@@ -142,7 +144,7 @@ export class CodeSnippetService extends EventEmitter {
    */
   async createSnippet(input: CreateSnippetInput): Promise<CodeSnippet> {
     await this.ensureInitialized();
-    
+
     const now = new Date().toISOString();
     const snippet: CodeSnippet = {
       id: this.generateId(),
@@ -155,12 +157,12 @@ export class CodeSnippetService extends EventEmitter {
       created: now,
       updated: now,
       usageCount: 0,
-      favorite: input.favorite || false
+      favorite: input.favorite || false,
     };
-    
+
     this.snippets.set(snippet.id, snippet);
     await this.saveSnippets();
-    
+
     this.emit('created', { snippet });
     return snippet;
   }
@@ -170,12 +172,12 @@ export class CodeSnippetService extends EventEmitter {
    */
   async updateSnippet(id: string, input: UpdateSnippetInput): Promise<CodeSnippet | null> {
     await this.ensureInitialized();
-    
+
     const snippet = this.snippets.get(id);
     if (!snippet) {
       return null;
     }
-    
+
     const updatedSnippet: CodeSnippet = {
       ...snippet,
       name: input.name !== undefined ? input.name : snippet.name,
@@ -185,12 +187,12 @@ export class CodeSnippetService extends EventEmitter {
       code: input.code !== undefined ? input.code : snippet.code,
       context: input.context !== undefined ? input.context : snippet.context,
       favorite: input.favorite !== undefined ? input.favorite : snippet.favorite,
-      updated: new Date().toISOString()
+      updated: new Date().toISOString(),
     };
-    
+
     this.snippets.set(id, updatedSnippet);
     await this.saveSnippets();
-    
+
     this.emit('updated', { snippet: updatedSnippet });
     return updatedSnippet;
   }
@@ -200,15 +202,15 @@ export class CodeSnippetService extends EventEmitter {
    */
   async deleteSnippet(id: string): Promise<boolean> {
     await this.ensureInitialized();
-    
+
     const hasSnippet = this.snippets.has(id);
     if (!hasSnippet) {
       return false;
     }
-    
+
     this.snippets.delete(id);
     await this.saveSnippets();
-    
+
     this.emit('deleted', { id });
     return true;
   }
@@ -218,21 +220,21 @@ export class CodeSnippetService extends EventEmitter {
    */
   async incrementUsageCount(id: string): Promise<CodeSnippet | null> {
     await this.ensureInitialized();
-    
+
     const snippet = this.snippets.get(id);
     if (!snippet) {
       return null;
     }
-    
+
     const updatedSnippet: CodeSnippet = {
       ...snippet,
       usageCount: snippet.usageCount + 1,
-      updated: new Date().toISOString()
+      updated: new Date().toISOString(),
     };
-    
+
     this.snippets.set(id, updatedSnippet);
     await this.saveSnippets();
-    
+
     this.emit('usage', { snippet: updatedSnippet });
     return updatedSnippet;
   }
@@ -242,135 +244,130 @@ export class CodeSnippetService extends EventEmitter {
    */
   async searchSnippets(options: SearchOptions = {}): Promise<CodeSnippet[]> {
     await this.ensureInitialized();
-    
+
     let results = Array.from(this.snippets.values());
-    
+
     // Filter by query (name, description, code)
     if (options.query) {
       const query = options.query.toLowerCase();
-      results = results.filter(snippet => 
-        snippet.name.toLowerCase().includes(query) ||
-        snippet.description.toLowerCase().includes(query) ||
-        snippet.code.toLowerCase().includes(query)
+      results = results.filter(
+        snippet =>
+          snippet.name.toLowerCase().includes(query) ||
+          snippet.description.toLowerCase().includes(query) ||
+          snippet.code.toLowerCase().includes(query)
       );
     }
-    
+
     // Filter by language
     if (options.language) {
-      results = results.filter(snippet => 
-        snippet.language.toLowerCase() === options.language!.toLowerCase()
+      results = results.filter(
+        snippet => snippet.language.toLowerCase() === options.language!.toLowerCase()
       );
     }
-    
+
     // Filter by tags
     if (options.tags && options.tags.length > 0) {
-      results = results.filter(snippet => 
-        options.tags!.some(tag => snippet.tags.includes(tag))
-      );
+      results = results.filter(snippet => options.tags!.some(tag => snippet.tags.includes(tag)));
     }
-    
+
     // Filter by favorite
     if (options.favorite !== undefined) {
-      results = results.filter(snippet => 
-        snippet.favorite === options.favorite
-      );
+      results = results.filter(snippet => snippet.favorite === options.favorite);
     }
-    
+
     // Filter by context
     if (options.context && options.context.length > 0) {
       results = results.filter(snippet => {
         if (!snippet.context || snippet.context.length === 0) {
           return false;
         }
-        
-        return options.context!.some(ctx => 
-          snippet.context!.some(snippetCtx => 
-            snippetCtx.toLowerCase().includes(ctx.toLowerCase())
-          )
+
+        return options.context!.some(ctx =>
+          snippet.context!.some(snippetCtx => snippetCtx.toLowerCase().includes(ctx.toLowerCase()))
         );
       });
     }
-    
+
     // Sort by usage count (most used first)
     results.sort((a, b) => b.usageCount - a.usageCount);
-    
+
     // Apply limit
     if (options.limit && options.limit > 0) {
       results = results.slice(0, options.limit);
     }
-    
+
     return results;
   }
-  
+
   /**
    * Get snippet suggestions based on context
    */
   async getSuggestions(context: string[], limit: number = 5): Promise<CodeSnippet[]> {
     return this.searchSnippets({
       context,
-      limit
+      limit,
     });
   }
-  
+
   /**
    * Get all available languages
    */
   async getLanguages(): Promise<string[]> {
     await this.ensureInitialized();
-    
+
     const languages = new Set<string>();
     this.snippets.forEach(snippet => {
       languages.add(snippet.language);
     });
-    
+
     return Array.from(languages).sort();
   }
-  
+
   /**
    * Get all available tags
    */
   async getTags(): Promise<string[]> {
     await this.ensureInitialized();
-    
+
     const tags = new Set<string>();
     this.snippets.forEach(snippet => {
       snippet.tags.forEach(tag => tags.add(tag));
     });
-    
+
     return Array.from(tags).sort();
   }
-  
+
   /**
    * Import snippets from JSON
    */
   async importSnippets(jsonData: string): Promise<number> {
     await this.ensureInitialized();
-    
+
     try {
       const snippetsToImport = JSON.parse(jsonData) as CodeSnippet[];
       let importCount = 0;
-      
+
       for (const snippet of snippetsToImport) {
         // Generate a new ID to avoid collisions
         const newId = this.generateId();
-        
+
         // Set creation and update times
         const now = new Date().toISOString();
-        
+
         const newSnippet: CodeSnippet = {
           ...snippet,
           id: newId,
           created: now,
           updated: now,
-          usageCount: 0
+          usageCount: 0,
         };
-        
+
         this.snippets.set(newId, newSnippet);
         importCount++;
       }
-      
+
       await this.saveSnippets();
-      
+
       this.emit('imported', { count: importCount });
       return importCount;
     } catch (error) {
@@ -378,13 +375,13 @@ export class CodeSnippetService extends EventEmitter {
       throw error;
     }
   }
-  
+
   /**
    * Export snippets to JSON
    */
   async exportSnippets(): Promise<string> {
     await this.ensureInitialized();
-    
+
     const snippetsArray = Array.from(this.snippets.values());
     return JSON.stringify(snippetsArray, null, 2);
   }

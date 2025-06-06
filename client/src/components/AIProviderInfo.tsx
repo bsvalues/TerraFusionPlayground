@@ -1,9 +1,16 @@
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Brain, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Brain, CheckCircle, AlertCircle } from 'lucide-react';
 
-type AIProviderStatus = "operational" | "degraded" | "unavailable" | "unknown";
+type AIProviderStatus = 'operational' | 'degraded' | 'unavailable' | 'unknown';
 
 interface AIProvider {
   name: string;
@@ -15,47 +22,51 @@ interface AIProvider {
 
 const providers: AIProvider[] = [
   {
-    name: "OpenAI",
-    description: "Primary provider for standard property inquiries and citizen self-service",
-    status: "operational",
-    model: "GPT-4",
-    useCases: ["Property searches", "Basic inquiries", "Self-service guidance"]
+    name: 'OpenAI',
+    description: 'Primary provider for standard property inquiries and citizen self-service',
+    status: 'operational',
+    model: 'GPT-4',
+    useCases: ['Property searches', 'Basic inquiries', 'Self-service guidance'],
   },
   {
-    name: "Anthropic Claude",
-    description: "Specialized provider for complex assessments and multi-modal data analysis",
-    status: "operational",
-    model: "Claude 3.7 Sonnet",
-    useCases: ["Complex property analyses", "Document interpretation", "Visual property assessments"]
+    name: 'Anthropic Claude',
+    description: 'Specialized provider for complex assessments and multi-modal data analysis',
+    status: 'operational',
+    model: 'Claude 3.7 Sonnet',
+    useCases: [
+      'Complex property analyses',
+      'Document interpretation',
+      'Visual property assessments',
+    ],
   },
   {
-    name: "Perplexity",
-    description: "Enhanced provider for web-augmented property research and valuation insights",
-    status: "operational",
-    model: "Llama 3.1 Sonar Small",
-    useCases: ["Market research", "Valuation insights", "Comparable property analysis"]
-  }
+    name: 'Perplexity',
+    description: 'Enhanced provider for web-augmented property research and valuation insights',
+    status: 'operational',
+    model: 'Llama 3.1 Sonar Small',
+    useCases: ['Market research', 'Valuation insights', 'Comparable property analysis'],
+  },
 ];
 
 const getStatusColor = (status: AIProviderStatus): string => {
   switch (status) {
-    case "operational":
-      return "bg-green-500";
-    case "degraded":
-      return "bg-yellow-500";
-    case "unavailable":
-      return "bg-red-500";
+    case 'operational':
+      return 'bg-green-500';
+    case 'degraded':
+      return 'bg-yellow-500';
+    case 'unavailable':
+      return 'bg-red-500';
     default:
-      return "bg-gray-500";
+      return 'bg-gray-500';
   }
 };
 
 const getStatusIcon = (status: AIProviderStatus) => {
   switch (status) {
-    case "operational":
+    case 'operational':
       return <CheckCircle className="h-4 w-4 text-green-500" />;
-    case "degraded":
-    case "unavailable":
+    case 'degraded':
+    case 'unavailable':
       return <AlertCircle className="h-4 w-4 text-red-500" />;
     default:
       return null;
@@ -80,9 +91,9 @@ export function AIProviderInfo() {
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <h3 className="font-medium text-sm flex items-center gap-1.5">
-                    {provider.name} 
-                    <div 
-                      className={`w-2 h-2 rounded-full ${getStatusColor(provider.status)}`} 
+                    {provider.name}
+                    <div
+                      className={`w-2 h-2 rounded-full ${getStatusColor(provider.status)}`}
                       title={provider.status}
                     />
                   </h3>

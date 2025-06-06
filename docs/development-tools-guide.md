@@ -53,6 +53,7 @@ node setup-development-tools-db.js
 ```
 
 This script will:
+
 1. Create all necessary database tables for the development tools
 2. Push the schema changes to the database
 3. Verify that all required tables were created successfully
@@ -66,6 +67,7 @@ node test-development-tools-api.js
 ```
 
 This script tests all the API endpoints for:
+
 - Code snippets
 - Data visualizations
 - UI component templates
@@ -167,39 +169,39 @@ The UI Component Playground allows you to build and share reusable UI components
 
 ### Code Snippets API
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/code-snippets` | GET | Get all code snippets with optional filtering |
-| `/code-snippets/:id` | GET | Get a single code snippet by ID |
-| `/code-snippets` | POST | Create a new code snippet |
-| `/code-snippets/:id` | PUT | Update a code snippet |
-| `/code-snippets/:id` | DELETE | Delete a code snippet |
-| `/code-snippets/generate` | POST | Generate a code snippet with AI |
-| `/code-snippets/metadata` | GET | Get code snippet metadata (available languages, types, etc.) |
+| Endpoint                  | Method | Description                                                  |
+| ------------------------- | ------ | ------------------------------------------------------------ |
+| `/code-snippets`          | GET    | Get all code snippets with optional filtering                |
+| `/code-snippets/:id`      | GET    | Get a single code snippet by ID                              |
+| `/code-snippets`          | POST   | Create a new code snippet                                    |
+| `/code-snippets/:id`      | PUT    | Update a code snippet                                        |
+| `/code-snippets/:id`      | DELETE | Delete a code snippet                                        |
+| `/code-snippets/generate` | POST   | Generate a code snippet with AI                              |
+| `/code-snippets/metadata` | GET    | Get code snippet metadata (available languages, types, etc.) |
 
 ### Data Visualizations API
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/data-visualizations` | GET | Get all data visualizations with optional filtering |
-| `/data-visualizations/:id` | GET | Get a single data visualization by ID |
-| `/data-visualizations` | POST | Create a new data visualization |
-| `/data-visualizations/:id` | PUT | Update a data visualization |
-| `/data-visualizations/:id` | DELETE | Delete a data visualization |
-| `/data-visualizations/generate-config` | POST | Generate a data visualization config with AI |
-| `/data-visualizations/metadata` | GET | Get data visualization metadata (available types, libraries, etc.) |
+| Endpoint                               | Method | Description                                                        |
+| -------------------------------------- | ------ | ------------------------------------------------------------------ |
+| `/data-visualizations`                 | GET    | Get all data visualizations with optional filtering                |
+| `/data-visualizations/:id`             | GET    | Get a single data visualization by ID                              |
+| `/data-visualizations`                 | POST   | Create a new data visualization                                    |
+| `/data-visualizations/:id`             | PUT    | Update a data visualization                                        |
+| `/data-visualizations/:id`             | DELETE | Delete a data visualization                                        |
+| `/data-visualizations/generate-config` | POST   | Generate a data visualization config with AI                       |
+| `/data-visualizations/metadata`        | GET    | Get data visualization metadata (available types, libraries, etc.) |
 
 ### UI Component Templates API
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/ui-components` | GET | Get all UI component templates with optional filtering |
-| `/ui-components/:id` | GET | Get a single UI component template by ID |
-| `/ui-components` | POST | Create a new UI component template |
-| `/ui-components/:id` | PUT | Update a UI component template |
-| `/ui-components/:id` | DELETE | Delete a UI component template |
-| `/ui-components/generate` | POST | Generate a UI component with AI |
-| `/ui-components/metadata` | GET | Get UI component metadata (available types, frameworks, etc.) |
+| Endpoint                  | Method | Description                                                   |
+| ------------------------- | ------ | ------------------------------------------------------------- |
+| `/ui-components`          | GET    | Get all UI component templates with optional filtering        |
+| `/ui-components/:id`      | GET    | Get a single UI component template by ID                      |
+| `/ui-components`          | POST   | Create a new UI component template                            |
+| `/ui-components/:id`      | PUT    | Update a UI component template                                |
+| `/ui-components/:id`      | DELETE | Delete a UI component template                                |
+| `/ui-components/generate` | POST   | Generate a UI component with AI                               |
+| `/ui-components/metadata` | GET    | Get UI component metadata (available types, frameworks, etc.) |
 
 ## Troubleshooting
 

@@ -1,6 +1,6 @@
 /**
  * types.ts
- * 
+ *
  * Type definitions for the agent system
  */
 
@@ -13,7 +13,7 @@ export enum AgentStatus {
   PAUSED = 'paused',
   SHUTTING_DOWN = 'shutting_down',
   STOPPED = 'stopped',
-  ERROR = 'error'
+  ERROR = 'error',
 }
 
 /**
@@ -24,42 +24,42 @@ export enum AgentCapability {
   TASK_EXECUTION = 'task_execution',
   STATE_PERSISTENCE = 'state_persistence',
   EVENT_EMISSION = 'event_emission',
-  
+
   // Debugging capabilities
   CODE_ANALYSIS = 'code_analysis',
   ERROR_TRACKING = 'error_tracking',
   EXECUTION_TRACING = 'execution_tracing',
   PERFORMANCE_PROFILING = 'performance_profiling',
-  
+
   // Deployment capabilities
   LOCAL_DEPLOYMENT = 'local_deployment',
   WEB_DEPLOYMENT = 'web_deployment',
   CONTAINER_GENERATION = 'container_generation',
   ENVIRONMENT_CHECKING = 'environment_checking',
-  
+
   // Version control capabilities
   CHANGE_TRACKING = 'change_tracking',
   MERGE_MANAGEMENT = 'merge_management',
   DIFF_VISUALIZATION = 'diff_visualization',
   GIT_INTEGRATION = 'git_integration',
-  
+
   // Database capabilities
   QUERY_OPTIMIZATION = 'query_optimization',
   SCHEMA_SUGGESTION = 'schema_suggestion',
   DATA_MIGRATION = 'data_migration',
   PERFORMANCE_MONITORING = 'performance_monitoring',
-  
+
   // GIS capabilities
   GEOSPATIAL_PROCESSING = 'geospatial_processing',
   MAP_RENDERING = 'map_rendering',
   SPATIAL_QUERY = 'spatial_query',
   COORDINATE_TRANSFORMATION = 'coordinate_transformation',
-  
+
   // Development capabilities
   BUILD_OPTIMIZATION = 'build_optimization',
   TEST_GENERATION = 'test_generation',
   CODE_QUALITY = 'code_quality',
-  AGENT_ORCHESTRATION = 'agent_orchestration'
+  AGENT_ORCHESTRATION = 'agent_orchestration',
 }
 
 /**
@@ -70,7 +70,7 @@ export enum AgentPriority {
   LOW = 25,
   NORMAL = 50,
   HIGH = 75,
-  HIGHEST = 100
+  HIGHEST = 100,
 }
 
 /**
@@ -80,7 +80,7 @@ export enum AgentType {
   COORDINATOR = 'coordinator',
   DOMAIN_SPECIFIC = 'domain_specific',
   TASK_SPECIFIC = 'task_specific',
-  UTILITY = 'utility'
+  UTILITY = 'utility',
 }
 
 /**
@@ -137,7 +137,7 @@ export enum AgentEventType {
   TASK_FAILED = 'agent.task.failed',
   STATE_CHANGED = 'agent.state.changed',
   CAPABILITY_ADDED = 'agent.capability.added',
-  CAPABILITY_REMOVED = 'agent.capability.removed'
+  CAPABILITY_REMOVED = 'agent.capability.removed',
 }
 
 /**
@@ -176,7 +176,7 @@ export enum AgentMetricType {
   ERROR_RATE = 'error_rate',
   CPU_USAGE = 'cpu_usage',
   MEMORY_USAGE = 'memory_usage',
-  UPTIME = 'uptime'
+  UPTIME = 'uptime',
 }
 
 /**

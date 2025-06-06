@@ -1,6 +1,6 @@
 /**
  * index.ts
- * 
+ *
  * Export the entire multi-agent architecture
  */
 

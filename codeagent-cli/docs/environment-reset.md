@@ -11,6 +11,7 @@ codeagent reset
 ```
 
 This will perform the following actions:
+
 1. Detect all resetable items in your environment
 2. Present a list of what will be reset
 3. Ask for confirmation before proceeding
@@ -22,17 +23,17 @@ This will perform the following actions:
 
 The reset command provides several options to customize the reset process:
 
-| Option | Description |
-|--------|-------------|
-| `-f, --force` | Force reset without confirmation |
-| `-k, --keep-plugins` | Keep plugin configurations when resetting |
-| `-d, --clean-deps` | Clean and reinstall dependencies |
-| `-s, --reset-services` | Reset service configurations and credentials |
-| `-o, --reset-only <paths...>` | Only reset specified paths |
-| `-c, --config-path <path>` | Specify custom plugin config path |
-| `-r, --restore <backupDir>` | Restore from a previous backup |
-| `-i, --restore-items <paths...>` | Only restore specified items from backup |
-| `-l, --list-resetable` | List all resetable items without performing reset |
+| Option                           | Description                                       |
+| -------------------------------- | ------------------------------------------------- |
+| `-f, --force`                    | Force reset without confirmation                  |
+| `-k, --keep-plugins`             | Keep plugin configurations when resetting         |
+| `-d, --clean-deps`               | Clean and reinstall dependencies                  |
+| `-s, --reset-services`           | Reset service configurations and credentials      |
+| `-o, --reset-only <paths...>`    | Only reset specified paths                        |
+| `-c, --config-path <path>`       | Specify custom plugin config path                 |
+| `-r, --restore <backupDir>`      | Restore from a previous backup                    |
+| `-i, --restore-items <paths...>` | Only restore specified items from backup          |
+| `-l, --list-resetable`           | List all resetable items without performing reset |
 
 ## Examples
 

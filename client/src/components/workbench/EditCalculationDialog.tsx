@@ -5,13 +5,19 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CodeEditor from '@/components/development/CodeEditor';
 import { Save, X, PlayCircle } from 'lucide-react';
@@ -61,7 +67,7 @@ function calculate(input) {
 
 export default calculate;`,
   modelId: '',
-  variables: []
+  variables: [],
 };
 
 const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
@@ -72,7 +78,7 @@ const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
   calculation,
   modelId,
   calculationTypes = [],
-  modelVariables = []
+  modelVariables = [],
 }) => {
   const [activeTab, setActiveTab] = useState('details');
   const [isSaving, setIsSaving] = useState(false);
@@ -81,14 +87,14 @@ const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
   const [formData, setFormData] = useState<ModelCalculation>(
     calculation || { ...defaultCalculation, modelId }
   );
-  
+
   const handleChange = (field: keyof ModelCalculation, value: string | string[]) => {
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
-  
+
   const handleSubmit = async () => {
     try {
       setIsSaving(true);
@@ -100,10 +106,10 @@ const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
       setIsSaving(false);
     }
   };
-  
+
   const handleTestCalculation = async () => {
     if (!onTest) return;
-    
+
     try {
       setIsTesting(true);
       setTestResult(null);
@@ -116,26 +122,26 @@ const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
       setIsTesting(false);
     }
   };
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{calculation ? 'Edit Calculation' : 'Create New Calculation'}</DialogTitle>
           <DialogDescription>
-            {calculation 
+            {calculation
               ? 'Update an existing assessment model calculation'
               : 'Create a new calculation for your assessment model'}
           </DialogDescription>
         </DialogHeader>
-        
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="formula">Formula</TabsTrigger>
             <TabsTrigger value="implementation">Implementation</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="details" className="space-y-4 py-4">
             <div className="grid grid-cols-4 gap-4">
               <div className="col-span-3">
@@ -147,13 +153,10 @@ const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
                   placeholder="Enter calculation name"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="type">Type</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={value => handleChange('type', value)}
-                >
+                <Select value={formData.type} onValueChange={value => handleChange('type', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -177,7 +180,7 @@ const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
                 </Select>
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="description">Description</Label>
               <Textarea
@@ -188,7 +191,7 @@ const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
                 rows={5}
               />
             </div>
-            
+
             {modelVariables.length > 0 && (
               <div>
                 <Label>Required Variables</Label>
@@ -216,7 +219,7 @@ const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="formula" className="py-4">
             <div>
               <Label htmlFor="formula">Calculation Formula</Label>
@@ -232,14 +235,17 @@ const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
                 className="font-mono"
               />
             </div>
-            
+
             {modelVariables.length > 0 && (
               <div className="mt-4">
                 <Label>Available Variables</Label>
                 <div className="mt-2 p-3 bg-slate-50 rounded-md">
                   <div className="grid grid-cols-3 gap-2">
                     {modelVariables.map(variable => (
-                      <div key={variable.id} className="text-sm font-mono bg-white px-2 py-1 rounded-sm border">
+                      <div
+                        key={variable.id}
+                        className="text-sm font-mono bg-white px-2 py-1 rounded-sm border"
+                      >
                         {variable.name}
                       </div>
                     ))}
@@ -248,20 +254,21 @@ const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="implementation" className="py-4">
             <div className="mb-2 flex justify-between items-start">
               <div>
                 <Label htmlFor="code">Implementation Code</Label>
                 <p className="text-sm text-gray-500 mb-2">
-                  Write the JavaScript implementation of this calculation. The function should take an input object with variables and return a calculated value.
+                  Write the JavaScript implementation of this calculation. The function should take
+                  an input object with variables and return a calculated value.
                 </p>
               </div>
-              
+
               {onTest && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={handleTestCalculation}
                   disabled={isTesting}
                 >
@@ -270,7 +277,7 @@ const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
                 </Button>
               )}
             </div>
-            
+
             <div className="h-[400px] border rounded-md">
               <CodeEditor
                 value={formData.code}
@@ -280,7 +287,7 @@ const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
                 theme="dark"
               />
             </div>
-            
+
             {testResult && (
               <div className="mt-4 p-3 border rounded-md bg-slate-50">
                 <Label>Test Result</Label>
@@ -291,7 +298,7 @@ const EditCalculationDialog: React.FC<EditCalculationDialogProps> = ({
             )}
           </TabsContent>
         </Tabs>
-        
+
         <DialogFooter className="flex space-x-2 justify-end">
           <Button variant="outline" onClick={onClose}>
             <X className="h-4 w-4 mr-1" />

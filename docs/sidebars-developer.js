@@ -12,20 +12,20 @@ const sidebars = {
       type: 'category',
       label: 'Core Packages',
       items: [
-        'core-packages/core-models', 
-        'core-packages/plugin-loader', 
+        'core-packages/core-models',
+        'core-packages/plugin-loader',
         'core-packages/ui-components',
-        'core-packages/geo-api'
+        'core-packages/geo-api',
       ],
     },
     {
       type: 'category',
       label: 'Plugin Development',
       items: [
-        'plugins/creating-plugins', 
-        'plugins/plugin-api', 
+        'plugins/creating-plugins',
+        'plugins/plugin-api',
         'plugins/payment-integration',
-        'plugins/deployment'
+        'plugins/deployment',
       ],
     },
     {

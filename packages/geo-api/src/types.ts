@@ -6,13 +6,13 @@
 export type LayerVisibility = 'visible' | 'hidden' | 'none';
 
 // Basic GeoJSON types
-export type GeoJSONGeometryType = 
-  | 'Point' 
-  | 'MultiPoint' 
-  | 'LineString' 
-  | 'MultiLineString' 
-  | 'Polygon' 
-  | 'MultiPolygon' 
+export type GeoJSONGeometryType =
+  | 'Point'
+  | 'MultiPoint'
+  | 'LineString'
+  | 'MultiLineString'
+  | 'Polygon'
+  | 'MultiPolygon'
   | 'GeometryCollection';
 
 export interface GeoJSONGeometry {

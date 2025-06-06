@@ -42,10 +42,10 @@ export interface AppShellProps {
 
 /**
  * AppShell component
- * 
+ *
  * A layout component that provides a common structure for applications,
  * including configurable header, sidebar, and footer.
- * 
+ *
  * @example
  * ```tsx
  * <AppShell
@@ -80,9 +80,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     <div className={cn('flex h-screen flex-col bg-background', className)}>
       {/* Header */}
       {header && (
-        <header className="z-20 border-b border-border bg-card shadow-sm">
-          {header}
-        </header>
+        <header className="z-20 border-b border-border bg-card shadow-sm">{header}</header>
       )}
 
       <div className="flex flex-1 overflow-hidden">
@@ -113,11 +111,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       </div>
 
       {/* Footer */}
-      {footer && (
-        <footer className="border-t border-border bg-card shadow-sm">
-          {footer}
-        </footer>
-      )}
+      {footer && <footer className="border-t border-border bg-card shadow-sm">{footer}</footer>}
     </div>
   );
 };

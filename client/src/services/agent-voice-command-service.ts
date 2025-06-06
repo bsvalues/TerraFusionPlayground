@@ -1,6 +1,6 @@
 /**
  * Agent Voice Command Service (Client-side)
- * 
+ *
  * This service provides speech recognition, audio recording, and communication
  * with the server-side voice command processing API.
  */
@@ -13,9 +13,9 @@ export interface VoiceCommandContext {
   subject?: string;
   recentCommands?: string[];
   recentResults?: VoiceCommandResult[];
-  userId?: number;         // Added for enhanced voice command features
-  sessionId?: string;      // Added for tracking in analytics
-  contextId?: string;      // Added for contextual help
+  userId?: number; // Added for enhanced voice command features
+  sessionId?: string; // Added for tracking in analytics
+  contextId?: string; // Added for contextual help
 }
 
 // Define the voice command result interface
@@ -39,7 +39,7 @@ export enum VoiceCommandActionType {
   EXECUTE_FUNCTION = 'execute_function',
   COPY_TO_CLIPBOARD = 'copy_to_clipboard',
   TOGGLE_VIEW = 'toggle_view',
-  DISPLAY_NOTIFICATION = 'display_notification'
+  DISPLAY_NOTIFICATION = 'display_notification',
 }
 
 // Command action interface
@@ -52,9 +52,9 @@ export interface VoiceCommandAction {
 export enum RecordingState {
   INACTIVE = 'inactive',
   LISTENING = 'listening',
-  RECORDING = 'recording',  // Added for compatibility with enhanced components
+  RECORDING = 'recording', // Added for compatibility with enhanced components
   PROCESSING = 'processing',
-  ERROR = 'error'
+  ERROR = 'error',
 }
 
 // Speech recognition options
@@ -77,44 +77,43 @@ export class SpeechRecognitionService {
 
   constructor(options: SpeechRecognitionOptions = {}) {
     // Check browser support for speech recognition
-    const SpeechRecognitionAPI = 
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
-    
+    const SpeechRecognitionAPI =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
     if (!SpeechRecognitionAPI) {
       console.error('Speech recognition is not supported in this browser');
       return;
     }
-    
+
     this.recognition = new SpeechRecognitionAPI();
-    
+
     // Configure speech recognition
     this.recognition.continuous = options.continuous ?? false;
     this.recognition.interimResults = options.interimResults ?? true;
     this.recognition.lang = options.lang ?? 'en-US';
-    
+
     // Set up event handlers
     this.setupEventListeners();
   }
-  
+
   /**
    * Set up event listeners for the speech recognition API
    */
   private setupEventListeners() {
     if (!this.recognition) return;
-    
+
     this.recognition.onresult = (event: any) => {
       const current = event.resultIndex;
       const result = event.results[current];
       const transcript = result[0].transcript.trim();
-      
+
       this.transcript = transcript;
-      
+
       if (result.isFinal && this.onResultCallback) {
         this.onResultCallback(this.transcript);
       }
     };
-    
+
     this.recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
       if (this.onErrorCallback) {
@@ -122,7 +121,7 @@ export class SpeechRecognitionService {
       }
       this.stop();
     };
-    
+
     this.recognition.onend = () => {
       this.isRecording = false;
       if (this.onEndCallback) {
@@ -130,7 +129,7 @@ export class SpeechRecognitionService {
       }
     };
   }
-  
+
   /**
    * Start recording audio for speech recognition
    */
@@ -142,7 +141,7 @@ export class SpeechRecognitionService {
       }
       return;
     }
-    
+
     try {
       this.recognition.start();
       this.isRecording = true;
@@ -154,13 +153,13 @@ export class SpeechRecognitionService {
       }
     }
   }
-  
+
   /**
    * Stop recording audio
    */
   public stop(): void {
     if (!this.recognition || !this.isRecording) return;
-    
+
     try {
       this.recognition.stop();
       this.isRecording = false;
@@ -168,35 +167,35 @@ export class SpeechRecognitionService {
       console.error('Failed to stop speech recognition:', error);
     }
   }
-  
+
   /**
    * Check if recording is active
    */
   public isActive(): boolean {
     return this.isRecording;
   }
-  
+
   /**
    * Get the current transcript
    */
   public getTranscript(): string {
     return this.transcript;
   }
-  
+
   /**
    * Register callback for speech recognition results
    */
   public onResult(callback: (transcript: string) => void): void {
     this.onResultCallback = callback;
   }
-  
+
   /**
    * Register callback for errors
    */
   public onError(callback: (error: any) => void): void {
     this.onErrorCallback = callback;
   }
-  
+
   /**
    * Register callback for when recognition ends
    */
@@ -216,16 +215,16 @@ export async function processVoiceCommand(
 ): Promise<VoiceCommandResult> {
   try {
     // Send command to the server for processing
-    const response = await apiRequest("POST", "/api/agent-voice/command", {
+    const response = await apiRequest('POST', '/api/agent-voice/command', {
       command: commandText,
-      context
+      context,
     });
-    
+
     if (!response.ok) {
       const error = await response.text();
       throw new Error(`Failed to process command: ${error}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error processing voice command:', error);
@@ -234,17 +233,14 @@ export async function processVoiceCommand(
       processed: false,
       successful: false,
       error: error instanceof Error ? error.message : 'Unknown error processing command',
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   }
 }
 
 // For testing purposes: detect if web speech API is available
 export function isSpeechRecognitionAvailable(): boolean {
-  return !!(
-    (window as any).SpeechRecognition ||
-    (window as any).webkitSpeechRecognition
-  );
+  return !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 }
 
 // Enhanced recording functions for compatibility with the new components
@@ -256,7 +252,7 @@ function initRecognitionService() {
   if (!recognitionService) {
     recognitionService = new SpeechRecognitionService({
       continuous: false,
-      interimResults: true
+      interimResults: true,
     });
   }
   return recognitionService;
@@ -269,57 +265,58 @@ export function startRecording(
   onEnd: () => void
 ): void {
   const service = initRecognitionService();
-  
+
   service.onResult(onResult);
   service.onError(onError);
   service.onEnd(onEnd);
-  
+
   service.start();
 }
 
 // Stop recording audio
 export function stopRecording(): string | null {
   if (!recognitionService) return null;
-  
+
   const transcript = recognitionService.getTranscript();
   recognitionService.stop();
-  
+
   return transcript;
 }
 
 // For handling actions from voice command results
 export function executeVoiceCommandAction(action: VoiceCommandAction): void {
   if (!action || !action.type) return;
-  
+
   switch (action.type) {
     case VoiceCommandActionType.NAVIGATE:
       if (action.payload && action.payload.url) {
         window.location.href = action.payload.url;
       }
       break;
-      
+
     case VoiceCommandActionType.OPEN_MODAL:
       // This would need to be connected to the app's modal system
       console.log('Modal action:', action.payload);
       break;
-      
+
     case VoiceCommandActionType.CLOSE_MODAL:
       // This would need to be connected to the app's modal system
       console.log('Close modal action');
       break;
-      
+
     case VoiceCommandActionType.REFRESH_DATA:
       // This would need to be connected to the app's data fetching system
       console.log('Refresh data action:', action.payload);
       break;
-      
+
     case VoiceCommandActionType.COPY_TO_CLIPBOARD:
       if (action.payload && action.payload.text) {
-        navigator.clipboard.writeText(action.payload.text)
+        navigator.clipboard
+          .writeText(action.payload.text)
           .catch(err => console.error('Failed to copy to clipboard:', err));
       }
       break;
-      
+
     default:
       console.warn('Unknown action type:', action.type);
   }

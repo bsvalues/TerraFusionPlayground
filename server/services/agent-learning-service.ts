@@ -1,6 +1,6 @@
 /**
  * Agent Learning Service
- * 
+ *
  * This service implements the continuous learning system for AI agents.
  * It handles:
  * - Collection and storage of learning events
@@ -11,13 +11,26 @@
  */
 
 import { db } from '../db';
-import { 
-  agentLearningEvents, AgentLearningEvent, insertAgentLearningEventSchema,
-  agentUserFeedback, AgentUserFeedback, insertAgentUserFeedbackSchema,
-  agentKnowledgeBase, AgentKnowledgeBase, insertAgentKnowledgeBaseSchema,
-  agentPerformanceMetrics, AgentPerformanceMetric, insertAgentPerformanceMetricSchema,
-  agentLearningModels, AgentLearningModel, insertAgentLearningModelSchema,
-  LearningEventType, FeedbackSentiment, LearningModelProvider, AgentPerformanceMetricType
+import {
+  agentLearningEvents,
+  AgentLearningEvent,
+  insertAgentLearningEventSchema,
+  agentUserFeedback,
+  AgentUserFeedback,
+  insertAgentUserFeedbackSchema,
+  agentKnowledgeBase,
+  AgentKnowledgeBase,
+  insertAgentKnowledgeBaseSchema,
+  agentPerformanceMetrics,
+  AgentPerformanceMetric,
+  insertAgentPerformanceMetricSchema,
+  agentLearningModels,
+  AgentLearningModel,
+  insertAgentLearningModelSchema,
+  LearningEventType,
+  FeedbackSentiment,
+  LearningModelProvider,
+  AgentPerformanceMetricType,
 } from '../../shared/schema';
 import { LLMService } from './llm-service';
 import { PerplexityService, perplexityService } from './perplexity-service';
@@ -45,10 +58,7 @@ export class AgentLearningService {
   private feedbackProcessingTimer: NodeJS.Timeout | null = null;
   private modelUpdateTimer: NodeJS.Timeout | null = null;
 
-  constructor(
-    llmService: LLMService,
-    config?: Partial<AgentLearningConfig>
-  ) {
+  constructor(llmService: LLMService, config?: Partial<AgentLearningConfig>) {
     this.llmService = llmService;
     this.perplexityService = perplexityService;
 
@@ -62,14 +72,20 @@ export class AgentLearningService {
       providers: {
         openai: !!process.env.OPENAI_API_KEY,
         anthropic: !!process.env.ANTHROPIC_API_KEY,
-        perplexity: !!process.env.PERPLEXITY_API_KEY
+        perplexity: !!process.env.PERPLEXITY_API_KEY,
       },
-      ...config
+      ...config,
     };
 
     // Validate that at least one provider is available
-    if (!this.config.providers.openai && !this.config.providers.anthropic && !this.config.providers.perplexity) {
-      console.warn('No LLM providers available for agent learning. Learning system will be disabled.');
+    if (
+      !this.config.providers.openai &&
+      !this.config.providers.anthropic &&
+      !this.config.providers.perplexity
+    ) {
+      console.warn(
+        'No LLM providers available for agent learning. Learning system will be disabled.'
+      );
       this.config.enabled = false;
     }
 
@@ -87,13 +103,15 @@ export class AgentLearningService {
     if (this.feedbackProcessingTimer) {
       clearInterval(this.feedbackProcessingTimer);
     }
-    
+
     this.feedbackProcessingTimer = setInterval(
       async () => this.processPendingFeedback(),
       this.config.feedbackProcessingInterval
     );
-    
-    console.log(`Agent learning feedback processing started with interval: ${this.config.feedbackProcessingInterval}ms`);
+
+    console.log(
+      `Agent learning feedback processing started with interval: ${this.config.feedbackProcessingInterval}ms`
+    );
   }
 
   /**
@@ -103,13 +121,15 @@ export class AgentLearningService {
     if (this.modelUpdateTimer) {
       clearInterval(this.modelUpdateTimer);
     }
-    
+
     this.modelUpdateTimer = setInterval(
       async () => this.updateLearningModels(),
       this.config.modelUpdateInterval
     );
-    
-    console.log(`Agent learning model update cycle started with interval: ${this.config.modelUpdateInterval}ms`);
+
+    console.log(
+      `Agent learning model update cycle started with interval: ${this.config.modelUpdateInterval}ms`
+    );
   }
 
   /**
@@ -128,17 +148,22 @@ export class AgentLearningService {
         return null;
       }
 
-      const [event] = await db.insert(agentLearningEvents).values({
-        agentId,
-        eventType,
-        eventData,
-        sourceContext,
-        priority,
-        processed: false
-      }).returning();
+      const [event] = await db
+        .insert(agentLearningEvents)
+        .values({
+          agentId,
+          eventType,
+          eventData,
+          sourceContext,
+          priority,
+          processed: false,
+        })
+        .returning();
 
-      console.log(`Recorded learning event (${eventType}) for agent ${agentId} with priority ${priority}`);
-      
+      console.log(
+        `Recorded learning event (${eventType}) for agent ${agentId} with priority ${priority}`
+      );
+
       // If priority is high, process immediately
       if (priority >= 4) {
         this.processLearningEvent(event.id).catch(err => {
@@ -175,20 +200,23 @@ export class AgentLearningService {
       }
 
       // Insert feedback record
-      const [feedback] = await db.insert(agentUserFeedback).values({
-        agentId,
-        userId: feedbackData.userId,
-        conversationId: feedbackData.conversationId,
-        taskId: feedbackData.taskId,
-        feedbackText: feedbackData.feedbackText,
-        sentiment: feedbackData.sentiment,
-        rating: feedbackData.rating,
-        categories: feedbackData.categories,
-        processed: false
-      }).returning();
+      const [feedback] = await db
+        .insert(agentUserFeedback)
+        .values({
+          agentId,
+          userId: feedbackData.userId,
+          conversationId: feedbackData.conversationId,
+          taskId: feedbackData.taskId,
+          feedbackText: feedbackData.feedbackText,
+          sentiment: feedbackData.sentiment,
+          rating: feedbackData.rating,
+          categories: feedbackData.categories,
+          processed: false,
+        })
+        .returning();
 
       console.log(`Recorded user feedback for agent ${agentId}`);
-      
+
       // Also create a learning event from this feedback
       await this.recordLearningEvent(
         agentId,
@@ -225,7 +253,8 @@ export class AgentLearningService {
       }
 
       // Check if similar knowledge already exists
-      const existingKnowledge = await db.select()
+      const existingKnowledge = await db
+        .select()
         .from(agentKnowledgeBase)
         .where(
           and(
@@ -237,13 +266,14 @@ export class AgentLearningService {
 
       if (existingKnowledge.length > 0) {
         // Update existing knowledge instead of creating new
-        const [updated] = await db.update(agentKnowledgeBase)
+        const [updated] = await db
+          .update(agentKnowledgeBase)
           .set({
             content,
             sourceEvents: [...new Set([...existingKnowledge[0].sourceEvents, ...sourceEvents])],
             confidence: Math.max(existingKnowledge[0].confidence, confidence),
             verified: existingKnowledge[0].verified || verified,
-            updatedAt: new Date()
+            updatedAt: new Date(),
           })
           .where(eq(agentKnowledgeBase.id, existingKnowledge[0].id))
           .returning();
@@ -253,15 +283,18 @@ export class AgentLearningService {
       }
 
       // Create new knowledge entry
-      const [knowledge] = await db.insert(agentKnowledgeBase).values({
-        agentId,
-        knowledgeType,
-        title,
-        content,
-        sourceEvents,
-        confidence,
-        verified
-      }).returning();
+      const [knowledge] = await db
+        .insert(agentKnowledgeBase)
+        .values({
+          agentId,
+          knowledgeType,
+          title,
+          content,
+          sourceEvents,
+          confidence,
+          verified,
+        })
+        .returning();
 
       console.log(`Added new knowledge "${title}" for agent ${agentId}`);
       return knowledge;
@@ -283,17 +316,22 @@ export class AgentLearningService {
   ): Promise<AgentPerformanceMetric> {
     try {
       if (!this.config.enabled) {
-        console.log(`Learning system disabled, not recording performance metric for agent ${agentId}`);
-        throw new Error("Learning system is disabled");
+        console.log(
+          `Learning system disabled, not recording performance metric for agent ${agentId}`
+        );
+        throw new Error('Learning system is disabled');
       }
 
-      const [metric] = await db.insert(agentPerformanceMetrics).values({
-        agentId,
-        metricType,
-        value: value.toString(), // Convert number to string for numeric database column
-        timeframe,
-        metadata
-      }).returning();
+      const [metric] = await db
+        .insert(agentPerformanceMetrics)
+        .values({
+          agentId,
+          metricType,
+          value: value.toString(), // Convert number to string for numeric database column
+          timeframe,
+          metadata,
+        })
+        .returning();
 
       console.log(`Recorded ${metricType} metric for agent ${agentId}: ${value}`);
       return metric;
@@ -313,7 +351,10 @@ export class AgentLearningService {
     verifiedOnly: boolean = false
   ): Promise<AgentKnowledgeBase[]> {
     try {
-      let query = db.select().from(agentKnowledgeBase).where(eq(agentKnowledgeBase.agentId, agentId));
+      let query = db
+        .select()
+        .from(agentKnowledgeBase)
+        .where(eq(agentKnowledgeBase.agentId, agentId));
 
       if (knowledgeType) {
         query = query.where(eq(agentKnowledgeBase.knowledgeType, knowledgeType));
@@ -330,14 +371,17 @@ export class AgentLearningService {
       }
 
       // Order by confidence (descending) and then by last updated
-      const knowledge = await query.orderBy(desc(agentKnowledgeBase.confidence), desc(agentKnowledgeBase.updatedAt));
+      const knowledge = await query.orderBy(
+        desc(agentKnowledgeBase.confidence),
+        desc(agentKnowledgeBase.updatedAt)
+      );
       return knowledge;
     } catch (error) {
       console.error(`Error retrieving knowledge for agent ${agentId}:`, error);
       throw new Error(`Failed to retrieve agent knowledge: ${error.message}`);
     }
   }
-  
+
   /**
    * Get agent performance metrics
    */
@@ -347,7 +391,10 @@ export class AgentLearningService {
     timeframe?: string
   ): Promise<AgentPerformanceMetric[]> {
     try {
-      let query = db.select().from(agentPerformanceMetrics).where(eq(agentPerformanceMetrics.agentId, agentId));
+      let query = db
+        .select()
+        .from(agentPerformanceMetrics)
+        .where(eq(agentPerformanceMetrics.agentId, agentId));
 
       if (metricType) {
         query = query.where(eq(agentPerformanceMetrics.metricType, metricType));
@@ -362,7 +409,9 @@ export class AgentLearningService {
       return metrics;
     } catch (error) {
       console.error(`Error retrieving metrics for agent ${agentId}:`, error);
-      throw new Error(`Failed to retrieve agent metrics: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to retrieve agent metrics: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -376,22 +425,24 @@ export class AgentLearningService {
 
     try {
       this.isProcessingFeedback = true;
-      
+
       // Get all unprocessed feedback
-      const feedbackEntries = await db.select()
+      const feedbackEntries = await db
+        .select()
         .from(agentUserFeedback)
         .where(eq(agentUserFeedback.processed, false))
         .limit(50);
 
       console.log(`Processing ${feedbackEntries.length} pending feedback entries`);
-      
+
       for (const feedback of feedbackEntries) {
         try {
           // Process each feedback entry
           await this.processFeedbackEntry(feedback);
-          
+
           // Mark as processed
-          await db.update(agentUserFeedback)
+          await db
+            .update(agentUserFeedback)
             .set({ processed: true })
             .where(eq(agentUserFeedback.id, feedback.id));
         } catch (error) {
@@ -436,7 +487,7 @@ export class AgentLearningService {
 
       const messages = [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: feedback.feedbackText }
+        { role: 'user', content: feedback.feedbackText },
       ];
 
       // Try using OpenAI or Anthropic or Perplexity, in that order
@@ -445,7 +496,7 @@ export class AgentLearningService {
         try {
           analysisResult = await this.llmService.prompt(messages, {
             provider: 'openai',
-            responseFormat: { type: 'json_object' }
+            responseFormat: { type: 'json_object' },
           });
         } catch (error) {
           console.error('Error using OpenAI for feedback analysis, trying Anthropic:', error);
@@ -455,7 +506,7 @@ export class AgentLearningService {
       if (!analysisResult && this.config.providers.anthropic) {
         try {
           analysisResult = await this.llmService.prompt(messages, {
-            provider: 'anthropic'
+            provider: 'anthropic',
           });
         } catch (error) {
           console.error('Error using Anthropic for feedback analysis, trying Perplexity:', error);
@@ -464,13 +515,12 @@ export class AgentLearningService {
 
       if (!analysisResult && this.config.providers.perplexity) {
         try {
-          const perplexityResponse = await this.perplexityService.query(
-            messages,
-            { temperature: 0.2 }
-          );
-          
+          const perplexityResponse = await this.perplexityService.query(messages, {
+            temperature: 0.2,
+          });
+
           analysisResult = {
-            text: perplexityResponse.choices[0].message.content
+            text: perplexityResponse.choices[0].message.content,
           };
         } catch (error) {
           console.error('Error using Perplexity for feedback analysis:', error);
@@ -481,9 +531,10 @@ export class AgentLearningService {
       // Parse the LLM response
       let analysis;
       try {
-        analysis = typeof analysisResult.text === 'string' 
-          ? JSON.parse(analysisResult.text) 
-          : analysisResult.text;
+        analysis =
+          typeof analysisResult.text === 'string'
+            ? JSON.parse(analysisResult.text)
+            : analysisResult.text;
       } catch (error) {
         console.error('Failed to parse LLM response as JSON:', error);
         return;
@@ -509,14 +560,13 @@ export class AgentLearningService {
           AgentPerformanceMetricType.USER_SATISFACTION,
           feedback.rating / 5, // Normalize to 0-1 scale
           'single', // Single instance
-          { 
+          {
             feedbackId: feedback.id,
             sentiment: feedback.sentiment,
-            analysis: analysis.keyInsights
+            analysis: analysis.keyInsights,
           }
         );
       }
-
     } catch (error) {
       console.error(`Error processing feedback entry ${feedback.id}:`, error);
       throw error;
@@ -529,74 +579,78 @@ export class AgentLearningService {
   private async processLearningEvent(eventId: number): Promise<void> {
     try {
       // Get the event
-      const [event] = await db.select().from(agentLearningEvents).where(eq(agentLearningEvents.id, eventId));
-      
+      const [event] = await db
+        .select()
+        .from(agentLearningEvents)
+        .where(eq(agentLearningEvents.id, eventId));
+
       if (!event || event.processed) {
         return;
       }
-      
+
       console.log(`Processing learning event ${eventId} of type ${event.eventType}`);
-      
+
       let processingNotes = '';
-      
+
       switch (event.eventType) {
         case LearningEventType.USER_FEEDBACK:
           // This is already handled by the feedback processing system
           processingNotes = 'Processed via feedback processing system';
           break;
-          
+
         case LearningEventType.TASK_COMPLETION:
           processingNotes = await this.processTaskCompletionEvent(event);
           break;
-          
+
         case LearningEventType.ERROR_RECOVERY:
           processingNotes = await this.processErrorRecoveryEvent(event);
           break;
-          
+
         case LearningEventType.MODEL_IMPROVEMENT:
           processingNotes = await this.processModelImprovementEvent(event);
           break;
-          
+
         case LearningEventType.COLLABORATIVE_LEARNING:
           processingNotes = await this.processCollaborativeLearningEvent(event);
           break;
-          
+
         case LearningEventType.KNOWLEDGE_TRANSFER:
           processingNotes = await this.processKnowledgeTransferEvent(event);
           break;
-          
+
         default:
           processingNotes = `Unknown event type: ${event.eventType}`;
       }
-      
+
       // Mark the event as processed
-      await db.update(agentLearningEvents)
-        .set({ 
+      await db
+        .update(agentLearningEvents)
+        .set({
           processed: true,
           processingNotes,
-          processedAt: new Date()
+          processedAt: new Date(),
         })
         .where(eq(agentLearningEvents.id, eventId));
-        
     } catch (error) {
       console.error(`Error processing learning event ${eventId}:`, error);
-      
+
       // Update with error info but don't mark as processed
-      await db.update(agentLearningEvents)
-        .set({ 
-          processingNotes: `Error processing: ${error.message}`
+      await db
+        .update(agentLearningEvents)
+        .set({
+          processingNotes: `Error processing: ${error.message}`,
         })
         .where(eq(agentLearningEvents.id, eventId));
     }
   }
-  
+
   /**
    * Process task completion event
    */
   private async processTaskCompletionEvent(event: AgentLearningEvent): Promise<string> {
     // Extract data from the event
     const { taskId, taskType, result, performance } = event.eventData;
-    
+
     // Record performance metrics if available
     if (performance) {
       if (performance.timeMs) {
@@ -608,7 +662,7 @@ export class AgentLearningService {
           { taskId, taskType }
         );
       }
-      
+
       if (performance.success !== undefined) {
         await this.recordPerformanceMetric(
           event.agentId,
@@ -618,7 +672,7 @@ export class AgentLearningService {
           { taskId, taskType }
         );
       }
-      
+
       if (performance.accuracy !== undefined) {
         await this.recordPerformanceMetric(
           event.agentId,
@@ -629,7 +683,7 @@ export class AgentLearningService {
         );
       }
     }
-    
+
     // For successful task completions, try to extract knowledge
     if (result && result.success) {
       const systemPrompt = `
@@ -647,18 +701,21 @@ export class AgentLearningService {
           "confidence": number between 0 and 1 indicating confidence in this knowledge
         }
       `;
-      
+
       try {
-        const response = await this.llmService.prompt([
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify(event.eventData) }
-        ], {
-          provider: 'openai',
-          responseFormat: { type: 'json_object' }
-        });
-        
+        const response = await this.llmService.prompt(
+          [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: JSON.stringify(event.eventData) },
+          ],
+          {
+            provider: 'openai',
+            responseFormat: { type: 'json_object' },
+          }
+        );
+
         const knowledge = JSON.parse(response.text);
-        
+
         await this.addKnowledge(
           event.agentId,
           knowledge.knowledgeType,
@@ -668,24 +725,24 @@ export class AgentLearningService {
           knowledge.confidence,
           false // Not verified yet
         );
-        
+
         return `Extracted knowledge: ${knowledge.title}`;
       } catch (error) {
         console.error('Error extracting knowledge from task completion:', error);
         return `Failed to extract knowledge: ${error.message}`;
       }
     }
-    
+
     return 'Processed task completion, no knowledge extracted';
   }
-  
+
   /**
    * Process error recovery event
    */
   private async processErrorRecoveryEvent(event: AgentLearningEvent): Promise<string> {
     // Extract data from the event
     const { errorType, errorDetails, recoveryStrategy, successful } = event.eventData;
-    
+
     // Record error rate metric
     await this.recordPerformanceMetric(
       event.agentId,
@@ -694,7 +751,7 @@ export class AgentLearningService {
       'single',
       { errorType, errorDetails, recoverySuccess: successful }
     );
-    
+
     // For successful recoveries, extract knowledge
     if (successful) {
       const systemPrompt = `
@@ -713,18 +770,21 @@ export class AgentLearningService {
           "confidence": number between 0 and 1 indicating confidence in this knowledge
         }
       `;
-      
+
       try {
-        const response = await this.llmService.prompt([
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify(event.eventData) }
-        ], {
-          provider: 'openai',
-          responseFormat: { type: 'json_object' }
-        });
-        
+        const response = await this.llmService.prompt(
+          [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: JSON.stringify(event.eventData) },
+          ],
+          {
+            provider: 'openai',
+            responseFormat: { type: 'json_object' },
+          }
+        );
+
         const knowledge = JSON.parse(response.text);
-        
+
         await this.addKnowledge(
           event.agentId,
           knowledge.knowledgeType,
@@ -734,17 +794,17 @@ export class AgentLearningService {
           knowledge.confidence,
           false // Not verified yet
         );
-        
+
         return `Extracted error handling knowledge: ${knowledge.title}`;
       } catch (error) {
         console.error('Error extracting knowledge from error recovery:', error);
         return `Failed to extract knowledge: ${error.message}`;
       }
     }
-    
+
     return 'Processed error recovery event, no knowledge extracted';
   }
-  
+
   /**
    * Process model improvement event
    * This is for when a model is updated or improved
@@ -752,7 +812,7 @@ export class AgentLearningService {
   private async processModelImprovementEvent(event: AgentLearningEvent): Promise<string> {
     // Extract data from the event
     const { modelName, oldVersion, newVersion, improvements } = event.eventData;
-    
+
     // Register the new model
     try {
       await db.insert(agentLearningModels).values({
@@ -762,12 +822,13 @@ export class AgentLearningService {
         provider: event.eventData.provider || LearningModelProvider.INTERNAL,
         configuration: event.eventData.configuration || {},
         performanceMetrics: event.eventData.performanceMetrics || {},
-        active: true
+        active: true,
       });
-      
+
       // If there was a previous model, mark it as inactive
       if (oldVersion) {
-        await db.update(agentLearningModels)
+        await db
+          .update(agentLearningModels)
           .set({ active: false })
           .where(
             and(
@@ -777,14 +838,14 @@ export class AgentLearningService {
             )
           );
       }
-      
+
       return `Registered new model ${modelName} version ${newVersion}`;
     } catch (error) {
       console.error('Error registering new model version:', error);
       return `Failed to register new model: ${error.message}`;
     }
   }
-  
+
   /**
    * Process collaborative learning event
    * This is for when agents share knowledge with each other
@@ -792,11 +853,11 @@ export class AgentLearningService {
   private async processCollaborativeLearningEvent(event: AgentLearningEvent): Promise<string> {
     // Extract data from the event
     const { sourceAgentId, knowledge } = event.eventData;
-    
+
     if (!sourceAgentId || !knowledge) {
       return 'Invalid collaborative learning event data';
     }
-    
+
     // Add the shared knowledge to this agent's knowledge base
     try {
       await this.addKnowledge(
@@ -808,14 +869,14 @@ export class AgentLearningService {
         knowledge.confidence * 0.9, // Slightly lower confidence for transferred knowledge
         false // Not verified yet
       );
-      
+
       return `Added shared knowledge from agent ${sourceAgentId}: ${knowledge.title}`;
     } catch (error) {
       console.error('Error adding shared knowledge:', error);
       return `Failed to add shared knowledge: ${error.message}`;
     }
   }
-  
+
   /**
    * Process knowledge transfer event
    * Similar to collaborative learning but initiated by an external system
@@ -823,11 +884,11 @@ export class AgentLearningService {
   private async processKnowledgeTransferEvent(event: AgentLearningEvent): Promise<string> {
     // Extract data from the event
     const { knowledge, source } = event.eventData;
-    
+
     if (!knowledge) {
       return 'Invalid knowledge transfer event data';
     }
-    
+
     // Add the transferred knowledge to this agent's knowledge base
     try {
       await this.addKnowledge(
@@ -839,14 +900,14 @@ export class AgentLearningService {
         knowledge.confidence,
         source === 'expert' // Verified if from expert source
       );
-      
+
       return `Added transferred knowledge from ${source}: ${knowledge.title}`;
     } catch (error) {
       console.error('Error adding transferred knowledge:', error);
       return `Failed to add transferred knowledge: ${error.message}`;
     }
   }
-  
+
   /**
    * Update learning models based on accumulated data
    */
@@ -854,13 +915,13 @@ export class AgentLearningService {
     if (!this.config.enabled) {
       return;
     }
-    
+
     console.log('Running scheduled learning model update');
-    
+
     try {
       // Get all agents with sufficient learning data
       const agents = await this.getAgentsWithSufficientLearningData();
-      
+
       for (const agentId of agents) {
         try {
           await this.updateAgentModel(agentId);
@@ -872,100 +933,101 @@ export class AgentLearningService {
       console.error('Error during model update cycle:', error);
     }
   }
-  
+
   /**
    * Get list of agents with sufficient learning data for model updates
    */
   private async getAgentsWithSufficientLearningData(): Promise<string[]> {
     // Get agents with at least 10 learning events
-    const result = await db.select({
-      agentId: agentLearningEvents.agentId,
-      count: sql<number>`count(*)`.as('count')
-    })
-    .from(agentLearningEvents)
-    .groupBy(agentLearningEvents.agentId)
-    .having(sql`count(*) >= 10`);
-    
+    const result = await db
+      .select({
+        agentId: agentLearningEvents.agentId,
+        count: sql<number>`count(*)`.as('count'),
+      })
+      .from(agentLearningEvents)
+      .groupBy(agentLearningEvents.agentId)
+      .having(sql`count(*) >= 10`);
+
     return result.map(r => r.agentId);
   }
-  
+
   /**
    * Update the learning model for a specific agent
    */
   private async updateAgentModel(agentId: string): Promise<void> {
     try {
       console.log(`Updating learning model for agent ${agentId}`);
-      
+
       // Get the agent's previous model if any
-      const previousModels = await db.select()
+      const previousModels = await db
+        .select()
         .from(agentLearningModels)
-        .where(
-          and(
-            eq(agentLearningModels.agentId, agentId),
-            eq(agentLearningModels.active, true)
-          )
-        );
-      
+        .where(and(eq(agentLearningModels.agentId, agentId), eq(agentLearningModels.active, true)));
+
       const previousModel = previousModels.length > 0 ? previousModels[0] : null;
-      
+
       const modelName = previousModel?.modelName || 'base_agent_model';
       const previousVersion = previousModel?.version || '0.1.0';
-      
+
       // Generate new version number
       const versionParts = previousVersion.split('.');
       const newVersion = `${versionParts[0]}.${versionParts[1]}.${parseInt(versionParts[2]) + 1}`;
-      
+
       // Get recent learning events to analyze
-      const recentEvents = await db.select()
+      const recentEvents = await db
+        .select()
         .from(agentLearningEvents)
         .where(
-          and(
-            eq(agentLearningEvents.agentId, agentId),
-            eq(agentLearningEvents.processed, true)
-          )
+          and(eq(agentLearningEvents.agentId, agentId), eq(agentLearningEvents.processed, true))
         )
         .orderBy(desc(agentLearningEvents.createdAt))
         .limit(50);
-      
+
       // Get recent performance metrics
-      const recentMetrics = await db.select()
+      const recentMetrics = await db
+        .select()
         .from(agentPerformanceMetrics)
         .where(eq(agentPerformanceMetrics.agentId, agentId))
         .orderBy(desc(agentPerformanceMetrics.createdAt))
         .limit(100);
-      
+
       // Get knowledge base entries
-      const knowledgeEntries = await db.select()
+      const knowledgeEntries = await db
+        .select()
         .from(agentKnowledgeBase)
         .where(eq(agentKnowledgeBase.agentId, agentId))
         .orderBy(desc(agentKnowledgeBase.updatedAt))
         .limit(100);
-      
+
       // Calculate performance metrics
       const performanceMetrics = this.calculateAggregatePerformanceMetrics(recentMetrics);
-      
+
       // Create new model entry
-      const [newModel] = await db.insert(agentLearningModels).values({
-        agentId,
-        modelName,
-        version: newVersion,
-        provider: LearningModelProvider.INTERNAL,
-        configuration: {
-          baseModel: previousModel?.configuration?.baseModel || 'default',
-          knowledgeBaseSize: knowledgeEntries.length,
-          lastUpdated: new Date().toISOString()
-        },
-        performanceMetrics,
-        active: true
-      }).returning();
-      
+      const [newModel] = await db
+        .insert(agentLearningModels)
+        .values({
+          agentId,
+          modelName,
+          version: newVersion,
+          provider: LearningModelProvider.INTERNAL,
+          configuration: {
+            baseModel: previousModel?.configuration?.baseModel || 'default',
+            knowledgeBaseSize: knowledgeEntries.length,
+            lastUpdated: new Date().toISOString(),
+          },
+          performanceMetrics,
+          active: true,
+        })
+        .returning();
+
       // Mark previous model as inactive
       if (previousModel) {
-        await db.update(agentLearningModels)
+        await db
+          .update(agentLearningModels)
           .set({ active: false })
           .where(eq(agentLearningModels.id, previousModel.id));
       }
-      
+
       // Log model improvement event
       await this.recordLearningEvent(
         agentId,
@@ -975,22 +1037,22 @@ export class AgentLearningService {
           oldVersion: previousVersion,
           newVersion,
           improvements: this.summarizeImprovements(knowledgeEntries, recentEvents),
-          performanceMetrics
+          performanceMetrics,
         },
         {
           knowledgeBaseSize: knowledgeEntries.length,
-          eventsProcessed: recentEvents.length
+          eventsProcessed: recentEvents.length,
         },
         3 // Medium priority
       );
-      
+
       console.log(`Updated learning model for agent ${agentId} to version ${newVersion}`);
     } catch (error) {
       console.error(`Error updating model for agent ${agentId}:`, error);
       throw error;
     }
   }
-  
+
   /**
    * Calculate aggregate performance metrics from individual metrics
    */
@@ -1001,19 +1063,19 @@ export class AgentLearningService {
       userSatisfaction: { avg: 0, samples: 0 },
       taskCompletionRate: { avg: 0, samples: 0 },
       errorRate: { avg: 0, samples: 0 },
-      overall: 0
+      overall: 0,
     };
-    
+
     // Group metrics by type
     const byType: Record<string, number[]> = {};
-    
+
     for (const metric of metrics) {
       if (!byType[metric.metricType]) {
         byType[metric.metricType] = [];
       }
       byType[metric.metricType].push(Number(metric.value));
     }
-    
+
     // Calculate averages for each type
     if (byType[AgentPerformanceMetricType.RESPONSE_TIME]?.length) {
       const values = byType[AgentPerformanceMetricType.RESPONSE_TIME];
@@ -1022,61 +1084,61 @@ export class AgentLearningService {
       result.responseTime.max = Math.max(...values);
       result.responseTime.samples = values.length;
     }
-    
+
     if (byType[AgentPerformanceMetricType.ACCURACY]?.length) {
       const values = byType[AgentPerformanceMetricType.ACCURACY];
       result.accuracy.avg = values.reduce((sum, val) => sum + val, 0) / values.length;
       result.accuracy.samples = values.length;
     }
-    
+
     if (byType[AgentPerformanceMetricType.USER_SATISFACTION]?.length) {
       const values = byType[AgentPerformanceMetricType.USER_SATISFACTION];
       result.userSatisfaction.avg = values.reduce((sum, val) => sum + val, 0) / values.length;
       result.userSatisfaction.samples = values.length;
     }
-    
+
     if (byType[AgentPerformanceMetricType.TASK_COMPLETION_RATE]?.length) {
       const values = byType[AgentPerformanceMetricType.TASK_COMPLETION_RATE];
       result.taskCompletionRate.avg = values.reduce((sum, val) => sum + val, 0) / values.length;
       result.taskCompletionRate.samples = values.length;
     }
-    
+
     if (byType[AgentPerformanceMetricType.ERROR_RATE]?.length) {
       const values = byType[AgentPerformanceMetricType.ERROR_RATE];
       result.errorRate.avg = values.reduce((sum, val) => sum + val, 0) / values.length;
       result.errorRate.samples = values.length;
     }
-    
+
     // Calculate overall score (weighted average of available metrics)
     let overallScore = 0;
     let weightSum = 0;
-    
+
     if (result.accuracy.samples > 0) {
       overallScore += result.accuracy.avg * 0.3;
       weightSum += 0.3;
     }
-    
+
     if (result.userSatisfaction.samples > 0) {
       overallScore += result.userSatisfaction.avg * 0.3;
       weightSum += 0.3;
     }
-    
+
     if (result.taskCompletionRate.samples > 0) {
       overallScore += result.taskCompletionRate.avg * 0.2;
       weightSum += 0.2;
     }
-    
+
     if (result.errorRate.samples > 0) {
       // Invert error rate (lower is better)
       overallScore += (1 - result.errorRate.avg) * 0.2;
       weightSum += 0.2;
     }
-    
+
     result.overall = weightSum > 0 ? overallScore / weightSum : 0;
-    
+
     return result;
   }
-  
+
   /**
    * Summarize improvements based on knowledge and events
    */
@@ -1085,22 +1147,20 @@ export class AgentLearningService {
     events: AgentLearningEvent[]
   ): string[] {
     const improvements: string[] = [];
-    
+
     // Add recent knowledge items
-    const recentKnowledge = knowledgeEntries
-      .slice(0, 5)
-      .map(k => `New knowledge: ${k.title}`);
-    
+    const recentKnowledge = knowledgeEntries.slice(0, 5).map(k => `New knowledge: ${k.title}`);
+
     improvements.push(...recentKnowledge);
-    
+
     // Add improvements based on error recovery
     const errorRecoveries = events
       .filter(e => e.eventType === LearningEventType.ERROR_RECOVERY && e.eventData.successful)
       .slice(0, 3)
       .map(e => `Improved error handling: ${e.eventData.errorType}`);
-    
+
     improvements.push(...errorRecoveries);
-    
+
     return improvements;
   }
 }

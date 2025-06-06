@@ -1,7 +1,7 @@
 // Types related to the workflow optimizer feature
 
 // Enum aligned with backend WorkflowOptimizationType
-export type OptimizationType = 
+export type OptimizationType =
   | 'code_quality'
   | 'performance'
   | 'architecture'
@@ -12,18 +12,10 @@ export type OptimizationType =
   | 'testing';
 
 // Enum aligned with backend WorkflowOptimizationStatus
-export type OptimizationStatus = 
-  | 'pending'
-  | 'in_progress'
-  | 'completed'
-  | 'failed'
-  | 'cancelled';
+export type OptimizationStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
 
 // Enum aligned with backend WorkflowOptimizationPriority
-export type OptimizationPriority = 
-  | 'low'
-  | 'medium'
-  | 'high';
+export type OptimizationPriority = 'low' | 'medium' | 'high';
 
 // Interface aligned with workflowOptimizationRequests table in schema.ts
 export interface WorkflowOptimizationRequest {
@@ -67,7 +59,7 @@ export interface WorkflowOptimizationResult {
   runTime?: number | null;
   modelUsed?: string | null;
   createdAt: string;
-  
+
   // Backwards compatibility fields for existing component
   resultId?: string;
   impactScore?: number;

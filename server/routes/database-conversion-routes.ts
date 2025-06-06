@@ -1,6 +1,6 @@
 /**
  * Database Conversion Routes
- * 
+ *
  * API routes for the database conversion system
  */
 
@@ -8,7 +8,10 @@ import { Router, Express } from 'express';
 import { DatabaseConversionService } from '../services/database-conversion';
 import { DatabaseType, ConnectionStatus } from '../services/database-conversion/types';
 
-export function registerDatabaseConversionRoutes(app: Express, dbConversionService: DatabaseConversionService) {
+export function registerDatabaseConversionRoutes(
+  app: Express,
+  dbConversionService: DatabaseConversionService
+) {
   const router = Router();
 
   // GET /api/database-conversion/supported-databases
@@ -26,11 +29,11 @@ export function registerDatabaseConversionRoutes(app: Express, dbConversionServi
   router.get('/database-type-info', (req, res) => {
     try {
       const { type } = req.query;
-      
+
       if (!type || typeof type !== 'string') {
         return res.status(400).json({ error: 'Database type is required' });
       }
-      
+
       const dbTypeInfo = dbConversionService.getDatabaseTypeInfo(type as DatabaseType);
       res.json(dbTypeInfo);
     } catch (error) {
@@ -43,17 +46,17 @@ export function registerDatabaseConversionRoutes(app: Express, dbConversionServi
   router.post('/test-connection', async (req, res) => {
     try {
       const { connectionString, databaseType } = req.body;
-      
+
       if (!connectionString) {
         return res.status(400).json({ error: 'Connection string is required' });
       }
-      
+
       if (!databaseType) {
         return res.status(400).json({ error: 'Database type is required' });
       }
-      
+
       const result = await dbConversionService.testConnection(connectionString, databaseType);
-      
+
       if (result.status === ConnectionStatus.Success) {
         res.json({ success: true, result });
       } else {
@@ -61,14 +64,14 @@ export function registerDatabaseConversionRoutes(app: Express, dbConversionServi
       }
     } catch (error) {
       console.error('Error testing connection:', error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         error: error.message || 'Failed to test database connection',
         result: {
           status: ConnectionStatus.Failed,
           error: error.message,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
   });
@@ -77,29 +80,33 @@ export function registerDatabaseConversionRoutes(app: Express, dbConversionServi
   router.post('/analyze-schema', async (req, res) => {
     try {
       const { connectionString, databaseType, name, description, options } = req.body;
-      
+
       if (!connectionString) {
         return res.status(400).json({ error: 'Connection string is required' });
       }
-      
+
       if (!databaseType) {
         return res.status(400).json({ error: 'Database type is required' });
       }
-      
+
       const analysisOptions = {
         projectName: name,
         projectDescription: description,
-        ...options
+        ...options,
       };
-      
-      const result = await dbConversionService.analyzeSchema(connectionString, databaseType, analysisOptions);
-      
+
+      const result = await dbConversionService.analyzeSchema(
+        connectionString,
+        databaseType,
+        analysisOptions
+      );
+
       res.json({ success: true, result });
     } catch (error) {
       console.error('Error analyzing schema:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message || 'Failed to analyze database schema' 
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to analyze database schema',
       });
     }
   });
@@ -120,11 +127,11 @@ export function registerDatabaseConversionRoutes(app: Express, dbConversionServi
     try {
       const { id } = req.params;
       const project = await dbConversionService.getProject(id);
-      
+
       if (!project) {
         return res.status(404).json({ error: 'Project not found' });
       }
-      
+
       res.json(project);
     } catch (error) {
       console.error('Error fetching project:', error);
@@ -135,38 +142,38 @@ export function registerDatabaseConversionRoutes(app: Express, dbConversionServi
   // POST /api/database-conversion/start-conversion
   router.post('/start-conversion', async (req, res) => {
     try {
-      const { 
-        projectId, 
-        sourceConnectionString, 
-        sourceType, 
-        targetConnectionString, 
+      const {
+        projectId,
+        sourceConnectionString,
+        sourceType,
+        targetConnectionString,
         targetType,
-        options 
+        options,
       } = req.body;
-      
+
       if (!projectId) {
         return res.status(400).json({ error: 'Project ID is required' });
       }
-      
+
       if (!sourceConnectionString) {
         return res.status(400).json({ error: 'Source connection string is required' });
       }
-      
+
       if (!sourceType) {
         return res.status(400).json({ error: 'Source database type is required' });
       }
-      
+
       if (!targetConnectionString) {
         return res.status(400).json({ error: 'Target connection string is required' });
       }
-      
+
       if (!targetType) {
         return res.status(400).json({ error: 'Target database type is required' });
       }
-      
+
       // Create a conversion project record if it doesn't exist
       let project = await dbConversionService.getProject(projectId);
-      
+
       if (!project) {
         project = await dbConversionService.createProject({
           id: projectId,
@@ -174,19 +181,19 @@ export function registerDatabaseConversionRoutes(app: Express, dbConversionServi
           sourceType,
           targetType,
           status: 'pending',
-          createdAt: new Date()
+          createdAt: new Date(),
         });
       }
-      
+
       // Start the conversion process
       const result = await dbConversionService.startConversion(projectId);
-      
+
       res.json({ success: true, result, projectId });
     } catch (error) {
       console.error('Error starting conversion:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message || 'Failed to start database conversion' 
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to start database conversion',
       });
     }
   });
@@ -195,19 +202,19 @@ export function registerDatabaseConversionRoutes(app: Express, dbConversionServi
   router.get('/conversion-status', async (req, res) => {
     try {
       const { projectId } = req.query;
-      
+
       if (!projectId || typeof projectId !== 'string') {
         return res.status(400).json({ error: 'Project ID is required' });
       }
-      
+
       const status = await dbConversionService.getConversionStatus(projectId);
-      
+
       res.json({ success: true, result: status });
     } catch (error) {
       console.error('Error fetching conversion status:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message || 'Failed to fetch conversion status' 
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch conversion status',
       });
     }
   });
@@ -216,26 +223,26 @@ export function registerDatabaseConversionRoutes(app: Express, dbConversionServi
   router.post('/generate-compatibility-layer', async (req, res) => {
     try {
       const { projectId, ormType, includeExamples, generateMigrations, targetDirectory } = req.body;
-      
+
       if (!projectId) {
         return res.status(400).json({ error: 'Project ID is required' });
       }
-      
+
       const options = {
         ormType,
         includeExamples,
         generateMigrations,
-        targetDirectory
+        targetDirectory,
       };
-      
+
       const result = await dbConversionService.generateCompatibilityLayer(projectId, options);
-      
+
       res.json({ success: true, result });
     } catch (error) {
       console.error('Error generating compatibility layer:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message || 'Failed to generate compatibility layer' 
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to generate compatibility layer',
       });
     }
   });

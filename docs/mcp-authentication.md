@@ -14,10 +14,11 @@ The authentication system secures MCP endpoints using JWT (JSON Web Token) based
 ### JWT Token Authentication
 
 1. Exchange an API key for a JWT token using the token endpoint:
+
    ```
    POST /api/auth/token
    Content-Type: application/json
-   
+
    {
      "apiKey": "your-api-key"
    }
@@ -32,6 +33,7 @@ The authentication system secures MCP endpoints using JWT (JSON Web Token) based
 ### Direct API Key Authentication
 
 Use the API key directly in the request header:
+
 ```
 GET /api/mcp/tools
 X-API-Key: your-api-key
@@ -42,10 +44,12 @@ X-API-Key: your-api-key
 The authentication system supports three levels of access:
 
 1. **Read-only** (TokenScope.READ_ONLY)
+
    - Can access `/api/mcp/tools` and other read-only endpoints
    - Cannot execute MCP tools or modify data
 
 2. **Read-write** (TokenScope.READ_WRITE)
+
    - Includes all read-only permissions
    - Can execute most MCP tools
    - Can modify non-critical data
@@ -65,6 +69,7 @@ The authentication system supports three levels of access:
 ## API Key Management
 
 API keys are managed by system administrators. Each API key includes:
+
 - Client ID: Identifies the client application
 - User ID: Links the API key to a specific user
 - Access Level: Determines the level of access granted
@@ -84,9 +89,9 @@ async function getToken(apiKey) {
   const response = await fetch('http://localhost:3000/api/auth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiKey })
+    body: JSON.stringify({ apiKey }),
   });
-  
+
   const { token } = await response.json();
   return token;
 }
@@ -97,11 +102,11 @@ async function executeMcpTool(token, toolName, parameters) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ toolName, parameters })
+    body: JSON.stringify({ toolName, parameters }),
   });
-  
+
   return await response.json();
 }
 

@@ -1,9 +1,9 @@
 /**
  * PACS Module Importer
- * 
+ *
  * This script imports PACS modules from a CSV file into the database.
  * It reads the PACS_Agent_Module_Map.csv file and inserts the modules into the database.
- * 
+ *
  * Usage: node scripts/import-pacs-modules.js
  */
 
@@ -27,13 +27,13 @@ async function getToken() {
   const response = await fetch(`${API_URL}/auth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiKey: API_KEY })
+    body: JSON.stringify({ apiKey: API_KEY }),
   });
-  
+
   if (!response.ok) {
     throw new Error(`Failed to get token: ${response.status} ${response.statusText}`);
   }
-  
+
   const { token } = await response.json();
   return token;
 }
@@ -44,18 +44,18 @@ async function executeTool(token, toolName, parameters = {}) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ toolName, parameters })
+    body: JSON.stringify({ toolName, parameters }),
   });
-  
+
   const result = await response.json();
-  
+
   if (!response.ok) {
     console.error(`Failed to execute tool ${toolName}:`, result);
     return null;
   }
-  
+
   return result;
 }
 
@@ -65,7 +65,7 @@ function readPacsModulesCsv() {
     const fileContent = fs.readFileSync(CSV_FILE_PATH, 'utf8');
     const records = parse(fileContent, {
       columns: true,
-      skip_empty_lines: true
+      skip_empty_lines: true,
     });
     return records;
   } catch (error) {
@@ -84,14 +84,14 @@ function enhanceModuleData(modules) {
     category: determineCategory(module.module_name),
     description: module.description || generateDescription(module.module_name),
     version: '1.0',
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   }));
 }
 
 // Helper function to determine module category based on name
 function determineCategory(moduleName) {
   const lowerName = moduleName.toLowerCase();
-  
+
   if (lowerName.includes('appraisal') || lowerName.includes('valuation')) {
     return 'Valuation';
   } else if (lowerName.includes('report') || lowerName.includes('export')) {
@@ -114,18 +114,18 @@ function determineCategory(moduleName) {
 // Helper function to generate a description based on module name
 function generateDescription(moduleName) {
   const category = determineCategory(moduleName);
-  
+
   const descriptions = {
-    'Valuation': `Handles property valuation processes for ${moduleName.toLowerCase()} functions in PACS.`,
-    'Reporting': `Generates reports and exports data related to ${moduleName.toLowerCase()} in PACS.`,
-    'Mapping': `Provides GIS and mapping capabilities for ${moduleName.toLowerCase()} in PACS.`,
-    'Taxation': `Manages tax calculation and processing for ${moduleName.toLowerCase()} in PACS.`,
-    'Administration': `Provides administrative functions for ${moduleName.toLowerCase()} in PACS.`,
+    Valuation: `Handles property valuation processes for ${moduleName.toLowerCase()} functions in PACS.`,
+    Reporting: `Generates reports and exports data related to ${moduleName.toLowerCase()} in PACS.`,
+    Mapping: `Provides GIS and mapping capabilities for ${moduleName.toLowerCase()} in PACS.`,
+    Taxation: `Manages tax calculation and processing for ${moduleName.toLowerCase()} in PACS.`,
+    Administration: `Provides administrative functions for ${moduleName.toLowerCase()} in PACS.`,
     'Property Management': `Handles property record management for ${moduleName.toLowerCase()} in PACS.`,
     'Appeals and Exemptions': `Manages the processing of ${moduleName.toLowerCase()} in PACS.`,
-    'Other': `Provides functionality for ${moduleName.toLowerCase()} in the PACS system.`
+    Other: `Provides functionality for ${moduleName.toLowerCase()} in the PACS system.`,
   };
-  
+
   return descriptions[category];
 }
 
@@ -133,22 +133,22 @@ function generateDescription(moduleName) {
 async function importPacsModules() {
   try {
     console.log('Starting PACS module import...');
-    
+
     // Read the CSV file
     const rawModules = readPacsModulesCsv();
     console.log(`Read ${rawModules.length} modules from CSV`);
-    
+
     // Enhance the module data
     const enhancedModules = enhanceModuleData(rawModules);
-    
+
     // Get JWT token for API access
     const token = await getToken();
     console.log('Successfully obtained JWT token');
-    
+
     // Import each module using the MCP API
     let successCount = 0;
     let errorCount = 0;
-    
+
     for (const module of enhancedModules) {
       try {
         // Create tool parameters for module import
@@ -159,12 +159,12 @@ async function importPacsModules() {
           category: module.category,
           description: module.description,
           version: module.version,
-          lastUpdated: module.lastUpdated
+          lastUpdated: module.lastUpdated,
         };
-        
+
         // Execute the importPacsModule tool
         const result = await executeTool(token, 'importPacsModule', params);
-        
+
         if (result && result.success) {
           console.log(`✓ Imported module: ${module.name}`);
           successCount++;
@@ -176,16 +176,15 @@ async function importPacsModules() {
         console.error(`Error importing module ${module.name}:`, error);
         errorCount++;
       }
-      
+
       // Add a small delay to prevent overwhelming the API
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
+
     console.log('\nImport completed:');
     console.log(`- Total modules: ${enhancedModules.length}`);
     console.log(`- Successfully imported: ${successCount}`);
     console.log(`- Failed: ${errorCount}`);
-    
   } catch (error) {
     console.error('Error during PACS module import:', error);
   }

@@ -10,16 +10,16 @@ export function createAssessmentApiRoutes(storage: IStorage) {
   // Get assessment metrics
   router.get('/assessment-metrics', async (req: Request, res: Response) => {
     try {
-      const timeRange = req.query.timeRange as string || 'month';
+      const timeRange = (req.query.timeRange as string) || 'month';
       const metrics = await storage.getAssessmentMetrics(timeRange);
-      
+
       // Add delta values for dashboard UI
       const enhancedMetrics = {
         ...metrics,
         assessmentDelta: { value: 5.3, isPercentage: true, period: 'month', isPositive: true },
-        completionDelta: { value: 4.1, isPercentage: true, period: 'month', isPositive: true }
+        completionDelta: { value: 4.1, isPercentage: true, period: 'month', isPositive: true },
       };
-      
+
       res.json(enhancedMetrics);
     } catch (error) {
       console.error('Error fetching assessment metrics:', error);
@@ -32,11 +32,11 @@ export function createAssessmentApiRoutes(storage: IStorage) {
     try {
       const assessmentId = req.params.id;
       const assessment = await storage.getAssessmentById(assessmentId);
-      
+
       if (!assessment) {
         return res.status(404).json({ error: 'Assessment not found' });
       }
-      
+
       res.json(assessment);
     } catch (error) {
       console.error(`Error fetching assessment ${req.params.id}:`, error);
@@ -49,7 +49,7 @@ export function createAssessmentApiRoutes(storage: IStorage) {
     try {
       const propertyId = req.params.id;
       const assessments = await storage.getPropertyAssessments(propertyId);
-      
+
       res.json(assessments);
     } catch (error) {
       console.error(`Error fetching assessments for property ${req.params.id}:`, error);
@@ -61,11 +61,11 @@ export function createAssessmentApiRoutes(storage: IStorage) {
   router.post('/assessments', async (req: Request, res: Response) => {
     try {
       const assessmentData = req.body;
-      
+
       if (!assessmentData.propertyId) {
         return res.status(400).json({ error: 'Property ID is required' });
       }
-      
+
       const assessment = await storage.createAssessment(assessmentData);
       res.status(201).json(assessment);
     } catch (error) {
@@ -79,13 +79,13 @@ export function createAssessmentApiRoutes(storage: IStorage) {
     try {
       const assessmentId = req.params.id;
       const updates = req.body;
-      
+
       const assessment = await storage.updateAssessment(assessmentId, updates);
-      
+
       if (!assessment) {
         return res.status(404).json({ error: 'Assessment not found' });
       }
-      
+
       res.json(assessment);
     } catch (error) {
       console.error(`Error updating assessment ${req.params.id}:`, error);
@@ -98,7 +98,7 @@ export function createAssessmentApiRoutes(storage: IStorage) {
     try {
       const assessmentId = req.params.id;
       const statusHistory = await storage.getAssessmentStatusHistory(assessmentId);
-      
+
       res.json(statusHistory);
     } catch (error) {
       console.error(`Error fetching status history for assessment ${req.params.id}:`, error);

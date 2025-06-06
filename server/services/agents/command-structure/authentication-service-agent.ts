@@ -6,13 +6,13 @@ import { MessagePriority } from '../../../../shared/schema';
 
 /**
  * AuthenticationServiceAgent
- * 
+ *
  * Specialist agent responsible for authentication services.
  * Part of the BSBCmaster component.
  */
 export class AuthenticationServiceAgent extends SpecialistAgent {
   private authConfig: Record<string, any> = {};
-  
+
   constructor(storage: IStorage, mcpService?: MCPService) {
     super(
       'authentication_service_agent',
@@ -22,7 +22,7 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
       storage,
       mcpService
     );
-    
+
     // Add specialized capabilities
     this.capabilities = [
       ...this.capabilities,
@@ -30,14 +30,14 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
       'manageJwtTokens',
       'configureMfa',
       'implementRbac',
-      'auditAuthEvents'
+      'auditAuthEvents',
     ];
   }
 
   async initialize(): Promise<void> {
     // Call parent initialization
     await super.initialize();
-    
+
     // Set default configuration
     this.authConfig = {
       tokenExpirationTime: 3600, // seconds
@@ -48,18 +48,18 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
         requireSpecialChars: true,
         requireNumbers: true,
         requireUppercase: true,
-        requireLowercase: true
+        requireLowercase: true,
       },
       authProviders: ['local', 'oauth'],
       sessionManagement: {
         maxConcurrentSessions: 3,
-        inactivityTimeout: 1800 // seconds
-      }
+        inactivityTimeout: 1800, // seconds
+      },
     };
-    
-    logger.info({ 
-      component: 'BSBCmaster Authentication Service Agent', 
-      message: 'Authentication service initialized with default configuration'
+
+    logger.info({
+      component: 'BSBCmaster Authentication Service Agent',
+      message: 'Authentication service initialized with default configuration',
     });
   }
 
@@ -67,26 +67,26 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
    * Configure the authentication system
    */
   async configureAuth(config: Record<string, any>): Promise<Record<string, any>> {
-    logger.info({ 
-      component: 'BSBCmaster Authentication Service Agent', 
-      message: 'Configuring authentication system'
+    logger.info({
+      component: 'BSBCmaster Authentication Service Agent',
+      message: 'Configuring authentication system',
     });
-    
+
     // Merge provided config with defaults
     this.authConfig = {
       ...this.authConfig,
-      ...config
+      ...config,
     };
-    
+
     // Log the configuration update
     await this.storage.createSystemActivity({
       activity: 'Updated authentication configuration',
       entityType: 'configuration',
       entityId: 'auth-config',
       component: 'BSBCmaster Authentication Service Agent',
-      details: JSON.stringify(this.authConfig)
+      details: JSON.stringify(this.authConfig),
     });
-    
+
     // Report configuration update to component lead
     await this.storage.createAgentMessage({
       senderAgentId: this.agentId,
@@ -99,9 +99,9 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
       entityId: 'auth-config',
       status: 'pending',
       messageId: `auth-config-${Date.now()}`,
-      conversationId: null
+      conversationId: null,
     });
-    
+
     return this.authConfig;
   }
 
@@ -109,11 +109,11 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
    * Implement JWT token generation and validation
    */
   async implementJwtSupport(): Promise<string> {
-    logger.info({ 
-      component: 'BSBCmaster Authentication Service Agent', 
-      message: 'Implementing JWT token support'
+    logger.info({
+      component: 'BSBCmaster Authentication Service Agent',
+      message: 'Implementing JWT token support',
     });
-    
+
     const jwtImplementation = `
       // JWT Token Generation
       function generateToken(user, expiresIn = ${this.authConfig.tokenExpirationTime}) {
@@ -155,16 +155,16 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
         );
       }
     `;
-    
+
     // Log the implementation
     await this.storage.createSystemActivity({
       activity: 'Implemented JWT token support',
       entityType: 'implementation',
       entityId: 'jwt-support',
       component: 'BSBCmaster Authentication Service Agent',
-      details: jwtImplementation
+      details: jwtImplementation,
     });
-    
+
     return jwtImplementation;
   }
 
@@ -172,20 +172,20 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
    * Implement multi-factor authentication
    */
   async implementMfa(): Promise<string> {
-    logger.info({ 
-      component: 'BSBCmaster Authentication Service Agent', 
-      message: 'Implementing multi-factor authentication'
+    logger.info({
+      component: 'BSBCmaster Authentication Service Agent',
+      message: 'Implementing multi-factor authentication',
     });
-    
+
     if (!this.authConfig.mfaEnabled) {
-      logger.warn({ 
-        component: 'BSBCmaster Authentication Service Agent', 
-        message: 'MFA is disabled in configuration. Enabling it first.'
+      logger.warn({
+        component: 'BSBCmaster Authentication Service Agent',
+        message: 'MFA is disabled in configuration. Enabling it first.',
       });
-      
+
       this.authConfig.mfaEnabled = true;
     }
-    
+
     const mfaImplementation = `
       // TOTP (Time-based One-Time Password) Implementation
       
@@ -221,16 +221,16 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
         return code;
       }
     `;
-    
+
     // Log the implementation
     await this.storage.createSystemActivity({
       activity: 'Implemented multi-factor authentication',
       entityType: 'implementation',
       entityId: 'mfa-support',
       component: 'BSBCmaster Authentication Service Agent',
-      details: mfaImplementation
+      details: mfaImplementation,
     });
-    
+
     return mfaImplementation;
   }
 
@@ -238,11 +238,11 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
    * Implement role-based access control
    */
   async implementRbac(): Promise<string> {
-    logger.info({ 
-      component: 'BSBCmaster Authentication Service Agent', 
-      message: 'Implementing role-based access control'
+    logger.info({
+      component: 'BSBCmaster Authentication Service Agent',
+      message: 'Implementing role-based access control',
     });
-    
+
     const rbacImplementation = `
       // Role-based Access Control Implementation
       
@@ -296,16 +296,16 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
         };
       }
     `;
-    
+
     // Log the implementation
     await this.storage.createSystemActivity({
       activity: 'Implemented role-based access control',
       entityType: 'implementation',
       entityId: 'rbac-support',
       component: 'BSBCmaster Authentication Service Agent',
-      details: rbacImplementation
+      details: rbacImplementation,
     });
-    
+
     return rbacImplementation;
   }
 
@@ -313,11 +313,11 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
    * Generate authentication API documentation
    */
   async generateAuthApiDocs(): Promise<string> {
-    logger.info({ 
-      component: 'BSBCmaster Authentication Service Agent', 
-      message: 'Generating authentication API documentation'
+    logger.info({
+      component: 'BSBCmaster Authentication Service Agent',
+      message: 'Generating authentication API documentation',
     });
-    
+
     const authApiDocs = `
       # Authentication API Documentation
       
@@ -455,16 +455,16 @@ export class AuthenticationServiceAgent extends SpecialistAgent {
       }
       \`\`\`
     `;
-    
+
     // Log the documentation
     await this.storage.createSystemActivity({
       activity: 'Generated authentication API documentation',
       entityType: 'documentation',
       entityId: 'auth-api-docs',
       component: 'BSBCmaster Authentication Service Agent',
-      details: authApiDocs
+      details: authApiDocs,
     });
-    
+
     return authApiDocs;
   }
 }

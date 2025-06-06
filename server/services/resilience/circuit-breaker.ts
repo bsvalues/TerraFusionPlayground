@@ -1,6 +1,6 @@
 /**
  * Circuit Breaker Service
- * 
+ *
  * Implements the circuit breaker pattern to prevent cascading failures:
  * - Automatic detection of service failures
  * - Graceful degradation to prevent system overload
@@ -13,20 +13,20 @@ import { logger } from '../../utils/logger';
 
 // Circuit breaker states
 export enum CircuitState {
-  CLOSED = 'closed',   // Normal operation - requests pass through
-  OPEN = 'open',       // Failure threshold exceeded - requests fail fast
-  HALF_OPEN = 'half-open' // Recovery testing - limited requests allowed
+  CLOSED = 'closed', // Normal operation - requests pass through
+  OPEN = 'open', // Failure threshold exceeded - requests fail fast
+  HALF_OPEN = 'half-open', // Recovery testing - limited requests allowed
 }
 
 // Circuit breaker configuration
 export interface CircuitBreakerConfig {
   name: string;
-  failureThreshold: number;         // Number of failures before opening circuit
-  resetTimeout: number;             // Time in ms before testing recovery
+  failureThreshold: number; // Number of failures before opening circuit
+  resetTimeout: number; // Time in ms before testing recovery
   halfOpenSuccessThreshold: number; // Successes needed to close circuit
-  timeout?: number;                 // Operation timeout in ms
-  monitorInterval?: number;         // Health check interval
-  excludeErrorTypes?: string[];     // Error types to ignore
+  timeout?: number; // Operation timeout in ms
+  monitorInterval?: number; // Health check interval
+  excludeErrorTypes?: string[]; // Error types to ignore
 }
 
 // Circuit breaker metrics
@@ -78,9 +78,9 @@ export class CircuitBreaker {
     failedCalls: 0,
     timeoutCalls: 0,
     rejectedCalls: 0,
-    averageResponseTime: 0
+    averageResponseTime: 0,
   };
-  
+
   /**
    * Create a new Circuit Breaker
    * @param config Circuit breaker configuration
@@ -90,15 +90,15 @@ export class CircuitBreaker {
     if (config.monitorInterval) {
       this.startMonitoring();
     }
-    
+
     logger.info(`Circuit breaker initialized: ${config.name}`, {
       component: 'CircuitBreaker',
       state: this.state,
       failureThreshold: config.failureThreshold,
-      resetTimeout: config.resetTimeout
+      resetTimeout: config.resetTimeout,
     });
   }
-  
+
   /**
    * Execute an operation with circuit breaker protection
    * @param operation Function to execute
@@ -112,56 +112,56 @@ export class CircuitBreaker {
       error.name = 'CircuitOpenError';
       throw error;
     }
-    
+
     // Track metrics
     this.metrics.totalCalls++;
-    
+
     const startTime = Date.now();
-    
+
     try {
       // Execute operation (with timeout if configured)
       const result = await this.executeWithTimeout(operation);
-      
+
       // Update response time metric
       const responseTime = Date.now() - startTime;
       this.updateResponseTimeMetric(responseTime);
-      
+
       // Update success metrics
       this.metrics.successfulCalls++;
-      
+
       // Handle success based on circuit state
       if (this.state === CircuitState.HALF_OPEN) {
         this.successesInHalfOpen++;
-        
+
         if (this.successesInHalfOpen >= this.config.halfOpenSuccessThreshold) {
           this.closeCircuit();
         }
       }
-      
+
       return result;
     } catch (error) {
       // Update response time metric
       const responseTime = Date.now() - startTime;
       this.updateResponseTimeMetric(responseTime);
-      
+
       // Check if error should be counted as failure
       if (this.shouldCountError(error as Error)) {
         // Update failure metrics
         this.metrics.failedCalls++;
-        
+
         // Check if it's a timeout
         if ((error as Error).name === 'TimeoutError') {
           this.metrics.timeoutCalls++;
         }
-        
+
         // Record failure details
         this.metrics.lastFailureTime = new Date();
         this.metrics.lastFailureReason = (error as Error).message;
-        
+
         // Handle failure based on circuit state
         if (this.state === CircuitState.CLOSED) {
           this.failures++;
-          
+
           if (this.failures >= this.config.failureThreshold) {
             this.openCircuit();
           }
@@ -169,12 +169,12 @@ export class CircuitBreaker {
           this.openCircuit();
         }
       }
-      
+
       // Rethrow the error
       throw error;
     }
   }
-  
+
   /**
    * Execute an operation with timeout
    * @param operation Function to execute
@@ -184,14 +184,14 @@ export class CircuitBreaker {
     if (!this.config.timeout) {
       return operation();
     }
-    
+
     return new Promise<T>((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         const error = new Error(`Operation timed out after ${this.config.timeout}ms`);
         error.name = 'TimeoutError';
         reject(error);
       }, this.config.timeout);
-      
+
       operation()
         .then(result => {
           clearTimeout(timeoutId);
@@ -203,7 +203,7 @@ export class CircuitBreaker {
         });
     });
   }
-  
+
   /**
    * Check if error should be counted as failure
    * @param error Error to check
@@ -214,11 +214,11 @@ export class CircuitBreaker {
     if (!this.config.excludeErrorTypes || this.config.excludeErrorTypes.length === 0) {
       return true;
     }
-    
+
     // Check if error type is excluded
     return !this.config.excludeErrorTypes.includes(error.name);
   }
-  
+
   /**
    * Update response time metric
    * @param responseTime Response time in ms
@@ -226,9 +226,10 @@ export class CircuitBreaker {
   private updateResponseTimeMetric(responseTime: number): void {
     // Calculate new average using moving average formula
     const alpha = 0.1; // Smoothing factor (0.1 = more recent values have higher weight)
-    this.metrics.averageResponseTime = (1 - alpha) * this.metrics.averageResponseTime + alpha * responseTime;
+    this.metrics.averageResponseTime =
+      (1 - alpha) * this.metrics.averageResponseTime + alpha * responseTime;
   }
-  
+
   /**
    * Open the circuit
    */
@@ -239,26 +240,26 @@ export class CircuitBreaker {
         component: 'CircuitBreaker',
         failures: this.failures,
         threshold: this.config.failureThreshold,
-        resetTimeout: this.config.resetTimeout
+        resetTimeout: this.config.resetTimeout,
       });
     }
-    
+
     // Update state
     this.state = CircuitState.OPEN;
     this.metrics.lastStatusChangeTime = new Date();
-    
+
     // Clear existing timer if any
     if (this.resetTimer) {
       clearTimeout(this.resetTimer);
     }
-    
+
     // Set timer to transition to half-open state
     this.resetTimer = setTimeout(() => {
       this.resetTimer = null;
       this.transitionToHalfOpen();
     }, this.config.resetTimeout);
   }
-  
+
   /**
    * Close the circuit
    */
@@ -268,23 +269,23 @@ export class CircuitBreaker {
       logger.info(`Circuit breaker closed: ${this.config.name}`, {
         component: 'CircuitBreaker',
         successesInHalfOpen: this.successesInHalfOpen,
-        threshold: this.config.halfOpenSuccessThreshold
+        threshold: this.config.halfOpenSuccessThreshold,
       });
     }
-    
+
     // Update state
     this.state = CircuitState.CLOSED;
     this.metrics.lastStatusChangeTime = new Date();
     this.failures = 0;
     this.successesInHalfOpen = 0;
-    
+
     // Clear reset timer if any
     if (this.resetTimer) {
       clearTimeout(this.resetTimer);
       this.resetTimer = null;
     }
   }
-  
+
   /**
    * Transition to half-open state
    */
@@ -293,16 +294,16 @@ export class CircuitBreaker {
     if (this.state !== CircuitState.HALF_OPEN) {
       logger.info(`Circuit breaker half-open: ${this.config.name}`, {
         component: 'CircuitBreaker',
-        successThreshold: this.config.halfOpenSuccessThreshold
+        successThreshold: this.config.halfOpenSuccessThreshold,
       });
     }
-    
+
     // Update state
     this.state = CircuitState.HALF_OPEN;
     this.metrics.lastStatusChangeTime = new Date();
     this.successesInHalfOpen = 0;
   }
-  
+
   /**
    * Start monitoring the circuit breaker
    */
@@ -311,7 +312,7 @@ export class CircuitBreaker {
     if (this.monitorTimer) {
       clearInterval(this.monitorTimer);
     }
-    
+
     // Set timer to log circuit status periodically
     this.monitorTimer = setInterval(() => {
       logger.debug(`Circuit breaker status: ${this.config.name}`, {
@@ -323,12 +324,12 @@ export class CircuitBreaker {
           failedCalls: this.metrics.failedCalls,
           timeoutCalls: this.metrics.timeoutCalls,
           rejectedCalls: this.metrics.rejectedCalls,
-          averageResponseTime: Math.round(this.metrics.averageResponseTime * 100) / 100
-        }
+          averageResponseTime: Math.round(this.metrics.averageResponseTime * 100) / 100,
+        },
       });
     }, this.config.monitorInterval);
   }
-  
+
   /**
    * Stop monitoring the circuit breaker
    */
@@ -338,7 +339,7 @@ export class CircuitBreaker {
       this.monitorTimer = null;
     }
   }
-  
+
   /**
    * Get circuit breaker state
    * @returns Circuit state
@@ -346,7 +347,7 @@ export class CircuitBreaker {
   getState(): CircuitState {
     return this.state;
   }
-  
+
   /**
    * Get circuit breaker metrics
    * @returns Circuit metrics
@@ -354,28 +355,28 @@ export class CircuitBreaker {
   getMetrics(): CircuitMetrics {
     return { ...this.metrics };
   }
-  
+
   /**
    * Manually force circuit to open state
    */
   forceOpen(): void {
     this.openCircuit();
   }
-  
+
   /**
    * Manually force circuit to closed state
    */
   forceClosed(): void {
     this.closeCircuit();
   }
-  
+
   /**
    * Manually force circuit to half-open state
    */
   forceHalfOpen(): void {
     this.transitionToHalfOpen();
   }
-  
+
   /**
    * Reset circuit breaker (clear all metrics)
    */
@@ -383,7 +384,7 @@ export class CircuitBreaker {
     this.state = CircuitState.CLOSED;
     this.failures = 0;
     this.successesInHalfOpen = 0;
-    
+
     // Reset metrics
     this.metrics = {
       totalCalls: 0,
@@ -391,20 +392,20 @@ export class CircuitBreaker {
       failedCalls: 0,
       timeoutCalls: 0,
       rejectedCalls: 0,
-      averageResponseTime: 0
+      averageResponseTime: 0,
     };
-    
+
     // Clear timers
     if (this.resetTimer) {
       clearTimeout(this.resetTimer);
       this.resetTimer = null;
     }
-    
+
     logger.info(`Circuit breaker reset: ${this.config.name}`, {
-      component: 'CircuitBreaker'
+      component: 'CircuitBreaker',
     });
   }
-  
+
   /**
    * Dispose of circuit breaker resources
    */
@@ -414,14 +415,14 @@ export class CircuitBreaker {
       clearTimeout(this.resetTimer);
       this.resetTimer = null;
     }
-    
+
     if (this.monitorTimer) {
       clearInterval(this.monitorTimer);
       this.monitorTimer = null;
     }
-    
+
     logger.info(`Circuit breaker disposed: ${this.config.name}`, {
-      component: 'CircuitBreaker'
+      component: 'CircuitBreaker',
     });
   }
 }

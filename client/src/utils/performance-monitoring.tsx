@@ -1,6 +1,6 @@
 /**
  * Performance Monitoring Utilities
- * 
+ *
  * Tools for monitoring and measuring React component performance,
  * especially during CRDT synchronization and conflict resolution.
  */
@@ -24,25 +24,27 @@ const MAX_HISTORY = 100;
 
 /**
  * Log performance metrics to the console
- * 
+ *
  * @param metrics Performance metrics
  */
 export function logPerformanceMetrics(metrics: PerformanceMetrics): void {
-  console.log(`[Performance] ${metrics.componentId} ${metrics.phase}: actual=${metrics.actualDuration.toFixed(2)}ms, base=${metrics.baseDuration.toFixed(2)}ms`);
+  console.log(
+    `[Performance] ${metrics.componentId} ${metrics.phase}: actual=${metrics.actualDuration.toFixed(2)}ms, base=${metrics.baseDuration.toFixed(2)}ms`
+  );
 }
 
 /**
  * Store performance metrics
- * 
+ *
  * @param metrics Performance metrics
  */
 export function storePerformanceMetrics(metrics: PerformanceMetrics): void {
   if (!metricsHistory[metrics.componentId]) {
     metricsHistory[metrics.componentId] = [];
   }
-  
+
   metricsHistory[metrics.componentId].push(metrics);
-  
+
   // Keep history size limited
   if (metricsHistory[metrics.componentId].length > MAX_HISTORY) {
     metricsHistory[metrics.componentId].shift();
@@ -51,7 +53,7 @@ export function storePerformanceMetrics(metrics: PerformanceMetrics): void {
 
 /**
  * Get performance metrics for a component
- * 
+ *
  * @param componentId Component ID
  * @returns Performance metrics history
  */
@@ -61,29 +63,32 @@ export function getPerformanceMetrics(componentId: string): PerformanceMetrics[]
 
 /**
  * Get the average performance metrics for a component
- * 
+ *
  * @param componentId Component ID
  * @returns Average performance metrics
  */
-export function getAveragePerformanceMetrics(componentId: string): { avgActualDuration: number; avgBaseDuration: number } {
+export function getAveragePerformanceMetrics(componentId: string): {
+  avgActualDuration: number;
+  avgBaseDuration: number;
+} {
   const metrics = getPerformanceMetrics(componentId);
-  
+
   if (metrics.length === 0) {
     return { avgActualDuration: 0, avgBaseDuration: 0 };
   }
-  
+
   const totalActual = metrics.reduce((sum, m) => sum + m.actualDuration, 0);
   const totalBase = metrics.reduce((sum, m) => sum + m.baseDuration, 0);
-  
+
   return {
     avgActualDuration: totalActual / metrics.length,
-    avgBaseDuration: totalBase / metrics.length
+    avgBaseDuration: totalBase / metrics.length,
   };
 }
 
 /**
  * Clear performance metrics
- * 
+ *
  * @param componentId Optional component ID to clear. If not provided, clears all metrics.
  */
 export function clearPerformanceMetrics(componentId?: string): void {
@@ -112,11 +117,11 @@ export const onRenderCallback: ProfilerOnRenderCallback = (
     actualDuration,
     baseDuration,
     timestamp: Date.now(),
-    phase: phase === 'mount' ? 'mount' : 'update'
+    phase: phase === 'mount' ? 'mount' : 'update',
   };
-  
+
   storePerformanceMetrics(metrics);
-  
+
   // Optional: log directly if needed
   // logPerformanceMetrics(metrics);
 };
@@ -142,16 +147,16 @@ export const PerformanceProfiler: React.FC<{
       actualDuration,
       baseDuration,
       timestamp: Date.now(),
-      phase: phase === 'mount' ? 'mount' : 'update'
+      phase: phase === 'mount' ? 'mount' : 'update',
     };
-    
+
     storePerformanceMetrics(metrics);
-    
+
     if (log) {
       logPerformanceMetrics(metrics);
     }
   };
-  
+
   return (
     <Profiler id={id} onRender={onRender}>
       {children}
@@ -161,7 +166,7 @@ export const PerformanceProfiler: React.FC<{
 
 /**
  * Hook to measure and log render duration
- * 
+ *
  * @param componentName Name of the component
  * @param options Options
  */
@@ -173,50 +178,53 @@ export function useRenderProfiling(
   const renderStart = useRef<number>(0);
   const prevProps = useRef<any>(null);
   const renderCount = useRef<number>(0);
-  
+
   useEffect(() => {
     const duration = performance.now() - renderStart.current;
     renderCount.current += 1;
-    
+
     const metrics: PerformanceMetrics = {
       componentId: componentName,
       actualDuration: duration,
       baseDuration: duration, // We don't have baseDuration in hooks
       timestamp: Date.now(),
-      phase: renderCount.current === 1 ? 'mount' : 'update'
+      phase: renderCount.current === 1 ? 'mount' : 'update',
     };
-    
+
     storePerformanceMetrics(metrics);
-    
+
     if (log) {
       logPerformanceMetrics(metrics);
     }
   });
-  
+
   // Track props changes that cause renders if requested
   useEffect(() => {
     if (trackProps && prevProps.current) {
       const allProps = { ...prevProps.current };
       let changedProps: string[] = [];
-      
+
       // Find which props changed
       Object.keys(allProps).forEach(key => {
         if (allProps[key] !== allProps[key]) {
           changedProps.push(key);
         }
       });
-      
+
       if (changedProps.length > 0 && log) {
-        console.log(`[Performance] ${componentName} rendered due to changes in props:`, changedProps);
+        console.log(
+          `[Performance] ${componentName} rendered due to changes in props:`,
+          changedProps
+        );
       }
     }
-    
+
     // Update prevProps for next comparison
     if (trackProps) {
       prevProps.current = allProps;
     }
   });
-  
+
   // Reset the timer before each render
   renderStart.current = performance.now();
 }
@@ -234,11 +242,11 @@ export function exportPerformanceReport(): string {
         componentId,
         sampleCount: metricsHistory[componentId].length,
         avgActualDuration,
-        avgBaseDuration
+        avgBaseDuration,
       };
-    })
+    }),
   };
-  
+
   return JSON.stringify(report, null, 2);
 }
 
@@ -249,7 +257,7 @@ export function downloadPerformanceReport(): void {
   const report = exportPerformanceReport();
   const blob = new Blob([report], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  
+
   const a = document.createElement('a');
   a.href = url;
   a.download = `performance-report-${new Date().toISOString()}.json`;

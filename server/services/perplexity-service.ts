@@ -1,6 +1,6 @@
 /**
  * Perplexity Service
- * 
+ *
  * This service provides a wrapper around the Perplexity API, handling authentication,
  * rate limiting, and request formatting.
  */
@@ -11,7 +11,7 @@ export enum PerplexityErrorType {
   RATE_LIMIT_ERROR = 'rate_limit_error',
   INVALID_REQUEST_ERROR = 'invalid_request_error',
   SERVER_ERROR = 'server_error',
-  UNKNOWN_ERROR = 'unknown_error'
+  UNKNOWN_ERROR = 'unknown_error',
 }
 
 // Define types for Perplexity API requests and responses
@@ -96,24 +96,24 @@ export class PerplexityService {
         max_tokens: options?.maxTokens,
         temperature: options?.temperature !== undefined ? options.temperature : 0.2,
         top_p: 0.9,
-        search_domain_filter: ["perplexity.ai"],
+        search_domain_filter: ['perplexity.ai'],
         return_images: false,
         return_related_questions: false,
-        search_recency_filter: "month",
+        search_recency_filter: 'month',
         top_k: 0,
         stream: false,
         presence_penalty: 0,
-        frequency_penalty: 1
+        frequency_penalty: 1,
       };
 
       // Make request to Perplexity API
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
@@ -121,7 +121,7 @@ export class PerplexityService {
         throw new Error(`Perplexity API error (${response.status}): ${errorText}`);
       }
 
-      return await response.json() as PerplexityResponse;
+      return (await response.json()) as PerplexityResponse;
     } catch (error) {
       console.error('Error querying Perplexity:', error);
       throw error;

@@ -1,6 +1,6 @@
 /**
  * Mobile Property Editor
- * 
+ *
  * Component for editing property data with offline sync and conflict resolution on mobile
  * Includes performance monitoring for critical operations
  */
@@ -20,17 +20,17 @@ export interface MobilePropertyEditorProps {
    * Property ID
    */
   propertyId: string;
-  
+
   /**
    * API endpoint
    */
   apiEndpoint?: string;
-  
+
   /**
    * User ID
    */
   userId?: string;
-  
+
   /**
    * On save callback
    */
@@ -44,7 +44,7 @@ export const MobilePropertyEditor: React.FC<MobilePropertyEditorProps> = ({
   propertyId,
   apiEndpoint = '/api/sync',
   userId = 'anonymous-mobile',
-  onSave
+  onSave,
 }) => {
   // Use property document hook
   const {
@@ -57,26 +57,29 @@ export const MobilePropertyEditor: React.FC<MobilePropertyEditorProps> = ({
     hasConflict,
     debouncedUpdate,
     syncWithRemote,
-    resolveConflict
-  } = usePropertyDoc(
-    propertyId,
-    {
-      autoSync: true,
-      autoSyncInterval: 30000, // 30 seconds
-      userId,
-      apiEndpoint
-    }
-  );
+    resolveConflict,
+  } = usePropertyDoc(propertyId, {
+    autoSync: true,
+    autoSyncInterval: 30000, // 30 seconds
+    userId,
+    apiEndpoint,
+  });
 
   // Convert syncStatus to a format compatible with MobilePropertyForm
   const getMobileFormSyncStatus = () => {
     switch (syncStatus) {
-      case 'SYNCED': return 'synced';
-      case 'SYNCING': return 'syncing';
-      case 'UNSYNCED': return 'unsynced';
-      case 'CONFLICT': return 'conflict';
-      case 'FAILED': return 'failed';
-      default: return 'unsynced';
+      case 'SYNCED':
+        return 'synced';
+      case 'SYNCING':
+        return 'syncing';
+      case 'UNSYNCED':
+        return 'unsynced';
+      case 'CONFLICT':
+        return 'conflict';
+      case 'FAILED':
+        return 'failed';
+      default:
+        return 'unsynced';
     }
   };
 
@@ -88,7 +91,7 @@ export const MobilePropertyEditor: React.FC<MobilePropertyEditorProps> = ({
   // Handle conflict resolution
   const handleResolveConflict = (resolved: any) => {
     resolveConflict(resolved);
-    
+
     // Call onSave callback
     if (onSave) {
       onSave(resolved);
@@ -125,7 +128,7 @@ export const MobilePropertyEditor: React.FC<MobilePropertyEditorProps> = ({
             The property data has been modified remotely. Please resolve the conflict.
           </Text>
         </View>
-        
+
         <ConflictManager
           conflictId={propertyId}
           local={local}

@@ -1,6 +1,6 @@
 /**
  * Agent Factory
- * 
+ *
  * Provides a factory for creating different types of agents.
  */
 
@@ -15,11 +15,11 @@ import { AgentFactoryOptions, AgentCreationOptions } from '../models/agent-types
  */
 export class AgentFactory {
   private options: AgentFactoryOptions;
-  
+
   constructor(options: AgentFactoryOptions) {
     this.options = options;
   }
-  
+
   /**
    * Create an agent based on type
    */
@@ -34,7 +34,7 @@ export class AgentFactory {
           this.options.llmService,
           options.config || this.options.defaultConfig
         );
-        
+
       case 'mapping':
         return new MappingAgent(
           options.id,
@@ -44,7 +44,7 @@ export class AgentFactory {
           this.options.llmService,
           options.config || this.options.defaultConfig
         );
-        
+
       case 'team-collaboration':
         return new TeamCollaborationAgent(
           options.id,
@@ -54,12 +54,12 @@ export class AgentFactory {
           this.options.llmService,
           options.config || this.options.defaultConfig
         );
-        
+
       default:
         throw new Error(`Unsupported agent type: ${options.type}`);
     }
   }
-  
+
   /**
    * Create a property assessment agent
    */
@@ -78,7 +78,7 @@ export class AgentFactory {
       config || this.options.defaultConfig
     );
   }
-  
+
   /**
    * Create a mapping agent
    */
@@ -97,7 +97,7 @@ export class AgentFactory {
       config || this.options.defaultConfig
     );
   }
-  
+
   /**
    * Create a team collaboration agent
    */

@@ -2,20 +2,20 @@ import React, { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  ChevronRight, 
-  ChevronDown, 
-  File, 
-  Folder, 
-  FolderPlus, 
-  FilePlus, 
+import {
+  ChevronRight,
+  ChevronDown,
+  File,
+  Folder,
+  FolderPlus,
+  FilePlus,
   RefreshCw,
   Trash2,
   FileCode,
   FileText,
-  FileJson
+  FileJson,
 } from 'lucide-react';
-import { 
+import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
@@ -41,12 +41,12 @@ interface FileExplorerProps {
   onRefresh: () => void;
 }
 
-const FileExplorer: React.FC<FileExplorerProps> = ({ 
-  files, 
-  onSelectFile, 
+const FileExplorer: React.FC<FileExplorerProps> = ({
+  files,
+  onSelectFile,
   selectedFile,
   projectId,
-  onRefresh
+  onRefresh,
 }) => {
   const { toast } = useToast();
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -68,7 +68,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
 
   const getFileIcon = (fileName: string) => {
     const extension = fileName.split('.').pop()?.toLowerCase();
-    
+
     switch (extension) {
       case 'js':
       case 'jsx':
@@ -103,16 +103,16 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   const handleCreateItem = async () => {
     if (!newItemName.trim()) {
       toast({
-        title: "Error",
-        description: "Name cannot be empty",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Name cannot be empty',
+        variant: 'destructive',
       });
       return;
     }
 
     try {
       const fullPath = newItemPath ? `${newItemPath}/${newItemName}` : newItemName;
-      
+
       await apiRequest(`/api/development/projects/${projectId}/files`, {
         method: 'POST',
         data: {
@@ -124,7 +124,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
       });
 
       toast({
-        title: "Success",
+        title: 'Success',
         description: `${newItemType === 'FILE' ? 'File' : 'Folder'} created successfully`,
       });
 
@@ -132,20 +132,20 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
       setIsCreatingFile(false);
       setIsCreatingFolder(false);
       setNewItemName('');
-      
+
       // Expand the parent folder if we created an item inside it
       if (newItemPath) {
         setExpandedFolders(prev => new Set([...prev, newItemPath]));
       }
-      
+
       // Refresh the file tree
       onRefresh();
     } catch (error) {
       console.error(`Failed to create ${newItemType.toLowerCase()}:`, error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to create ${newItemType.toLowerCase()}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   };
@@ -165,7 +165,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
       });
 
       toast({
-        title: "Success",
+        title: 'Success',
         description: `${type === 'FILE' ? 'File' : 'Folder'} deleted successfully`,
       });
 
@@ -174,27 +174,27 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     } catch (error) {
       console.error(`Failed to delete ${type.toLowerCase()}:`, error);
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to delete ${type.toLowerCase()}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   };
 
   const renderFileTree = (nodes: FileNode[], level: number = 0) => {
-    return nodes.map((node) => {
+    return nodes.map(node => {
       const isFolder = node.type === 'DIRECTORY';
       const isExpanded = expandedFolders.has(node.path);
       const isSelected = selectedFile === node.path;
-      
+
       return (
         <div key={node.path} style={{ paddingLeft: `${level * 12}px` }}>
           <ContextMenu>
             <ContextMenuTrigger>
-              <div 
+              <div
                 className={cn(
-                  "flex items-center py-1 px-2 text-sm rounded-md cursor-pointer hover:bg-gray-100",
-                  isSelected && "bg-indigo-100 text-indigo-800 font-medium"
+                  'flex items-center py-1 px-2 text-sm rounded-md cursor-pointer hover:bg-gray-100',
+                  isSelected && 'bg-indigo-100 text-indigo-800 font-medium'
                 )}
                 onClick={() => {
                   if (isFolder) {
@@ -205,9 +205,9 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                 }}
               >
                 {isFolder ? (
-                  <button 
-                    className="mr-1 focus:outline-none" 
-                    onClick={(e) => {
+                  <button
+                    className="mr-1 focus:outline-none"
+                    onClick={e => {
                       e.stopPropagation();
                       toggleFolder(node.path);
                     }}
@@ -221,17 +221,17 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                 ) : (
                   <span className="w-4 h-4 mr-1"></span>
                 )}
-                
+
                 {isFolder ? (
                   <Folder className="h-4 w-4 text-blue-500 mr-2" />
                 ) : (
                   <span className="mr-2">{getFileIcon(node.name)}</span>
                 )}
-                
+
                 <span className="truncate">{node.name}</span>
               </div>
             </ContextMenuTrigger>
-            
+
             <ContextMenuContent>
               {isFolder && (
                 <>
@@ -246,18 +246,19 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                   <ContextMenuSeparator />
                 </>
               )}
-              
-              <ContextMenuItem onClick={() => handleDeleteItem(node.path, node.type)} className="text-red-600">
+
+              <ContextMenuItem
+                onClick={() => handleDeleteItem(node.path, node.type)}
+                className="text-red-600"
+              >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete {isFolder ? 'Folder' : 'File'}
               </ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
-          
+
           {isFolder && isExpanded && node.children && node.children.length > 0 && (
-            <div className="mt-1">
-              {renderFileTree(node.children, level + 1)}
-            </div>
+            <div className="mt-1">{renderFileTree(node.children, level + 1)}</div>
           )}
         </div>
       );
@@ -268,32 +269,32 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-2 border-b">
         <h3 className="text-sm font-medium">Files</h3>
-        
+
         <div className="flex space-x-1">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-7 w-7 p-0" 
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
             title="New File"
             onClick={() => handleNewItem('FILE')}
           >
             <FilePlus className="h-4 w-4" />
           </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-7 w-7 p-0" 
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
             title="New Folder"
             onClick={() => handleNewItem('DIRECTORY')}
           >
             <FolderPlus className="h-4 w-4" />
           </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-7 w-7 p-0" 
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
             title="Refresh"
             onClick={onRefresh}
           >
@@ -301,35 +302,31 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
           </Button>
         </div>
       </div>
-      
+
       {(isCreatingFile || isCreatingFolder) && (
         <div className="p-2 border-b">
           <p className="text-xs font-medium mb-1">
             New {isCreatingFile ? 'File' : 'Folder'}
             {newItemPath && ` in ${newItemPath}`}
           </p>
-          
+
           <div className="flex items-center space-x-2">
             <Input
               size={1}
-              placeholder={isCreatingFile ? "filename.js" : "folder name"}
+              placeholder={isCreatingFile ? 'filename.js' : 'folder name'}
               value={newItemName}
-              onChange={(e) => setNewItemName(e.target.value)}
+              onChange={e => setNewItemName(e.target.value)}
               className="h-8 text-sm"
               autoFocus
             />
-            
-            <Button 
-              size="sm" 
-              className="h-8" 
-              onClick={handleCreateItem}
-            >
+
+            <Button size="sm" className="h-8" onClick={handleCreateItem}>
               Create
             </Button>
           </div>
         </div>
       )}
-      
+
       <div className="flex-1 overflow-y-auto p-2">
         {files && files.length > 0 ? (
           renderFileTree(files)

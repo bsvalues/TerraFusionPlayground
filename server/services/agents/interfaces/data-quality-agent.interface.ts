@@ -1,9 +1,9 @@
 /**
  * Data Quality Agent Interface
- * 
+ *
  * This interface defines the capabilities of the Data Quality Agent, which is responsible
  * for validating property data integrity, detecting anomalies, and ensuring data quality.
- * 
+ *
  * The agent works with the PropertyValidationEngine to apply validation rules and
  * identify potential issues with property data.
  */
@@ -13,14 +13,17 @@ export interface IDataQualityAgent {
    * Initialize the agent
    */
   initialize(): Promise<void>;
-  
+
   /**
    * Validate a property against all applicable data quality rules
    * @param propertyId The ID of the property to validate
    * @param options Optional validation options
    * @returns Validation results including issues and statistics
    */
-  validateProperty(propertyId: string, options?: any): Promise<{
+  validateProperty(
+    propertyId: string,
+    options?: any
+  ): Promise<{
     isValid: boolean;
     criticalIssues: number;
     errorIssues: number;
@@ -35,7 +38,7 @@ export interface IDataQualityAgent {
       details?: any;
     }>;
   }>;
-  
+
   /**
    * Detect anomalies in property data using statistical methods
    * @param options Detection options including area, property type, or other filters
@@ -59,14 +62,17 @@ export interface IDataQualityAgent {
       mostAffectedField: string;
     };
   }>;
-  
+
   /**
    * Generate a data quality report for a specified dataset
    * @param datasetType Type of dataset (e.g., 'properties', 'land_records', 'improvements')
    * @param options Report options including filters and output format
    * @returns Data quality report with statistics and issue summary
    */
-  generateDataQualityReport(datasetType: string, options?: any): Promise<{
+  generateDataQualityReport(
+    datasetType: string,
+    options?: any
+  ): Promise<{
     reportId: string;
     datasetType: string;
     generatedAt: Date;
@@ -88,14 +94,17 @@ export interface IDataQualityAgent {
     }>;
     recommendedActions: string[];
   }>;
-  
+
   /**
    * Run a batch validation job on multiple properties
    * @param propertyIds Array of property IDs to validate
    * @param options Batch validation options
    * @returns Batch validation results
    */
-  runBatchValidation(propertyIds: string[], options?: any): Promise<{
+  runBatchValidation(
+    propertyIds: string[],
+    options?: any
+  ): Promise<{
     batchId: string;
     totalProperties: number;
     validatedProperties: number;
@@ -113,18 +122,21 @@ export interface IDataQualityAgent {
       highestSeverity: string;
     }>;
   }>;
-  
+
   /**
    * Fix common data quality issues automatically
    * @param propertyId The ID of the property to fix
    * @param options Fix options including rules to apply and verification method
    * @returns Results of the fix operation
    */
-  autoFixIssues(propertyId: string, options: {
-    issueTypes: string[];
-    dryRun?: boolean;
-    verificationLevel?: 'none' | 'basic' | 'thorough';
-  }): Promise<{
+  autoFixIssues(
+    propertyId: string,
+    options: {
+      issueTypes: string[];
+      dryRun?: boolean;
+      verificationLevel?: 'none' | 'basic' | 'thorough';
+    }
+  ): Promise<{
     propertyId: string;
     fixedIssues: Array<{
       issueId: string;

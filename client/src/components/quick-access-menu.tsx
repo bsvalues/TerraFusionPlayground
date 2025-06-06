@@ -20,22 +20,22 @@ export const QuickAccessMenu = () => {
       description: 'Convert databases to TaxI_AI platform',
       icon: <Database className="h-5 w-5" />,
       href: '/database-conversion',
-      color: 'bg-blue-100 text-blue-700 dark:bg-blue-800/30 dark:text-blue-400'
+      color: 'bg-blue-100 text-blue-700 dark:bg-blue-800/30 dark:text-blue-400',
     },
     {
       title: 'Development Platform',
       description: 'Build custom assessment apps',
       icon: <Code2 className="h-5 w-5" />,
       href: '/development',
-      color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-800/30 dark:text-emerald-400'
+      color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-800/30 dark:text-emerald-400',
     },
     {
       title: 'Assessment Workbench',
       description: 'Design assessment models',
       icon: <Laptop className="h-5 w-5" />,
       href: '/development/assessment-workbench',
-      color: 'bg-purple-100 text-purple-700 dark:bg-purple-800/30 dark:text-purple-400'
-    }
+      color: 'bg-purple-100 text-purple-700 dark:bg-purple-800/30 dark:text-purple-400',
+    },
   ];
 
   return (
@@ -46,37 +46,24 @@ export const QuickAccessMenu = () => {
           <div className="p-4 border-b">
             <div className="flex items-center justify-between">
               <h3 className="font-medium">Quick Access Tools</h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleMenu}
-                className="h-8 w-8"
-              >
+              <Button variant="ghost" size="icon" onClick={toggleMenu} className="h-8 w-8">
                 <X className="h-4 w-4" />
               </Button>
             </div>
           </div>
-          
+
           <div className="p-2">
             {menuItems.map((item, index) => (
-              <Link 
-                key={index} 
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-              >
+              <Link key={index} href={item.href} onClick={() => setIsOpen(false)}>
                 <div className="flex items-start gap-4 rounded-md p-3 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
-                  <div className={`rounded-full p-2 ${item.color}`}>
-                    {item.icon}
-                  </div>
-                  
+                  <div className={`rounded-full p-2 ${item.color}`}>{item.icon}</div>
+
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium">{item.title}</h4>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {item.description}
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
                   </div>
                 </div>
               </Link>
@@ -84,20 +71,16 @@ export const QuickAccessMenu = () => {
           </div>
         </div>
       )}
-      
+
       {/* The toggle button */}
       <Button
         onClick={toggleMenu}
         className={`rounded-full shadow-lg animate-pulse ${isOpen ? 'bg-gray-200 text-gray-800 hover:bg-gray-300' : 'bg-green-600 text-white hover:bg-green-700'}`}
         size="icon"
       >
-        {isOpen ? (
-          <X className="h-5 w-5" />
-        ) : (
-          <Rocket className="h-5 w-5" />
-        )}
+        {isOpen ? <X className="h-5 w-5" /> : <Rocket className="h-5 w-5" />}
       </Button>
-      
+
       {/* Label */}
       {!isOpen && (
         <div className="bg-black text-white text-xs rounded px-2 py-1 mt-2 animate-bounce">

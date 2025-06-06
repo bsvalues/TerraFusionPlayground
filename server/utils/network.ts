@@ -26,18 +26,18 @@ export async function getPort(startPort: number = 3000): Promise<number> {
  * @returns A promise that resolves to true if the port is available, false otherwise
  */
 async function isPortAvailable(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const server = createServer();
-    
+
     server.once('error', () => {
       resolve(false);
     });
-    
+
     server.once('listening', () => {
       server.close();
       resolve(true);
     });
-    
+
     server.listen(port, '0.0.0.0');
   });
 }

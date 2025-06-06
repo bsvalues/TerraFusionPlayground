@@ -41,7 +41,7 @@ export function VoiceSearch({ onSearch, className = '' }: VoiceSearchProps) {
       {!isActive ? (
         <VoiceSearchButton onSearchResult={handleSearchResult} />
       ) : (
-        transcribedText && 
+        transcribedText &&
         searchParams && (
           <VoiceSearchResults
             text={transcribedText}

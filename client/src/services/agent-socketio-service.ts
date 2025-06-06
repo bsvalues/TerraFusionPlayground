@@ -1,12 +1,12 @@
 /**
  * Agent Socket.IO Service
- * 
+ *
  * This service provides Socket.IO communication for the agent system,
  * allowing real-time communication between the frontend and backend agents.
  * This replaces the raw WebSocket implementation with Socket.IO for better
  * reliability, especially in the Replit environment which has issues with
  * raw WebSockets.
- * 
+ *
  * Enhanced with connection resilience features including:
  * - Automatic fallback to REST API when WebSocket fails
  * - Connection metrics tracking and error logging
@@ -26,7 +26,7 @@ class BrowserEventEmitter {
 
   /**
    * Register an event listener
-   * 
+   *
    * @param event Event name
    * @param listener Function to call when event occurs
    * @returns Function to remove the listener
@@ -47,7 +47,7 @@ class BrowserEventEmitter {
 
   /**
    * Remove an event listener
-   * 
+   *
    * @param event Event name
    * @param listener Function to remove
    */
@@ -71,7 +71,7 @@ class BrowserEventEmitter {
 
   /**
    * Emit an event
-   * 
+   *
    * @param event Event name
    * @param data Data to pass to listeners
    */
@@ -93,7 +93,7 @@ class BrowserEventEmitter {
 
   /**
    * Remove all listeners for an event, or all events
-   * 
+   *
    * @param event Optional event name, if not provided all listeners are removed
    */
   public removeAllListeners(event?: string): void {
@@ -111,7 +111,7 @@ class BrowserEventEmitter {
 export enum ClientType {
   FRONTEND = 'frontend',
   AGENT = 'agent',
-  EXTENSION = 'extension'
+  EXTENSION = 'extension',
 }
 
 /**
@@ -121,7 +121,7 @@ export enum ConnectionStatus {
   CONNECTING = 'connecting',
   CONNECTED = 'connected',
   DISCONNECTED = 'disconnected',
-  ERRORED = 'errored'
+  ERRORED = 'errored',
 }
 
 /**
@@ -146,16 +146,19 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
   /**
    * Create a new agent Socket.IO service
-   * 
+   *
    * @param options Configuration options
    */
-  constructor(options: {
-    clientId?: string;
-    pollingFrequency?: number;
-    maxReconnectAttempts?: number;
-  } = {}) {
+  constructor(
+    options: {
+      clientId?: string;
+      pollingFrequency?: number;
+      maxReconnectAttempts?: number;
+    } = {}
+  ) {
     super();
-    this.clientId = options.clientId || `client_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    this.clientId =
+      options.clientId || `client_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     if (options.pollingFrequency) {
       this.pollingFrequency = options.pollingFrequency;
@@ -168,7 +171,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
   /**
    * Connect to the agent system
-   * 
+   *
    * @returns Promise that resolves when connected
    */
   public connect(): Promise<boolean> {
@@ -178,7 +181,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     }
 
     // Create a new connect promise
-    this.connectPromise = new Promise((resolve) => {
+    this.connectPromise = new Promise(resolve => {
       this.connectResolve = resolve;
 
       try {
@@ -189,20 +192,20 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         const host = window.location.host;
         const isSecure = window.location.protocol === 'https:';
         const path = '/api/agents/socket.io';
-        
+
         // Construct base URL - use origin for consistency
         const socketUrl = window.location.origin;
 
         // Log connection attempt with improved details
         console.log(`[Agent SocketIO] Attempting to connect to: ${socketUrl} with path ${path}`);
-        
+
         // Add debugging to help diagnose issues
         console.log(`[Agent SocketIO] Connection details:`, {
           url: socketUrl,
           path,
           protocol: window.location.protocol,
           host: window.location.host,
-          origin: window.location.origin
+          origin: window.location.origin,
         });
 
         // Create Socket.IO instance with robust configuration
@@ -217,7 +220,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           forceNew: true,
           autoConnect: true,
           rejectUnauthorized: false,
-          withCredentials: true
+          withCredentials: true,
         });
 
         // Set up event handlers
@@ -259,7 +262,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
   /**
    * Send message to an agent
-   * 
+   *
    * @param recipientId ID of recipient agent
    * @param message Message to send
    * @returns Promise that resolves with message ID
@@ -276,7 +279,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
             recipientId,
             message,
             clientId: this.clientId,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
 
           // Resolve with message ID
@@ -285,21 +288,21 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           console.error('Error sending agent message via Socket.IO:', error);
 
           // Try fallback to REST
-          this.sendAgentMessageViaRest(recipientId, message, messageId)
-            .then(resolve)
-            .catch(reject);
+          this.sendAgentMessageViaRest(recipientId, message, messageId).then(resolve).catch(reject);
         }
       });
     }
 
     // If not connected, add to pending messages
-    if (this.connectionStatus !== ConnectionStatus.CONNECTED && 
-        this.connectionStatus !== ConnectionStatus.CONNECTING) {
+    if (
+      this.connectionStatus !== ConnectionStatus.CONNECTED &&
+      this.connectionStatus !== ConnectionStatus.CONNECTING
+    ) {
       this.pendingMessages.push({
         type: 'agent_message',
         recipientId,
         message,
-        messageId
+        messageId,
       });
 
       // Return message ID
@@ -312,7 +315,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
   /**
    * Send action request to an agent
-   * 
+   *
    * @param targetAgent ID of target agent
    * @param action Action to request
    * @param params Action parameters
@@ -331,7 +334,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
             action,
             params,
             clientId: this.clientId,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
 
           // Resolve with action ID
@@ -348,14 +351,16 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     }
 
     // If not connected, add to pending messages
-    if (this.connectionStatus !== ConnectionStatus.CONNECTED && 
-        this.connectionStatus !== ConnectionStatus.CONNECTING) {
+    if (
+      this.connectionStatus !== ConnectionStatus.CONNECTED &&
+      this.connectionStatus !== ConnectionStatus.CONNECTING
+    ) {
       this.pendingMessages.push({
         type: 'action',
         targetAgent,
         action,
         params,
-        actionId
+        actionId,
       });
 
       // Return action ID
@@ -368,7 +373,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
   /**
    * Get current connection status
-   * 
+   *
    * @returns Current connection status
    */
   public getConnectionStatus(): ConnectionStatus {
@@ -377,7 +382,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
   /**
    * Check if currently connected
-   * 
+   *
    * @returns True if connected, false otherwise
    */
   public isConnected(): boolean {
@@ -386,7 +391,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
   /**
    * Get client ID
-   * 
+   *
    * @returns Client ID
    */
   public getClientId(): string {
@@ -402,7 +407,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
   /**
    * Register a listener for connection status changes
-   * 
+   *
    * @param listener Function to call when connection status changes
    * @returns Function to remove the listener
    */
@@ -424,7 +429,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
   /**
    * Set up Socket.IO event handlers
-   * 
+   *
    * @param socket Socket.IO socket
    */
   private setupEventHandlers(socket: Socket) {
@@ -458,7 +463,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           // Start ping interval
           this.startPingInterval();
         })
-        .catch((error) => {
+        .catch(error => {
           console.error('Authentication failed:', error);
 
           // Mark as disconnected
@@ -477,7 +482,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     });
 
     // Handle connection error
-    socket.on('connect_error', (error) => {
+    socket.on('connect_error', error => {
       console.error('[Agent SocketIO] Connection error:', error);
 
       // Update connection status
@@ -502,7 +507,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     });
 
     // Handle disconnection
-    socket.on('disconnect', (reason) => {
+    socket.on('disconnect', reason => {
       console.log(`[Agent SocketIO] Disconnected: ${reason}`);
 
       // Update connection status
@@ -519,17 +524,17 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     });
 
     // Handle socket.io reconnect
-    socket.io.on('reconnect', (attemptNumber) => {
+    socket.io.on('reconnect', attemptNumber => {
       console.log(`[Agent SocketIO] Reconnected after ${attemptNumber} attempts`);
     });
 
     // Handle socket.io reconnect attempt
-    socket.io.on('reconnect_attempt', (attemptNumber) => {
+    socket.io.on('reconnect_attempt', attemptNumber => {
       console.log(`[Agent SocketIO] Reconnect attempt ${attemptNumber}`);
     });
 
     // Handle reconnect error
-    socket.io.on('reconnect_error', (error) => {
+    socket.io.on('reconnect_error', error => {
       console.error('[Agent SocketIO] Reconnect error:', error);
     });
 
@@ -540,7 +545,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     });
 
     // Handle connection established
-    socket.on('connection_established', (data) => {
+    socket.on('connection_established', data => {
       console.log(`[Agent SocketIO] Connection established: ${data.clientId}`);
 
       // If server assigned a different client ID
@@ -551,96 +556,96 @@ export class AgentSocketIOService extends BrowserEventEmitter {
     });
 
     // Handle auth success
-    socket.on('auth_success', (data) => {
+    socket.on('auth_success', data => {
       console.log('[Agent SocketIO] Authentication successful');
       this.dispatchMessage({
         type: 'auth_success',
         clientId: data.clientId || this.clientId,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
     // Handle auth failed
-    socket.on('auth_failed', (data) => {
+    socket.on('auth_failed', data => {
       console.error('[Agent SocketIO] Authentication failed:', data.message);
       this.dispatchMessage({
         type: 'auth_failed',
         error: data.message || 'Authentication failed',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
     // Handle agent coordination
-    socket.on('agent_coordination', (data) => {
+    socket.on('agent_coordination', data => {
       this.dispatchMessage({
         type: 'agent_coordination',
-        message: data
+        message: data,
       });
     });
 
     // Handle agent activity
-    socket.on('agent_activity', (data) => {
+    socket.on('agent_activity', data => {
       this.dispatchMessage({
         type: 'agent_activity',
-        message: data
+        message: data,
       });
     });
 
     // Handle agent capability
-    socket.on('agent_capability', (data) => {
+    socket.on('agent_capability', data => {
       this.dispatchMessage({
         type: 'agent_capability',
-        message: data
+        message: data,
       });
     });
 
     // Handle message sent acknowledgment
-    socket.on('message_sent', (data) => {
+    socket.on('message_sent', data => {
       this.dispatchMessage({
         type: 'message_sent',
         messageId: data.messageId,
         originalMessage: data.originalMessage,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
     // Handle action sent acknowledgment
-    socket.on('action_sent', (data) => {
+    socket.on('action_sent', data => {
       this.dispatchMessage({
         type: 'action_sent',
         messageId: data.messageId,
         action: data.action,
         targetAgent: data.targetAgent,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
     // Handle error
-    socket.on('error', (data) => {
+    socket.on('error', data => {
       console.error('[Agent SocketIO] Error from server:', data);
       this.dispatchMessage({
         type: 'error',
         message: data.message,
         code: data.code,
         details: data.details,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
     // Handle notification
-    socket.on('notification', (data) => {
+    socket.on('notification', data => {
       this.dispatchMessage(data);
     });
 
     // Handle pong (response to ping)
-    socket.on('pong', (data) => {
+    socket.on('pong', data => {
       // No need to do anything, this is just to keep the connection alive
     });
   }
 
   /**
    * Update connection status and notify listeners
-   * 
+   *
    * @param status New connection status
    */
   private updateConnectionStatus(status: ConnectionStatus) {
@@ -666,14 +671,14 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         title: 'Connection error',
         message: 'Error connecting to agent system. Some features may be unavailable.',
         level: 'error',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     }
   }
 
   /**
    * Dispatch a message to event listeners
-   * 
+   *
    * @param message Message to dispatch
    */
   private dispatchMessage(message: any) {
@@ -703,7 +708,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         // Start polling if not already
         this.startPolling();
       })
-      .catch((error) => {
+      .catch(error => {
         console.error('Failed to authenticate via REST API:', error);
 
         // Set connection status to errored
@@ -750,9 +755,9 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       }
 
       // Determine API endpoint - either regular or Socket.IO
-      const endpoint = this.usingFallback ? 
-        `/api/agents/socketio/messages/pending?clientId=${this.clientId}` : 
-        `/api/agents/messages/pending?clientId=${this.clientId}`;
+      const endpoint = this.usingFallback
+        ? `/api/agents/socketio/messages/pending?clientId=${this.clientId}`
+        : `/api/agents/messages/pending?clientId=${this.clientId}`;
 
       // Use the REST API to fetch any pending messages
       const controller = new AbortController();
@@ -763,9 +768,9 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store'
+            'Cache-Control': 'no-cache, no-store',
           },
-          signal: controller.signal
+          signal: controller.signal,
         });
 
         clearTimeout(timeoutId);
@@ -795,7 +800,10 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         }
 
         // Successfully polled, so connection is at least functional at HTTP level
-        if (this.connectionStatus === ConnectionStatus.DISCONNECTED || this.connectionStatus === ConnectionStatus.ERRORED) {
+        if (
+          this.connectionStatus === ConnectionStatus.DISCONNECTED ||
+          this.connectionStatus === ConnectionStatus.ERRORED
+        ) {
           this.updateConnectionStatus(ConnectionStatus.CONNECTING);
 
           // Notify the user that polling is working
@@ -804,7 +812,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
             title: 'Connection status',
             message: 'Using REST fallback for communication (Socket.IO/WebSockets unavailable)',
             level: 'info',
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
         }
       } catch (fetchError) {
@@ -813,7 +821,8 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       }
     } catch (error) {
       // Only log errors occasionally to avoid flooding console
-      if (Math.random() < 0.1) { // Log roughly 10% of errors
+      if (Math.random() < 0.1) {
+        // Log roughly 10% of errors
         console.error('Error polling for messages:', error);
       }
 
@@ -834,13 +843,13 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       const response = await fetch('/api/agents/socketio/auth', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           clientId: this.clientId,
           clientType: ClientType.FRONTEND,
-          timestamp: Date.now()
-        })
+          timestamp: Date.now(),
+        }),
       });
 
       if (!response.ok) {
@@ -863,7 +872,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       this.dispatchMessage({
         type: 'auth_success',
         clientId: this.clientId,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     } catch (error) {
       console.error('REST authentication failed:', error);
@@ -871,7 +880,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       this.dispatchMessage({
         type: 'auth_failed',
         error: error instanceof Error ? error.message : 'Authentication failed',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       throw error;
@@ -924,7 +933,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           this.socket.emit('auth', {
             clientId: this.clientId,
             clientType: ClientType.FRONTEND,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
         } else {
           reject(new Error('Socket became disconnected'));
@@ -996,30 +1005,30 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
   /**
    * Send agent message via REST API
-   * 
+   *
    * @param recipientId ID of recipient agent
    * @param message Message to send
    * @param messageId Optional message ID
    * @returns Promise that resolves with message ID
    */
   private async sendAgentMessageViaRest(
-    recipientId: string, 
-    message: any, 
+    recipientId: string,
+    message: any,
     messageId: string = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
   ): Promise<string> {
     try {
       const response = await fetch('/api/agents/socketio/send', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           messageId,
           recipientId,
           message,
           clientId: this.clientId,
-          timestamp: Date.now()
-        })
+          timestamp: Date.now(),
+        }),
       });
 
       if (!response.ok) {
@@ -1041,7 +1050,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         type: 'agent_message',
         recipientId,
         message,
-        messageId
+        messageId,
       });
 
       throw error;
@@ -1050,7 +1059,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
 
   /**
    * Send action request via REST API
-   * 
+   *
    * @param targetAgent ID of target agent
    * @param action Action to request
    * @param params Action parameters
@@ -1058,8 +1067,8 @@ export class AgentSocketIOService extends BrowserEventEmitter {
    * @returns Promise that resolves with action ID
    */
   private async sendActionRequestViaRest(
-    targetAgent: string, 
-    action: string, 
+    targetAgent: string,
+    action: string,
     params: any = {},
     actionId: string = `action_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
   ): Promise<string> {
@@ -1067,7 +1076,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
       const response = await fetch('/api/agents/socketio/action', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           actionId,
@@ -1075,8 +1084,8 @@ export class AgentSocketIOService extends BrowserEventEmitter {
           action,
           params,
           clientId: this.clientId,
-          timestamp: Date.now()
-        })
+          timestamp: Date.now(),
+        }),
       });
 
       if (!response.ok) {
@@ -1099,7 +1108,7 @@ export class AgentSocketIOService extends BrowserEventEmitter {
         targetAgent,
         action,
         params,
-        actionId
+        actionId,
       });
 
       throw error;

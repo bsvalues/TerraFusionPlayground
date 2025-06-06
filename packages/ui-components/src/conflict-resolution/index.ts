@@ -1,6 +1,6 @@
 /**
  * Conflict Resolution UI Components
- * 
+ *
  * Components for visualizing and resolving conflicts.
  */
 

@@ -1,4 +1,4 @@
-import { VoiceSearchDemo } from "@/components/VoiceSearchDemo";
+import { VoiceSearchDemo } from '@/components/VoiceSearchDemo';
 
 export default function VoiceSearchDemoPage() {
   return (

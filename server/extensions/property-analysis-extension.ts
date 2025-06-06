@@ -1,7 +1,12 @@
 import { AIExtension, AIExtensionConfig } from './ai-extension';
 import { IStorage } from '../storage';
 import { AIService } from '../services/ai-service';
-import { AgentProtocol, AgentMessageType, MessagePriority, AgentCapability } from './agent-protocol';
+import {
+  AgentProtocol,
+  AgentMessageType,
+  MessagePriority,
+  AgentCapability,
+} from './agent-protocol';
 
 /**
  * Property analysis result
@@ -41,33 +46,33 @@ export class PropertyAnalysisAIExtension extends AIExtension {
     defaultValue: any;
   }> = [];
   protected storage: IStorage;
-  
+
   /**
    * Activate the extension
    */
   public async activate(): Promise<void> {
     console.log('PropertyAnalysisAIExtension activated');
-    
+
     // Register event listeners
     this.subscribeToAgentMessages();
-    
+
     // Initialize extension state
     await this.loadSettings();
   }
-  
+
   /**
    * Deactivate the extension
    */
   public async deactivate(): Promise<void> {
     console.log('PropertyAnalysisAIExtension deactivated');
-    
-    // Unregister capabilities 
+
+    // Unregister capabilities
     this.agentProtocol.unregisterCapabilities(this.id);
-    
+
     // Clean up resources
     this.clearActiveConversations();
   }
-  
+
   /**
    * Load extension settings from storage
    */
@@ -79,7 +84,7 @@ export class PropertyAnalysisAIExtension extends AIExtension {
       console.error('Error loading PropertyAnalysisAIExtension settings:', error);
     }
   }
-  
+
   /**
    * Clear active conversation memory
    */
@@ -91,46 +96,43 @@ export class PropertyAnalysisAIExtension extends AIExtension {
     }
   }
   private agentProtocol: AgentProtocol;
-  
+
   /**
    * Create a new property analysis extension
-   * 
+   *
    * @param storage Storage service
    * @param aiService AI service
    * @param config AI extension configuration
    */
-  constructor(
-    storage: IStorage,
-    aiService: AIService,
-    config?: AIExtensionConfig
-  ) {
+  constructor(storage: IStorage, aiService: AIService, config?: AIExtensionConfig) {
     super('property-analysis', storage, aiService, {
       model: 'gpt-4-turbo',
       temperature: 0.2,
       maxTokens: 4000,
-      systemPrompt: 'You are an expert property appraiser AI assistant. Your job is to analyze property data and provide accurate valuations and insights.',
-      ...config
+      systemPrompt:
+        'You are an expert property appraiser AI assistant. Your job is to analyze property data and provide accurate valuations and insights.',
+      ...config,
     });
-    
+
     // Initialize the agent protocol
     this.agentProtocol = AgentProtocol.getInstance();
-    
+
     // Register our capabilities
     this.registerAgentCapabilities();
-    
+
     // Register extension commands
     this.registerCommands();
-    
+
     // Configure extension settings
     this.configureSettings();
-    
+
     // Create webviews
     this.createWebviews();
-    
+
     // Listen for agent messages
     this.subscribeToAgentMessages();
   }
-  
+
   /**
    * Register this extension's capabilities with the agent protocol
    */
@@ -141,53 +143,47 @@ export class PropertyAnalysisAIExtension extends AIExtension {
         name: 'Property Valuation',
         description: 'AI-powered property valuation based on historical data and market trends',
         topics: ['property', 'valuation', 'appraisal'],
-        actions: ['analyze', 'compare', 'predict']
+        actions: ['analyze', 'compare', 'predict'],
       },
       {
         id: 'market-analysis',
         name: 'Market Analysis',
         description: 'Analysis of property market trends and forecasts',
         topics: ['market', 'trends', 'forecast'],
-        actions: ['analyze', 'predict']
-      }
+        actions: ['analyze', 'predict'],
+      },
     ];
-    
+
     this.agentProtocol.registerCapabilities(this.id, capabilities);
   }
-  
+
   /**
    * Register extension commands
    */
   private registerCommands(): void {
+    this.registerCommand('analyze-property', 'Analyze Property', 'analyzeProperty', {
+      icon: 'bar-chart-2',
+    });
+
+    this.registerCommand('predict-future-value', 'Predict Future Value', 'predictFutureValue', {
+      icon: 'trending-up',
+    });
+
     this.registerCommand(
-      'analyze-property', 
-      'Analyze Property', 
-      'analyzeProperty',
-      { icon: 'bar-chart-2' }
-    );
-    
-    this.registerCommand(
-      'predict-future-value', 
-      'Predict Future Value', 
-      'predictFutureValue',
-      { icon: 'trending-up' }
-    );
-    
-    this.registerCommand(
-      'generate-property-story', 
-      'Generate Property Story', 
+      'generate-property-story',
+      'Generate Property Story',
       'generatePropertyStory',
       { icon: 'book-open' }
     );
-    
+
     this.registerCommand(
-      'find-comparable-properties', 
-      'Find Comparable Properties', 
+      'find-comparable-properties',
+      'Find Comparable Properties',
       'findComparableProperties',
       { icon: 'search' }
     );
   }
-  
+
   /**
    * Configure extension settings
    */
@@ -197,29 +193,29 @@ export class PropertyAnalysisAIExtension extends AIExtension {
         id: 'enableAdvancedAnalysis',
         label: 'Enable Advanced Analysis',
         type: 'boolean',
-        defaultValue: true
+        defaultValue: true,
       },
       {
         id: 'confidenceThreshold',
         label: 'Confidence Threshold',
         type: 'number',
-        defaultValue: 0.7
+        defaultValue: 0.7,
       },
       {
         id: 'maxComparables',
         label: 'Maximum Comparable Properties',
         type: 'number',
-        defaultValue: 5
+        defaultValue: 5,
       },
       {
         id: 'includePredictions',
         label: 'Include Future Value Predictions',
         type: 'boolean',
-        defaultValue: true
-      }
+        defaultValue: true,
+      },
     ];
   }
-  
+
   /**
    * Create webviews for the extension
    */
@@ -244,7 +240,7 @@ export class PropertyAnalysisAIExtension extends AIExtension {
         </div>
       </div>
     `;
-    
+
     const comparisonContent = `
       <div class="property-comparison-view">
         <h1>Property Comparison</h1>
@@ -265,17 +261,27 @@ export class PropertyAnalysisAIExtension extends AIExtension {
         </div>
       </div>
     `;
-    
-    this.registerWebview('property-analysis-dashboard', 'Property Analysis Dashboard', dashboardContent, 'AI-powered property analysis tools');
-    this.registerWebview('property-comparison', 'Property Comparison', comparisonContent, 'Compare properties with AI insights');
+
+    this.registerWebview(
+      'property-analysis-dashboard',
+      'Property Analysis Dashboard',
+      dashboardContent,
+      'AI-powered property analysis tools'
+    );
+    this.registerWebview(
+      'property-comparison',
+      'Property Comparison',
+      comparisonContent,
+      'Compare properties with AI insights'
+    );
   }
-  
+
   /**
    * Subscribe to agent messages
    */
   private subscribeToAgentMessages(): void {
     // Subscribe to property analysis requests
-    this.agentProtocol.subscribe(this.id, 'property', async (message) => {
+    this.agentProtocol.subscribe(this.id, 'property', async message => {
       if (message.type === AgentMessageType.QUERY && message.payload.action === 'analyze') {
         const propertyId = message.payload.propertyId;
         try {
@@ -283,13 +289,15 @@ export class PropertyAnalysisAIExtension extends AIExtension {
           this.agentProtocol.respondToQuery(message.id, this.id, analysisResult);
         } catch (error) {
           console.error(`Error analyzing property: ${error}`);
-          this.agentProtocol.respondToQuery(message.id, this.id, { error: 'Failed to analyze property' });
+          this.agentProtocol.respondToQuery(message.id, this.id, {
+            error: 'Failed to analyze property',
+          });
         }
       }
     });
-    
+
     // Subscribe to market trend requests
-    this.agentProtocol.subscribe(this.id, 'market', async (message) => {
+    this.agentProtocol.subscribe(this.id, 'market', async message => {
       if (message.type === AgentMessageType.QUERY && message.payload.action === 'predict') {
         const propertyId = message.payload.propertyId;
         const years = message.payload.years || 5;
@@ -298,15 +306,17 @@ export class PropertyAnalysisAIExtension extends AIExtension {
           this.agentProtocol.respondToQuery(message.id, this.id, prediction);
         } catch (error) {
           console.error(`Error predicting market trends: ${error}`);
-          this.agentProtocol.respondToQuery(message.id, this.id, { error: 'Failed to predict market trends' });
+          this.agentProtocol.respondToQuery(message.id, this.id, {
+            error: 'Failed to predict market trends',
+          });
         }
       }
     });
   }
-  
+
   /**
    * Analyze a property using AI
-   * 
+   *
    * @param propertyId ID of the property to analyze
    * @returns Analysis result
    */
@@ -316,18 +326,20 @@ export class PropertyAnalysisAIExtension extends AIExtension {
     if (!property) {
       throw new Error(`Property ${propertyId} not found`);
     }
-    
+
     // Get comparable properties
     const comparableProperties = await this.storage.findComparableProperties(propertyId, 5);
-    
+
     // Get historical property data
     const propertyHistory = await this.storage.getPropertyHistory(propertyId);
-    
+
     // Create a conversation ID for this analysis
     const conversationId = `property-analysis-${propertyId}-${Date.now()}`;
-    
+
     // Create a prompt for the AI
-    await this.addUserMessage(conversationId, `
+    await this.addUserMessage(
+      conversationId,
+      `
       I need a detailed analysis of property ${propertyId}.
       
       Property Details:
@@ -355,39 +367,43 @@ export class PropertyAnalysisAIExtension extends AIExtension {
         "recommendations": string[],
         "marketTrends": string[]
       }
-    `);
-    
+    `
+    );
+
     // Generate completion
     const response = await this.generateCompletion(conversationId);
-    
+
     // Parse the JSON response
     try {
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON object found in response');
       }
-      
+
       const analysis = JSON.parse(jsonMatch[0]);
-      
+
       // Add propertyId to the result
       return {
         propertyId,
-        ...analysis
+        ...analysis,
       };
     } catch (error) {
       console.error(`Error parsing property analysis: ${error}`);
       throw new Error('Failed to analyze property');
     }
   }
-  
+
   /**
    * Predict the future value of a property
-   * 
+   *
    * @param propertyId ID of the property
    * @param yearsAhead Number of years to predict ahead
    * @returns Predicted value and confidence
    */
-  public async predictFutureValue(propertyId: string, yearsAhead: number = 5): Promise<{
+  public async predictFutureValue(
+    propertyId: string,
+    yearsAhead: number = 5
+  ): Promise<{
     propertyId: string;
     currentValue: number;
     predictedValue: number;
@@ -400,18 +416,20 @@ export class PropertyAnalysisAIExtension extends AIExtension {
     if (!property) {
       throw new Error(`Property ${propertyId} not found`);
     }
-    
+
     // Get historical property data
     const propertyHistory = await this.storage.getPropertyHistory(propertyId);
-    
+
     // Get market trends
     const marketTrends = await this.storage.getMarketTrends();
-    
+
     // Create a conversation ID for this prediction
     const conversationId = `property-prediction-${propertyId}-${Date.now()}`;
-    
+
     // Create a prompt for the AI
-    await this.addUserMessage(conversationId, `
+    await this.addUserMessage(
+      conversationId,
+      `
       I need a prediction of the future value of property ${propertyId} ${yearsAhead} years from now.
       
       Property Details:
@@ -437,36 +455,37 @@ export class PropertyAnalysisAIExtension extends AIExtension {
         "growthRate": number,
         "timeline": [{ "date": string, "value": number, "event": string }]
       }
-    `);
-    
+    `
+    );
+
     // Generate completion
     const response = await this.generateCompletion(conversationId, {
-      temperature: 0.3 // Lower temperature for more deterministic predictions
+      temperature: 0.3, // Lower temperature for more deterministic predictions
     });
-    
+
     // Parse the JSON response
     try {
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON object found in response');
       }
-      
+
       const prediction = JSON.parse(jsonMatch[0]);
-      
+
       // Add propertyId to the result
       return {
         propertyId,
-        ...prediction
+        ...prediction,
       };
     } catch (error) {
       console.error(`Error parsing property prediction: ${error}`);
       throw new Error('Failed to predict property value');
     }
   }
-  
+
   /**
    * Generate a narrative story about a property
-   * 
+   *
    * @param propertyId ID of the property
    * @returns Property story
    */
@@ -482,15 +501,17 @@ export class PropertyAnalysisAIExtension extends AIExtension {
     if (!property) {
       throw new Error(`Property ${propertyId} not found`);
     }
-    
+
     // Get historical property data
     const propertyHistory = await this.storage.getPropertyHistory(propertyId);
-    
+
     // Create a conversation ID for this story
     const conversationId = `property-story-${propertyId}-${Date.now()}`;
-    
+
     // Create a prompt for the AI
-    await this.addUserMessage(conversationId, `
+    await this.addUserMessage(
+      conversationId,
+      `
       I need a compelling narrative story about property ${propertyId}.
       
       Property Details:
@@ -512,42 +533,46 @@ export class PropertyAnalysisAIExtension extends AIExtension {
         "fullStory": string,
         "keyEvents": [{ "date": string, "event": string, "impact": string }]
       }
-    `);
-    
+    `
+    );
+
     // Generate completion
     const response = await this.generateCompletion(conversationId, {
       temperature: 0.8, // Higher temperature for more creative storytelling
-      maxTokens: 2000 // Allow for longer responses
+      maxTokens: 2000, // Allow for longer responses
     });
-    
+
     // Parse the JSON response
     try {
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON object found in response');
       }
-      
+
       const story = JSON.parse(jsonMatch[0]);
-      
+
       // Add propertyId to the result
       return {
         propertyId,
-        ...story
+        ...story,
       };
     } catch (error) {
       console.error(`Error parsing property story: ${error}`);
       throw new Error('Failed to generate property story');
     }
   }
-  
+
   /**
    * Find comparable properties
-   * 
+   *
    * @param propertyId ID of the property
    * @param count Number of comparables to find
    * @returns Array of comparable properties with similarity scores
    */
-  public async findComparableProperties(propertyId: string, count: number = 5): Promise<{
+  public async findComparableProperties(
+    propertyId: string,
+    count: number = 5
+  ): Promise<{
     propertyId: string;
     comparables: {
       id: string;
@@ -561,16 +586,18 @@ export class PropertyAnalysisAIExtension extends AIExtension {
     if (!property) {
       throw new Error(`Property ${propertyId} not found`);
     }
-    
+
     // Get all properties
     const allProperties = await this.storage.getAllProperties();
     const otherProperties = allProperties.filter(p => p.propertyId !== propertyId);
-    
+
     // Create a conversation ID for this comparison
     const conversationId = `property-comparables-${propertyId}-${Date.now()}`;
-    
+
     // Create a prompt for the AI
-    await this.addUserMessage(conversationId, `
+    await this.addUserMessage(
+      conversationId,
+      `
       I need to find the top ${count} most comparable properties to property ${propertyId}.
       
       Target Property:
@@ -596,27 +623,28 @@ export class PropertyAnalysisAIExtension extends AIExtension {
           }
         ]
       }
-    `);
-    
+    `
+    );
+
     // Generate completion
     const response = await this.generateCompletion(conversationId, {
       temperature: 0.2, // Lower temperature for more consistent comparisons
-      maxTokens: 1500 // Allow for longer responses to handle many properties
+      maxTokens: 1500, // Allow for longer responses to handle many properties
     });
-    
+
     // Parse the JSON response
     try {
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON object found in response');
       }
-      
+
       const result = JSON.parse(jsonMatch[0]);
-      
+
       // Add propertyId to the result
       return {
         propertyId,
-        ...result
+        ...result,
       };
     } catch (error) {
       console.error(`Error parsing property comparables: ${error}`);

@@ -1,6 +1,6 @@
 /**
  * FTP Connector Service
- * 
+ *
  * Provides a robust interface for interacting with FTP servers:
  * - Connection pooling and management
  * - Automatic retry with exponential backoff
@@ -59,7 +59,7 @@ export class FTPConnector {
   private client: FTPClient;
   private connected: boolean = false;
   private config: FTPConfig;
-  
+
   /**
    * Create a new FTP Connector
    * @param config FTP connection configuration
@@ -71,14 +71,14 @@ export class FTPConnector {
       retryConfig: config.retryConfig || {
         maxRetries: 3,
         initialDelay: 1000,
-        backoffFactor: 2
-      }
+        backoffFactor: 2,
+      },
     };
-    
+
     this.client = new FTPClient();
     this.client.ftp.verbose = false;
   }
-  
+
   /**
    * Connect to the FTP server
    * @returns True if connected successfully
@@ -87,39 +87,39 @@ export class FTPConnector {
     if (this.connected) {
       return true;
     }
-    
+
     try {
       // Set connection timeout
       this.client.ftp.socket.setTimeout((this.config.timeoutSeconds || 30) * 1000);
-      
+
       // Connect to server
       await this.client.access({
         host: this.config.host,
         port: this.config.port,
         user: this.config.user,
         password: this.config.password,
-        secure: this.config.secure
+        secure: this.config.secure,
       });
-      
+
       this.connected = true;
-      
+
       logger.info(`Connected to FTP server: ${this.config.host}:${this.config.port}`, {
         component: 'FTPConnector',
-        secure: this.config.secure
+        secure: this.config.secure,
       });
-      
+
       return true;
     } catch (error) {
       logger.error(`Failed to connect to FTP server: ${this.config.host}:${this.config.port}`, {
         component: 'FTPConnector',
-        error
+        error,
       });
-      
+
       this.connected = false;
       return false;
     }
   }
-  
+
   /**
    * Disconnect from the FTP server
    */
@@ -127,13 +127,13 @@ export class FTPConnector {
     if (this.client) {
       this.client.close();
       this.connected = false;
-      
+
       logger.info(`Disconnected from FTP server: ${this.config.host}:${this.config.port}`, {
-        component: 'FTPConnector'
+        component: 'FTPConnector',
       });
     }
   }
-  
+
   /**
    * Execute an FTP operation with automatic retries
    * @param operation Operation function
@@ -141,47 +141,47 @@ export class FTPConnector {
    */
   private async executeWithRetry<T>(operation: () => Promise<T>): Promise<T> {
     const { maxRetries, initialDelay, backoffFactor } = this.config.retryConfig!;
-    
+
     let lastError: Error | undefined;
-    
+
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         // Ensure connection before operation
         if (!this.connected) {
           await this.connect();
         }
-        
+
         // Execute operation
         return await operation();
       } catch (error) {
         lastError = error as Error;
-        
+
         // Log error
         logger.warn(`FTP operation failed (attempt ${attempt + 1}/${maxRetries + 1})`, {
           component: 'FTPConnector',
-          error: lastError.message
+          error: lastError.message,
         });
-        
+
         // Close current connection
         this.client.close();
         this.connected = false;
-        
+
         // If this is not the last attempt, wait before retrying
         if (attempt < maxRetries) {
           const delay = initialDelay * Math.pow(backoffFactor, attempt);
           await new Promise(resolve => setTimeout(resolve, delay));
-          
+
           // Create a new client for the next attempt
           this.client = new FTPClient();
           this.client.ftp.verbose = false;
         }
       }
     }
-    
+
     // If we get here, all retries failed
     throw lastError || new Error('FTP operation failed after retries');
   }
-  
+
   /**
    * Get a file listing from the FTP server
    * @param remotePath Remote directory path
@@ -190,17 +190,17 @@ export class FTPConnector {
   async listFiles(remotePath: string): Promise<FileInfo[]> {
     return this.executeWithRetry(async () => {
       const listing = await this.client.list(remotePath);
-      
+
       return listing.map(item => ({
         name: item.name,
         size: item.size,
         isDirectory: item.type === 2, // 2 = directory in basic-ftp
         modifiedTime: item.modifiedAt,
-        permissions: item.rawModifiedAt // Using rawModifiedAt field to store permissions (hack)
+        permissions: item.rawModifiedAt, // Using rawModifiedAt field to store permissions (hack)
       }));
     });
   }
-  
+
   /**
    * Download a file from the FTP server
    * @param remotePath Remote file path
@@ -214,19 +214,19 @@ export class FTPConnector {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      
+
       // Download file
       await this.client.downloadTo(localPath, remotePath);
-      
+
       logger.info(`Downloaded file from FTP server: ${remotePath} -> ${localPath}`, {
         component: 'FTPConnector',
-        fileSize: fs.statSync(localPath).size
+        fileSize: fs.statSync(localPath).size,
       });
-      
+
       return true;
     });
   }
-  
+
   /**
    * Download a file from the FTP server using streaming for large files
    * @param remotePath Remote file path
@@ -240,26 +240,26 @@ export class FTPConnector {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      
+
       // Create write stream
       const writeStream = fs.createWriteStream(localPath);
-      
+
       try {
         // Download file
         await this.client.downloadTo(writeStream, remotePath);
-        
+
         logger.info(`Downloaded file (stream) from FTP server: ${remotePath} -> ${localPath}`, {
           component: 'FTPConnector',
-          fileSize: fs.statSync(localPath).size
+          fileSize: fs.statSync(localPath).size,
         });
-        
+
         return true;
       } finally {
         writeStream.close();
       }
     });
   }
-  
+
   /**
    * Upload a file to the FTP server
    * @param localPath Local file path
@@ -272,19 +272,19 @@ export class FTPConnector {
       if (!fs.existsSync(localPath)) {
         throw new Error(`Local file not found: ${localPath}`);
       }
-      
+
       // Upload file
       await this.client.uploadFrom(localPath, remotePath);
-      
+
       logger.info(`Uploaded file to FTP server: ${localPath} -> ${remotePath}`, {
         component: 'FTPConnector',
-        fileSize: fs.statSync(localPath).size
+        fileSize: fs.statSync(localPath).size,
       });
-      
+
       return true;
     });
   }
-  
+
   /**
    * Upload a file to the FTP server using streaming for large files
    * @param localPath Local file path
@@ -297,26 +297,26 @@ export class FTPConnector {
       if (!fs.existsSync(localPath)) {
         throw new Error(`Local file not found: ${localPath}`);
       }
-      
+
       // Create read stream
       const readStream = fs.createReadStream(localPath);
-      
+
       try {
         // Upload file
         await this.client.uploadFrom(readStream, remotePath);
-        
+
         logger.info(`Uploaded file (stream) to FTP server: ${localPath} -> ${remotePath}`, {
           component: 'FTPConnector',
-          fileSize: fs.statSync(localPath).size
+          fileSize: fs.statSync(localPath).size,
         });
-        
+
         return true;
       } finally {
         readStream.close();
       }
     });
   }
-  
+
   /**
    * Delete a file from the FTP server
    * @param remotePath Remote file path
@@ -325,15 +325,15 @@ export class FTPConnector {
   async deleteFile(remotePath: string): Promise<boolean> {
     return this.executeWithRetry(async () => {
       await this.client.remove(remotePath);
-      
+
       logger.info(`Deleted file from FTP server: ${remotePath}`, {
-        component: 'FTPConnector'
+        component: 'FTPConnector',
       });
-      
+
       return true;
     });
   }
-  
+
   /**
    * Create a directory on the FTP server
    * @param remotePath Remote directory path
@@ -342,15 +342,15 @@ export class FTPConnector {
   async createDirectory(remotePath: string): Promise<boolean> {
     return this.executeWithRetry(async () => {
       await this.client.ensureDir(remotePath);
-      
+
       logger.info(`Created directory on FTP server: ${remotePath}`, {
-        component: 'FTPConnector'
+        component: 'FTPConnector',
       });
-      
+
       return true;
     });
   }
-  
+
   /**
    * Delete a directory from the FTP server
    * @param remotePath Remote directory path
@@ -364,23 +364,23 @@ export class FTPConnector {
       } else {
         // Check if directory is empty
         const listing = await this.client.list(remotePath);
-        
+
         if (listing.length > 0) {
           throw new Error(`Directory is not empty: ${remotePath}`);
         }
-        
+
         await this.client.removeDir(remotePath);
       }
-      
+
       logger.info(`Deleted directory from FTP server: ${remotePath}`, {
         component: 'FTPConnector',
-        recursive
+        recursive,
       });
-      
+
       return true;
     });
   }
-  
+
   /**
    * Check if a file exists on the FTP server
    * @param remotePath Remote file path
@@ -392,10 +392,10 @@ export class FTPConnector {
         // Get parent directory and filename
         const parentDir = path.dirname(remotePath);
         const filename = path.basename(remotePath);
-        
+
         // List parent directory
         const listing = await this.client.list(parentDir);
-        
+
         // Check if file exists
         return listing.some(item => item.name === filename && item.type !== 2);
       });
@@ -404,7 +404,7 @@ export class FTPConnector {
       return false;
     }
   }
-  
+
   /**
    * Get file information from the FTP server
    * @param remotePath Remote file path
@@ -416,35 +416,35 @@ export class FTPConnector {
         // Get parent directory and filename
         const parentDir = path.dirname(remotePath);
         const filename = path.basename(remotePath);
-        
+
         // List parent directory
         const listing = await this.client.list(parentDir);
-        
+
         // Find file
         const fileItem = listing.find(item => item.name === filename);
-        
+
         if (!fileItem) {
           return null;
         }
-        
+
         return {
           name: fileItem.name,
           size: fileItem.size,
           isDirectory: fileItem.type === 2,
           modifiedTime: fileItem.modifiedAt,
-          permissions: fileItem.rawModifiedAt
+          permissions: fileItem.rawModifiedAt,
         };
       });
     } catch (error) {
       logger.error(`Failed to get file info: ${remotePath}`, {
         component: 'FTPConnector',
-        error
+        error,
       });
-      
+
       return null;
     }
   }
-  
+
   /**
    * Calculate MD5 hash of a local file
    * @param filepath Local file path
@@ -455,7 +455,7 @@ export class FTPConnector {
       try {
         const hash = crypto.createHash('md5');
         const stream = fs.createReadStream(filepath);
-        
+
         stream.on('error', err => reject(err));
         stream.on('data', chunk => hash.update(chunk));
         stream.on('end', () => resolve(hash.digest('hex')));
@@ -464,7 +464,7 @@ export class FTPConnector {
       }
     });
   }
-  
+
   /**
    * Synchronize a directory from the FTP server to a local directory
    * @param remoteDir Remote directory path
@@ -485,54 +485,54 @@ export class FTPConnector {
     const opts = {
       recursive: options.recursive !== undefined ? options.recursive : true,
       deleteLocal: options.deleteLocal !== undefined ? options.deleteLocal : false,
-      filter: options.filter || (() => true)
+      filter: options.filter || (() => true),
     };
-    
+
     // Ensure local directory exists
     if (!fs.existsSync(localDir)) {
       fs.mkdirSync(localDir, { recursive: true });
     }
-    
+
     const result: SyncResult = {
       added: [],
       updated: [],
       deleted: [],
       unchanged: [],
-      failed: []
+      failed: [],
     };
-    
+
     try {
       // Get remote file listing
       const remoteListing = await this.listFiles(remoteDir);
-      
+
       // Get local file listing
       const localFiles = fs.readdirSync(localDir).filter(name => {
         const localPath = path.join(localDir, name);
         const stat = fs.statSync(localPath);
-        
+
         // If directory and not recursive, skip
         if (stat.isDirectory() && !opts.recursive) {
           return false;
         }
-        
+
         return true;
       });
-      
+
       // Track processed files to detect deletions
       const processedFiles = new Set<string>();
-      
+
       // Process remote files
       for (const remoteFile of remoteListing) {
         // Skip files that don't match filter
         if (!opts.filter(remoteFile)) {
           continue;
         }
-        
+
         const remoteFilePath = path.join(remoteDir, remoteFile.name);
         const localFilePath = path.join(localDir, remoteFile.name);
-        
+
         processedFiles.add(remoteFile.name);
-        
+
         if (remoteFile.isDirectory) {
           // Process directory
           if (opts.recursive) {
@@ -541,14 +541,10 @@ export class FTPConnector {
               fs.mkdirSync(localFilePath, { recursive: true });
               result.added.push(remoteFilePath);
             }
-            
+
             // Recursively sync directory
-            const subResult = await this.syncDirectory(
-              remoteFilePath,
-              localFilePath,
-              options
-            );
-            
+            const subResult = await this.syncDirectory(remoteFilePath, localFilePath, options);
+
             // Merge results
             result.added.push(...subResult.added);
             result.updated.push(...subResult.updated);
@@ -559,7 +555,7 @@ export class FTPConnector {
         } else {
           // Process file
           const localExists = fs.existsSync(localFilePath);
-          
+
           try {
             if (!localExists) {
               // New file, download it
@@ -568,9 +564,9 @@ export class FTPConnector {
             } else {
               // File exists, check if it needs updating
               const localStat = fs.statSync(localFilePath);
-              
+
               let needsUpdate = false;
-              
+
               // Check size first (quick check)
               if (localStat.size !== remoteFile.size) {
                 needsUpdate = true;
@@ -578,7 +574,7 @@ export class FTPConnector {
                 // Check modification time if available
                 const remoteTime = remoteFile.modifiedTime.getTime();
                 const localTime = localStat.mtime.getTime();
-                
+
                 // Allow 1 second difference due to FTP precision
                 if (Math.abs(remoteTime - localTime) > 1000) {
                   needsUpdate = true;
@@ -587,12 +583,12 @@ export class FTPConnector {
                 // Calculate hash to be sure
                 const localHash = await this.calculateFileHash(localFilePath);
                 const remoteHash = remoteFile.hash || 'unknown';
-                
+
                 if (remoteHash !== 'unknown' && localHash !== remoteHash) {
                   needsUpdate = true;
                 }
               }
-              
+
               if (needsUpdate) {
                 // Update file
                 await this.downloadFile(remoteFilePath, localFilePath);
@@ -604,26 +600,26 @@ export class FTPConnector {
           } catch (error) {
             result.failed.push({
               path: remoteFilePath,
-              error: (error as Error).message
+              error: (error as Error).message,
             });
-            
+
             logger.error(`Failed to sync file: ${remoteFilePath}`, {
               component: 'FTPConnector',
-              error
+              error,
             });
           }
         }
       }
-      
+
       // Handle local files that don't exist remotely
       if (opts.deleteLocal) {
         for (const localFile of localFiles) {
           if (!processedFiles.has(localFile)) {
             const localFilePath = path.join(localDir, localFile);
-            
+
             try {
               const stat = fs.statSync(localFilePath);
-              
+
               if (stat.isDirectory()) {
                 if (opts.recursive) {
                   // Recursively delete directory
@@ -638,34 +634,34 @@ export class FTPConnector {
             } catch (error) {
               result.failed.push({
                 path: localFilePath,
-                error: (error as Error).message
+                error: (error as Error).message,
               });
-              
+
               logger.error(`Failed to delete file: ${localFilePath}`, {
                 component: 'FTPConnector',
-                error
+                error,
               });
             }
           }
         }
       }
-      
+
       logger.info(`Synchronized directory: ${remoteDir} -> ${localDir}`, {
         component: 'FTPConnector',
         added: result.added.length,
         updated: result.updated.length,
         deleted: result.deleted.length,
         unchanged: result.unchanged.length,
-        failed: result.failed.length
+        failed: result.failed.length,
       });
-      
+
       return result;
     } catch (error) {
       logger.error(`Failed to sync directory: ${remoteDir} -> ${localDir}`, {
         component: 'FTPConnector',
-        error
+        error,
       });
-      
+
       throw error;
     }
   }

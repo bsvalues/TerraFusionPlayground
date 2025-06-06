@@ -1,6 +1,6 @@
 /**
  * Policy Manager
- * 
+ *
  * Manages security and compliance policies including:
  * - Policy creation and versioning
  * - Policy distribution
@@ -20,7 +20,7 @@ export enum PolicyType {
   INCIDENT_RESPONSE = 'incident_response',
   BUSINESS_CONTINUITY = 'business_continuity',
   CHANGE_MANAGEMENT = 'change_management',
-  OTHER = 'other'
+  OTHER = 'other',
 }
 
 // Policy status
@@ -30,7 +30,7 @@ export enum PolicyStatus {
   APPROVED = 'approved',
   PUBLISHED = 'published',
   DEPRECATED = 'deprecated',
-  ARCHIVED = 'archived'
+  ARCHIVED = 'archived',
 }
 
 // Policy interface
@@ -102,34 +102,36 @@ export class PolicyManager extends EventEmitter {
    */
   public createPolicy(policy: Omit<Policy, 'id' | 'status' | 'version'>): Policy {
     const id = `policy-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     const newPolicy: Policy = {
       ...policy,
       id,
       status: PolicyStatus.DRAFT,
-      version: '1.0.0'
+      version: '1.0.0',
     };
-    
+
     this.policies.set(id, newPolicy);
-    
+
     // Initialize version history
-    this.versions.set(id, [{
-      policyId: id,
-      version: newPolicy.version,
-      status: newPolicy.status,
-      content: newPolicy.content,
-      author: newPolicy.author,
-      createdAt: new Date()
-    }]);
-    
+    this.versions.set(id, [
+      {
+        policyId: id,
+        version: newPolicy.version,
+        status: newPolicy.status,
+        content: newPolicy.content,
+        author: newPolicy.author,
+        createdAt: new Date(),
+      },
+    ]);
+
     this.logger.info('Policy created', {
       policyId: id,
       name: newPolicy.name,
-      type: newPolicy.type
+      type: newPolicy.type,
     });
-    
+
     this.emit('policy:created', newPolicy);
-    
+
     return newPolicy;
   }
 
@@ -138,30 +140,30 @@ export class PolicyManager extends EventEmitter {
    */
   public updatePolicy(id: string, updates: Partial<Policy>): Policy | null {
     const policy = this.policies.get(id);
-    
+
     if (!policy) {
       this.logger.error('Policy not found', { policyId: id });
       return null;
     }
-    
+
     // Check if we need to create a new version
     const createNewVersion = updates.content !== undefined && updates.content !== policy.content;
-    
+
     // Create the updated policy
     const updatedPolicy: Policy = {
       ...policy,
       ...updates,
       // Don't allow direct modification of these fields
       id: policy.id,
-      version: createNewVersion ? this.incrementVersion(policy.version) : policy.version
+      version: createNewVersion ? this.incrementVersion(policy.version) : policy.version,
     };
-    
+
     this.policies.set(id, updatedPolicy);
-    
+
     // Create a new version if content changed
     if (createNewVersion) {
       const versions = this.versions.get(id) || [];
-      
+
       const newVersion: PolicyVersion = {
         policyId: id,
         version: updatedPolicy.version,
@@ -171,28 +173,28 @@ export class PolicyManager extends EventEmitter {
         approver: updatedPolicy.approver,
         effectiveDate: updatedPolicy.effectiveDate,
         changes: updates.metadata?.changes as string,
-        createdAt: new Date()
+        createdAt: new Date(),
       };
-      
+
       versions.push(newVersion);
       this.versions.set(id, versions);
-      
+
       this.logger.info('New policy version created', {
         policyId: id,
-        version: newVersion.version
+        version: newVersion.version,
       });
-      
+
       this.emit('policy:versioned', newVersion);
     }
-    
+
     this.logger.info('Policy updated', {
       policyId: id,
       name: updatedPolicy.name,
-      version: updatedPolicy.version
+      version: updatedPolicy.version,
     });
-    
+
     this.emit('policy:updated', updatedPolicy);
-    
+
     return updatedPolicy;
   }
 
@@ -202,18 +204,18 @@ export class PolicyManager extends EventEmitter {
   private incrementVersion(version: string): string {
     const parts = version.split('.').map(Number);
     parts[2] += 1;
-    
+
     // Handle carryover
     if (parts[2] >= 10) {
       parts[2] = 0;
       parts[1] += 1;
-      
+
       if (parts[1] >= 10) {
         parts[1] = 0;
         parts[0] += 1;
       }
     }
-    
+
     return parts.join('.');
   }
 
@@ -222,31 +224,34 @@ export class PolicyManager extends EventEmitter {
    */
   public changeStatus(id: string, status: PolicyStatus, approver?: string): Policy | null {
     const policy = this.policies.get(id);
-    
+
     if (!policy) {
       this.logger.error('Policy not found', { policyId: id });
       return null;
     }
-    
-    const updatedPolicy = this.updatePolicy(id, { 
+
+    const updatedPolicy = this.updatePolicy(id, {
       status,
-      approver: status === PolicyStatus.APPROVED || status === PolicyStatus.PUBLISHED ? approver : policy.approver
+      approver:
+        status === PolicyStatus.APPROVED || status === PolicyStatus.PUBLISHED
+          ? approver
+          : policy.approver,
     });
-    
+
     if (updatedPolicy) {
       this.logger.info('Policy status changed', {
         policyId: id,
         oldStatus: policy.status,
-        newStatus: status
+        newStatus: status,
       });
-      
+
       this.emit('policy:status-changed', {
         policy: updatedPolicy,
         oldStatus: policy.status,
-        newStatus: status
+        newStatus: status,
       });
     }
-    
+
     return updatedPolicy;
   }
 
@@ -296,39 +301,43 @@ export class PolicyManager extends EventEmitter {
   /**
    * Record a policy acknowledgement
    */
-  public acknowledgePolicy(policyId: string, userId: string, metadata?: Record<string, any>): PolicyAcknowledgement | null {
+  public acknowledgePolicy(
+    policyId: string,
+    userId: string,
+    metadata?: Record<string, any>
+  ): PolicyAcknowledgement | null {
     const policy = this.policies.get(policyId);
-    
+
     if (!policy) {
       this.logger.error('Policy not found', { policyId });
       return null;
     }
-    
+
     // Create acknowledgement
     const id = `ack-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     const acknowledgement: PolicyAcknowledgement = {
       id,
       policyId,
       policyVersion: policy.version,
       userId,
       acknowledgedAt: new Date(),
-      metadata
+      metadata,
     };
-    
+
     // Store acknowledgement
     const acknowledgements = this.acknowledgements.get(policyId) || [];
     acknowledgements.push(acknowledgement);
     this.acknowledgements.set(policyId, acknowledgements);
-    
+
     this.logger.info('Policy acknowledged', {
       policyId,
       userId,
-      version: policy.version
+      version: policy.version,
     });
-    
+
     this.emit('policy:acknowledged', acknowledgement);
-    
+
     return acknowledgement;
   }
 
@@ -352,7 +361,7 @@ export class PolicyManager extends EventEmitter {
    */
   public getPoliciesNeedingReview(): Policy[] {
     const now = new Date();
-    
+
     return this.getAllPolicies().filter(policy => {
       return policy.reviewDate && policy.reviewDate <= now;
     });
@@ -363,7 +372,7 @@ export class PolicyManager extends EventEmitter {
    */
   public exportPolicies(policyIds?: string[]): any {
     let policies: Policy[];
-    
+
     if (policyIds && policyIds.length > 0) {
       policies = policyIds
         .map(id => this.getPolicy(id))
@@ -371,19 +380,19 @@ export class PolicyManager extends EventEmitter {
     } else {
       policies = this.getAllPolicies();
     }
-    
+
     const result = {
       exportDate: new Date(),
       policies: policies.map(policy => ({
         ...policy,
-        versions: this.getPolicyVersions(policy.id).length
-      }))
+        versions: this.getPolicyVersions(policy.id).length,
+      })),
     };
-    
+
     this.logger.info('Policies exported', {
-      count: policies.length
+      count: policies.length,
     });
-    
+
     return result;
   }
 }

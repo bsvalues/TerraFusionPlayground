@@ -1,9 +1,9 @@
 /**
  * Redis Cache Service
- * 
+ *
  * A scalable caching layer for property data and lookup tables that reduces
  * database load and improves application performance. This service provides:
- * 
+ *
  * - Tiered caching strategy with in-memory fallbacks
  * - Automatic cache invalidation based on data lineage
  * - Support for complex data structures and JSON objects
@@ -23,15 +23,15 @@ export enum CachePrefix {
   LOOKUP_TABLE = 'lookup:',
   USER = 'user:',
   ETL_JOB = 'etl:job:',
-  FTP_DATA = 'ftp:data:'
+  FTP_DATA = 'ftp:data:',
 }
 
 // Default TTL values for different cache categories (in seconds)
 export enum CacheTTL {
-  SHORT = 60,        // 1 minute
-  MEDIUM = 300,      // 5 minutes
-  STANDARD = 1800,   // 30 minutes
-  LONG = 3600 * 4,   // 4 hours
+  SHORT = 60, // 1 minute
+  MEDIUM = 300, // 5 minutes
+  STANDARD = 1800, // 30 minutes
+  LONG = 3600 * 4, // 4 hours
   VERY_LONG = 86400, // 1 day
 }
 
@@ -56,7 +56,7 @@ export class RedisCacheService {
   private client: Redis;
   private isConnected: boolean = false;
   private defaultTTL: number = CacheTTL.STANDARD;
-  private inMemoryCache: Map<string, { value: any, expiry: number }>;
+  private inMemoryCache: Map<string, { value: any; expiry: number }>;
   private useInMemoryFallback: boolean = true;
 
   /**
@@ -79,12 +79,12 @@ export class RedisCacheService {
     // Merge provided options with defaults
     const mergedOptions = {
       ...defaultOptions,
-      ...options
+      ...options,
     };
 
     // Create Redis client
     this.client = new Redis(mergedOptions);
-    
+
     // Initialize in-memory cache for fallback
     this.inMemoryCache = new Map();
 
@@ -101,7 +101,7 @@ export class RedisCacheService {
       this.isConnected = true;
     });
 
-    this.client.on('error', (error) => {
+    this.client.on('error', error => {
       logger.error('Redis client error', { component: 'RedisCacheService', error });
       this.isConnected = false;
     });
@@ -128,7 +128,7 @@ export class RedisCacheService {
       }
 
       const value = await this.client.get(key);
-      
+
       if (!value) {
         return null;
       }
@@ -141,12 +141,12 @@ export class RedisCacheService {
         return value as unknown as T;
       }
     } catch (error) {
-      logger.error('Error getting value from Redis cache', { 
-        component: 'RedisCacheService', 
-        key, 
-        error 
+      logger.error('Error getting value from Redis cache', {
+        component: 'RedisCacheService',
+        key,
+        error,
       });
-      
+
       // Fall back to memory cache
       return this.getFromMemoryCache<T>(key);
     }
@@ -163,13 +163,13 @@ export class RedisCacheService {
     }
 
     const item = this.inMemoryCache.get(key);
-    
+
     if (!item) {
       return null;
     }
 
     const now = Date.now();
-    
+
     if (item.expiry < now) {
       this.inMemoryCache.delete(key);
       return null;
@@ -207,12 +207,12 @@ export class RedisCacheService {
 
       return true;
     } catch (error) {
-      logger.error('Error setting value in Redis cache', { 
-        component: 'RedisCacheService', 
-        key, 
-        error 
+      logger.error('Error setting value in Redis cache', {
+        component: 'RedisCacheService',
+        key,
+        error,
       });
-      
+
       // Try to fall back to memory cache
       return this.setInMemoryCache(key, value, ttl || this.defaultTTL);
     }
@@ -230,7 +230,7 @@ export class RedisCacheService {
       return false;
     }
 
-    const expiry = Date.now() + (ttlSeconds * 1000);
+    const expiry = Date.now() + ttlSeconds * 1000;
     this.inMemoryCache.set(key, { value, expiry });
     return true;
   }
@@ -254,10 +254,10 @@ export class RedisCacheService {
       await this.client.del(key);
       return true;
     } catch (error) {
-      logger.error('Error deleting value from Redis cache', { 
-        component: 'RedisCacheService', 
-        key, 
-        error 
+      logger.error('Error deleting value from Redis cache', {
+        component: 'RedisCacheService',
+        key,
+        error,
       });
       return false;
     }
@@ -285,10 +285,10 @@ export class RedisCacheService {
       const result = await this.client.exists(key);
       return result === 1;
     } catch (error) {
-      logger.error('Error checking if key exists in Redis cache', { 
-        component: 'RedisCacheService', 
-        key, 
-        error 
+      logger.error('Error checking if key exists in Redis cache', {
+        component: 'RedisCacheService',
+        key,
+        error,
       });
       return false;
     }
@@ -307,7 +307,7 @@ export class RedisCacheService {
 
       // Get all keys with the specified prefix
       const keys = await this.client.keys(`${prefix}*`);
-      
+
       if (keys.length === 0) {
         return 0;
       }
@@ -322,12 +322,12 @@ export class RedisCacheService {
 
       return result;
     } catch (error) {
-      logger.error('Error flushing keys by prefix from Redis cache', { 
-        component: 'RedisCacheService', 
-        prefix, 
-        error 
+      logger.error('Error flushing keys by prefix from Redis cache', {
+        component: 'RedisCacheService',
+        prefix,
+        error,
       });
-      
+
       // Try to flush from in-memory cache
       return this.flushMemoryCacheByPrefix(prefix);
     }
@@ -344,14 +344,14 @@ export class RedisCacheService {
     }
 
     let count = 0;
-    
+
     for (const key of this.inMemoryCache.keys()) {
       if (key.startsWith(prefix)) {
         this.inMemoryCache.delete(key);
         count++;
       }
     }
-    
+
     return count;
   }
 
@@ -371,11 +371,11 @@ export class RedisCacheService {
       const result = await this.client.incrby(key, value);
       return result;
     } catch (error) {
-      logger.error('Error incrementing counter in Redis cache', { 
-        component: 'RedisCacheService', 
-        key, 
-        value, 
-        error 
+      logger.error('Error incrementing counter in Redis cache', {
+        component: 'RedisCacheService',
+        key,
+        value,
+        error,
       });
       return 0;
     }
@@ -393,7 +393,7 @@ export class RedisCacheService {
         // Update expiry in memory cache
         const item = this.inMemoryCache.get(key);
         if (item) {
-          item.expiry = Date.now() + (ttl * 1000);
+          item.expiry = Date.now() + ttl * 1000;
           this.inMemoryCache.set(key, item);
           return true;
         }
@@ -403,11 +403,11 @@ export class RedisCacheService {
       const result = await this.client.expire(key, ttl);
       return result === 1;
     } catch (error) {
-      logger.error('Error setting expiration in Redis cache', { 
-        component: 'RedisCacheService', 
-        key, 
-        ttl, 
-        error 
+      logger.error('Error setting expiration in Redis cache', {
+        component: 'RedisCacheService',
+        key,
+        ttl,
+        error,
       });
       return false;
     }
@@ -425,17 +425,17 @@ export class RedisCacheService {
       }
 
       const values = await this.client.mget(...keys);
-      
+
       const result: Record<string, T | null> = {};
-      
+
       for (let i = 0; i < keys.length; i++) {
         const value = values[i];
-        
+
         if (value === null) {
           result[keys[i]] = null;
           continue;
         }
-        
+
         try {
           // Try to parse as JSON
           result[keys[i]] = JSON.parse(value) as T;
@@ -444,15 +444,15 @@ export class RedisCacheService {
           result[keys[i]] = value as unknown as T;
         }
       }
-      
+
       return result;
     } catch (error) {
-      logger.error('Error getting multiple values from Redis cache', { 
-        component: 'RedisCacheService', 
-        keys, 
-        error 
+      logger.error('Error getting multiple values from Redis cache', {
+        component: 'RedisCacheService',
+        keys,
+        error,
       });
-      
+
       // Fall back to memory cache
       return this.mgetFromMemoryCache<T>(keys);
     }
@@ -465,26 +465,29 @@ export class RedisCacheService {
    */
   private mgetFromMemoryCache<T>(keys: string[]): Record<string, T | null> {
     if (!this.useInMemoryFallback) {
-      return keys.reduce((acc, key) => {
-        acc[key] = null;
-        return acc;
-      }, {} as Record<string, T | null>);
+      return keys.reduce(
+        (acc, key) => {
+          acc[key] = null;
+          return acc;
+        },
+        {} as Record<string, T | null>
+      );
     }
 
     const now = Date.now();
     const result: Record<string, T | null> = {};
-    
+
     for (const key of keys) {
       const item = this.inMemoryCache.get(key);
-      
+
       if (!item || item.expiry < now) {
         result[key] = null;
         continue;
       }
-      
+
       result[key] = item.value as T;
     }
-    
+
     return result;
   }
 
@@ -502,38 +505,38 @@ export class RedisCacheService {
 
       // Flatten key-values for Redis mset
       const args: string[] = [];
-      
+
       for (const [key, value] of Object.entries(keyValues)) {
         const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
         args.push(key, stringValue);
       }
-      
+
       await this.client.mset(...args);
-      
+
       // Set expiration if provided
       if (ttl) {
         const pipeline = this.client.pipeline();
-        
+
         for (const key of Object.keys(keyValues)) {
           pipeline.expire(key, ttl);
         }
-        
+
         await pipeline.exec();
       }
-      
+
       // Also update in-memory cache for fallback
       if (this.useInMemoryFallback) {
         this.msetInMemoryCache(keyValues, ttl || this.defaultTTL);
       }
-      
+
       return true;
     } catch (error) {
-      logger.error('Error setting multiple values in Redis cache', { 
-        component: 'RedisCacheService', 
-        keyCount: Object.keys(keyValues).length, 
-        error 
+      logger.error('Error setting multiple values in Redis cache', {
+        component: 'RedisCacheService',
+        keyCount: Object.keys(keyValues).length,
+        error,
       });
-      
+
       // Try to fall back to memory cache
       return this.msetInMemoryCache(keyValues, ttl || this.defaultTTL);
     }
@@ -550,12 +553,12 @@ export class RedisCacheService {
       return false;
     }
 
-    const expiry = Date.now() + (ttlSeconds * 1000);
-    
+    const expiry = Date.now() + ttlSeconds * 1000;
+
     for (const [key, value] of Object.entries(keyValues)) {
       this.inMemoryCache.set(key, { value, expiry });
     }
-    
+
     return true;
   }
 
@@ -567,9 +570,9 @@ export class RedisCacheService {
       await this.client.quit();
       logger.info('Redis client shutdown', { component: 'RedisCacheService' });
     } catch (error) {
-      logger.error('Error shutting down Redis client', { 
-        component: 'RedisCacheService', 
-        error 
+      logger.error('Error shutting down Redis client', {
+        component: 'RedisCacheService',
+        error,
       });
     }
   }

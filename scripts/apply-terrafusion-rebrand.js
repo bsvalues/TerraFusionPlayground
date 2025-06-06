@@ -2,7 +2,7 @@
 
 /**
  * Apply TerraFusion Rebrand
- * 
+ *
  * This script automates the process of applying the TerraFusion rebrand to the codebase.
  * It updates CSS files, component styles, and helps generate SVG assets.
  */
@@ -22,7 +22,7 @@ const config = {
     path.resolve(__dirname, '../client/src/components/ui'),
     path.resolve(__dirname, '../client/src/components/common'),
   ],
-  assetsSrcDir: path.resolve(__dirname, '../assets/terrafusion'), 
+  assetsSrcDir: path.resolve(__dirname, '../assets/terrafusion'),
   assetsDestDir: path.resolve(__dirname, '../public/assets'),
 };
 
@@ -38,22 +38,24 @@ function fileExists(filePath) {
 // Step 1: Verify that all necessary files exist
 function verifyFiles() {
   console.log(chalk.blue('Step 1: Verifying necessary files...'));
-  
+
   if (!fileExists(config.tokensFile)) {
     console.error(chalk.red(`Error: Tokens file not found at ${config.tokensFile}`));
     return false;
   }
-  
+
   if (!fileExists(config.tailwindConfigFile)) {
-    console.error(chalk.red(`Error: Tailwind config file not found at ${config.tailwindConfigFile}`));
+    console.error(
+      chalk.red(`Error: Tailwind config file not found at ${config.tailwindConfigFile}`)
+    );
     return false;
   }
-  
+
   if (!fileExists(config.hexToTokenScript)) {
     console.error(chalk.red(`Error: Hex to token script not found at ${config.hexToTokenScript}`));
     return false;
   }
-  
+
   console.log(chalk.green('✓ All necessary files found'));
   return true;
 }
@@ -61,16 +63,17 @@ function verifyFiles() {
 // Step 2: Apply TerraFusion tokens CSS
 function applyCSSTokens() {
   console.log(chalk.blue('Step 2: Applying TerraFusion tokens CSS...'));
-  
+
   if (!fileExists(config.cssTokensFile)) {
     console.log(chalk.yellow('Warning: CSS tokens file not found, creating it...'));
-    
+
     // Read tokens data
     const tokensData = JSON.parse(fs.readFileSync(config.tokensFile, 'utf8'));
-    
+
     // Generate CSS variables
-    let cssContent = '/**\n * TerraFusion Design Tokens\n * CSS Custom Properties (Variables)\n */\n\n:root {\n';
-    
+    let cssContent =
+      '/**\n * TerraFusion Design Tokens\n * CSS Custom Properties (Variables)\n */\n\n:root {\n';
+
     // Add font families
     if (tokensData.tokens && tokensData.tokens.fonts) {
       cssContent += '  /* Font Families */\n';
@@ -79,53 +82,53 @@ function applyCSSTokens() {
       }
       cssContent += '  \n';
     }
-    
+
     // Add colors
     if (tokensData.tokens && tokensData.tokens.colors) {
       const { colors } = tokensData.tokens;
-      
+
       // Primary colors
       cssContent += '  /* Primary Colors */\n';
       for (const [name, data] of Object.entries(colors.primary || {})) {
         cssContent += `  --color-primary-${name}: ${data.value};\n`;
       }
       cssContent += '\n';
-      
+
       // Secondary colors
       cssContent += '  /* Secondary Colors */\n';
       for (const [name, data] of Object.entries(colors.secondary || {})) {
         cssContent += `  --color-secondary-${name}: ${data.value};\n`;
       }
       cssContent += '\n';
-      
+
       // Accent colors
       cssContent += '  /* Accent Colors */\n';
       for (const [name, data] of Object.entries(colors.accent || {})) {
         cssContent += `  --color-accent-${name}: ${data.value};\n`;
       }
       cssContent += '\n';
-      
+
       // System colors
       cssContent += '  /* System Colors */\n';
       for (const [name, data] of Object.entries(colors.system || {})) {
         cssContent += `  --color-${name}: ${data.value};\n`;
       }
       cssContent += '\n';
-      
+
       // Background colors
       cssContent += '  /* Background Colors */\n';
       for (const [name, data] of Object.entries(colors.background || {})) {
         cssContent += `  --color-background-${name}: ${data.value};\n`;
       }
       cssContent += '\n';
-      
+
       // Surface colors
       cssContent += '  /* Surface Colors */\n';
       for (const [name, data] of Object.entries(colors.surface || {})) {
         cssContent += `  --color-surface-${name}: ${data.value};\n`;
       }
       cssContent += '\n';
-      
+
       // Add black and white
       if (colors.black) {
         cssContent += `  --color-black: ${colors.black.value};\n`;
@@ -135,7 +138,7 @@ function applyCSSTokens() {
       }
       cssContent += '\n';
     }
-    
+
     // Add shadows
     if (tokensData.tokens && tokensData.tokens.shadows) {
       cssContent += '  /* Shadows */\n';
@@ -144,7 +147,7 @@ function applyCSSTokens() {
       }
       cssContent += '\n';
     }
-    
+
     // Add border radius
     if (tokensData.tokens && tokensData.tokens.borderRadius) {
       cssContent += '  /* Border Radius */\n';
@@ -153,10 +156,10 @@ function applyCSSTokens() {
       }
       cssContent += '\n';
     }
-    
+
     // Close root selector
     cssContent += '}\n\n';
-    
+
     // Add dark mode
     cssContent += '/* Dark mode overrides */\n';
     cssContent += '@media (prefers-color-scheme: dark) {\n';
@@ -164,7 +167,7 @@ function applyCSSTokens() {
     cssContent += '    /* Override any variables that need adjustments in dark mode */\n';
     cssContent += '  }\n';
     cssContent += '}\n\n';
-    
+
     // Add dark mode class
     cssContent += '/* Class for forcing dark mode */\n';
     cssContent += '.dark-mode {\n';
@@ -172,13 +175,13 @@ function applyCSSTokens() {
     cssContent += '  --color-surface: var(--color-surface-dark);\n';
     cssContent += '  /* Add other dark mode overrides as needed */\n';
     cssContent += '}';
-    
+
     // Ensure directory exists
     const cssDir = path.dirname(config.cssTokensFile);
     if (!fs.existsSync(cssDir)) {
       fs.mkdirSync(cssDir, { recursive: true });
     }
-    
+
     // Write CSS file
     fs.writeFileSync(config.cssTokensFile, cssContent, 'utf8');
     console.log(chalk.green(`✓ Created CSS tokens file at ${config.cssTokensFile}`));
@@ -190,16 +193,16 @@ function applyCSSTokens() {
 // Step 3: Update Tailwind config
 function updateTailwindConfig() {
   console.log(chalk.blue('Step 3: Updating Tailwind config...'));
-  
+
   try {
     let tailwindConfig = fs.readFileSync(config.tailwindConfigFile, 'utf8');
-    
+
     // Check if TerraFusion plugin is already imported
     if (!tailwindConfig.includes("import terrafusionPlugin from './scripts/patchTailwind'")) {
       // Add import
       const importLine = "import terrafusionPlugin from './scripts/patchTailwind';\n";
       tailwindConfig = importLine + tailwindConfig;
-      
+
       // Add plugin to the plugins array
       if (tailwindConfig.includes('plugins: [')) {
         tailwindConfig = tailwindConfig.replace(
@@ -215,7 +218,7 @@ function updateTailwindConfig() {
           );
         }
       }
-      
+
       fs.writeFileSync(config.tailwindConfigFile, tailwindConfig, 'utf8');
       console.log(chalk.green(`✓ Updated Tailwind config to use TerraFusion plugin`));
     } else {
@@ -229,7 +232,7 @@ function updateTailwindConfig() {
 // Step 4: Run hexToToken script to update colors in components
 function updateComponentColors() {
   console.log(chalk.blue('Step 4: Updating component colors...'));
-  
+
   for (const componentPath of config.componentPaths) {
     if (fs.existsSync(componentPath)) {
       try {
@@ -238,7 +241,9 @@ function updateComponentColors() {
         execSync(command, { stdio: 'inherit' });
         console.log(chalk.green(`✓ Updated colors in ${componentPath}`));
       } catch (err) {
-        console.error(chalk.red(`Error updating component colors in ${componentPath}: ${err.message}`));
+        console.error(
+          chalk.red(`Error updating component colors in ${componentPath}: ${err.message}`)
+        );
       }
     } else {
       console.log(chalk.yellow(`Warning: Component path ${componentPath} not found, skipping`));
@@ -249,21 +254,21 @@ function updateComponentColors() {
 // Step 5: Copy TerraFusion assets
 function copyAssets() {
   console.log(chalk.blue('Step 5: Copying TerraFusion assets...'));
-  
+
   // Create destination directory if it doesn't exist
   if (!fs.existsSync(config.assetsDestDir)) {
     fs.mkdirSync(config.assetsDestDir, { recursive: true });
   }
-  
+
   // Check if source directory exists
   if (fs.existsSync(config.assetsSrcDir)) {
     try {
       const files = fs.readdirSync(config.assetsSrcDir);
-      
+
       for (const file of files) {
         const srcPath = path.join(config.assetsSrcDir, file);
         const destPath = path.join(config.assetsDestDir, file);
-        
+
         fs.copyFileSync(srcPath, destPath);
         console.log(chalk.green(`✓ Copied ${file} to ${config.assetsDestDir}`));
       }
@@ -271,20 +276,22 @@ function copyAssets() {
       console.error(chalk.red(`Error copying assets: ${err.message}`));
     }
   } else {
-    console.log(chalk.yellow(`Warning: Assets source directory ${config.assetsSrcDir} not found, skipping`));
+    console.log(
+      chalk.yellow(`Warning: Assets source directory ${config.assetsSrcDir} not found, skipping`)
+    );
   }
 }
 
 // Step 6: Update theme.json
 function updateThemeJson() {
   console.log(chalk.blue('Step 6: Updating theme.json...'));
-  
+
   const themeJsonPath = path.resolve(__dirname, '../theme.json');
-  
+
   if (fs.existsSync(themeJsonPath)) {
     try {
       const themeData = JSON.parse(fs.readFileSync(themeJsonPath, 'utf8'));
-      
+
       // Update with TerraFusion colors
       const updatedThemeData = {
         ...themeData,
@@ -292,7 +299,7 @@ function updateThemeJson() {
         variant: 'professional',
         radius: 0.5, // Medium radius
       };
-      
+
       fs.writeFileSync(themeJsonPath, JSON.stringify(updatedThemeData, null, 2), 'utf8');
       console.log(chalk.green(`✓ Updated theme.json with TerraFusion colors`));
     } catch (err) {
@@ -306,18 +313,18 @@ function updateThemeJson() {
 // Step 7: Update index.css to import TerraFusion tokens
 function updateIndexCss() {
   console.log(chalk.blue('Step 7: Updating index.css to import TerraFusion tokens...'));
-  
+
   const indexCssPath = path.resolve(__dirname, '../client/src/index.css');
-  
+
   if (fs.existsSync(indexCssPath)) {
     try {
       let indexCss = fs.readFileSync(indexCssPath, 'utf8');
-      
+
       // Check if TerraFusion tokens are already imported
       if (!indexCss.includes('@import "./styles/terrafusion-tokens.css";')) {
         // Add import at the top of the file
         indexCss = '@import "./styles/terrafusion-tokens.css";\n' + indexCss;
-        
+
         fs.writeFileSync(indexCssPath, indexCss, 'utf8');
         console.log(chalk.green(`✓ Updated index.css to import TerraFusion tokens`));
       } else {
@@ -334,19 +341,19 @@ function updateIndexCss() {
 // Main function
 async function main() {
   console.log(chalk.bold.green('=== TerraFusion Rebrand Application ==='));
-  
+
   // Run all steps
   if (!verifyFiles()) {
     process.exit(1);
   }
-  
+
   applyCSSTokens();
   updateTailwindConfig();
   updateComponentColors();
   copyAssets();
   updateThemeJson();
   updateIndexCss();
-  
+
   console.log(chalk.bold.green('=== TerraFusion Rebrand Completed Successfully ==='));
 }
 

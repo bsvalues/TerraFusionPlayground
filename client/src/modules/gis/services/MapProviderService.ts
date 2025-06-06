@@ -4,19 +4,19 @@ import XYZ from 'ol/source/XYZ';
 
 /**
  * MapProviderService
- * 
+ *
  * Handles different map providers including Mapbox, QGIS, and OpenStreetMap.
  * Abstracts away provider-specific implementation details.
  */
 export class MapProviderService {
   private apiKey?: string;
   private providerType: MapProviderType;
-  
+
   constructor(providerType: MapProviderType = 'osm', options?: MapProviderOptions) {
     this.providerType = providerType;
     this.apiKey = options?.apiKey;
   }
-  
+
   /**
    * Get tile layer for the configured provider
    */
@@ -33,7 +33,7 @@ export class MapProviderService {
         return this.getOSMTileLayer();
     }
   }
-  
+
   /**
    * Get Mapbox tile layer
    */
@@ -42,16 +42,16 @@ export class MapProviderService {
       console.warn('No Mapbox API key provided, falling back to OpenStreetMap');
       return this.getOSMTileLayer();
     }
-    
+
     return new TileLayer({
       source: new XYZ({
         url: `https://api.mapbox.com/styles/v1/mapbox/outdoors-v11/tiles/{z}/{x}/{y}?access_token=${this.apiKey}`,
         maxZoom: 19,
-        attributions: '© Mapbox, © OpenStreetMap'
-      })
+        attributions: '© Mapbox, © OpenStreetMap',
+      }),
     });
   }
-  
+
   /**
    * Get QGIS tile layer
    * Note: This is a simplified implementation
@@ -62,7 +62,7 @@ export class MapProviderService {
     console.info('QGIS integration is a work in progress, using fallback map');
     return this.getOSMTileLayer();
   }
-  
+
   /**
    * Get Google tile layer
    */
@@ -72,7 +72,7 @@ export class MapProviderService {
     console.info('Google Maps integration requires API key, using fallback map');
     return this.getOSMTileLayer();
   }
-  
+
   /**
    * Get OpenStreetMap tile layer
    */
@@ -81,32 +81,32 @@ export class MapProviderService {
       source: new XYZ({
         url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
         maxZoom: 19,
-        attributions: '© OpenStreetMap contributors'
-      })
+        attributions: '© OpenStreetMap contributors',
+      }),
     });
   }
-  
+
   /**
    * Check if the current provider requires an API key
    */
   requiresApiKey(): boolean {
     return this.providerType === 'mapbox' || this.providerType === 'google';
   }
-  
+
   /**
    * Set provider type
    */
   setProviderType(type: MapProviderType): void {
     this.providerType = type;
   }
-  
+
   /**
    * Set API key
    */
   setApiKey(key: string): void {
     this.apiKey = key;
   }
-  
+
   /**
    * Get provider type
    */

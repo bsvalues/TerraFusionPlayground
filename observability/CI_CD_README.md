@@ -31,6 +31,7 @@ You can run the CI/CD pipeline locally to validate your changes before committin
 ## GitHub Actions Workflow
 
 The pipeline is also automated via GitHub Actions, triggering on:
+
 - Pull requests that modify observability configurations
 - Pushes to the main branch
 
@@ -53,11 +54,13 @@ When changes are approved and merged:
 To test the error budget alerting system:
 
 1. Verify the SLO recording rules are working:
+
    ```bash
    curl -s "http://localhost:9090/api/v1/query?query=slo:dashboard_lcp_4g_sli:ratio" | jq
    ```
 
 2. Verify error budget consumption metrics:
+
    ```bash
    curl -s "http://localhost:9090/api/v1/query?query=slo:dashboard_lcp_4g:error_budget_remaining" | jq
    ```

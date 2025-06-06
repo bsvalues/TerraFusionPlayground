@@ -1,6 +1,6 @@
 /**
  * ConflictActionBar Component
- * 
+ *
  * Provides action buttons for resolving conflicts:
  * - Accept local version
  * - Accept remote version
@@ -101,15 +101,18 @@ export const ConflictActionBar: React.FC<ConflictActionBarProps> = ({
         // Don't proceed with custom resolution if no value provided
         return;
       }
-      
-      await onResolve(conflictId, strategy, userId, 
+
+      await onResolve(
+        conflictId,
+        strategy,
+        userId,
         strategy === ResolutionStrategy.CUSTOM ? customValue : undefined
       );
     } catch (error) {
       console.error('Error resolving conflict:', error);
     }
   };
-  
+
   // Filter available strategies based on variant
   const strategies = availableStrategies.filter(strategy => {
     if (variant === 'compact') {
@@ -117,28 +120,30 @@ export const ConflictActionBar: React.FC<ConflictActionBarProps> = ({
       return [
         ResolutionStrategy.TAKE_LOCAL,
         ResolutionStrategy.TAKE_REMOTE,
-        ResolutionStrategy.CUSTOM
+        ResolutionStrategy.CUSTOM,
       ].includes(strategy.id);
     }
     return true;
   });
-  
+
   return (
-    <div className={clsx(
-      'conflict-action-bar p-4 border border-gray-200 rounded-lg',
-      variant === 'expanded' ? 'space-y-4' : 'flex items-center justify-between flex-wrap gap-2',
-      className
-    )}>
+    <div
+      className={clsx(
+        'conflict-action-bar p-4 border border-gray-200 rounded-lg',
+        variant === 'expanded' ? 'space-y-4' : 'flex items-center justify-between flex-wrap gap-2',
+        className
+      )}
+    >
       {/* Strategy buttons */}
-      <div className={clsx(
-        variant === 'expanded' ? 'space-y-2' : 'flex flex-wrap gap-2'
-      )}>
+      <div className={clsx(variant === 'expanded' ? 'space-y-2' : 'flex flex-wrap gap-2')}>
         {strategies.map(strategy => (
           <button
             key={strategy.id}
             type="button"
             onClick={() => handleResolve(strategy.id)}
-            disabled={disabled || loading || (strategy.id === ResolutionStrategy.CUSTOM && !customValue)}
+            disabled={
+              disabled || loading || (strategy.id === ResolutionStrategy.CUSTOM && !customValue)
+            }
             className={clsx(
               'py-2 px-4 rounded-md font-medium transition-colors',
               variant === 'expanded' ? 'w-full flex items-center' : '',
@@ -149,14 +154,12 @@ export const ConflictActionBar: React.FC<ConflictActionBarProps> = ({
             )}
             title={strategy.description}
           >
-            {strategy.icon && (
-              <span className="mr-2">{strategy.icon}</span>
-            )}
+            {strategy.icon && <span className="mr-2">{strategy.icon}</span>}
             {showLabels && strategy.label}
           </button>
         ))}
       </div>
-      
+
       {/* Skip button */}
       {onSkip && (
         <button
@@ -173,28 +176,41 @@ export const ConflictActionBar: React.FC<ConflictActionBarProps> = ({
           {showLabels && 'Skip'}
         </button>
       )}
-      
+
       {/* Loading indicator */}
       {loading && (
         <div className="flex items-center text-blue-500">
           <svg className="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
           </svg>
           <span>Resolving...</span>
         </div>
       )}
-      
+
       {/* Custom editor */}
       {selectedStrategy === ResolutionStrategy.CUSTOM && (
         <div className="mt-4 w-full">
           {customEditor || (
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Custom Value
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Custom Value</label>
               <textarea
-                value={typeof customValue === 'string' ? customValue : JSON.stringify(customValue, null, 2)}
+                value={
+                  typeof customValue === 'string'
+                    ? customValue
+                    : JSON.stringify(customValue, null, 2)
+                }
                 onChange={e => onCustomValueChange && onCustomValueChange(e.target.value)}
                 disabled={disabled || loading}
                 className={clsx(

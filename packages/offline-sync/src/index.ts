@@ -1,6 +1,6 @@
 /**
  * TerraFusion Offline Sync
- * 
+ *
  * A comprehensive module for offline-first synchronization capabilities
  * in the TerraFusion platform.
  */

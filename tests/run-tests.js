@@ -2,7 +2,7 @@
 
 /**
  * Test Runner
- * 
+ *
  * This script runs all test suites and reports results.
  */
 
@@ -16,7 +16,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const testsDir = __dirname;
-const testFiles = fs.readdirSync(testsDir)
+const testFiles = fs
+  .readdirSync(testsDir)
   .filter(file => file.endsWith('.test.js') && file !== 'run-tests.js');
 
 console.log('=======================================');
@@ -33,7 +34,7 @@ testFiles.forEach(testFile => {
   const testPath = path.join(testsDir, testFile);
   console.log(`\n📋 Running test suite: ${testFile}`);
   console.log('---------------------------------------');
-  
+
   try {
     // For Jest tests
     if (testFile === 'api.test.js') {
@@ -41,12 +42,12 @@ testFiles.forEach(testFile => {
       console.log('To run API tests, ensure the server is running and execute:');
       console.log('npx jest tests/api.test.js');
       totalTests += 1; // Count as a skipped test
-    } 
+    }
     // For component tests (mock implementation in this case)
     else if (testFile === 'components.test.js') {
       const output = execSync(`node ${testPath}`, { encoding: 'utf8' });
       console.log(output);
-      
+
       // Simple test counting (in a real scenario, would parse Jest output)
       if (output.includes('ALL COMPONENT TESTS PASSED')) {
         totalTests += 2; // Property and AI component test suites
@@ -55,18 +56,21 @@ testFiles.forEach(testFile => {
         totalTests += 2;
         passedTests += output.includes('PROPERTY TESTS PASSED') ? 1 : 0;
         passedTests += output.includes('AI TESTS PASSED') ? 1 : 0;
-        failedTests += 2 - (output.includes('PROPERTY TESTS PASSED') ? 1 : 0) - (output.includes('AI TESTS PASSED') ? 1 : 0);
+        failedTests +=
+          2 -
+          (output.includes('PROPERTY TESTS PASSED') ? 1 : 0) -
+          (output.includes('AI TESTS PASSED') ? 1 : 0);
       }
     }
     // For LLM service tests
     else if (testFile === 'llm-service.test.js') {
       const output = execSync(`node ${testPath}`, { encoding: 'utf8' });
       console.log(output);
-      
+
       // Count tests
       const runTests = (output.match(/TEST:/g) || []).length;
       const passedCount = (output.match(/PASSED/g) || []).length;
-      
+
       totalTests += runTests;
       passedTests += passedCount;
       failedTests += runTests - passedCount;
@@ -75,11 +79,11 @@ testFiles.forEach(testFile => {
     else {
       const output = execSync(`node ${testPath}`, { encoding: 'utf8' });
       console.log(output);
-      
+
       // Simple test counting based on output
       const runTests = (output.match(/TEST:/g) || []).length;
       const passedCount = (output.match(/PASSED/g) || []).length;
-      
+
       totalTests += runTests;
       passedTests += passedCount;
       failedTests += runTests - passedCount;

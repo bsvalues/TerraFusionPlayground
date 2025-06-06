@@ -10,7 +10,7 @@ import {
   InsertRepositoryDependency,
   RepositoryType,
   RepositoryVisibility,
-  RepositoryLicense
+  RepositoryLicense,
 } from '../../shared/schema';
 
 /**
@@ -27,11 +27,11 @@ export class RepositoryMarketplaceService {
   /**
    * Get all repositories with optional filtering
    */
-  async getRepositories(filters?: { 
-    repositoryType?: string, 
-    visibility?: string, 
-    tags?: string[], 
-    featured?: boolean 
+  async getRepositories(filters?: {
+    repositoryType?: string;
+    visibility?: string;
+    tags?: string[];
+    featured?: boolean;
   }): Promise<Repository[]> {
     return this.storage.getRepositories(filters);
   }
@@ -60,7 +60,10 @@ export class RepositoryMarketplaceService {
   /**
    * Update an existing repository
    */
-  async updateRepository(id: number, updates: Partial<InsertRepository>): Promise<Repository | undefined> {
+  async updateRepository(
+    id: number,
+    updates: Partial<InsertRepository>
+  ): Promise<Repository | undefined> {
     return this.storage.updateRepository(id, updates);
   }
 
@@ -105,10 +108,10 @@ export class RepositoryMarketplaceService {
   async searchRepositories(query: string): Promise<Repository[]> {
     // Get all repositories
     const allRepositories = await this.storage.getRepositories();
-    
+
     // Convert query to lowercase for case-insensitive search
     const lowerQuery = query.toLowerCase();
-    
+
     // Filter repositories based on the query
     return allRepositories.filter(repo => {
       // Check if query matches repository name, display name, or description
@@ -139,7 +142,10 @@ export class RepositoryMarketplaceService {
   /**
    * Get a specific repository version by version string
    */
-  async getRepositoryVersionByVersion(repositoryId: number, version: string): Promise<RepositoryVersion | undefined> {
+  async getRepositoryVersionByVersion(
+    repositoryId: number,
+    version: string
+  ): Promise<RepositoryVersion | undefined> {
     return this.storage.getRepositoryVersionByVersion(repositoryId, version);
   }
 
@@ -153,7 +159,10 @@ export class RepositoryMarketplaceService {
   /**
    * Update an existing repository version
    */
-  async updateRepositoryVersion(id: number, updates: Partial<InsertRepositoryVersion>): Promise<RepositoryVersion | undefined> {
+  async updateRepositoryVersion(
+    id: number,
+    updates: Partial<InsertRepositoryVersion>
+  ): Promise<RepositoryVersion | undefined> {
     return this.storage.updateRepositoryVersion(id, updates);
   }
 
@@ -202,7 +211,10 @@ export class RepositoryMarketplaceService {
   /**
    * Update an existing repository review
    */
-  async updateRepositoryReview(id: number, updates: Partial<InsertRepositoryReview>): Promise<RepositoryReview | undefined> {
+  async updateRepositoryReview(
+    id: number,
+    updates: Partial<InsertRepositoryReview>
+  ): Promise<RepositoryReview | undefined> {
     return this.storage.updateRepositoryReview(id, updates);
   }
 
@@ -244,14 +256,19 @@ export class RepositoryMarketplaceService {
   /**
    * Create a new repository dependency
    */
-  async createRepositoryDependency(dependency: InsertRepositoryDependency): Promise<RepositoryDependency> {
+  async createRepositoryDependency(
+    dependency: InsertRepositoryDependency
+  ): Promise<RepositoryDependency> {
     return this.storage.createRepositoryDependency(dependency);
   }
 
   /**
    * Update an existing repository dependency
    */
-  async updateRepositoryDependency(id: number, updates: Partial<InsertRepositoryDependency>): Promise<RepositoryDependency | undefined> {
+  async updateRepositoryDependency(
+    id: number,
+    updates: Partial<InsertRepositoryDependency>
+  ): Promise<RepositoryDependency | undefined> {
     return this.storage.updateRepositoryDependency(id, updates);
   }
 

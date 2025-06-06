@@ -50,14 +50,16 @@ export interface AssessmentStatusChange {
 /**
  * Get assessment metrics with optional time range filter.
  */
-export async function getAssessmentMetrics(timeRange: string = 'month'): Promise<AssessmentMetrics> {
+export async function getAssessmentMetrics(
+  timeRange: string = 'month'
+): Promise<AssessmentMetrics> {
   try {
     const response = await fetch(`/api/assessment-metrics?timeRange=${timeRange}`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch assessment metrics: ${response.statusText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error fetching assessment metrics:', error);
@@ -71,11 +73,11 @@ export async function getAssessmentMetrics(timeRange: string = 'month'): Promise
 export async function getAssessmentById(assessmentId: string): Promise<AssessmentDetails> {
   try {
     const response = await fetch(`/api/assessments/${assessmentId}`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch assessment details: ${response.statusText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error(`Error fetching assessment ${assessmentId}:`, error);
@@ -89,11 +91,11 @@ export async function getAssessmentById(assessmentId: string): Promise<Assessmen
 export async function getPropertyAssessments(propertyId: string): Promise<AssessmentDetails[]> {
   try {
     const response = await fetch(`/api/properties/${propertyId}/assessments`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch property assessments: ${response.statusText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error(`Error fetching assessments for property ${propertyId}:`, error);
@@ -104,7 +106,9 @@ export async function getPropertyAssessments(propertyId: string): Promise<Assess
 /**
  * Create a new assessment.
  */
-export async function createAssessment(assessmentData: Partial<AssessmentDetails>): Promise<AssessmentDetails> {
+export async function createAssessment(
+  assessmentData: Partial<AssessmentDetails>
+): Promise<AssessmentDetails> {
   try {
     const response = await fetch('/api/assessments', {
       method: 'POST',
@@ -113,11 +117,11 @@ export async function createAssessment(assessmentData: Partial<AssessmentDetails
       },
       body: JSON.stringify(assessmentData),
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to create assessment: ${response.statusText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error creating assessment:', error);
@@ -129,7 +133,7 @@ export async function createAssessment(assessmentData: Partial<AssessmentDetails
  * Update an existing assessment.
  */
 export async function updateAssessment(
-  assessmentId: string, 
+  assessmentId: string,
   updates: Partial<AssessmentDetails>
 ): Promise<AssessmentDetails> {
   try {
@@ -140,11 +144,11 @@ export async function updateAssessment(
       },
       body: JSON.stringify(updates),
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to update assessment: ${response.statusText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error(`Error updating assessment ${assessmentId}:`, error);
@@ -155,14 +159,16 @@ export async function updateAssessment(
 /**
  * Get status history for an assessment.
  */
-export async function getAssessmentStatusHistory(assessmentId: string): Promise<AssessmentStatusChange[]> {
+export async function getAssessmentStatusHistory(
+  assessmentId: string
+): Promise<AssessmentStatusChange[]> {
   try {
     const response = await fetch(`/api/assessments/${assessmentId}/status-history`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch assessment status history: ${response.statusText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error(`Error fetching status history for assessment ${assessmentId}:`, error);

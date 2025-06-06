@@ -1,45 +1,74 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
-import { Separator } from "@/components/ui/separator";
-import { Loader2, Share2, Eye, Trash2, Download, QrCode, Copy, Link, Mail } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
+import { Loader2, Share2, Eye, Trash2, Download, QrCode, Copy, Link, Mail } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function PropertyStoryDemo() {
   const { toast } = useToast();
-  const [propertyId, setPropertyId] = useState("BC101");
-  const [multiplePropertyIds, setMultiplePropertyIds] = useState("BC101,BC102,BC103");
-  const [comparePropertyIds, setComparePropertyIds] = useState("BC101,BC102,BC103");
-  const [activeTab, setActiveTab] = useState("single");
+  const [propertyId, setPropertyId] = useState('BC101');
+  const [multiplePropertyIds, setMultiplePropertyIds] = useState('BC101,BC102,BC103');
+  const [comparePropertyIds, setComparePropertyIds] = useState('BC101,BC102,BC103');
+  const [activeTab, setActiveTab] = useState('single');
   const [includeTax, setIncludeTax] = useState(true);
   const [includeAppeals, setIncludeAppeals] = useState(true);
   const [includeImprovements, setIncludeImprovements] = useState(true);
   const [includeLandRecords, setIncludeLandRecords] = useState(true);
   const [includeFields, setIncludeFields] = useState(true);
-  
+
   // Property Insight Sharing state
-  const [sharePropertyId, setSharePropertyId] = useState("BC001");
-  const [shareTitle, setShareTitle] = useState("BC001 Property Analysis");
-  const [shareInsightType, setShareInsightType] = useState("story");
-  const [shareFormat, setShareFormat] = useState("detailed");
-  const [shareExpiresInDays, setShareExpiresInDays] = useState("7");
-  const [sharePassword, setSharePassword] = useState("");
+  const [sharePropertyId, setSharePropertyId] = useState('BC001');
+  const [shareTitle, setShareTitle] = useState('BC001 Property Analysis');
+  const [shareInsightType, setShareInsightType] = useState('story');
+  const [shareFormat, setShareFormat] = useState('detailed');
+  const [shareExpiresInDays, setShareExpiresInDays] = useState('7');
+  const [sharePassword, setSharePassword] = useState('');
   const [shareIsPublic, setShareIsPublic] = useState(true);
-  const [viewShareId, setViewShareId] = useState("");
-  const [viewSharePassword, setViewSharePassword] = useState("");
-  
+  const [viewShareId, setViewShareId] = useState('');
+  const [viewSharePassword, setViewSharePassword] = useState('');
+
   // QR Code dialog state
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [activeShareId, setActiveShareId] = useState<string | null>(null);
@@ -47,15 +76,15 @@ export function PropertyStoryDemo() {
   const [qrCodeLoading, setQrCodeLoading] = useState(false);
   const [qrCodeCopying, setQrCodeCopying] = useState(false);
   const [qrCodeDownloading, setQrCodeDownloading] = useState(false);
-  
+
   // PDF export state
   const [pdfDataLoading, setPdfDataLoading] = useState(false);
-  
+
   // Email sharing states
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  const [emailRecipient, setEmailRecipient] = useState("");
-  const [emailSubject, setEmailSubject] = useState("Property Insight Share");
-  const [emailMessage, setEmailMessage] = useState("");
+  const [emailRecipient, setEmailRecipient] = useState('');
+  const [emailSubject, setEmailSubject] = useState('Property Insight Share');
+  const [emailMessage, setEmailMessage] = useState('');
   const [emailSending, setEmailSending] = useState(false);
 
   // Single property story mutation
@@ -66,7 +95,7 @@ export function PropertyStoryDemo() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           propertyId: id,
           options: {
             tone: 'professional',
@@ -74,21 +103,21 @@ export function PropertyStoryDemo() {
             includeAppeals,
             includeImprovements,
             includeLandRecords,
-            includeFields
-          }
-        })
+            includeFields,
+          },
+        }),
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/property-stories'] });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Error generating property story",
+        title: 'Error generating property story',
         description: error.message,
-        variant: "destructive"
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   // Multiple property stories mutation
@@ -99,7 +128,7 @@ export function PropertyStoryDemo() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           propertyIds: ids,
           options: {
             tone: 'professional',
@@ -107,21 +136,21 @@ export function PropertyStoryDemo() {
             includeAppeals,
             includeImprovements,
             includeLandRecords,
-            includeFields
-          }
-        })
+            includeFields,
+          },
+        }),
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/property-stories/multiple'] });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Error generating multiple stories",
+        title: 'Error generating multiple stories',
         description: error.message,
-        variant: "destructive"
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   // Compare properties mutation
@@ -132,7 +161,7 @@ export function PropertyStoryDemo() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           propertyIds: ids,
           options: {
             tone: 'professional',
@@ -140,23 +169,23 @@ export function PropertyStoryDemo() {
             includeAppeals,
             includeImprovements,
             includeLandRecords,
-            includeFields
-          }
-        })
+            includeFields,
+          },
+        }),
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/property-stories/compare'] });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Error comparing properties",
+        title: 'Error comparing properties',
         description: error.message,
-        variant: "destructive"
+        variant: 'destructive',
       });
-    }
+    },
   });
-  
+
   // Property Insight Sharing mutations
   const createShareMutation = useMutation({
     mutationFn: (data: any) => {
@@ -165,73 +194,76 @@ export function PropertyStoryDemo() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast({
-        title: "Share created successfully",
+        title: 'Share created successfully',
         description: `Share ID: ${data.shareId}`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/property-insight-shares'] });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Error creating share",
+        title: 'Error creating share',
         description: error.message,
-        variant: "destructive"
-      });
-    }
-  });
-  
-  const getShareMutation = useMutation({
-    mutationFn: ({ shareId, password }: { shareId: string, password?: string }) => {
-      return apiRequest(`/api/property-insight-shares/${shareId}${password ? `?password=${password}` : ''}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
+        variant: 'destructive',
       });
     },
-    onSuccess: (data) => {
+  });
+
+  const getShareMutation = useMutation({
+    mutationFn: ({ shareId, password }: { shareId: string; password?: string }) => {
+      return apiRequest(
+        `/api/property-insight-shares/${shareId}${password ? `?password=${password}` : ''}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    },
+    onSuccess: data => {
       toast({
-        title: "Share retrieved successfully",
+        title: 'Share retrieved successfully',
         description: `Access count: ${data.accessCount}`,
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Error retrieving share",
+        title: 'Error retrieving share',
         description: error.message,
-        variant: "destructive"
+        variant: 'destructive',
       });
-    }
+    },
   });
-  
+
   const deleteShareMutation = useMutation({
     mutationFn: (shareId: string) => {
       return apiRequest(`/api/property-insight-shares/${shareId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
       });
     },
     onSuccess: () => {
       toast({
-        title: "Share deleted successfully",
+        title: 'Share deleted successfully',
       });
       queryClient.invalidateQueries({ queryKey: ['/api/property-insight-shares'] });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Error deleting share",
+        title: 'Error deleting share',
         description: error.message,
-        variant: "destructive"
+        variant: 'destructive',
       });
-    }
+    },
   });
-  
+
   // Get all shares query
   const allSharesQuery = useQuery({
     queryKey: ['/api/property-insight-shares'],
@@ -252,28 +284,28 @@ export function PropertyStoryDemo() {
     const ids = comparePropertyIds.split(',').map(id => id.trim());
     comparePropertiesMutation.mutate(ids);
   };
-  
+
   // Property Insight Sharing handlers
   const handleCreateShare = () => {
     // Generate property name based on property ID
-    let propertyAddress = "Unknown Address";
-    let propertyValue = "$0";
-    
+    let propertyAddress = 'Unknown Address';
+    let propertyValue = '$0';
+
     // Map some sample property IDs to addresses and values for demonstration
     const propertyMap: Record<string, { address: string; value: string }> = {
-      "BC001": { address: "1320 N Louis Ave, Benton City", value: "$285,000" },
-      "BC002": { address: "4590 W Van Giesen St, Benton County", value: "$412,500" },
-      "BC003": { address: "1124 Winding River Dr, West Richland", value: "$378,000" },
-      "BC004": { address: "2550 Duportail St, Richland", value: "$450,000" },
-      "BC005": { address: "1915 Mahan Ave, Richland", value: "$325,000" },
-      "BC006": { address: "4711 W 34th Ave, Kennewick", value: "$295,000" }
+      BC001: { address: '1320 N Louis Ave, Benton City', value: '$285,000' },
+      BC002: { address: '4590 W Van Giesen St, Benton County', value: '$412,500' },
+      BC003: { address: '1124 Winding River Dr, West Richland', value: '$378,000' },
+      BC004: { address: '2550 Duportail St, Richland', value: '$450,000' },
+      BC005: { address: '1915 Mahan Ave, Richland', value: '$325,000' },
+      BC006: { address: '4711 W 34th Ave, Kennewick', value: '$295,000' },
     };
-    
+
     if (sharePropertyId in propertyMap) {
       propertyAddress = propertyMap[sharePropertyId].address;
       propertyValue = propertyMap[sharePropertyId].value;
     }
-    
+
     const insightData = {
       content: `This is a sample property insight for Property ID: ${sharePropertyId}`,
       generatedAt: new Date().toISOString(),
@@ -282,13 +314,13 @@ export function PropertyStoryDemo() {
         address: propertyAddress,
         value: propertyValue,
         propertyName: `Property ${sharePropertyId}`,
-      }
+      },
     };
-    
-    const expiresAt = shareExpiresInDays ? 
-      new Date(Date.now() + parseInt(shareExpiresInDays) * 24 * 60 * 60 * 1000).toISOString() : 
-      undefined;
-      
+
+    const expiresAt = shareExpiresInDays
+      ? new Date(Date.now() + parseInt(shareExpiresInDays) * 24 * 60 * 60 * 1000).toISOString()
+      : undefined;
+
     createShareMutation.mutate({
       propertyId: sharePropertyId,
       propertyName: `Property ${sharePropertyId}`,
@@ -299,207 +331,206 @@ export function PropertyStoryDemo() {
       format: shareFormat,
       expiresInDays: shareExpiresInDays ? parseInt(shareExpiresInDays) : undefined,
       password: sharePassword || undefined,
-      isPublic: shareIsPublic
+      isPublic: shareIsPublic,
     });
   };
-  
+
   const handleViewShare = () => {
     getShareMutation.mutate({
       shareId: viewShareId,
-      password: viewSharePassword || undefined
+      password: viewSharePassword || undefined,
     });
   };
-  
+
   const handleDeleteShare = (shareId: string) => {
     deleteShareMutation.mutate(shareId);
   };
-  
+
   // QR Code handler
   const handleShowQRCode = async (shareId: string) => {
     try {
       setQrCodeLoading(true);
       setActiveShareId(shareId);
       setQrDialogOpen(true);
-      
+
       const response = await apiRequest(`/api/property-insight-shares/${shareId}/qrcode`);
       setQrCodeData(response.qrCode);
     } catch (error: any) {
       toast({
-        title: "Error generating QR code",
-        description: error.message || "Failed to generate QR code",
-        variant: "destructive"
+        title: 'Error generating QR code',
+        description: error.message || 'Failed to generate QR code',
+        variant: 'destructive',
       });
     } finally {
       setQrCodeLoading(false);
     }
   };
-  
+
   // PDF export handler
   const handleExportPDF = async (shareId: string) => {
     try {
       setPdfDataLoading(true);
-      
+
       // Fetch PDF data
       const pdfData = await apiRequest(`/api/property-insight-shares/${shareId}/pdf-data`);
-      
+
       // This would normally use jsPDF to generate a PDF on the client-side
       // For demo purposes, we'll just show a success notification
       toast({
-        title: "PDF Data Retrieved Successfully",
-        description: "A PDF would normally be generated and downloaded here",
+        title: 'PDF Data Retrieved Successfully',
+        description: 'A PDF would normally be generated and downloaded here',
       });
-      
+
       // Log PDF data to console for demonstration
-      console.log("PDF Export Data:", pdfData);
-      
+      console.log('PDF Export Data:', pdfData);
     } catch (error: any) {
       toast({
-        title: "Error exporting PDF",
-        description: error.message || "Failed to export PDF",
-        variant: "destructive"
+        title: 'Error exporting PDF',
+        description: error.message || 'Failed to export PDF',
+        variant: 'destructive',
       });
     } finally {
       setPdfDataLoading(false);
     }
   };
-  
+
   // Copy share link handler
   const handleCopyShareLink = (shareId: string) => {
     try {
       // Create shareable URL - this should match the URL format in SharingUtilsService
       const shareableUrl = `${window.location.origin}/share/${shareId}`;
-      
+
       // Copy to clipboard
       navigator.clipboard.writeText(shareableUrl);
-      
+
       toast({
-        title: "Link Copied to Clipboard",
-        description: "Share link has been copied to clipboard"
+        title: 'Link Copied to Clipboard',
+        description: 'Share link has been copied to clipboard',
       });
     } catch (error: any) {
       toast({
-        title: "Failed to Copy Link",
-        description: error.message || "Could not copy link to clipboard",
-        variant: "destructive"
+        title: 'Failed to Copy Link',
+        description: error.message || 'Could not copy link to clipboard',
+        variant: 'destructive',
       });
     }
   };
-  
+
   // Copy QR code image to clipboard
   const handleCopyQRCode = async () => {
     if (!qrCodeData) return;
-    
+
     try {
       setQrCodeCopying(true);
-      
+
       // Create an image element from the data URL
       const img = new Image();
       img.src = qrCodeData;
-      
+
       // Wait for the image to load
-      await new Promise((resolve) => {
+      await new Promise(resolve => {
         img.onload = resolve;
       });
-      
+
       // Create a canvas and draw the image on it
       const canvas = document.createElement('canvas');
       canvas.width = img.width;
       canvas.height = img.height;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(img, 0, 0);
-      
+
       // Get the image as a blob
-      const blob = await new Promise<Blob>((resolve) => {
-        canvas.toBlob((blob) => {
+      const blob = await new Promise<Blob>(resolve => {
+        canvas.toBlob(blob => {
           if (blob) resolve(blob);
-          else throw new Error("Could not convert QR code to blob");
+          else throw new Error('Could not convert QR code to blob');
         }, 'image/png');
       });
-      
+
       // Copy the image to clipboard
       await navigator.clipboard.write([
         new ClipboardItem({
-          [blob.type]: blob
-        })
+          [blob.type]: blob,
+        }),
       ]);
-      
+
       toast({
-        title: "QR Code Copied to Clipboard",
-        description: "QR code image has been copied to clipboard"
+        title: 'QR Code Copied to Clipboard',
+        description: 'QR code image has been copied to clipboard',
       });
     } catch (error: any) {
       toast({
-        title: "Failed to Copy QR Code",
-        description: error.message || "Could not copy QR code to clipboard",
-        variant: "destructive"
+        title: 'Failed to Copy QR Code',
+        description: error.message || 'Could not copy QR code to clipboard',
+        variant: 'destructive',
       });
     } finally {
       setQrCodeCopying(false);
     }
   };
-  
+
   // Download QR code image
   const handleDownloadQRCode = async () => {
     if (!qrCodeData || !activeShareId) return;
-    
+
     try {
       setQrCodeDownloading(true);
-      
+
       // Create a temporary anchor element
       const link = document.createElement('a');
       link.href = qrCodeData;
       link.download = `property-insight-qrcode-${activeShareId}.png`;
-      
+
       // Append to the document, click, and remove
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       toast({
-        title: "QR Code Downloaded",
-        description: "QR code image has been downloaded"
+        title: 'QR Code Downloaded',
+        description: 'QR code image has been downloaded',
       });
     } catch (error: any) {
       toast({
-        title: "Failed to Download QR Code",
-        description: error.message || "Could not download QR code",
-        variant: "destructive"
+        title: 'Failed to Download QR Code',
+        description: error.message || 'Could not download QR code',
+        variant: 'destructive',
       });
     } finally {
       setQrCodeDownloading(false);
     }
   };
-  
+
   // Email sharing handler
   const handleShowEmailDialog = (shareId: string) => {
     setActiveShareId(shareId);
-    
+
     // Get property information for the selected share
     const share = allSharesQuery.data?.find((s: any) => s.shareId === shareId);
-    
+
     if (share) {
       // Set default email subject and message
       setEmailSubject(`Property Insight: ${share.title}`);
       setEmailMessage(
         `I'd like to share this property insight with you:\n\n` +
-        `Property: ${share.propertyName || `Property ${share.propertyId}`}\n` +
-        `Address: ${share.propertyAddress || 'N/A'}\n\n` +
-        `You can view it at: ${window.location.origin}/share/${shareId}\n\n` +
-        `This is an automated message from the Benton County Assessor's Office Property Intelligence Platform.`
+          `Property: ${share.propertyName || `Property ${share.propertyId}`}\n` +
+          `Address: ${share.propertyAddress || 'N/A'}\n\n` +
+          `You can view it at: ${window.location.origin}/share/${shareId}\n\n` +
+          `This is an automated message from the Benton County Assessor's Office Property Intelligence Platform.`
       );
-      
+
       // Open the email dialog
       setEmailDialogOpen(true);
     }
   };
-  
+
   // Send email handler
   const handleSendEmail = async () => {
     if (!activeShareId || !emailRecipient || !emailSubject || !emailMessage) return;
-    
+
     try {
       setEmailSending(true);
-      
+
       // API call to send the email
       await apiRequest(`/api/property-insight-shares/${activeShareId}/email`, {
         method: 'POST',
@@ -509,26 +540,25 @@ export function PropertyStoryDemo() {
         body: JSON.stringify({
           recipient: emailRecipient,
           subject: emailSubject,
-          message: emailMessage
-        })
+          message: emailMessage,
+        }),
       });
-      
+
       // Close dialog and show success message
       setEmailDialogOpen(false);
-      
+
       toast({
-        title: "Email Sent Successfully",
+        title: 'Email Sent Successfully',
         description: `Property insight has been emailed to ${emailRecipient}`,
       });
-      
+
       // Reset form
-      setEmailRecipient("");
-      
+      setEmailRecipient('');
     } catch (error: any) {
       toast({
-        title: "Error Sending Email",
-        description: error.message || "Failed to send email",
-        variant: "destructive"
+        title: 'Error Sending Email',
+        description: error.message || 'Failed to send email',
+        variant: 'destructive',
       });
     } finally {
       setEmailSending(false);
@@ -564,7 +594,7 @@ export function PropertyStoryDemo() {
   return (
     <div className="container mx-auto py-6">
       <h1 className="text-2xl font-bold mb-6">Property Story Generator Demo</h1>
-      
+
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Options</CardTitle>
@@ -573,49 +603,49 @@ export function PropertyStoryDemo() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="includeTax" 
-                checked={includeTax} 
-                onCheckedChange={(checked) => setIncludeTax(checked as boolean)} 
+              <Checkbox
+                id="includeTax"
+                checked={includeTax}
+                onCheckedChange={checked => setIncludeTax(checked as boolean)}
               />
               <Label htmlFor="includeTax">Tax Info</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="includeAppeals" 
-                checked={includeAppeals} 
-                onCheckedChange={(checked) => setIncludeAppeals(checked as boolean)} 
+              <Checkbox
+                id="includeAppeals"
+                checked={includeAppeals}
+                onCheckedChange={checked => setIncludeAppeals(checked as boolean)}
               />
               <Label htmlFor="includeAppeals">Appeals</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="includeImprovements" 
-                checked={includeImprovements} 
-                onCheckedChange={(checked) => setIncludeImprovements(checked as boolean)} 
+              <Checkbox
+                id="includeImprovements"
+                checked={includeImprovements}
+                onCheckedChange={checked => setIncludeImprovements(checked as boolean)}
               />
               <Label htmlFor="includeImprovements">Improvements</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="includeLandRecords" 
-                checked={includeLandRecords} 
-                onCheckedChange={(checked) => setIncludeLandRecords(checked as boolean)} 
+              <Checkbox
+                id="includeLandRecords"
+                checked={includeLandRecords}
+                onCheckedChange={checked => setIncludeLandRecords(checked as boolean)}
               />
               <Label htmlFor="includeLandRecords">Land Records</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="includeFields" 
-                checked={includeFields} 
-                onCheckedChange={(checked) => setIncludeFields(checked as boolean)} 
+              <Checkbox
+                id="includeFields"
+                checked={includeFields}
+                onCheckedChange={checked => setIncludeFields(checked as boolean)}
               />
               <Label htmlFor="includeFields">Fields</Label>
             </div>
           </div>
         </CardContent>
       </Card>
-      
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="single">Single Property</TabsTrigger>
@@ -623,7 +653,7 @@ export function PropertyStoryDemo() {
           <TabsTrigger value="compare">Compare Properties</TabsTrigger>
           <TabsTrigger value="share">Property Insight Sharing</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="single">
           <Card>
             <CardHeader>
@@ -640,14 +670,14 @@ export function PropertyStoryDemo() {
                     id="propertyId"
                     placeholder="Enter property ID (e.g., BC101)"
                     value={propertyId}
-                    onChange={(e) => setPropertyId(e.target.value)}
+                    onChange={e => setPropertyId(e.target.value)}
                   />
                 </div>
               </div>
             </CardContent>
             <CardFooter>
-              <Button 
-                onClick={handleSingleGenerate} 
+              <Button
+                onClick={handleSingleGenerate}
                 disabled={singleStoryMutation.isPending || !propertyId}
               >
                 {singleStoryMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -655,14 +685,14 @@ export function PropertyStoryDemo() {
               </Button>
             </CardFooter>
           </Card>
-          
+
           {renderStoryOutput(
-            singleStoryMutation.data, 
-            singleStoryMutation.isPending, 
+            singleStoryMutation.data,
+            singleStoryMutation.isPending,
             `Property Story for ${propertyId}`
           )}
         </TabsContent>
-        
+
         <TabsContent value="multiple">
           <Card>
             <CardHeader>
@@ -679,29 +709,31 @@ export function PropertyStoryDemo() {
                     id="multiplePropertyIds"
                     placeholder="Enter property IDs (e.g., BC101,BC102,BC103)"
                     value={multiplePropertyIds}
-                    onChange={(e) => setMultiplePropertyIds(e.target.value)}
+                    onChange={e => setMultiplePropertyIds(e.target.value)}
                   />
                 </div>
               </div>
             </CardContent>
             <CardFooter>
-              <Button 
-                onClick={handleMultipleGenerate} 
+              <Button
+                onClick={handleMultipleGenerate}
                 disabled={multipleStoriesMutation.isPending || !multiplePropertyIds}
               >
-                {multipleStoriesMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {multipleStoriesMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 Generate Multiple Stories
               </Button>
             </CardFooter>
           </Card>
-          
+
           {renderStoryOutput(
-            multipleStoriesMutation.data, 
-            multipleStoriesMutation.isPending, 
+            multipleStoriesMutation.data,
+            multipleStoriesMutation.isPending,
             `Multiple Property Stories`
           )}
         </TabsContent>
-        
+
         <TabsContent value="compare">
           <Card>
             <CardHeader>
@@ -718,38 +750,38 @@ export function PropertyStoryDemo() {
                     id="comparePropertyIds"
                     placeholder="Enter property IDs (e.g., BC101,BC102,BC103)"
                     value={comparePropertyIds}
-                    onChange={(e) => setComparePropertyIds(e.target.value)}
+                    onChange={e => setComparePropertyIds(e.target.value)}
                   />
                 </div>
               </div>
             </CardContent>
             <CardFooter>
-              <Button 
-                onClick={handleCompareGenerate} 
+              <Button
+                onClick={handleCompareGenerate}
                 disabled={comparePropertiesMutation.isPending || !comparePropertyIds}
               >
-                {comparePropertiesMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {comparePropertiesMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 Generate Comparison
               </Button>
             </CardFooter>
           </Card>
-          
+
           {renderStoryOutput(
-            comparePropertiesMutation.data, 
-            comparePropertiesMutation.isPending, 
+            comparePropertiesMutation.data,
+            comparePropertiesMutation.isPending,
             `Property Comparison`
           )}
         </TabsContent>
-        
+
         <TabsContent value="share">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Create Share Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Create Property Insight Share</CardTitle>
-                <CardDescription>
-                  Configure and create a shareable property insight
-                </CardDescription>
+                <CardDescription>Configure and create a shareable property insight</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid w-full gap-4">
@@ -759,20 +791,20 @@ export function PropertyStoryDemo() {
                       id="sharePropertyId"
                       placeholder="Enter property ID (e.g., BC001)"
                       value={sharePropertyId}
-                      onChange={(e) => setSharePropertyId(e.target.value)}
+                      onChange={e => setSharePropertyId(e.target.value)}
                     />
                   </div>
-                  
+
                   <div className="flex flex-col space-y-1.5">
                     <Label htmlFor="shareTitle">Share Title</Label>
                     <Input
                       id="shareTitle"
                       placeholder="Enter a title for this share"
                       value={shareTitle}
-                      onChange={(e) => setShareTitle(e.target.value)}
+                      onChange={e => setShareTitle(e.target.value)}
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col space-y-1.5">
                       <Label htmlFor="shareInsightType">Insight Type</Label>
@@ -787,7 +819,7 @@ export function PropertyStoryDemo() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     <div className="flex flex-col space-y-1.5">
                       <Label htmlFor="shareFormat">Format</Label>
                       <Select value={shareFormat} onValueChange={setShareFormat}>
@@ -802,7 +834,7 @@ export function PropertyStoryDemo() {
                       </Select>
                     </div>
                   </div>
-                  
+
                   <div className="flex flex-col space-y-1.5">
                     <Label htmlFor="shareExpiresInDays">Expires In (Days)</Label>
                     <Input
@@ -810,10 +842,10 @@ export function PropertyStoryDemo() {
                       type="number"
                       placeholder="Optional - leave empty for no expiration"
                       value={shareExpiresInDays}
-                      onChange={(e) => setShareExpiresInDays(e.target.value)}
+                      onChange={e => setShareExpiresInDays(e.target.value)}
                     />
                   </div>
-                  
+
                   <div className="flex flex-col space-y-1.5">
                     <Label htmlFor="sharePassword">Password (Optional)</Label>
                     <Input
@@ -821,39 +853,39 @@ export function PropertyStoryDemo() {
                       type="password"
                       placeholder="Optional - leave empty for no password"
                       value={sharePassword}
-                      onChange={(e) => setSharePassword(e.target.value)}
+                      onChange={e => setSharePassword(e.target.value)}
                     />
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="shareIsPublic" 
-                      checked={shareIsPublic} 
-                      onCheckedChange={(checked) => setShareIsPublic(checked as boolean)} 
+                    <Checkbox
+                      id="shareIsPublic"
+                      checked={shareIsPublic}
+                      onCheckedChange={checked => setShareIsPublic(checked as boolean)}
                     />
                     <Label htmlFor="shareIsPublic">Public Share</Label>
                   </div>
                 </div>
               </CardContent>
               <CardFooter>
-                <Button 
-                  onClick={handleCreateShare} 
+                <Button
+                  onClick={handleCreateShare}
                   disabled={createShareMutation.isPending || !sharePropertyId || !shareTitle}
                 >
-                  {createShareMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {createShareMutation.isPending && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   <Share2 className="mr-2 h-4 w-4" />
                   Create Share
                 </Button>
               </CardFooter>
             </Card>
-            
+
             {/* View Share Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Access Shared Insight</CardTitle>
-                <CardDescription>
-                  View a shared property insight using the share ID
-                </CardDescription>
+                <CardDescription>View a shared property insight using the share ID</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid w-full gap-4">
@@ -863,10 +895,10 @@ export function PropertyStoryDemo() {
                       id="viewShareId"
                       placeholder="Enter share ID"
                       value={viewShareId}
-                      onChange={(e) => setViewShareId(e.target.value)}
+                      onChange={e => setViewShareId(e.target.value)}
                     />
                   </div>
-                  
+
                   <div className="flex flex-col space-y-1.5">
                     <Label htmlFor="viewSharePassword">Password (if required)</Label>
                     <Input
@@ -874,14 +906,14 @@ export function PropertyStoryDemo() {
                       type="password"
                       placeholder="Enter password if the share is protected"
                       value={viewSharePassword}
-                      onChange={(e) => setViewSharePassword(e.target.value)}
+                      onChange={e => setViewSharePassword(e.target.value)}
                     />
                   </div>
                 </div>
               </CardContent>
               <CardFooter>
-                <Button 
-                  onClick={handleViewShare} 
+                <Button
+                  onClick={handleViewShare}
                   disabled={getShareMutation.isPending || !viewShareId}
                 >
                   {getShareMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -891,7 +923,7 @@ export function PropertyStoryDemo() {
               </CardFooter>
             </Card>
           </div>
-          
+
           {/* Output Cards */}
           <div className="grid grid-cols-1 gap-4 mt-4">
             {/* View Share Result */}
@@ -903,7 +935,8 @@ export function PropertyStoryDemo() {
                     <Badge>{getShareMutation.data.insightType}</Badge>
                   </CardTitle>
                   <CardDescription>
-                    {getShareMutation.data.title} - Access Count: {getShareMutation.data.accessCount}
+                    {getShareMutation.data.title} - Access Count:{' '}
+                    {getShareMutation.data.accessCount}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -913,7 +946,7 @@ export function PropertyStoryDemo() {
                 </CardContent>
               </Card>
             )}
-            
+
             {/* Created Share */}
             {createShareMutation.data && (
               <Card>
@@ -922,28 +955,44 @@ export function PropertyStoryDemo() {
                 </CardHeader>
                 <CardContent>
                   <div className="whitespace-pre-wrap text-sm">
-                    <p><strong>Share ID:</strong> {createShareMutation.data.shareId}</p>
-                    <p><strong>Title:</strong> {createShareMutation.data.title}</p>
-                    <p><strong>Property ID:</strong> {createShareMutation.data.propertyId}</p>
-                    <p><strong>Type:</strong> {createShareMutation.data.insightType}</p>
-                    <p><strong>Format:</strong> {createShareMutation.data.format}</p>
-                    <p><strong>Access Count:</strong> {createShareMutation.data.accessCount}</p>
-                    <p><strong>Created At:</strong> {new Date(createShareMutation.data.createdAt).toLocaleString()}</p>
+                    <p>
+                      <strong>Share ID:</strong> {createShareMutation.data.shareId}
+                    </p>
+                    <p>
+                      <strong>Title:</strong> {createShareMutation.data.title}
+                    </p>
+                    <p>
+                      <strong>Property ID:</strong> {createShareMutation.data.propertyId}
+                    </p>
+                    <p>
+                      <strong>Type:</strong> {createShareMutation.data.insightType}
+                    </p>
+                    <p>
+                      <strong>Format:</strong> {createShareMutation.data.format}
+                    </p>
+                    <p>
+                      <strong>Access Count:</strong> {createShareMutation.data.accessCount}
+                    </p>
+                    <p>
+                      <strong>Created At:</strong>{' '}
+                      {new Date(createShareMutation.data.createdAt).toLocaleString()}
+                    </p>
                     {createShareMutation.data.expiresAt && (
-                      <p><strong>Expires At:</strong> {new Date(createShareMutation.data.expiresAt).toLocaleString()}</p>
+                      <p>
+                        <strong>Expires At:</strong>{' '}
+                        {new Date(createShareMutation.data.expiresAt).toLocaleString()}
+                      </p>
                     )}
                   </div>
                 </CardContent>
               </Card>
             )}
-            
+
             {/* All Shares List */}
             <Card>
               <CardHeader>
                 <CardTitle>All Property Insight Shares</CardTitle>
-                <CardDescription>
-                  List of all available property insight shares
-                </CardDescription>
+                <CardDescription>List of all available property insight shares</CardDescription>
               </CardHeader>
               <CardContent>
                 {allSharesQuery.isLoading ? (
@@ -953,17 +1002,20 @@ export function PropertyStoryDemo() {
                 ) : allSharesQuery.data && allSharesQuery.data.length > 0 ? (
                   <div className="grid grid-cols-1 gap-2">
                     {allSharesQuery.data.map((share: any) => (
-                      <div 
-                        key={share.shareId} 
+                      <div
+                        key={share.shareId}
                         className="flex items-center justify-between p-3 border rounded-md"
                       >
                         <div>
                           <div className="font-medium">{share.title}</div>
                           <div className="text-sm">
-                            <span className="font-semibold">{share.propertyName || `Property ${share.propertyId}`}</span>
+                            <span className="font-semibold">
+                              {share.propertyName || `Property ${share.propertyId}`}
+                            </span>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            ID: {share.propertyId} | Type: {share.insightType} | Access Count: {share.accessCount}
+                            ID: {share.propertyId} | Type: {share.insightType} | Access Count:{' '}
+                            {share.accessCount}
                           </div>
                           {share.propertyAddress && (
                             <div className="text-xs text-muted-foreground italic mt-1">
@@ -975,12 +1027,12 @@ export function PropertyStoryDemo() {
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => {
                                     setViewShareId(share.shareId);
-                                    setViewSharePassword("");
+                                    setViewSharePassword('');
                                     handleViewShare();
                                   }}
                                 >
@@ -992,12 +1044,12 @@ export function PropertyStoryDemo() {
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                          
+
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => handleShowQRCode(share.shareId)}
                                 >
@@ -1009,12 +1061,12 @@ export function PropertyStoryDemo() {
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                          
+
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => handleExportPDF(share.shareId)}
                                   disabled={pdfDataLoading}
@@ -1027,12 +1079,12 @@ export function PropertyStoryDemo() {
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                          
+
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => handleCopyShareLink(share.shareId)}
                                 >
@@ -1044,12 +1096,12 @@ export function PropertyStoryDemo() {
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                          
+
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => handleShowEmailDialog(share.shareId)}
                                 >
@@ -1080,7 +1132,8 @@ export function PropertyStoryDemo() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete Share</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to delete this share? This action cannot be undone.
+                                  Are you sure you want to delete this share? This action cannot be
+                                  undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -1105,7 +1158,7 @@ export function PropertyStoryDemo() {
           </div>
         </TabsContent>
       </Tabs>
-      
+
       {/* QR Code Dialog */}
       <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
         <DialogContent>
@@ -1122,16 +1175,13 @@ export function PropertyStoryDemo() {
               </div>
             ) : qrCodeData ? (
               <>
-                <img 
-                  src={qrCodeData} 
-                  alt="Property insight QR code" 
-                  className="h-60 w-60 object-contain" 
+                <img
+                  src={qrCodeData}
+                  alt="Property insight QR code"
+                  className="h-60 w-60 object-contain"
                 />
                 <div className="flex gap-2 mt-2">
-                  <Button
-                    onClick={handleCopyQRCode}
-                    disabled={qrCodeCopying}
-                  >
+                  <Button onClick={handleCopyQRCode} disabled={qrCodeCopying}>
                     {qrCodeCopying ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1144,7 +1194,7 @@ export function PropertyStoryDemo() {
                       </>
                     )}
                   </Button>
-                  
+
                   <Button
                     onClick={handleDownloadQRCode}
                     disabled={qrCodeDownloading}
@@ -1172,7 +1222,7 @@ export function PropertyStoryDemo() {
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Email Sharing Dialog */}
       <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
@@ -1190,7 +1240,7 @@ export function PropertyStoryDemo() {
                 type="email"
                 placeholder="recipient@example.com"
                 value={emailRecipient}
-                onChange={(e) => setEmailRecipient(e.target.value)}
+                onChange={e => setEmailRecipient(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
@@ -1199,7 +1249,7 @@ export function PropertyStoryDemo() {
                 id="emailSubject"
                 placeholder="Email subject"
                 value={emailSubject}
-                onChange={(e) => setEmailSubject(e.target.value)}
+                onChange={e => setEmailSubject(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
@@ -1209,21 +1259,15 @@ export function PropertyStoryDemo() {
                 placeholder="Email message..."
                 rows={5}
                 value={emailMessage}
-                onChange={(e) => setEmailMessage(e.target.value)}
+                onChange={e => setEmailMessage(e.target.value)}
               />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => setEmailDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleSendEmail}
-              disabled={emailSending || !emailRecipient}
-            >
+            <Button onClick={handleSendEmail} disabled={emailSending || !emailRecipient}>
               {emailSending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

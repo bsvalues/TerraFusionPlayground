@@ -6,22 +6,22 @@ import { ArrowUpIcon, ArrowDownIcon, ArrowUpDownIcon } from 'lucide-react';
 /**
  * Table variants using class-variance-authority
  */
-const tableVariants = cva("w-full caption-bottom text-sm", {
+const tableVariants = cva('w-full caption-bottom text-sm', {
   variants: {
     variant: {
-      default: "",
-      striped: "table-striped",
-      bordered: "table-bordered",
-      borderless: "table-borderless",
-      compact: "table-compact",
+      default: '',
+      striped: 'table-striped',
+      bordered: 'table-bordered',
+      borderless: 'table-borderless',
+      compact: 'table-compact',
     },
     hover: {
-      true: "table-hover",
-      false: "",
+      true: 'table-hover',
+      false: '',
     },
   },
   defaultVariants: {
-    variant: "default",
+    variant: 'default',
     hover: true,
   },
 });
@@ -60,9 +60,9 @@ export interface TableProps
 
 /**
  * Table component
- * 
+ *
  * A table component for displaying tabular data with sorting support.
- * 
+ *
  * @example
  * ```tsx
  * <Table>
@@ -84,14 +84,15 @@ export interface TableProps
  * ```
  */
 export const Table = forwardRef<HTMLTableElement, TableProps>(
-  ({ className, variant, hover, fullWidth, stickyHeader, sortState, onSort, children, ...props }, ref) => {
+  (
+    { className, variant, hover, fullWidth, stickyHeader, sortState, onSort, children, ...props },
+    ref
+  ) => {
     return (
-      <div className={cn("relative w-full overflow-auto", fullWidth ? "" : "max-w-full", className)}>
-        <table
-          ref={ref}
-          className={cn(tableVariants({ variant, hover }))}
-          {...props}
-        >
+      <div
+        className={cn('relative w-full overflow-auto', fullWidth ? '' : 'max-w-full', className)}
+      >
+        <table ref={ref} className={cn(tableVariants({ variant, hover }))} {...props}>
           {children}
         </table>
       </div>
@@ -99,7 +100,7 @@ export const Table = forwardRef<HTMLTableElement, TableProps>(
   }
 );
 
-Table.displayName = "Table";
+Table.displayName = 'Table';
 
 interface TableHeaderProps extends HTMLAttributes<HTMLTableSectionElement> {
   /**
@@ -113,11 +114,11 @@ interface TableHeaderProps extends HTMLAttributes<HTMLTableSectionElement> {
  */
 export const TableHeader = forwardRef<HTMLTableSectionElement, TableHeaderProps>(
   ({ className, ...props }, ref) => (
-    <thead ref={ref} className={cn("bg-muted/50", className)} {...props} />
+    <thead ref={ref} className={cn('bg-muted/50', className)} {...props} />
   )
 );
 
-TableHeader.displayName = "TableHeader";
+TableHeader.displayName = 'TableHeader';
 
 interface TableBodyProps extends HTMLAttributes<HTMLTableSectionElement> {
   /**
@@ -133,7 +134,7 @@ export const TableBody = forwardRef<HTMLTableSectionElement, TableBodyProps>(
   ({ className, ...props }, ref) => <tbody ref={ref} className={cn(className)} {...props} />
 );
 
-TableBody.displayName = "TableBody";
+TableBody.displayName = 'TableBody';
 
 interface TableFooterProps extends HTMLAttributes<HTMLTableSectionElement> {
   /**
@@ -147,15 +148,11 @@ interface TableFooterProps extends HTMLAttributes<HTMLTableSectionElement> {
  */
 export const TableFooter = forwardRef<HTMLTableSectionElement, TableFooterProps>(
   ({ className, ...props }, ref) => (
-    <tfoot
-      ref={ref}
-      className={cn("bg-muted/50 font-medium", className)}
-      {...props}
-    />
+    <tfoot ref={ref} className={cn('bg-muted/50 font-medium', className)} {...props} />
   )
 );
 
-TableFooter.displayName = "TableFooter";
+TableFooter.displayName = 'TableFooter';
 
 interface TableRowProps extends HTMLAttributes<HTMLTableRowElement> {
   /**
@@ -172,7 +169,7 @@ export const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
     <tr
       ref={ref}
       className={cn(
-        "border-b border-border transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+        'border-b border-border transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted',
         className
       )}
       {...props}
@@ -180,7 +177,7 @@ export const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
   )
 );
 
-TableRow.displayName = "TableRow";
+TableRow.displayName = 'TableRow';
 
 interface TableHeadProps extends ThHTMLAttributes<HTMLTableCellElement> {
   /**
@@ -220,8 +217,8 @@ export const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
       <th
         ref={ref}
         className={cn(
-          "h-12 px-4 text-left align-middle font-medium text-muted-foreground",
-          sortable && "cursor-pointer select-none",
+          'h-12 px-4 text-left align-middle font-medium text-muted-foreground',
+          sortable && 'cursor-pointer select-none',
           className
         )}
         onClick={sortable ? handleSort : undefined}
@@ -246,7 +243,7 @@ export const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
   }
 );
 
-TableHead.displayName = "TableHead";
+TableHead.displayName = 'TableHead';
 
 interface TableCellProps extends TdHTMLAttributes<HTMLTableCellElement> {
   /**
@@ -271,9 +268,9 @@ export const TableCell = forwardRef<HTMLTableCellElement, TableCellProps>(
     <td
       ref={ref}
       className={cn(
-        "p-4 align-middle",
-        truncate && "max-w-[150px] truncate",
-        numeric && "text-right tabular-nums",
+        'p-4 align-middle',
+        truncate && 'max-w-[150px] truncate',
+        numeric && 'text-right tabular-nums',
         className
       )}
       {...props}
@@ -281,7 +278,7 @@ export const TableCell = forwardRef<HTMLTableCellElement, TableCellProps>(
   )
 );
 
-TableCell.displayName = "TableCell";
+TableCell.displayName = 'TableCell';
 
 interface TableCaptionProps extends HTMLAttributes<HTMLTableCaptionElement> {
   /**
@@ -295,15 +292,11 @@ interface TableCaptionProps extends HTMLAttributes<HTMLTableCaptionElement> {
  */
 export const TableCaption = forwardRef<HTMLTableCaptionElement, TableCaptionProps>(
   ({ className, ...props }, ref) => (
-    <caption
-      ref={ref}
-      className={cn("mt-4 text-sm text-muted-foreground", className)}
-      {...props}
-    />
+    <caption ref={ref} className={cn('mt-4 text-sm text-muted-foreground', className)} {...props} />
   )
 );
 
-TableCaption.displayName = "TableCaption";
+TableCaption.displayName = 'TableCaption';
 
 // Additional CSS for the table variants
 const tableStyles = `

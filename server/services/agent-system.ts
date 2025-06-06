@@ -1,6 +1,6 @@
 /**
  * Agent System Manager
- * 
+ *
  * This service manages the MCP agent system, handling the registration, initialization,
  * and coordination of all AI agents within the platform.
  */
@@ -38,22 +38,22 @@ export class AgentSystem {
   private replayBuffer: AgentReplayBufferService;
   private commandStructure: CommandStructure;
   public isInitialized: boolean = false;
-  
+
   constructor(storage: IStorage) {
     this._storage = storage;
     this.mcpService = new MCPService(storage);
     this.commandStructure = new CommandStructure(storage);
-    
+
     // Initialize the agent replay buffer with default config
     const replayBufferConfig: ReplayBufferConfig = {
       maxSize: 10000,
       priorityScoreThreshold: 0.7,
       samplingBatchSize: 64,
-      trainingInterval: 60000 // 1 minute
+      trainingInterval: 60000, // 1 minute
     };
     this.replayBuffer = new AgentReplayBufferService(storage, replayBufferConfig);
   }
-  
+
   /**
    * Get the storage instance used by the agent system
    * This is primarily used for logging operations
@@ -61,28 +61,28 @@ export class AgentSystem {
   get storage(): IStorage {
     return this._storage;
   }
-  
+
   /**
    * Get the agent replay buffer service
    */
   get replayBufferService(): AgentReplayBufferService {
     return this.replayBuffer;
   }
-  
+
   /**
    * Get the command structure
    */
   get commandStructureService(): CommandStructure {
     return this.commandStructure;
   }
-  
+
   /**
    * Get the agent learning service
    */
   get learningService(): AgentLearningService {
     return agentLearningService;
   }
-  
+
   /**
    * Initialize the agent system
    */
@@ -90,21 +90,21 @@ export class AgentSystem {
     if (this.isInitialized) {
       return;
     }
-    
+
     try {
-      console.log("Initializing Agent System...");
-      
+      console.log('Initializing Agent System...');
+
       // Log initialization
       await this.storage.createSystemActivity({
         activity_type: 'agent_system_init',
         component: 'agent_system',
         status: 'info',
         details: {
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
-        created_at: new Date()
+        created_at: new Date(),
       });
-      
+
       // Create required services
       const propertyStoryGenerator = new PropertyStoryGenerator(this.storage);
       const ftpService = new FtpService();
@@ -115,36 +115,29 @@ export class AgentSystem {
         openaiApiKey: process.env.OPENAI_API_KEY,
         defaultModels: {
           openai: 'gpt-4o',
-          anthropic: 'claude-3-opus-20240229'
-        }
+          anthropic: 'claude-3-opus-20240229',
+        },
       });
-      
+
       // Create and register agents
-      console.log("Creating Property Assessment Agent...");
+      console.log('Creating Property Assessment Agent...');
       const propertyAssessmentAgent = new PropertyAssessmentAgent(
-        this.storage, 
+        this.storage,
         this.mcpService,
         propertyStoryGenerator,
         llmService
       );
       this.registerAgent('property_assessment', propertyAssessmentAgent);
-      
-      console.log("Creating Data Ingestion Agent...");
-      const ingestionAgent = new IngestionAgent(
-        this.storage,
-        this.mcpService,
-        ftpService
-      );
+
+      console.log('Creating Data Ingestion Agent...');
+      const ingestionAgent = new IngestionAgent(this.storage, this.mcpService, ftpService);
       this.registerAgent('data_ingestion', ingestionAgent);
-      
-      console.log("Creating Reporting Agent...");
-      const reportingAgent = new ReportingAgent(
-        this.storage,
-        this.mcpService
-      );
+
+      console.log('Creating Reporting Agent...');
+      const reportingAgent = new ReportingAgent(this.storage, this.mcpService);
       this.registerAgent('reporting', reportingAgent);
-      
-      console.log("Creating Spatial GIS Agent...");
+
+      console.log('Creating Spatial GIS Agent...');
       const spatialGisAgent = new SpatialGISAgent(
         this.storage,
         this.mcpService,
@@ -152,8 +145,8 @@ export class AgentSystem {
         bentonMarketFactorService
       );
       this.registerAgent('spatial_gis', spatialGisAgent);
-      
-      console.log("Creating Market Analysis Agent...");
+
+      console.log('Creating Market Analysis Agent...');
       const marketAnalysisAgent = new MarketAnalysisAgent(
         this.storage,
         this.mcpService,
@@ -161,26 +154,20 @@ export class AgentSystem {
         llmService
       );
       this.registerAgent('market_analysis', marketAnalysisAgent);
-      
-      console.log("Creating FTP Data Agent...");
-      const ftpDataAgent = new FtpDataAgent(
-        this.storage,
-        this.mcpService
-      );
+
+      console.log('Creating FTP Data Agent...');
+      const ftpDataAgent = new FtpDataAgent(this.storage, this.mcpService);
       this.registerAgent('ftp_data', ftpDataAgent);
-      
+
       // Create notification service for compliance agent
       const notificationService = new NotificationService(this.storage);
-      
+
       // Create the compliance agent for regulatory compliance
-      console.log("Creating Compliance Agent...");
-      const complianceAgent = new ComplianceAgentImpl(
-        this.storage,
-        notificationService
-      );
+      console.log('Creating Compliance Agent...');
+      const complianceAgent = new ComplianceAgentImpl(this.storage, notificationService);
       this.registerAgent('compliance', complianceAgent);
-      
-      console.log("Creating Data Quality Agent...");
+
+      console.log('Creating Data Quality Agent...');
       const propertyValidationEngine = new PropertyValidationEngine(this.storage);
       const dataQualityAgent = new DataQualityAgent(
         this.storage,
@@ -188,15 +175,15 @@ export class AgentSystem {
         notificationService
       );
       this.registerAgent('data_quality', dataQualityAgent);
-      
+
       // Create advanced services for superintelligence agent
-      console.log("Creating Market Prediction Model...");
+      console.log('Creating Market Prediction Model...');
       const marketPredictionModel = new MarketPredictionModel(this.storage, llmService);
-      
-      console.log("Creating Risk Assessment Engine...");
+
+      console.log('Creating Risk Assessment Engine...');
       const riskAssessmentEngine = new RiskAssessmentEngine(this.storage, llmService);
-      
-      console.log("Creating Superintelligence Agent...");
+
+      console.log('Creating Superintelligence Agent...');
       const superintelligenceAgent = new SuperintelligenceAgent(
         this.storage,
         this.mcpService,
@@ -206,7 +193,7 @@ export class AgentSystem {
         riskAssessmentEngine
       );
       this.registerAgent('superintelligence', superintelligenceAgent);
-      
+
       // Initialize agents
       for (const [name, agent] of this.agents.entries()) {
         try {
@@ -217,15 +204,15 @@ export class AgentSystem {
           console.error(`Error initializing agent ${name}:`, error);
         }
       }
-      
+
       // Initialize the command structure
-      console.log("Initializing Command Structure...");
+      console.log('Initializing Command Structure...');
       await this.commandStructure.initialize();
-      console.log("Command Structure initialized successfully.");
-      
+      console.log('Command Structure initialized successfully.');
+
       this.isInitialized = true;
-      console.log("Agent System initialized successfully.");
-      
+      console.log('Agent System initialized successfully.');
+
       // Log successful initialization
       await this.storage.createSystemActivity({
         activity_type: 'agent_system_ready',
@@ -233,13 +220,13 @@ export class AgentSystem {
         status: 'info',
         details: {
           agentCount: this.agents.size,
-          agents: Array.from(this.agents.keys())
+          agents: Array.from(this.agents.keys()),
         },
-        created_at: new Date()
+        created_at: new Date(),
       });
     } catch (error) {
-      console.error("Error initializing Agent System:", error);
-      
+      console.error('Error initializing Agent System:', error);
+
       // Log initialization error
       await this.storage.createSystemActivity({
         activity_type: 'agent_system_error',
@@ -247,43 +234,43 @@ export class AgentSystem {
         status: 'error',
         details: {
           error: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : null
+          stack: error instanceof Error ? error.stack : null,
         },
-        created_at: new Date()
+        created_at: new Date(),
       });
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Register an agent with the system
    */
   public registerAgent(name: string, agent: BaseAgent): void {
     this.agents.set(name, agent);
   }
-  
+
   /**
    * Get an agent by name
    */
   public getAgent(name: string): BaseAgent | undefined {
     return this.agents.get(name);
   }
-  
+
   /**
    * Get all registered agents
    */
   public getAllAgents(): Map<string, BaseAgent> {
     return this.agents;
   }
-  
+
   /**
    * Get the count of registered agents
    */
   public getAgentCount(): number {
     return this.agents.size;
   }
-  
+
   /**
    * Get agent status by ID
    */
@@ -291,7 +278,7 @@ export class AgentSystem {
     // Check if agent exists
     const agent = this.agents.get(agentId);
     if (!agent) return null;
-    
+
     // Get agent status with safety check
     try {
       if (agent && typeof agent.getStatus === 'function') {
@@ -300,12 +287,18 @@ export class AgentSystem {
         // Fallback if getStatus method is not available
         console.log(`Agent ${agentId} does not have getStatus method, using fallback status`);
         return {
-          id: typeof agent.id !== 'undefined' ? agent.id : (typeof agent.agentId !== 'undefined' ? agent.agentId : agentId),
+          id:
+            typeof agent.id !== 'undefined'
+              ? agent.id
+              : typeof agent.agentId !== 'undefined'
+                ? agent.agentId
+                : agentId,
           name: typeof agent.name !== 'undefined' ? agent.name : agentId,
           isActive: typeof agent.isActive !== 'undefined' ? agent.isActive : false,
           lastActivity: typeof agent.lastActivity !== 'undefined' ? agent.lastActivity : null,
-          performanceScore: typeof agent.performanceScore !== 'undefined' ? agent.performanceScore : 0,
-          initialized: true
+          performanceScore:
+            typeof agent.performanceScore !== 'undefined' ? agent.performanceScore : 0,
+          initialized: true,
         };
       }
     } catch (error) {
@@ -317,11 +310,11 @@ export class AgentSystem {
         isActive: false,
         lastActivity: null,
         performanceScore: 0,
-        initialized: false
+        initialized: false,
       };
     }
   }
-  
+
   /**
    * Start all agents
    */
@@ -336,7 +329,7 @@ export class AgentSystem {
       }
     }
   }
-  
+
   /**
    * Stop all agents
    */
@@ -351,30 +344,30 @@ export class AgentSystem {
       }
     }
   }
-  
+
   /**
    * Execute a capability on an agent
    */
   public async executeCapability(
-    agentName: string, 
-    capabilityName: string, 
+    agentName: string,
+    capabilityName: string,
     parameters: any
   ): Promise<any> {
     const agent = this.agents.get(agentName);
-    
+
     if (!agent) {
       throw new Error(`Agent '${agentName}' not found`);
     }
-    
+
     return agent.executeCapability(capabilityName, parameters);
   }
-  
+
   /**
    * Get the status of all agents, command structure, and the replay buffer
    */
   public getSystemStatus(): any {
     const agentStatuses = {};
-    
+
     for (const [name, agent] of this.agents.entries()) {
       // Safety check for getStatus method
       try {
@@ -383,11 +376,17 @@ export class AgentSystem {
         } else {
           // Fallback for agents that don't implement getStatus
           agentStatuses[name] = {
-            id: typeof agent.id !== 'undefined' ? agent.id : (typeof agent.agentId !== 'undefined' ? agent.agentId : name),
+            id:
+              typeof agent.id !== 'undefined'
+                ? agent.id
+                : typeof agent.agentId !== 'undefined'
+                  ? agent.agentId
+                  : name,
             name: typeof agent.name !== 'undefined' ? agent.name : name,
             isActive: typeof agent.isActive !== 'undefined' ? agent.isActive : false,
             lastActivity: typeof agent.lastActivity !== 'undefined' ? agent.lastActivity : null,
-            performanceScore: typeof agent.performanceScore !== 'undefined' ? agent.performanceScore : 0
+            performanceScore:
+              typeof agent.performanceScore !== 'undefined' ? agent.performanceScore : 0,
           };
           console.log(`Created fallback status for agent ${name} due to missing getStatus method`);
         }
@@ -399,14 +398,16 @@ export class AgentSystem {
           error: 'Failed to get status',
           isActive: false,
           lastActivity: null,
-          performanceScore: 0
+          performanceScore: 0,
         };
       }
     }
-    
+
     // Include replay buffer statistics in the system status
-    const replayBufferStats = this.replayBuffer ? this.replayBuffer.getBufferStats() : { size: 0, maxSize: 0 };
-    
+    const replayBufferStats = this.replayBuffer
+      ? this.replayBuffer.getBufferStats()
+      : { size: 0, maxSize: 0 };
+
     // Safely get command structure information with error handling
     let commandStructureInfo = {};
     try {
@@ -414,24 +415,26 @@ export class AgentSystem {
       const architectPrime = this.commandStructure.getArchitectPrime();
       const integrationCoordinator = this.commandStructure.getIntegrationCoordinator();
       const bsbcmasterLead = this.commandStructure.getBSBCmasterLead();
-      
+
       commandStructureInfo = {
         architectPrime: architectPrime ? architectPrime.getStatus() : { status: 'not_initialized' },
-        integrationCoordinator: integrationCoordinator ? integrationCoordinator.getStatus() : { status: 'not_initialized' },
-        bsbcmasterLead: bsbcmasterLead ? bsbcmasterLead.getStatus() : { status: 'not_initialized' }
+        integrationCoordinator: integrationCoordinator
+          ? integrationCoordinator.getStatus()
+          : { status: 'not_initialized' },
+        bsbcmasterLead: bsbcmasterLead ? bsbcmasterLead.getStatus() : { status: 'not_initialized' },
       };
     } catch (error) {
       console.error('Error getting command structure status:', error);
       commandStructureInfo = {
         error: 'Failed to retrieve command structure status',
-        message: error instanceof Error ? error.message : String(error)
+        message: error instanceof Error ? error.message : String(error),
       };
     }
-    
+
     // Get learning service status
     const learningServiceEnabled = agentLearningService.config.enabled;
     const learningServiceProviders = agentLearningService.config.providers;
-    
+
     return {
       isInitialized: this.isInitialized,
       agentCount: this.agents.size,
@@ -440,11 +443,11 @@ export class AgentSystem {
       commandStructure: commandStructureInfo,
       learningSystem: {
         enabled: learningServiceEnabled,
-        providers: learningServiceProviders
-      }
+        providers: learningServiceProviders,
+      },
     };
   }
-  
+
   /**
    * Record a learning event for an agent
    */
@@ -460,10 +463,10 @@ export class AgentSystem {
       if (!agent) {
         throw new Error(`Agent '${agentName}' not found`);
       }
-      
+
       // Get the unique agent ID
       const agentId = agent.id;
-      
+
       // Record the learning event
       const event = await this.learningService.recordLearningEvent(
         agentId,
@@ -472,21 +475,23 @@ export class AgentSystem {
         sourceContext,
         priority
       );
-      
+
       return {
         success: true,
         eventId: event ? event.id : null,
-        message: event ? `Learning event recorded for agent ${agentName}` : 'Learning system is disabled'
+        message: event
+          ? `Learning event recorded for agent ${agentName}`
+          : 'Learning system is disabled',
       };
     } catch (error) {
       console.error(`Error recording learning event for agent ${agentName}:`, error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
-  
+
   /**
    * Record user feedback for an agent
    */
@@ -507,27 +512,29 @@ export class AgentSystem {
       if (!agent) {
         throw new Error(`Agent '${agentName}' not found`);
       }
-      
+
       // Get the unique agent ID
       const agentId = agent.id;
-      
+
       // Record the feedback
       const feedback = await this.learningService.recordUserFeedback(agentId, feedbackData);
-      
+
       return {
         success: true,
         feedbackId: feedback ? feedback.id : null,
-        message: feedback ? `Feedback recorded for agent ${agentName}` : 'Learning system is disabled'
+        message: feedback
+          ? `Feedback recorded for agent ${agentName}`
+          : 'Learning system is disabled',
       };
     } catch (error) {
       console.error(`Error recording feedback for agent ${agentName}:`, error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
-  
+
   /**
    * Get knowledge for an agent
    */
@@ -542,10 +549,10 @@ export class AgentSystem {
       if (!agent) {
         throw new Error(`Agent '${agentName}' not found`);
       }
-      
+
       // Get the unique agent ID
       const agentId = agent.id;
-      
+
       // Get the knowledge
       const knowledge = await this.learningService.getAgentKnowledge(
         agentId,
@@ -553,18 +560,18 @@ export class AgentSystem {
         searchTerm,
         verifiedOnly
       );
-      
+
       return {
         success: true,
         knowledge: knowledge || [],
-        count: knowledge ? knowledge.length : 0
+        count: knowledge ? knowledge.length : 0,
       };
     } catch (error) {
       console.error(`Error getting knowledge for agent ${agentName}:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
-        knowledge: []
+        knowledge: [],
       };
     }
   }

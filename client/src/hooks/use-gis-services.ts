@@ -74,11 +74,11 @@ export function useGISServices() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(layerData),
         });
-        
+
         if (!response.ok) {
           throw new Error('Failed to create GIS layer');
         }
-        
+
         return await response.json();
       },
       onSuccess: () => {
@@ -90,17 +90,17 @@ export function useGISServices() {
   // Update a GIS layer
   const useUpdateLayer = () => {
     return useMutation({
-      mutationFn: async ({ id, ...data }: { id: number, [key: string]: any }) => {
+      mutationFn: async ({ id, ...data }: { id: number; [key: string]: any }) => {
         const response = await fetch(`/api/gis/layers/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
         });
-        
+
         if (!response.ok) {
           throw new Error('Failed to update GIS layer');
         }
-        
+
         return await response.json();
       },
       onSuccess: (_, variables) => {
@@ -113,9 +113,7 @@ export function useGISServices() {
   // Get all feature collections
   const useFeatureCollections = (layerId?: number) => {
     return useQuery<GISFeatureCollection[]>({
-      queryKey: layerId 
-        ? ['/api/gis/features', { layerId }] 
-        : ['/api/gis/features'],
+      queryKey: layerId ? ['/api/gis/features', { layerId }] : ['/api/gis/features'],
       staleTime: 60000,
     });
   };
@@ -153,11 +151,11 @@ export function useGISServices() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(conversionData),
         });
-        
+
         if (!response.ok) {
           throw new Error('Failed to convert schema');
         }
-        
+
         return await response.json();
       },
     });
@@ -172,11 +170,11 @@ export function useGISServices() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(normalizationData),
         });
-        
+
         if (!response.ok) {
           throw new Error('Failed to normalize data');
         }
-        
+
         return await response.json();
       },
     });

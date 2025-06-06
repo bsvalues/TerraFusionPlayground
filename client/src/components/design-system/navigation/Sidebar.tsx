@@ -6,34 +6,34 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 /**
  * Sidebar variants using class-variance-authority
  */
-const sidebarVariants = cva("h-full flex flex-col transition-all duration-300", {
+const sidebarVariants = cva('h-full flex flex-col transition-all duration-300', {
   variants: {
     variant: {
-      default: "bg-card text-card-foreground",
-      primary: "bg-primary/10 text-foreground",
-      dark: "bg-slate-900 text-white",
-      glass: "tf-glass text-foreground",
+      default: 'bg-card text-card-foreground',
+      primary: 'bg-primary/10 text-foreground',
+      dark: 'bg-slate-900 text-white',
+      glass: 'tf-glass text-foreground',
     },
     elevation: {
-      none: "shadow-none",
-      low: "shadow-sm",
-      medium: "shadow-md",
-      high: "shadow-lg",
+      none: 'shadow-none',
+      low: 'shadow-sm',
+      medium: 'shadow-md',
+      high: 'shadow-lg',
     },
     border: {
-      none: "border-none",
-      right: "border-r border-border",
-      left: "border-l border-border",
+      none: 'border-none',
+      right: 'border-r border-border',
+      left: 'border-l border-border',
     },
   },
   defaultVariants: {
-    variant: "default",
-    elevation: "none",
-    border: "right",
+    variant: 'default',
+    elevation: 'none',
+    border: 'right',
   },
 });
 
-export interface SidebarProps 
+export interface SidebarProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof sidebarVariants> {
   /**
@@ -68,10 +68,10 @@ export interface SidebarProps
 
 /**
  * Sidebar component
- * 
+ *
  * A navigation component that displays on the side of the application.
  * Can be collapsible and customized with various styles.
- * 
+ *
  * @example
  * ```tsx
  * <Sidebar
@@ -85,21 +85,24 @@ export interface SidebarProps
  * ```
  */
 export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
-  ({ 
-    className, 
-    variant, 
-    elevation,
-    border,
-    logo,
-    footer,
-    collapsible = true,
-    collapsed = false,
-    onToggleCollapse,
-    width = '260px',
-    collapsedWidth = '72px',
-    children,
-    ...props
-  }, ref) => {
+  (
+    {
+      className,
+      variant,
+      elevation,
+      border,
+      logo,
+      footer,
+      collapsible = true,
+      collapsed = false,
+      onToggleCollapse,
+      width = '260px',
+      collapsedWidth = '72px',
+      children,
+      ...props
+    },
+    ref
+  ) => {
     return (
       <aside
         ref={ref}
@@ -110,10 +113,10 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
         {/* Logo/Header section */}
         {logo && (
           <div className="flex items-center justify-between px-4 py-4 border-b border-border/50">
-            <div className={cn("flex-1 transition-opacity duration-200", collapsed && "opacity-0")}>
+            <div className={cn('flex-1 transition-opacity duration-200', collapsed && 'opacity-0')}>
               {logo}
             </div>
-            
+
             {collapsible && (
               <button
                 type="button"
@@ -129,18 +132,18 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             )}
           </div>
         )}
-        
+
         {/* Main content */}
-        <div className="flex-1 overflow-y-auto py-4">
-          {children}
-        </div>
-        
+        <div className="flex-1 overflow-y-auto py-4">{children}</div>
+
         {/* Footer section */}
         {footer && (
-          <div className={cn(
-            "border-t border-border/50 px-4 py-4",
-            collapsed && "flex items-center justify-center"
-          )}>
+          <div
+            className={cn(
+              'border-t border-border/50 px-4 py-4',
+              collapsed && 'flex items-center justify-center'
+            )}
+          >
             {footer}
           </div>
         )}

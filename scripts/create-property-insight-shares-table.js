@@ -1,6 +1,6 @@
 /**
  * Property Insight Shares Table Creation
- * 
+ *
  * This script creates the property_insight_shares table for storing
  * shareable property insights.
  */
@@ -27,9 +27,9 @@ async function createPropertyInsightSharesTable() {
         AND table_name = 'property_insight_shares'
       );
     `;
-    
+
     const tableExists = await client.query(checkTableQuery);
-    
+
     if (tableExists.rows[0].exists) {
       console.log('property_insight_shares table already exists, skipping creation');
       return;
@@ -60,8 +60,12 @@ async function createPropertyInsightSharesTable() {
     console.log('Successfully created property_insight_shares table');
 
     // Create indexes for faster lookups
-    await client.query(`CREATE INDEX idx_property_insight_shares_property_id ON property_insight_shares(property_id);`);
-    await client.query(`CREATE INDEX idx_property_insight_shares_share_id ON property_insight_shares(share_id);`);
+    await client.query(
+      `CREATE INDEX idx_property_insight_shares_property_id ON property_insight_shares(property_id);`
+    );
+    await client.query(
+      `CREATE INDEX idx_property_insight_shares_share_id ON property_insight_shares(share_id);`
+    );
     console.log('Successfully created indexes for property_insight_shares table');
   } catch (error) {
     console.error('Error creating property_insight_shares table:', error);

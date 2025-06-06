@@ -1,10 +1,10 @@
-import { db } from "../../db";
-import { eq } from "drizzle-orm";
+import { db } from '../../db';
+import { eq } from 'drizzle-orm';
 import {
   WorkspacePreference,
   InsertWorkspacePreference,
   workspacePreferences,
-} from "@shared/schema";
+} from '@shared/schema';
 
 /**
  * Service for managing user workspace preferences
@@ -31,10 +31,7 @@ export class WorkspacePreferencesService {
    * @returns The created workspace preferences
    */
   async createPreferences(preferences: InsertWorkspacePreference): Promise<WorkspacePreference> {
-    const [result] = await db
-      .insert(workspacePreferences)
-      .values(preferences)
-      .returning();
+    const [result] = await db.insert(workspacePreferences).values(preferences).returning();
 
     return result;
   }
@@ -68,7 +65,7 @@ export class WorkspacePreferencesService {
    */
   async getOrCreatePreferences(userId: number): Promise<WorkspacePreference> {
     const existing = await this.getUserPreferences(userId);
-    
+
     if (existing) {
       return existing;
     }
@@ -87,11 +84,9 @@ export class WorkspacePreferencesService {
    */
   async resetToDefaults(userId: number): Promise<WorkspacePreference> {
     const existing = await this.getUserPreferences(userId);
-    
+
     if (existing) {
-      await db
-        .delete(workspacePreferences)
-        .where(eq(workspacePreferences.userId, userId));
+      await db.delete(workspacePreferences).where(eq(workspacePreferences.userId, userId));
     }
 
     // Create with defaults

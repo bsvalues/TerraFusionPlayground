@@ -1,6 +1,6 @@
 /**
  * TerraFusion Developer Portal
- * 
+ *
  * A comprehensive developer portal that provides:
  * - API documentation and catalog
  * - Service discovery

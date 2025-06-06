@@ -1,6 +1,6 @@
 /**
  * Plugin Payment Integration
- * 
+ *
  * Handles plugin payment processing and premium status using Stripe.
  */
 
@@ -20,22 +20,22 @@ export interface PluginPaymentConfig {
    * Stripe API key
    */
   stripeApiKey: string;
-  
+
   /**
    * Stripe webhook secret
    */
   stripeWebhookSecret?: string;
-  
+
   /**
    * Domain for success/cancel URLs
    */
   domain: string;
-  
+
   /**
    * Success URL path
    */
   successPath?: string;
-  
+
   /**
    * Cancel URL path
    */
@@ -50,27 +50,27 @@ export interface PluginPurchaseSession {
    * Session ID
    */
   id: string;
-  
+
   /**
    * Plugin ID
    */
   pluginId: string;
-  
+
   /**
    * User ID
    */
   userId: string;
-  
+
   /**
    * Stripe checkout URL
    */
   url: string;
-  
+
   /**
    * Session created timestamp
    */
   createdAt: string;
-  
+
   /**
    * Session expiration timestamp
    */
@@ -85,37 +85,37 @@ export interface PurchaseStatusResult {
    * Whether the plugin is purchased
    */
   purchased: boolean;
-  
+
   /**
    * Purchase ID if purchased
    */
   purchaseId?: string;
-  
+
   /**
    * Purchase timestamp if purchased
    */
   purchasedAt?: string;
-  
+
   /**
    * Whether the purchase is active
    */
   active: boolean;
-  
+
   /**
    * Subscription ID if applicable
    */
   subscriptionId?: string;
-  
+
   /**
    * Subscription status if applicable
    */
   subscriptionStatus?: string;
-  
+
   /**
    * License type (perpetual or subscription)
    */
   licenseType?: 'perpetual' | 'subscription';
-  
+
   /**
    * Purchase expiration date if applicable
    */
@@ -128,14 +128,14 @@ export interface PurchaseStatusResult {
 export class PluginPaymentService {
   private stripe: Stripe;
   private config: PluginPaymentConfig;
-  
+
   constructor(config: PluginPaymentConfig) {
     this.config = config;
     this.stripe = new Stripe(config.stripeApiKey, {
-      apiVersion: '2023-10-16'
+      apiVersion: '2023-10-16',
     });
   }
-  
+
   /**
    * Create a checkout session for a plugin
    */
@@ -151,20 +151,24 @@ export class PluginPaymentService {
   ): Promise<PluginPurchaseSession> {
     // Set defaults
     const mode = options?.mode || 'subscription';
-    const successUrl = options?.successUrl || `${this.config.domain}${this.config.successPath || '/plugin/success'}?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = options?.cancelUrl || `${this.config.domain}${this.config.cancelPath || '/plugin/cancel'}?session_id={CHECKOUT_SESSION_ID}`;
-    
+    const successUrl =
+      options?.successUrl ||
+      `${this.config.domain}${this.config.successPath || '/plugin/success'}?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl =
+      options?.cancelUrl ||
+      `${this.config.domain}${this.config.cancelPath || '/plugin/cancel'}?session_id={CHECKOUT_SESSION_ID}`;
+
     // Create or get a price for this plugin
-    const priceId = options?.priceId || await this.getOrCreatePrice(plugin);
-    
+    const priceId = options?.priceId || (await this.getOrCreatePrice(plugin));
+
     // Create checkout session
     const session = await this.stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
           price: priceId,
-          quantity: 1
-        }
+          quantity: 1,
+        },
       ],
       mode,
       success_url: successUrl,
@@ -172,10 +176,10 @@ export class PluginPaymentService {
       client_reference_id: userId,
       metadata: {
         pluginId: plugin.id,
-        userId
-      }
+        userId,
+      },
     });
-    
+
     // Build response
     return {
       id: session.id,
@@ -183,10 +187,10 @@ export class PluginPaymentService {
       userId,
       url: session.url || '',
       createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
     };
   }
-  
+
   /**
    * Get or create a Stripe price for a plugin
    */
@@ -195,12 +199,12 @@ export class PluginPaymentService {
     const products = await this.stripe.products.list({
       active: true,
       metadata: {
-        pluginId: plugin.id
-      }
+        pluginId: plugin.id,
+      },
     });
-    
+
     let product;
-    
+
     if (products.data.length > 0) {
       // Use existing product
       product = products.data[0];
@@ -212,39 +216,39 @@ export class PluginPaymentService {
         metadata: {
           pluginId: plugin.id,
           version: plugin.version,
-          productType: PRODUCT_TERRAFUSION_PLUGIN
+          productType: PRODUCT_TERRAFUSION_PLUGIN,
         },
-        images: plugin.screenshots?.map(s => s.url) || []
+        images: plugin.screenshots?.map(s => s.url) || [],
       });
     }
-    
+
     // Try to find existing price for this product
     const prices = await this.stripe.prices.list({
       product: product.id,
-      active: true
+      active: true,
     });
-    
+
     if (prices.data.length > 0) {
       // Use existing price
       return prices.data[0].id;
     }
-    
+
     // Create new price (default to $9.99/month subscription)
     const price = await this.stripe.prices.create({
       product: product.id,
       unit_amount: 999, // $9.99
       currency: 'usd',
       recurring: {
-        interval: 'month'
+        interval: 'month',
       },
       metadata: {
-        pluginId: plugin.id
-      }
+        pluginId: plugin.id,
+      },
     });
-    
+
     return price.id;
   }
-  
+
   /**
    * Process a webhook event from Stripe
    */
@@ -253,7 +257,7 @@ export class PluginPaymentService {
     signature: string
   ): Promise<{ pluginId: string; userId: string; event: string; success: boolean }> {
     // In a real implementation, verify the webhook signature
-    
+
     // For this example, we'll use a placeholder
     const event = {
       type: 'checkout.session.completed',
@@ -261,12 +265,12 @@ export class PluginPaymentService {
         object: {
           metadata: {
             pluginId: 'example-plugin',
-            userId: 'example-user'
-          }
-        }
-      }
+            userId: 'example-user',
+          },
+        },
+      },
     };
-    
+
     // Process different event types
     switch (event.type) {
       case 'checkout.session.completed':
@@ -274,16 +278,16 @@ export class PluginPaymentService {
         const session = event.data.object;
         const pluginId = session.metadata.pluginId;
         const userId = session.metadata.userId;
-        
+
         // In a real implementation, update the plugin purchase status in the database
-        
+
         return {
           pluginId,
           userId,
           event: event.type,
-          success: true
+          success: true,
         };
-        
+
       case 'customer.subscription.deleted':
         // Handle subscription cancellation
         // In a real implementation, update the plugin purchase status in the database
@@ -291,20 +295,20 @@ export class PluginPaymentService {
           pluginId: 'example-plugin',
           userId: 'example-user',
           event: event.type,
-          success: true
+          success: true,
         };
-        
+
       default:
         // Ignore other events
         return {
           pluginId: 'unknown',
           userId: 'unknown',
           event: event.type,
-          success: false
+          success: false,
         };
     }
   }
-  
+
   /**
    * Check if a user has purchased a plugin
    */
@@ -313,14 +317,14 @@ export class PluginPaymentService {
     userId: string
   ): Promise<PurchaseStatusResult> {
     // In a real implementation, check the database for purchase records
-    
+
     // For this example, we'll return a placeholder result
     return {
       purchased: false,
-      active: false
+      active: false,
     };
   }
-  
+
   /**
    * List all plugins purchased by a user
    */
@@ -328,11 +332,11 @@ export class PluginPaymentService {
     userId: string
   ): Promise<{ pluginId: string; status: PurchaseStatusResult }[]> {
     // In a real implementation, query the database for user purchases
-    
+
     // For this example, we'll return an empty array
     return [];
   }
-  
+
   /**
    * Create a connect account for plugin developers
    */
@@ -347,35 +351,35 @@ export class PluginPaymentService {
       email,
       capabilities: {
         card_payments: { requested: true },
-        transfers: { requested: true }
+        transfers: { requested: true },
       },
       business_type: 'individual',
       business_profile: {
-        name
+        name,
       },
-      country
+      country,
     });
-    
+
     // Create an account link for onboarding
     const accountLink = await this.stripe.accountLinks.create({
       account: account.id,
       refresh_url: `${this.config.domain}/developer/connect/refresh`,
       return_url: `${this.config.domain}/developer/connect/complete`,
-      type: 'account_onboarding'
+      type: 'account_onboarding',
     });
-    
+
     return {
       accountId: account.id,
-      onboardingUrl: accountLink.url
+      onboardingUrl: accountLink.url,
     };
   }
-  
+
   /**
    * Check if a plugin developer account is complete
    */
   public async isConnectAccountComplete(accountId: string): Promise<boolean> {
     const account = await this.stripe.accounts.retrieve(accountId);
-    
+
     // Check if the account is complete and ready to process payments
     return account.charges_enabled && account.details_submitted;
   }

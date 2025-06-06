@@ -1,6 +1,6 @@
 /**
  * Health Module
- * 
+ *
  * Provides health monitoring capabilities for the system.
  */
 
@@ -28,6 +28,6 @@ import { AgentHealthIndicator } from './agent-health.indicator';
   ],
   controllers: [HealthController],
   providers: [AgentHealthIndicator],
-  exports: [AgentHealthIndicator]
+  exports: [AgentHealthIndicator],
 })
 export class HealthModule {}

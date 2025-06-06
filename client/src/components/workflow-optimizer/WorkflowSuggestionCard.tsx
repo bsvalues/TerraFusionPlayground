@@ -4,14 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { 
-  ChevronRightIcon, 
+import {
+  ChevronRightIcon,
   ChevronDownIcon,
-  CodeIcon, 
-  AlertCircleIcon, 
+  CodeIcon,
+  AlertCircleIcon,
   ArrowUpCircleIcon,
   Clock3Icon,
-  FileTextIcon
+  FileTextIcon,
 } from 'lucide-react';
 import {
   OptimizationType,
@@ -19,7 +19,7 @@ import {
   OptimizationPriority,
   OptimizationSuggestion,
   WorkflowOptimizationRequest,
-  WorkflowOptimizationResult
+  WorkflowOptimizationResult,
 } from '@/types/workflow-optimizer';
 
 type WorkflowSuggestionCardProps = {
@@ -27,9 +27,12 @@ type WorkflowSuggestionCardProps = {
   result: WorkflowOptimizationResult;
 };
 
-export default function WorkflowSuggestionCard({ optimization, result }: WorkflowSuggestionCardProps) {
+export default function WorkflowSuggestionCard({
+  optimization,
+  result,
+}: WorkflowSuggestionCardProps) {
   const [isOpen, setIsOpen] = useState(false);
-  
+
   // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -38,10 +41,10 @@ export default function WorkflowSuggestionCard({ optimization, result }: Workflo
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
-  
+
   // Get appropriate impact color
   const getImpactColor = (impact: string) => {
     switch (impact) {
@@ -55,7 +58,7 @@ export default function WorkflowSuggestionCard({ optimization, result }: Workflo
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
-  
+
   // Get appropriate effort color
   const getEffortColor = (effort: string) => {
     switch (effort) {
@@ -69,7 +72,7 @@ export default function WorkflowSuggestionCard({ optimization, result }: Workflo
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
-  
+
   // Determine the optimization type icon
   const getOptimizationTypeIcon = () => {
     switch (optimization.optimizationType) {
@@ -83,13 +86,13 @@ export default function WorkflowSuggestionCard({ optimization, result }: Workflo
         return <CodeIcon className="h-5 w-5 mr-2" />;
     }
   };
-  
+
   // Use the recommendationsJson property from the result
   const suggestions = (result.recommendationsJson || []) as OptimizationSuggestion[];
-  
+
   // Use the improvementScore property from the result
-  const score = (result.improvementScore || 0);
-  
+  const score = result.improvementScore || 0;
+
   return (
     <Card className="p-4 mb-4">
       <div className="flex items-center justify-between mb-2">
@@ -97,26 +100,26 @@ export default function WorkflowSuggestionCard({ optimization, result }: Workflo
           {getOptimizationTypeIcon()}
           <h4 className="font-semibold">{optimization.title}</h4>
         </div>
-        <Badge className="ml-2">
-          Score: {score}/10
-        </Badge>
+        <Badge className="ml-2">Score: {score}/10</Badge>
       </div>
-      
+
       <p className="text-sm text-muted-foreground mb-2">{result.summary}</p>
-      
+
       <div className="flex flex-wrap gap-2 mt-2 mb-3">
-        <Badge variant="outline">
-          {optimization.optimizationType.replace(/_/g, ' ')}
-        </Badge>
+        <Badge variant="outline">{optimization.optimizationType.replace(/_/g, ' ')}</Badge>
         <Badge variant="outline" className="flex items-center">
           <Clock3Icon className="h-3 w-3 mr-1" />
           {formatDate(result.createdAt)}
         </Badge>
       </div>
-      
+
       <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mt-2">
         <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="sm" className="flex items-center w-full justify-between p-0 h-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center w-full justify-between p-0 h-8"
+          >
             <span className="text-sm font-medium">
               {isOpen ? 'Hide suggestions' : 'View suggestions'} ({suggestions.length})
             </span>
@@ -127,36 +130,34 @@ export default function WorkflowSuggestionCard({ optimization, result }: Workflo
             )}
           </Button>
         </CollapsibleTrigger>
-        
+
         <CollapsibleContent className="mt-2">
           <Separator className="my-2" />
-          
+
           {suggestions.map((suggestion: OptimizationSuggestion, index: number) => (
             <div key={suggestion.id} className="py-3">
               {index > 0 && <Separator className="my-2" />}
-              
+
               <div className="flex items-center justify-between mb-1">
                 <h5 className="font-medium text-sm">{suggestion.title}</h5>
                 <div className="flex space-x-2">
-                  <Badge 
-                    variant="outline" 
+                  <Badge
+                    variant="outline"
                     className={`text-xs ${getImpactColor(suggestion.impact)}`}
                   >
                     Impact: {suggestion.impact}
                   </Badge>
-                  <Badge 
-                    variant="outline" 
+                  <Badge
+                    variant="outline"
                     className={`text-xs ${getEffortColor(suggestion.effortEstimate)}`}
                   >
                     Effort: {suggestion.effortEstimate}
                   </Badge>
                 </div>
               </div>
-              
-              <p className="text-sm text-muted-foreground mb-2">
-                {suggestion.description}
-              </p>
-              
+
+              <p className="text-sm text-muted-foreground mb-2">{suggestion.description}</p>
+
               {suggestion.filePath && (
                 <div className="flex items-center text-xs text-muted-foreground mb-1">
                   <FileTextIcon className="h-3 w-3 mr-1" />
@@ -168,7 +169,7 @@ export default function WorkflowSuggestionCard({ optimization, result }: Workflo
                   )}
                 </div>
               )}
-              
+
               {suggestion.implementationSteps && suggestion.implementationSteps.length > 0 && (
                 <div className="mt-2">
                   <p className="text-xs font-medium mb-1">Implementation steps:</p>
@@ -179,7 +180,7 @@ export default function WorkflowSuggestionCard({ optimization, result }: Workflo
                   </ol>
                 </div>
               )}
-              
+
               {suggestion.code && (
                 <div className="mt-2 p-2 bg-muted rounded text-xs font-mono whitespace-pre-wrap overflow-x-auto">
                   {suggestion.code}

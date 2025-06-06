@@ -1,6 +1,6 @@
 /**
  * Web Vitals Performance Budgets
- * 
+ *
  * This file defines performance budgets for various metrics, used to
  * monitor application performance across different platforms and devices.
  */
@@ -37,7 +37,7 @@ const coreWebVitalsBudgets: PerformanceBudget[] = [
     good: 2500,
     needsImprovement: 4000,
     critical: 6000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'FID',
@@ -45,7 +45,7 @@ const coreWebVitalsBudgets: PerformanceBudget[] = [
     good: 100,
     needsImprovement: 300,
     critical: 600,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'CLS',
@@ -53,8 +53,8 @@ const coreWebVitalsBudgets: PerformanceBudget[] = [
     good: 0.1,
     needsImprovement: 0.25,
     critical: 0.5,
-    unit: 'score'
-  }
+    unit: 'score',
+  },
 ];
 
 /**
@@ -67,7 +67,7 @@ const mobilePerformanceBudgets: PerformanceBudget[] = [
     good: 3500,
     needsImprovement: 7500,
     critical: 12500,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'TBT',
@@ -75,7 +75,7 @@ const mobilePerformanceBudgets: PerformanceBudget[] = [
     good: 200,
     needsImprovement: 600,
     critical: 1000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'FCP',
@@ -83,7 +83,7 @@ const mobilePerformanceBudgets: PerformanceBudget[] = [
     good: 1800,
     needsImprovement: 3000,
     critical: 5000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'TTFB',
@@ -91,8 +91,8 @@ const mobilePerformanceBudgets: PerformanceBudget[] = [
     good: 800,
     needsImprovement: 1800,
     critical: 2500,
-    unit: 'ms'
-  }
+    unit: 'ms',
+  },
 ];
 
 /**
@@ -105,7 +105,7 @@ const resourceBudgets: PerformanceBudget[] = [
     good: 250 * 1024,
     needsImprovement: 500 * 1024,
     critical: 1024 * 1024,
-    unit: 'bytes'
+    unit: 'bytes',
   },
   {
     metricName: 'ImageSize',
@@ -113,7 +113,7 @@ const resourceBudgets: PerformanceBudget[] = [
     good: 100 * 1024,
     needsImprovement: 250 * 1024,
     critical: 500 * 1024,
-    unit: 'bytes'
+    unit: 'bytes',
   },
   {
     metricName: 'InitialJSBundle',
@@ -121,7 +121,7 @@ const resourceBudgets: PerformanceBudget[] = [
     good: 150 * 1024,
     needsImprovement: 300 * 1024,
     critical: 500 * 1024,
-    unit: 'bytes'
+    unit: 'bytes',
   },
   {
     metricName: 'RequestCount',
@@ -129,8 +129,8 @@ const resourceBudgets: PerformanceBudget[] = [
     good: 50,
     needsImprovement: 100,
     critical: 150,
-    unit: 'count'
-  }
+    unit: 'count',
+  },
 ];
 
 /**
@@ -143,7 +143,7 @@ const offlineSyncBudgets: PerformanceBudget[] = [
     good: 1000,
     needsImprovement: 3000,
     critical: 5000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'DataSyncTimePerMB',
@@ -151,7 +151,7 @@ const offlineSyncBudgets: PerformanceBudget[] = [
     good: 2000,
     needsImprovement: 5000,
     critical: 10000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'IndexedDBWriteTimePerRecord',
@@ -159,7 +159,7 @@ const offlineSyncBudgets: PerformanceBudget[] = [
     good: 10,
     needsImprovement: 50,
     critical: 100,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'MergeOperationTime',
@@ -167,8 +167,8 @@ const offlineSyncBudgets: PerformanceBudget[] = [
     good: 100,
     needsImprovement: 500,
     critical: 1000,
-    unit: 'ms'
-  }
+    unit: 'ms',
+  },
 ];
 
 /**
@@ -181,7 +181,7 @@ const gisPerformanceBudgets: PerformanceBudget[] = [
     good: 500,
     needsImprovement: 1500,
     critical: 3000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'VectorLayerLoadTime',
@@ -189,7 +189,7 @@ const gisPerformanceBudgets: PerformanceBudget[] = [
     good: 800,
     needsImprovement: 2000,
     critical: 4000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'GeoJSONParseTime',
@@ -197,7 +197,7 @@ const gisPerformanceBudgets: PerformanceBudget[] = [
     good: 300,
     needsImprovement: 1000,
     critical: 2000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'MapRenderFPS',
@@ -205,8 +205,8 @@ const gisPerformanceBudgets: PerformanceBudget[] = [
     good: 50,
     needsImprovement: 30,
     critical: 15,
-    unit: 'fps'
-  }
+    unit: 'fps',
+  },
 ];
 
 /**
@@ -219,7 +219,7 @@ const aiPerformanceBudgets: PerformanceBudget[] = [
     good: 2000,
     needsImprovement: 5000,
     critical: 10000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'PropertyAnalysisTime',
@@ -227,7 +227,7 @@ const aiPerformanceBudgets: PerformanceBudget[] = [
     good: 3000,
     needsImprovement: 8000,
     critical: 15000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'CompSalesGenerationTime',
@@ -235,7 +235,7 @@ const aiPerformanceBudgets: PerformanceBudget[] = [
     good: 5000,
     needsImprovement: 12000,
     critical: 20000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'ImageAIProcessingTime',
@@ -243,8 +243,8 @@ const aiPerformanceBudgets: PerformanceBudget[] = [
     good: 1500,
     needsImprovement: 4000,
     critical: 8000,
-    unit: 'ms'
-  }
+    unit: 'ms',
+  },
 ];
 
 /**
@@ -257,7 +257,7 @@ const monorepoPerformanceBudgets: PerformanceBudget[] = [
     good: 60000,
     needsImprovement: 180000,
     critical: 300000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'PackageBuildTime',
@@ -265,7 +265,7 @@ const monorepoPerformanceBudgets: PerformanceBudget[] = [
     good: 10000,
     needsImprovement: 30000,
     critical: 60000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'CITestTime',
@@ -273,7 +273,7 @@ const monorepoPerformanceBudgets: PerformanceBudget[] = [
     good: 120000,
     needsImprovement: 300000,
     critical: 600000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'ESLintTime',
@@ -281,8 +281,8 @@ const monorepoPerformanceBudgets: PerformanceBudget[] = [
     good: 10000,
     needsImprovement: 30000,
     critical: 60000,
-    unit: 'ms'
-  }
+    unit: 'ms',
+  },
 ];
 
 /**
@@ -295,7 +295,7 @@ const queuePerformanceBudgets: PerformanceBudget[] = [
     good: 50,
     needsImprovement: 20,
     critical: 5,
-    unit: 'items/sec'
+    unit: 'items/sec',
   },
   {
     metricName: 'QueueLatency',
@@ -303,7 +303,7 @@ const queuePerformanceBudgets: PerformanceBudget[] = [
     good: 100,
     needsImprovement: 500,
     critical: 2000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'TaskProcessingTime',
@@ -311,7 +311,7 @@ const queuePerformanceBudgets: PerformanceBudget[] = [
     good: 200,
     needsImprovement: 1000,
     critical: 5000,
-    unit: 'ms'
+    unit: 'ms',
   },
   {
     metricName: 'QueueBacklogSize',
@@ -319,8 +319,8 @@ const queuePerformanceBudgets: PerformanceBudget[] = [
     good: 50,
     needsImprovement: 200,
     critical: 1000,
-    unit: 'count'
-  }
+    unit: 'count',
+  },
 ];
 
 /**
@@ -331,80 +331,78 @@ export const performanceBudgetSets: PerformanceBudgetSet[] = [
     name: 'Core Web Vitals',
     description: 'Essential metrics for web user experience',
     category: 'critical',
-    budgets: coreWebVitalsBudgets
+    budgets: coreWebVitalsBudgets,
   },
   {
     name: 'Mobile Experience',
     description: 'Mobile-specific performance metrics',
     category: 'mobile',
-    budgets: mobilePerformanceBudgets
+    budgets: mobilePerformanceBudgets,
   },
   {
     name: 'Resource Optimization',
     description: 'Asset size and request count budgets',
     category: 'all',
-    budgets: resourceBudgets
+    budgets: resourceBudgets,
   },
   {
     name: 'Offline Sync',
     description: 'Offline and synchronization performance',
     category: 'all',
-    budgets: offlineSyncBudgets
+    budgets: offlineSyncBudgets,
   },
   {
     name: 'GIS Performance',
     description: 'Map rendering and geospatial operations',
     category: 'all',
-    budgets: gisPerformanceBudgets
+    budgets: gisPerformanceBudgets,
   },
   {
     name: 'AI Processing',
     description: 'AI and machine learning operations',
     category: 'all',
-    budgets: aiPerformanceBudgets
+    budgets: aiPerformanceBudgets,
   },
   {
     name: 'Monorepo Build',
     description: 'Build and testing performance',
     category: 'desktop',
-    budgets: monorepoPerformanceBudgets
+    budgets: monorepoPerformanceBudgets,
   },
   {
     name: 'Queue Processing',
     description: 'Background task processing',
     category: 'all',
-    budgets: queuePerformanceBudgets
-  }
+    budgets: queuePerformanceBudgets,
+  },
 ];
 
 /**
  * Helper function to get the performance budget for a given metric and device type
  */
 export function getPerformanceBudget(
-  metricName: string, 
+  metricName: string,
   deviceType: 'desktop' | 'mobile' = 'desktop'
 ): PerformanceBudget | undefined {
   // First, find the metric in all budget sets
   for (const budgetSet of performanceBudgetSets) {
     // Skip if this budget set is not applicable to the device type
     if (
-      budgetSet.category !== 'all' && 
-      budgetSet.category !== deviceType && 
+      budgetSet.category !== 'all' &&
+      budgetSet.category !== deviceType &&
       !(budgetSet.category === 'critical')
     ) {
       continue;
     }
-    
+
     // Look for the metric in this budget set
-    const matchingBudget = budgetSet.budgets.find(budget => 
-      budget.metricName === metricName
-    );
-    
+    const matchingBudget = budgetSet.budgets.find(budget => budget.metricName === metricName);
+
     if (matchingBudget) {
       return matchingBudget;
     }
   }
-  
+
   // Fallback: handle specific cases that don't follow the pattern
   if (metricName === 'FCP') {
     // First Contentful Paint has different thresholds for mobile vs desktop
@@ -414,10 +412,10 @@ export function getPerformanceBudget(
       good: deviceType === 'mobile' ? 1800 : 1000,
       needsImprovement: deviceType === 'mobile' ? 3000 : 2000,
       critical: deviceType === 'mobile' ? 5000 : 4000,
-      unit: 'ms'
+      unit: 'ms',
     };
   }
-  
+
   if (metricName === 'TTFB') {
     // Time to First Byte is similar for both platforms
     return {
@@ -426,10 +424,10 @@ export function getPerformanceBudget(
       good: 800,
       needsImprovement: 1800,
       critical: 2500,
-      unit: 'ms'
+      unit: 'ms',
     };
   }
-  
+
   return undefined;
 }
 
@@ -437,22 +435,21 @@ export function getPerformanceBudget(
  * Determine the rating of a metric value based on performance budgets
  */
 export function getRating(
-  metricName: string, 
-  value: number, 
+  metricName: string,
+  value: number,
   deviceType: 'desktop' | 'mobile' = 'desktop'
 ): 'good' | 'needs-improvement' | 'poor' {
   const budget = getPerformanceBudget(metricName, deviceType);
-  
+
   if (!budget) {
     // Default to "good" if we don't have a budget for this metric
     return 'good';
   }
-  
+
   // For most metrics, lower is better
   // But some metrics like FPS are better when higher
-  const isHigherBetter = metricName === 'MapRenderFPS' || 
-                          metricName === 'QueueProcessingRate';
-  
+  const isHigherBetter = metricName === 'MapRenderFPS' || metricName === 'QueueProcessingRate';
+
   if (isHigherBetter) {
     if (value >= budget.good) {
       return 'good';

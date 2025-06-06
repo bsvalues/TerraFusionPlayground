@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { 
-  PerformanceBudgetSet, 
-  performanceBudgetSets, 
-  PerformanceBudget 
+import {
+  PerformanceBudgetSet,
+  performanceBudgetSets,
+  PerformanceBudget,
 } from '@shared/web-vitals-budgets';
 
 interface PerformanceBudgetsProps {
@@ -16,22 +23,22 @@ interface PerformanceBudgetsProps {
   selectedCategory?: string;
 }
 
-export function PerformanceBudgets({ 
-  metrics = [], 
-  selectedCategory = 'critical' 
+export function PerformanceBudgets({
+  metrics = [],
+  selectedCategory = 'critical',
 }: PerformanceBudgetsProps) {
   const [activeTab, setActiveTab] = useState(selectedCategory);
-  
+
   // Filter budget sets based on active tab
   const filteredBudgetSets = performanceBudgetSets.filter(
     set => activeTab === 'all' || set.category === activeTab
   );
-  
+
   // Calculate budget status for a metric
   const getBudgetStatus = (budget: PerformanceBudget) => {
     // Find the corresponding metric in our data
     const matchingMetrics = metrics.filter(m => m.name === budget.metricName);
-    
+
     if (matchingMetrics.length === 0) {
       return {
         value: null,
@@ -40,18 +47,18 @@ export function PerformanceBudgets({
         message: 'No data available',
       };
     }
-    
+
     // Calculate the p75 (75th percentile)
     const values = matchingMetrics.map(m => m.value).sort((a, b) => a - b);
     const p75Index = Math.floor(values.length * 0.75);
     const p75Value = values[p75Index] || values[values.length - 1];
-    
+
     // Special cases where higher values are better
     const isInverseMetric = ['MapRenderFPS', 'QueueProcessingRate'].includes(budget.metricName);
-    
+
     let status: 'good' | 'warning' | 'critical' | 'unknown';
     let percentage: number;
-    
+
     if (isInverseMetric) {
       // For these metrics, higher is better
       if (p75Value >= budget.good) {
@@ -84,7 +91,7 @@ export function PerformanceBudgets({
         percentage = 10; // Very poor
       }
     }
-    
+
     return {
       value: p75Value,
       percentage,
@@ -93,28 +100,36 @@ export function PerformanceBudgets({
       samples: matchingMetrics.length,
     };
   };
-  
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'good': return 'bg-green-500';
-      case 'warning': return 'bg-yellow-500';
-      case 'critical': return 'bg-red-500';
-      default: return 'bg-gray-300';
+      case 'good':
+        return 'bg-green-500';
+      case 'warning':
+        return 'bg-yellow-500';
+      case 'critical':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-300';
     }
   };
-  
+
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'good': return <Badge className="bg-green-500">Good</Badge>;
-      case 'warning': return <Badge className="bg-yellow-500">Needs Improvement</Badge>;
-      case 'critical': return <Badge className="bg-red-500">Critical</Badge>;
-      default: return <Badge className="bg-gray-300">Unknown</Badge>;
+      case 'good':
+        return <Badge className="bg-green-500">Good</Badge>;
+      case 'warning':
+        return <Badge className="bg-yellow-500">Needs Improvement</Badge>;
+      case 'critical':
+        return <Badge className="bg-red-500">Critical</Badge>;
+      default:
+        return <Badge className="bg-gray-300">Unknown</Badge>;
     }
   };
-  
+
   const formatBudgetValue = (budget: PerformanceBudget, value: number | null) => {
     if (value === null) return 'N/A';
-    
+
     // Format based on metric type
     if (budget.metricName === 'CLS') {
       return value.toFixed(3);
@@ -142,9 +157,9 @@ export function PerformanceBudgets({
           <TabsTrigger value="desktop">Desktop</TabsTrigger>
           <TabsTrigger value="mobile">Mobile</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value={activeTab} className="pt-4">
-          {filteredBudgetSets.map((budgetSet) => (
+          {filteredBudgetSets.map(budgetSet => (
             <Card key={budgetSet.name} className="mb-6">
               <CardHeader>
                 <CardTitle>{budgetSet.name}</CardTitle>
@@ -152,7 +167,7 @@ export function PerformanceBudgets({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {budgetSet.budgets.map((budget) => {
+                  {budgetSet.budgets.map(budget => {
                     const status = getBudgetStatus(budget);
                     return (
                       <div key={budget.metricName} className="space-y-1">
@@ -179,13 +194,15 @@ export function PerformanceBudgets({
                             {status.status !== 'unknown' && getStatusBadge(status.status)}
                           </div>
                         </div>
-                        <Progress 
-                          value={status.percentage} 
-                          className={`h-2 ${getStatusColor(status.status)}`} 
+                        <Progress
+                          value={status.percentage}
+                          className={`h-2 ${getStatusColor(status.status)}`}
                         />
                         <div className="flex justify-between text-xs text-gray-500">
                           <span>Good: {formatBudgetValue(budget, budget.good)}</span>
-                          <span>Needs Improvement: {formatBudgetValue(budget, budget.needsImprovement)}</span>
+                          <span>
+                            Needs Improvement: {formatBudgetValue(budget, budget.needsImprovement)}
+                          </span>
                           <span>Critical: {formatBudgetValue(budget, budget.critical)}</span>
                         </div>
                       </div>
@@ -216,16 +233,17 @@ interface PerformanceAlertProps {
   onAcknowledge?: (alertId: string) => void;
 }
 
-export function PerformanceAlerts({ 
-  alerts = [], 
-  onAcknowledge 
-}: PerformanceAlertProps) {
+export function PerformanceAlerts({ alerts = [], onAcknowledge }: PerformanceAlertProps) {
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'high': return 'bg-red-100 border-red-500 text-red-700';
-      case 'medium': return 'bg-yellow-100 border-yellow-500 text-yellow-700';
-      case 'low': return 'bg-blue-100 border-blue-500 text-blue-700';
-      default: return 'bg-gray-100 border-gray-500 text-gray-700';
+      case 'high':
+        return 'bg-red-100 border-red-500 text-red-700';
+      case 'medium':
+        return 'bg-yellow-100 border-yellow-500 text-yellow-700';
+      case 'low':
+        return 'bg-blue-100 border-blue-500 text-blue-700';
+      default:
+        return 'bg-gray-100 border-gray-500 text-gray-700';
     }
   };
 
@@ -255,9 +273,9 @@ export function PerformanceAlerts({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {alerts.map((alert) => (
-            <div 
-              key={alert.id} 
+          {alerts.map(alert => (
+            <div
+              key={alert.id}
               className={`border-l-4 p-4 rounded ${getSeverityColor(alert.severity)}`}
             >
               <div className="flex justify-between">
@@ -272,11 +290,7 @@ export function PerformanceAlerts({
                   Detected {new Date(alert.detectedAt).toLocaleString()}
                 </div>
                 {onAcknowledge && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => onAcknowledge(alert.id)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => onAcknowledge(alert.id)}>
                     Acknowledge
                   </Button>
                 )}

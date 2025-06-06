@@ -15,6 +15,7 @@ The integration consists of four primary components that work together:
 ### 1. VoiceCommandService
 
 The core service that handles:
+
 - Speech recognition and transcription
 - Command pattern matching and extraction
 - Event emission for command detection and execution
@@ -22,20 +23,23 @@ The core service that handles:
 - Audio file processing for speech recognition
 
 **Key Features:**
+
 - Wake word detection ("Hey Agent")
-- Pattern matching with parameter extraction 
+- Pattern matching with parameter extraction
 - Support for both text simulation and real audio recording
 - Event-based architecture for loose coupling
 
 ### 2. VoiceCommandManager
 
 Acts as a mediator between the CLI and the VoiceCommandService:
+
 - Sets up event handlers for voice command events
 - Manages user interaction and messaging
 - Handles custom command registration
 - Interfaces with the CLI execution engine
 
 **Key Features:**
+
 - User-friendly messaging and error handling
 - Custom command configuration via interactive prompts
 - Command execution routing
@@ -44,11 +48,13 @@ Acts as a mediator between the CLI and the VoiceCommandService:
 ### 3. AudioRecorder
 
 Handles audio recording functionality:
+
 - Cross-platform audio recording with multiple fallback methods
 - Recording file management
 - Event-based recording status notifications
 
 **Key Features:**
+
 - Support for multiple recording tools (FFmpeg, SoX, ALSA)
 - Graceful fallback between recording methods
 - Event-based architecture for async recording
@@ -57,11 +63,13 @@ Handles audio recording functionality:
 ### 4. SpeechCredentialsHelper
 
 Manages Google Cloud Speech API credentials:
+
 - Assists in setting up and configuring API credentials
 - Validates credential availability
 - Provides instructions for obtaining credentials
 
 **Key Features:**
+
 - Interactive credential setup flow
 - Credential validation and testing
 - Secure storage of API credentials
@@ -81,7 +89,7 @@ program
   .option('-r, --real-recording', 'Use real audio recording instead of text simulation', false)
   .option('--setup-credentials', 'Set up Google Cloud Speech credentials', false)
   .option('--test-recording', 'Test if audio recording is available on your system', false)
-  .action(async (options) => {
+  .action(async options => {
     // Command implementation
   });
 ```
@@ -92,16 +100,12 @@ The voice command system uses an event-driven architecture:
 
 1. **Input Capture**
    - Text input (simulation) or Audio recording
-   
 2. **Speech Recognition**
    - Google Cloud Speech-to-Text processing
-   
 3. **Command Detection**
    - Pattern matching and parameter extraction
-   
 4. **Command Execution**
    - Routing to appropriate CLI command handler
-   
 5. **Feedback**
    - User feedback via console outputs
 
@@ -120,10 +124,8 @@ The voice command system is designed to be extensible:
 
 1. **Custom Commands**
    - Users can add custom voice commands mapped to CLI commands
-   
 2. **Recording Methods**
    - New audio recording methods can be added to the AudioRecorder
-   
 3. **Command Patterns**
    - New command patterns with parameter extraction can be added
 
@@ -133,15 +135,11 @@ Potential enhancements to the voice command system:
 
 1. **Continuous Listening Mode**
    - Background listening for commands without manual invocation
-   
 2. **Enhanced Wake Word Detection**
    - More sophisticated wake word detection with lower false positives
-   
 3. **Offline Speech Recognition**
    - Support for offline speech recognition engines
-   
 4. **Voice Response**
    - Text-to-speech response capabilities for hands-free operation
-   
 5. **Command Context Awareness**
    - Context-sensitive commands based on current CLI state

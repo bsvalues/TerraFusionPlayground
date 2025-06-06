@@ -1,6 +1,6 @@
 /**
  * Code Snippet Service
- * 
+ *
  * This service manages code snippets for the Smart Code Snippets Library.
  * It provides functionality for creating, retrieving, updating, and deleting code snippets,
  * as well as searching and filtering snippets based on various criteria.
@@ -8,11 +8,7 @@
 
 import { IStorage } from '../../storage';
 import { eq, and, like, ilike, or, inArray } from 'drizzle-orm';
-import { 
-  CodeSnippet, 
-  InsertCodeSnippet, 
-  CodeSnippetType
-} from '@shared/schema';
+import { CodeSnippet, InsertCodeSnippet, CodeSnippetType } from '@shared/schema';
 import { PlandexAIService } from '../plandex-ai-service';
 import { getPlandexAIService } from '../plandex-ai-factory';
 
@@ -22,7 +18,7 @@ export class CodeSnippetService {
 
   constructor(storage: IStorage) {
     this.storage = storage;
-    
+
     // Try to initialize PlandexAI for AI-generated snippets
     try {
       this.plandexAI = getPlandexAIService();
@@ -82,7 +78,10 @@ export class CodeSnippetService {
   /**
    * Update an existing code snippet
    */
-  async updateSnippet(id: number, snippet: Partial<InsertCodeSnippet>): Promise<CodeSnippet | undefined> {
+  async updateSnippet(
+    id: number,
+    snippet: Partial<InsertCodeSnippet>
+  ): Promise<CodeSnippet | undefined> {
     try {
       return await this.storage.updateCodeSnippet(id, snippet);
     } catch (error) {
@@ -111,7 +110,7 @@ export class CodeSnippetService {
       const snippet = await this.storage.getCodeSnippetById(id);
       if (snippet) {
         await this.storage.updateCodeSnippet(id, {
-          usageCount: (snippet.usageCount || 0) + 1
+          usageCount: (snippet.usageCount || 0) + 1,
         });
       }
     } catch (error) {
@@ -122,15 +121,13 @@ export class CodeSnippetService {
   /**
    * Generate a code snippet using AI
    */
-  async generateSnippet(
-    options: {
-      description: string;
-      language: string;
-      snippetType: CodeSnippetType;
-      createdBy: number;
-      context?: string;
-    }
-  ): Promise<CodeSnippet | null> {
+  async generateSnippet(options: {
+    description: string;
+    language: string;
+    snippetType: CodeSnippetType;
+    createdBy: number;
+    context?: string;
+  }): Promise<CodeSnippet | null> {
     if (!this.plandexAI) {
       throw new Error('PlandexAI service not available for code snippet generation');
     }
@@ -141,7 +138,7 @@ export class CodeSnippetService {
         prompt: options.description,
         language: options.language,
         codeType: options.snippetType,
-        context: options.context || ''
+        context: options.context || '',
       });
 
       if (!result.code) {
@@ -149,9 +146,10 @@ export class CodeSnippetService {
       }
 
       // Extract a name from the description (first 40 chars or less)
-      const name = options.description.length > 40
-        ? `${options.description.substring(0, 37)}...`
-        : options.description;
+      const name =
+        options.description.length > 40
+          ? `${options.description.substring(0, 37)}...`
+          : options.description;
 
       // Create and store the snippet
       const snippet: InsertCodeSnippet = {
@@ -164,7 +162,7 @@ export class CodeSnippetService {
         createdBy: options.createdBy,
         isPublic: false,
         aiGenerated: true,
-        aiModel: 'PlandexAI'
+        aiModel: 'PlandexAI',
       };
 
       return await this.createSnippet(snippet);
@@ -181,11 +179,33 @@ export class CodeSnippetService {
     // Simple algorithm to extract potential tags
     // Extract words that might be meaningful as tags (e.g., language names, frameworks, etc.)
     const potentialTags = [
-      'react', 'vue', 'angular', 'svelte', 'node', 'express',
-      'javascript', 'typescript', 'python', 'java', 'c#', 'php',
-      'html', 'css', 'scss', 'api', 'rest', 'graphql',
-      'database', 'sql', 'mongodb', 'postgres', 'authentication',
-      'component', 'function', 'utility', 'helper'
+      'react',
+      'vue',
+      'angular',
+      'svelte',
+      'node',
+      'express',
+      'javascript',
+      'typescript',
+      'python',
+      'java',
+      'c#',
+      'php',
+      'html',
+      'css',
+      'scss',
+      'api',
+      'rest',
+      'graphql',
+      'database',
+      'sql',
+      'mongodb',
+      'postgres',
+      'authentication',
+      'component',
+      'function',
+      'utility',
+      'helper',
     ];
 
     const lowerDesc = description.toLowerCase();

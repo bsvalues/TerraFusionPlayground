@@ -1,6 +1,6 @@
 /**
  * Property Story Generator Test Script
- * 
+ *
  * This script tests the Property Story Generator service with test property data.
  */
 import { PropertyStoryGenerator } from '../dist/server/services/property-story-generator.js';
@@ -10,24 +10,24 @@ import path from 'path';
 
 async function testPropertyStory() {
   console.log('Testing Property Story Generator...');
-  
+
   try {
     // Create an instance of the Property Story Generator
     const generator = new PropertyStoryGenerator(storage);
-    
+
     // Test properties
     const testPropertyIds = ['BC101', 'BC102', 'BC103'];
-    
+
     // Test options
     const options = {
       tone: 'professional',
       includeImprovements: true,
       includeLandRecords: true,
-      includeFields: true
+      includeFields: true,
     };
-    
+
     console.log(`Testing story generation for properties: ${testPropertyIds.join(', ')}`);
-    
+
     // Generate individual stories
     for (const propertyId of testPropertyIds) {
       console.log(`\nGenerating story for property ${propertyId}...`);
@@ -43,7 +43,7 @@ async function testPropertyStory() {
         console.error(`Error generating story for ${propertyId}:`, error.message);
       }
     }
-    
+
     // Generate a comparison story
     console.log(`\nGenerating comparison story for all properties...`);
     try {
@@ -57,7 +57,7 @@ async function testPropertyStory() {
     } catch (error) {
       console.error(`Error generating comparison story:`, error.message);
     }
-    
+
     console.log('\nProperty Story Generator test completed.');
   } catch (error) {
     console.error('Error in test script:', error);

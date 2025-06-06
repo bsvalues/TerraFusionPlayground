@@ -20,30 +20,30 @@ class FileReadTool extends BaseTool {
           name: 'filePath',
           description: 'Path to the file to read',
           type: 'string',
-          required: true
+          required: true,
         },
         encoding: {
           name: 'encoding',
           description: 'File encoding',
           type: 'string',
           required: false,
-          default: 'utf8'
-        }
+          default: 'utf8',
+        },
       },
       ['filesystem']
     );
   }
-  
+
   async execute(args: { filePath: string; encoding?: string }): Promise<ToolResult> {
     try {
       // Ensure the file exists
       if (!fs.existsSync(args.filePath)) {
         return {
           success: false,
-          output: `File not found: ${args.filePath}`
+          output: `File not found: ${args.filePath}`,
         };
       }
-      
+
       // Check if it's a directory
       const stats = fs.statSync(args.filePath);
       if (stats.isDirectory()) {
@@ -52,23 +52,23 @@ class FileReadTool extends BaseTool {
         return {
           success: true,
           output: `Directory listing for ${args.filePath}:\n${files.join('\n')}`,
-          data: { isDirectory: true, files }
+          data: { isDirectory: true, files },
         };
       }
-      
+
       // Read the file
       const content = fs.readFileSync(args.filePath, args.encoding || 'utf8');
-      
+
       return {
         success: true,
         output: `Successfully read file: ${args.filePath}`,
-        data: { content, filePath: args.filePath }
+        data: { content, filePath: args.filePath },
       };
     } catch (error) {
       return {
         success: false,
         output: `Error reading file: ${error.message}`,
-        error
+        error,
       };
     }
   }
@@ -87,20 +87,20 @@ class FileWriteTool extends BaseTool {
           name: 'filePath',
           description: 'Path to the file to write',
           type: 'string',
-          required: true
+          required: true,
         },
         content: {
           name: 'content',
           description: 'Content to write to the file',
           type: 'string',
-          required: true
+          required: true,
         },
         encoding: {
           name: 'encoding',
           description: 'File encoding',
           type: 'string',
           required: false,
-          default: 'utf8'
+          default: 'utf8',
         },
         mode: {
           name: 'mode',
@@ -108,16 +108,16 @@ class FileWriteTool extends BaseTool {
           type: 'string',
           required: false,
           default: 'overwrite',
-          enum: ['overwrite', 'append']
-        }
+          enum: ['overwrite', 'append'],
+        },
       },
       ['filesystem']
     );
   }
-  
-  async execute(args: { 
-    filePath: string; 
-    content: string; 
+
+  async execute(args: {
+    filePath: string;
+    content: string;
     encoding?: string;
     mode?: 'overwrite' | 'append';
   }): Promise<ToolResult> {
@@ -127,26 +127,26 @@ class FileWriteTool extends BaseTool {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      
+
       // Determine write mode
       const flag = args.mode === 'append' ? 'a' : 'w';
-      
+
       // Write to the file
       fs.writeFileSync(args.filePath, args.content, {
         encoding: args.encoding || 'utf8',
-        flag
+        flag,
       });
-      
+
       return {
         success: true,
         output: `Successfully ${args.mode === 'append' ? 'appended to' : 'wrote'} file: ${args.filePath}`,
-        data: { filePath: args.filePath }
+        data: { filePath: args.filePath },
       };
     } catch (error) {
       return {
         success: false,
         output: `Error writing to file: ${error.message}`,
-        error
+        error,
       };
     }
   }
@@ -165,60 +165,56 @@ class CommandExecutionTool extends BaseTool {
           name: 'command',
           description: 'Command to execute',
           type: 'string',
-          required: true
+          required: true,
         },
         cwd: {
           name: 'cwd',
           description: 'Working directory for the command',
           type: 'string',
-          required: false
+          required: false,
         },
         timeout: {
           name: 'timeout',
           description: 'Timeout in milliseconds',
           type: 'number',
           required: false,
-          default: 30000
-        }
+          default: 30000,
+        },
       },
       ['system']
     );
   }
-  
-  async execute(args: { 
-    command: string; 
-    cwd?: string;
-    timeout?: number;
-  }): Promise<ToolResult> {
+
+  async execute(args: { command: string; cwd?: string; timeout?: number }): Promise<ToolResult> {
     try {
       // Execute the command
       const { stdout, stderr } = await execAsync(args.command, {
         cwd: args.cwd,
-        timeout: args.timeout || 30000
+        timeout: args.timeout || 30000,
       });
-      
+
       // Handle the result
       const output = stdout.trim();
       const error = stderr.trim();
-      
+
       if (error) {
         return {
           success: true,
           output: `Command executed with warnings or errors:\n${error}\n\nOutput:\n${output}`,
-          data: { stdout: output, stderr: error }
+          data: { stdout: output, stderr: error },
         };
       }
-      
+
       return {
         success: true,
         output,
-        data: { stdout: output, stderr: error }
+        data: { stdout: output, stderr: error },
       };
     } catch (error) {
       return {
         success: false,
         output: `Error executing command: ${error.message}`,
-        error
+        error,
       };
     }
   }
@@ -238,66 +234,66 @@ class GitOperationTool extends BaseTool {
           description: 'Git operation to perform',
           type: 'string',
           required: true,
-          enum: ['status', 'add', 'commit', 'push', 'pull', 'clone', 'checkout', 'branch', 'log']
+          enum: ['status', 'add', 'commit', 'push', 'pull', 'clone', 'checkout', 'branch', 'log'],
         },
         args: {
           name: 'args',
           description: 'Arguments for the git operation',
           type: 'string',
           required: false,
-          default: ''
+          default: '',
         },
         repoPath: {
           name: 'repoPath',
           description: 'Path to the repository',
           type: 'string',
           required: false,
-          default: '.'
-        }
+          default: '.',
+        },
       },
       ['git', 'version-control']
     );
   }
-  
-  async execute(args: { 
-    operation: string; 
+
+  async execute(args: {
+    operation: string;
     args?: string;
     repoPath?: string;
   }): Promise<ToolResult> {
     try {
       const repoPath = args.repoPath || '.';
       const gitArgs = args.args || '';
-      
+
       // Build the git command
       const command = `git ${args.operation} ${gitArgs}`;
-      
+
       // Execute the command
       const { stdout, stderr } = await execAsync(command, {
-        cwd: repoPath
+        cwd: repoPath,
       });
-      
+
       // Handle the result
       const output = stdout.trim();
       const error = stderr.trim();
-      
+
       if (error && !output) {
         return {
           success: false,
           output: `Git operation failed: ${error}`,
-          data: { stdout: output, stderr: error }
+          data: { stdout: output, stderr: error },
         };
       }
-      
+
       return {
         success: true,
         output: output || 'Git operation completed successfully',
-        data: { stdout: output, stderr: error }
+        data: { stdout: output, stderr: error },
       };
     } catch (error) {
       return {
         success: false,
         output: `Error executing git operation: ${error.message}`,
-        error
+        error,
       };
     }
   }
@@ -317,43 +313,43 @@ class DependencyTool extends BaseTool {
           description: 'Dependency operation to perform',
           type: 'string',
           required: true,
-          enum: ['install', 'remove', 'update', 'list', 'search']
+          enum: ['install', 'remove', 'update', 'list', 'search'],
         },
         packageManager: {
           name: 'packageManager',
           description: 'Package manager to use',
           type: 'string',
           required: true,
-          enum: ['npm', 'yarn', 'pnpm', 'pip', 'cargo', 'go']
+          enum: ['npm', 'yarn', 'pnpm', 'pip', 'cargo', 'go'],
         },
         packages: {
           name: 'packages',
           description: 'Packages to operate on',
           type: 'string',
           required: false,
-          default: ''
+          default: '',
         },
         options: {
           name: 'options',
           description: 'Additional options for the package manager',
           type: 'string',
           required: false,
-          default: ''
+          default: '',
         },
         cwd: {
           name: 'cwd',
           description: 'Working directory',
           type: 'string',
           required: false,
-          default: '.'
-        }
+          default: '.',
+        },
       },
       ['dependencies', 'package-management']
     );
   }
-  
-  async execute(args: { 
-    operation: string; 
+
+  async execute(args: {
+    operation: string;
     packageManager: string;
     packages?: string;
     options?: string;
@@ -363,10 +359,10 @@ class DependencyTool extends BaseTool {
       const cwd = args.cwd || '.';
       const packages = args.packages || '';
       const options = args.options || '';
-      
+
       // Build the command based on package manager
       let command = '';
-      
+
       switch (args.packageManager) {
         case 'npm':
           if (args.operation === 'install') {
@@ -381,7 +377,7 @@ class DependencyTool extends BaseTool {
             command = `npm search ${packages} ${options}`;
           }
           break;
-          
+
         case 'yarn':
           if (args.operation === 'install') {
             command = `yarn add ${packages} ${options}`;
@@ -395,7 +391,7 @@ class DependencyTool extends BaseTool {
             command = `yarn info ${packages} ${options}`;
           }
           break;
-          
+
         case 'pip':
           if (args.operation === 'install') {
             command = `pip install ${packages} ${options}`;
@@ -409,48 +405,48 @@ class DependencyTool extends BaseTool {
             command = `pip search ${packages} ${options}`;
           }
           break;
-          
+
         // Add more package managers as needed
-          
+
         default:
           return {
             success: false,
-            output: `Unsupported package manager: ${args.packageManager}`
+            output: `Unsupported package manager: ${args.packageManager}`,
           };
       }
-      
+
       if (!command) {
         return {
           success: false,
-          output: `Unsupported operation: ${args.operation} for package manager: ${args.packageManager}`
+          output: `Unsupported operation: ${args.operation} for package manager: ${args.packageManager}`,
         };
       }
-      
+
       // Execute the command
       const { stdout, stderr } = await execAsync(command, { cwd });
-      
+
       // Handle the result
       const output = stdout.trim();
       const error = stderr.trim();
-      
+
       if (error && !output) {
         return {
           success: false,
           output: `Dependency operation failed: ${error}`,
-          data: { stdout: output, stderr: error }
+          data: { stdout: output, stderr: error },
         };
       }
-      
+
       return {
         success: true,
         output: output || 'Dependency operation completed successfully',
-        data: { stdout: output, stderr: error }
+        data: { stdout: output, stderr: error },
       };
     } catch (error) {
       return {
         success: false,
         output: `Error executing dependency operation: ${error.message}`,
-        error
+        error,
       };
     }
   }
@@ -469,29 +465,29 @@ class CodeAnalysisTool extends BaseTool {
           name: 'filePath',
           description: 'Path to the file to analyze',
           type: 'string',
-          required: true
+          required: true,
         },
         operation: {
           name: 'operation',
           description: 'Analysis operation to perform',
           type: 'string',
           required: true,
-          enum: ['lint', 'complexity', 'dependencies', 'security', 'summary']
+          enum: ['lint', 'complexity', 'dependencies', 'security', 'summary'],
         },
         options: {
           name: 'options',
           description: 'Additional options for the analysis',
           type: 'string',
           required: false,
-          default: ''
-        }
+          default: '',
+        },
       },
       ['code-analysis']
     );
   }
-  
-  async execute(args: { 
-    filePath: string; 
+
+  async execute(args: {
+    filePath: string;
     operation: string;
     options?: string;
   }): Promise<ToolResult> {
@@ -500,19 +496,19 @@ class CodeAnalysisTool extends BaseTool {
       if (!fs.existsSync(args.filePath)) {
         return {
           success: false,
-          output: `File not found: ${args.filePath}`
+          output: `File not found: ${args.filePath}`,
         };
       }
-      
+
       // Get file extension
       const ext = path.extname(args.filePath);
-      
+
       // Get file content
       const content = fs.readFileSync(args.filePath, 'utf8');
-      
+
       // A simple code analysis
       let output = '';
-      
+
       switch (args.operation) {
         case 'summary':
           const lineCount = content.split('\n').length;
@@ -520,7 +516,7 @@ class CodeAnalysisTool extends BaseTool {
           const functions = (content.match(/function\s+\w+\s*\(/g) || []).length;
           const classes = (content.match(/class\s+\w+/g) || []).length;
           const imports = (content.match(/import\s+.+from/g) || []).length;
-          
+
           output = `Code Summary for ${args.filePath}:
 - Lines: ${lineCount}
 - Characters: ${charCount}
@@ -528,7 +524,7 @@ class CodeAnalysisTool extends BaseTool {
 - Classes: ${classes}
 - Imports: ${imports}`;
           break;
-          
+
         case 'complexity':
           // This is a very simplified complexity analysis
           // In a real implementation, you'd use a proper static analysis tool
@@ -537,49 +533,46 @@ class CodeAnalysisTool extends BaseTool {
             const indentation = line.search(/\S|$/);
             return Math.floor(indentation / 2); // Assuming 2-space indentation
           });
-          
+
           const maxNestingLevel = Math.max(...nestingLevels);
           const avgNestingLevel = nestingLevels.reduce((a, b) => a + b, 0) / nestingLevels.length;
-          
+
           output = `Complexity Analysis for ${args.filePath}:
 - Maximum nesting level: ${maxNestingLevel}
 - Average nesting level: ${avgNestingLevel.toFixed(2)}`;
           break;
-          
+
         case 'dependencies':
           // Extract imports/requires
           const importMatches = content.match(/import\s+.+from\s+['"]([^'"]+)['"]/g) || [];
           const requireMatches = content.match(/require\s*\(\s*['"]([^'"]+)['"]\s*\)/g) || [];
-          
-          const imports = [
-            ...importMatches,
-            ...requireMatches
-          ];
-          
+
+          const imports = [...importMatches, ...requireMatches];
+
           output = `Dependency Analysis for ${args.filePath}:
 Found ${imports.length} imports/requires:
 ${imports.join('\n')}`;
           break;
-          
+
         // Add more analyses as needed
-          
+
         default:
           return {
             success: false,
-            output: `Unsupported analysis operation: ${args.operation}`
+            output: `Unsupported analysis operation: ${args.operation}`,
           };
       }
-      
+
       return {
         success: true,
         output,
-        data: { filePath: args.filePath, operation: args.operation }
+        data: { filePath: args.filePath, operation: args.operation },
       };
     } catch (error) {
       return {
         success: false,
         output: `Error analyzing code: ${error.message}`,
-        error
+        error,
       };
     }
   }
@@ -592,18 +585,18 @@ export function registerBuiltinTools(registry: ToolRegistry): void {
   // File operations
   registry.registerTool(new FileReadTool());
   registry.registerTool(new FileWriteTool());
-  
+
   // System operations
   registry.registerTool(new CommandExecutionTool());
-  
+
   // Version control
   registry.registerTool(new GitOperationTool());
-  
+
   // Package management
   registry.registerTool(new DependencyTool());
-  
+
   // Code analysis
   registry.registerTool(new CodeAnalysisTool());
-  
+
   // Additional tools can be added here
 }

@@ -1,7 +1,7 @@
-import OpenAI from "openai";
-import { Config } from "../utils/config";
-import { ToolRegistry } from "../tools/toolRegistry";
-import { ContextManager } from "../context/contextManager";
+import OpenAI from 'openai';
+import { Config } from '../utils/config';
+import { ToolRegistry } from '../tools/toolRegistry';
+import { ContextManager } from '../context/contextManager';
 
 interface AICompletionOptions {
   prompt: string;
@@ -28,22 +28,18 @@ export class AIService {
   private config: Config;
   private toolRegistry: ToolRegistry;
   private contextManager: ContextManager;
-  
-  constructor(
-    config: Config,
-    toolRegistry: ToolRegistry,
-    contextManager: ContextManager
-  ) {
+
+  constructor(config: Config, toolRegistry: ToolRegistry, contextManager: ContextManager) {
     this.config = config;
     this.toolRegistry = toolRegistry;
     this.contextManager = contextManager;
-    
+
     // Initialize OpenAI client
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY || config.apiKey,
     });
   }
-  
+
   /**
    * Get a completion from the AI model
    */
@@ -54,35 +50,38 @@ export class AIService {
       temperature = this.config.temperature,
       maxTokens = this.config.maxTokens,
       contextItems = [],
-      toolNames = []
+      toolNames = [],
     } = options;
-    
+
     // Include relevant context if requested
     let context = '';
     if (contextItems && contextItems.length > 0) {
       context = contextItems.join('\n\n');
     }
-    
+
     // Prepare tools if any are requested
-    const tools = toolNames.length > 0
-      ? toolNames.map(name => {
-          const tool = this.toolRegistry.getTool(name);
-          if (!tool) {
-            console.warn(`Tool "${name}" not found, skipping in AI request`);
-            return null;
-          }
-          
-          return {
-            type: "function" as const,
-            function: {
-              name: tool.name,
-              description: tool.description,
-              parameters: this.convertToolParametersToJsonSchema(tool.parameters)
-            }
-          };
-        }).filter(Boolean)
-      : undefined;
-    
+    const tools =
+      toolNames.length > 0
+        ? toolNames
+            .map(name => {
+              const tool = this.toolRegistry.getTool(name);
+              if (!tool) {
+                console.warn(`Tool "${name}" not found, skipping in AI request`);
+                return null;
+              }
+
+              return {
+                type: 'function' as const,
+                function: {
+                  name: tool.name,
+                  description: tool.description,
+                  parameters: this.convertToolParametersToJsonSchema(tool.parameters),
+                },
+              };
+            })
+            .filter(Boolean)
+        : undefined;
+
     // Construct the system message
     const systemContent = `You are CodeAgent, an advanced AI coding assistant.
 Your goal is to help the user with coding tasks, analysis, and other development needs.
@@ -95,40 +94,40 @@ ${this.generateToolInstructions(toolNames)}`;
         model, // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages: [
           {
-            role: "system",
-            content: systemContent
+            role: 'system',
+            content: systemContent,
           },
           {
-            role: "user",
-            content: prompt
-          }
+            role: 'user',
+            content: prompt,
+          },
         ],
         max_tokens: maxTokens,
         temperature,
         tools: tools as any,
-        tool_choice: tools && tools.length > 0 ? "auto" : undefined
+        tool_choice: tools && tools.length > 0 ? 'auto' : undefined,
       });
-      
+
       const message = completion.choices[0].message;
-      
+
       // Extract tool calls if any
       const toolCalls = message.tool_calls
         ? message.tool_calls.map(call => ({
             name: call.function.name,
-            arguments: JSON.parse(call.function.arguments)
+            arguments: JSON.parse(call.function.arguments),
           }))
         : undefined;
-      
+
       return {
         content: message.content || '',
-        toolCalls
+        toolCalls,
       };
     } catch (error) {
       console.error('Error calling OpenAI API:', error);
       throw error;
     }
   }
-  
+
   /**
    * Execute a conversation including tool calls
    */
@@ -141,14 +140,14 @@ ${this.generateToolInstructions(toolNames)}`;
     const response = await this.getCompletion({
       prompt,
       contextItems,
-      toolNames: availableTools
+      toolNames: availableTools,
     });
-    
+
     // If there are no tool calls, just return the response
     if (!response.toolCalls || response.toolCalls.length === 0) {
       return response.content;
     }
-    
+
     // Execute tool calls and collect results
     const toolResults = await Promise.all(
       response.toolCalls.map(async call => {
@@ -158,62 +157,62 @@ ${this.generateToolInstructions(toolNames)}`;
             name: call.name,
             success: result.success,
             output: result.output,
-            arguments: call.arguments
+            arguments: call.arguments,
           };
         } catch (error) {
           return {
             name: call.name,
             success: false,
             output: `Error executing tool: ${error.message}`,
-            arguments: call.arguments
+            arguments: call.arguments,
           };
         }
       })
     );
-    
+
     // Get the final response incorporating tool results
     const finalCompletion = await this.openai.chat.completions.create({
       model: this.config.model, // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
-          role: "system",
+          role: 'system',
           content: `You are CodeAgent, an advanced AI coding assistant.
 Your goal is to help the user with coding tasks, analysis, and other development needs.
 ${contextItems.length > 0 ? 'Here is some relevant context from the project:\n\n' + contextItems.join('\n\n') : ''}
-${this.generateToolInstructions(availableTools)}`
+${this.generateToolInstructions(availableTools)}`,
         },
         {
-          role: "user",
-          content: prompt
+          role: 'user',
+          content: prompt,
         },
         {
-          role: "assistant",
+          role: 'assistant',
           content: response.content || "I'll help you with that.",
           tool_calls: response.toolCalls.map((call, index) => ({
             id: `call_${index}`,
-            type: "function",
+            type: 'function',
             function: {
               name: call.name,
-              arguments: JSON.stringify(call.arguments)
-            }
-          }))
+              arguments: JSON.stringify(call.arguments),
+            },
+          })),
         },
         ...toolResults.map((result, index) => ({
-          role: "tool" as const,
+          role: 'tool' as const,
           tool_call_id: `call_${index}`,
           content: JSON.stringify({
             output: result.output,
-            success: result.success
-          })
-        }))
+            success: result.success,
+          }),
+        })),
       ],
       max_tokens: this.config.maxTokens,
-      temperature: this.config.temperature
+      temperature: this.config.temperature,
     });
-    
+
     return finalCompletion.choices[0].message.content || '';
   }
-  
+
   /**
    * Generate code completion
    */
@@ -225,12 +224,12 @@ ${this.generateToolInstructions(availableTools)}`
     const response = await this.getCompletion({
       prompt: `Generate code in ${language}:\n${prompt}`,
       contextItems,
-      temperature: 0.2 // Lower temperature for code generation
+      temperature: 0.2, // Lower temperature for code generation
     });
-    
+
     return this.extractCodeFromResponse(response.content, language);
   }
-  
+
   /**
    * Analyze code and provide insights
    */
@@ -241,7 +240,7 @@ ${this.generateToolInstructions(availableTools)}`
   ): Promise<string> {
     // Build the prompt based on analysis type
     let prompt = `Analyze the following ${language} code`;
-    
+
     switch (analysisType) {
       case 'bugs':
         prompt += ' for potential bugs and logical errors';
@@ -258,17 +257,17 @@ ${this.generateToolInstructions(availableTools)}`
       default:
         prompt += ' and provide general feedback';
     }
-    
+
     prompt += `:\n\`\`\`${language}\n${code}\n\`\`\``;
-    
+
     const response = await this.getCompletion({
       prompt,
-      temperature: 0.3 // Lower temperature for analysis
+      temperature: 0.3, // Lower temperature for analysis
     });
-    
+
     return response.content;
   }
-  
+
   /**
    * Extract and format code from response
    */
@@ -276,23 +275,23 @@ ${this.generateToolInstructions(availableTools)}`
     // Look for code blocks with the specified language
     const codeBlockRegex = new RegExp(`\`\`\`(?:${language})?\n([\\s\\S]*?)\n\`\`\``, 'i');
     const match = response.match(codeBlockRegex);
-    
+
     if (match && match[1]) {
       return match[1];
     }
-    
+
     // If no code block with language is found, try to find any code block
     const anyCodeBlockRegex = /```\n?([\s\S]*?)\n?```/;
     const anyMatch = response.match(anyCodeBlockRegex);
-    
+
     if (anyMatch && anyMatch[1]) {
       return anyMatch[1];
     }
-    
+
     // If no code block is found, return the original response
     return response;
   }
-  
+
   /**
    * Convert tool parameters to JSON Schema format expected by OpenAI
    */
@@ -301,47 +300,49 @@ ${this.generateToolInstructions(availableTools)}`
     const schema: any = {
       type: 'object',
       properties: {},
-      required: []
+      required: [],
     };
-    
+
     // Convert each parameter to JSON Schema format
     for (const [name, param] of Object.entries(parameters)) {
       schema.properties[name] = {
         type: param.type,
-        description: param.description
+        description: param.description,
       };
-      
+
       // Add enum if available
       if (param.enum) {
         schema.properties[name].enum = param.enum;
       }
-      
+
       // Add default if available
       if (param.default !== undefined) {
         schema.properties[name].default = param.default;
       }
-      
+
       // Add to required list if necessary
       if (param.required) {
         schema.required.push(name);
       }
-      
+
       // Handle nested properties for objects
       if (param.type === 'object' && param.properties) {
-        schema.properties[name].properties = this.convertToolParametersToJsonSchema(param.properties).properties;
+        schema.properties[name].properties = this.convertToolParametersToJsonSchema(
+          param.properties
+        ).properties;
       }
-      
+
       // Handle array items
       if (param.type === 'array' && param.items) {
         schema.properties[name].items = {
-          type: param.items.type
+          type: param.items.type,
         };
       }
     }
-    
+
     return schema;
   }
-  
+
   /**
    * Generate instructions for using tools
    */
@@ -349,21 +350,21 @@ ${this.generateToolInstructions(availableTools)}`
     if (!toolNames || toolNames.length === 0) {
       return '';
     }
-    
+
     const tools = toolNames.map(name => this.toolRegistry.getTool(name)).filter(Boolean);
-    
+
     if (tools.length === 0) {
       return '';
     }
-    
+
     let instructions = 'You have access to the following tools:\n\n';
-    
+
     for (const tool of tools) {
       instructions += `- ${tool.name}: ${tool.description}\n`;
     }
-    
-    instructions += '\nUse these tools when appropriate to complete the user\'s request.';
-    
+
+    instructions += "\nUse these tools when appropriate to complete the user's request.";
+
     return instructions;
   }
 }

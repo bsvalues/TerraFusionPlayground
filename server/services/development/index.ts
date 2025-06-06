@@ -1,6 +1,6 @@
 /**
  * TaxI_AI Development Platform Services
- * 
+ *
  * This file exports all the development platform services needed for
  * creating, managing, and previewing assessment agency applications.
  */
@@ -20,7 +20,7 @@ export {
   getAICodeAssistant,
   CodeSnippetService,
   DataVisualizationService,
-  ComponentPlaygroundService
+  ComponentPlaygroundService,
 };
 
 // Export service types for consistency

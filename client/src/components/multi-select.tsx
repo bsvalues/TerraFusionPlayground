@@ -9,11 +9,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,48 +39,48 @@ export function MultiSelect({
   ...props
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
-  
+
   // Handler for selecting/deselecting an option
   const handleSelect = (value: string) => {
     if (selected.includes(value)) {
-      onChange(selected.filter((item) => item !== value));
+      onChange(selected.filter(item => item !== value));
     } else {
       onChange([...selected, value]);
     }
   };
-  
+
   // Handler for removing a selected item via badge
   const handleRemove = (value: string) => {
-    onChange(selected.filter((item) => item !== value));
+    onChange(selected.filter(item => item !== value));
   };
-  
+
   // Handler for clearing all selected items
   const handleClear = () => {
     onChange([]);
     setOpen(false);
   };
-  
+
   // Get labels for the selected values
-  const selectedLabels = selected.map((value) => {
-    const option = options.find((option) => option.value === value);
+  const selectedLabels = selected.map(value => {
+    const option = options.find(option => option.value === value);
     return option ? option.label : value;
   });
-  
+
   // Generate display text for the trigger button
   const displayText = React.useMemo(() => {
     if (selected.length === 0) {
       return placeholder;
     }
-    
+
     if (selected.length <= displayLimit) {
       return selectedLabels.join(', ');
     }
-    
+
     return `${selectedLabels.slice(0, displayLimit).join(', ')} and ${
       selected.length - displayLimit
     } more`;
   }, [selected, selectedLabels, placeholder, displayLimit]);
-  
+
   return (
     <div className={cn('relative', className)} {...props}>
       <Popover open={open} onOpenChange={setOpen}>
@@ -109,7 +105,7 @@ export function MultiSelect({
             <CommandList>
               <CommandEmpty>No results found.</CommandEmpty>
               <CommandGroup>
-                {options.map((option) => {
+                {options.map(option => {
                   const isSelected = selected.includes(option.value);
                   return (
                     <CommandItem
@@ -118,10 +114,7 @@ export function MultiSelect({
                       onSelect={() => handleSelect(option.value)}
                     >
                       <Check
-                        className={cn(
-                          'mr-2 h-4 w-4',
-                          isSelected ? 'opacity-100' : 'opacity-0'
-                        )}
+                        className={cn('mr-2 h-4 w-4', isSelected ? 'opacity-100' : 'opacity-0')}
                       />
                       <span>{option.label}</span>
                     </CommandItem>
@@ -144,11 +137,11 @@ export function MultiSelect({
           </Command>
         </PopoverContent>
       </Popover>
-      
+
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
-          {selected.map((value) => {
-            const label = options.find((option) => option.value === value)?.label || value;
+          {selected.map(value => {
+            const label = options.find(option => option.value === value)?.label || value;
             return (
               <Badge key={value} variant="secondary" className="px-2 py-1 text-xs">
                 {label}

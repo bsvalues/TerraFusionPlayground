@@ -3,7 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import DevelopmentWorkspaceLayout from '@/layout/development-workspace-layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -17,17 +24,17 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Folder, 
-  Plus, 
-  Code, 
-  FileCode, 
+import {
+  Folder,
+  Plus,
+  Code,
+  FileCode,
   ClipboardList,
   Calendar,
   SearchCheck,
   Settings,
   Globe,
-  Database
+  Database,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { WorkflowSuggestionSidebar } from '@/components/workflow-optimizer';
@@ -220,7 +227,7 @@ const DevelopmentPlatformPage = () => {
         method: 'POST',
         data: newProject,
       });
-      
+
       // Close dialog and refresh projects
       setShowNewProjectDialog(false);
       setNewProject({
@@ -244,7 +251,7 @@ const DevelopmentPlatformPage = () => {
         </div>
         <div className="flex items-center gap-2">
           <WorkflowSuggestionSidebar userId={1} />
-          <Button 
+          <Button
             onClick={() => setShowNewProjectDialog(true)}
             className="flex items-center space-x-1"
           >
@@ -254,22 +261,22 @@ const DevelopmentPlatformPage = () => {
         </div>
       </div>
 
-      <Tabs 
-        defaultValue="projects" 
+      <Tabs
+        defaultValue="projects"
         value={activeTab}
         onValueChange={setActiveTab}
         className="w-full"
       >
         <div className="border-b mb-6">
           <TabsList className="bg-transparent p-0">
-            <TabsTrigger 
-              value="projects" 
+            <TabsTrigger
+              value="projects"
               className="py-2 px-4 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none"
             >
               My Projects
             </TabsTrigger>
-            <TabsTrigger 
-              value="templates" 
+            <TabsTrigger
+              value="templates"
               className="py-2 px-4 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none"
             >
               Templates
@@ -316,32 +323,32 @@ const DevelopmentPlatformPage = () => {
           ) : (
             <>
               <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-2">
-                <Button 
-                  variant={activeTemplateCategory === null ? "default" : "outline"} 
+                <Button
+                  variant={activeTemplateCategory === null ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setActiveTemplateCategory(null)}
                   className="whitespace-nowrap"
                 >
                   All Templates
                 </Button>
-                <Button 
-                  variant={activeTemplateCategory === 'assessment' ? "default" : "outline"} 
+                <Button
+                  variant={activeTemplateCategory === 'assessment' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setActiveTemplateCategory('assessment')}
                   className="whitespace-nowrap"
                 >
                   Assessment Apps
                 </Button>
-                <Button 
-                  variant={activeTemplateCategory === 'demo' ? "default" : "outline"} 
+                <Button
+                  variant={activeTemplateCategory === 'demo' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setActiveTemplateCategory('demo')}
                   className="whitespace-nowrap"
                 >
                   Demo Apps
                 </Button>
-                <Button 
-                  variant={activeTemplateCategory === 'framework' ? "default" : "outline"} 
+                <Button
+                  variant={activeTemplateCategory === 'framework' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setActiveTemplateCategory('framework')}
                   className="whitespace-nowrap"
@@ -349,30 +356,34 @@ const DevelopmentPlatformPage = () => {
                   Basic Frameworks
                 </Button>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {templates
-                  .filter(template => activeTemplateCategory === null || template.category === activeTemplateCategory)
+                  .filter(
+                    template =>
+                      activeTemplateCategory === null ||
+                      template.category === activeTemplateCategory
+                  )
                   .map((template: Template) => (
                     <TemplateCard key={template.id} template={template} />
-                  ))
-                }
+                  ))}
               </div>
-              
-              {activeTemplateCategory !== null && 
-                templates.filter(template => template.category === activeTemplateCategory).length === 0 && (
-                <div className="text-center py-8 mt-4">
-                  <p className="text-gray-500">No templates found in this category.</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setActiveTemplateCategory(null)}
-                    className="mt-2"
-                  >
-                    Show all templates
-                  </Button>
-                </div>
-              )}
+
+              {activeTemplateCategory !== null &&
+                templates.filter(template => template.category === activeTemplateCategory)
+                  .length === 0 && (
+                  <div className="text-center py-8 mt-4">
+                    <p className="text-gray-500">No templates found in this category.</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setActiveTemplateCategory(null)}
+                      className="mt-2"
+                    >
+                      Show all templates
+                    </Button>
+                  </div>
+                )}
             </>
           )}
         </TabsContent>
@@ -390,29 +401,29 @@ const DevelopmentPlatformPage = () => {
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Project Name</Label>
-              <Input 
-                id="name" 
+              <Input
+                id="name"
                 value={newProject.name}
-                onChange={(e) => setNewProject({...newProject, name: e.target.value})}
-                placeholder="My Assessment App" 
+                onChange={e => setNewProject({ ...newProject, name: e.target.value })}
+                placeholder="My Assessment App"
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
-              <Input 
-                id="description" 
+              <Input
+                id="description"
                 value={newProject.description}
-                onChange={(e) => setNewProject({...newProject, description: e.target.value})}
-                placeholder="A description of your project" 
+                onChange={e => setNewProject({ ...newProject, description: e.target.value })}
+                placeholder="A description of your project"
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="type">Project Type</Label>
-              <select 
+              <select
                 id="type"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={newProject.type}
-                onChange={(e) => setNewProject({...newProject, type: e.target.value})}
+                onChange={e => setNewProject({ ...newProject, type: e.target.value })}
               >
                 <option value="FLASK">Flask App</option>
                 <option value="STREAMLIT">Streamlit App</option>
@@ -422,11 +433,11 @@ const DevelopmentPlatformPage = () => {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="language">Programming Language</Label>
-              <select 
+              <select
                 id="language"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={newProject.language}
-                onChange={(e) => setNewProject({...newProject, language: e.target.value})}
+                onChange={e => setNewProject({ ...newProject, language: e.target.value })}
               >
                 <option value="PYTHON">Python</option>
                 <option value="JAVASCRIPT">JavaScript</option>
@@ -435,16 +446,18 @@ const DevelopmentPlatformPage = () => {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="framework">Framework (Optional)</Label>
-              <Input 
-                id="framework" 
+              <Input
+                id="framework"
                 value={newProject.framework}
-                onChange={(e) => setNewProject({...newProject, framework: e.target.value})}
-                placeholder="e.g., React, Vue, etc." 
+                onChange={e => setNewProject({ ...newProject, framework: e.target.value })}
+                placeholder="e.g., React, Vue, etc."
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewProjectDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowNewProjectDialog(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleCreateProject}>Create Project</Button>
           </DialogFooter>
         </DialogContent>

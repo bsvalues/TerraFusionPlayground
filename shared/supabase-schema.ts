@@ -1,6 +1,6 @@
 /**
  * Supabase Schema Constants
- * 
+ *
  * This file defines constants for Supabase table names, status values, and enumeration fields.
  * These constants help ensure consistent use across the application.
  */
@@ -15,7 +15,7 @@ export const TABLES = {
   AGENT_EXPERIENCES: 'agent_experiences',
   USER_PROFILES: 'user_profiles',
   ORGANIZATIONS: 'organizations',
-  COMPLIANCE_REPORTS: 'compliance_reports'
+  COMPLIANCE_REPORTS: 'compliance_reports',
 };
 
 export const PROPERTY_STATUS = {
@@ -23,7 +23,7 @@ export const PROPERTY_STATUS = {
   PENDING: 'pending',
   UNDER_REVIEW: 'under_review',
   ARCHIVED: 'archived',
-  EXEMPT: 'exempt'
+  EXEMPT: 'exempt',
 };
 
 export const PROPERTY_TYPES = {
@@ -33,7 +33,7 @@ export const PROPERTY_TYPES = {
   AGRICULTURAL: 'agricultural',
   VACANT_LAND: 'vacant_land',
   MIXED_USE: 'mixed_use',
-  SPECIAL_PURPOSE: 'special_purpose'
+  SPECIAL_PURPOSE: 'special_purpose',
 };
 
 export const ANALYSIS_STATUS = {
@@ -43,7 +43,7 @@ export const ANALYSIS_STATUS = {
   APPROVED: 'approved',
   REJECTED: 'rejected',
   PUBLISHED: 'published',
-  ARCHIVED: 'archived'
+  ARCHIVED: 'archived',
 };
 
 export const ANALYSIS_METHODOLOGY = {
@@ -52,7 +52,7 @@ export const ANALYSIS_METHODOLOGY = {
   COST: 'cost',
   AUTOMATED_VALUATION: 'automated_valuation',
   MACHINE_LEARNING: 'machine_learning',
-  HYBRID: 'hybrid'
+  HYBRID: 'hybrid',
 };
 
 export const APPEAL_STATUS = {
@@ -62,14 +62,14 @@ export const APPEAL_STATUS = {
   COMPLETED: 'completed',
   APPROVED: 'approved',
   DENIED: 'denied',
-  WITHDRAWN: 'withdrawn'
+  WITHDRAWN: 'withdrawn',
 };
 
 export const APPEAL_TYPES = {
   VALUE: 'value',
   CLASSIFICATION: 'classification',
   EXEMPTION: 'exemption',
-  SPECIAL_ASSESSMENT: 'special_assessment'
+  SPECIAL_ASSESSMENT: 'special_assessment',
 };
 
 export const USER_ROLES = {
@@ -78,7 +78,7 @@ export const USER_ROLES = {
   SUPERVISOR: 'supervisor',
   ANALYST: 'analyst',
   PROPERTY_OWNER: 'property_owner',
-  PUBLIC: 'public'
+  PUBLIC: 'public',
 };
 
 export const ORGANIZATION_TYPES = {
@@ -86,14 +86,14 @@ export const ORGANIZATION_TYPES = {
   MUNICIPALITY: 'municipality',
   STATE: 'state',
   PRIVATE_FIRM: 'private_firm',
-  CONSULTANT: 'consultant'
+  CONSULTANT: 'consultant',
 };
 
 export const SUBSCRIPTION_TIERS = {
   FREE: 'free',
   BASIC: 'basic',
   PROFESSIONAL: 'professional',
-  ENTERPRISE: 'enterprise'
+  ENTERPRISE: 'enterprise',
 };
 
 export const CONFIDENCE_LEVELS = {
@@ -101,7 +101,7 @@ export const CONFIDENCE_LEVELS = {
   LOW: 'low',
   MODERATE: 'moderate',
   HIGH: 'high',
-  VERY_HIGH: 'very_high'
+  VERY_HIGH: 'very_high',
 };
 
 export const DATA_CHANGE_SOURCES = {
@@ -111,7 +111,7 @@ export const DATA_CHANGE_SOURCES = {
   FTP: 'ftp',
   IMPORT: 'import',
   AGENT: 'agent',
-  SYNC: 'sync'
+  SYNC: 'sync',
 };
 
 export const COMPLIANCE_REPORT_TYPES = {
@@ -119,7 +119,7 @@ export const COMPLIANCE_REPORT_TYPES = {
   EQUALIZATION: 'equalization',
   REVALUATION_CYCLE: 'revaluation_cycle',
   EXEMPTION_VERIFICATION: 'exemption_verification',
-  APPEAL_COMPLIANCE: 'appeal_compliance'
+  APPEAL_COMPLIANCE: 'appeal_compliance',
 };
 
 export const COMPLIANCE_REPORT_STATUS = {
@@ -128,5 +128,5 @@ export const COMPLIANCE_REPORT_STATUS = {
   UNDER_REVIEW: 'under_review',
   APPROVED: 'approved',
   SUBMITTED: 'submitted',
-  REJECTED: 'rejected'
+  REJECTED: 'rejected',
 };

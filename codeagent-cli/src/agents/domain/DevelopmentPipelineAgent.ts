@@ -1,20 +1,20 @@
 /**
  * DevelopmentPipelineAgent.ts
- * 
+ *
  * Agent specializing in development pipeline operations and orchestration
  */
 
-import { 
-  BaseAgent, 
-  AgentCapability, 
-  AgentType, 
-  AgentStatus, 
+import {
+  BaseAgent,
+  AgentCapability,
+  AgentType,
+  AgentStatus,
   AgentPriority,
   AgentTask,
   StateManager,
   LogService,
   LogLevel,
-  AgentRegistry
+  AgentRegistry,
 } from '../core';
 
 /**
@@ -85,7 +85,7 @@ export enum DevelopmentTaskType {
   RUN_PIPELINE = 'run_pipeline',
   ORCHESTRATE_AGENTS = 'orchestrate_agents',
   ANALYZE_DEPENDENCIES = 'analyze_dependencies',
-  GENERATE_DOCUMENTATION = 'generate_documentation'
+  GENERATE_DOCUMENTATION = 'generate_documentation',
 }
 
 /**
@@ -98,7 +98,7 @@ export class DevelopmentPipelineAgent extends BaseAgent {
   private agentRegistry: AgentRegistry;
   private lastPipelineRun: Map<string, PipelineStageResult>;
   private codeQualityMetrics: CodeQualityMetrics | null = null;
-  
+
   /**
    * Constructor
    * @param name Agent name
@@ -106,7 +106,7 @@ export class DevelopmentPipelineAgent extends BaseAgent {
    * @param testConfig Optional test configuration
    */
   constructor(
-    name: string = 'DevelopmentPipelineAgent', 
+    name: string = 'DevelopmentPipelineAgent',
     buildConfig?: BuildConfig,
     testConfig?: TestConfig
   ) {
@@ -117,100 +117,102 @@ export class DevelopmentPipelineAgent extends BaseAgent {
         AgentCapability.BUILD_OPTIMIZATION,
         AgentCapability.TEST_GENERATION,
         AgentCapability.CODE_QUALITY,
-        AgentCapability.AGENT_ORCHESTRATION
+        AgentCapability.AGENT_ORCHESTRATION,
       ],
       AgentPriority.HIGH
     );
-    
+
     if (buildConfig) {
       this.buildConfig = buildConfig;
     }
-    
+
     if (testConfig) {
       this.testConfig = testConfig;
     }
-    
+
     this.stateManager = StateManager.getInstance();
     this.agentRegistry = AgentRegistry.getInstance();
     this.logger = new LogService(name, LogLevel.DEBUG);
     this.lastPipelineRun = new Map<string, PipelineStageResult>();
   }
-  
+
   /**
    * Initialize the agent
    */
   public async initialize(): Promise<boolean> {
     this.logger.info('Initializing Development Pipeline Agent');
-    
+
     try {
       // Load previous state if available
       const savedState = await this.stateManager.loadAgentState(this.id);
       if (savedState) {
         this.logger.debug('Restored previous state');
-        
+
         // Restore configs if available
         if (savedState.buildConfig) {
           this.buildConfig = savedState.buildConfig;
         }
-        
+
         if (savedState.testConfig) {
           this.testConfig = savedState.testConfig;
         }
-        
+
         // Restore code quality metrics if available
         if (savedState.codeQualityMetrics) {
           this.codeQualityMetrics = savedState.codeQualityMetrics;
         }
-        
+
         // Restore last pipeline run if available
         if (savedState.lastPipelineRun) {
           this.lastPipelineRun = new Map(Object.entries(savedState.lastPipelineRun));
         }
       }
-      
+
       return true;
     } catch (error) {
-      this.logger.error(`Initialization error: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `Initialization error: ${error instanceof Error ? error.message : String(error)}`
+      );
       return false;
     }
   }
-  
+
   /**
    * Set build configuration
    * @param config Build configuration
    */
   public setBuildConfig(config: BuildConfig): void {
     this.buildConfig = config;
-    
+
     // Save state
     this.stateManager.saveAgentState(this.id, {
       buildConfig: this.buildConfig,
       testConfig: this.testConfig,
       codeQualityMetrics: this.codeQualityMetrics,
-      lastPipelineRun: Object.fromEntries(this.lastPipelineRun)
+      lastPipelineRun: Object.fromEntries(this.lastPipelineRun),
     });
-    
+
     this.logger.info(`Build configuration set to ${config.type}`);
   }
-  
+
   /**
    * Set test configuration
    * @param config Test configuration
    */
   public setTestConfig(config: TestConfig): void {
     this.testConfig = config;
-    
+
     // Save state
     this.stateManager.saveAgentState(this.id, {
       buildConfig: this.buildConfig,
       testConfig: this.testConfig,
       codeQualityMetrics: this.codeQualityMetrics,
-      lastPipelineRun: Object.fromEntries(this.lastPipelineRun)
+      lastPipelineRun: Object.fromEntries(this.lastPipelineRun),
     });
-    
+
     this.logger.info(`Test configuration set to ${config.type}`);
   }
-  
+
   /**
    * Execute a task
    * @param task Task to execute
@@ -218,39 +220,39 @@ export class DevelopmentPipelineAgent extends BaseAgent {
    */
   public async executeTask(task: AgentTask, context?: any): Promise<any> {
     this.logger.info(`Executing task: ${task.type}`);
-    
+
     // Execute task based on type
     switch (task.type) {
       case DevelopmentTaskType.OPTIMIZE_BUILD:
         return await this.optimizeBuild(task.payload.sources, task.payload.options);
-        
+
       case DevelopmentTaskType.GENERATE_TESTS:
         return await this.generateTests(task.payload.sources, task.payload.options);
-        
+
       case DevelopmentTaskType.ANALYZE_CODE_QUALITY:
         return await this.analyzeCodeQuality(task.payload.sources, task.payload.options);
-        
+
       case DevelopmentTaskType.RUN_PIPELINE:
         return await this.runPipeline(task.payload.stages, task.payload.options);
-        
+
       case DevelopmentTaskType.ORCHESTRATE_AGENTS:
         return await this.orchestrateAgents(
           task.payload.agentIds,
           task.payload.tasks,
           task.payload.options
         );
-        
+
       case DevelopmentTaskType.ANALYZE_DEPENDENCIES:
         return await this.analyzeDependencies(task.payload.path, task.payload.options);
-        
+
       case DevelopmentTaskType.GENERATE_DOCUMENTATION:
         return await this.generateDocumentation(task.payload.sources, task.payload.options);
-        
+
       default:
         throw new Error(`Unknown task type: ${task.type}`);
     }
   }
-  
+
   /**
    * Optimize build process
    * @param sources Source paths to analyze
@@ -258,10 +260,10 @@ export class DevelopmentPipelineAgent extends BaseAgent {
    */
   private async optimizeBuild(sources: string[], options?: any): Promise<any> {
     this.logger.info('Optimizing build process');
-    
+
     // This would analyze and optimize build process
     // For now, it's a placeholder
-    
+
     // Example optimization result
     const result = {
       originalBuildTime: 45.2, // seconds
@@ -272,30 +274,30 @@ export class DevelopmentPipelineAgent extends BaseAgent {
           type: 'parallelization',
           description: 'Increase maximum worker count to 4',
           config: { maxWorkers: 4 },
-          impact: 'high'
+          impact: 'high',
         },
         {
           type: 'caching',
           description: 'Enable incremental build cache',
           config: { cache: true, cacheLocation: './node_modules/.cache/build' },
-          impact: 'medium'
+          impact: 'medium',
         },
         {
           type: 'minification',
           description: 'Defer minification to production builds only',
           config: { minify: process.env.NODE_ENV === 'production' },
-          impact: 'medium'
-        }
+          impact: 'medium',
+        },
       ],
       recommendations: [
         'Apply suggested parallelization and caching options',
-        'Consider using a build system with better incremental compilation support'
-      ]
+        'Consider using a build system with better incremental compilation support',
+      ],
     };
-    
+
     return result;
   }
-  
+
   /**
    * Generate tests
    * @param sources Source paths to generate tests for
@@ -303,10 +305,10 @@ export class DevelopmentPipelineAgent extends BaseAgent {
    */
   private async generateTests(sources: string[], options?: any): Promise<any> {
     this.logger.info(`Generating tests for ${sources.length} source files`);
-    
+
     // This would generate tests for the provided sources
     // For now, it's a placeholder
-    
+
     // Example test generation result
     const result = {
       generatedTests: sources.map(source => ({
@@ -316,29 +318,29 @@ export class DevelopmentPipelineAgent extends BaseAgent {
           statements: 85,
           branches: 72,
           functions: 90,
-          lines: 83
+          lines: 83,
         },
         testCases: [
           { name: 'should initialize with default values', type: 'unit' },
           { name: 'should handle edge cases correctly', type: 'unit' },
-          { name: 'should integrate with other components', type: 'integration' }
-        ]
+          { name: 'should integrate with other components', type: 'integration' },
+        ],
       })),
       overallCoverage: {
         statements: 85,
         branches: 72,
         functions: 90,
-        lines: 83
+        lines: 83,
       },
       recommendations: [
         'Review generated tests and add edge cases as needed',
-        'Add integration tests for critical user flows'
-      ]
+        'Add integration tests for critical user flows',
+      ],
     };
-    
+
     return result;
   }
-  
+
   /**
    * Analyze code quality
    * @param sources Source paths to analyze
@@ -346,10 +348,10 @@ export class DevelopmentPipelineAgent extends BaseAgent {
    */
   private async analyzeCodeQuality(sources: string[], options?: any): Promise<CodeQualityMetrics> {
     this.logger.info(`Analyzing code quality for ${sources.length} source files`);
-    
+
     // This would analyze code quality
     // For now, it's a placeholder
-    
+
     // Example code quality metrics
     const metrics: CodeQualityMetrics = {
       coverage: 82.5,
@@ -360,28 +362,28 @@ export class DevelopmentPipelineAgent extends BaseAgent {
         critical: 2,
         major: 5,
         minor: 12,
-        info: 8
+        info: 8,
       },
       maintainability: 78.3,
       performance: 85.1,
       security: 92.0,
-      compliance: 88.4
+      compliance: 88.4,
     };
-    
+
     // Store the metrics
     this.codeQualityMetrics = metrics;
-    
+
     // Save state
     await this.stateManager.saveAgentState(this.id, {
       buildConfig: this.buildConfig,
       testConfig: this.testConfig,
       codeQualityMetrics: this.codeQualityMetrics,
-      lastPipelineRun: Object.fromEntries(this.lastPipelineRun)
+      lastPipelineRun: Object.fromEntries(this.lastPipelineRun),
     });
-    
+
     return metrics;
   }
-  
+
   /**
    * Run a development pipeline
    * @param stages Pipeline stages to run
@@ -389,64 +391,66 @@ export class DevelopmentPipelineAgent extends BaseAgent {
    */
   private async runPipeline(stages: string[], options?: any): Promise<PipelineStageResult[]> {
     this.logger.info(`Running pipeline with stages: ${stages.join(', ')}`);
-    
+
     // This would run a pipeline with the specified stages
     // For now, it's a placeholder
-    
+
     // Example pipeline results
     const results: PipelineStageResult[] = [];
     let previousStageSuccess = true;
-    
+
     for (const stage of stages) {
       // Skip stage if previous stage failed and failFast is enabled
       if (options?.failFast && !previousStageSuccess) {
         continue;
       }
-      
+
       this.logger.info(`Running pipeline stage: ${stage}`);
-      
+
       // Simulate stage execution
       const startTime = Date.now();
       const success = Math.random() > 0.1; // 90% success rate
       const duration = Math.random() * 10 + 1; // 1-11 seconds
-      
+
       // Create stage result
       const result: PipelineStageResult = {
         stage,
         success,
         output: success ? `Successfully completed stage: ${stage}` : '',
         errorOutput: success ? undefined : `Error in stage ${stage}: Process exited with code 1`,
-        duration
+        duration,
       };
-      
+
       // Add to results
       results.push(result);
-      
+
       // Store in last pipeline run
       this.lastPipelineRun.set(stage, result);
-      
+
       // Update previous stage success
       previousStageSuccess = success;
-      
+
       // Log result
       if (success) {
-        this.logger.info(`Pipeline stage ${stage} completed successfully in ${duration.toFixed(2)}s`);
+        this.logger.info(
+          `Pipeline stage ${stage} completed successfully in ${duration.toFixed(2)}s`
+        );
       } else {
         this.logger.error(`Pipeline stage ${stage} failed in ${duration.toFixed(2)}s`);
       }
     }
-    
+
     // Save state
     await this.stateManager.saveAgentState(this.id, {
       buildConfig: this.buildConfig,
       testConfig: this.testConfig,
       codeQualityMetrics: this.codeQualityMetrics,
-      lastPipelineRun: Object.fromEntries(this.lastPipelineRun)
+      lastPipelineRun: Object.fromEntries(this.lastPipelineRun),
     });
-    
+
     return results;
   }
-  
+
   /**
    * Orchestrate multiple agents to perform tasks
    * @param agentIds Agent IDs to orchestrate
@@ -459,18 +463,18 @@ export class DevelopmentPipelineAgent extends BaseAgent {
     options?: any
   ): Promise<any> {
     this.logger.info(`Orchestrating ${agentIds.length} agents`);
-    
+
     // This would coordinate multiple agents
     // For now, it's a placeholder
-    
+
     // Check which agents exist
     const existingAgentIds = agentIds.filter(id => this.agentRegistry.getAgentById(id) !== null);
     const missingAgentIds = agentIds.filter(id => !existingAgentIds.includes(id));
-    
+
     if (missingAgentIds.length > 0) {
       this.logger.warn(`Agents not found: ${missingAgentIds.join(', ')}`);
     }
-    
+
     // Example orchestration result
     const result = {
       orchestratedAgents: existingAgentIds.length,
@@ -483,15 +487,15 @@ export class DevelopmentPipelineAgent extends BaseAgent {
           name: agentInfo?.name || 'Unknown',
           tasksAssigned: tasks[agentId]?.length || 0,
           status: 'completed',
-          success: true
+          success: true,
         };
       }),
-      overallSuccess: missingAgentIds.length === 0
+      overallSuccess: missingAgentIds.length === 0,
     };
-    
+
     return result;
   }
-  
+
   /**
    * Analyze project dependencies
    * @param path Project path
@@ -499,10 +503,10 @@ export class DevelopmentPipelineAgent extends BaseAgent {
    */
   private async analyzeDependencies(path: string, options?: any): Promise<any> {
     this.logger.info(`Analyzing dependencies in ${path}`);
-    
+
     // This would analyze project dependencies
     // For now, it's a placeholder
-    
+
     // Example dependency analysis
     const result = {
       dependencies: {
@@ -510,20 +514,20 @@ export class DevelopmentPipelineAgent extends BaseAgent {
         dev: 15,
         peer: 3,
         optional: 2,
-        total: 48
+        total: 48,
       },
       outdated: {
         major: 3,
         minor: 7,
         patch: 12,
-        total: 22
+        total: 22,
       },
       vulnerabilities: {
         critical: 0,
         high: 1,
         moderate: 3,
         low: 5,
-        total: 9
+        total: 9,
       },
       unusedDependencies: 2,
       duplicateDependencies: 3,
@@ -532,19 +536,19 @@ export class DevelopmentPipelineAgent extends BaseAgent {
         largest: [
           { name: 'webpack', size: '35.2 MB' },
           { name: 'react', size: '12.8 MB' },
-          { name: 'lodash', size: '11.5 MB' }
-        ]
+          { name: 'lodash', size: '11.5 MB' },
+        ],
       },
       recommendations: [
         'Update 3 dependencies with major updates (breaking changes)',
         'Fix high severity vulnerability in dependency-name',
-        'Remove 2 unused dependencies'
-      ]
+        'Remove 2 unused dependencies',
+      ],
     };
-    
+
     return result;
   }
-  
+
   /**
    * Generate documentation
    * @param sources Source paths to document
@@ -552,10 +556,10 @@ export class DevelopmentPipelineAgent extends BaseAgent {
    */
   private async generateDocumentation(sources: string[], options?: any): Promise<any> {
     this.logger.info(`Generating documentation for ${sources.length} source files`);
-    
+
     // This would generate documentation for the provided sources
     // For now, it's a placeholder
-    
+
     // Example documentation generation result
     const result = {
       generatedFiles: sources.map(source => ({
@@ -564,28 +568,28 @@ export class DevelopmentPipelineAgent extends BaseAgent {
         coverage: {
           classes: 95,
           methods: 87,
-          properties: 75
-        }
+          properties: 75,
+        },
       })),
       overallCoverage: {
         classes: 95,
         methods: 87,
-        properties: 75
+        properties: 75,
       },
       additionalFiles: [
         { path: 'README.md', type: 'overview' },
         { path: 'ARCHITECTURE.md', type: 'architecture' },
-        { path: 'API.md', type: 'api' }
+        { path: 'API.md', type: 'api' },
       ],
       recommendations: [
         'Add examples to public API methods',
-        'Document error handling for critical components'
-      ]
+        'Document error handling for critical components',
+      ],
     };
-    
+
     return result;
   }
-  
+
   /**
    * Custom shutdown logic
    * @param force Whether shutdown is forced
@@ -596,7 +600,7 @@ export class DevelopmentPipelineAgent extends BaseAgent {
       buildConfig: this.buildConfig,
       testConfig: this.testConfig,
       codeQualityMetrics: this.codeQualityMetrics,
-      lastPipelineRun: Object.fromEntries(this.lastPipelineRun)
+      lastPipelineRun: Object.fromEntries(this.lastPipelineRun),
     });
   }
 }

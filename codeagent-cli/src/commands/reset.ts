@@ -6,7 +6,11 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import ora from 'ora';
 
-import { EnvironmentResetService, ResetOptions, ResetResult } from '../services/environmentResetService.js';
+import {
+  EnvironmentResetService,
+  ResetOptions,
+  ResetResult,
+} from '../services/environmentResetService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,15 +21,15 @@ const __dirname = dirname(__filename);
 export async function reset(options: ResetOptions) {
   console.log(chalk.blue.bold('Environment Reset'));
   console.log(chalk.blue('─────────────────\n'));
-  
+
   const resetService = new EnvironmentResetService();
-  
+
   // Detect resetable items
   const detectableItems = await resetService.detectResetableItems();
-  
+
   // Show what will be reset
   console.log(chalk.blue('The following items will be reset:'));
-  
+
   // If specific paths are provided, show them
   if (options.resetOnly && options.resetOnly.length > 0) {
     options.resetOnly.forEach(item => {
@@ -40,18 +44,18 @@ export async function reset(options: ResetOptions) {
         console.log(chalk.yellow(`  - ${item}`));
       });
     }
-    
+
     // Show service cleanup info if applicable
     if (options.resetServices) {
       console.log(chalk.yellow('  - Service credentials and logs'));
     }
-    
+
     // Show dependency cleanup info if applicable
     if (options.cleanDeps) {
       console.log(chalk.yellow('  - Node dependencies will be cleaned and reinstalled'));
     }
   }
-  
+
   // If not forced, confirm the reset
   if (!options.force) {
     const { confirm } = await inquirer.prompt([
@@ -59,21 +63,21 @@ export async function reset(options: ResetOptions) {
         type: 'confirm',
         name: 'confirm',
         message: 'This will reset your environment. Are you sure you want to continue?',
-        default: false
-      }
+        default: false,
+      },
     ]);
-    
+
     if (!confirm) {
       console.log(chalk.yellow('Reset cancelled'));
       return;
     }
   }
-  
+
   // Set up spinner
   const spinner = ora('Resetting environment...').start();
-  
+
   // Setup event handlers for progress
-  resetService.on('progress', (data) => {
+  resetService.on('progress', data => {
     if (data.type === 'error') {
       spinner.fail(data.message);
       spinner.start();
@@ -90,30 +94,30 @@ export async function reset(options: ResetOptions) {
       spinner.text = data.message;
     }
   });
-  
+
   try {
     // Perform the reset
     const result = await resetService.reset(options);
-    
+
     spinner.stop();
-    
+
     // Show summary
     console.log(chalk.blue('\nReset Summary:'));
-    
+
     if (result.success) {
       console.log(chalk.green(`✓ Reset ${result.resetPaths.length} configuration items`));
       console.log(chalk.green(`✓ Created backup at ${result.backupDir}`));
-      
+
       if (options.cleanDeps) {
         console.log(chalk.green('✓ Cleaned and reinstalled dependencies'));
       }
-      
+
       console.log(chalk.blue('\nEnvironment has been reset successfully'));
       console.log(chalk.yellow('To restore from backup, use:'));
       console.log(chalk.yellow(`  codeagent reset --restore ${result.backupDir}`));
     } else {
       console.log(chalk.red('Reset completed with errors:'));
-      
+
       result.errors.forEach(error => {
         console.log(chalk.red(`  - ${error.path}: ${error.error}`));
       });
@@ -130,29 +134,29 @@ export async function reset(options: ResetOptions) {
 export async function restoreFromBackup(backupDir: string, pathsToRestore?: string[]) {
   console.log(chalk.blue.bold('Environment Restore'));
   console.log(chalk.blue('─────────────────\n'));
-  
+
   const resetService = new EnvironmentResetService();
   const spinner = ora('Restoring from backup...').start();
-  
+
   // Setup event handlers
-  resetService.on('progress', (data) => {
+  resetService.on('progress', data => {
     spinner.text = data.message;
   });
-  
-  resetService.on('error', (data) => {
+
+  resetService.on('error', data => {
     spinner.fail(data.message);
   });
-  
-  resetService.on('complete', (data) => {
+
+  resetService.on('complete', data => {
     spinner.succeed(data.message);
   });
-  
+
   try {
     // Perform the restore
     const success = await resetService.restoreFromBackup(backupDir, pathsToRestore);
-    
+
     spinner.stop();
-    
+
     if (success) {
       console.log(chalk.green('\nRestore completed successfully'));
     } else {
@@ -180,20 +184,20 @@ export function register(program: Command) {
     .option('-r, --restore <backupDir>', 'Restore from a previous backup')
     .option('-i, --restore-items <paths...>', 'Only restore specified items from backup')
     .option('-l, --list-resetable', 'List all resetable items without performing reset')
-    .action(async (options) => {
+    .action(async options => {
       // If restore option is provided, restore from backup
       if (options.restore) {
         await restoreFromBackup(options.restore, options.restoreItems);
         return;
       }
-      
+
       // If list-resetable option is provided, just list items
       if (options.listResetable) {
         const resetService = new EnvironmentResetService();
         const items = await resetService.detectResetableItems();
-        
+
         console.log(chalk.blue('Detected resetable items:'));
-        
+
         if (items.length === 0) {
           console.log(chalk.yellow('  No resetable items detected'));
         } else {
@@ -201,10 +205,10 @@ export function register(program: Command) {
             console.log(chalk.yellow(`  - ${item}`));
           });
         }
-        
+
         return;
       }
-      
+
       // Otherwise perform the reset
       await reset(options);
     });

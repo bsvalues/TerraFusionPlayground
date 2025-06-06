@@ -1,17 +1,13 @@
 /**
  * Component Playground Service
- * 
+ *
  * This service manages UI component templates for the Interactive Component Playground.
  * It provides functionality for creating, retrieving, updating, and deleting component templates,
  * as well as generating code for components based on descriptions.
  */
 
 import { IStorage } from '../../storage';
-import { 
-  UIComponentTemplate, 
-  InsertUIComponentTemplate, 
-  ComponentType 
-} from '@shared/schema';
+import { UIComponentTemplate, InsertUIComponentTemplate, ComponentType } from '@shared/schema';
 import { PlandexAIService } from '../plandex-ai-service';
 import { getPlandexAIService } from '../plandex-ai-factory';
 
@@ -21,7 +17,7 @@ export class ComponentPlaygroundService {
 
   constructor(storage: IStorage) {
     this.storage = storage;
-    
+
     // Try to initialize PlandexAI for component generation
     try {
       this.plandexAI = getPlandexAIService();
@@ -80,7 +76,10 @@ export class ComponentPlaygroundService {
   /**
    * Update an existing component template
    */
-  async updateComponentTemplate(id: number, template: Partial<InsertUIComponentTemplate>): Promise<UIComponentTemplate | undefined> {
+  async updateComponentTemplate(
+    id: number,
+    template: Partial<InsertUIComponentTemplate>
+  ): Promise<UIComponentTemplate | undefined> {
     try {
       return await this.storage.updateUIComponentTemplate(id, template);
     } catch (error) {
@@ -109,7 +108,7 @@ export class ComponentPlaygroundService {
       const template = await this.storage.getUIComponentTemplateById(id);
       if (template) {
         await this.storage.updateUIComponentTemplate(id, {
-          usageCount: (template.usageCount || 0) + 1
+          usageCount: (template.usageCount || 0) + 1,
         });
       }
     } catch (error) {
@@ -120,15 +119,13 @@ export class ComponentPlaygroundService {
   /**
    * Generate a component using AI
    */
-  async generateComponent(
-    options: {
-      description: string;
-      componentType: ComponentType;
-      framework: string;
-      createdBy: number;
-      additionalRequirements?: string;
-    }
-  ): Promise<UIComponentTemplate | null> {
+  async generateComponent(options: {
+    description: string;
+    componentType: ComponentType;
+    framework: string;
+    createdBy: number;
+    additionalRequirements?: string;
+  }): Promise<UIComponentTemplate | null> {
     if (!this.plandexAI) {
       throw new Error('PlandexAI service not available for component generation');
     }
@@ -151,7 +148,7 @@ export class ComponentPlaygroundService {
         prompt,
         language: this.getLanguageForFramework(options.framework),
         codeType: 'component',
-        context: `Framework: ${options.framework}, Component Type: ${options.componentType}`
+        context: `Framework: ${options.framework}, Component Type: ${options.componentType}`,
       });
 
       if (!result.code) {
@@ -159,9 +156,10 @@ export class ComponentPlaygroundService {
       }
 
       // Extract a name from the description (first 40 chars or less)
-      const name = options.description.length > 40
-        ? `${options.description.substring(0, 37)}...`
-        : options.description;
+      const name =
+        options.description.length > 40
+          ? `${options.description.substring(0, 37)}...`
+          : options.description;
 
       // Create and store the component template
       const template: InsertUIComponentTemplate = {
@@ -187,7 +185,7 @@ export class ComponentPlaygroundService {
    */
   private getLanguageForFramework(framework: string): string {
     const frameworkLower = framework.toLowerCase();
-    
+
     if (frameworkLower.includes('react')) {
       return 'tsx';
     } else if (frameworkLower.includes('vue')) {
@@ -197,7 +195,7 @@ export class ComponentPlaygroundService {
     } else if (frameworkLower.includes('angular')) {
       return 'typescript';
     }
-    
+
     return 'javascript';
   }
 
@@ -207,26 +205,67 @@ export class ComponentPlaygroundService {
   private extractTagsFromDescription(description: string, framework: string): string[] {
     // Initialize tags with the framework
     const tags = [framework.toLowerCase()];
-    
+
     // Common UI component tags
     const potentialTags = [
-      'button', 'input', 'form', 'modal', 'dialog', 'card', 'menu',
-      'dropdown', 'navigation', 'nav', 'sidebar', 'header', 'footer',
-      'layout', 'grid', 'flex', 'responsive', 'mobile', 'desktop',
-      'datepicker', 'slider', 'toggle', 'switch', 'checkbox', 'radio',
-      'select', 'combobox', 'autocomplete', 'list', 'table', 'tabs',
-      'accordion', 'carousel', 'tooltip', 'popover', 'notification',
-      'alert', 'badge', 'avatar', 'icon', 'spinner', 'progress',
-      'chart', 'dashboard', 'accessibility', 'a11y', 'theme', 'dark',
-      'light', 'animation'
+      'button',
+      'input',
+      'form',
+      'modal',
+      'dialog',
+      'card',
+      'menu',
+      'dropdown',
+      'navigation',
+      'nav',
+      'sidebar',
+      'header',
+      'footer',
+      'layout',
+      'grid',
+      'flex',
+      'responsive',
+      'mobile',
+      'desktop',
+      'datepicker',
+      'slider',
+      'toggle',
+      'switch',
+      'checkbox',
+      'radio',
+      'select',
+      'combobox',
+      'autocomplete',
+      'list',
+      'table',
+      'tabs',
+      'accordion',
+      'carousel',
+      'tooltip',
+      'popover',
+      'notification',
+      'alert',
+      'badge',
+      'avatar',
+      'icon',
+      'spinner',
+      'progress',
+      'chart',
+      'dashboard',
+      'accessibility',
+      'a11y',
+      'theme',
+      'dark',
+      'light',
+      'animation',
     ];
 
     const lowerDesc = description.toLowerCase();
-    
+
     // Add matching tags
     const matchedTags = potentialTags.filter(tag => lowerDesc.includes(tag));
     tags.push(...matchedTags);
-    
+
     return [...new Set(tags)]; // Remove duplicates
   }
 
@@ -263,7 +302,10 @@ export class ComponentPlaygroundService {
   /**
    * Validate component code
    */
-  async validateComponentCode(code: string, framework: string): Promise<{
+  async validateComponentCode(
+    code: string,
+    framework: string
+  ): Promise<{
     isValid: boolean;
     errors?: string[];
     warnings?: string[];
@@ -277,17 +319,17 @@ export class ComponentPlaygroundService {
       const result = await this.plandexAI.validateCode({
         code,
         language: this.getLanguageForFramework(framework),
-        context: `Framework: ${framework}`
+        context: `Framework: ${framework}`,
       });
 
       if (result && result.isValid !== undefined) {
         return {
           isValid: result.isValid,
           errors: result.errors || [],
-          warnings: result.warnings || []
+          warnings: result.warnings || [],
         };
       }
-      
+
       // Fallback to basic validation if AI response is invalid
       return this.basicValidateComponentCode(code, framework);
     } catch (error) {
@@ -299,72 +341,105 @@ export class ComponentPlaygroundService {
   /**
    * Basic validation for component code
    */
-  private basicValidateComponentCode(code: string, framework: string): {
+  private basicValidateComponentCode(
+    code: string,
+    framework: string
+  ): {
     isValid: boolean;
     errors?: string[];
     warnings?: string[];
   } {
     const errors: string[] = [];
     const warnings: string[] = [];
-    
+
     // Check for basic syntax errors
     try {
       // This is a very basic check
       if (code.includes('{') && code.includes('}')) {
         const openBraces = (code.match(/{/g) || []).length;
         const closeBraces = (code.match(/}/g) || []).length;
-        
+
         if (openBraces !== closeBraces) {
-          errors.push('Mismatched curly braces: There are ' + openBraces + ' opening braces and ' + closeBraces + ' closing braces.');
+          errors.push(
+            'Mismatched curly braces: There are ' +
+              openBraces +
+              ' opening braces and ' +
+              closeBraces +
+              ' closing braces.'
+          );
         }
       }
-      
+
       if (code.includes('(') && code.includes(')')) {
         const openParens = (code.match(/\(/g) || []).length;
         const closeParens = (code.match(/\)/g) || []).length;
-        
+
         if (openParens !== closeParens) {
-          errors.push('Mismatched parentheses: There are ' + openParens + ' opening parentheses and ' + closeParens + ' closing parentheses.');
+          errors.push(
+            'Mismatched parentheses: There are ' +
+              openParens +
+              ' opening parentheses and ' +
+              closeParens +
+              ' closing parentheses.'
+          );
         }
       }
-      
+
       // React-specific checks
       if (framework.toLowerCase().includes('react')) {
         // Missing import React
-        if (!code.includes('import React') && !code.includes('react"') && !code.includes("react'")) {
-          warnings.push('The React import might be missing. For older versions of React, you need to import React even if not used directly.');
+        if (
+          !code.includes('import React') &&
+          !code.includes('react"') &&
+          !code.includes("react'")
+        ) {
+          warnings.push(
+            'The React import might be missing. For older versions of React, you need to import React even if not used directly.'
+          );
         }
-        
+
         // Missing export
-        if (!code.includes('export default') && !code.includes('export const') && !code.includes('export function')) {
-          warnings.push('No export statement found. Components should be exported to be used in other files.');
+        if (
+          !code.includes('export default') &&
+          !code.includes('export const') &&
+          !code.includes('export function')
+        ) {
+          warnings.push(
+            'No export statement found. Components should be exported to be used in other files.'
+          );
         }
       }
-      
+
       // Vue-specific checks
       if (framework.toLowerCase().includes('vue')) {
         if (!code.includes('<template>') && !code.includes('<script>')) {
-          warnings.push('Missing <template> or <script> tags which are required for Vue components.');
+          warnings.push(
+            'Missing <template> or <script> tags which are required for Vue components.'
+          );
         }
       }
-      
+
       // Svelte-specific checks
       if (framework.toLowerCase().includes('svelte')) {
         if (!code.includes('<script>') && !code.includes('<style>')) {
-          warnings.push('Consider adding <script> and <style> sections for a complete Svelte component.');
+          warnings.push(
+            'Consider adding <script> and <style> sections for a complete Svelte component.'
+          );
         }
       }
-      
+
       return {
         isValid: errors.length === 0,
         errors,
-        warnings
+        warnings,
       };
     } catch (error) {
       return {
         isValid: false,
-        errors: ['Syntax validation failed: ' + (error instanceof Error ? error.message : 'Unknown error')],
-        warnings
+        errors: [
+          'Syntax validation failed: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        ],
+        warnings,
       };
     }
   }

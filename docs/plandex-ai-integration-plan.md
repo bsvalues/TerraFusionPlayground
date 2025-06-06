@@ -80,7 +80,7 @@ export class PlandexAIService {
       context: request.context,
       maxTokens: request.maxTokens || this.maxTokens,
       temperature: request.temperature || this.temperature,
-      model: this.defaultModel
+      model: this.defaultModel,
     });
 
     return response.code;
@@ -95,7 +95,7 @@ export class PlandexAIService {
       language: request.language,
       maxTokens: request.maxTokens || this.maxTokens,
       temperature: request.temperature || this.temperature,
-      model: this.defaultModel
+      model: this.defaultModel,
     });
 
     return response.completion;
@@ -109,7 +109,7 @@ export class PlandexAIService {
       buggyCode: request.buggyCode,
       errorMessage: request.errorMessage,
       language: request.language,
-      model: this.defaultModel
+      model: this.defaultModel,
     });
 
     return response.fixedCode;
@@ -123,7 +123,7 @@ export class PlandexAIService {
       code: request.code,
       language: request.language,
       detailLevel: request.detailLevel || 'detailed',
-      model: this.defaultModel
+      model: this.defaultModel,
     });
 
     return response.explanation;
@@ -138,9 +138,9 @@ export class PlandexAIService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
+          Authorization: `Bearer ${this.apiKey}`,
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
@@ -161,7 +161,7 @@ export class PlandexAIService {
 
 Enhance the existing AI Code Assistant to use Plandex AI alongside other providers:
 
-```typescript
+````typescript
 // server/services/development/ai-code-assistant.ts
 
 import { PlandexAIService } from '../plandex-ai-service';
@@ -192,7 +192,7 @@ export class AICodeAssistant {
       try {
         return await this.plandexAIService.completeCode({
           codePrefix,
-          language
+          language,
         });
       } catch (error) {
         console.warn('Plandex AI completion failed, falling back to other providers:', error);
@@ -202,7 +202,7 @@ export class AICodeAssistant {
 
     // Use other providers as fallback
     const providers = this.aiAssistantService.getAvailableProviders();
-    
+
     // Build prompt
     const promptMessage = `Complete the following ${language} code:
 \`\`\`${language}
@@ -214,16 +214,16 @@ Continue the code in a natural and efficient way. Only output the code completio
     for (const provider of providers) {
       try {
         console.log(`Attempting to complete code using provider: ${provider}`);
-        
+
         const response = await this.aiAssistantService.generateResponse({
           message: promptMessage,
           provider: provider,
           options: {
             temperature: 0.2,
-            maxTokens: 1500
-          }
+            maxTokens: 1500,
+          },
         });
-        
+
         // Extract code from response
         const codeRegex = /```(?:\w*\n)?([\s\S]*?)```/g;
         const match = codeRegex.exec(response.message);
@@ -233,7 +233,7 @@ Continue the code in a natural and efficient way. Only output the code completio
         // Continue to the next provider
       }
     }
-    
+
     // If all providers failed, return a basic implementation
     console.warn('All AI providers failed, returning fallback implementation');
     return `// Failed to generate completion with available AI providers`;
@@ -248,14 +248,14 @@ Continue the code in a natural and efficient way. Only output the code completio
       try {
         return await this.plandexAIService.generateCode({
           prompt,
-          language
+          language,
         });
       } catch (error) {
         console.warn('Plandex AI generation failed, falling back to other providers:', error);
         // Fall back to other providers
       }
     }
-    
+
     // Use existing implementation as fallback
     // ... (existing code)
   }
@@ -263,21 +263,25 @@ Continue the code in a natural and efficient way. Only output the code completio
   /**
    * Fix bugs in code
    */
-  public async fixBugs(buggyCode: string, errorMessage: string, language: string = 'typescript'): Promise<string> {
+  public async fixBugs(
+    buggyCode: string,
+    errorMessage: string,
+    language: string = 'typescript'
+  ): Promise<string> {
     // Try Plandex AI first if available
     if (this.plandexAIService) {
       try {
         return await this.plandexAIService.fixBugs({
           buggyCode,
           errorMessage,
-          language
+          language,
         });
       } catch (error) {
         console.warn('Plandex AI bug fixing failed, falling back to other providers:', error);
         // Fall back to other providers
       }
     }
-    
+
     // Use existing implementation as fallback
     // ... (existing code)
   }
@@ -291,19 +295,19 @@ Continue the code in a natural and efficient way. Only output the code completio
       try {
         return await this.plandexAIService.explainCode({
           code,
-          language
+          language,
         });
       } catch (error) {
         console.warn('Plandex AI explanation failed, falling back to other providers:', error);
         // Fall back to other providers
       }
     }
-    
+
     // Use existing implementation as fallback
     // ... (existing code)
   }
 }
-```
+````
 
 ### 3. API Routes for Plandex AI
 
@@ -327,14 +331,14 @@ router.get('/status', (req, res) => {
 router.post('/generate', async (req, res) => {
   try {
     const { prompt, language } = req.body;
-    
+
     if (!prompt) {
       return res.status(400).json({ error: 'Missing prompt' });
     }
-    
+
     const codeAssistant = getAICodeAssistant();
     const generatedCode = await codeAssistant.generateCode(prompt, language || 'typescript');
-    
+
     res.json({ code: generatedCode });
   } catch (error) {
     console.error('Error generating code:', error);
@@ -346,14 +350,14 @@ router.post('/generate', async (req, res) => {
 router.post('/complete', async (req, res) => {
   try {
     const { codePrefix, language } = req.body;
-    
+
     if (!codePrefix) {
       return res.status(400).json({ error: 'Missing code prefix' });
     }
-    
+
     const codeAssistant = getAICodeAssistant();
     const completedCode = await codeAssistant.completeCode(codePrefix, language || 'typescript');
-    
+
     res.json({ completion: completedCode });
   } catch (error) {
     console.error('Error completing code:', error);
@@ -365,14 +369,18 @@ router.post('/complete', async (req, res) => {
 router.post('/fix', async (req, res) => {
   try {
     const { buggyCode, errorMessage, language } = req.body;
-    
+
     if (!buggyCode || !errorMessage) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    
+
     const codeAssistant = getAICodeAssistant();
-    const fixedCode = await codeAssistant.fixBugs(buggyCode, errorMessage, language || 'typescript');
-    
+    const fixedCode = await codeAssistant.fixBugs(
+      buggyCode,
+      errorMessage,
+      language || 'typescript'
+    );
+
     res.json({ fixedCode });
   } catch (error) {
     console.error('Error fixing bugs:', error);
@@ -384,14 +392,14 @@ router.post('/fix', async (req, res) => {
 router.post('/explain', async (req, res) => {
   try {
     const { code, language, detailLevel } = req.body;
-    
+
     if (!code) {
       return res.status(400).json({ error: 'Missing code' });
     }
-    
+
     const codeAssistant = getAICodeAssistant();
     const explanation = await codeAssistant.explainCode(code, language || 'typescript');
-    
+
     res.json({ explanation });
   } catch (error) {
     console.error('Error explaining code:', error);
@@ -504,7 +512,7 @@ interface PlandexAICompletionProviderProps {
 
 export function PlandexAICompletionProvider({
   editorInstance,
-  language
+  language,
 }: PlandexAICompletionProviderProps) {
   const [isAvailable, setIsAvailable] = useState<boolean>(false);
 
@@ -522,7 +530,7 @@ export function PlandexAICompletionProvider({
     if (!editorInstance || !isAvailable) return;
 
     // Register completion provider
-    const disposable = editorInstance.getModel()?.onDidChangeContent(async (event) => {
+    const disposable = editorInstance.getModel()?.onDidChangeContent(async event => {
       // Only trigger on certain conditions (typing a period, space after keywords, etc.)
       const position = editorInstance.getPosition();
       if (!position) return;
@@ -532,37 +540,41 @@ export function PlandexAICompletionProvider({
 
       // Get current line
       const line = model.getLineContent(position.lineNumber);
-      
+
       // Simple heuristic: only trigger if user typed a period or is after specific keywords
-      const shouldTrigger = 
+      const shouldTrigger =
         (event.changes.length === 1 && event.changes[0].text === '.') ||
-        /\b(function|class|interface|const|let|var|return|if|for|while)\s+$/.test(line.substring(0, position.column));
-      
+        /\b(function|class|interface|const|let|var|return|if|for|while)\s+$/.test(
+          line.substring(0, position.column)
+        );
+
       if (!shouldTrigger) return;
 
       // Get code up to cursor position for context
       const codePrefix = model.getValue().substring(0, model.getOffsetAt(position));
-      
+
       try {
         // Get completion from Plandex AI
         const completion = await PlandexAIClientService.completeCode({
           codePrefix,
-          language
+          language,
         });
 
         if (completion) {
           // Insert completion (implement as suggestion or direct insertion based on UX preference)
           // For direct insertion:
-          editorInstance.executeEdits('plandex-ai', [{
-            range: new monaco.Range(
-              position.lineNumber,
-              position.column,
-              position.lineNumber,
-              position.column
-            ),
-            text: completion,
-            forceMoveMarkers: true
-          }]);
+          editorInstance.executeEdits('plandex-ai', [
+            {
+              range: new monaco.Range(
+                position.lineNumber,
+                position.column,
+                position.lineNumber,
+                position.column
+              ),
+              text: completion,
+              forceMoveMarkers: true,
+            },
+          ]);
         }
       } catch (error) {
         console.error('Error getting Plandex AI completion:', error);
@@ -662,8 +674,8 @@ export function PlandexAICodeGenerator({ onCodeGenerated }: PlandexAICodeGenerat
         </div>
       </CardContent>
       <CardFooter>
-        <Button 
-          onClick={handleGenerateCode} 
+        <Button
+          onClick={handleGenerateCode}
           disabled={!prompt.trim() || isGenerating}
           className="w-full"
         >
@@ -712,7 +724,7 @@ export function getPlandexAIService(): PlandexAIService | null {
       baseUrl: process.env.PLANDEX_API_BASE_URL || 'https://api.plandex.ai/v1',
       defaultModel: process.env.PLANDEX_DEFAULT_MODEL || 'plandex-code-v1',
       maxTokens: 1024,
-      temperature: 0.2
+      temperature: 0.2,
     };
 
     plandexAIServiceInstance = new PlandexAIService(config);
@@ -725,11 +737,13 @@ export function getPlandexAIService(): PlandexAIService | null {
 ## Implementation Plan
 
 1. **Phase 1: Core Integration**
+
    - Implement the Plandex AI service
    - Update the AI Code Assistant to use Plandex AI
    - Add API routes for Plandex AI
 
 2. **Phase 2: Frontend Integration**
+
    - Create the frontend service for Plandex AI
    - Add the PlandexAICodeGenerator component
 

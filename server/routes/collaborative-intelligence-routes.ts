@@ -1,6 +1,6 @@
 /**
  * Collaborative Intelligence Routes
- * 
+ *
  * Provides API endpoints for real-time collaboration features:
  * - Team workspaces and access controls
  * - Activity feeds and model changes
@@ -20,7 +20,7 @@ router.get('/active-users', async (req, res) => {
   try {
     const collaborativeIntelligence = getCollaborativeIntelligence();
     const users = await collaborativeIntelligence.getActiveUsers();
-    
+
     return res.json(users);
   } catch (error) {
     console.error('Error getting active users:', error);
@@ -35,10 +35,13 @@ router.get('/activity/:workspaceId', async (req, res) => {
   try {
     const { workspaceId } = req.params;
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
-    
+
     const collaborativeIntelligence = getCollaborativeIntelligence();
-    const events = await collaborativeIntelligence.getRecentActivityEvents(parseInt(workspaceId), limit);
-    
+    const events = await collaborativeIntelligence.getRecentActivityEvents(
+      parseInt(workspaceId),
+      limit
+    );
+
     return res.json(events);
   } catch (error) {
     console.error('Error getting activity events:', error);
@@ -53,10 +56,10 @@ router.get('/changes/:modelId', async (req, res) => {
   try {
     const { modelId } = req.params;
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
-    
+
     const collaborativeIntelligence = getCollaborativeIntelligence();
     const changes = await collaborativeIntelligence.getModelChanges(modelId, limit);
-    
+
     return res.json(changes);
   } catch (error) {
     console.error('Error getting model changes:', error);
@@ -72,10 +75,14 @@ router.get('/comments/:modelId', async (req, res) => {
     const { modelId } = req.params;
     const entityType = req.query.entityType as string;
     const entityId = req.query.entityId ? parseInt(req.query.entityId as string) : undefined;
-    
+
     const collaborativeIntelligence = getCollaborativeIntelligence();
-    const comments = await collaborativeIntelligence.getModelComments(modelId, entityType, entityId);
-    
+    const comments = await collaborativeIntelligence.getModelComments(
+      modelId,
+      entityType,
+      entityId
+    );
+
     return res.json(comments);
   } catch (error) {
     console.error('Error getting comments:', error);
@@ -90,10 +97,13 @@ router.get('/suggestions/:workspaceId', async (req, res) => {
   try {
     const { workspaceId } = req.params;
     const modelId = req.query.modelId as string | undefined;
-    
+
     const collaborativeIntelligence = getCollaborativeIntelligence();
-    const suggestions = await collaborativeIntelligence.getCollaborationSuggestions(parseInt(workspaceId), modelId);
-    
+    const suggestions = await collaborativeIntelligence.getCollaborationSuggestions(
+      parseInt(workspaceId),
+      modelId
+    );
+
     return res.json(suggestions);
   } catch (error) {
     console.error('Error getting collaboration suggestions:', error);
@@ -110,23 +120,25 @@ router.post('/workspaces', async (req, res) => {
       name: z.string(),
       description: z.string().optional(),
       modelIds: z.array(z.string()),
-      members: z.array(z.object({
-        memberId: z.number(),
-        role: z.enum(['owner', 'editor', 'viewer'])
-      }))
+      members: z.array(
+        z.object({
+          memberId: z.number(),
+          role: z.enum(['owner', 'editor', 'viewer']),
+        })
+      ),
     });
-    
+
     const validationResult = requestSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
       return res.status(400).json({ error: validationResult.error });
     }
-    
+
     const workspaceData = validationResult.data;
-    
+
     const collaborativeIntelligence = getCollaborativeIntelligence();
     const workspace = await collaborativeIntelligence.createWorkspace(workspaceData);
-    
+
     return res.status(201).json(workspace);
   } catch (error) {
     console.error('Error creating workspace:', error);
@@ -140,10 +152,10 @@ router.post('/workspaces', async (req, res) => {
 router.get('/workspaces/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     const collaborativeIntelligence = getCollaborativeIntelligence();
     const workspaces = await collaborativeIntelligence.getUserWorkspaces(parseInt(userId));
-    
+
     return res.json(workspaces);
   } catch (error) {
     console.error('Error getting user workspaces:', error);
@@ -157,10 +169,10 @@ router.get('/workspaces/user/:userId', async (req, res) => {
 router.get('/workspaces/:workspaceId/members', async (req, res) => {
   try {
     const { workspaceId } = req.params;
-    
+
     const collaborativeIntelligence = getCollaborativeIntelligence();
     const members = await collaborativeIntelligence.getWorkspaceMembers(parseInt(workspaceId));
-    
+
     return res.json(members);
   } catch (error) {
     console.error('Error getting workspace members:', error);
@@ -174,23 +186,23 @@ router.get('/workspaces/:workspaceId/members', async (req, res) => {
 router.post('/workspaces/:workspaceId/members', async (req, res) => {
   try {
     const { workspaceId } = req.params;
-    
+
     const requestSchema = z.object({
       memberId: z.number(),
-      role: z.enum(['owner', 'editor', 'viewer'])
+      role: z.enum(['owner', 'editor', 'viewer']),
     });
-    
+
     const validationResult = requestSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
       return res.status(400).json({ error: validationResult.error });
     }
-    
+
     const { memberId, role } = validationResult.data;
-    
+
     const collaborativeIntelligence = getCollaborativeIntelligence();
     await collaborativeIntelligence.addWorkspaceMember(parseInt(workspaceId), memberId, role);
-    
+
     return res.sendStatus(204);
   } catch (error) {
     console.error('Error adding workspace member:', error);
@@ -204,10 +216,13 @@ router.post('/workspaces/:workspaceId/members', async (req, res) => {
 router.delete('/workspaces/:workspaceId/members/:memberId', async (req, res) => {
   try {
     const { workspaceId, memberId } = req.params;
-    
+
     const collaborativeIntelligence = getCollaborativeIntelligence();
-    await collaborativeIntelligence.removeWorkspaceMember(parseInt(workspaceId), parseInt(memberId));
-    
+    await collaborativeIntelligence.removeWorkspaceMember(
+      parseInt(workspaceId),
+      parseInt(memberId)
+    );
+
     return res.sendStatus(204);
   } catch (error) {
     console.error('Error removing workspace member:', error);

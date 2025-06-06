@@ -1,6 +1,6 @@
 /**
  * Collaboration Types
- * 
+ *
  * Types for the collaboration WebSocket service
  */
 
@@ -13,7 +13,7 @@ export enum CollaborationMessageType {
   PING = 'ping',
   PONG = 'pong',
   ERROR = 'error',
-  
+
   // Session messages
   JOIN_SESSION = 'join_session',
   LEAVE_SESSION = 'leave_session',
@@ -21,12 +21,12 @@ export enum CollaborationMessageType {
   USER_LEFT = 'user_left',
   SESSION_INFO = 'session_info',
   SESSION_LIST = 'session_list',
-  
+
   // Presence messages
   CURSOR_POSITION = 'cursor_position',
   USER_ACTIVITY = 'user_activity',
   USER_PRESENCE = 'user_presence',
-  
+
   // Editing messages
   EDIT_OPERATION = 'edit_operation',
   EDIT_APPLIED = 'edit_applied',
@@ -35,11 +35,11 @@ export enum CollaborationMessageType {
   UNLOCK_SECTION = 'unlock_section',
   SECTION_LOCKED = 'section_locked',
   SECTION_UNLOCKED = 'section_unlocked',
-  
+
   // Communication messages
   CHAT_MESSAGE = 'chat_message',
   COMMENT = 'comment',
-  NOTIFICATION = 'notification'
+  NOTIFICATION = 'notification',
 }
 
 /**

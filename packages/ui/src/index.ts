@@ -1,7 +1,7 @@
 /**
  * TerraFusion UI Component Library
- * 
- * This package provides a set of reusable UI components for use across the 
+ *
+ * This package provides a set of reusable UI components for use across the
  * TerraFusion platform, organized by functional categories.
  */
 

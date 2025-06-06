@@ -1,6 +1,6 @@
 /**
  * Enhanced Voice Command Service
- * 
+ *
  * This service provides enhanced features for voice commands:
  * - Analytics and usage statistics
  * - Shortcut management
@@ -134,7 +134,9 @@ export async function getUserShortcuts(userId: number): Promise<VoiceCommandShor
 /**
  * Create a new shortcut
  */
-export async function createShortcut(shortcut: CreateVoiceCommandShortcut): Promise<VoiceCommandShortcut> {
+export async function createShortcut(
+  shortcut: CreateVoiceCommandShortcut
+): Promise<VoiceCommandShortcut> {
   const response = await apiRequest('POST', '/api/voice-command/shortcuts', shortcut);
   return await response.json();
 }
@@ -142,7 +144,10 @@ export async function createShortcut(shortcut: CreateVoiceCommandShortcut): Prom
 /**
  * Update an existing shortcut
  */
-export async function updateShortcut(id: number, shortcut: Partial<CreateVoiceCommandShortcut>): Promise<VoiceCommandShortcut> {
+export async function updateShortcut(
+  id: number,
+  shortcut: Partial<CreateVoiceCommandShortcut>
+): Promise<VoiceCommandShortcut> {
   const response = await apiRequest('PATCH', `/api/voice-command/shortcuts/${id}`, shortcut);
   return await response.json();
 }
@@ -158,7 +163,10 @@ export async function deleteShortcut(id: number): Promise<void> {
  * Create default shortcuts for a user
  */
 export async function createDefaultShortcuts(userId: number): Promise<VoiceCommandShortcut[]> {
-  const response = await apiRequest('POST', `/api/voice-command/shortcuts/defaults?userId=${userId}`);
+  const response = await apiRequest(
+    'POST',
+    `/api/voice-command/shortcuts/defaults?userId=${userId}`
+  );
   return await response.json();
 }
 
@@ -168,7 +176,7 @@ export async function createDefaultShortcuts(userId: number): Promise<VoiceComma
 export async function expandShortcuts(command: string, userId: number): Promise<string> {
   const response = await apiRequest('POST', '/api/voice-command/shortcuts/expand', {
     command,
-    userId
+    userId,
   });
   const result = await response.json();
   return result.expandedCommand;
@@ -180,19 +188,19 @@ export async function expandShortcuts(command: string, userId: number): Promise<
  * Get voice command analytics
  */
 export async function getVoiceCommandAnalytics(
-  userId: number, 
+  userId: number,
   dateRange?: DateRange
 ): Promise<VoiceCommandAnalyticsDetails> {
   let url = `/api/voice-command/analytics?userId=${userId}`;
-  
+
   if (dateRange?.from) {
     url += `&from=${dateRange.from.toISOString()}`;
   }
-  
+
   if (dateRange?.to) {
     url += `&to=${dateRange.to.toISOString()}`;
   }
-  
+
   const response = await apiRequest('GET', url);
   return await response.json();
 }
@@ -218,10 +226,13 @@ export async function getContextualHelp(contextId: string): Promise<VoiceCommand
 /**
  * Get suggested help based on query
  */
-export async function getSuggestedHelp(query: string, contextId: string): Promise<VoiceCommandHelpContent[]> {
+export async function getSuggestedHelp(
+  query: string,
+  contextId: string
+): Promise<VoiceCommandHelpContent[]> {
   const response = await apiRequest('POST', '/api/voice-command/help/suggest', {
     query,
-    contextId
+    contextId,
   });
   return await response.json();
 }
@@ -234,7 +245,7 @@ export async function getSuggestedHelp(query: string, contextId: string): Promis
 export async function getCommandCorrections(command: string, contextId: string): Promise<string[]> {
   const response = await apiRequest('POST', '/api/voice-command/corrections', {
     command,
-    contextId
+    contextId,
   });
   const result = await response.json();
   return result.corrections;

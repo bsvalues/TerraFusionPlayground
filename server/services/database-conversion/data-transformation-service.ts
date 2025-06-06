@@ -1,6 +1,6 @@
 /**
  * Data Transformation Service
- * 
+ *
  * This service is responsible for transforming data during database conversion.
  * It handles data type conversions, formatting, and complex transformations
  * between different database systems.
@@ -37,158 +37,201 @@ export enum TransformationType {
   Math = 'math',
   Conditional = 'conditional',
   Custom = 'custom',
-  AIAssisted = 'ai_assisted'
+  AIAssisted = 'ai_assisted',
 }
 
 export class DataTransformationService {
   private storage: IStorage;
   private llmService?: LLMService;
-  
+
   // Mapping of data type conversions between different databases
-  private dataTypeConversionMap: Record<DatabaseType, Record<DatabaseType, Record<string, string>>> = {
+  private dataTypeConversionMap: Record<
+    DatabaseType,
+    Record<DatabaseType, Record<string, string>>
+  > = {
     [DatabaseType.PostgreSQL]: {
       [DatabaseType.MySQL]: {
-        'text': 'TEXT',
-        'varchar': 'VARCHAR',
-        'char': 'CHAR',
-        'integer': 'INT',
-        'smallint': 'SMALLINT',
-        'bigint': 'BIGINT',
-        'decimal': 'DECIMAL',
-        'numeric': 'DECIMAL',
-        'real': 'FLOAT',
+        text: 'TEXT',
+        varchar: 'VARCHAR',
+        char: 'CHAR',
+        integer: 'INT',
+        smallint: 'SMALLINT',
+        bigint: 'BIGINT',
+        decimal: 'DECIMAL',
+        numeric: 'DECIMAL',
+        real: 'FLOAT',
         'double precision': 'DOUBLE',
-        'boolean': 'TINYINT(1)',
-        'date': 'DATE',
-        'time': 'TIME',
-        'timestamp': 'DATETIME',
-        'timestamptz': 'DATETIME',
-        'interval': 'VARCHAR(255)',
-        'json': 'JSON',
-        'jsonb': 'JSON',
-        'uuid': 'CHAR(36)',
-        'bytea': 'BLOB',
-        'array': 'JSON'
+        boolean: 'TINYINT(1)',
+        date: 'DATE',
+        time: 'TIME',
+        timestamp: 'DATETIME',
+        timestamptz: 'DATETIME',
+        interval: 'VARCHAR(255)',
+        json: 'JSON',
+        jsonb: 'JSON',
+        uuid: 'CHAR(36)',
+        bytea: 'BLOB',
+        array: 'JSON',
       },
       [DatabaseType.SQLite]: {
-        'text': 'TEXT',
-        'varchar': 'TEXT',
-        'char': 'TEXT',
-        'integer': 'INTEGER',
-        'smallint': 'INTEGER',
-        'bigint': 'INTEGER',
-        'decimal': 'REAL',
-        'numeric': 'REAL',
-        'real': 'REAL',
+        text: 'TEXT',
+        varchar: 'TEXT',
+        char: 'TEXT',
+        integer: 'INTEGER',
+        smallint: 'INTEGER',
+        bigint: 'INTEGER',
+        decimal: 'REAL',
+        numeric: 'REAL',
+        real: 'REAL',
         'double precision': 'REAL',
-        'boolean': 'INTEGER',
-        'date': 'TEXT',
-        'time': 'TEXT',
-        'timestamp': 'TEXT',
-        'timestamptz': 'TEXT',
-        'interval': 'TEXT',
-        'json': 'TEXT',
-        'jsonb': 'TEXT',
-        'uuid': 'TEXT',
-        'bytea': 'BLOB',
-        'array': 'TEXT'
+        boolean: 'INTEGER',
+        date: 'TEXT',
+        time: 'TEXT',
+        timestamp: 'TEXT',
+        timestamptz: 'TEXT',
+        interval: 'TEXT',
+        json: 'TEXT',
+        jsonb: 'TEXT',
+        uuid: 'TEXT',
+        bytea: 'BLOB',
+        array: 'TEXT',
       },
       [DatabaseType.SQLServer]: {
-        'text': 'NVARCHAR(MAX)',
-        'varchar': 'VARCHAR',
-        'char': 'CHAR',
-        'integer': 'INT',
-        'smallint': 'SMALLINT',
-        'bigint': 'BIGINT',
-        'decimal': 'DECIMAL',
-        'numeric': 'DECIMAL',
-        'real': 'FLOAT',
+        text: 'NVARCHAR(MAX)',
+        varchar: 'VARCHAR',
+        char: 'CHAR',
+        integer: 'INT',
+        smallint: 'SMALLINT',
+        bigint: 'BIGINT',
+        decimal: 'DECIMAL',
+        numeric: 'DECIMAL',
+        real: 'FLOAT',
         'double precision': 'FLOAT',
-        'boolean': 'BIT',
-        'date': 'DATE',
-        'time': 'TIME',
-        'timestamp': 'DATETIME2',
-        'timestamptz': 'DATETIMEOFFSET',
-        'interval': 'VARCHAR(255)',
-        'json': 'NVARCHAR(MAX)',
-        'jsonb': 'NVARCHAR(MAX)',
-        'uuid': 'UNIQUEIDENTIFIER',
-        'bytea': 'VARBINARY(MAX)',
-        'array': 'NVARCHAR(MAX)'
+        boolean: 'BIT',
+        date: 'DATE',
+        time: 'TIME',
+        timestamp: 'DATETIME2',
+        timestamptz: 'DATETIMEOFFSET',
+        interval: 'VARCHAR(255)',
+        json: 'NVARCHAR(MAX)',
+        jsonb: 'NVARCHAR(MAX)',
+        uuid: 'UNIQUEIDENTIFIER',
+        bytea: 'VARBINARY(MAX)',
+        array: 'NVARCHAR(MAX)',
       },
       [DatabaseType.MongoDB]: {
-        'text': 'String',
-        'varchar': 'String',
-        'char': 'String',
-        'integer': 'Number',
-        'smallint': 'Number',
-        'bigint': 'Number',
-        'decimal': 'Number',
-        'numeric': 'Number',
-        'real': 'Number',
+        text: 'String',
+        varchar: 'String',
+        char: 'String',
+        integer: 'Number',
+        smallint: 'Number',
+        bigint: 'Number',
+        decimal: 'Number',
+        numeric: 'Number',
+        real: 'Number',
         'double precision': 'Number',
-        'boolean': 'Boolean',
-        'date': 'Date',
-        'time': 'Date',
-        'timestamp': 'Date',
-        'timestamptz': 'Date',
-        'interval': 'String',
-        'json': 'Object',
-        'jsonb': 'Object',
-        'uuid': 'String',
-        'bytea': 'Buffer',
-        'array': 'Array'
-      }
+        boolean: 'Boolean',
+        date: 'Date',
+        time: 'Date',
+        timestamp: 'Date',
+        timestamptz: 'Date',
+        interval: 'String',
+        json: 'Object',
+        jsonb: 'Object',
+        uuid: 'String',
+        bytea: 'Buffer',
+        array: 'Array',
+      },
     },
     [DatabaseType.MySQL]: {
       [DatabaseType.PostgreSQL]: {
-        'TEXT': 'text',
-        'VARCHAR': 'varchar',
-        'CHAR': 'char',
-        'INT': 'integer',
-        'SMALLINT': 'smallint',
-        'BIGINT': 'bigint',
-        'DECIMAL': 'numeric',
-        'FLOAT': 'real',
-        'DOUBLE': 'double precision',
+        TEXT: 'text',
+        VARCHAR: 'varchar',
+        CHAR: 'char',
+        INT: 'integer',
+        SMALLINT: 'smallint',
+        BIGINT: 'bigint',
+        DECIMAL: 'numeric',
+        FLOAT: 'real',
+        DOUBLE: 'double precision',
         'TINYINT(1)': 'boolean',
-        'DATE': 'date',
-        'TIME': 'time',
-        'DATETIME': 'timestamp',
-        'JSON': 'jsonb',
-        'BLOB': 'bytea',
-        'ENUM': 'text'
+        DATE: 'date',
+        TIME: 'time',
+        DATETIME: 'timestamp',
+        JSON: 'jsonb',
+        BLOB: 'bytea',
+        ENUM: 'text',
       },
       // Add other databases...
-      [DatabaseType.SQLite]: {/* mapping */},
-      [DatabaseType.SQLServer]: {/* mapping */},
-      [DatabaseType.MongoDB]: {/* mapping */}
+      [DatabaseType.SQLite]: {
+        /* mapping */
+      },
+      [DatabaseType.SQLServer]: {
+        /* mapping */
+      },
+      [DatabaseType.MongoDB]: {
+        /* mapping */
+      },
     },
     // Add other source database types...
     [DatabaseType.SQLite]: {
-      [DatabaseType.PostgreSQL]: {/* mapping */},
-      [DatabaseType.MySQL]: {/* mapping */},
-      [DatabaseType.SQLServer]: {/* mapping */},
-      [DatabaseType.MongoDB]: {/* mapping */}
+      [DatabaseType.PostgreSQL]: {
+        /* mapping */
+      },
+      [DatabaseType.MySQL]: {
+        /* mapping */
+      },
+      [DatabaseType.SQLServer]: {
+        /* mapping */
+      },
+      [DatabaseType.MongoDB]: {
+        /* mapping */
+      },
     },
     [DatabaseType.SQLServer]: {
-      [DatabaseType.PostgreSQL]: {/* mapping */},
-      [DatabaseType.MySQL]: {/* mapping */},
-      [DatabaseType.SQLite]: {/* mapping */},
-      [DatabaseType.MongoDB]: {/* mapping */}
+      [DatabaseType.PostgreSQL]: {
+        /* mapping */
+      },
+      [DatabaseType.MySQL]: {
+        /* mapping */
+      },
+      [DatabaseType.SQLite]: {
+        /* mapping */
+      },
+      [DatabaseType.MongoDB]: {
+        /* mapping */
+      },
     },
     [DatabaseType.Oracle]: {
-      [DatabaseType.PostgreSQL]: {/* mapping */},
-      [DatabaseType.MySQL]: {/* mapping */},
-      [DatabaseType.SQLite]: {/* mapping */},
-      [DatabaseType.SQLServer]: {/* mapping */},
-      [DatabaseType.MongoDB]: {/* mapping */}
+      [DatabaseType.PostgreSQL]: {
+        /* mapping */
+      },
+      [DatabaseType.MySQL]: {
+        /* mapping */
+      },
+      [DatabaseType.SQLite]: {
+        /* mapping */
+      },
+      [DatabaseType.SQLServer]: {
+        /* mapping */
+      },
+      [DatabaseType.MongoDB]: {
+        /* mapping */
+      },
     },
     [DatabaseType.MongoDB]: {
-      [DatabaseType.PostgreSQL]: {/* mapping */},
-      [DatabaseType.MySQL]: {/* mapping */},
-      [DatabaseType.SQLite]: {/* mapping */},
-      [DatabaseType.SQLServer]: {/* mapping */}
+      [DatabaseType.PostgreSQL]: {
+        /* mapping */
+      },
+      [DatabaseType.MySQL]: {
+        /* mapping */
+      },
+      [DatabaseType.SQLite]: {
+        /* mapping */
+      },
+      [DatabaseType.SQLServer]: {
+        /* mapping */
+      },
     },
     // Other database types would be added here
     [DatabaseType.DynamoDB]: {},
@@ -198,14 +241,14 @@ export class DataTransformationService {
     [DatabaseType.Neo4j]: {},
     [DatabaseType.Firestore]: {},
     [DatabaseType.CosmosDB]: {},
-    [DatabaseType.Unknown]: {}
+    [DatabaseType.Unknown]: {},
   };
-  
+
   constructor(storage: IStorage, llmService?: LLMService) {
     this.storage = storage;
     this.llmService = llmService;
   }
-  
+
   /**
    * Transform data
    */
@@ -218,7 +261,7 @@ export class DataTransformationService {
     if (data.length === 0) {
       return [];
     }
-    
+
     try {
       // Log the transformation start
       await this.logTransformation(
@@ -227,12 +270,12 @@ export class DataTransformationService {
         'transform_start',
         `Starting transformation of ${data.length} records from ${sourceType} to ${targetType}`
       );
-      
+
       // Apply transformations to each record
       const transformedData = await Promise.all(
-        data.map(async (record) => this.transformRecord(record, sourceType, targetType, options))
+        data.map(async record => this.transformRecord(record, sourceType, targetType, options))
       );
-      
+
       // Log the transformation completion
       await this.logTransformation(
         options.customScripts?.projectId || 'unknown',
@@ -240,7 +283,7 @@ export class DataTransformationService {
         'transform_complete',
         `Completed transformation of ${data.length} records`
       );
-      
+
       return transformedData;
     } catch (error) {
       // Log the error
@@ -251,11 +294,11 @@ export class DataTransformationService {
         `Error during transformation: ${error.message}`,
         { error: error.stack }
       );
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Transform a single record
    */
@@ -267,24 +310,24 @@ export class DataTransformationService {
   ): Promise<any> {
     // Create a new record for the transformation
     const transformedRecord: Record<string, any> = {};
-    
+
     // Get fields to transform
     const fields = Object.keys(record);
-    
+
     // Process each field
     for (const field of fields) {
       let targetField = field;
       let value = record[field];
-      
+
       // Check if there's a specific transformation for this field
       const fieldTransformation = options.transformations?.find(t => t.field === field);
-      
+
       if (fieldTransformation) {
         // Use the target field name if specified
         if (fieldTransformation.targetField) {
           targetField = fieldTransformation.targetField;
         }
-        
+
         // Apply the transformation
         value = await this.applyTransformation(
           field,
@@ -299,14 +342,14 @@ export class DataTransformationService {
         // Apply default type conversion
         value = this.convertDataType(field, value, sourceType, targetType);
       }
-      
+
       // Add the transformed field to the new record
       transformedRecord[targetField] = value;
     }
-    
+
     return transformedRecord;
   }
-  
+
   /**
    * Apply a transformation to a field value
    */
@@ -321,21 +364,29 @@ export class DataTransformationService {
   ): Promise<any> {
     switch (transformation.transformationType) {
       case TransformationType.TypeConversion:
-        return this.convertExplicitType(value, transformation.parameters?.fromType, transformation.parameters?.toType);
-        
+        return this.convertExplicitType(
+          value,
+          transformation.parameters?.fromType,
+          transformation.parameters?.toType
+        );
+
       case TransformationType.Format:
         return this.formatValue(value, transformation.parameters?.format);
-        
+
       case TransformationType.Combine:
-        return this.combineFields(record, transformation.parameters?.fields, transformation.parameters?.separator);
-        
+        return this.combineFields(
+          record,
+          transformation.parameters?.fields,
+          transformation.parameters?.separator
+        );
+
       case TransformationType.Split:
         return this.splitField(
           value,
           transformation.parameters?.separator,
           transformation.parameters?.index
         );
-        
+
       case TransformationType.Lookup:
         return this.lookupValue(
           value,
@@ -343,14 +394,14 @@ export class DataTransformationService {
           transformation.parameters?.lookupField,
           transformation.parameters?.resultField
         );
-        
+
       case TransformationType.Math:
         return this.calculateValue(
           value,
           transformation.parameters?.operation,
           transformation.parameters?.operand
         );
-        
+
       case TransformationType.Conditional:
         return this.conditionalTransform(
           value,
@@ -358,7 +409,7 @@ export class DataTransformationService {
           transformation.parameters?.trueValue,
           transformation.parameters?.falseValue
         );
-        
+
       case TransformationType.Custom:
         return this.customTransform(
           value,
@@ -367,7 +418,7 @@ export class DataTransformationService {
           transformation.parameters?.scriptName,
           options.customScripts
         );
-        
+
       case TransformationType.AIAssisted:
         return this.aiAssistedTransform(
           value,
@@ -377,36 +428,41 @@ export class DataTransformationService {
           targetType,
           transformation.parameters
         );
-        
+
       default:
         // Default to basic type conversion
         return this.convertDataType(field, value, sourceType, targetType);
     }
   }
-  
+
   /**
    * Convert data type based on source and target database
    */
-  private convertDataType(field: string, value: any, sourceType: DatabaseType, targetType: DatabaseType): any {
+  private convertDataType(
+    field: string,
+    value: any,
+    sourceType: DatabaseType,
+    targetType: DatabaseType
+  ): any {
     // If value is null or undefined, return as is
     if (value === null || value === undefined) {
       return value;
     }
-    
+
     // Infer source data type if not provided
     const sourceDataType = this.inferDataType(value);
-    
+
     // Convert based on inferred type
     switch (sourceDataType) {
       case FieldType.String:
         return value.toString();
-        
+
       case FieldType.Integer:
         return parseInt(value, 10);
-        
+
       case FieldType.Float:
         return parseFloat(value);
-        
+
       case FieldType.Boolean:
         if (typeof value === 'string') {
           return ['true', 't', 'yes', 'y', '1'].includes(value.toLowerCase());
@@ -415,7 +471,7 @@ export class DataTransformationService {
           return value !== 0;
         }
         return Boolean(value);
-        
+
       case FieldType.Date:
       case FieldType.DateTime:
         // Handle date/time conversion
@@ -429,7 +485,7 @@ export class DataTransformationService {
           return value.toISOString();
         }
         return value;
-        
+
       case FieldType.JSON:
       case FieldType.Object:
         // Convert objects based on target database
@@ -440,7 +496,7 @@ export class DataTransformationService {
         } else {
           return JSON.stringify(value);
         }
-        
+
       case FieldType.Array:
         // Convert arrays based on target database
         if (targetType === DatabaseType.MongoDB) {
@@ -450,20 +506,20 @@ export class DataTransformationService {
         } else {
           return JSON.stringify(value);
         }
-        
+
       case FieldType.Binary:
         // Handle binary data
         if (targetType === DatabaseType.MongoDB) {
           return Buffer.from(value);
         }
         return value;
-        
+
       default:
         // For unknown types, just return the value as is
         return value;
     }
   }
-  
+
   /**
    * Infer the data type of a value
    */
@@ -471,18 +527,18 @@ export class DataTransformationService {
     if (value === null || value === undefined) {
       return FieldType.Unknown;
     }
-    
+
     if (typeof value === 'string') {
       // Check if it's a date string
       if (!isNaN(Date.parse(value)) && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
         return FieldType.DateTime;
       }
-      
+
       // Check if it's a date only string
       if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
         return FieldType.Date;
       }
-      
+
       // Check if it's a JSON string
       try {
         const parsed = JSON.parse(value);
@@ -492,36 +548,36 @@ export class DataTransformationService {
       } catch (e) {
         // Not a JSON string
       }
-      
+
       return FieldType.String;
     }
-    
+
     if (typeof value === 'number') {
       return Number.isInteger(value) ? FieldType.Integer : FieldType.Float;
     }
-    
+
     if (typeof value === 'boolean') {
       return FieldType.Boolean;
     }
-    
+
     if (value instanceof Date) {
       return FieldType.DateTime;
     }
-    
+
     if (Array.isArray(value)) {
       return FieldType.Array;
     }
-    
+
     if (typeof value === 'object') {
       if (value instanceof Buffer || value instanceof Uint8Array) {
         return FieldType.Binary;
       }
       return FieldType.Object;
     }
-    
+
     return FieldType.Unknown;
   }
-  
+
   /**
    * Convert value to an explicit type
    */
@@ -529,26 +585,26 @@ export class DataTransformationService {
     if (value === null || value === undefined) {
       return value;
     }
-    
+
     // If no toType is specified, return value as is
     if (!toType) {
       return value;
     }
-    
+
     // Convert to the specified type
     switch (toType.toLowerCase()) {
       case 'string':
         return String(value);
-        
+
       case 'integer':
       case 'int':
         return parseInt(value, 10);
-        
+
       case 'float':
       case 'number':
       case 'decimal':
         return parseFloat(value);
-        
+
       case 'boolean':
       case 'bool':
         if (typeof value === 'string') {
@@ -558,10 +614,10 @@ export class DataTransformationService {
           return value !== 0;
         }
         return Boolean(value);
-        
+
       case 'date':
         return new Date(value);
-        
+
       case 'json':
       case 'object':
         if (typeof value === 'string') {
@@ -573,7 +629,7 @@ export class DataTransformationService {
         } else {
           return value;
         }
-        
+
       case 'array':
         if (typeof value === 'string') {
           try {
@@ -587,12 +643,12 @@ export class DataTransformationService {
         } else {
           return [value];
         }
-        
+
       default:
         return value;
     }
   }
-  
+
   /**
    * Format a value according to a format string
    */
@@ -600,7 +656,7 @@ export class DataTransformationService {
     if (!format || value === null || value === undefined) {
       return value;
     }
-    
+
     try {
       // Handle different types of formatting
       if (value instanceof Date || !isNaN(Date.parse(value))) {
@@ -614,7 +670,7 @@ export class DataTransformationService {
         // String formatting
         return this.formatString(value, format);
       }
-      
+
       // Default case: return the value as is
       return value;
     } catch (error) {
@@ -622,21 +678,21 @@ export class DataTransformationService {
       return value;
     }
   }
-  
+
   /**
    * Format a date value
    */
   private formatDate(date: Date, format: string): string {
     // Simple date formatting implementation
     // In a real implementation, you would use a library like date-fns or moment.js
-    
+
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const day = date.getDate().toString().padStart(2, '0');
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
     const seconds = date.getSeconds().toString().padStart(2, '0');
-    
+
     // Simple format substitutions
     return format
       .replace('YYYY', year.toString())
@@ -646,14 +702,14 @@ export class DataTransformationService {
       .replace('mm', minutes)
       .replace('ss', seconds);
   }
-  
+
   /**
    * Format a number value
    */
   private formatNumber(num: number, format: string): string {
     // Simple number formatting implementation
     // In a real implementation, you would use a library like numeral.js
-    
+
     if (format.includes('%')) {
       // Percentage formatting
       const percentage = num * 100;
@@ -666,17 +722,17 @@ export class DataTransformationService {
       const precision = format.split('.')[1].length;
       return num.toFixed(precision);
     }
-    
+
     // Default case: return as string
     return num.toString();
   }
-  
+
   /**
    * Format a string value
    */
   private formatString(str: string, format: string): string {
     // Simple string formatting implementation
-    
+
     if (format === 'uppercase') {
       return str.toUpperCase();
     } else if (format === 'lowercase') {
@@ -687,11 +743,11 @@ export class DataTransformationService {
       const length = parseInt(format.split(':')[1], 10);
       return str.length > length ? str.substring(0, length) + '...' : str;
     }
-    
+
     // Default case: return the string as is
     return str;
   }
-  
+
   /**
    * Combine multiple fields
    */
@@ -699,16 +755,16 @@ export class DataTransformationService {
     if (!fields || !Array.isArray(fields)) {
       return '';
     }
-    
+
     // Get values from each field, filtering out nulls and undefineds
     const values = fields
       .map(field => record[field])
       .filter(value => value !== null && value !== undefined);
-    
+
     // Join the values with the separator
     return values.join(separator);
   }
-  
+
   /**
    * Split a field value
    */
@@ -716,18 +772,18 @@ export class DataTransformationService {
     if (typeof value !== 'string') {
       return value;
     }
-    
+
     const parts = value.split(separator);
-    
+
     // If index is provided, return just that part
     if (index !== undefined && index >= 0 && index < parts.length) {
       return parts[index];
     }
-    
+
     // Otherwise return the array of parts
     return parts;
   }
-  
+
   /**
    * Look up a value in a lookup table
    */
@@ -740,7 +796,7 @@ export class DataTransformationService {
     if (!lookupTable || !lookupField || !resultField || value === null || value === undefined) {
       return value;
     }
-    
+
     try {
       // In a real implementation, this would query the database
       // For now, we'll use an in-memory lookup
@@ -748,10 +804,10 @@ export class DataTransformationService {
       if (!lookupData) {
         return value;
       }
-      
+
       // Find the matching record
       const matchingRecord = lookupData.find(record => record[lookupField] === value);
-      
+
       // Return the looked-up value or the original value if not found
       return matchingRecord ? matchingRecord[resultField] : value;
     } catch (error) {
@@ -759,7 +815,7 @@ export class DataTransformationService {
       return value;
     }
   }
-  
+
   /**
    * Calculate a value using a mathematical operation
    */
@@ -767,46 +823,46 @@ export class DataTransformationService {
     if (value === null || value === undefined || !operation) {
       return value;
     }
-    
+
     // Parse value and operand as numbers
     const num = parseFloat(value);
     const op = parseFloat(operand);
-    
+
     if (isNaN(num)) {
       return value;
     }
-    
+
     // Perform the operation
     switch (operation) {
       case 'add':
         return num + (isNaN(op) ? 0 : op);
-        
+
       case 'subtract':
         return num - (isNaN(op) ? 0 : op);
-        
+
       case 'multiply':
         return num * (isNaN(op) ? 1 : op);
-        
+
       case 'divide':
         if (isNaN(op) || op === 0) {
           return value; // Avoid division by zero
         }
         return num / op;
-        
+
       case 'round':
         return Math.round(num);
-        
+
       case 'floor':
         return Math.floor(num);
-        
+
       case 'ceil':
         return Math.ceil(num);
-        
+
       default:
         return value;
     }
   }
-  
+
   /**
    * Transform a value conditionally
    */
@@ -819,25 +875,31 @@ export class DataTransformationService {
     if (!condition) {
       return value;
     }
-    
+
     try {
       // Evaluate the condition
       // For security reasons, this is a very simple implementation
       // In a real application, you would use a proper expression evaluator
       let result: boolean;
-      
+
       if (condition === 'isNull') {
         result = value === null || value === undefined;
       } else if (condition === 'isNotNull') {
         result = value !== null && value !== undefined;
       } else if (condition === 'isEmpty') {
-        result = value === null || value === undefined || value === '' || 
-                (Array.isArray(value) && value.length === 0) ||
-                (typeof value === 'object' && Object.keys(value).length === 0);
+        result =
+          value === null ||
+          value === undefined ||
+          value === '' ||
+          (Array.isArray(value) && value.length === 0) ||
+          (typeof value === 'object' && Object.keys(value).length === 0);
       } else if (condition === 'isNotEmpty') {
-        result = value !== null && value !== undefined && value !== '' && 
-                (!Array.isArray(value) || value.length > 0) &&
-                (typeof value !== 'object' || Object.keys(value).length > 0);
+        result =
+          value !== null &&
+          value !== undefined &&
+          value !== '' &&
+          (!Array.isArray(value) || value.length > 0) &&
+          (typeof value !== 'object' || Object.keys(value).length > 0);
       } else if (condition.includes('==')) {
         const [left, right] = condition.split('==').map(s => s.trim());
         result = value == right; // Non-strict comparison
@@ -872,15 +934,21 @@ export class DataTransformationService {
         // Unknown condition, return the original value
         return value;
       }
-      
+
       // Return the appropriate value based on the condition result
-      return result ? (trueValue !== undefined ? trueValue : value) : (falseValue !== undefined ? falseValue : value);
+      return result
+        ? trueValue !== undefined
+          ? trueValue
+          : value
+        : falseValue !== undefined
+          ? falseValue
+          : value;
     } catch (error) {
       console.error(`Error evaluating condition '${condition}' for value '${value}':`, error);
       return value;
     }
   }
-  
+
   /**
    * Apply a custom transformation script
    */
@@ -894,22 +962,22 @@ export class DataTransformationService {
     if (!scriptName || !customScripts || !customScripts[scriptName]) {
       return value;
     }
-    
+
     try {
       // Get the script code
       const scriptCode = customScripts[scriptName];
-      
+
       // Execute the script in a safe context
       // In a real implementation, you would use a sandboxed evaluation like vm2
       const transform = new Function('value', 'record', 'field', scriptCode);
-      
+
       return transform(value, record, field);
     } catch (error) {
       console.error(`Error executing custom transformation script '${scriptName}':`, error);
       return value;
     }
   }
-  
+
   /**
    * Apply an AI-assisted transformation
    */
@@ -924,7 +992,7 @@ export class DataTransformationService {
     if (!this.llmService || value === null || value === undefined) {
       return value;
     }
-    
+
     try {
       // Create a prompt for the AI service
       const prompt = `
@@ -938,13 +1006,13 @@ Transform the following data field:
 
 Please output only the transformed value in a format appropriate for ${targetType}.
 `;
-      
+
       // Call the LLM service
-      const response = await this.llmService.generateContent(prompt, { 
-        temperature: 0.2, 
-        model: 'gpt-4o' // Use the latest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      const response = await this.llmService.generateContent(prompt, {
+        temperature: 0.2,
+        model: 'gpt-4o', // Use the latest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       });
-      
+
       // Parse the response
       let transformedValue;
       try {
@@ -954,14 +1022,14 @@ Please output only the transformed value in a format appropriate for ${targetTyp
         // If parsing fails, use the string response
         transformedValue = response.trim();
       }
-      
+
       return transformedValue;
     } catch (error) {
       console.error(`Error applying AI-assisted transformation to field '${field}':`, error);
       return value;
     }
   }
-  
+
   /**
    * Log a transformation event
    */
@@ -979,7 +1047,7 @@ Please output only the transformed value in a format appropriate for ${targetTyp
         stage,
         message,
         details,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     } catch (error) {
       console.error('Error logging transformation:', error);

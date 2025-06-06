@@ -1,6 +1,6 @@
 /**
  * FTP Agent Scheduler Test
- * 
+ *
  * This file tests the locking mechanism of the FTP agent scheduler
  * to ensure that multiple concurrent synchronization jobs cannot run at the same time.
  */
@@ -27,24 +27,24 @@ function testLockFileCreation() {
     fs.unlinkSync(LOCK_FILE_PATH);
     logger.info('Removed existing lock file');
   }
-  
+
   // Create a lock file
   const lockData = {
     pid: process.pid,
     timestamp: new Date().toISOString(),
-    duration: 60000 // 1 minute
+    duration: 60000, // 1 minute
   };
-  
+
   fs.writeFileSync(LOCK_FILE_PATH, JSON.stringify(lockData));
   logger.info('Created lock file');
-  
+
   // Check if lock file exists
   const lockExists = fs.existsSync(LOCK_FILE_PATH);
   if (!lockExists) {
     logger.error('Lock file creation failed');
     return false;
   }
-  
+
   logger.info('✓ Lock file creation successful');
   return true;
 }
@@ -58,21 +58,21 @@ function testLockFileDetection() {
     logger.error('Lock file not found for detection test');
     return false;
   }
-  
+
   // Read lock file
   const lockContent = fs.readFileSync(LOCK_FILE_PATH, 'utf8');
   let lockData;
-  
+
   try {
     lockData = JSON.parse(lockContent);
     logger.info('Lock file parsed successfully');
-    
+
     // Verify lock data structure
     if (!lockData.pid || !lockData.timestamp || !lockData.duration) {
       logger.error('Invalid lock file format');
       return false;
     }
-    
+
     logger.info(`Lock file data: PID ${lockData.pid}, Timestamp ${lockData.timestamp}`);
     logger.info('✓ Lock file detection successful');
     return true;
@@ -91,29 +91,30 @@ function testStaleLockDetection() {
     logger.error('Lock file not found for stale lock test');
     return false;
   }
-  
+
   // Read lock file
   const lockContent = fs.readFileSync(LOCK_FILE_PATH, 'utf8');
   let lockData;
-  
+
   try {
     lockData = JSON.parse(lockContent);
-    
+
     // Modify timestamp to make the lock stale (set it to 2 hours ago)
     const staleTime = new Date();
     staleTime.setHours(staleTime.getHours() - 2);
-    
+
     lockData.timestamp = staleTime.toISOString();
     fs.writeFileSync(LOCK_FILE_PATH, JSON.stringify(lockData));
-    
+
     logger.info('Modified lock file to be stale');
-    
+
     // Verify it's stale by comparing timestamps
     const currentTime = new Date();
     const lockTime = new Date(lockData.timestamp);
     const timeDiff = currentTime - lockTime;
-    
-    if (timeDiff > 60 * 60 * 1000) { // More than 1 hour
+
+    if (timeDiff > 60 * 60 * 1000) {
+      // More than 1 hour
       logger.info('✓ Lock detected as stale successfully');
       return true;
     } else {
@@ -135,12 +136,12 @@ function testLockFileRemoval() {
     logger.error('Lock file not found for removal test');
     return false;
   }
-  
+
   try {
     // Remove lock file
     fs.unlinkSync(LOCK_FILE_PATH);
     logger.info('Removed lock file');
-    
+
     // Verify lock file removal
     if (!fs.existsSync(LOCK_FILE_PATH)) {
       logger.info('✓ Lock file removal successful');
@@ -160,32 +161,32 @@ function testLockFileRemoval() {
  */
 function runAllTests() {
   logger.info('Starting FTP Agent Scheduler Lock Tests...');
-  
+
   let results = {};
-  
+
   // Test 1: Lock file creation
   results.lockCreation = testLockFileCreation();
-  
+
   // Test 2: Lock file detection
   results.lockDetection = testLockFileDetection();
-  
+
   // Test 3: Stale lock detection
   results.staleLockDetection = testStaleLockDetection();
-  
+
   // Test 4: Lock file removal
   results.lockRemoval = testLockFileRemoval();
-  
+
   // Print summary
   logger.info('=== FTP Agent Scheduler Lock Test Results ===');
   let totalTests = Object.keys(results).length;
   let passedTests = Object.values(results).filter(Boolean).length;
-  
+
   logger.info(`Tests passed: ${passedTests}/${totalTests}`);
-  
+
   for (const [test, passed] of Object.entries(results)) {
     logger.info(`${passed ? '✓' : '✗'} ${test}`);
   }
-  
+
   if (passedTests === totalTests) {
     logger.info('All lock tests passed successfully!');
     return true;
@@ -207,4 +208,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     });
 }
 
-export { runAllTests, testLockFileCreation, testLockFileDetection, testStaleLockDetection, testLockFileRemoval };
+export {
+  runAllTests,
+  testLockFileCreation,
+  testLockFileDetection,
+  testStaleLockDetection,
+  testLockFileRemoval,
+};

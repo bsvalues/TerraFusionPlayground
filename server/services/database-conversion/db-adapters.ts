@@ -1,6 +1,6 @@
 /**
  * Database Adapters
- * 
+ *
  * This module provides adapters for various database systems to query their schemas
  * in a standardized format.
  */
@@ -63,21 +63,21 @@ export async function queryDatabaseSchema(
  */
 async function queryPostgresSchema(connectionString: string, options: any = {}) {
   const pool = new Pool({ connectionString });
-  
+
   try {
     // If we just want to test the connection, do a simple query
     if (options.testConnectionOnly) {
       const { rows } = await pool.query('SELECT version() as version, current_database() as name');
-      
+
       return {
         databaseInfo: {
           name: rows[0].name,
           version: rows[0].version.split(' ')[1], // Extract version number
-          type: DatabaseType.PostgreSQL
-        }
+          type: DatabaseType.PostgreSQL,
+        },
       };
     }
-    
+
     // Get tables
     const tablesQuery = `
       SELECT 
@@ -92,17 +92,17 @@ async function queryPostgresSchema(connectionString: string, options: any = {}) 
       ${options.tableFilter ? 'AND t.table_name = ANY($1)' : ''}
       ORDER BY t.table_name
     `;
-    
+
     const tableParams = options.tableFilter ? [options.tableFilter] : [];
     const { rows: tableRows } = await pool.query(tablesQuery, tableParams);
-    
+
     const tables = [];
     let totalSize = 0;
-    
+
     // Process each table
     for (const table of tableRows) {
       totalSize += parseInt(table.table_size || 0);
-      
+
       // Get columns
       const columnsQuery = `
         SELECT 
@@ -136,9 +136,9 @@ async function queryPostgresSchema(connectionString: string, options: any = {}) 
         AND c.table_name = $1
         ORDER BY c.ordinal_position
       `;
-      
+
       const { rows: columnRows } = await pool.query(columnsQuery, [table.name]);
-      
+
       const columns = columnRows.map(col => ({
         name: col.name,
         type: col.type,
@@ -150,9 +150,9 @@ async function queryPostgresSchema(connectionString: string, options: any = {}) 
         isPrimaryKey: col.is_primary_key,
         isUnique: col.is_unique,
         autoIncrement: col.is_auto_increment,
-        description: col.description
+        description: col.description,
       }));
-      
+
       // Get primary key
       const pkQuery = `
         SELECT ccu.column_name
@@ -162,10 +162,10 @@ async function queryPostgresSchema(connectionString: string, options: any = {}) 
         AND tc.constraint_type = 'PRIMARY KEY'
         ORDER BY ccu.ordinal_position
       `;
-      
+
       const { rows: pkRows } = await pool.query(pkQuery, [table.name]);
       const primaryKey = pkRows.map(pk => pk.column_name);
-      
+
       // Get indexes
       const indexesQuery = `
         SELECT
@@ -186,17 +186,17 @@ async function queryPostgresSchema(connectionString: string, options: any = {}) 
         GROUP BY i.relname, am.amname, ix.indisunique, ix.indisprimary
         ORDER BY i.relname
       `;
-      
+
       const { rows: indexRows } = await pool.query(indexesQuery, [table.name]);
-      
+
       const indexes = indexRows.map(idx => ({
         name: idx.name,
         type: idx.type,
         columnNames: idx.column_names,
         isUnique: idx.is_unique,
-        isPrimary: idx.is_primary
+        isPrimary: idx.is_primary,
       }));
-      
+
       // Get foreign keys
       const fkQuery = `
         SELECT
@@ -214,9 +214,9 @@ async function queryPostgresSchema(connectionString: string, options: any = {}) 
         AND tc.constraint_type = 'FOREIGN KEY'
         ORDER BY kcu.ordinal_position
       `;
-      
+
       const { rows: fkRows } = await pool.query(fkQuery, [table.name]);
-      
+
       // Group foreign keys by constraint name
       const fkMap = new Map();
       for (const fk of fkRows) {
@@ -227,17 +227,17 @@ async function queryPostgresSchema(connectionString: string, options: any = {}) 
             referencedTableName: fk.referenced_table,
             referencedColumnNames: [],
             updateRule: fk.update_rule,
-            deleteRule: fk.delete_rule
+            deleteRule: fk.delete_rule,
           });
         }
-        
+
         const fkObj = fkMap.get(fk.name);
         fkObj.columnNames.push(fk.column_name);
         fkObj.referencedColumnNames.push(fk.referenced_column);
       }
-      
+
       const foreignKeys = Array.from(fkMap.values());
-      
+
       // Add table to the result
       tables.push({
         name: table.name,
@@ -247,10 +247,10 @@ async function queryPostgresSchema(connectionString: string, options: any = {}) 
         indexes,
         foreignKeys,
         estimatedRowCount: await estimateTableRowCount(pool, table.name),
-        sizeBytes: parseInt(table.table_size || '0')
+        sizeBytes: parseInt(table.table_size || '0'),
       });
     }
-    
+
     // Get views if requested
     let views = [];
     if (options.includeViews) {
@@ -265,11 +265,11 @@ async function queryPostgresSchema(connectionString: string, options: any = {}) 
         WHERE v.table_schema = 'public'
         ORDER BY v.table_name
       `;
-      
+
       const { rows: viewRows } = await pool.query(viewsQuery);
       views = viewRows;
     }
-    
+
     // Get procedures if requested
     let procedures = [];
     if (options.includeProcedures) {
@@ -284,11 +284,11 @@ async function queryPostgresSchema(connectionString: string, options: any = {}) 
         AND p.prokind = 'p'
         ORDER BY p.proname
       `;
-      
+
       const { rows: procRows } = await pool.query(proceduresQuery);
       procedures = procRows;
     }
-    
+
     // Get functions if requested
     let functions = [];
     if (options.includeFunctions) {
@@ -303,11 +303,11 @@ async function queryPostgresSchema(connectionString: string, options: any = {}) 
         AND p.prokind = 'f'
         ORDER BY p.proname
       `;
-      
+
       const { rows: funcRows } = await pool.query(functionsQuery);
       functions = funcRows;
     }
-    
+
     // Get triggers if requested
     let triggers = [];
     if (options.includeTriggers) {
@@ -325,14 +325,16 @@ async function queryPostgresSchema(connectionString: string, options: any = {}) 
         AND NOT t.tgisinternal
         ORDER BY t.tgname
       `;
-      
+
       const { rows: trigRows } = await pool.query(triggersQuery);
       triggers = trigRows;
     }
-    
+
     // Get database info
-    const { rows: dbInfoRows } = await pool.query('SELECT version() as version, current_database() as name');
-    
+    const { rows: dbInfoRows } = await pool.query(
+      'SELECT version() as version, current_database() as name'
+    );
+
     return {
       tables,
       views,
@@ -343,8 +345,8 @@ async function queryPostgresSchema(connectionString: string, options: any = {}) 
       databaseInfo: {
         name: dbInfoRows[0].name,
         version: dbInfoRows[0].version.split(' ')[1], // Extract version number
-        type: DatabaseType.PostgreSQL
-      }
+        type: DatabaseType.PostgreSQL,
+      },
     };
   } finally {
     await pool.end();
@@ -361,7 +363,7 @@ async function estimateTableRowCount(pool: Pool, tableName: string): Promise<num
     FROM pg_class
     WHERE relname = $1
   `;
-  
+
   const { rows } = await pool.query(query, [tableName]);
   return parseInt(rows[0]?.estimate || '0');
 }
@@ -374,45 +376,46 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
   const parseConnectionString = (connStr: string) => {
     // Remove mysql:// prefix if present
     const str = connStr.startsWith('mysql://') ? connStr.substring(8) : connStr;
-    
+
     const atIndex = str.lastIndexOf('@');
     const slashIndex = str.indexOf('/', atIndex);
-    
+
     const auth = str.substring(0, atIndex);
     const hostPort = str.substring(atIndex + 1, slashIndex);
     const dbName = str.substring(slashIndex + 1);
-    
+
     const authParts = auth.split(':');
     const hostPortParts = hostPort.split(':');
-    
+
     return {
       host: hostPortParts[0],
       port: hostPortParts[1] ? parseInt(hostPortParts[1]) : 3306,
       user: authParts[0],
       password: authParts[1],
-      database: dbName
+      database: dbName,
     };
   };
-  
+
   const config = parseConnectionString(connectionString);
   const connection = await mysql.createConnection(config);
-  
+
   try {
     // If we just want to test the connection, do a simple query
     if (options.testConnectionOnly) {
       const [rows] = await connection.query('SELECT VERSION() as version, DATABASE() as name');
-      
+
       return {
         databaseInfo: {
           name: rows[0].name,
           version: rows[0].version,
-          type: DatabaseType.MySQL
-        }
+          type: DatabaseType.MySQL,
+        },
       };
     }
-    
+
     // Get tables
-    const [tableRows] = await connection.query(`
+    const [tableRows] = await connection.query(
+      `
       SELECT 
         table_name as name,
         table_comment as description,
@@ -422,17 +425,20 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
       AND table_type = 'BASE TABLE'
       ${options.tableFilter ? 'AND table_name IN (?)' : ''}
       ORDER BY table_name
-    `, [config.database, ...(options.tableFilter ? [options.tableFilter] : [])]);
-    
+    `,
+      [config.database, ...(options.tableFilter ? [options.tableFilter] : [])]
+    );
+
     const tables = [];
     let totalSize = 0;
-    
+
     // Process each table
     for (const table of tableRows) {
       totalSize += parseInt(table.table_size || 0);
-      
+
       // Get columns
-      const [columnRows] = await connection.query(`
+      const [columnRows] = await connection.query(
+        `
         SELECT 
           column_name as name,
           data_type as type,
@@ -449,8 +455,10 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
         WHERE table_schema = ?
         AND table_name = ?
         ORDER BY ordinal_position
-      `, [config.database, table.name]);
-      
+      `,
+        [config.database, table.name]
+      );
+
       const columns = columnRows.map(col => ({
         name: col.name,
         type: col.type,
@@ -462,23 +470,27 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
         isPrimaryKey: !!col.is_primary_key,
         isUnique: !!col.is_unique,
         autoIncrement: !!col.is_auto_increment,
-        description: col.description
+        description: col.description,
       }));
-      
+
       // Get primary key
-      const [pkRows] = await connection.query(`
+      const [pkRows] = await connection.query(
+        `
         SELECT column_name
         FROM information_schema.key_column_usage
         WHERE table_schema = ?
         AND table_name = ?
         AND constraint_name = 'PRIMARY'
         ORDER BY ordinal_position
-      `, [config.database, table.name]);
-      
+      `,
+        [config.database, table.name]
+      );
+
       const primaryKey = pkRows.map(pk => pk.column_name);
-      
+
       // Get indexes
-      const [indexRows] = await connection.query(`
+      const [indexRows] = await connection.query(
+        `
         SELECT
           index_name as name,
           index_type as type,
@@ -490,18 +502,21 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
         AND table_name = ?
         GROUP BY index_name, index_type, non_unique
         ORDER BY index_name
-      `, [config.database, table.name]);
-      
+      `,
+        [config.database, table.name]
+      );
+
       const indexes = indexRows.map(idx => ({
         name: idx.name,
         type: idx.type,
         columnNames: idx.column_names.split(','),
         isUnique: !!idx.is_unique,
-        isPrimary: !!idx.is_primary
+        isPrimary: !!idx.is_primary,
       }));
-      
+
       // Get foreign keys
-      const [fkRows] = await connection.query(`
+      const [fkRows] = await connection.query(
+        `
         SELECT
           constraint_name as name,
           column_name,
@@ -514,8 +529,10 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
         AND table_name = ?
         AND referenced_table_name IS NOT NULL
         ORDER BY constraint_name, ordinal_position
-      `, [config.database, config.database, config.database, table.name]);
-      
+      `,
+        [config.database, config.database, config.database, table.name]
+      );
+
       // Group foreign keys by constraint name
       const fkMap = new Map();
       for (const fk of fkRows) {
@@ -526,27 +543,30 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
             referencedTableName: fk.referenced_table,
             referencedColumnNames: [],
             updateRule: fk.update_rule,
-            deleteRule: fk.delete_rule
+            deleteRule: fk.delete_rule,
           });
         }
-        
+
         const fkObj = fkMap.get(fk.name);
         fkObj.columnNames.push(fk.column_name);
         fkObj.referencedColumnNames.push(fk.referenced_column);
       }
-      
+
       const foreignKeys = Array.from(fkMap.values());
-      
+
       // Estimate row count
-      const [rowCountResult] = await connection.query(`
+      const [rowCountResult] = await connection.query(
+        `
         SELECT TABLE_ROWS as count
         FROM information_schema.tables
         WHERE table_schema = ?
         AND table_name = ?
-      `, [config.database, table.name]);
-      
+      `,
+        [config.database, table.name]
+      );
+
       const estimatedRowCount = parseInt(rowCountResult[0]?.count || '0');
-      
+
       // Add table to the result
       tables.push({
         name: table.name,
@@ -556,14 +576,15 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
         indexes,
         foreignKeys,
         estimatedRowCount,
-        sizeBytes: parseInt(table.table_size || '0')
+        sizeBytes: parseInt(table.table_size || '0'),
       });
     }
-    
+
     // Get views if requested
     let views = [];
     if (options.includeViews) {
-      const [viewRows] = await connection.query(`
+      const [viewRows] = await connection.query(
+        `
         SELECT
           table_name AS name,
           view_definition AS definition,
@@ -571,15 +592,18 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
         FROM information_schema.views
         WHERE table_schema = ?
         ORDER BY table_name
-      `, [config.database]);
-      
+      `,
+        [config.database]
+      );
+
       views = viewRows;
     }
-    
+
     // Get procedures if requested
     let procedures = [];
     if (options.includeProcedures) {
-      const [procRows] = await connection.query(`
+      const [procRows] = await connection.query(
+        `
         SELECT
           routine_name AS name,
           routine_definition AS definition,
@@ -588,15 +612,18 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
         WHERE routine_schema = ?
         AND routine_type = 'PROCEDURE'
         ORDER BY routine_name
-      `, [config.database]);
-      
+      `,
+        [config.database]
+      );
+
       procedures = procRows;
     }
-    
+
     // Get functions if requested
     let functions = [];
     if (options.includeFunctions) {
-      const [funcRows] = await connection.query(`
+      const [funcRows] = await connection.query(
+        `
         SELECT
           routine_name AS name,
           routine_definition AS definition,
@@ -605,15 +632,18 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
         WHERE routine_schema = ?
         AND routine_type = 'FUNCTION'
         ORDER BY routine_name
-      `, [config.database]);
-      
+      `,
+        [config.database]
+      );
+
       functions = funcRows;
     }
-    
+
     // Get triggers if requested
     let triggers = [];
     if (options.includeTriggers) {
-      const [trigRows] = await connection.query(`
+      const [trigRows] = await connection.query(
+        `
         SELECT
           trigger_name AS name,
           event_manipulation AS event,
@@ -622,14 +652,16 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
         FROM information_schema.triggers
         WHERE trigger_schema = ?
         ORDER BY trigger_name
-      `, [config.database]);
-      
+      `,
+        [config.database]
+      );
+
       triggers = trigRows;
     }
-    
+
     // Get database info
     const [dbInfoRows] = await connection.query('SELECT VERSION() as version, DATABASE() as name');
-    
+
     return {
       tables,
       views,
@@ -640,8 +672,8 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
       databaseInfo: {
         name: dbInfoRows[0].name,
         version: dbInfoRows[0].version,
-        type: DatabaseType.MySQL
-      }
+        type: DatabaseType.MySQL,
+      },
     };
   } finally {
     await connection.end();
@@ -653,29 +685,32 @@ async function queryMySQLSchema(connectionString: string, options: any = {}) {
  */
 async function querySQLiteSchema(connectionString: string, options: any = {}) {
   // Remove the file: prefix if present
-  const dbPath = connectionString.startsWith('file:') ? connectionString.substring(5) : connectionString;
-  
+  const dbPath = connectionString.startsWith('file:')
+    ? connectionString.substring(5)
+    : connectionString;
+
   const db = await open({
     filename: dbPath,
-    driver: sqlite3.Database
+    driver: sqlite3.Database,
   });
-  
+
   try {
     // If we just want to test the connection, do a simple query
     if (options.testConnectionOnly) {
-      const version = await db.get("SELECT sqlite_version() as version");
-      
+      const version = await db.get('SELECT sqlite_version() as version');
+
       return {
         databaseInfo: {
           name: dbPath.split('/').pop(), // Extract filename from path
           version: version.version,
-          type: DatabaseType.SQLite
-        }
+          type: DatabaseType.SQLite,
+        },
       };
     }
-    
+
     // Get list of tables
-    let tableRows = await db.all(`
+    let tableRows = await db.all(
+      `
       SELECT 
         name,
         'table' as type
@@ -684,22 +719,24 @@ async function querySQLiteSchema(connectionString: string, options: any = {}) {
       AND name NOT LIKE 'sqlite_%'
       ${options.tableFilter ? 'AND name IN (' + options.tableFilter.map(() => '?').join(',') + ')' : ''}
       ORDER BY name
-    `, options.tableFilter || []);
-    
+    `,
+      options.tableFilter || []
+    );
+
     const tables = [];
     let totalSize = 0;
-    
+
     // Get database size
-    const dbSizeResult = await db.get("PRAGMA page_count");
-    const pageSize = await db.get("PRAGMA page_size");
+    const dbSizeResult = await db.get('PRAGMA page_count');
+    const pageSize = await db.get('PRAGMA page_size');
     const dbSize = dbSizeResult['page_count'] * pageSize['page_size'];
     totalSize = dbSize;
-    
+
     // Process each table
     for (const table of tableRows) {
       // Get columns
       const columnRows = await db.all(`PRAGMA table_info("${table.name}")`);
-      
+
       const columns = columnRows.map(col => ({
         name: col.name,
         type: col.type,
@@ -707,16 +744,21 @@ async function querySQLiteSchema(connectionString: string, options: any = {}) {
         defaultValue: col.dflt_value,
         isPrimaryKey: col.pk === 1,
         isUnique: false, // Will be updated with index info
-        autoIncrement: false // Will be updated with column info
+        autoIncrement: false, // Will be updated with column info
       }));
-      
+
       // Check for autoincrement
-      const createTableSql = await db.get(`
+      const createTableSql = await db.get(
+        `
         SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?
-      `, [table.name]);
-      
+      `,
+        [table.name]
+      );
+
       if (createTableSql && createTableSql.sql) {
-        const autoIncrementMatch = createTableSql.sql.match(/(\w+)\s+\w+\s+primary\s+key\s+autoincrement/i);
+        const autoIncrementMatch = createTableSql.sql.match(
+          /(\w+)\s+\w+\s+primary\s+key\s+autoincrement/i
+        );
         if (autoIncrementMatch) {
           const autoIncrColumn = autoIncrementMatch[1];
           const column = columns.find(col => col.name === autoIncrColumn);
@@ -725,13 +767,13 @@ async function querySQLiteSchema(connectionString: string, options: any = {}) {
           }
         }
       }
-      
+
       // Get primary key
       const primaryKey = columns.filter(col => col.isPrimaryKey).map(col => col.name);
-      
+
       // Get foreign keys
       const fkRows = await db.all(`PRAGMA foreign_key_list("${table.name}")`);
-      
+
       // Group foreign keys by constraint id
       const fkMap = new Map();
       for (const fk of fkRows) {
@@ -742,20 +784,20 @@ async function querySQLiteSchema(connectionString: string, options: any = {}) {
             referencedTableName: fk.table,
             referencedColumnNames: [],
             updateRule: fk.on_update,
-            deleteRule: fk.on_delete
+            deleteRule: fk.on_delete,
           });
         }
-        
+
         const fkObj = fkMap.get(fk.id);
         fkObj.columnNames.push(fk.from);
         fkObj.referencedColumnNames.push(fk.to);
       }
-      
+
       const foreignKeys = Array.from(fkMap.values());
-      
+
       // Get indexes
       const indexRows = await db.all(`PRAGMA index_list("${table.name}")`);
-      
+
       const indexes = [];
       for (const idx of indexRows) {
         const indexInfo = await db.all(`PRAGMA index_info("${idx.name}")`);
@@ -763,7 +805,7 @@ async function querySQLiteSchema(connectionString: string, options: any = {}) {
           const column = columns.find(col => col.cid === info.cid);
           return column ? column.name : `unknown_${info.cid}`;
         });
-        
+
         // Update unique flag on columns
         if (idx.unique) {
           for (const colName of columnNames) {
@@ -773,20 +815,20 @@ async function querySQLiteSchema(connectionString: string, options: any = {}) {
             }
           }
         }
-        
+
         indexes.push({
           name: idx.name,
           type: 'btree', // SQLite only has btree indexes
           columnNames,
           isUnique: idx.unique === 1,
-          isPrimary: idx.origin === 'pk'
+          isPrimary: idx.origin === 'pk',
         });
       }
-      
+
       // Estimate table size and row count
       const stats = await db.get(`SELECT count(*) as count FROM "${table.name}"`);
       const estimatedRowCount = stats.count;
-      
+
       // Add table to the result
       tables.push({
         name: table.name,
@@ -796,10 +838,10 @@ async function querySQLiteSchema(connectionString: string, options: any = {}) {
         indexes,
         foreignKeys,
         estimatedRowCount,
-        sizeBytes: 0 // SQLite doesn't provide size info per table
+        sizeBytes: 0, // SQLite doesn't provide size info per table
       });
     }
-    
+
     // Get views if requested
     let views = [];
     if (options.includeViews) {
@@ -811,14 +853,14 @@ async function querySQLiteSchema(connectionString: string, options: any = {}) {
         WHERE type = 'view'
         ORDER BY name
       `);
-      
+
       views = viewRows.map(view => ({
         name: view.name,
         definition: view.definition,
-        description: ''
+        description: '',
       }));
     }
-    
+
     // Get triggers if requested
     let triggers = [];
     if (options.includeTriggers) {
@@ -830,21 +872,21 @@ async function querySQLiteSchema(connectionString: string, options: any = {}) {
         WHERE type = 'trigger'
         ORDER BY name
       `);
-      
+
       triggers = triggerRows.map(trigger => ({
         name: trigger.name,
         definition: trigger.definition,
-        description: ''
+        description: '',
       }));
     }
-    
+
     // SQLite doesn't have stored procedures or functions
     const procedures = [];
     const functions = [];
-    
+
     // Get database info
-    const version = await db.get("SELECT sqlite_version() as version");
-    
+    const version = await db.get('SELECT sqlite_version() as version');
+
     return {
       tables,
       views,
@@ -855,8 +897,8 @@ async function querySQLiteSchema(connectionString: string, options: any = {}) {
       databaseInfo: {
         name: dbPath.split('/').pop(), // Extract filename from path
         version: version.version,
-        type: DatabaseType.SQLite
-      }
+        type: DatabaseType.SQLite,
+      },
     };
   } finally {
     await db.close();

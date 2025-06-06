@@ -1,6 +1,6 @@
 /**
  * ETL Workflow Engine
- * 
+ *
  * Provides a high-level orchestration layer for ETL pipelines:
  * - Workflow scheduling and dependency management
  * - Pipeline versioning and configuration management
@@ -20,7 +20,7 @@ export enum WorkflowStatus {
   RUNNING = 'running',
   COMPLETED = 'completed',
   FAILED = 'failed',
-  CANCELLED = 'cancelled'
+  CANCELLED = 'cancelled',
 }
 
 // Workflow configuration
@@ -74,7 +74,7 @@ export class ETLWorkflowEngine {
   private activeExecutions: Map<string, WorkflowExecution> = new Map();
   private executionHistory: WorkflowExecution[] = [];
   private scheduledWorkflows: Map<string, NodeJS.Timeout> = new Map();
-  
+
   /**
    * Create a new ETL Workflow Engine
    * @param storage Storage service
@@ -84,116 +84,119 @@ export class ETLWorkflowEngine {
     private storage: IStorage,
     private lineageTracker?: DataLineageTracker
   ) {}
-  
+
   /**
    * Register a workflow
    * @param config Workflow configuration
    */
   registerWorkflow(config: WorkflowConfig): void {
     this.workflows.set(config.id, config);
-    
+
     logger.info(`Registered workflow: ${config.name} (${config.id})`, {
       component: 'ETLWorkflowEngine',
       pipelineCount: config.pipelines.length,
-      version: config.version
+      version: config.version,
     });
-    
+
     // Schedule workflow if it has a schedule
     if (config.schedule) {
       this.scheduleWorkflow(config);
     }
   }
-  
+
   /**
    * Unregister a workflow
    * @param workflowId Workflow ID
    */
   unregisterWorkflow(workflowId: string): void {
     this.workflows.delete(workflowId);
-    
+
     // Cancel any scheduled executions
     if (this.scheduledWorkflows.has(workflowId)) {
       clearTimeout(this.scheduledWorkflows.get(workflowId));
       this.scheduledWorkflows.delete(workflowId);
     }
-    
+
     logger.info(`Unregistered workflow: ${workflowId}`, {
-      component: 'ETLWorkflowEngine'
+      component: 'ETLWorkflowEngine',
     });
   }
-  
+
   /**
    * Schedule a workflow
    * @param config Workflow configuration
    */
   private scheduleWorkflow(config: WorkflowConfig): void {
     if (!config.schedule) return;
-    
+
     // Cancel any existing scheduled executions
     if (this.scheduledWorkflows.has(config.id)) {
       clearTimeout(this.scheduledWorkflows.get(config.id));
       this.scheduledWorkflows.delete(config.id);
     }
-    
+
     if (config.schedule.type === 'interval') {
       const interval = parseInt(config.schedule.value);
-      
+
       const timeoutId = setTimeout(async () => {
         try {
           await this.executeWorkflow(config.id);
-          
+
           // Reschedule the workflow
           this.scheduleWorkflow(config);
         } catch (error) {
           logger.error(`Error executing scheduled workflow: ${config.id}`, {
             component: 'ETLWorkflowEngine',
             workflowId: config.id,
-            error
+            error,
           });
-          
+
           // Reschedule anyway
           this.scheduleWorkflow(config);
         }
       }, interval);
-      
+
       this.scheduledWorkflows.set(config.id, timeoutId);
-      
+
       logger.info(`Scheduled workflow: ${config.name} (${config.id}) to run every ${interval}ms`, {
         component: 'ETLWorkflowEngine',
-        interval
+        interval,
       });
     } else if (config.schedule.type === 'cron') {
       // In a real implementation, we would use a cron library
       // For now, we'll log that cron is not implemented
       logger.warn(`Cron scheduling is not implemented yet.`, {
         component: 'ETLWorkflowEngine',
-        workflowId: config.id
+        workflowId: config.id,
       });
     }
   }
-  
+
   /**
    * Execute a workflow
    * @param workflowId Workflow ID
    * @param metadata Additional metadata
    * @returns Workflow execution
    */
-  async executeWorkflow(workflowId: string, metadata: Record<string, any> = {}): Promise<WorkflowExecution> {
+  async executeWorkflow(
+    workflowId: string,
+    metadata: Record<string, any> = {}
+  ): Promise<WorkflowExecution> {
     const config = this.workflows.get(workflowId);
-    
+
     if (!config) {
       throw new Error(`Workflow not found: ${workflowId}`);
     }
-    
+
     // Check for dependencies
     if (config.dependencies && config.dependencies.workflowIds.length > 0) {
       const missingDeps = await this.checkDependencies(config);
-      
+
       if (missingDeps.length > 0) {
         throw new Error(`Workflow dependencies not met: ${missingDeps.join(', ')}`);
       }
     }
-    
+
     // Create execution record
     const executionId = `${workflowId}-${Date.now()}`;
     const execution: WorkflowExecution = {
@@ -206,74 +209,77 @@ export class ETLWorkflowEngine {
       metadata: {
         ...metadata,
         workflowName: config.name,
-        workflowDescription: config.description
-      }
+        workflowDescription: config.description,
+      },
     };
-    
+
     // Add to active executions
     this.activeExecutions.set(executionId, execution);
-    
+
     // Send start notification if configured
     if (config.notifications?.onStart) {
       this.sendNotification(
-        workflowId, 
-        executionId, 
-        'started', 
+        workflowId,
+        executionId,
+        'started',
         `Workflow ${config.name} (${workflowId}) started execution at ${execution.startTime.toISOString()}`
       );
     }
-    
+
     // Update status
     execution.status = WorkflowStatus.RUNNING;
-    
+
     logger.info(`Starting workflow execution: ${config.name} (${workflowId})`, {
       component: 'ETLWorkflowEngine',
       executionId,
-      pipelineCount: config.pipelines.length
+      pipelineCount: config.pipelines.length,
     });
-    
+
     try {
       // Execute each pipeline in sequence
       for (const pipelineConfig of config.pipelines) {
         logger.info(`Starting pipeline: ${pipelineConfig.name} (${pipelineConfig.id})`, {
           component: 'ETLWorkflowEngine',
           executionId,
-          pipelineId: pipelineConfig.id
+          pipelineId: pipelineConfig.id,
         });
-        
+
         // Create and execute the pipeline
         const pipeline = new ETLPipeline(pipelineConfig, this.storage, this.lineageTracker);
-        const result = await pipeline.execute({}, {
-          workflowId,
-          executionId,
-          ...metadata
-        });
-        
+        const result = await pipeline.execute(
+          {},
+          {
+            workflowId,
+            executionId,
+            ...metadata,
+          }
+        );
+
         // Add to pipeline results
         execution.pipelineResults.push(result);
-        
+
         logger.info(`Completed pipeline: ${pipelineConfig.name} (${pipelineConfig.id})`, {
           component: 'ETLWorkflowEngine',
           executionId,
           pipelineId: pipelineConfig.id,
           success: result.success,
-          executionTime: result.executionTime
+          executionTime: result.executionTime,
         });
-        
+
         // If pipeline failed and we shouldn't continue on error, break
         if (!result.success && !config.options?.continueOnError) {
           logger.error(`Workflow stopping due to pipeline failure: ${pipelineConfig.id}`, {
             component: 'ETLWorkflowEngine',
             executionId,
-            pipelineId: pipelineConfig.id
+            pipelineId: pipelineConfig.id,
           });
-          
+
           execution.status = WorkflowStatus.FAILED;
           execution.error = `Pipeline ${pipelineConfig.id} failed: ${result.errors.join(', ')}`;
           break;
         }
       }
-      
+
       // Complete workflow if not failed
       if (execution.status !== WorkflowStatus.FAILED) {
         execution.status = WorkflowStatus.COMPLETED;
@@ -283,18 +289,18 @@ export class ETLWorkflowEngine {
       logger.error(`Workflow execution error: ${workflowId}`, {
         component: 'ETLWorkflowEngine',
         executionId,
-        error
+        error,
       });
-      
+
       execution.status = WorkflowStatus.FAILED;
       execution.error = (error as Error).message;
-      
+
       // Send error notification if configured
       if (config.notifications?.onError) {
         this.sendNotification(
-          workflowId, 
-          executionId, 
-          'error', 
+          workflowId,
+          executionId,
+          'error',
           `Workflow ${config.name} (${workflowId}) encountered an error: ${execution.error}`
         );
       }
@@ -302,34 +308,34 @@ export class ETLWorkflowEngine {
       // Complete the execution
       execution.endTime = new Date();
       execution.executionTime = execution.endTime.getTime() - execution.startTime.getTime();
-      
+
       // Remove from active executions
       this.activeExecutions.delete(executionId);
-      
+
       // Add to execution history
       this.executionHistory.push(execution);
-      
+
       // Send completion notification if configured
       if (config.notifications?.onComplete) {
         this.sendNotification(
-          workflowId, 
-          executionId, 
-          execution.status === WorkflowStatus.COMPLETED ? 'completed' : 'failed', 
+          workflowId,
+          executionId,
+          execution.status === WorkflowStatus.COMPLETED ? 'completed' : 'failed',
           `Workflow ${config.name} (${workflowId}) completed with status ${execution.status} in ${execution.executionTime}ms`
         );
       }
-      
+
       logger.info(`Completed workflow execution: ${config.name} (${workflowId})`, {
         component: 'ETLWorkflowEngine',
         executionId,
         status: execution.status,
-        executionTime: execution.executionTime
+        executionTime: execution.executionTime,
       });
     }
-    
+
     return execution;
   }
-  
+
   /**
    * Check workflow dependencies
    * @param config Workflow configuration
@@ -339,30 +345,32 @@ export class ETLWorkflowEngine {
     if (!config.dependencies || config.dependencies.workflowIds.length === 0) {
       return [];
     }
-    
+
     const missingDeps: string[] = [];
-    
+
     for (const depId of config.dependencies.workflowIds) {
       // Check if the dependency workflow exists
       if (!this.workflows.has(depId)) {
         missingDeps.push(depId);
         continue;
       }
-      
+
       // If we need to wait for completion, check if any executions completed
       if (config.dependencies.waitForCompletion) {
         const executions = this.getWorkflowExecutions(depId);
-        
-        if (executions.length === 0 || 
-            !executions.some(exec => exec.status === WorkflowStatus.COMPLETED)) {
+
+        if (
+          executions.length === 0 ||
+          !executions.some(exec => exec.status === WorkflowStatus.COMPLETED)
+        ) {
           missingDeps.push(depId);
         }
       }
     }
-    
+
     return missingDeps;
   }
-  
+
   /**
    * Get workflow executions
    * @param workflowId Workflow ID
@@ -375,7 +383,7 @@ export class ETLWorkflowEngine {
       .sort((a, b) => b.startTime.getTime() - a.startTime.getTime())
       .slice(0, limit);
   }
-  
+
   /**
    * Get execution by ID
    * @param executionId Execution ID
@@ -384,15 +392,15 @@ export class ETLWorkflowEngine {
   getExecution(executionId: string): WorkflowExecution | undefined {
     // Check active executions first
     const activeExecution = this.activeExecutions.get(executionId);
-    
+
     if (activeExecution) {
       return activeExecution;
     }
-    
+
     // Check execution history
     return this.executionHistory.find(exec => exec.id === executionId);
   }
-  
+
   /**
    * Get all workflow configurations
    * @returns Array of workflow configurations
@@ -400,7 +408,7 @@ export class ETLWorkflowEngine {
   getWorkflows(): WorkflowConfig[] {
     return Array.from(this.workflows.values());
   }
-  
+
   /**
    * Get workflow by ID
    * @param workflowId Workflow ID
@@ -409,7 +417,7 @@ export class ETLWorkflowEngine {
   getWorkflow(workflowId: string): WorkflowConfig | undefined {
     return this.workflows.get(workflowId);
   }
-  
+
   /**
    * Send notification
    * @param workflowId Workflow ID
@@ -428,7 +436,7 @@ export class ETLWorkflowEngine {
       component: 'ETLWorkflowEngine',
       workflowId,
       executionId,
-      notificationType: type
+      notificationType: type,
     });
   }
 }

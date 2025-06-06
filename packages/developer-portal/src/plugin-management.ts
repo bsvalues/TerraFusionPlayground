@@ -1,6 +1,6 @@
 /**
  * Plugin Management
- * 
+ *
  * Provides a comprehensive system for managing plugins in the platform:
  * - Plugin discovery and browsing
  * - Plugin installation, update, and removal
@@ -24,7 +24,7 @@ export enum PluginCategory {
   UTILITY = 'utility',
   AI = 'ai',
   UI_COMPONENT = 'ui_component',
-  THEME = 'theme'
+  THEME = 'theme',
 }
 
 // Plugin License Type
@@ -34,7 +34,7 @@ export enum PluginLicenseType {
   SUBSCRIPTION = 'subscription',
   TRIAL = 'trial',
   OPEN_SOURCE = 'open_source',
-  ENTERPRISE = 'enterprise'
+  ENTERPRISE = 'enterprise',
 }
 
 // Plugin Status
@@ -44,7 +44,7 @@ export enum PluginStatus {
   DRAFT = 'draft',
   REJECTED = 'rejected',
   DEPRECATED = 'deprecated',
-  ARCHIVED = 'archived'
+  ARCHIVED = 'archived',
 }
 
 // Installation Status
@@ -53,7 +53,7 @@ export enum InstallationStatus {
   INSTALLING = 'installing',
   NOT_INSTALLED = 'not_installed',
   UPDATE_AVAILABLE = 'update_available',
-  ERROR = 'error'
+  ERROR = 'error',
 }
 
 // Plugin Pricing
@@ -166,62 +166,72 @@ export class PluginManager extends EventEmitter {
   /**
    * Register a new plugin
    */
-  public registerPlugin(plugin: Omit<PluginEntity, 'id' | 'averageRating' | 'installationStatus' | 'createdAt' | 'updatedAt'>): PluginEntity {
+  public registerPlugin(
+    plugin: Omit<
+      PluginEntity,
+      'id' | 'averageRating' | 'installationStatus' | 'createdAt' | 'updatedAt'
+    >
+  ): PluginEntity {
     const id = `plugin-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     // Calculate average rating
-    const averageRating = plugin.reviews.length > 0 
-      ? plugin.reviews.reduce((sum, review) => sum + review.rating, 0) / plugin.reviews.length 
-      : 0;
-    
+    const averageRating =
+      plugin.reviews.length > 0
+        ? plugin.reviews.reduce((sum, review) => sum + review.rating, 0) / plugin.reviews.length
+        : 0;
+
     const newPlugin: PluginEntity = {
       ...plugin,
       id,
       averageRating,
       installationStatus: InstallationStatus.NOT_INSTALLED,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.plugins.set(id, newPlugin);
-    
+
     console.log(`Plugin registered: ${newPlugin.displayName} (${newPlugin.id})`);
     this.emit('plugin:registered', newPlugin);
-    
+
     return newPlugin;
   }
 
   /**
    * Update an existing plugin
    */
-  public updatePlugin(id: string, updates: Partial<Omit<PluginEntity, 'id' | 'averageRating' | 'createdAt' | 'updatedAt'>>): PluginEntity | null {
+  public updatePlugin(
+    id: string,
+    updates: Partial<Omit<PluginEntity, 'id' | 'averageRating' | 'createdAt' | 'updatedAt'>>
+  ): PluginEntity | null {
     const plugin = this.plugins.get(id);
-    
+
     if (!plugin) {
       console.error(`Plugin not found: ${id}`);
       return null;
     }
-    
+
     // Recalculate average rating if reviews changed
     let averageRating = plugin.averageRating;
     if (updates.reviews) {
-      averageRating = updates.reviews.length > 0 
-        ? updates.reviews.reduce((sum, review) => sum + review.rating, 0) / updates.reviews.length 
-        : 0;
+      averageRating =
+        updates.reviews.length > 0
+          ? updates.reviews.reduce((sum, review) => sum + review.rating, 0) / updates.reviews.length
+          : 0;
     }
-    
+
     const updatedPlugin: PluginEntity = {
       ...plugin,
       ...updates,
       averageRating,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.plugins.set(id, updatedPlugin);
-    
+
     console.log(`Plugin updated: ${updatedPlugin.displayName} (${updatedPlugin.id})`);
     this.emit('plugin:updated', updatedPlugin);
-    
+
     return updatedPlugin;
   }
 
@@ -230,21 +240,27 @@ export class PluginManager extends EventEmitter {
    */
   public changePluginStatus(id: string, status: PluginStatus): PluginEntity | null {
     const plugin = this.plugins.get(id);
-    
+
     if (!plugin) {
       console.error(`Plugin not found: ${id}`);
       return null;
     }
-    
+
     const previousStatus = plugin.status;
-    
+
     const updatedPlugin = this.updatePlugin(id, { status });
-    
+
     if (updatedPlugin) {
-      console.log(`Plugin status changed: ${updatedPlugin.displayName} - ${previousStatus} → ${status}`);
-      this.emit('plugin:status-changed', { plugin: updatedPlugin, previousStatus, newStatus: status });
+      console.log(
+        `Plugin status changed: ${updatedPlugin.displayName} - ${previousStatus} → ${status}`
+      );
+      this.emit('plugin:status-changed', {
+        plugin: updatedPlugin,
+        previousStatus,
+        newStatus: status,
+      });
     }
-    
+
     return updatedPlugin;
   }
 
@@ -253,37 +269,40 @@ export class PluginManager extends EventEmitter {
    */
   public addPluginVersion(id: string, version: PluginVersion): PluginEntity | null {
     const plugin = this.plugins.get(id);
-    
+
     if (!plugin) {
       console.error(`Plugin not found: ${id}`);
       return null;
     }
-    
+
     // Check if version already exists
     const existingIndex = plugin.versions.findIndex(v => v.version === version.version);
-    
+
     if (existingIndex >= 0) {
       console.error(`Version ${version.version} already exists for plugin ${id}`);
       return null;
     }
-    
+
     // Add the new version
     const updatedVersions = [...plugin.versions, version];
-    
+
     // Sort versions in descending order (newest first)
     updatedVersions.sort((a, b) => {
       return this.compareVersions(b.version, a.version);
     });
-    
-    const updatedPlugin = this.updatePlugin(id, { 
+
+    const updatedPlugin = this.updatePlugin(id, {
       versions: updatedVersions,
-      currentVersion: this.compareVersions(version.version, plugin.currentVersion) > 0 ? version.version : plugin.currentVersion
+      currentVersion:
+        this.compareVersions(version.version, plugin.currentVersion) > 0
+          ? version.version
+          : plugin.currentVersion,
     });
-    
+
     if (updatedPlugin) {
       console.log(`Plugin version added: ${updatedPlugin.displayName} - ${version.version}`);
       this.emit('plugin:version-added', { plugin: updatedPlugin, version });
-      
+
       // If the plugin is installed and a newer version is available, update the installation status
       if (
         this.installedPlugins.has(id) &&
@@ -293,39 +312,42 @@ export class PluginManager extends EventEmitter {
         this.updatePlugin(id, { installationStatus: InstallationStatus.UPDATE_AVAILABLE });
       }
     }
-    
+
     return updatedPlugin;
   }
 
   /**
    * Add a plugin review
    */
-  public addPluginReview(id: string, review: Omit<PluginReview, 'id' | 'createdAt' | 'updatedAt'>): PluginReview | null {
+  public addPluginReview(
+    id: string,
+    review: Omit<PluginReview, 'id' | 'createdAt' | 'updatedAt'>
+  ): PluginReview | null {
     const plugin = this.plugins.get(id);
-    
+
     if (!plugin) {
       console.error(`Plugin not found: ${id}`);
       return null;
     }
-    
+
     const reviewId = `review-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     const newReview: PluginReview = {
       ...review,
       id: reviewId,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     // Add the review
     const updatedReviews = [...plugin.reviews, newReview];
-    
+
     // Update the plugin
     this.updatePlugin(id, { reviews: updatedReviews });
-    
+
     console.log(`Plugin review added: ${plugin.displayName} - ${newReview.title}`);
     this.emit('plugin:review-added', { plugin, review: newReview });
-    
+
     return newReview;
   }
 
@@ -334,50 +356,50 @@ export class PluginManager extends EventEmitter {
    */
   public async installPlugin(id: string, options: PluginInstallOptions = {}): Promise<boolean> {
     const plugin = this.plugins.get(id);
-    
+
     if (!plugin) {
       console.error(`Plugin not found: ${id}`);
       return false;
     }
-    
+
     // Check if plugin is already installed
     if (this.installedPlugins.has(id) && !options.force) {
       console.error(`Plugin ${id} is already installed`);
       return false;
     }
-    
+
     // Update installation status
     this.updatePlugin(id, { installationStatus: InstallationStatus.INSTALLING });
-    
+
     try {
       // In a real implementation, this would install the plugin
       console.log(`Installing plugin: ${plugin.displayName}`);
-      
+
       // Simulate installation
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Mark as installed
       this.installedPlugins.add(id);
-      
-      const updateResult = this.updatePlugin(id, { 
+
+      const updateResult = this.updatePlugin(id, {
         installationStatus: InstallationStatus.INSTALLED,
-        installDate: new Date()
+        installDate: new Date(),
       });
-      
+
       if (updateResult) {
         console.log(`Plugin installed: ${updateResult.displayName}`);
         this.emit('plugin:installed', updateResult);
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error(`Error installing plugin ${id}:`, error);
-      
+
       this.updatePlugin(id, { installationStatus: InstallationStatus.ERROR });
-      
+
       this.emit('plugin:installation-error', { plugin, error });
-      
+
       return false;
     }
   }
@@ -387,45 +409,45 @@ export class PluginManager extends EventEmitter {
    */
   public async uninstallPlugin(id: string): Promise<boolean> {
     const plugin = this.plugins.get(id);
-    
+
     if (!plugin) {
       console.error(`Plugin not found: ${id}`);
       return false;
     }
-    
+
     // Check if plugin is installed
     if (!this.installedPlugins.has(id)) {
       console.error(`Plugin ${id} is not installed`);
       return false;
     }
-    
+
     try {
       // In a real implementation, this would uninstall the plugin
       console.log(`Uninstalling plugin: ${plugin.displayName}`);
-      
+
       // Simulate uninstallation
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Mark as not installed
       this.installedPlugins.delete(id);
-      
-      const updateResult = this.updatePlugin(id, { 
+
+      const updateResult = this.updatePlugin(id, {
         installationStatus: InstallationStatus.NOT_INSTALLED,
-        installDate: undefined
+        installDate: undefined,
       });
-      
+
       if (updateResult) {
         console.log(`Plugin uninstalled: ${updateResult.displayName}`);
         this.emit('plugin:uninstalled', updateResult);
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error(`Error uninstalling plugin ${id}:`, error);
-      
+
       this.emit('plugin:uninstallation-error', { plugin, error });
-      
+
       return false;
     }
   }
@@ -435,50 +457,50 @@ export class PluginManager extends EventEmitter {
    */
   public async updatePluginToLatest(id: string): Promise<boolean> {
     const plugin = this.plugins.get(id);
-    
+
     if (!plugin) {
       console.error(`Plugin not found: ${id}`);
       return false;
     }
-    
+
     // Check if plugin is installed
     if (!this.installedPlugins.has(id)) {
       console.error(`Plugin ${id} is not installed`);
       return false;
     }
-    
+
     // Check if there's a newer version
     const latestVersion = plugin.versions[0]?.version;
     if (!latestVersion || this.compareVersions(latestVersion, plugin.currentVersion) <= 0) {
       console.log(`Plugin ${id} is already up to date`);
       return false;
     }
-    
+
     try {
       // In a real implementation, this would update the plugin
       console.log(`Updating plugin: ${plugin.displayName} to ${latestVersion}`);
-      
+
       // Simulate update
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const updateResult = this.updatePlugin(id, { 
+
+      const updateResult = this.updatePlugin(id, {
         currentVersion: latestVersion,
         installationStatus: InstallationStatus.INSTALLED,
-        installDate: new Date()
+        installDate: new Date(),
       });
-      
+
       if (updateResult) {
         console.log(`Plugin updated: ${updateResult.displayName} to ${latestVersion}`);
         this.emit('plugin:updated-version', updateResult);
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error(`Error updating plugin ${id}:`, error);
-      
+
       this.emit('plugin:update-error', { plugin, error });
-      
+
       return false;
     }
   }
@@ -515,17 +537,15 @@ export class PluginManager extends EventEmitter {
    * Get installed plugins
    */
   public getInstalledPlugins(): PluginEntity[] {
-    return this.getAllPlugins().filter(plugin => 
-      this.installedPlugins.has(plugin.id)
-    );
+    return this.getAllPlugins().filter(plugin => this.installedPlugins.has(plugin.id));
   }
 
   /**
    * Get plugins with updates available
    */
   public getPluginsWithUpdates(): PluginEntity[] {
-    return this.getAllPlugins().filter(plugin => 
-      plugin.installationStatus === InstallationStatus.UPDATE_AVAILABLE
+    return this.getAllPlugins().filter(
+      plugin => plugin.installationStatus === InstallationStatus.UPDATE_AVAILABLE
     );
   }
 
@@ -533,8 +553,8 @@ export class PluginManager extends EventEmitter {
    * Get featured plugins
    */
   public getFeaturedPlugins(): PluginEntity[] {
-    return this.getAllPlugins().filter(plugin => 
-      plugin.featured && plugin.status === PluginStatus.PUBLISHED
+    return this.getAllPlugins().filter(
+      plugin => plugin.featured && plugin.status === PluginStatus.PUBLISHED
     );
   }
 
@@ -557,11 +577,11 @@ export class PluginManager extends EventEmitter {
    */
   public searchPlugins(query: string): PluginEntity[] {
     query = query.toLowerCase();
-    
+
     return this.getAllPlugins().filter(plugin => {
       // Only search published plugins
       if (plugin.status !== PluginStatus.PUBLISHED) return false;
-      
+
       return (
         plugin.name.toLowerCase().includes(query) ||
         plugin.displayName.toLowerCase().includes(query) ||
@@ -583,17 +603,17 @@ export class PluginManager extends EventEmitter {
   private compareVersions(version1: string, version2: string): number {
     const parts1 = version1.split('.').map(Number);
     const parts2 = version2.split('.').map(Number);
-    
+
     // Compare each part
     for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
       const part1 = parts1[i] || 0;
       const part2 = parts2[i] || 0;
-      
+
       if (part1 !== part2) {
         return part1 - part2;
       }
     }
-    
+
     return 0;
   }
 
@@ -602,11 +622,11 @@ export class PluginManager extends EventEmitter {
    */
   public isLicenseValid(id: string): boolean {
     const plugin = this.plugins.get(id);
-    
+
     if (!plugin) {
       return false;
     }
-    
+
     // Free and open source plugins are always valid
     if (
       plugin.pricing.licenseType === PluginLicenseType.FREE ||
@@ -614,12 +634,12 @@ export class PluginManager extends EventEmitter {
     ) {
       return true;
     }
-    
+
     // Check expiry date for other license types
     if (plugin.licenseExpiryDate) {
       return plugin.licenseExpiryDate > new Date();
     }
-    
+
     return false;
   }
 
@@ -629,7 +649,7 @@ export class PluginManager extends EventEmitter {
   public getMarketplaceStatistics(): any {
     const plugins = this.getAllPlugins();
     const publishedPlugins = plugins.filter(p => p.status === PluginStatus.PUBLISHED);
-    
+
     const stats = {
       totalPlugins: plugins.length,
       publishedPlugins: publishedPlugins.length,
@@ -638,9 +658,9 @@ export class PluginManager extends EventEmitter {
       byCategory: {} as Record<string, number>,
       byLicenseType: {} as Record<string, number>,
       topDownloaded: [] as any[],
-      topRated: [] as any[]
+      topRated: [] as any[],
     };
-    
+
     // Count by category
     for (const category of Object.values(PluginCategory)) {
       const count = this.getPluginsByCategory(category as PluginCategory).length;
@@ -648,7 +668,7 @@ export class PluginManager extends EventEmitter {
         stats.byCategory[category] = count;
       }
     }
-    
+
     // Count by license type
     for (const licenseType of Object.values(PluginLicenseType)) {
       const count = this.getPluginsByLicenseType(licenseType as PluginLicenseType).length;
@@ -656,7 +676,7 @@ export class PluginManager extends EventEmitter {
         stats.byLicenseType[licenseType] = count;
       }
     }
-    
+
     // Top downloaded plugins
     stats.topDownloaded = [...publishedPlugins]
       .sort((a, b) => b.downloads - a.downloads)
@@ -665,9 +685,9 @@ export class PluginManager extends EventEmitter {
         id: p.id,
         name: p.displayName,
         downloads: p.downloads,
-        rating: p.averageRating
+        rating: p.averageRating,
       }));
-    
+
     // Top rated plugins (minimum 5 reviews)
     stats.topRated = [...publishedPlugins]
       .filter(p => p.reviews.length >= 5)
@@ -677,9 +697,9 @@ export class PluginManager extends EventEmitter {
         id: p.id,
         name: p.displayName,
         rating: p.averageRating,
-        reviews: p.reviews.length
+        reviews: p.reviews.length,
       }));
-    
+
     return stats;
   }
 }

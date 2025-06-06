@@ -16,19 +16,19 @@ const __dirname = dirname(__filename);
 // Function to convert our schema to SQL statements
 function generateSQL(schema) {
   const statements = [];
-  
+
   // Process regular schema tables
   Object.values(schema).forEach(table => {
     if (table && table.name) {
       console.log(`Generating SQL for table: ${table.name}`);
-      
+
       let sql = `CREATE TABLE IF NOT EXISTS "${table.name}" (\n`;
-      
+
       // Add columns
       if (table.columns) {
         const columnDefs = Object.entries(table.columns).map(([name, def]) => {
           let colDef = `  "${name}" ${def.dataType || 'TEXT'}`;
-          
+
           if (def.primaryKey) colDef += ' PRIMARY KEY';
           if (def.notNull) colDef += ' NOT NULL';
           if (def.defaultValue !== undefined) {
@@ -42,16 +42,16 @@ function generateSQL(schema) {
               colDef += ` DEFAULT ${def.defaultValue}`;
             }
           }
-          
+
           return colDef;
         });
-        
+
         sql += columnDefs.join(',\n');
       }
-      
+
       sql += '\n);';
       statements.push(sql);
-      
+
       // Add indexes
       if (table.indexes) {
         table.indexes.forEach(index => {
@@ -61,7 +61,7 @@ function generateSQL(schema) {
       }
     }
   });
-  
+
   return statements.join('\n\n');
 }
 
@@ -69,13 +69,13 @@ async function pushSchema() {
   try {
     console.log('Connecting to database...');
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-    
+
     // Create tables from shared/schema.ts using JSON approach
     console.log('Generating schema...');
-    
+
     // Manually define our schema tables
     const tables = {
-      // Define table schemas here 
+      // Define table schemas here
       gis_agent_tasks: {
         name: 'gis_agent_tasks',
         columns: {
@@ -93,8 +93,8 @@ async function pushSchema() {
           created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           user_id: { dataType: 'INTEGER' },
-          metadata: { dataType: 'JSONB' }
-        }
+          metadata: { dataType: 'JSONB' },
+        },
       },
       agent_messages: {
         name: 'agent_messages',
@@ -107,8 +107,8 @@ async function pushSchema() {
           metadata: { dataType: 'JSONB' },
           timestamp: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
-          updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' }
-        }
+          updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
+        },
       },
       spatial_layers: {
         name: 'spatial_layers',
@@ -129,8 +129,8 @@ async function pushSchema() {
           created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           user_id: { dataType: 'INTEGER' },
-          properties: { dataType: 'JSONB' }
-        }
+          properties: { dataType: 'JSONB' },
+        },
       },
       spatial_features: {
         name: 'spatial_features',
@@ -144,8 +144,8 @@ async function pushSchema() {
           created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           created_by: { dataType: 'INTEGER' },
-          updated_by: { dataType: 'INTEGER' }
-        }
+          updated_by: { dataType: 'INTEGER' },
+        },
       },
       spatial_events: {
         name: 'spatial_events',
@@ -159,8 +159,8 @@ async function pushSchema() {
           timestamp: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           ip_address: { dataType: 'VARCHAR(45)' },
           session_id: { dataType: 'VARCHAR(255)' },
-          metadata: { dataType: 'JSONB' }
-        }
+          metadata: { dataType: 'JSONB' },
+        },
       },
       gis_conversion_jobs: {
         name: 'gis_conversion_jobs',
@@ -182,8 +182,8 @@ async function pushSchema() {
           created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           user_id: { dataType: 'INTEGER' },
-          metadata: { dataType: 'JSONB' }
-        }
+          metadata: { dataType: 'JSONB' },
+        },
       },
       gis_layers: {
         name: 'gis_layers',
@@ -208,8 +208,8 @@ async function pushSchema() {
           z_index: { dataType: 'INTEGER', defaultValue: 0 },
           created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
-          user_id: { dataType: 'INTEGER' }
-        }
+          user_id: { dataType: 'INTEGER' },
+        },
       },
       gis_feature_collections: {
         name: 'gis_feature_collections',
@@ -224,8 +224,8 @@ async function pushSchema() {
           bbox: { dataType: 'JSONB' },
           created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
-          user_id: { dataType: 'INTEGER' }
-        }
+          user_id: { dataType: 'INTEGER' },
+        },
       },
       gis_map_projects: {
         name: 'gis_map_projects',
@@ -241,8 +241,8 @@ async function pushSchema() {
           is_public: { dataType: 'BOOLEAN', defaultValue: false },
           created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
-          user_id: { dataType: 'INTEGER', notNull: true }
-        }
+          user_id: { dataType: 'INTEGER', notNull: true },
+        },
       },
       etl_jobs: {
         name: 'etl_jobs',
@@ -265,8 +265,8 @@ async function pushSchema() {
           created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
           user_id: { dataType: 'INTEGER' },
-          metadata: { dataType: 'JSONB' }
-        }
+          metadata: { dataType: 'JSONB' },
+        },
       },
       developer_productivity_metrics: {
         name: 'developer_productivity_metrics',
@@ -286,12 +286,12 @@ async function pushSchema() {
           notes: { dataType: 'TEXT' },
           tags: { dataType: 'TEXT[]' },
           created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
-          updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' }
+          updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
         },
         indexes: [
           { name: 'user_date', columns: ['user_id', 'date'] },
-          { name: 'energy_level', columns: ['energy_level'] }
-        ]
+          { name: 'energy_level', columns: ['energy_level'] },
+        ],
       },
       developer_activity_sessions: {
         name: 'developer_activity_sessions',
@@ -309,12 +309,12 @@ async function pushSchema() {
           is_completed: { dataType: 'BOOLEAN', defaultValue: false },
           details: { dataType: 'JSONB', defaultValue: '{}' },
           created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
-          updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' }
+          updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
         },
         indexes: [
           { name: 'user_activity', columns: ['user_id', 'activity_type'] },
-          { name: 'time_range', columns: ['start_time', 'end_time'] }
-        ]
+          { name: 'time_range', columns: ['start_time', 'end_time'] },
+        ],
       },
       energy_level_recommendations: {
         name: 'energy_level_recommendations',
@@ -327,21 +327,19 @@ async function pushSchema() {
           best_time_of_day: { dataType: 'TEXT' },
           tips: { dataType: 'TEXT[]' },
           created_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
-          updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' }
+          updated_at: { dataType: 'TIMESTAMP', defaultValue: 'now()' },
         },
-        indexes: [
-          { name: 'user_energy', columns: ['user_id', 'energy_level'] }
-        ]
-      }
+        indexes: [{ name: 'user_energy', columns: ['user_id', 'energy_level'] }],
+      },
     };
 
     // Generate SQL statements
     const sqlStatements = generateSQL(tables);
-    
+
     // Execute the SQL statements
     console.log('Pushing schema to database...');
     await pool.query(sqlStatements);
-    
+
     console.log('Successfully created tables!');
     await pool.end();
   } catch (error) {

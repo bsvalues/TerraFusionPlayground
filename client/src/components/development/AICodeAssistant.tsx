@@ -3,7 +3,17 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sparkles, Code, Bug, Wand2, Loader, Lightbulb, Calculator, History, X } from 'lucide-react';
+import {
+  Sparkles,
+  Code,
+  Bug,
+  Wand2,
+  Loader,
+  Lightbulb,
+  Calculator,
+  History,
+  X,
+} from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,21 +32,23 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   filePath = '',
   language = 'javascript',
   onInsertCode,
-  onClose
+  onClose,
 }) => {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState<string>('');
   const [result, setResult] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('generate');
-  const [history, setHistory] = useState<Array<{prompt: string, result: string, type: string}>>([]);
+  const [history, setHistory] = useState<Array<{ prompt: string; result: string; type: string }>>(
+    []
+  );
 
   const handleGenerateCode = async () => {
     if (!prompt.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter a prompt",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Please enter a prompt',
+        variant: 'destructive',
       });
       return;
     }
@@ -56,9 +68,9 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
     } catch (error) {
       console.error('Failed to generate code:', error);
       toast({
-        title: "Error",
-        description: "Failed to generate code",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to generate code',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -68,9 +80,9 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const handleCompleteCode = async () => {
     if (!fileContent.trim()) {
       toast({
-        title: "Error",
-        description: "No code to complete",
-        variant: "destructive",
+        title: 'Error',
+        description: 'No code to complete',
+        variant: 'destructive',
       });
       return;
     }
@@ -86,13 +98,13 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       });
 
       setResult(response.code);
-      addToHistory("Complete code", response.code, 'complete');
+      addToHistory('Complete code', response.code, 'complete');
     } catch (error) {
       console.error('Failed to complete code:', error);
       toast({
-        title: "Error",
-        description: "Failed to complete code",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to complete code',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -102,9 +114,9 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const handleExplainCode = async () => {
     if (!fileContent.trim()) {
       toast({
-        title: "Error",
-        description: "No code to explain",
-        variant: "destructive",
+        title: 'Error',
+        description: 'No code to explain',
+        variant: 'destructive',
       });
       return;
     }
@@ -119,13 +131,13 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       });
 
       setResult(response.explanation);
-      addToHistory("Explain code", response.explanation, 'explain');
+      addToHistory('Explain code', response.explanation, 'explain');
     } catch (error) {
       console.error('Failed to explain code:', error);
       toast({
-        title: "Error",
-        description: "Failed to explain code",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to explain code',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -135,9 +147,9 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const handleFixBugs = async () => {
     if (!fileContent.trim() || !prompt.trim()) {
       toast({
-        title: "Error",
-        description: "Please provide code and an error message",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Please provide code and an error message',
+        variant: 'destructive',
       });
       return;
     }
@@ -157,9 +169,9 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
     } catch (error) {
       console.error('Failed to fix bugs:', error);
       toast({
-        title: "Error",
-        description: "Failed to fix bugs",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to fix bugs',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -169,9 +181,9 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const handleImproveCode = async () => {
     if (!fileContent.trim()) {
       toast({
-        title: "Error",
-        description: "No code to improve",
-        variant: "destructive",
+        title: 'Error',
+        description: 'No code to improve',
+        variant: 'destructive',
       });
       return;
     }
@@ -186,13 +198,13 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       });
 
       setResult(response.recommendations);
-      addToHistory("Improve code", response.recommendations, 'improve');
+      addToHistory('Improve code', response.recommendations, 'improve');
     } catch (error) {
       console.error('Failed to improve code:', error);
       toast({
-        title: "Error",
-        description: "Failed to recommend improvements",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to recommend improvements',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -202,9 +214,9 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const handleAssessmentModel = async () => {
     if (!prompt.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter a model description",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Please enter a model description',
+        variant: 'destructive',
       });
       return;
     }
@@ -223,9 +235,9 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
     } catch (error) {
       console.error('Failed to generate assessment model:', error);
       toast({
-        title: "Error",
-        description: "Failed to generate assessment model",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to generate assessment model',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -236,7 +248,7 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
     setHistory(prev => [{ prompt: promptText, result: resultText, type }, ...prev.slice(0, 9)]);
   };
 
-  const restoreFromHistory = (item: {prompt: string, result: string, type: string}) => {
+  const restoreFromHistory = (item: { prompt: string; result: string; type: string }) => {
     setPrompt(item.prompt);
     setResult(item.result);
   };
@@ -245,8 +257,8 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
     if (result) {
       onInsertCode(result);
       toast({
-        title: "Success",
-        description: "Code inserted",
+        title: 'Success',
+        description: 'Code inserted',
       });
     }
   };
@@ -304,12 +316,20 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
               <Textarea
                 placeholder="Describe the code you want to generate..."
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={e => setPrompt(e.target.value)}
                 className="min-h-[100px]"
               />
               <div className="flex justify-end mt-2">
-                <Button onClick={handleGenerateCode} disabled={loading} className="flex items-center">
-                  {loading ? <Loader className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                <Button
+                  onClick={handleGenerateCode}
+                  disabled={loading}
+                  className="flex items-center"
+                >
+                  {loading ? (
+                    <Loader className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-1" />
+                  )}
                   Generate Code
                 </Button>
               </div>
@@ -334,8 +354,16 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                 Complete your partial code using AI. This will use your current file as context.
               </p>
               <div className="flex justify-end">
-                <Button onClick={handleCompleteCode} disabled={loading} className="flex items-center">
-                  {loading ? <Loader className="h-4 w-4 mr-1 animate-spin" /> : <Wand2 className="h-4 w-4 mr-1" />}
+                <Button
+                  onClick={handleCompleteCode}
+                  disabled={loading}
+                  className="flex items-center"
+                >
+                  {loading ? (
+                    <Loader className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-4 w-4 mr-1" />
+                  )}
                   Complete Code
                 </Button>
               </div>
@@ -357,11 +385,20 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           <TabsContent value="explain" className="h-full flex flex-col mt-0">
             <div className="mb-4">
               <p className="text-sm text-gray-500 mb-2">
-                Get an explanation of your code in assessment terminology. This will use your current file as context.
+                Get an explanation of your code in assessment terminology. This will use your
+                current file as context.
               </p>
               <div className="flex justify-end">
-                <Button onClick={handleExplainCode} disabled={loading} className="flex items-center">
-                  {loading ? <Loader className="h-4 w-4 mr-1 animate-spin" /> : <Lightbulb className="h-4 w-4 mr-1" />}
+                <Button
+                  onClick={handleExplainCode}
+                  disabled={loading}
+                  className="flex items-center"
+                >
+                  {loading ? (
+                    <Loader className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Lightbulb className="h-4 w-4 mr-1" />
+                  )}
                   Explain Code
                 </Button>
               </div>
@@ -369,9 +406,7 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
 
             {result && (
               <div className="flex-1 overflow-auto border rounded-md p-4">
-                <div className="prose prose-sm max-w-none">
-                  {result}
-                </div>
+                <div className="prose prose-sm max-w-none">{result}</div>
               </div>
             )}
           </TabsContent>
@@ -379,17 +414,22 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           <TabsContent value="fix" className="h-full flex flex-col mt-0">
             <div className="mb-4">
               <p className="text-sm text-gray-500 mb-2">
-                Fix bugs in your code by providing the error message. This will use your current file as context.
+                Fix bugs in your code by providing the error message. This will use your current
+                file as context.
               </p>
               <Textarea
                 placeholder="Paste the error message here..."
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={e => setPrompt(e.target.value)}
                 className="min-h-[100px]"
               />
               <div className="flex justify-end mt-2">
                 <Button onClick={handleFixBugs} disabled={loading} className="flex items-center">
-                  {loading ? <Loader className="h-4 w-4 mr-1 animate-spin" /> : <Bug className="h-4 w-4 mr-1" />}
+                  {loading ? (
+                    <Loader className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Bug className="h-4 w-4 mr-1" />
+                  )}
                   Fix Bugs
                 </Button>
               </div>
@@ -411,11 +451,20 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           <TabsContent value="improve" className="h-full flex flex-col mt-0">
             <div className="mb-4">
               <p className="text-sm text-gray-500 mb-2">
-                Get recommendations for improving your code, specifically for assessment applications.
+                Get recommendations for improving your code, specifically for assessment
+                applications.
               </p>
               <div className="flex justify-end">
-                <Button onClick={handleImproveCode} disabled={loading} className="flex items-center">
-                  {loading ? <Loader className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                <Button
+                  onClick={handleImproveCode}
+                  disabled={loading}
+                  className="flex items-center"
+                >
+                  {loading ? (
+                    <Loader className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-1" />
+                  )}
                   Improve Code
                 </Button>
               </div>
@@ -423,9 +472,7 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
 
             {result && (
               <div className="flex-1 overflow-auto border rounded-md p-4">
-                <div className="prose prose-sm max-w-none">
-                  {result}
-                </div>
+                <div className="prose prose-sm max-w-none">{result}</div>
               </div>
             )}
           </TabsContent>
@@ -438,12 +485,20 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
               <Textarea
                 placeholder="Describe the assessment model you need (e.g., 'residential property valuation model using sales comparison approach')..."
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={e => setPrompt(e.target.value)}
                 className="min-h-[100px]"
               />
               <div className="flex justify-end mt-2">
-                <Button onClick={handleAssessmentModel} disabled={loading} className="flex items-center">
-                  {loading ? <Loader className="h-4 w-4 mr-1 animate-spin" /> : <Calculator className="h-4 w-4 mr-1" />}
+                <Button
+                  onClick={handleAssessmentModel}
+                  disabled={loading}
+                  className="flex items-center"
+                >
+                  {loading ? (
+                    <Loader className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Calculator className="h-4 w-4 mr-1" />
+                  )}
                   Generate Model
                 </Button>
               </div>
@@ -475,7 +530,9 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                         {item.type === 'fix' && <Bug className="h-4 w-4 mr-1" />}
                         {item.type === 'improve' && <Sparkles className="h-4 w-4 mr-1" />}
                         {item.type === 'model' && <Calculator className="h-4 w-4 mr-1" />}
-                        {item.prompt.length > 40 ? `${item.prompt.substring(0, 40)}...` : item.prompt}
+                        {item.prompt.length > 40
+                          ? `${item.prompt.substring(0, 40)}...`
+                          : item.prompt}
                       </CardTitle>
                       <CardDescription className="text-xs">
                         {new Date().toLocaleTimeString()}
@@ -483,7 +540,11 @@ const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                     </CardHeader>
                     <CardContent className="py-0">
                       <div className="flex justify-end">
-                        <Button size="sm" variant="outline" onClick={() => restoreFromHistory(item)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => restoreFromHistory(item)}
+                        >
                           Restore
                         </Button>
                       </div>

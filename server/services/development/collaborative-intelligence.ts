@@ -1,6 +1,6 @@
 /**
  * Collaborative Intelligence Service
- * 
+ *
  * Provides real-time collaboration features for assessment model building:
  * - Real-time collaborative editing
  * - Team workspaces and access controls
@@ -42,7 +42,14 @@ export type ActivityEvent = {
   modelId?: string;
   userId: number;
   userName: string;
-  eventType: 'model_created' | 'model_updated' | 'model_published' | 'model_tested' | 'comment_added' | 'user_joined' | 'user_left';
+  eventType:
+    | 'model_created'
+    | 'model_updated'
+    | 'model_published'
+    | 'model_tested'
+    | 'comment_added'
+    | 'user_joined'
+    | 'user_left';
   details: any;
   timestamp: string;
 };
@@ -120,7 +127,14 @@ export type EditorState = {
 
 // Define WebSocket message types
 export type CollaborationMessage = {
-  type: 'cursor_update' | 'selection_update' | 'content_update' | 'user_joined' | 'user_left' | 'comment_added' | 'suggestion_added';
+  type:
+    | 'cursor_update'
+    | 'selection_update'
+    | 'content_update'
+    | 'user_joined'
+    | 'user_left'
+    | 'comment_added'
+    | 'suggestion_added';
   userId: number;
   userName: string;
   modelId: string;
@@ -135,12 +149,12 @@ export class CollaborativeIntelligence {
   private aiAssistantService: AIAssistantService;
   private activeClients: Map<number, WebSocket[]> = new Map();
   private modelEditors: Map<string, EditorState> = new Map();
-  
+
   constructor(storage: IStorage, aiAssistantService: AIAssistantService) {
     this.storage = storage;
     this.aiAssistantService = aiAssistantService;
   }
-  
+
   /**
    * Register a WebSocket client for a user
    */
@@ -148,63 +162,66 @@ export class CollaborativeIntelligence {
     if (!this.activeClients.has(userId)) {
       this.activeClients.set(userId, []);
     }
-    
+
     this.activeClients.get(userId)?.push(socket);
-    
+
     // Update user status to online
     this.updateUserStatus(userId, 'online');
-    
+
     // Notify other users that this user has come online
     this.broadcastUserStatus(userId, 'online');
-    
+
     // Handle socket close
     socket.on('close', () => {
       this.unregisterClient(userId, socket);
     });
   }
-  
+
   /**
    * Unregister a WebSocket client for a user
    */
   unregisterClient(userId: number, socket: WebSocket): void {
     const clients = this.activeClients.get(userId);
-    
+
     if (clients) {
       const index = clients.indexOf(socket);
-      
+
       if (index !== -1) {
         clients.splice(index, 1);
       }
-      
+
       if (clients.length === 0) {
         this.activeClients.delete(userId);
-        
+
         // Update user status to offline
         this.updateUserStatus(userId, 'offline');
-        
+
         // Notify other users that this user has gone offline
         this.broadcastUserStatus(userId, 'offline');
-        
+
         // Remove user from any active editor sessions
         this.removeUserFromEditors(userId);
       }
     }
   }
-  
+
   /**
    * Update user status in the database
    */
-  private async updateUserStatus(userId: number, status: 'online' | 'offline' | 'away'): Promise<void> {
+  private async updateUserStatus(
+    userId: number,
+    status: 'online' | 'offline' | 'away'
+  ): Promise<void> {
     try {
       await this.storage.updateTeamMember(userId, {
         status,
-        lastActive: new Date().toISOString()
+        lastActive: new Date().toISOString(),
       });
     } catch (error) {
       console.error(`Error updating user status for user ${userId}:`, error);
     }
   }
-  
+
   /**
    * Broadcast user status change to all connected clients
    */
@@ -215,20 +232,20 @@ export class CollaborativeIntelligence {
       userName: '', // Would be populated from the database in a real implementation
       modelId: '',
       data: { status },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
-  
+
   /**
    * Remove user from any active editor sessions
    */
   private removeUserFromEditors(userId: number): void {
     for (const [modelId, editorState] of this.modelEditors.entries()) {
       const userIndex = editorState.activeUsers.findIndex(user => user.userId === userId);
-      
+
       if (userIndex !== -1) {
         editorState.activeUsers.splice(userIndex, 1);
-        
+
         // Broadcast that user has left the editor
         this.broadcastToAllExcept(userId, {
           type: 'user_left',
@@ -238,12 +255,12 @@ export class CollaborativeIntelligence {
           entityType: editorState.entityType,
           entityId: editorState.entityId,
           data: {},
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
       }
     }
   }
-  
+
   /**
    * Handle a collaboration message from a client
    */
@@ -253,30 +270,30 @@ export class CollaborativeIntelligence {
       console.error('Invalid message: modelId is required');
       return;
     }
-    
+
     // Process message based on type
     switch (message.type) {
       case 'cursor_update':
         this.handleCursorUpdate(userId, message);
         break;
-        
+
       case 'selection_update':
         this.handleSelectionUpdate(userId, message);
         break;
-        
+
       case 'content_update':
         this.handleContentUpdate(userId, message);
         break;
-        
+
       case 'comment_added':
         this.handleCommentAdded(userId, message);
         break;
-        
+
       default:
         console.warn(`Unknown message type: ${message.type}`);
     }
   }
-  
+
   /**
    * Handle cursor update message
    */
@@ -285,40 +302,40 @@ export class CollaborativeIntelligence {
       console.error('Invalid cursor update: entityType and entityId are required');
       return;
     }
-    
+
     // Get or create editor state
     const editorKey = `${message.modelId}-${message.entityType}-${message.entityId}`;
-    
+
     if (!this.modelEditors.has(editorKey)) {
       this.modelEditors.set(editorKey, {
         modelId: message.modelId,
         entityType: message.entityType,
         entityId: message.entityId,
-        activeUsers: []
+        activeUsers: [],
       });
     }
-    
+
     const editorState = this.modelEditors.get(editorKey)!;
-    
+
     // Update user cursor
     const userIndex = editorState.activeUsers.findIndex(user => user.userId === userId);
-    
+
     if (userIndex === -1) {
       // Add user to editor
       editorState.activeUsers.push({
         userId,
         userName: message.userName,
-        cursor: message.data.cursor
+        cursor: message.data.cursor,
       });
     } else {
       // Update user cursor
       editorState.activeUsers[userIndex].cursor = message.data.cursor;
     }
-    
+
     // Broadcast cursor update to all other clients editing this entity
     this.broadcastToAllExcept(userId, message);
   }
-  
+
   /**
    * Handle selection update message
    */
@@ -327,40 +344,40 @@ export class CollaborativeIntelligence {
       console.error('Invalid selection update: entityType and entityId are required');
       return;
     }
-    
+
     // Get or create editor state
     const editorKey = `${message.modelId}-${message.entityType}-${message.entityId}`;
-    
+
     if (!this.modelEditors.has(editorKey)) {
       this.modelEditors.set(editorKey, {
         modelId: message.modelId,
         entityType: message.entityType,
         entityId: message.entityId,
-        activeUsers: []
+        activeUsers: [],
       });
     }
-    
+
     const editorState = this.modelEditors.get(editorKey)!;
-    
+
     // Update user selection
     const userIndex = editorState.activeUsers.findIndex(user => user.userId === userId);
-    
+
     if (userIndex === -1) {
       // Add user to editor
       editorState.activeUsers.push({
         userId,
         userName: message.userName,
-        selection: message.data.selection
+        selection: message.data.selection,
       });
     } else {
       // Update user selection
       editorState.activeUsers[userIndex].selection = message.data.selection;
     }
-    
+
     // Broadcast selection update to all other clients editing this entity
     this.broadcastToAllExcept(userId, message);
   }
-  
+
   /**
    * Handle content update message
    */
@@ -369,37 +386,37 @@ export class CollaborativeIntelligence {
       console.error('Invalid content update: entityType and entityId are required');
       return;
     }
-    
+
     // Update the content in the database
     try {
       switch (message.entityType) {
         case 'component':
           await this.storage.updateModelComponent(message.entityId, message.data.content);
           break;
-          
+
         case 'calculation':
           await this.storage.updateModelCalculation(message.entityId, message.data.content);
           break;
-          
+
         case 'variable':
           await this.storage.updateModelVariable(message.entityId, message.data.content);
           break;
-          
+
         case 'validation_rule':
           await this.storage.updateModelValidationRule(message.entityId, message.data.content);
           break;
-          
+
         case 'test_case':
           await this.storage.updateModelTestCase(message.entityId, message.data.content);
           break;
       }
-      
+
       // Record the change
       await this.recordModelChange(userId, message);
-      
+
       // Broadcast content update to all other clients
       this.broadcastToAllExcept(userId, message);
-      
+
       // Generate AI suggestions if appropriate
       if (message.data.suggestImprovements) {
         this.generateCollaborationSuggestion(userId, message);
@@ -408,7 +425,7 @@ export class CollaborativeIntelligence {
       console.error(`Error updating ${message.entityType} content:`, error);
     }
   }
-  
+
   /**
    * Handle comment added message
    */
@@ -422,15 +439,15 @@ export class CollaborativeIntelligence {
         userId,
         text: message.data.text,
         resolved: false,
-        timestamp: message.timestamp
+        timestamp: message.timestamp,
       });
-      
+
       // Update the message with the saved comment ID
       message.data.commentId = comment.id;
-      
+
       // Broadcast comment to all clients
       this.broadcastToAll(message);
-      
+
       // Create an activity event
       await this.createActivityEvent(userId, {
         workspaceId: message.data.workspaceId,
@@ -442,15 +459,15 @@ export class CollaborativeIntelligence {
           commentId: comment.id,
           entityType: message.entityType,
           entityId: message.entityId,
-          text: message.data.text.substring(0, 100) + (message.data.text.length > 100 ? '...' : '')
+          text: message.data.text.substring(0, 100) + (message.data.text.length > 100 ? '...' : ''),
         },
-        timestamp: message.timestamp
+        timestamp: message.timestamp,
       });
     } catch (error) {
       console.error('Error adding comment:', error);
     }
   }
-  
+
   /**
    * Record a model change
    */
@@ -458,42 +475,42 @@ export class CollaborativeIntelligence {
     try {
       // Get user name
       const user = await this.storage.getTeamMember(userId);
-      
+
       if (!user) {
         console.warn(`User ${userId} not found`);
         return;
       }
-      
+
       // Get entity name
       let entityName = '';
-      
+
       switch (message.entityType) {
         case 'component':
           const component = await this.storage.getModelComponent(message.entityId!);
           entityName = component?.name || '';
           break;
-          
+
         case 'calculation':
           const calculation = await this.storage.getModelCalculation(message.entityId!);
           entityName = calculation?.name || '';
           break;
-          
+
         case 'variable':
           const variable = await this.storage.getModelVariable(message.entityId!);
           entityName = variable?.name || '';
           break;
-          
+
         case 'validation_rule':
           const rule = await this.storage.getModelValidationRule(message.entityId!);
           entityName = rule?.name || '';
           break;
-          
+
         case 'test_case':
           const testCase = await this.storage.getModelTestCase(message.entityId!);
           entityName = testCase?.name || '';
           break;
       }
-      
+
       // Record the change
       await this.storage.createModelChange({
         modelId: message.modelId,
@@ -505,11 +522,11 @@ export class CollaborativeIntelligence {
         changeType: 'updated',
         diff: {
           before: message.data.previousContent,
-          after: message.data.content
+          after: message.data.content,
         },
-        timestamp: message.timestamp
+        timestamp: message.timestamp,
       });
-      
+
       // Create an activity event
       await this.createActivityEvent(userId, {
         workspaceId: message.data.workspaceId,
@@ -520,42 +537,48 @@ export class CollaborativeIntelligence {
         details: {
           entityType: message.entityType,
           entityId: message.entityId,
-          entityName
+          entityName,
         },
-        timestamp: message.timestamp
+        timestamp: message.timestamp,
       });
     } catch (error) {
       console.error('Error recording model change:', error);
     }
   }
-  
+
   /**
    * Create an activity event
    */
-  private async createActivityEvent(userId: number, event: Omit<ActivityEvent, 'id'>): Promise<void> {
+  private async createActivityEvent(
+    userId: number,
+    event: Omit<ActivityEvent, 'id'>
+  ): Promise<void> {
     try {
       await this.storage.createActivityEvent(event);
     } catch (error) {
       console.error('Error creating activity event:', error);
     }
   }
-  
+
   /**
    * Generate a collaboration suggestion using AI
    */
-  private async generateCollaborationSuggestion(userId: number, message: CollaborationMessage): Promise<void> {
+  private async generateCollaborationSuggestion(
+    userId: number,
+    message: CollaborationMessage
+  ): Promise<void> {
     try {
       // Get user and entity information
       const user = await this.storage.getTeamMember(userId);
-      
+
       if (!user) {
         console.warn(`User ${userId} not found`);
         return;
       }
-      
+
       let entityName = '';
       let entityContent = message.data.content;
-      
+
       // Prepare context for AI assistant
       const promptTemplate = `
 You are an expert assessment model developer providing collaborative suggestions.
@@ -589,12 +612,12 @@ Provide your response in JSON format:
 
       // Try each available provider
       const providers = this.aiAssistantService.getAvailableProviders();
-      
+
       if (providers.length === 0) {
         console.warn('No AI providers available for generating collaboration suggestions');
         return;
       }
-      
+
       for (const provider of providers) {
         try {
           const response = await this.aiAssistantService.generateResponse({
@@ -602,18 +625,19 @@ Provide your response in JSON format:
             provider,
             options: {
               temperature: 0.3,
-              maxTokens: 1000
-            }
+              maxTokens: 1000,
+            },
           });
-          
+
           try {
             // Extract JSON response
-            const jsonMatch = response.message.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/) || 
-                          response.message.match(/(\{[\s\S]*\})/);
-                          
+            const jsonMatch =
+              response.message.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/) ||
+              response.message.match(/(\{[\s\S]*\})/);
+
             if (jsonMatch && jsonMatch[1]) {
               const suggestion = JSON.parse(jsonMatch[1]);
-              
+
               // Save suggestion to database
               const savedSuggestion = await this.storage.createCollaborationSuggestion({
                 workspaceId: message.data.workspaceId,
@@ -623,9 +647,9 @@ Provide your response in JSON format:
                 description: suggestion.description,
                 confidence: suggestion.confidence,
                 applied: false,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
               });
-              
+
               // Broadcast suggestion to all clients
               this.broadcastToAll({
                 type: 'suggestion_added',
@@ -635,11 +659,11 @@ Provide your response in JSON format:
                 entityType: message.entityType,
                 entityId: message.entityId,
                 data: {
-                  suggestion: savedSuggestion
+                  suggestion: savedSuggestion,
                 },
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
               });
-              
+
               break; // Stop after the first successful suggestion
             }
           } catch (parseError) {
@@ -655,7 +679,7 @@ Provide your response in JSON format:
       console.error('Error generating collaboration suggestion:', error);
     }
   }
-  
+
   /**
    * Broadcast a message to all connected clients
    */
@@ -668,7 +692,7 @@ Provide your response in JSON format:
       }
     }
   }
-  
+
   /**
    * Broadcast a message to all connected clients except the sender
    */
@@ -683,96 +707,109 @@ Provide your response in JSON format:
       }
     }
   }
-  
+
   /**
    * Get a list of all active users
    */
   async getActiveUsers(): Promise<TeamMember[]> {
     const activeUserIds = Array.from(this.activeClients.keys());
-    
+
     if (activeUserIds.length === 0) {
       return [];
     }
-    
+
     // Get user details from database
     return this.storage.getTeamMembersByIds(activeUserIds);
   }
-  
+
   /**
    * Get recent activity events
    */
   async getRecentActivityEvents(workspaceId: number, limit: number = 50): Promise<ActivityEvent[]> {
     return this.storage.getActivityEventsByWorkspace(workspaceId, limit);
   }
-  
+
   /**
    * Get model changes
    */
   async getModelChanges(modelId: string, limit: number = 50): Promise<ModelChange[]> {
     return this.storage.getModelChangesByModel(modelId, limit);
   }
-  
+
   /**
    * Get comments for a model
    */
-  async getModelComments(modelId: string, entityType?: string, entityId?: number): Promise<Comment[]> {
+  async getModelComments(
+    modelId: string,
+    entityType?: string,
+    entityId?: number
+  ): Promise<Comment[]> {
     if (entityType && entityId) {
       return this.storage.getCommentsByEntity(modelId, entityType, entityId);
     } else {
       return this.storage.getCommentsByModel(modelId);
     }
   }
-  
+
   /**
    * Get collaboration suggestions
    */
-  async getCollaborationSuggestions(workspaceId: number, modelId?: string): Promise<CollaborationSuggestion[]> {
+  async getCollaborationSuggestions(
+    workspaceId: number,
+    modelId?: string
+  ): Promise<CollaborationSuggestion[]> {
     if (modelId) {
       return this.storage.getCollaborationSuggestionsByModel(workspaceId, modelId);
     } else {
       return this.storage.getCollaborationSuggestionsByWorkspace(workspaceId);
     }
   }
-  
+
   /**
    * Create a new workspace
    */
-  async createWorkspace(workspace: Omit<Workspace, 'id' | 'createdAt' | 'updatedAt'>): Promise<Workspace> {
+  async createWorkspace(
+    workspace: Omit<Workspace, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<Workspace> {
     return this.storage.createWorkspace({
       ...workspace,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     });
   }
-  
+
   /**
    * Get workspaces for a user
    */
   async getUserWorkspaces(userId: number): Promise<Workspace[]> {
     return this.storage.getWorkspacesByUserId(userId);
   }
-  
+
   /**
    * Get workspace members
    */
   async getWorkspaceMembers(workspaceId: number): Promise<TeamMember[]> {
     return this.storage.getTeamMembersByWorkspace(workspaceId);
   }
-  
+
   /**
    * Add a member to a workspace
    */
-  async addWorkspaceMember(workspaceId: number, memberId: number, role: 'owner' | 'editor' | 'viewer'): Promise<void> {
+  async addWorkspaceMember(
+    workspaceId: number,
+    memberId: number,
+    role: 'owner' | 'editor' | 'viewer'
+  ): Promise<void> {
     await this.storage.addWorkspaceMember(workspaceId, memberId, role);
-    
+
     // Get member and workspace details
     const member = await this.storage.getTeamMember(memberId);
     const workspace = await this.storage.getWorkspace(workspaceId);
-    
+
     if (!member || !workspace) {
       return;
     }
-    
+
     // Create activity event
     await this.createActivityEvent(memberId, {
       workspaceId,
@@ -781,11 +818,11 @@ Provide your response in JSON format:
       eventType: 'user_joined',
       details: {
         workspaceName: workspace.name,
-        role
+        role,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     // Notify workspace members
     this.notifyWorkspaceMembers(workspaceId, {
       type: 'user_joined',
@@ -795,12 +832,12 @@ Provide your response in JSON format:
       data: {
         workspaceId,
         workspaceName: workspace.name,
-        role
+        role,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
-  
+
   /**
    * Remove a member from a workspace
    */
@@ -808,14 +845,14 @@ Provide your response in JSON format:
     // Get member and workspace details before removal
     const member = await this.storage.getTeamMember(memberId);
     const workspace = await this.storage.getWorkspace(workspaceId);
-    
+
     if (!member || !workspace) {
       return;
     }
-    
+
     // Remove member
     await this.storage.removeWorkspaceMember(workspaceId, memberId);
-    
+
     // Create activity event
     await this.createActivityEvent(memberId, {
       workspaceId,
@@ -823,11 +860,11 @@ Provide your response in JSON format:
       userName: member.name,
       eventType: 'user_left',
       details: {
-        workspaceName: workspace.name
+        workspaceName: workspace.name,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     // Notify workspace members
     this.notifyWorkspaceMembers(workspaceId, {
       type: 'user_left',
@@ -836,28 +873,31 @@ Provide your response in JSON format:
       modelId: '', // No specific model
       data: {
         workspaceId,
-        workspaceName: workspace.name
+        workspaceName: workspace.name,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
-  
+
   /**
    * Notify all members of a workspace
    */
-  private async notifyWorkspaceMembers(workspaceId: number, message: CollaborationMessage): Promise<void> {
+  private async notifyWorkspaceMembers(
+    workspaceId: number,
+    message: CollaborationMessage
+  ): Promise<void> {
     try {
       // Get workspace members
       const members = await this.storage.getTeamMembersByWorkspace(workspaceId);
-      
+
       if (!members || members.length === 0) {
         return;
       }
-      
+
       // Send message to all online members
       for (const member of members) {
         const clients = this.activeClients.get(member.id);
-        
+
         if (clients) {
           for (const client of clients) {
             if (client.readyState === WebSocket.OPEN) {

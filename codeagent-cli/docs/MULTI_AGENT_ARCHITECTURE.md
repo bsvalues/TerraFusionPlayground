@@ -39,6 +39,7 @@ Agents specializing in particular types of tasks:
 ### Agent Integration
 
 The **AgentSystem** class serves as the main entry point for the multi-agent architecture, providing:
+
 - Initialization of the entire agent ecosystem
 - Task submission and routing
 - Centralized management and monitoring
@@ -53,7 +54,7 @@ import { AgentSystem, LogLevel } from './agents';
 // Create and initialize the agent system
 const agentSystem = new AgentSystem({
   logLevel: LogLevel.INFO,
-  autoInitialize: true
+  autoInitialize: true,
 });
 
 // Submit a task to the appropriate agent
@@ -62,8 +63,8 @@ const result = await agentSystem.submitTask({
   type: 'analyze_query',
   priority: 'high',
   payload: {
-    query: 'SELECT * FROM users WHERE status = "active"'
-  }
+    query: 'SELECT * FROM users WHERE status = "active"',
+  },
 });
 
 // Work with the result
@@ -120,17 +121,17 @@ class CustomAgent extends BaseAgent {
       AgentPriority.NORMAL
     );
   }
-  
+
   async initialize(): Promise<boolean> {
     // Initialization logic
     return true;
   }
-  
+
   async executeTask(task: AgentTask): Promise<any> {
     // Task execution logic
     return { result: 'success' };
   }
-  
+
   protected async onShutdown(force: boolean): Promise<void> {
     // Shutdown logic
   }
@@ -170,11 +171,11 @@ Agents can communicate with each other through the EventBus:
 // Publish an event
 this.eventBus.publish('data:updated', {
   agentId: this.id,
-  data: { resource: 'users', action: 'update' }
+  data: { resource: 'users', action: 'update' },
 });
 
 // Subscribe to events
-this.eventBus.subscribe('data:updated', (event) => {
+this.eventBus.subscribe('data:updated', event => {
   // Handle the event
 });
 ```

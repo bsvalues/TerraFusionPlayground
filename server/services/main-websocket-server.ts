@@ -1,16 +1,16 @@
 /**
  * MainWebSocketServer
- * 
+ *
  * A centralized WebSocket server implementation that provides robust connection
  * handling, client tracking, and message routing capabilities.
- * 
+ *
  * This server addresses the common Error Code 1006 (abnormal closure) issues by:
  * - Properly handling connection/disconnection events
  * - Implementing heartbeat/ping-pong mechanism
  * - Tracking connection state with proper cleanup
  * - Validating clients with proper CORS checks
  * - Providing detailed logging and metrics
- * 
+ *
  * Usage:
  * - Import and use the singleton instance: MainWebSocketServer.getInstance()
  * - Set up message handlers with: .on(messageType, handlerFn)
@@ -49,10 +49,10 @@ interface WebSocketServerConfig {
 const DEFAULT_CONFIG: WebSocketServerConfig = {
   path: '/ws',
   heartbeatInterval: 30000, // 30 seconds
-  heartbeatTimeout: 60000,  // 60 seconds
+  heartbeatTimeout: 60000, // 60 seconds
   maxClients: 1000,
   logLevel: 'info',
-  clientTracking: true
+  clientTracking: true,
 };
 
 // Message handler type
@@ -70,14 +70,14 @@ export class MainWebSocketServer {
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private config: WebSocketServerConfig = DEFAULT_CONFIG;
   private httpServer: HttpServer | HttpsServer | null = null;
-  
+
   /**
    * Private constructor (singleton pattern)
    */
   private constructor() {
     // Initializes empty server - call initialize() to set up
   }
-  
+
   /**
    * Get the singleton instance
    */
@@ -87,79 +87,85 @@ export class MainWebSocketServer {
     }
     return MainWebSocketServer.instance;
   }
-  
+
   /**
    * Initialize the WebSocket server with an HTTP/HTTPS server
    * @param server HTTP/HTTPS server to attach to
    * @param config Configuration options
    */
-  public initialize(server: HttpServer | HttpsServer, config: Partial<WebSocketServerConfig> = {}): void {
+  public initialize(
+    server: HttpServer | HttpsServer,
+    config: Partial<WebSocketServerConfig> = {}
+  ): void {
     // Only initialize once
     if (this.server) {
       logger.warn('[MainWebSocketServer] Server already initialized');
       return;
     }
-    
+
     // Store HTTP server reference
     this.httpServer = server;
-    
+
     // Merge configuration with defaults
     this.config = { ...DEFAULT_CONFIG, ...config };
-    
+
     // Set debug listener for all upgrade requests to help diagnose issues
     server.on('upgrade', (request, socket, head) => {
       const path = request.url || '';
       logger.debug(`[MainWebSocketServer] HTTP upgrade request for: ${path}`);
     });
-    
+
     // Create WebSocket server with inline verifyClient function for simplicity
     this.server = new WebSocketServer({
       server,
       path: this.config.path,
       clientTracking: this.config.clientTracking,
-      verifyClient: (info: { origin: string; req: any; secure: boolean }, callback?: (result: boolean, code?: number, message?: string) => void) => {
+      verifyClient: (
+        info: { origin: string; req: any; secure: boolean },
+        callback?: (result: boolean, code?: number, message?: string) => void
+      ) => {
         logger.debug('[MainWebSocketServer] Verifying client connection', {
           origin: info.origin || '',
           path: info.req.url,
-          host: info.req.headers.host
+          host: info.req.headers.host,
         });
-        
+
         // Accept all connections in development mode
         if (callback) {
           callback(true, 200, 'Connection accepted');
         }
         return true;
       },
-      maxPayload: 1024 * 1024 // 1MB
+      maxPayload: 1024 * 1024, // 1MB
     });
-    
+
     // Set up event handlers
     this.server.on('connection', this.handleConnection.bind(this));
     this.server.on('error', this.handleServerError.bind(this));
-    
+
     // Start heartbeat interval
     this.startHeartbeat();
-    
+
     logger.info(`[MainWebSocketServer] Initialized and listening on path: ${this.config.path}`);
   }
-  
+
   /**
    * Default client verification function
    */
   private defaultVerifyClient(info: { origin: string; req: any; secure: boolean }): boolean {
     const origin = info.origin || '';
     const req = info.req;
-    
+
     logger.debug('[MainWebSocketServer] Verifying client connection', {
       origin,
       path: req.url,
-      headers: req.headers
+      headers: req.headers,
     });
-    
+
     // Accept all connections in development environment for easier testing
     // In production, this should be replaced with proper origin validation
     return true;
-    
+
     /* 
     // Production checks would look like this:
     // Allow same-origin requests
@@ -189,21 +195,19 @@ export class MainWebSocketServer {
     return false;
     */
   }
-  
+
   /**
    * Handle new WebSocket connection
    */
   private handleConnection(socket: WebSocket, request: any): void {
     // Generate a unique client ID
     const clientId = randomUUID();
-    
+
     // Extract client information
-    const ip = request.headers['x-forwarded-for'] || 
-      request.socket.remoteAddress || 
-      'unknown';
-    
+    const ip = request.headers['x-forwarded-for'] || request.socket.remoteAddress || 'unknown';
+
     const userAgent = request.headers['user-agent'] || 'unknown';
-    
+
     // Store client information
     const clientInfo: ClientInfo = {
       id: clientId,
@@ -211,25 +215,29 @@ export class MainWebSocketServer {
       ip,
       userAgent,
       lastPing: Date.now(),
-      lastPong: Date.now()
+      lastPong: Date.now(),
     };
-    
+
     this.clients.set(clientId, clientInfo);
-    
+
     // Log connection
     logger.info('[MainWebSocketServer] Client connected', {
       clientId,
       ip,
       userAgent,
-      clientCount: this.clients.size
+      clientCount: this.clients.size,
     });
-    
+
     // Set up client-specific event handlers
-    socket.on('message', (data: RawData, isBinary: boolean) => this.handleMessage(data, isBinary, clientId));
-    socket.on('close', (code: number, reason: Buffer) => this.handleClose(code, reason.toString(), clientId));
+    socket.on('message', (data: RawData, isBinary: boolean) =>
+      this.handleMessage(data, isBinary, clientId)
+    );
+    socket.on('close', (code: number, reason: Buffer) =>
+      this.handleClose(code, reason.toString(), clientId)
+    );
     socket.on('error', (error: Error) => this.handleClientError(error, clientId));
     socket.on('pong', () => this.handlePong(clientId));
-    
+
     // Send welcome message to client
     this.sendToClient(clientId, {
       type: 'system',
@@ -238,11 +246,11 @@ export class MainWebSocketServer {
       timestamp: Date.now(),
       config: {
         heartbeatInterval: this.config.heartbeatInterval,
-        path: this.config.path
-      }
+        path: this.config.path,
+      },
     });
   }
-  
+
   /**
    * Handle client message
    */
@@ -251,33 +259,36 @@ export class MainWebSocketServer {
     if (!client) {
       return;
     }
-    
+
     // Update last activity timestamp
     client.lastPing = Date.now();
-    
+
     try {
       // Handle binary messages if needed
       if (isBinary) {
         // Binary data handling would go here
-        logger.debug('[MainWebSocketServer] Received binary message', { clientId, size: data.length });
+        logger.debug('[MainWebSocketServer] Received binary message', {
+          clientId,
+          size: data.length,
+        });
         return;
       }
-      
+
       // Parse message as JSON
       const message = JSON.parse(data.toString());
-      
+
       // Handle ping messages
       if (message.type === 'ping') {
         this.handlePing(clientId, message);
         return;
       }
-      
+
       // Log message
       logger.debug('[MainWebSocketServer] Received message', {
         clientId,
-        messageType: message.type || 'unknown'
+        messageType: message.type || 'unknown',
       });
-      
+
       // Find and execute message-specific handlers
       const handlers = this.messageHandlers.get(message.type);
       if (handlers) {
@@ -285,11 +296,14 @@ export class MainWebSocketServer {
           try {
             handler(message, clientId, client);
           } catch (error) {
-            logger.error(`[MainWebSocketServer] Error in message handler for type: ${message.type}`, { error });
+            logger.error(
+              `[MainWebSocketServer] Error in message handler for type: ${message.type}`,
+              { error }
+            );
           }
         }
       }
-      
+
       // Execute default handlers
       for (const handler of this.defaultMessageHandlers) {
         try {
@@ -300,16 +314,16 @@ export class MainWebSocketServer {
       }
     } catch (error) {
       logger.error('[MainWebSocketServer] Error handling message', { error, clientId });
-      
+
       // Send error message back to client
       this.sendToClient(clientId, {
         type: 'error',
         message: 'Invalid message format',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     }
   }
-  
+
   /**
    * Handle client connection close
    */
@@ -318,19 +332,19 @@ export class MainWebSocketServer {
     if (!client) {
       return;
     }
-    
+
     // Log disconnection
     logger.info('[MainWebSocketServer] Client disconnected', {
       clientId,
       code,
       reason: reason || 'No reason provided',
-      clientCount: this.clients.size - 1
+      clientCount: this.clients.size - 1,
     });
-    
+
     // Remove client from tracking
     this.clients.delete(clientId);
   }
-  
+
   /**
    * Handle client-specific error
    */
@@ -339,38 +353,38 @@ export class MainWebSocketServer {
     if (!client) {
       return;
     }
-    
+
     // Log error
     logger.error('[MainWebSocketServer] Client error', {
       clientId,
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
-    
+
     // Close socket on error
     try {
       client.socket.terminate();
     } catch (closeError) {
       logger.error('[MainWebSocketServer] Error terminating client', {
         clientId,
-        error: closeError
+        error: closeError,
       });
     }
-    
+
     // Remove client from tracking
     this.clients.delete(clientId);
   }
-  
+
   /**
    * Handle server-level error
    */
   private handleServerError(error: Error): void {
     logger.error('[MainWebSocketServer] Server error', {
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
   }
-  
+
   /**
    * Handle ping message from client
    */
@@ -379,18 +393,18 @@ export class MainWebSocketServer {
     if (!client) {
       return;
     }
-    
+
     // Update last ping timestamp
     client.lastPing = Date.now();
-    
+
     // Send pong response
     this.sendToClient(clientId, {
       type: 'pong',
       timestamp: message.timestamp,
-      serverTime: Date.now()
+      serverTime: Date.now(),
     });
   }
-  
+
   /**
    * Handle pong response from client
    */
@@ -399,11 +413,11 @@ export class MainWebSocketServer {
     if (!client) {
       return;
     }
-    
+
     // Update last pong timestamp
     client.lastPong = Date.now();
   }
-  
+
   /**
    * Start heartbeat interval to check for stale connections
    */
@@ -411,38 +425,38 @@ export class MainWebSocketServer {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
     }
-    
+
     this.heartbeatInterval = setInterval(() => {
       logger.debug(`[MainWebSocketServer] Checking heartbeats for ${this.clients.size} clients`);
-      
+
       const now = Date.now();
       const timeout = this.config.heartbeatTimeout!;
-      
+
       for (const [clientId, client] of this.clients.entries()) {
         const lastActivity = client.lastPong || client.lastPing || 0;
         const inactive = now - lastActivity;
-        
+
         // If client hasn't sent a message for too long, terminate
         if (inactive > timeout) {
           logger.warn('[MainWebSocketServer] Terminating inactive client', {
             clientId,
             inactiveTime: inactive,
-            timeout
+            timeout,
           });
-          
+
           try {
             client.socket.terminate();
           } catch (error) {
             logger.error('[MainWebSocketServer] Error terminating inactive client', {
               clientId,
-              error
+              error,
             });
           }
-          
+
           this.clients.delete(clientId);
           continue;
         }
-        
+
         // Send ping to client if needed
         if (now - (client.lastPing || 0) > this.config.heartbeatInterval!) {
           try {
@@ -450,23 +464,23 @@ export class MainWebSocketServer {
           } catch (error) {
             logger.error('[MainWebSocketServer] Error sending ping to client', {
               clientId,
-              error
+              error,
             });
-            
+
             // Terminate problematic connection
             try {
               client.socket.terminate();
             } catch (termError) {
               // Ignore termination errors
             }
-            
+
             this.clients.delete(clientId);
           }
         }
       }
     }, this.config.heartbeatInterval);
   }
-  
+
   /**
    * Register a message handler for a specific message type
    * @param messageType Message type to handle
@@ -476,10 +490,10 @@ export class MainWebSocketServer {
     if (!this.messageHandlers.has(messageType)) {
       this.messageHandlers.set(messageType, new Set());
     }
-    
+
     this.messageHandlers.get(messageType)!.add(handler);
   }
-  
+
   /**
    * Register a default handler for all messages
    * @param handler Handler function
@@ -487,7 +501,7 @@ export class MainWebSocketServer {
   public onAny(handler: MessageHandler): void {
     this.defaultMessageHandlers.add(handler);
   }
-  
+
   /**
    * Remove a message handler
    * @param messageType Message type
@@ -499,7 +513,7 @@ export class MainWebSocketServer {
       handlers.delete(handler);
     }
   }
-  
+
   /**
    * Remove a default handler
    * @param handler Handler function to remove
@@ -507,7 +521,7 @@ export class MainWebSocketServer {
   public offAny(handler: MessageHandler): void {
     this.defaultMessageHandlers.delete(handler);
   }
-  
+
   /**
    * Send a message to a specific client
    * @param clientId Client ID
@@ -518,7 +532,7 @@ export class MainWebSocketServer {
     if (!client) {
       return false;
     }
-    
+
     try {
       const data = typeof message === 'string' ? message : JSON.stringify(message);
       client.socket.send(data);
@@ -526,12 +540,12 @@ export class MainWebSocketServer {
     } catch (error) {
       logger.error('[MainWebSocketServer] Error sending to client', {
         clientId,
-        error
+        error,
       });
       return false;
     }
   }
-  
+
   /**
    * Broadcast a message to all connected clients
    * @param message Message to broadcast
@@ -539,30 +553,30 @@ export class MainWebSocketServer {
    */
   public broadcast(message: any, excludeClientId?: string): void {
     const data = typeof message === 'string' ? message : JSON.stringify(message);
-    
+
     for (const [clientId, client] of this.clients.entries()) {
       if (excludeClientId && clientId === excludeClientId) {
         continue;
       }
-      
+
       try {
         client.socket.send(data);
       } catch (error) {
         logger.error('[MainWebSocketServer] Error broadcasting to client', {
           clientId,
-          error
+          error,
         });
       }
     }
   }
-  
+
   /**
    * Get the number of connected clients
    */
   public getClientCount(): number {
     return this.clients.size;
   }
-  
+
   /**
    * Get information about a specific client
    * @param clientId Client ID
@@ -572,11 +586,11 @@ export class MainWebSocketServer {
     if (!client) {
       return null;
     }
-    
+
     const { socket, ...info } = client;
     return info;
   }
-  
+
   /**
    * Get information about all connected clients
    */
@@ -586,7 +600,7 @@ export class MainWebSocketServer {
       return info;
     });
   }
-  
+
   /**
    * Set custom data for a client
    * @param clientId Client ID
@@ -598,15 +612,15 @@ export class MainWebSocketServer {
     if (!client) {
       return false;
     }
-    
+
     if (!client.custom) {
       client.custom = {};
     }
-    
+
     client.custom[key] = value;
     return true;
   }
-  
+
   /**
    * Get custom data for a client
    * @param clientId Client ID
@@ -617,10 +631,10 @@ export class MainWebSocketServer {
     if (!client || !client.custom) {
       return null;
     }
-    
+
     return client.custom[key];
   }
-  
+
   /**
    * Check if a client is connected
    * @param clientId Client ID
@@ -628,31 +642,35 @@ export class MainWebSocketServer {
   public isClientConnected(clientId: string): boolean {
     return this.clients.has(clientId);
   }
-  
+
   /**
    * Disconnect a specific client
    * @param clientId Client ID
    * @param code Close code
    * @param reason Close reason
    */
-  public disconnectClient(clientId: string, code: number = 1000, reason: string = 'Server disconnected'): boolean {
+  public disconnectClient(
+    clientId: string,
+    code: number = 1000,
+    reason: string = 'Server disconnected'
+  ): boolean {
     const client = this.clients.get(clientId);
     if (!client) {
       return false;
     }
-    
+
     try {
       client.socket.close(code, reason);
       return true;
     } catch (error) {
       logger.error('[MainWebSocketServer] Error disconnecting client', {
         clientId,
-        error
+        error,
       });
       return false;
     }
   }
-  
+
   /**
    * Shutdown the WebSocket server
    */
@@ -662,7 +680,7 @@ export class MainWebSocketServer {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
     }
-    
+
     // Close all connections
     for (const [clientId, client] of this.clients.entries()) {
       try {
@@ -670,20 +688,20 @@ export class MainWebSocketServer {
       } catch (error) {
         logger.error('[MainWebSocketServer] Error closing client connection during shutdown', {
           clientId,
-          error
+          error,
         });
       }
     }
-    
+
     // Clear client tracking
     this.clients.clear();
-    
+
     // Close server
     if (this.server) {
       this.server.close();
       this.server = null;
     }
-    
+
     logger.info('[MainWebSocketServer] Server shut down');
   }
 }

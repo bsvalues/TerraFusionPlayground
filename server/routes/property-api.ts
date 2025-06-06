@@ -10,18 +10,18 @@ export function createPropertyApiRoutes(storage: IStorage) {
   // Get property statistics
   router.get('/property-statistics', async (req: Request, res: Response) => {
     try {
-      const timeRange = req.query.timeRange as string || 'month';
+      const timeRange = (req.query.timeRange as string) || 'month';
       const statistics = await storage.getPropertyStatistics(timeRange);
-      
+
       // Add sample delta values for dashboard UI
       const enhancedStats = {
         ...statistics,
         propertyDelta: { value: 2.5, isPercentage: true, period: 'month', isPositive: true },
         valueDelta: { value: 3.2, isPercentage: true, period: 'month', isPositive: true },
         medianDelta: { value: 1.8, isPercentage: true, period: 'month', isPositive: true },
-        changesDelta: { value: 15, isPercentage: false, period: 'month', isPositive: true }
+        changesDelta: { value: 15, isPercentage: false, period: 'month', isPositive: true },
       };
-      
+
       res.json(enhancedStats);
     } catch (error) {
       console.error('Error fetching property statistics:', error);
@@ -34,11 +34,11 @@ export function createPropertyApiRoutes(storage: IStorage) {
     try {
       const propertyId = req.params.id;
       const property = await storage.getPropertyById(propertyId);
-      
+
       if (!property) {
         return res.status(404).json({ error: 'Property not found' });
       }
-      
+
       res.json(property);
     } catch (error) {
       console.error(`Error fetching property ${req.params.id}:`, error);
@@ -56,9 +56,9 @@ export function createPropertyApiRoutes(storage: IStorage) {
         maxValue: req.query.maxValue ? Number(req.query.maxValue) : undefined,
         zipCode: req.query.zipCode as string,
         page: req.query.page ? Number(req.query.page) : 1,
-        limit: req.query.limit ? Number(req.query.limit) : 20
+        limit: req.query.limit ? Number(req.query.limit) : 20,
       };
-      
+
       const result = await storage.searchProperties(params);
       res.json(result);
     } catch (error) {
@@ -73,7 +73,7 @@ export function createPropertyApiRoutes(storage: IStorage) {
       const propertyId = req.params.id;
       const radiusMiles = req.query.radius ? Number(req.query.radius) : 1;
       const limit = req.query.limit ? Number(req.query.limit) : 10;
-      
+
       const nearbyProperties = await storage.getNearbyProperties(propertyId, radiusMiles, limit);
       res.json(nearbyProperties);
     } catch (error) {
@@ -87,7 +87,7 @@ export function createPropertyApiRoutes(storage: IStorage) {
     try {
       const propertyId = req.params.id;
       const years = req.query.years ? Number(req.query.years) : 5;
-      
+
       const valueHistory = await storage.getPropertyValueHistory(propertyId, years);
       res.json(valueHistory);
     } catch (error) {

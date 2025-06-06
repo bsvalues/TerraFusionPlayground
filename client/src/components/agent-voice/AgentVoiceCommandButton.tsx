@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Mic, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { 
-  SpeechRecognitionService, 
-  RecordingState, 
+import {
+  SpeechRecognitionService,
+  RecordingState,
   isSpeechRecognitionAvailable,
   processVoiceCommand,
   VoiceCommandResult,
-  VoiceCommandContext
+  VoiceCommandContext,
 } from '../../services/agent-voice-command-service';
 
 interface AgentVoiceCommandButtonProps {
@@ -19,18 +19,20 @@ interface AgentVoiceCommandButtonProps {
   className?: string;
 }
 
-export function AgentVoiceCommandButton({ 
+export function AgentVoiceCommandButton({
   onStateChange,
   onResult,
   agentId,
   subject,
   size = 'default',
-  className = ''
+  className = '',
 }: AgentVoiceCommandButtonProps) {
   const [state, setState] = useState<RecordingState>(RecordingState.INACTIVE);
-  const [recognitionService, setRecognitionService] = useState<SpeechRecognitionService | null>(null);
+  const [recognitionService, setRecognitionService] = useState<SpeechRecognitionService | null>(
+    null
+  );
   const [isSupported, setIsSupported] = useState(true);
-  
+
   // Initialize speech recognition
   useEffect(() => {
     // Check if speech recognition is available
@@ -38,33 +40,33 @@ export function AgentVoiceCommandButton({
       setIsSupported(false);
       return;
     }
-    
+
     // Create the recognition service
     const recognition = new SpeechRecognitionService({
       continuous: false,
-      interimResults: true
+      interimResults: true,
     });
-    
+
     // Set up event handlers
-    recognition.onResult((text) => {
+    recognition.onResult(text => {
       if (text) {
         onStateChange(RecordingState.LISTENING, text);
       }
     });
-    
-    recognition.onError((error) => {
+
+    recognition.onError(error => {
       console.error('Speech recognition error:', error);
       setState(RecordingState.ERROR);
       onStateChange(RecordingState.ERROR);
     });
-    
+
     recognition.onEnd(() => {
       setState(RecordingState.INACTIVE);
       // The final text will be processed by the parent component
     });
-    
+
     setRecognitionService(recognition);
-    
+
     // Clean up on unmount
     return () => {
       if (recognition && recognition.isActive()) {
@@ -72,11 +74,11 @@ export function AgentVoiceCommandButton({
       }
     };
   }, [onStateChange]);
-  
+
   // Toggle recording
   const toggleRecording = useCallback(() => {
     if (!recognitionService) return;
-    
+
     if (state === RecordingState.INACTIVE) {
       // Start recording
       setState(RecordingState.LISTENING);
@@ -86,18 +88,18 @@ export function AgentVoiceCommandButton({
       // Stop recording
       setState(RecordingState.PROCESSING);
       onStateChange(RecordingState.PROCESSING);
-      
+
       const finalText = recognitionService.getTranscript();
       recognitionService.stop();
-      
+
       // Only process if we have actual text content
       if (finalText && finalText.trim().length > 0) {
         // Process the voice command
         const context: VoiceCommandContext = {
           agentId: agentId,
-          subject: subject
+          subject: subject,
         };
-        
+
         // Send the command to the server
         processVoiceCommand(finalText, context)
           .then(result => {
@@ -111,14 +113,14 @@ export function AgentVoiceCommandButton({
             console.error('Error processing voice command:', error);
             setState(RecordingState.ERROR);
             onStateChange(RecordingState.ERROR);
-            
+
             if (onResult) {
               onResult({
                 command: finalText,
                 processed: false,
                 successful: false,
                 error: error instanceof Error ? error.message : 'Unknown error',
-                timestamp: Date.now()
+                timestamp: Date.now(),
               });
             }
           });
@@ -129,37 +131,38 @@ export function AgentVoiceCommandButton({
       }
     }
   }, [recognitionService, state, onStateChange, agentId, subject, onResult]);
-  
+
   // Button appearance based on state
-  let buttonVariant: "default" | "destructive" | "outline" | "ghost" | "link" | "secondary" = "default";
+  let buttonVariant: 'default' | 'destructive' | 'outline' | 'ghost' | 'link' | 'secondary' =
+    'default';
   let isDisabled = false;
   let ariaLabel = 'Record voice command';
-  let iconSize = "h-5 w-5";
+  let iconSize = 'h-5 w-5';
   let buttonContent;
-  
+
   // Determine button size dimensions
-  let buttonSize = "w-12 h-12";
+  let buttonSize = 'w-12 h-12';
   let iconClass = iconSize;
-  
+
   if (size === 'sm') {
-    buttonSize = "w-8 h-8";
-    iconClass = "h-4 w-4";
+    buttonSize = 'w-8 h-8';
+    iconClass = 'h-4 w-4';
   } else if (size === 'lg') {
-    buttonSize = "w-14 h-14";
-    iconClass = "h-6 w-6";
+    buttonSize = 'w-14 h-14';
+    iconClass = 'h-6 w-6';
   } else if (size === 'large') {
-    buttonSize = "w-16 h-16";
-    iconClass = "h-7 w-7";
+    buttonSize = 'w-16 h-16';
+    iconClass = 'h-7 w-7';
   }
-  
+
   // Determine button state
   if (!isSupported) {
     isDisabled = true;
-    buttonVariant = "destructive";
+    buttonVariant = 'destructive';
     ariaLabel = 'Voice commands not supported in this browser';
     buttonContent = <Mic className={iconClass} />;
   } else if (state === RecordingState.LISTENING) {
-    buttonVariant = "destructive";
+    buttonVariant = 'destructive';
     ariaLabel = 'Stop recording';
     buttonContent = <Mic className={`${iconClass} animate-pulse`} />;
   } else if (state === RecordingState.PROCESSING) {
@@ -167,13 +170,13 @@ export function AgentVoiceCommandButton({
     ariaLabel = 'Processing voice command';
     buttonContent = <Loader2 className={`${iconClass} animate-spin`} />;
   } else if (state === RecordingState.ERROR) {
-    buttonVariant = "destructive";
+    buttonVariant = 'destructive';
     ariaLabel = 'Error recording voice command. Click to try again';
     buttonContent = <Mic className={iconClass} />;
   } else {
     buttonContent = <Mic className={iconClass} />;
   }
-  
+
   return (
     <Button
       onClick={toggleRecording}

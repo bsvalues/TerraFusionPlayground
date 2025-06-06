@@ -1,6 +1,6 @@
 /**
  * Update Property Insight Shares Schema
- * 
+ *
  * This script adds propertyName and propertyAddress columns to the property_insight_shares table
  * to provide better context when sharing property insights.
  */
@@ -10,22 +10,30 @@ const { Pool } = pg;
 
 // Create a PostgreSQL client
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
+  connectionString: process.env.DATABASE_URL,
 });
 
 async function updatePropertyInsightSharesSchema() {
   const client = await pool.connect();
-  
+
   try {
     console.log('Starting property_insight_shares schema update...');
-    
+
     // Start a transaction
     await client.query('BEGIN');
-    
+
     // Check if columns already exist to avoid errors
-    const propertyNameExists = await checkColumnExists(client, 'property_insight_shares', 'property_name');
-    const propertyAddressExists = await checkColumnExists(client, 'property_insight_shares', 'property_address');
-    
+    const propertyNameExists = await checkColumnExists(
+      client,
+      'property_insight_shares',
+      'property_name'
+    );
+    const propertyAddressExists = await checkColumnExists(
+      client,
+      'property_insight_shares',
+      'property_address'
+    );
+
     // Add propertyName column if it doesn't exist
     if (!propertyNameExists) {
       console.log('Adding property_name column...');
@@ -36,7 +44,7 @@ async function updatePropertyInsightSharesSchema() {
     } else {
       console.log('property_name column already exists');
     }
-    
+
     // Add propertyAddress column if it doesn't exist
     if (!propertyAddressExists) {
       console.log('Adding property_address column...');
@@ -47,10 +55,10 @@ async function updatePropertyInsightSharesSchema() {
     } else {
       console.log('property_address column already exists');
     }
-    
+
     // Commit the transaction
     await client.query('COMMIT');
-    
+
     console.log('Schema update completed successfully.');
   } catch (error) {
     // Roll back the transaction if there's an error
@@ -65,13 +73,16 @@ async function updatePropertyInsightSharesSchema() {
 }
 
 async function checkColumnExists(client, tableName, columnName) {
-  const result = await client.query(`
+  const result = await client.query(
+    `
     SELECT column_name
     FROM information_schema.columns
     WHERE table_name = $1
     AND column_name = $2
-  `, [tableName, columnName]);
-  
+  `,
+    [tableName, columnName]
+  );
+
   return result.rows.length > 0;
 }
 

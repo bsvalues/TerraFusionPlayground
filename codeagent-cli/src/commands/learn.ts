@@ -19,7 +19,7 @@ export function register(program: Command): void {
     .option('-m, --merge <path>', 'Merge in data from another learning database')
     .action(async (options, command) => {
       const { learningManager } = program.context;
-      
+
       // Initialize the learning manager if it hasn't been already
       if (learningManager) {
         await learningManager.initialize();
@@ -27,49 +27,49 @@ export function register(program: Command): void {
         console.error(chalk.red('Learning manager not available'));
         return;
       }
-      
+
       // If no options are provided, show an interactive menu
       if (Object.keys(options).length === 0) {
         await showInteractiveMenu(learningManager);
         return;
       }
-      
+
       // Handle feedback option
       if (options.feedback) {
         await provideFeedback(learningManager, options.feedback);
         return;
       }
-      
+
       // Handle export option
       if (options.export) {
         await exportLearningData(learningManager, options.export, options.tag);
         return;
       }
-      
+
       // Handle import option
       if (options.import) {
         await importLearningData(learningManager, options.import);
         return;
       }
-      
+
       // Handle analyze option
       if (options.analyze) {
         await analyzeLearningData(learningManager);
         return;
       }
-      
+
       // Handle clean option
       if (options.clean) {
         await cleanLearningData(learningManager);
         return;
       }
-      
+
       // Handle merge option
       if (options.merge) {
         await mergeLearningData(learningManager, options.merge);
         return;
       }
-      
+
       // Default to showing recent learnings
       await showRecentLearnings(learningManager, options.tag);
     });
@@ -91,68 +91,68 @@ async function showInteractiveMenu(learningManager: any): Promise<void> {
       { name: 'Import learning data', value: 'import' },
       { name: 'Analyze patterns', value: 'analyze' },
       { name: 'Clean low-quality entries', value: 'clean' },
-      { name: 'Exit', value: 'exit' }
-    ]
+      { name: 'Exit', value: 'exit' },
+    ],
   });
-  
+
   switch (action) {
     case 'view':
       await showRecentLearnings(learningManager);
       break;
-      
+
     case 'filter':
       const { tag } = await inquirer.prompt({
         type: 'input',
         name: 'tag',
-        message: 'Enter tag to filter by:'
+        message: 'Enter tag to filter by:',
       });
       await showRecentLearnings(learningManager, tag);
       break;
-      
+
     case 'feedback':
       const { id } = await inquirer.prompt({
         type: 'input',
         name: 'id',
         message: 'Enter learning entry ID to provide feedback for:',
-        validate: (input) => {
+        validate: input => {
           const parsedId = parseInt(input, 10);
           return !isNaN(parsedId) ? true : 'Please enter a valid numeric ID';
-        }
+        },
       });
       await provideFeedback(learningManager, id);
       break;
-      
+
     case 'export':
       const { exportPath } = await inquirer.prompt({
         type: 'input',
         name: 'exportPath',
         message: 'Enter path to export to:',
-        default: './learning_export.json'
+        default: './learning_export.json',
       });
       await exportLearningData(learningManager, exportPath);
       break;
-      
+
     case 'import':
       const { importPath } = await inquirer.prompt({
         type: 'input',
         name: 'importPath',
         message: 'Enter path to import from:',
-        validate: (input) => {
+        validate: input => {
           const fs = require('fs');
           return fs.existsSync(input) ? true : 'File does not exist';
-        }
+        },
       });
       await importLearningData(learningManager, importPath);
       break;
-      
+
     case 'analyze':
       await analyzeLearningData(learningManager);
       break;
-      
+
     case 'clean':
       await cleanLearningData(learningManager);
       break;
-      
+
     case 'exit':
     default:
       console.log(chalk.blue('Exiting learning management'));
@@ -165,10 +165,10 @@ async function showInteractiveMenu(learningManager: any): Promise<void> {
  */
 async function showRecentLearnings(learningManager: any, tag?: string): Promise<void> {
   const spinner = ora('Fetching learning entries...').start();
-  
+
   try {
     let entries;
-    
+
     if (tag) {
       // Get tagged entries
       entries = await learningManager.getTopRatedSolutionsForTag(tag, 10);
@@ -181,17 +181,21 @@ async function showRecentLearnings(learningManager: any, tag?: string): Promise<
       );
       spinner.succeed(`Found ${entries.length} recent learning entries`);
     }
-    
+
     if (entries.length === 0) {
       console.log(chalk.yellow('No learning entries found'));
       return;
     }
-    
+
     // Display the entries
     console.log(chalk.blue.bold('\nLearning Entries:'));
     for (const entry of entries) {
       console.log(chalk.cyan(`\nID: ${entry.id} (${new Date(entry.timestamp).toLocaleString()})`));
-      console.log(chalk.yellow(`Query: ${entry.query.substring(0, 100)}${entry.query.length > 100 ? '...' : ''}`));
+      console.log(
+        chalk.yellow(
+          `Query: ${entry.query.substring(0, 100)}${entry.query.length > 100 ? '...' : ''}`
+        )
+      );
       console.log(chalk.green(`Feedback: ${entry.feedback.toFixed(1)}/5`));
       console.log(chalk.gray(`Tags: ${entry.tags || 'none'}`));
     }
@@ -206,35 +210,36 @@ async function showRecentLearnings(learningManager: any, tag?: string): Promise<
  */
 async function provideFeedback(learningManager: any, entryId: string): Promise<void> {
   const id = parseInt(entryId, 10);
-  
+
   if (isNaN(id)) {
     console.error(chalk.red('Invalid entry ID'));
     return;
   }
-  
+
   const spinner = ora(`Fetching learning entry ${id}...`).start();
-  
+
   try {
     // Get the learning entry
-    const entry = await learningManager.db.get(
-      `SELECT * FROM learning_entries WHERE id = ?`,
-      id
-    );
-    
+    const entry = await learningManager.db.get(`SELECT * FROM learning_entries WHERE id = ?`, id);
+
     if (!entry) {
       spinner.fail(`Learning entry ${id} not found`);
       return;
     }
-    
+
     spinner.succeed(`Found learning entry ${id}`);
-    
+
     // Display the entry
     console.log(chalk.blue.bold('\nLearning Entry:'));
     console.log(chalk.cyan(`ID: ${entry.id} (${new Date(entry.timestamp).toLocaleString()})`));
     console.log(chalk.yellow(`Query: ${entry.query}`));
-    console.log(chalk.white(`Solution: ${entry.solution.substring(0, 200)}${entry.solution.length > 200 ? '...' : ''}`));
+    console.log(
+      chalk.white(
+        `Solution: ${entry.solution.substring(0, 200)}${entry.solution.length > 200 ? '...' : ''}`
+      )
+    );
     console.log(chalk.green(`Current Feedback: ${entry.feedback.toFixed(1)}/5`));
-    
+
     // Get feedback
     const { rating, notes } = await inquirer.prompt([
       {
@@ -246,25 +251,25 @@ async function provideFeedback(learningManager: any, entryId: string): Promise<v
           { name: '2 - Fair', value: 2 },
           { name: '3 - Good', value: 3 },
           { name: '4 - Very Good', value: 4 },
-          { name: '5 - Excellent', value: 5 }
-        ]
+          { name: '5 - Excellent', value: 5 },
+        ],
       },
       {
         type: 'input',
         name: 'notes',
         message: 'Any additional notes (optional):',
-        default: ''
-      }
+        default: '',
+      },
     ]);
-    
+
     // Store the feedback
     await learningManager.storeFeedback({
       learningEntryId: id,
       feedback: rating,
       notes,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     console.log(chalk.green(`Feedback stored for learning entry ${id}`));
   } catch (error) {
     spinner.fail('Error providing feedback');
@@ -275,13 +280,17 @@ async function provideFeedback(learningManager: any, entryId: string): Promise<v
 /**
  * Export learning data to a file
  */
-async function exportLearningData(learningManager: any, filePath: string, tag?: string): Promise<void> {
+async function exportLearningData(
+  learningManager: any,
+  filePath: string,
+  tag?: string
+): Promise<void> {
   const spinner = ora('Exporting learning data...').start();
-  
+
   try {
     // Get learning entries
     let entries;
-    
+
     if (tag) {
       // Filter by tag
       entries = await learningManager.db.all(
@@ -292,26 +301,26 @@ async function exportLearningData(learningManager: any, filePath: string, tag?: 
       // Get all entries
       entries = await learningManager.db.all(`SELECT * FROM learning_entries`);
     }
-    
+
     // Get feedback for each entry
     const entriesWithFeedback = await Promise.all(
-      entries.map(async (entry) => {
+      entries.map(async entry => {
         const feedback = await learningManager.db.all(
           `SELECT * FROM feedback_entries WHERE learning_entry_id = ?`,
           entry.id
         );
-        
+
         return {
           ...entry,
-          feedbackEntries: feedback
+          feedbackEntries: feedback,
         };
       })
     );
-    
+
     // Write the data to file
     const fs = require('fs');
     fs.writeFileSync(filePath, JSON.stringify(entriesWithFeedback, null, 2));
-    
+
     spinner.succeed(`Exported ${entries.length} learning entries to ${filePath}`);
   } catch (error) {
     spinner.fail('Error exporting learning data');
@@ -324,21 +333,21 @@ async function exportLearningData(learningManager: any, filePath: string, tag?: 
  */
 async function importLearningData(learningManager: any, filePath: string): Promise<void> {
   const spinner = ora('Importing learning data...').start();
-  
+
   try {
     // Read the file
     const fs = require('fs');
     const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    
+
     if (!Array.isArray(data)) {
       spinner.fail('Invalid data format');
       return;
     }
-    
+
     // Import each entry
     let entriesImported = 0;
     let feedbackImported = 0;
-    
+
     for (const entry of data) {
       // Check if entry exists
       const existingEntry = await learningManager.db.get(
@@ -346,9 +355,9 @@ async function importLearningData(learningManager: any, filePath: string): Promi
         entry.timestamp,
         entry.query
       );
-      
+
       let entryId;
-      
+
       if (existingEntry) {
         // Skip importing the entry itself but use its ID for feedback
         entryId = existingEntry.id;
@@ -366,11 +375,11 @@ async function importLearningData(learningManager: any, filePath: string): Promi
           entry.feedback,
           entry.tags
         );
-        
+
         entryId = result.lastID;
         entriesImported++;
       }
-      
+
       // Import feedback if available
       if (Array.isArray(entry.feedbackEntries)) {
         for (const feedback of entry.feedbackEntries) {
@@ -381,7 +390,7 @@ async function importLearningData(learningManager: any, filePath: string): Promi
             entryId,
             feedback.timestamp
           );
-          
+
           if (!existingFeedback) {
             // Insert the feedback
             await learningManager.db.run(
@@ -393,13 +402,13 @@ async function importLearningData(learningManager: any, filePath: string): Promi
               feedback.notes,
               feedback.timestamp
             );
-            
+
             feedbackImported++;
           }
         }
       }
     }
-    
+
     spinner.succeed(`Imported ${entriesImported} entries and ${feedbackImported} feedback items`);
   } catch (error) {
     spinner.fail('Error importing learning data');
@@ -412,14 +421,14 @@ async function importLearningData(learningManager: any, filePath: string): Promi
  */
 async function analyzeLearningData(learningManager: any): Promise<void> {
   const spinner = ora('Analyzing learning data for patterns...').start();
-  
+
   try {
     // Extract patterns
     await learningManager.extractPatterns();
-    
+
     // This is a simple analysis for now, but could be expanded
     // with more sophisticated techniques
-    
+
     // Get the top tags
     const tags = await learningManager.db.all(
       `SELECT tags, COUNT(*) as count FROM learning_entries
@@ -427,7 +436,7 @@ async function analyzeLearningData(learningManager: any): Promise<void> {
        ORDER BY count DESC
        LIMIT 10`
     );
-    
+
     // Get the highest rated entries
     const topEntries = await learningManager.db.all(
       `SELECT id, query, feedback, tags FROM learning_entries
@@ -435,9 +444,9 @@ async function analyzeLearningData(learningManager: any): Promise<void> {
        ORDER BY feedback DESC
        LIMIT 5`
     );
-    
+
     spinner.succeed('Analysis complete');
-    
+
     // Display the results
     console.log(chalk.blue.bold('\nTop Tags:'));
     for (const tag of tags) {
@@ -445,11 +454,15 @@ async function analyzeLearningData(learningManager: any): Promise<void> {
         console.log(chalk.cyan(`${tag.tags}: ${tag.count} entries`));
       }
     }
-    
+
     console.log(chalk.blue.bold('\nHighest Rated Solutions:'));
     for (const entry of topEntries) {
       console.log(chalk.cyan(`ID: ${entry.id}, Rating: ${entry.feedback.toFixed(1)}/5`));
-      console.log(chalk.yellow(`Query: ${entry.query.substring(0, 100)}${entry.query.length > 100 ? '...' : ''}`));
+      console.log(
+        chalk.yellow(
+          `Query: ${entry.query.substring(0, 100)}${entry.query.length > 100 ? '...' : ''}`
+        )
+      );
       console.log(chalk.gray(`Tags: ${entry.tags || 'none'}`));
       console.log('');
     }
@@ -464,7 +477,7 @@ async function analyzeLearningData(learningManager: any): Promise<void> {
  */
 async function cleanLearningData(learningManager: any): Promise<void> {
   const spinner = ora('Identifying low-quality entries...').start();
-  
+
   try {
     // Find entries with low feedback scores
     const lowQualityEntries = await learningManager.db.all(
@@ -472,43 +485,43 @@ async function cleanLearningData(learningManager: any): Promise<void> {
        WHERE feedback < 2.5
        ORDER BY feedback ASC`
     );
-    
+
     spinner.succeed(`Found ${lowQualityEntries.length} low-quality entries`);
-    
+
     if (lowQualityEntries.length === 0) {
       console.log(chalk.green('No low-quality entries to clean'));
       return;
     }
-    
+
     // Ask for confirmation
     const { confirm, deleteAll } = await inquirer.prompt([
       {
         type: 'confirm',
         name: 'confirm',
         message: `Are you sure you want to clean ${lowQualityEntries.length} low-quality entries?`,
-        default: false
+        default: false,
       },
       {
         type: 'confirm',
         name: 'deleteAll',
         message: 'Delete all at once? (No will prompt for each entry)',
         default: false,
-        when: (answers) => answers.confirm
-      }
+        when: answers => answers.confirm,
+      },
     ]);
-    
+
     if (!confirm) {
       console.log(chalk.blue('Cleaning cancelled'));
       return;
     }
-    
+
     // Delete the entries
     let deletedCount = 0;
-    
+
     if (deleteAll) {
       // Delete all at once
       const deleteSpinner = ora('Deleting low-quality entries...').start();
-      
+
       // Delete feedback first (foreign key constraint)
       await learningManager.db.run(
         `DELETE FROM feedback_entries
@@ -517,28 +530,32 @@ async function cleanLearningData(learningManager: any): Promise<void> {
            WHERE feedback < 2.5
          )`
       );
-      
+
       // Delete the entries
       const result = await learningManager.db.run(
         `DELETE FROM learning_entries
          WHERE feedback < 2.5`
       );
-      
+
       deletedCount = result.changes;
       deleteSpinner.succeed(`Deleted ${deletedCount} low-quality entries`);
     } else {
       // Prompt for each entry
       for (const entry of lowQualityEntries) {
         console.log(chalk.cyan(`\nID: ${entry.id}, Rating: ${entry.feedback.toFixed(1)}/5`));
-        console.log(chalk.yellow(`Query: ${entry.query.substring(0, 100)}${entry.query.length > 100 ? '...' : ''}`));
-        
+        console.log(
+          chalk.yellow(
+            `Query: ${entry.query.substring(0, 100)}${entry.query.length > 100 ? '...' : ''}`
+          )
+        );
+
         const { deleteEntry } = await inquirer.prompt({
           type: 'confirm',
           name: 'deleteEntry',
           message: 'Delete this entry?',
-          default: false
+          default: false,
         });
-        
+
         if (deleteEntry) {
           // Delete feedback first (foreign key constraint)
           await learningManager.db.run(
@@ -546,20 +563,20 @@ async function cleanLearningData(learningManager: any): Promise<void> {
              WHERE learning_entry_id = ?`,
             entry.id
           );
-          
+
           // Delete the entry
           await learningManager.db.run(
             `DELETE FROM learning_entries
              WHERE id = ?`,
             entry.id
           );
-          
+
           console.log(chalk.green('Entry deleted'));
           deletedCount++;
         }
       }
     }
-    
+
     console.log(chalk.green(`Cleaned ${deletedCount} low-quality entries`));
   } catch (error) {
     spinner.fail('Error cleaning learning data');
@@ -572,7 +589,7 @@ async function cleanLearningData(learningManager: any): Promise<void> {
  */
 async function mergeLearningData(learningManager: any, dbPath: string): Promise<void> {
   const spinner = ora(`Merging data from ${dbPath}...`).start();
-  
+
   try {
     // Check if the file exists
     const fs = require('fs');
@@ -580,23 +597,23 @@ async function mergeLearningData(learningManager: any, dbPath: string): Promise<
       spinner.fail(`Database file not found: ${dbPath}`);
       return;
     }
-    
+
     // Open the source database
     const sqlite3 = require('sqlite3');
     const { open } = require('sqlite');
-    
+
     const sourceDb = await open({
       filename: dbPath,
-      driver: sqlite3.Database
+      driver: sqlite3.Database,
     });
-    
+
     // Get all entries from the source database
     const sourceEntries = await sourceDb.all(`SELECT * FROM learning_entries`);
-    
+
     // Merge each entry
     let entriesMerged = 0;
     let feedbackMerged = 0;
-    
+
     for (const entry of sourceEntries) {
       // Check if entry exists
       const existingEntry = await learningManager.db.get(
@@ -604,9 +621,9 @@ async function mergeLearningData(learningManager: any, dbPath: string): Promise<
         entry.timestamp,
         entry.query
       );
-      
+
       let entryId;
-      
+
       if (existingEntry) {
         // Skip importing the entry itself but use its ID for feedback
         entryId = existingEntry.id;
@@ -624,17 +641,17 @@ async function mergeLearningData(learningManager: any, dbPath: string): Promise<
           entry.feedback,
           entry.tags
         );
-        
+
         entryId = result.lastID;
         entriesMerged++;
       }
-      
+
       // Get feedback for this entry
       const sourceFeedback = await sourceDb.all(
         `SELECT * FROM feedback_entries WHERE learning_entry_id = ?`,
         entry.id
       );
-      
+
       // Import feedback
       for (const feedback of sourceFeedback) {
         // Check if feedback exists
@@ -644,7 +661,7 @@ async function mergeLearningData(learningManager: any, dbPath: string): Promise<
           entryId,
           feedback.timestamp
         );
-        
+
         if (!existingFeedback) {
           // Insert the feedback
           await learningManager.db.run(
@@ -656,16 +673,18 @@ async function mergeLearningData(learningManager: any, dbPath: string): Promise<
             feedback.notes,
             feedback.timestamp
           );
-          
+
           feedbackMerged++;
         }
       }
     }
-    
+
     // Close the source database
     await sourceDb.close();
-    
-    spinner.succeed(`Merged ${entriesMerged} entries and ${feedbackMerged} feedback items from ${dbPath}`);
+
+    spinner.succeed(
+      `Merged ${entriesMerged} entries and ${feedbackMerged} feedback items from ${dbPath}`
+    );
   } catch (error) {
     spinner.fail('Error merging learning data');
     console.error(chalk.red(`Error: ${error.message}`));

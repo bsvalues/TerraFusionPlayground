@@ -1,6 +1,6 @@
 /**
  * Master Control Program (MCP) Service
- * 
+ *
  * Provides centralized control and coordination of system capabilities.
  * Acts as the command and control center for the TaxI_AI platform.
  */
@@ -32,7 +32,7 @@ export class MCPService {
   private tools: Map<string, ToolRegistration>;
   private eventEmitter: EventEmitter;
   private config: MCPConfiguration;
-  
+
   constructor(storage: IStorage, config?: MCPConfiguration) {
     this.storage = storage;
     this.tools = new Map();
@@ -41,35 +41,35 @@ export class MCPService {
       enableLogging: true,
       maxConcurrentTools: 10,
       toolExecutionTimeout: 30000,
-      ...config
+      ...config,
     };
   }
-  
+
   /**
    * Initialize the MCP Service
    */
   async initialize(): Promise<void> {
     console.log('MCP Service initializing...');
-    
+
     // Register core tools
     this.registerCoreTool('system.getStatus', this.getSystemStatus.bind(this));
     this.registerCoreTool('system.registerAgent', this.registerAgent.bind(this));
     this.registerCoreTool('system.getToolRegistry', this.getToolRegistry.bind(this));
-    
+
     console.log('MCP Service initialized');
   }
-  
+
   /**
    * Register a tool with the MCP
    */
   registerTool(registration: ToolRegistration): void {
     this.tools.set(registration.toolName, registration);
     console.log(`Registered tool: ${registration.toolName}`);
-    
+
     // Emit registration event
     this.eventEmitter.emit('tool.registered', registration.toolName);
   }
-  
+
   /**
    * Register a core system tool
    */
@@ -78,10 +78,10 @@ export class MCPService {
       toolName,
       description: `Core system tool: ${toolName}`,
       handler,
-      requiresAuthentication: false
+      requiresAuthentication: false,
     });
   }
-  
+
   /**
    * Execute a tool
    */
@@ -90,13 +90,13 @@ export class MCPService {
     if (!this.tools.has(toolName)) {
       throw new Error(`Unknown tool: ${toolName}`);
     }
-    
+
     const tool = this.tools.get(toolName)!;
-    
+
     // Log the tool execution if enabled
     if (this.config.enableLogging) {
       console.log(`Executing tool: ${toolName}`, params);
-      
+
       // Create a system activity
       try {
         await this.storage.createSystemActivity({
@@ -104,33 +104,35 @@ export class MCPService {
           entityType: 'mcp_tool',
           entityId: toolName,
           component: 'MCP',
-          details: { params }
+          details: { params },
         });
       } catch (error) {
         console.error('Error logging tool execution:', error);
       }
     }
-    
+
     try {
       // Execute the tool with timeout
       const result = await Promise.race([
         tool.handler(params),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error(`Tool execution timeout: ${toolName}`)), 
-            this.config.toolExecutionTimeout)
-        )
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`Tool execution timeout: ${toolName}`)),
+            this.config.toolExecutionTimeout
+          )
+        ),
       ]);
-      
+
       // Log successful execution
       if (this.config.enableLogging) {
         console.log(`Tool execution completed: ${toolName}`);
       }
-      
+
       return result;
     } catch (error) {
       // Log error
       console.error(`Error executing tool ${toolName}:`, error);
-      
+
       // Create error activity
       if (this.config.enableLogging) {
         try {
@@ -140,33 +142,33 @@ export class MCPService {
             entityId: toolName,
             component: 'MCP',
             status: 'error',
-            details: { params, error: error.message }
+            details: { params, error: error.message },
           });
         } catch (logError) {
           console.error('Error logging tool execution error:', logError);
         }
       }
-      
+
       throw new Error(`Tool execution failed: ${error.message}`);
     }
   }
-  
+
   /**
    * Get the list of registered tools
    */
   private async getToolRegistry(): Promise<any> {
-    const registry: Record<string, { description: string, requiresAuthentication: boolean }> = {};
-    
+    const registry: Record<string, { description: string; requiresAuthentication: boolean }> = {};
+
     this.tools.forEach((tool, toolName) => {
       registry[toolName] = {
         description: tool.description,
-        requiresAuthentication: !!tool.requiresAuthentication
+        requiresAuthentication: !!tool.requiresAuthentication,
       };
     });
-    
+
     return { registry };
   }
-  
+
   /**
    * Get the system status
    */
@@ -175,20 +177,20 @@ export class MCPService {
       status: 'online',
       time: new Date().toISOString(),
       registeredTools: this.tools.size,
-      version: '1.0.0'
+      version: '1.0.0',
     };
   }
-  
+
   /**
    * Register an agent with the system
    */
   private async registerAgent(params: any): Promise<any> {
     const { agentId, agentName, agentType, capabilities } = params;
-    
+
     if (!agentId || !agentName || !agentType) {
       throw new Error('Missing required agent registration parameters');
     }
-    
+
     // Log agent registration
     try {
       await this.storage.createSystemActivity({
@@ -196,34 +198,34 @@ export class MCPService {
         entityType: 'agent',
         entityId: agentId,
         component: 'MCP',
-        details: { agentType, capabilities }
+        details: { agentType, capabilities },
       });
     } catch (error) {
       console.error('Error logging agent registration:', error);
     }
-    
+
     return { success: true, agentId };
   }
-  
+
   /**
    * Subscribe to an MCP event
    */
   subscribe(event: string, callback: (...args: any[]) => void): () => void {
     this.eventEmitter.on(event, callback);
-    
+
     // Return unsubscribe function
     return () => {
       this.eventEmitter.off(event, callback);
     };
   }
-  
+
   /**
    * Publish an MCP event
    */
   publish(event: string, ...args: any[]): void {
     this.eventEmitter.emit(event, ...args);
   }
-  
+
   /**
    * Get the MCP configuration
    */

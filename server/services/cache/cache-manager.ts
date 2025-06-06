@@ -1,9 +1,9 @@
 /**
  * Cache Manager Service
- * 
+ *
  * Provides a centralized cache management system that integrates with the data lineage
  * tracking to ensure cache consistency when data changes. This service:
- * 
+ *
  * - Coordinates automatic cache invalidation based on data change events
  * - Provides a unified interface for all application caching needs
  * - Implements smart cache invalidation patterns to minimize database load
@@ -21,7 +21,7 @@ export enum DataChangeEventType {
   DELETE = 'delete',
   IMPORT = 'import',
   EXPORT = 'export',
-  BATCH_OPERATION = 'batch_operation'
+  BATCH_OPERATION = 'batch_operation',
 }
 
 // Entity types for cache invalidation
@@ -33,7 +33,7 @@ export enum EntityType {
   USER = 'user',
   GIS_LAYER = 'gis_layer',
   ETL_JOB = 'etl_job',
-  USE_CODE = 'use_code'
+  USE_CODE = 'use_code',
 }
 
 // Cache dependency map to track related caches
@@ -47,21 +47,19 @@ interface DependencyMap {
 export class CacheManager {
   private cacheService: RedisCacheService;
   private dependencyMap: DependencyMap = {};
-  
+
   /**
    * Create a new Cache Manager
    * @param storage Storage service
    */
-  constructor(
-    private storage: IStorage
-  ) {
+  constructor(private storage: IStorage) {
     // Initialize Redis cache service
     this.cacheService = new RedisCacheService();
-    
+
     // Initialize dependency map for cache invalidation
     this.initializeDependencyMap();
   }
-  
+
   /**
    * Initialize the dependency map
    * Defines relationships between different cache items
@@ -71,44 +69,44 @@ export class CacheManager {
     this.dependencyMap[EntityType.PROPERTY] = [
       CachePrefix.PROPERTY_LIST,
       CachePrefix.LOOKUP_TABLE + 'property_types',
-      CachePrefix.LOOKUP_TABLE + 'property_statuses'
+      CachePrefix.LOOKUP_TABLE + 'property_statuses',
     ];
-    
+
     // Land record dependencies
     this.dependencyMap[EntityType.LAND_RECORD] = [
       CachePrefix.PROPERTY,
       CachePrefix.LOOKUP_TABLE + 'land_use_codes',
-      CachePrefix.LOOKUP_TABLE + 'zoning_codes'
+      CachePrefix.LOOKUP_TABLE + 'zoning_codes',
     ];
-    
+
     // Improvement dependencies
     this.dependencyMap[EntityType.IMPROVEMENT] = [
       CachePrefix.PROPERTY,
       CachePrefix.LOOKUP_TABLE + 'improvement_types',
       CachePrefix.LOOKUP_TABLE + 'quality_codes',
-      CachePrefix.LOOKUP_TABLE + 'condition_codes'
+      CachePrefix.LOOKUP_TABLE + 'condition_codes',
     ];
-    
+
     // Appeal dependencies
     this.dependencyMap[EntityType.APPEAL] = [
       CachePrefix.PROPERTY,
       CachePrefix.LOOKUP_TABLE + 'appeal_statuses',
-      CachePrefix.LOOKUP_TABLE + 'appeal_types'
+      CachePrefix.LOOKUP_TABLE + 'appeal_types',
     ];
-    
+
     // GIS layer dependencies
     this.dependencyMap[EntityType.GIS_LAYER] = [
       CachePrefix.GIS_LAYER,
-      CachePrefix.LOOKUP_TABLE + 'gis_layer_types'
+      CachePrefix.LOOKUP_TABLE + 'gis_layer_types',
     ];
-    
+
     // Use code dependencies
     this.dependencyMap[EntityType.USE_CODE] = [
       CachePrefix.USE_CODE,
-      CachePrefix.LOOKUP_TABLE + 'use_code_categories'
+      CachePrefix.LOOKUP_TABLE + 'use_code_categories',
     ];
   }
-  
+
   /**
    * Get value from cache
    * @param key Cache key
@@ -118,15 +116,15 @@ export class CacheManager {
     try {
       return await this.cacheService.get<T>(key);
     } catch (error) {
-      logger.error('Error getting value from cache', { 
-        component: 'CacheManager', 
-        key, 
-        error 
+      logger.error('Error getting value from cache', {
+        component: 'CacheManager',
+        key,
+        error,
       });
       return null;
     }
   }
-  
+
   /**
    * Get property from cache
    * @param propertyId Property ID
@@ -136,7 +134,7 @@ export class CacheManager {
     const cacheKey = `${CachePrefix.PROPERTY}${propertyId}`;
     return this.get<any>(cacheKey);
   }
-  
+
   /**
    * Get property list from cache
    * @param filter Optional filter key
@@ -146,7 +144,7 @@ export class CacheManager {
     const cacheKey = `${CachePrefix.PROPERTY_LIST}${filter || 'all'}`;
     return this.get<any[]>(cacheKey);
   }
-  
+
   /**
    * Get lookup table from cache
    * @param tableName Lookup table name
@@ -156,7 +154,7 @@ export class CacheManager {
     const cacheKey = `${CachePrefix.LOOKUP_TABLE}${tableName}`;
     return this.get<any>(cacheKey);
   }
-  
+
   /**
    * Set value in cache
    * @param key Cache key
@@ -168,15 +166,15 @@ export class CacheManager {
     try {
       return await this.cacheService.set(key, value, ttl);
     } catch (error) {
-      logger.error('Error setting value in cache', { 
-        component: 'CacheManager', 
-        key, 
-        error 
+      logger.error('Error setting value in cache', {
+        component: 'CacheManager',
+        key,
+        error,
       });
       return false;
     }
   }
-  
+
   /**
    * Cache a property
    * @param property Property object
@@ -187,11 +185,11 @@ export class CacheManager {
     if (!property || !property.propertyId) {
       return false;
     }
-    
+
     const cacheKey = `${CachePrefix.PROPERTY}${property.propertyId}`;
     return this.set(cacheKey, property, ttl);
   }
-  
+
   /**
    * Cache a property list
    * @param properties Array of property objects
@@ -199,11 +197,15 @@ export class CacheManager {
    * @param ttl Time to live in seconds (optional)
    * @returns True if successful
    */
-  async cachePropertyList(properties: any[], filter?: string, ttl: number = CacheTTL.STANDARD): Promise<boolean> {
+  async cachePropertyList(
+    properties: any[],
+    filter?: string,
+    ttl: number = CacheTTL.STANDARD
+  ): Promise<boolean> {
     const cacheKey = `${CachePrefix.PROPERTY_LIST}${filter || 'all'}`;
     return this.set(cacheKey, properties, ttl);
   }
-  
+
   /**
    * Cache a lookup table
    * @param tableName Lookup table name
@@ -211,11 +213,15 @@ export class CacheManager {
    * @param ttl Time to live in seconds (optional)
    * @returns True if successful
    */
-  async cacheLookupTable(tableName: string, data: any, ttl: number = CacheTTL.LONG): Promise<boolean> {
+  async cacheLookupTable(
+    tableName: string,
+    data: any,
+    ttl: number = CacheTTL.LONG
+  ): Promise<boolean> {
     const cacheKey = `${CachePrefix.LOOKUP_TABLE}${tableName}`;
     return this.set(cacheKey, data, ttl);
   }
-  
+
   /**
    * Delete value from cache
    * @param key Cache key
@@ -225,15 +231,15 @@ export class CacheManager {
     try {
       return await this.cacheService.delete(key);
     } catch (error) {
-      logger.error('Error deleting value from cache', { 
-        component: 'CacheManager', 
-        key, 
-        error 
+      logger.error('Error deleting value from cache', {
+        component: 'CacheManager',
+        key,
+        error,
       });
       return false;
     }
   }
-  
+
   /**
    * Handle data change event by invalidating relevant caches
    * @param entityType Entity type
@@ -248,15 +254,15 @@ export class CacheManager {
   ): Promise<number> {
     try {
       let invalidatedCount = 0;
-      
+
       // Log the event
-      logger.info('Handling data change event for cache invalidation', { 
-        component: 'CacheManager', 
-        entityType, 
-        entityId, 
-        eventType 
+      logger.info('Handling data change event for cache invalidation', {
+        component: 'CacheManager',
+        entityType,
+        entityId,
+        eventType,
       });
-      
+
       // Entity-specific cache invalidation
       switch (entityType) {
         case EntityType.PROPERTY:
@@ -264,18 +270,20 @@ export class CacheManager {
           const propertyKey = `${CachePrefix.PROPERTY}${entityId}`;
           await this.delete(propertyKey);
           invalidatedCount++;
-          
+
           // Invalidate property lists (they will be regenerated on next fetch)
-          const propertyListCount = await this.cacheService.flushByPrefix(CachePrefix.PROPERTY_LIST);
+          const propertyListCount = await this.cacheService.flushByPrefix(
+            CachePrefix.PROPERTY_LIST
+          );
           invalidatedCount += propertyListCount;
           break;
-          
+
         case EntityType.LAND_RECORD:
         case EntityType.IMPROVEMENT:
           // These entities affect properties, so invalidate property cache
           // First get the property ID associated with this entity
           let propertyId = null;
-          
+
           if (entityType === EntityType.LAND_RECORD) {
             const landRecord = await this.storage.getLandRecord(Number(entityId));
             propertyId = landRecord?.propertyId;
@@ -283,7 +291,7 @@ export class CacheManager {
             const improvement = await this.storage.getImprovement(Number(entityId));
             propertyId = improvement?.propertyId;
           }
-          
+
           if (propertyId) {
             // Invalidate specific property
             const propKey = `${CachePrefix.PROPERTY}${propertyId}`;
@@ -291,18 +299,20 @@ export class CacheManager {
             invalidatedCount++;
           }
           break;
-          
+
         case EntityType.USE_CODE:
           // Invalidate use code cache and related lookups
           const useCodeKey = `${CachePrefix.USE_CODE}${entityId}`;
           await this.delete(useCodeKey);
           invalidatedCount++;
-          
+
           // Invalidate use code lookup tables
-          const useCodeCount = await this.cacheService.flushByPrefix(CachePrefix.LOOKUP_TABLE + 'use_code');
+          const useCodeCount = await this.cacheService.flushByPrefix(
+            CachePrefix.LOOKUP_TABLE + 'use_code'
+          );
           invalidatedCount += useCodeCount;
           break;
-          
+
         case EntityType.ETL_JOB:
           // ETL jobs can affect various entities, so invalidate based on job type
           // This would typically be implemented based on specific ETL job details
@@ -311,7 +321,7 @@ export class CacheManager {
           invalidatedCount += etlJobCount;
           break;
       }
-      
+
       // Additional cache invalidations based on dependency map
       if (this.dependencyMap[entityType]) {
         for (const prefix of this.dependencyMap[entityType]) {
@@ -322,32 +332,32 @@ export class CacheManager {
           }
         }
       }
-      
+
       // For import events, consider invalidating more cache as it can affect multiple entities
-      if (eventType === DataChangeEventType.IMPORT || eventType === DataChangeEventType.BATCH_OPERATION) {
+      if (
+        eventType === DataChangeEventType.IMPORT ||
+        eventType === DataChangeEventType.BATCH_OPERATION
+      ) {
         // Only invalidate list caches and lookup tables, keep individual property caches
-        for (const prefix of [
-          CachePrefix.PROPERTY_LIST,
-          CachePrefix.LOOKUP_TABLE
-        ]) {
+        for (const prefix of [CachePrefix.PROPERTY_LIST, CachePrefix.LOOKUP_TABLE]) {
           const count = await this.cacheService.flushByPrefix(prefix);
           invalidatedCount += count;
         }
       }
-      
+
       return invalidatedCount;
     } catch (error) {
-      logger.error('Error handling data change event for cache invalidation', { 
-        component: 'CacheManager', 
-        entityType, 
-        entityId, 
-        eventType, 
-        error 
+      logger.error('Error handling data change event for cache invalidation', {
+        component: 'CacheManager',
+        entityType,
+        entityId,
+        eventType,
+        error,
       });
       return 0;
     }
   }
-  
+
   /**
    * Clear all caches
    * @returns True if successful
@@ -364,19 +374,19 @@ export class CacheManager {
         this.cacheService.flushByPrefix(CachePrefix.LOOKUP_TABLE),
         this.cacheService.flushByPrefix(CachePrefix.USER),
         this.cacheService.flushByPrefix(CachePrefix.ETL_JOB),
-        this.cacheService.flushByPrefix(CachePrefix.FTP_DATA)
+        this.cacheService.flushByPrefix(CachePrefix.FTP_DATA),
       ]);
-      
+
       return true;
     } catch (error) {
-      logger.error('Error clearing all caches', { 
-        component: 'CacheManager', 
-        error 
+      logger.error('Error clearing all caches', {
+        component: 'CacheManager',
+        error,
       });
       return false;
     }
   }
-  
+
   /**
    * Warm up cache with frequently accessed data
    * Preloads important data into cache for faster initial access
@@ -384,21 +394,25 @@ export class CacheManager {
   async warmupCache(): Promise<void> {
     try {
       logger.info('Starting cache warmup', { component: 'CacheManager' });
-      
+
       // Warm up property list cache
       const properties = await this.storage.getAllProperties();
       if (properties.length > 0) {
         await this.cachePropertyList(properties, 'all', CacheTTL.STANDARD);
-        logger.info(`Cached ${properties.length} properties in list cache`, { component: 'CacheManager' });
-        
+        logger.info(`Cached ${properties.length} properties in list cache`, {
+          component: 'CacheManager',
+        });
+
         // Cache individual properties
-        const propertyPromises = properties.slice(0, 100).map(property => 
-          this.cacheProperty(property, CacheTTL.STANDARD)
-        );
+        const propertyPromises = properties
+          .slice(0, 100)
+          .map(property => this.cacheProperty(property, CacheTTL.STANDARD));
         await Promise.all(propertyPromises);
-        logger.info(`Cached ${propertyPromises.length} individual properties`, { component: 'CacheManager' });
+        logger.info(`Cached ${propertyPromises.length} individual properties`, {
+          component: 'CacheManager',
+        });
       }
-      
+
       // Warm up lookup tables
       const lookupTables = [
         'property_types',
@@ -407,9 +421,9 @@ export class CacheManager {
         'zoning_codes',
         'improvement_types',
         'quality_codes',
-        'condition_codes'
+        'condition_codes',
       ];
-      
+
       for (const tableName of lookupTables) {
         try {
           // This assumes your storage has a method to get lookup tables by name
@@ -420,22 +434,22 @@ export class CacheManager {
             logger.info(`Cached lookup table: ${tableName}`, { component: 'CacheManager' });
           }
         } catch (error) {
-          logger.warn(`Failed to cache lookup table: ${tableName}`, { 
-            component: 'CacheManager', 
-            error 
+          logger.warn(`Failed to cache lookup table: ${tableName}`, {
+            component: 'CacheManager',
+            error,
           });
         }
       }
-      
+
       logger.info('Cache warmup completed', { component: 'CacheManager' });
     } catch (error) {
-      logger.error('Error during cache warmup', { 
-        component: 'CacheManager', 
-        error 
+      logger.error('Error during cache warmup', {
+        component: 'CacheManager',
+        error,
       });
     }
   }
-  
+
   /**
    * Get lookup table data
    * This is a helper method to retrieve lookup table data from the appropriate storage method
@@ -445,7 +459,7 @@ export class CacheManager {
   private async getLookupTableData(tableName: string): Promise<any | null> {
     // This implementation depends on your storage interface
     // Here's a simplified approach
-    
+
     switch (tableName) {
       case 'property_types':
         return [
@@ -455,25 +469,25 @@ export class CacheManager {
           { code: 'AGR', description: 'Agricultural' },
           { code: 'VAC', description: 'Vacant Land' },
           { code: 'EXE', description: 'Exempt' },
-          { code: 'MIX', description: 'Mixed Use' }
+          { code: 'MIX', description: 'Mixed Use' },
         ];
-        
+
       case 'property_statuses':
         return [
           { code: 'active', description: 'Active' },
           { code: 'pending', description: 'Pending' },
           { code: 'sold', description: 'Sold' },
-          { code: 'inactive', description: 'Inactive' }
+          { code: 'inactive', description: 'Inactive' },
         ];
-        
+
       // For other tables, you would implement similar logic
       // Or better yet, call the appropriate storage method
-      
+
       default:
         return null;
     }
   }
-  
+
   /**
    * Shutdown the cache manager and its connections
    */
@@ -482,9 +496,9 @@ export class CacheManager {
       await this.cacheService.shutdown();
       logger.info('Cache manager shutdown', { component: 'CacheManager' });
     } catch (error) {
-      logger.error('Error shutting down cache manager', { 
-        component: 'CacheManager', 
-        error 
+      logger.error('Error shutting down cache manager', {
+        component: 'CacheManager',
+        error,
       });
     }
   }

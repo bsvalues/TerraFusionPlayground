@@ -39,16 +39,19 @@ interface CreateModelDialogProps {
 
 // Form schema
 const formSchema = z.object({
-  name: z.string().min(3, {
-    message: "Model name must be at least 3 characters.",
-  }).max(50, {
-    message: "Model name must not exceed 50 characters.",
-  }),
+  name: z
+    .string()
+    .min(3, {
+      message: 'Model name must be at least 3 characters.',
+    })
+    .max(50, {
+      message: 'Model name must not exceed 50 characters.',
+    }),
   type: z.string({
-    required_error: "Please select a model type.",
+    required_error: 'Please select a model type.',
   }),
   description: z.string().optional(),
-  version: z.string().default("1.0.0"),
+  version: z.string().default('1.0.0'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -99,9 +102,7 @@ const CreateModelDialog: React.FC<CreateModelDialogProps> = ({
                   <FormControl>
                     <Input placeholder="e.g., Residential Cost Approach" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    A descriptive name for your assessment model.
-                  </FormDescription>
+                  <FormDescription>A descriptive name for your assessment model.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -120,16 +121,14 @@ const CreateModelDialog: React.FC<CreateModelDialogProps> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {modelTypes.map((type) => (
+                      {modelTypes.map(type => (
                         <SelectItem key={type} value={type}>
                           {type.replace('_', ' ')}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormDescription>
-                    The approach or methodology used in this model.
-                  </FormDescription>
+                  <FormDescription>The approach or methodology used in this model.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -165,9 +164,7 @@ const CreateModelDialog: React.FC<CreateModelDialogProps> = ({
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
-                  <FormDescription>
-                    Version number for this model (e.g., 1.0.0).
-                  </FormDescription>
+                  <FormDescription>Version number for this model (e.g., 1.0.0).</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

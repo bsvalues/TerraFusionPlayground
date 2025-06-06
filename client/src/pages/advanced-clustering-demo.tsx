@@ -24,12 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Doughnut } from 'react-chartjs-2';
@@ -53,38 +48,46 @@ interface DataPoint {
 // Color schemes for different property attributes
 const COLOR_SCHEMES = {
   type: {
-    'residential': '#4285F4',
-    'commercial': '#34A853',
-    'industrial': '#FBBC05',
-    'agricultural': '#EA4335',
-    'vacant': '#673AB7',
+    residential: '#4285F4',
+    commercial: '#34A853',
+    industrial: '#FBBC05',
+    agricultural: '#EA4335',
+    vacant: '#673AB7',
     'mixed-use': '#3F51B5',
   },
   status: {
-    'active': '#4CAF50',
-    'pending': '#FFC107',
-    'sold': '#F44336',
-    'foreclosure': '#9C27B0',
+    active: '#4CAF50',
+    pending: '#FFC107',
+    sold: '#F44336',
+    foreclosure: '#9C27B0',
     'off-market': '#607D8B',
   },
   value: {
-    'low': '#81C784',
-    'medium': '#FFB74D',
-    'high': '#E57373',
+    low: '#81C784',
+    medium: '#FFB74D',
+    high: '#E57373',
     'very-high': '#BA68C8',
-  }
+  },
 };
 
 // Default colors for uncategorized items
 const DEFAULT_COLORS = [
-  '#4285F4', '#34A853', '#FBBC05', '#EA4335', 
-  '#673AB7', '#3F51B5', '#2196F3', '#009688', 
-  '#FF5722', '#795548', '#9E9E9E'
+  '#4285F4',
+  '#34A853',
+  '#FBBC05',
+  '#EA4335',
+  '#673AB7',
+  '#3F51B5',
+  '#2196F3',
+  '#009688',
+  '#FF5722',
+  '#795548',
+  '#9E9E9E',
 ];
 
 /**
  * Advanced Clustering Demo Page
- * 
+ *
  * This page showcases the enhanced pie chart clustering capabilities:
  * - Visualizes property distribution within clusters
  * - Provides detailed analysis of cluster contents
@@ -94,10 +97,10 @@ export default function AdvancedClusteringDemoPage() {
   // Map references
   const mapRef = useRef<HTMLDivElement>(null);
   const olMapRef = useRef<Map | null>(null);
-  
+
   // State for data fetching
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+
   // State for controls
   const [baseMapType, setBaseMapType] = useState<BaseMapType>('osm');
   const [clusterDistance, setClusterDistance] = useState<number>(50);
@@ -110,27 +113,31 @@ export default function AdvancedClusteringDemoPage() {
   const [clusterMetadata, setClusterMetadata] = useState<any>(null);
   const [hoverCoordinate, setHoverCoordinate] = useState<number[] | null>(null);
   const [hoverMetadata, setHoverMetadata] = useState<any>(null);
-  
+
   // Get clustering data
-  const { data: clusterData, isLoading, refetch } = useQuery<DataPoint[]>({
+  const {
+    data: clusterData,
+    isLoading,
+    refetch,
+  } = useQuery<DataPoint[]>({
     queryKey: ['/api/gis/clustering-demo/data'],
     staleTime: 60000,
   });
-  
+
   // Handle refresh button click
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await refetch();
     setIsRefreshing(false);
   };
-  
+
   // Initialize OpenLayers map
   useEffect(() => {
     if (!mapRef.current || olMapRef.current) return;
-    
+
     // Create base map layer
     const baseLayer = getBaseMapLayer(baseMapType);
-    
+
     // Create map instance
     const map = new Map({
       target: mapRef.current,
@@ -146,10 +153,10 @@ export default function AdvancedClusteringDemoPage() {
         attribution: false,
       }),
     });
-    
+
     // Store map reference
     olMapRef.current = map;
-    
+
     // Cleanup function
     return () => {
       if (olMapRef.current) {
@@ -158,24 +165,24 @@ export default function AdvancedClusteringDemoPage() {
       }
     };
   }, []);
-  
+
   // Update base map when type changes
   useEffect(() => {
     if (!olMapRef.current) return;
-    
+
     const map = olMapRef.current;
     const layers = map.getLayers();
-    
+
     // Remove old base layer
     if (layers.getLength() > 0) {
       layers.removeAt(0);
     }
-    
+
     // Add new base layer
     const baseLayer = getBaseMapLayer(baseMapType);
     map.getLayers().insertAt(0, baseLayer);
   }, [baseMapType]);
-  
+
   // Get base map layer based on type
   const getBaseMapLayer = (type: BaseMapType) => {
     switch (type) {
@@ -200,38 +207,44 @@ export default function AdvancedClusteringDemoPage() {
         });
     }
   };
-  
+
   // Handle cluster click
   const handleClusterClick = (features: Feature[], coordinate: number[], metadata: any) => {
     setSelectedCluster(features);
     setClusterMetadata(metadata);
   };
-  
+
   // Handle cluster hover
-  const handleClusterHover = (features: Feature[] | null, coordinate: number[] | null, metadata: any) => {
+  const handleClusterHover = (
+    features: Feature[] | null,
+    coordinate: number[] | null,
+    metadata: any
+  ) => {
     setHoverCoordinate(coordinate);
     setHoverMetadata(metadata);
   };
-  
+
   // Generate chart data for the selected cluster
   const generateClusterChartData = () => {
     if (!selectedCluster || !clusterMetadata) return null;
-    
+
     const { categoryCount } = clusterMetadata;
     if (!categoryCount) return null;
-    
+
     const labels = Object.keys(categoryCount);
     const data = Object.values(categoryCount);
-    
+
     // Get colors for categories
     const colors = labels.map(label => {
       // Find the right color scheme based on the attribute
       const colorScheme = COLOR_SCHEMES[pieChartAttribute];
       // Use the specific color if it exists, otherwise use a default color
-      return (colorScheme && colorScheme[label as keyof typeof colorScheme]) || 
-        DEFAULT_COLORS[Math.abs(String(label).hashCode()) % DEFAULT_COLORS.length];
+      return (
+        (colorScheme && colorScheme[label as keyof typeof colorScheme]) ||
+        DEFAULT_COLORS[Math.abs(String(label).hashCode()) % DEFAULT_COLORS.length]
+      );
     });
-    
+
     return {
       labels,
       datasets: [
@@ -244,7 +257,7 @@ export default function AdvancedClusteringDemoPage() {
       ],
     };
   };
-  
+
   // Get chart options
   const chartOptions = {
     plugins: {
@@ -258,13 +271,13 @@ export default function AdvancedClusteringDemoPage() {
     },
     maintainAspectRatio: false,
   };
-  
+
   return (
     <>
       <Helmet>
         <title>Advanced Clustering Demo | TerraFusion</title>
       </Helmet>
-      
+
       <div className="relative h-screen w-full overflow-hidden">
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-10 bg-background/90 p-4 flex items-center justify-between">
@@ -274,18 +287,18 @@ export default function AdvancedClusteringDemoPage() {
                 <ArrowLeft className="h-4 w-4 mr-2" /> Back to GIS
               </Link>
             </Button>
-            
+
             <h1 className="ml-4 text-xl font-bold">Advanced Property Clustering</h1>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleRefresh} 
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefresh}
                     disabled={isLoading || isRefreshing}
                   >
                     <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -297,9 +310,11 @@ export default function AdvancedClusteringDemoPage() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            
+
             <div className="flex items-center space-x-2">
-              <Label htmlFor="baseMapType" className="text-sm">Base Map:</Label>
+              <Label htmlFor="baseMapType" className="text-sm">
+                Base Map:
+              </Label>
               <Select
                 value={baseMapType}
                 onValueChange={(value: BaseMapType) => setBaseMapType(value)}
@@ -316,35 +331,35 @@ export default function AdvancedClusteringDemoPage() {
             </div>
           </div>
         </div>
-        
+
         {/* Main Content with Tabs */}
         <div className="absolute top-16 bottom-0 left-0 right-0">
-          <Tabs value={layoutTab} onValueChange={(value) => setLayoutTab(value as 'map' | 'split')}>
+          <Tabs value={layoutTab} onValueChange={value => setLayoutTab(value as 'map' | 'split')}>
             <div className="px-4 border-b">
               <TabsList>
                 <TabsTrigger value="map">Map View</TabsTrigger>
                 <TabsTrigger value="split">Split View</TabsTrigger>
               </TabsList>
             </div>
-            
+
             <TabsContent value="map" className="h-full p-4">
               <div className="h-full">
-                <div 
-                  ref={mapRef} 
+                <div
+                  ref={mapRef}
                   className="w-full h-full rounded-lg border overflow-hidden shadow-sm"
                 />
               </div>
             </TabsContent>
-            
+
             <TabsContent value="split" className="h-full p-4">
               <div className="grid grid-cols-3 gap-4 h-full">
                 <div className="col-span-2 h-full">
-                  <div 
-                    ref={mapRef} 
+                  <div
+                    ref={mapRef}
                     className="w-full h-full rounded-lg border overflow-hidden shadow-sm"
                   />
                 </div>
-                
+
                 <div className="col-span-1 h-full overflow-y-auto space-y-4">
                   {/* Cluster Settings */}
                   <Card>
@@ -361,7 +376,9 @@ export default function AdvancedClusteringDemoPage() {
                       <div className="space-y-6">
                         <div className="space-y-2">
                           <div className="flex justify-between">
-                            <Label htmlFor="clusterDistance">Cluster Distance: {clusterDistance}px</Label>
+                            <Label htmlFor="clusterDistance">
+                              Cluster Distance: {clusterDistance}px
+                            </Label>
                           </div>
                           <Slider
                             id="clusterDistance"
@@ -369,13 +386,13 @@ export default function AdvancedClusteringDemoPage() {
                             max={150}
                             step={5}
                             value={[clusterDistance]}
-                            onValueChange={(value) => setClusterDistance(value[0])}
+                            onValueChange={value => setClusterDistance(value[0])}
                           />
                           <p className="text-xs text-muted-foreground">
                             Distance in pixels within which points will cluster together
                           </p>
                         </div>
-                        
+
                         <div className="space-y-2">
                           <div className="flex justify-between">
                             <Label htmlFor="minDistance">Min Distance: {minDistance}px</Label>
@@ -386,13 +403,13 @@ export default function AdvancedClusteringDemoPage() {
                             max={100}
                             step={5}
                             value={[minDistance]}
-                            onValueChange={(value) => setMinDistance(value[0])}
+                            onValueChange={value => setMinDistance(value[0])}
                           />
                           <p className="text-xs text-muted-foreground">
                             Minimum spacing between clusters
                           </p>
                         </div>
-                        
+
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
                             <Label htmlFor="showPieCharts">Show Pie Charts</Label>
@@ -402,7 +419,7 @@ export default function AdvancedClusteringDemoPage() {
                               onCheckedChange={setShowPieCharts}
                             />
                           </div>
-                          
+
                           <div className="flex items-center justify-between">
                             <Label htmlFor="animationEnabled">Enable Animation</Label>
                             <Switch
@@ -411,12 +428,14 @@ export default function AdvancedClusteringDemoPage() {
                               onCheckedChange={setAnimationEnabled}
                             />
                           </div>
-                          
+
                           <div className="space-y-2">
                             <Label>Categorize By:</Label>
                             <Select
                               value={pieChartAttribute}
-                              onValueChange={(value: ClusterStyleAttribute) => setPieChartAttribute(value)}
+                              onValueChange={(value: ClusterStyleAttribute) =>
+                                setPieChartAttribute(value)
+                              }
                               disabled={!showPieCharts}
                             >
                               <SelectTrigger>
@@ -433,7 +452,7 @@ export default function AdvancedClusteringDemoPage() {
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   {/* Selected Cluster Analysis */}
                   {selectedCluster && selectedCluster.length > 0 && (
                     <Card>
@@ -451,21 +470,24 @@ export default function AdvancedClusteringDemoPage() {
                         {clusterMetadata && (
                           <div className="h-60">
                             <h3 className="text-sm font-medium mb-2">
-                              Distribution by {pieChartAttribute === 'type' ? 'Property Type' : 
-                                           pieChartAttribute === 'status' ? 'Property Status' : 
-                                           'Property Value'}
+                              Distribution by{' '}
+                              {pieChartAttribute === 'type'
+                                ? 'Property Type'
+                                : pieChartAttribute === 'status'
+                                  ? 'Property Status'
+                                  : 'Property Value'}
                             </h3>
                             <div className="h-48">
                               {generateClusterChartData() && (
-                                <Doughnut 
-                                  data={generateClusterChartData() as any} 
+                                <Doughnut
+                                  data={generateClusterChartData() as any}
                                   options={chartOptions}
                                 />
                               )}
                             </div>
                           </div>
                         )}
-                        
+
                         {/* Properties List */}
                         <div>
                           <h3 className="text-sm font-medium mb-2">Properties</h3>
@@ -474,13 +496,14 @@ export default function AdvancedClusteringDemoPage() {
                               const props = feature.get('properties') || {};
                               return (
                                 <div key={index} className="p-2 bg-muted rounded-md text-sm">
-                                  <div className="font-medium">{props.address || `Property ${index + 1}`}</div>
+                                  <div className="font-medium">
+                                    {props.address || `Property ${index + 1}`}
+                                  </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {props.type || 'Unknown type'} - {props.status || 'Unknown status'}
+                                    {props.type || 'Unknown type'} -{' '}
+                                    {props.status || 'Unknown status'}
                                   </div>
-                                  <div className="text-xs">
-                                    Value: {props.value || 'N/A'}
-                                  </div>
+                                  <div className="text-xs">Value: {props.value || 'N/A'}</div>
                                 </div>
                               );
                             })}
@@ -494,7 +517,7 @@ export default function AdvancedClusteringDemoPage() {
                       </CardContent>
                     </Card>
                   )}
-                  
+
                   {/* Hover Information */}
                   {hoverCoordinate && hoverMetadata && (
                     <Card>
@@ -504,21 +527,34 @@ export default function AdvancedClusteringDemoPage() {
                       <CardContent>
                         <div className="text-xs space-y-1">
                           {hoverMetadata.totalItems && (
-                            <div>Contains <span className="font-medium">{hoverMetadata.totalItems}</span> properties</div>
-                          )}
-                          {hoverMetadata.dominantCategory && (
-                            <div>Primarily <span className="font-medium">{hoverMetadata.dominantCategory}</span> properties</div>
-                          )}
-                          {hoverMetadata.categoryCount && Object.entries(hoverMetadata.categoryCount).length > 0 && (
-                            <div className="pt-1">
-                              <span className="font-medium">Breakdown:</span>
-                              <ul className="pl-2 pt-1">
-                                {Object.entries(hoverMetadata.categoryCount || {}).map(([category, count]) => (
-                                  <li key={category}>{category}: {String(count)}</li>
-                                ))}
-                              </ul>
+                            <div>
+                              Contains{' '}
+                              <span className="font-medium">{hoverMetadata.totalItems}</span>{' '}
+                              properties
                             </div>
                           )}
+                          {hoverMetadata.dominantCategory && (
+                            <div>
+                              Primarily{' '}
+                              <span className="font-medium">{hoverMetadata.dominantCategory}</span>{' '}
+                              properties
+                            </div>
+                          )}
+                          {hoverMetadata.categoryCount &&
+                            Object.entries(hoverMetadata.categoryCount).length > 0 && (
+                              <div className="pt-1">
+                                <span className="font-medium">Breakdown:</span>
+                                <ul className="pl-2 pt-1">
+                                  {Object.entries(hoverMetadata.categoryCount || {}).map(
+                                    ([category, count]) => (
+                                      <li key={category}>
+                                        {category}: {String(count)}
+                                      </li>
+                                    )
+                                  )}
+                                </ul>
+                              </div>
+                            )}
                         </div>
                       </CardContent>
                     </Card>
@@ -528,7 +564,7 @@ export default function AdvancedClusteringDemoPage() {
             </TabsContent>
           </Tabs>
         </div>
-        
+
         {/* Add clustering layer if map is initialized and data is loaded */}
         {olMapRef.current && clusterData && Array.isArray(clusterData) && (
           <PieClusterLayer
@@ -540,8 +576,12 @@ export default function AdvancedClusteringDemoPage() {
             clusterStyleOptions={{
               showPieCharts: showPieCharts,
               pieChartAttribute: pieChartAttribute,
-              colorScheme: {...COLOR_SCHEMES.type, ...COLOR_SCHEMES.status, ...COLOR_SCHEMES.value},
-              defaultColors: DEFAULT_COLORS
+              colorScheme: {
+                ...COLOR_SCHEMES.type,
+                ...COLOR_SCHEMES.status,
+                ...COLOR_SCHEMES.value,
+              },
+              defaultColors: DEFAULT_COLORS,
             }}
             onClusterClick={handleClusterClick}
             onClusterHover={handleClusterHover}

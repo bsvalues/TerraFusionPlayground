@@ -1,6 +1,6 @@
 /**
  * TerraFusion UI Components
- * 
+ *
  * A library of React components for TerraFusion applications,
  * including special components for offline-first experiences.
  */

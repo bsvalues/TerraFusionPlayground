@@ -48,8 +48,8 @@ const result = await agent.executeTask({
   type: 'analyze_query',
   priority: 'high',
   payload: {
-    query: 'SELECT * FROM users WHERE status = "active"'
-  }
+    query: 'SELECT * FROM users WHERE status = "active"',
+  },
 });
 
 // Provide feedback on task execution
@@ -68,13 +68,13 @@ const learningService = LearningService.getInstance();
 // Configure the Anthropic provider
 learningService.configureProvider({
   provider: 'anthropic',
-  model: 'claude-3-7-sonnet-20250219'
+  model: 'claude-3-7-sonnet-20250219',
 });
 
 // Configure the Perplexity provider
 learningService.configureProvider({
   provider: 'perplexity',
-  model: 'llama-3.1-sonar-small-128k-online'
+  model: 'llama-3.1-sonar-small-128k-online',
 });
 ```
 
@@ -89,18 +89,18 @@ const learningRepository = LearningRepository.getInstance();
 // Get a summary of all learning across agents
 const summary = learningRepository.getSummary();
 console.log(`Total learning records: ${summary.totalRecords}`);
-console.log(`Success rate: ${summary.byFeedback.positive / summary.totalRecords * 100}%`);
+console.log(`Success rate: ${(summary.byFeedback.positive / summary.totalRecords) * 100}%`);
 
 // Query for specific learning records
 const records = learningRepository.queryRecords({
   taskType: 'analyze_query',
   feedback: 'positive',
   timeRange: {
-    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Last week
+    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last week
   },
   limit: 10,
   sortBy: 'timestamp',
-  sortDirection: 'desc'
+  sortDirection: 'desc',
 });
 ```
 
@@ -115,16 +115,16 @@ protected getTaskComplexity(task: AgentTask): number {
   // Example for a query analysis task
   const query = task.payload.query as string;
   let complexity = 0.1; // Base complexity
-  
+
   // Add complexity for query length
   complexity += Math.min(0.3, query.length / 1000);
-  
+
   // Add complexity for joins
   const joinCount = (query.match(/join/gi) || []).length;
   complexity += Math.min(0.2, joinCount * 0.05);
-  
+
   // More complexity factors...
-  
+
   return Math.min(1.0, complexity);
 }
 ```
@@ -139,7 +139,7 @@ protected selectModelForTask(task: AgentTask): 'anthropic' | 'perplexity' {
   if (this.taskNeedsUpToDateInfo(task)) {
     return 'perplexity'; // Better for up-to-date information
   }
-  
+
   // Default to Anthropic for most tasks
   return 'anthropic'; // Better for reasoning and analysis
 }
@@ -157,10 +157,10 @@ protected async applyLearningToTask(
 ): Promise<any> {
   // First get standard analysis
   const standardResult = await this.executeTaskWithoutLearning(task, context);
-  
+
   // Extract enhancements from learning
   const enhancements = this.extractEnhancements(learningOutput);
-  
+
   // Combine standard result with enhancements
   return {
     ...standardResult,

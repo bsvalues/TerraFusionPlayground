@@ -1,6 +1,6 @@
 /**
  * Client-side logger utility
- * 
+ *
  * Provides structured logging with different log levels and consistent formatting.
  * Designed to work well with the server-side logger for consistent logging patterns.
  */
@@ -11,7 +11,7 @@ enum LogLevel {
   INFO = 1,
   WARN = 2,
   ERROR = 3,
-  NONE = 4
+  NONE = 4,
 }
 
 // Current log level - can be controlled by env vars or localstorage
@@ -22,7 +22,7 @@ const DEFAULT_LOG_LEVEL = LogLevel.INFO;
  */
 class Logger {
   private level: LogLevel;
-  
+
   /**
    * Create a new logger
    */
@@ -30,24 +30,24 @@ class Logger {
     // Determine log level from localStorage or environment
     this.level = this.getLogLevelFromConfig();
   }
-  
+
   /**
    * Set the current log level
    */
   public setLevel(level: LogLevel | string): void {
     if (typeof level === 'string') {
       const levelMap: Record<string, LogLevel> = {
-        'debug': LogLevel.DEBUG,
-        'info': LogLevel.INFO,
-        'warn': LogLevel.WARN,
-        'error': LogLevel.ERROR,
-        'none': LogLevel.NONE
+        debug: LogLevel.DEBUG,
+        info: LogLevel.INFO,
+        warn: LogLevel.WARN,
+        error: LogLevel.ERROR,
+        none: LogLevel.NONE,
       };
       this.level = levelMap[level.toLowerCase()] ?? DEFAULT_LOG_LEVEL;
     } else {
       this.level = level;
     }
-    
+
     // Store in localStorage for persistence
     try {
       localStorage.setItem('logLevel', this.level.toString());
@@ -55,14 +55,14 @@ class Logger {
       // Ignore localStorage errors
     }
   }
-  
+
   /**
    * Get the current log level
    */
   public getLevel(): LogLevel {
     return this.level;
   }
-  
+
   /**
    * Log a debug message
    */
@@ -71,7 +71,7 @@ class Logger {
       this.log('debug', message, data);
     }
   }
-  
+
   /**
    * Log an info message
    */
@@ -80,7 +80,7 @@ class Logger {
       this.log('info', message, data);
     }
   }
-  
+
   /**
    * Log a warning message
    */
@@ -89,7 +89,7 @@ class Logger {
       this.log('warn', message, data);
     }
   }
-  
+
   /**
    * Log an error message
    */
@@ -101,14 +101,14 @@ class Logger {
         formattedError = {
           name: error.name,
           message: error.message,
-          stack: error.stack
+          stack: error.stack,
         };
       }
-      
+
       this.log('error', message, formattedError);
     }
   }
-  
+
   /**
    * Internal method to log a message with a consistent format
    */
@@ -118,9 +118,9 @@ class Logger {
       timestamp,
       level,
       message,
-      data: data !== undefined ? data : null
+      data: data !== undefined ? data : null,
     };
-    
+
     // Use appropriate console method based on level
     switch (level) {
       case 'debug':
@@ -138,7 +138,7 @@ class Logger {
       default:
         console.log(message, data);
     }
-    
+
     // Emit a custom event for log aggregation if needed
     try {
       const logEvent = new CustomEvent('app:log', { detail: logObj });
@@ -147,7 +147,7 @@ class Logger {
       // Ignore event dispatch errors
     }
   }
-  
+
   /**
    * Get log level from configuration (localStorage or env)
    */
@@ -161,17 +161,17 @@ class Logger {
           return level;
         }
       }
-      
+
       // Fall back to environment variable
       if (typeof import.meta.env.VITE_LOG_LEVEL === 'string') {
         const levelMap: Record<string, LogLevel> = {
-          'debug': LogLevel.DEBUG,
-          'info': LogLevel.INFO,
-          'warn': LogLevel.WARN,
-          'error': LogLevel.ERROR,
-          'none': LogLevel.NONE
+          debug: LogLevel.DEBUG,
+          info: LogLevel.INFO,
+          warn: LogLevel.WARN,
+          error: LogLevel.ERROR,
+          none: LogLevel.NONE,
         };
-        
+
         const envLevel = (import.meta.env.VITE_LOG_LEVEL as string).toLowerCase();
         if (levelMap[envLevel] !== undefined) {
           return levelMap[envLevel];
@@ -180,7 +180,7 @@ class Logger {
     } catch (e) {
       // Ignore any errors and use default
     }
-    
+
     return DEFAULT_LOG_LEVEL;
   }
 }

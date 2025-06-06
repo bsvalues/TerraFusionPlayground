@@ -1,6 +1,6 @@
 /**
  * Plandex AI Settings Page
- * 
+ *
  * This page allows users to configure and manage the Plandex AI integration.
  */
 
@@ -10,15 +10,39 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Settings2, Save, Terminal, Bot, Key, FileCode, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import {
+  Loader2,
+  Settings2,
+  Save,
+  Terminal,
+  Bot,
+  Key,
+  FileCode,
+  Check,
+  AlertCircle,
+  RefreshCw,
+} from 'lucide-react';
 import { PlandexAIProvider, usePlandexAI } from '@/providers/plandex-ai-provider';
 import { PlandexAICodeGenerator } from '@/components/development/PlandexAICodeGenerator';
 import { PlandexAICodeExplainer } from '@/components/development/PlandexAICodeExplainer';
 import { PlandexAIBugFixer } from '@/components/development/PlandexAIBugFixer';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 
 /**
@@ -40,7 +64,7 @@ const defaultSettings: APISettings = {
   baseUrl: 'https://api.plandex.ai/v1',
   defaultModel: 'plandex-code-v1',
   maxTokens: 1024,
-  temperature: 0.2
+  temperature: 0.2,
 };
 
 /**
@@ -58,7 +82,7 @@ export default function PlandexAISettingsPage() {
             </p>
           </div>
         </div>
-        
+
         <PlandexAISettingsContent />
       </div>
     </PlandexAIProvider>
@@ -88,13 +112,13 @@ function PlandexAISettingsContent() {
         // In a real implementation, this would be:
         // const response = await fetch('/api/settings/plandex-ai');
         // const data = await response.json();
-        
+
         // For demonstration purposes, we'll simulate loading existing settings
         const savedSettings = {
           ...defaultSettings,
           apiKey: process.env.PLANDEX_API_KEY || '',
         };
-        
+
         setSettings(savedSettings);
       } catch (error) {
         console.error('Error loading settings:', error);
@@ -115,14 +139,14 @@ function PlandexAISettingsContent() {
   const handleChange = (field: keyof APISettings, value: any) => {
     setSettings(prev => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   // Save settings
   const saveSettings = async () => {
     setIsSaving(true);
-    
+
     try {
       // In a real implementation, this would be:
       // await fetch('/api/settings/plandex-ai', {
@@ -130,15 +154,15 @@ function PlandexAISettingsContent() {
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify(settings)
       // });
-      
+
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       toast({
         title: 'Settings saved',
         description: 'Plandex AI settings have been updated',
       });
-      
+
       // Force page reload to apply new settings
       window.location.reload();
     } catch (error) {
@@ -157,7 +181,7 @@ function PlandexAISettingsContent() {
   const testConnection = async () => {
     setIsTesting(true);
     setTestResult(null);
-    
+
     try {
       // In a real implementation, this would be:
       // const response = await fetch('/api/plandex-ai/test', {
@@ -165,14 +189,14 @@ function PlandexAISettingsContent() {
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify(settings)
       // });
-      // 
+      //
       // if (!response.ok) {
       //   throw new Error('Connection test failed');
       // }
-      
+
       // Simulate API call delay and result
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       // For demonstration, use the isAvailable flag to determine test result
       // In a real implementation, this would use the API response
       if (isAvailable) {
@@ -226,7 +250,7 @@ function PlandexAISettingsContent() {
           Examples
         </TabsTrigger>
       </TabsList>
-      
+
       {/* Settings Tab */}
       <TabsContent value="settings" className="space-y-6 mt-6">
         <Card>
@@ -239,7 +263,7 @@ function PlandexAISettingsContent() {
               Configure your Plandex AI API credentials and settings
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="apiKey">API Key</Label>
@@ -247,29 +271,29 @@ function PlandexAISettingsContent() {
                 id="apiKey"
                 type="password"
                 value={settings.apiKey}
-                onChange={(e) => handleChange('apiKey', e.target.value)}
+                onChange={e => handleChange('apiKey', e.target.value)}
                 placeholder="Enter your Plandex AI API key"
               />
               <p className="text-sm text-muted-foreground">
                 You can find your API key in your Plandex AI dashboard
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="baseUrl">API Base URL</Label>
               <Input
                 id="baseUrl"
                 value={settings.baseUrl}
-                onChange={(e) => handleChange('baseUrl', e.target.value)}
+                onChange={e => handleChange('baseUrl', e.target.value)}
                 placeholder="https://api.plandex.ai/v1"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="defaultModel">Default Model</Label>
-              <Select 
+              <Select
                 value={settings.defaultModel}
-                onValueChange={(value) => handleChange('defaultModel', value)}
+                onValueChange={value => handleChange('defaultModel', value)}
               >
                 <SelectTrigger id="defaultModel">
                   <SelectValue placeholder="Select a model" />
@@ -281,9 +305,9 @@ function PlandexAISettingsContent() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <Separator className="my-4" />
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="maxTokens">Max Tokens</Label>
@@ -291,45 +315,35 @@ function PlandexAISettingsContent() {
                   id="maxTokens"
                   type="number"
                   value={settings.maxTokens.toString()}
-                  onChange={(e) => handleChange('maxTokens', parseInt(e.target.value))}
+                  onChange={e => handleChange('maxTokens', parseInt(e.target.value))}
                   min="1"
                   max="8192"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Maximum tokens to generate (1-8192)
-                </p>
+                <p className="text-xs text-muted-foreground">Maximum tokens to generate (1-8192)</p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="temperature">Temperature</Label>
                 <Input
                   id="temperature"
                   type="number"
                   value={settings.temperature.toString()}
-                  onChange={(e) => handleChange('temperature', parseFloat(e.target.value))}
+                  onChange={e => handleChange('temperature', parseFloat(e.target.value))}
                   min="0"
                   max="2"
                   step="0.1"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Randomness of outputs (0-2)
-                </p>
+                <p className="text-xs text-muted-foreground">Randomness of outputs (0-2)</p>
               </div>
             </div>
           </CardContent>
-          
+
           <CardFooter className="flex justify-between">
-            <Button 
-              variant="outline" 
-              onClick={() => setSettings(defaultSettings)}
-            >
+            <Button variant="outline" onClick={() => setSettings(defaultSettings)}>
               Reset to Defaults
             </Button>
-            
-            <Button 
-              onClick={saveSettings}
-              disabled={isSaving}
-            >
+
+            <Button onClick={saveSettings} disabled={isSaving}>
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -344,18 +358,16 @@ function PlandexAISettingsContent() {
             </Button>
           </CardFooter>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bot className="h-5 w-5" />
               Integration Status
             </CardTitle>
-            <CardDescription>
-              Check the status of your Plandex AI integration
-            </CardDescription>
+            <CardDescription>Check the status of your Plandex AI integration</CardDescription>
           </CardHeader>
-          
+
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -364,13 +376,9 @@ function PlandexAISettingsContent() {
                   Turn on/off the Plandex AI integration
                 </p>
               </div>
-              <Switch 
-                id="enabled" 
-                checked={isAvailable}
-                disabled={!settings.apiKey} 
-              />
+              <Switch id="enabled" checked={isAvailable} disabled={!settings.apiKey} />
             </div>
-            
+
             <div className="p-4 rounded-md bg-muted">
               <div className="flex items-center gap-2 mb-2">
                 <div className="font-medium">Current Status:</div>
@@ -386,9 +394,12 @@ function PlandexAISettingsContent() {
                   </div>
                 )}
               </div>
-              
+
               {isAvailable ? (
-                <Alert variant="success" className="bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
+                <Alert
+                  variant="success"
+                  className="bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800"
+                >
                   <Check className="h-4 w-4" />
                   <AlertTitle>Connected to Plandex AI</AlertTitle>
                   <AlertDescription>
@@ -400,17 +411,17 @@ function PlandexAISettingsContent() {
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Not Connected</AlertTitle>
                   <AlertDescription>
-                    {settings.apiKey 
-                      ? "Your Plandex AI integration is not working. Check your API key and settings."
-                      : "You need to enter an API key to use Plandex AI."}
+                    {settings.apiKey
+                      ? 'Your Plandex AI integration is not working. Check your API key and settings.'
+                      : 'You need to enter an API key to use Plandex AI.'}
                   </AlertDescription>
                 </Alert>
               )}
             </div>
           </CardContent>
-          
+
           <CardFooter>
-            <Button 
+            <Button
               onClick={testConnection}
               disabled={isTesting || !settings.apiKey}
               className="w-full"
@@ -430,7 +441,7 @@ function PlandexAISettingsContent() {
           </CardFooter>
         </Card>
       </TabsContent>
-      
+
       {/* Testing Tab */}
       <TabsContent value="test" className="space-y-6 mt-6">
         <Card>
@@ -443,7 +454,7 @@ function PlandexAISettingsContent() {
               Try out Plandex AI's capabilities to verify your integration
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             {!isAvailable ? (
               <Alert variant="destructive" className="mb-4">
@@ -458,11 +469,11 @@ function PlandexAISettingsContent() {
                 <p className="text-sm">
                   Use these tools to test different Plandex AI capabilities:
                 </p>
-                
+
                 <div className="grid grid-cols-1 gap-4 mt-4">
                   <div>
                     <h3 className="text-sm font-medium mb-2">Code Generation</h3>
-                    <Input 
+                    <Input
                       placeholder="Enter a prompt (e.g., 'Function to calculate tax based on property value')"
                       className="mb-2"
                     />
@@ -471,12 +482,12 @@ function PlandexAISettingsContent() {
                       Generate Sample Code
                     </Button>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div>
                     <h3 className="text-sm font-medium mb-2">Code Completion</h3>
-                    <Input 
+                    <Input
                       placeholder="Enter code prefix (e.g., 'function calculateTax(')"
                       className="mb-2"
                     />
@@ -485,19 +496,13 @@ function PlandexAISettingsContent() {
                       Complete Code
                     </Button>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div>
                     <h3 className="text-sm font-medium mb-2">Bug Fixing</h3>
-                    <Input 
-                      placeholder="Enter buggy code snippet"
-                      className="mb-2"
-                    />
-                    <Input 
-                      placeholder="Enter error message"
-                      className="mb-2"
-                    />
+                    <Input placeholder="Enter buggy code snippet" className="mb-2" />
+                    <Input placeholder="Enter error message" className="mb-2" />
                     <Button size="sm" disabled={!isAvailable}>
                       <Terminal className="h-4 w-4 mr-2" />
                       Fix Bugs
@@ -509,7 +514,7 @@ function PlandexAISettingsContent() {
           </CardContent>
         </Card>
       </TabsContent>
-      
+
       {/* Examples Tab */}
       <TabsContent value="examples" className="space-y-6 mt-6">
         <div className="grid grid-cols-1 gap-6">

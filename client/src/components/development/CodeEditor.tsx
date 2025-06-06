@@ -20,21 +20,21 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   height = '100%',
   theme = 'light',
   readOnly = false,
-  options = {}
+  options = {},
 }) => {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
-    
+
     // Configure Monaco editor settings
     editor.updateOptions({
       minimap: { enabled: true },
       scrollBeyondLastLine: false,
       automaticLayout: true,
-      ...options
+      ...options,
     });
-    
+
     // Add additional language support if needed
     configureMonaco(monaco);
   };
@@ -52,8 +52,8 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         'editor.lineHighlightBackground': '#2a2e37',
         'editorLineNumber.foreground': '#6e7681',
         'editor.selectionBackground': '#264f78',
-        'editorCursor.foreground': '#d4d4d4'
-      }
+        'editorCursor.foreground': '#d4d4d4',
+      },
     });
   };
 
@@ -84,9 +84,9 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   };
 
   return (
-    <div 
+    <div
       className={cn(
-        "h-full overflow-hidden border rounded-md",
+        'h-full overflow-hidden border rounded-md',
         theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
       )}
       style={{ height }}
@@ -103,7 +103,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           wordWrap: 'on',
           renderLineHighlight: 'all',
           renderWhitespace: 'selection',
-          ...options
+          ...options,
         }}
         onMount={handleEditorDidMount}
         loading={<div className="flex items-center justify-center h-full">Loading editor...</div>}

@@ -1,13 +1,18 @@
 /**
  * Agent Coordinator Service
- * 
+ *
  * This service coordinates communication between AI extensions and the agent system.
  * It serves as a central hub for dispatching tasks, queries, and responses between
  * various components of the system.
  */
 
 import { EventEmitter } from 'events';
-import { AgentProtocol, AgentMessage, AgentMessageType, MessagePriority } from '../extensions/agent-protocol';
+import {
+  AgentProtocol,
+  AgentMessage,
+  AgentMessageType,
+  MessagePriority,
+} from '../extensions/agent-protocol';
 import { ExtensionRegistry } from '../extensions/extension-registry';
 import { logger } from '../utils/logger';
 import { IStorage } from '../storage';
@@ -20,7 +25,7 @@ export enum TaskStatus {
   IN_PROGRESS = 'in_progress',
   COMPLETED = 'completed',
   FAILED = 'failed',
-  CANCELLED = 'cancelled'
+  CANCELLED = 'cancelled',
 }
 
 /**
@@ -30,7 +35,7 @@ export enum TaskPriority {
   LOW = 'low',
   NORMAL = 'normal',
   HIGH = 'high',
-  URGENT = 'urgent'
+  URGENT = 'urgent',
 }
 
 /**
@@ -65,7 +70,7 @@ export interface AgentInfo {
 
 /**
  * Agent Coordinator Service
- * 
+ *
  * Manages communication and coordination between different AI agents and extensions
  */
 export class AgentCoordinator {
@@ -77,10 +82,10 @@ export class AgentCoordinator {
   private agents: Map<string, AgentInfo> = new Map();
   private tasks: Map<string, Task> = new Map();
   private taskCounter: number = 0;
-  
+
   /**
    * Create a new agent coordinator
-   * 
+   *
    * @param storage Storage service
    */
   private constructor(storage: IStorage) {
@@ -89,14 +94,14 @@ export class AgentCoordinator {
     this.eventEmitter.setMaxListeners(100); // Allow many listeners
     this.agentProtocol = AgentProtocol.getInstance();
     this.extensionRegistry = ExtensionRegistry.getInstance();
-    
+
     // Set up protocol subscriptions
     this.setupSubscriptions();
   }
-  
+
   /**
    * Get the singleton instance of the agent coordinator
-   * 
+   *
    * @param storage Storage service
    * @returns The agent coordinator instance
    */
@@ -106,32 +111,32 @@ export class AgentCoordinator {
     }
     return AgentCoordinator.instance;
   }
-  
+
   /**
    * Set up protocol subscriptions
    */
   private setupSubscriptions(): void {
     // Subscribe to coordination messages
-    this.agentProtocol.subscribe('agent-coordinator', 'coordination', (message) => {
+    this.agentProtocol.subscribe('agent-coordinator', 'coordination', message => {
       this.handleCoordinationMessage(message);
     });
-    
+
     // Subscribe to capability advertisements
-    this.agentProtocol.subscribe('agent-coordinator', 'capability', (message) => {
+    this.agentProtocol.subscribe('agent-coordinator', 'capability', message => {
       this.handleCapabilityMessage(message);
     });
-    
+
     // Log all messages for debugging (if enabled)
     if (process.env.DEBUG === 'true') {
-      this.agentProtocol.subscribe('agent-coordinator', '*', (message) => {
+      this.agentProtocol.subscribe('agent-coordinator', '*', message => {
         logger.debug(`[AgentCoordinator] Message intercepted: ${JSON.stringify(message)}`);
       });
     }
   }
-  
+
   /**
    * Handle coordination messages
-   * 
+   *
    * @param message Coordination message
    */
   private handleCoordinationMessage(message: AgentMessage): void {
@@ -139,9 +144,9 @@ export class AgentCoordinator {
       logger.warn(`Received coordination message without action: ${JSON.stringify(message)}`);
       return;
     }
-    
+
     const { action } = message.payload;
-    
+
     switch (action) {
       case 'register-agent':
         this.registerAgent(message);
@@ -171,10 +176,10 @@ export class AgentCoordinator {
         logger.warn(`Unknown coordination action: ${action}`);
     }
   }
-  
+
   /**
    * Handle capability messages
-   * 
+   *
    * @param message Capability message
    */
   private handleCapabilityMessage(message: AgentMessage): void {
@@ -182,10 +187,10 @@ export class AgentCoordinator {
       logger.warn(`Received capability message without capabilities: ${JSON.stringify(message)}`);
       return;
     }
-    
+
     const { capabilities } = message.payload;
     const agent = this.agents.get(message.senderId);
-    
+
     if (agent) {
       // Update existing agent capabilities
       agent.capabilities = capabilities;
@@ -197,31 +202,33 @@ export class AgentCoordinator {
         name: message.payload.name || message.senderId,
         description: message.payload.description || '',
         capabilities,
-        status: 'active'
+        status: 'active',
       });
-      
-      logger.info(`Registered new agent ${message.senderId} with capabilities: ${capabilities.join(', ')}`);
+
+      logger.info(
+        `Registered new agent ${message.senderId} with capabilities: ${capabilities.join(', ')}`
+      );
     }
   }
-  
+
   /**
    * Register an agent
-   * 
+   *
    * @param message Registration message
    */
   private registerAgent(message: AgentMessage): void {
     const { name, description, capabilities } = message.payload;
-    
+
     this.agents.set(message.senderId, {
       id: message.senderId,
       name: name || message.senderId,
       description: description || '',
       capabilities: capabilities || [],
-      status: 'active'
+      status: 'active',
     });
-    
+
     logger.info(`Agent ${message.senderId} registered`);
-    
+
     // Respond with confirmation
     this.agentProtocol.sendMessage({
       type: AgentMessageType.RESPONSE,
@@ -232,23 +239,23 @@ export class AgentCoordinator {
       correlationId: message.id,
       payload: {
         success: true,
-        message: 'Agent registered successfully'
-      }
+        message: 'Agent registered successfully',
+      },
     });
   }
-  
+
   /**
    * Unregister an agent
-   * 
+   *
    * @param message Unregistration message
    */
   private unregisterAgent(message: AgentMessage): void {
     const agentId = message.senderId;
-    
+
     if (this.agents.has(agentId)) {
       this.agents.delete(agentId);
       logger.info(`Agent ${agentId} unregistered`);
-      
+
       // Respond with confirmation
       this.agentProtocol.sendMessage({
         type: AgentMessageType.RESPONSE,
@@ -259,20 +266,22 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           success: true,
-          message: 'Agent unregistered successfully'
-        }
+          message: 'Agent unregistered successfully',
+        },
       });
-      
+
       // Reassign any pending tasks
       for (const [taskId, task] of this.tasks.entries()) {
         if (task.assignedTo === agentId && task.status === TaskStatus.IN_PROGRESS) {
           task.status = TaskStatus.PENDING;
           task.assignedTo = undefined;
           task.updatedAt = new Date();
-          
+
           // Log the reassignment
-          logger.info(`Task ${taskId} returned to pending status after agent ${agentId} unregistered`);
-          
+          logger.info(
+            `Task ${taskId} returned to pending status after agent ${agentId} unregistered`
+          );
+
           // Attempt to reassign the task
           setTimeout(() => this.assignTaskToAgent(task), 1000);
         }
@@ -288,20 +297,20 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Agent not found',
-          message: `Agent ${agentId} is not registered`
-        }
+          message: `Agent ${agentId} is not registered`,
+        },
       });
     }
   }
-  
+
   /**
    * Create a new task
-   * 
+   *
    * @param message Task creation message
    */
   private createTask(message: AgentMessage): void {
     const { type, description, priority, metadata, parentTaskId } = message.payload;
-    
+
     // Validate required fields
     if (!type || !description) {
       this.agentProtocol.sendMessage({
@@ -313,15 +322,15 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Invalid task',
-          message: 'Task type and description are required'
-        }
+          message: 'Task type and description are required',
+        },
       });
       return;
     }
-    
+
     // Generate a unique task ID
     const taskId = `task-${Date.now()}-${++this.taskCounter}`;
-    
+
     // Create the task
     const task: Task = {
       id: taskId,
@@ -332,15 +341,15 @@ export class AgentCoordinator {
       createdAt: new Date(),
       updatedAt: new Date(),
       parentTaskId,
-      metadata
+      metadata,
     };
-    
+
     // Store the task
     this.tasks.set(taskId, task);
-    
+
     // Log task creation
     logger.info(`Task ${taskId} created: ${description}`);
-    
+
     // Respond with the task ID
     this.agentProtocol.sendMessage({
       type: AgentMessageType.RESPONSE,
@@ -352,22 +361,22 @@ export class AgentCoordinator {
       payload: {
         success: true,
         taskId,
-        task
-      }
+        task,
+      },
     });
-    
+
     // Try to assign the task
     this.assignTaskToAgent(task);
   }
-  
+
   /**
    * Update a task
-   * 
+   *
    * @param message Task update message
    */
   private updateTask(message: AgentMessage): void {
     const { taskId, updates } = message.payload;
-    
+
     if (!taskId || !updates) {
       this.agentProtocol.sendMessage({
         type: AgentMessageType.ERROR,
@@ -378,14 +387,14 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Invalid update',
-          message: 'Task ID and updates are required'
-        }
+          message: 'Task ID and updates are required',
+        },
       });
       return;
     }
-    
+
     const task = this.tasks.get(taskId);
-    
+
     if (!task) {
       this.agentProtocol.sendMessage({
         type: AgentMessageType.ERROR,
@@ -396,12 +405,12 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Task not found',
-          message: `Task ${taskId} does not exist`
-        }
+          message: `Task ${taskId} does not exist`,
+        },
       });
       return;
     }
-    
+
     // Check if the sender is authorized to update this task
     if (task.assignedTo && task.assignedTo !== message.senderId) {
       this.agentProtocol.sendMessage({
@@ -413,23 +422,23 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Unauthorized',
-          message: `Only the assigned agent can update this task`
-        }
+          message: `Only the assigned agent can update this task`,
+        },
       });
       return;
     }
-    
+
     // Apply updates (only allowed fields)
     if (updates.description) task.description = updates.description;
     if (updates.priority) task.priority = updates.priority;
     if (updates.metadata) task.metadata = { ...task.metadata, ...updates.metadata };
-    
+
     // Update timestamp
     task.updatedAt = new Date();
-    
+
     // Log the update
     logger.info(`Task ${taskId} updated by ${message.senderId}`);
-    
+
     // Respond with success
     this.agentProtocol.sendMessage({
       type: AgentMessageType.RESPONSE,
@@ -441,19 +450,19 @@ export class AgentCoordinator {
       payload: {
         success: true,
         taskId,
-        task
-      }
+        task,
+      },
     });
   }
-  
+
   /**
    * Assign a task to an agent
-   * 
+   *
    * @param message Task assignment message
    */
   private assignTask(message: AgentMessage): void {
     const { taskId, agentId } = message.payload;
-    
+
     if (!taskId || !agentId) {
       this.agentProtocol.sendMessage({
         type: AgentMessageType.ERROR,
@@ -464,14 +473,14 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Invalid assignment',
-          message: 'Task ID and agent ID are required'
-        }
+          message: 'Task ID and agent ID are required',
+        },
       });
       return;
     }
-    
+
     const task = this.tasks.get(taskId);
-    
+
     if (!task) {
       this.agentProtocol.sendMessage({
         type: AgentMessageType.ERROR,
@@ -482,12 +491,12 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Task not found',
-          message: `Task ${taskId} does not exist`
-        }
+          message: `Task ${taskId} does not exist`,
+        },
       });
       return;
     }
-    
+
     // Check if the agent exists
     if (!this.agents.has(agentId)) {
       this.agentProtocol.sendMessage({
@@ -499,20 +508,20 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Agent not found',
-          message: `Agent ${agentId} is not registered`
-        }
+          message: `Agent ${agentId} is not registered`,
+        },
       });
       return;
     }
-    
+
     // Assign the task
     task.assignedTo = agentId;
     task.status = TaskStatus.IN_PROGRESS;
     task.updatedAt = new Date();
-    
+
     // Log the assignment
     logger.info(`Task ${taskId} assigned to agent ${agentId}`);
-    
+
     // Respond with success
     this.agentProtocol.sendMessage({
       type: AgentMessageType.RESPONSE,
@@ -525,10 +534,10 @@ export class AgentCoordinator {
         success: true,
         taskId,
         agentId,
-        task
-      }
+        task,
+      },
     });
-    
+
     // Notify the agent about the assignment
     this.agentProtocol.sendMessage({
       type: AgentMessageType.NOTIFICATION,
@@ -539,19 +548,19 @@ export class AgentCoordinator {
       payload: {
         action: 'task-assigned',
         taskId,
-        task
-      }
+        task,
+      },
     });
   }
-  
+
   /**
    * Complete a task
-   * 
+   *
    * @param message Task completion message
    */
   private completeTask(message: AgentMessage): void {
     const { taskId, result } = message.payload;
-    
+
     if (!taskId) {
       this.agentProtocol.sendMessage({
         type: AgentMessageType.ERROR,
@@ -562,14 +571,14 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Invalid completion',
-          message: 'Task ID is required'
-        }
+          message: 'Task ID is required',
+        },
       });
       return;
     }
-    
+
     const task = this.tasks.get(taskId);
-    
+
     if (!task) {
       this.agentProtocol.sendMessage({
         type: AgentMessageType.ERROR,
@@ -580,12 +589,12 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Task not found',
-          message: `Task ${taskId} does not exist`
-        }
+          message: `Task ${taskId} does not exist`,
+        },
       });
       return;
     }
-    
+
     // Check if the sender is authorized to complete this task
     if (task.assignedTo && task.assignedTo !== message.senderId) {
       this.agentProtocol.sendMessage({
@@ -597,21 +606,21 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Unauthorized',
-          message: `Only the assigned agent can complete this task`
-        }
+          message: `Only the assigned agent can complete this task`,
+        },
       });
       return;
     }
-    
+
     // Complete the task
     task.status = TaskStatus.COMPLETED;
     task.result = result;
     task.completedAt = new Date();
     task.updatedAt = new Date();
-    
+
     // Log the completion
     logger.info(`Task ${taskId} completed by ${message.senderId}`);
-    
+
     // Respond with success
     this.agentProtocol.sendMessage({
       type: AgentMessageType.RESPONSE,
@@ -623,22 +632,22 @@ export class AgentCoordinator {
       payload: {
         success: true,
         taskId,
-        task
-      }
+        task,
+      },
     });
-    
+
     // Notify about task completion
     this.notifyTaskCompletion(task);
   }
-  
+
   /**
    * Fail a task
-   * 
+   *
    * @param message Task failure message
    */
   private failTask(message: AgentMessage): void {
     const { taskId, error } = message.payload;
-    
+
     if (!taskId) {
       this.agentProtocol.sendMessage({
         type: AgentMessageType.ERROR,
@@ -649,14 +658,14 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Invalid failure',
-          message: 'Task ID is required'
-        }
+          message: 'Task ID is required',
+        },
       });
       return;
     }
-    
+
     const task = this.tasks.get(taskId);
-    
+
     if (!task) {
       this.agentProtocol.sendMessage({
         type: AgentMessageType.ERROR,
@@ -667,12 +676,12 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Task not found',
-          message: `Task ${taskId} does not exist`
-        }
+          message: `Task ${taskId} does not exist`,
+        },
       });
       return;
     }
-    
+
     // Check if the sender is authorized to fail this task
     if (task.assignedTo && task.assignedTo !== message.senderId) {
       this.agentProtocol.sendMessage({
@@ -684,20 +693,20 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Unauthorized',
-          message: `Only the assigned agent can fail this task`
-        }
+          message: `Only the assigned agent can fail this task`,
+        },
       });
       return;
     }
-    
+
     // Fail the task
     task.status = TaskStatus.FAILED;
     task.error = error || 'Task failed';
     task.updatedAt = new Date();
-    
+
     // Log the failure
     logger.info(`Task ${taskId} failed: ${task.error}`);
-    
+
     // Respond with acknowledgment
     this.agentProtocol.sendMessage({
       type: AgentMessageType.RESPONSE,
@@ -709,22 +718,22 @@ export class AgentCoordinator {
       payload: {
         success: true,
         taskId,
-        task
-      }
+        task,
+      },
     });
-    
+
     // Notify about task failure
     this.notifyTaskFailure(task);
   }
-  
+
   /**
    * Cancel a task
-   * 
+   *
    * @param message Task cancellation message
    */
   private cancelTask(message: AgentMessage): void {
     const { taskId, reason } = message.payload;
-    
+
     if (!taskId) {
       this.agentProtocol.sendMessage({
         type: AgentMessageType.ERROR,
@@ -735,14 +744,14 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Invalid cancellation',
-          message: 'Task ID is required'
-        }
+          message: 'Task ID is required',
+        },
       });
       return;
     }
-    
+
     const task = this.tasks.get(taskId);
-    
+
     if (!task) {
       this.agentProtocol.sendMessage({
         type: AgentMessageType.ERROR,
@@ -753,20 +762,20 @@ export class AgentCoordinator {
         correlationId: message.id,
         payload: {
           error: 'Task not found',
-          message: `Task ${taskId} does not exist`
-        }
+          message: `Task ${taskId} does not exist`,
+        },
       });
       return;
     }
-    
+
     // Cancel the task
     task.status = TaskStatus.CANCELLED;
     task.error = reason || 'Task cancelled';
     task.updatedAt = new Date();
-    
+
     // Log the cancellation
     logger.info(`Task ${taskId} cancelled: ${task.error}`);
-    
+
     // Respond with acknowledgment
     this.agentProtocol.sendMessage({
       type: AgentMessageType.RESPONSE,
@@ -778,10 +787,10 @@ export class AgentCoordinator {
       payload: {
         success: true,
         taskId,
-        task
-      }
+        task,
+      },
     });
-    
+
     // If the task was assigned, notify the agent
     if (task.assignedTo) {
       this.agentProtocol.sendMessage({
@@ -793,15 +802,15 @@ export class AgentCoordinator {
         payload: {
           action: 'task-cancelled',
           taskId,
-          reason: task.error
-        }
+          reason: task.error,
+        },
       });
     }
   }
-  
+
   /**
    * Find the best agent for a task
-   * 
+   *
    * @param task Task to assign
    * @returns The best agent ID or undefined if no suitable agent is found
    */
@@ -809,55 +818,55 @@ export class AgentCoordinator {
     // This is a simple implementation. In a real system, you would use
     // a more sophisticated algorithm that considers agent capabilities,
     // current workload, previous performance, etc.
-    
+
     const eligibleAgents: { agentId: string; score: number }[] = [];
-    
+
     for (const [agentId, agent] of this.agents.entries()) {
       // Skip inactive agents
       if (agent.status !== 'active') continue;
-      
+
       // Calculate a score for this agent
       let score = 0;
-      
+
       // Higher score for agents with capabilities matching the task type
       if (agent.capabilities.includes(task.type)) {
         score += 10;
       }
-      
+
       // Add to eligible agents if score is above threshold
       if (score > 0) {
         eligibleAgents.push({ agentId, score });
       }
     }
-    
+
     // Sort by score in descending order
     eligibleAgents.sort((a, b) => b.score - a.score);
-    
+
     // Return the best agent or undefined if none found
     return eligibleAgents.length > 0 ? eligibleAgents[0].agentId : undefined;
   }
-  
+
   /**
    * Assign a task to the best available agent
-   * 
+   *
    * @param task Task to assign
    */
   private assignTaskToAgent(task: Task): void {
     // Skip if the task is not pending
     if (task.status !== TaskStatus.PENDING) return;
-    
+
     // Find the best agent
     const agentId = this.findBestAgentForTask(task);
-    
+
     if (agentId) {
       // Update the task
       task.assignedTo = agentId;
       task.status = TaskStatus.IN_PROGRESS;
       task.updatedAt = new Date();
-      
+
       // Log the assignment
       logger.info(`Task ${task.id} automatically assigned to agent ${agentId}`);
-      
+
       // Notify the agent
       this.agentProtocol.sendMessage({
         type: AgentMessageType.NOTIFICATION,
@@ -868,20 +877,20 @@ export class AgentCoordinator {
         payload: {
           action: 'task-assigned',
           taskId: task.id,
-          task
-        }
+          task,
+        },
       });
     } else {
       // No suitable agent found
       logger.info(`No suitable agent found for task ${task.id}`);
-      
+
       // We could implement a retry mechanism here
     }
   }
-  
+
   /**
    * Notify about task completion
-   * 
+   *
    * @param task Completed task
    */
   private notifyTaskCompletion(task: Task): void {
@@ -894,7 +903,7 @@ export class AgentCoordinator {
         logger.info(`Subtask ${task.id} of parent task ${parentTask.id} completed`);
       }
     }
-    
+
     // Broadcast notification about task completion
     this.agentProtocol.sendMessage({
       type: AgentMessageType.NOTIFICATION,
@@ -905,10 +914,10 @@ export class AgentCoordinator {
       payload: {
         action: 'task-completed',
         taskId: task.id,
-        result: task.result
-      }
+        result: task.result,
+      },
     });
-    
+
     // Record the completion in the system activity log
     this.storage.createSystemActivity({
       activity_type: 'task_completed',
@@ -916,14 +925,14 @@ export class AgentCoordinator {
       details: {
         taskId: task.id,
         taskType: task.type,
-        agentId: task.assignedTo
-      }
+        agentId: task.assignedTo,
+      },
     });
   }
-  
+
   /**
    * Notify about task failure
-   * 
+   *
    * @param task Failed task
    */
   private notifyTaskFailure(task: Task): void {
@@ -934,7 +943,7 @@ export class AgentCoordinator {
         logger.info(`Subtask ${task.id} of parent task ${parentTask.id} failed: ${task.error}`);
       }
     }
-    
+
     // Broadcast notification about task failure
     this.agentProtocol.sendMessage({
       type: AgentMessageType.NOTIFICATION,
@@ -945,10 +954,10 @@ export class AgentCoordinator {
       payload: {
         action: 'task-failed',
         taskId: task.id,
-        error: task.error
-      }
+        error: task.error,
+      },
     });
-    
+
     // Record the failure in the system activity log
     this.storage.createSystemActivity({
       activity_type: 'task_failed',
@@ -957,33 +966,33 @@ export class AgentCoordinator {
         taskId: task.id,
         taskType: task.type,
         agentId: task.assignedTo,
-        error: task.error
-      }
+        error: task.error,
+      },
     });
   }
-  
+
   /**
    * Get all tasks
-   * 
+   *
    * @returns Array of all tasks
    */
   public getAllTasks(): Task[] {
     return Array.from(this.tasks.values());
   }
-  
+
   /**
    * Get a task by ID
-   * 
+   *
    * @param taskId Task ID
    * @returns The task or undefined if not found
    */
   public getTaskById(taskId: string): Task | undefined {
     return this.tasks.get(taskId);
   }
-  
+
   /**
    * Get tasks with a specific status
-   * 
+   *
    * @param status Task status
    * @returns Array of tasks with the specified status
    */
@@ -991,10 +1000,10 @@ export class AgentCoordinator {
     // Use spread operator to convert values to array to avoid downlevelIteration issues
     return [...this.tasks.values()].filter(task => task.status === status);
   }
-  
+
   /**
    * Get tasks assigned to a specific agent
-   * 
+   *
    * @param agentId Agent ID
    * @returns Array of tasks assigned to the agent
    */
@@ -1002,30 +1011,30 @@ export class AgentCoordinator {
     // Use spread operator to convert values to array to avoid downlevelIteration issues
     return [...this.tasks.values()].filter(task => task.assignedTo === agentId);
   }
-  
+
   /**
    * Get all registered agents
-   * 
+   *
    * @returns Array of all agents
    */
   public getAllAgents(): AgentInfo[] {
     // Use spread operator to convert values to array to avoid downlevelIteration issues
     return [...this.agents.values()];
   }
-  
+
   /**
    * Get an agent by ID
-   * 
+   *
    * @param agentId Agent ID
    * @returns The agent or undefined if not found
    */
   public getAgentById(agentId: string): AgentInfo | undefined {
     return this.agents.get(agentId);
   }
-  
+
   /**
    * Create a task directly (not via message)
-   * 
+   *
    * @param type Task type
    * @param description Task description
    * @param priority Task priority
@@ -1042,7 +1051,7 @@ export class AgentCoordinator {
   ): Task {
     // Generate a unique task ID
     const taskId = `task-${Date.now()}-${++this.taskCounter}`;
-    
+
     // Create the task
     const task: Task = {
       id: taskId,
@@ -1053,18 +1062,18 @@ export class AgentCoordinator {
       createdAt: new Date(),
       updatedAt: new Date(),
       parentTaskId,
-      metadata
+      metadata,
     };
-    
+
     // Store the task
     this.tasks.set(taskId, task);
-    
+
     // Log task creation
     logger.info(`Task ${taskId} created directly: ${description}`);
-    
+
     // Try to assign the task
     this.assignTaskToAgent(task);
-    
+
     return task;
   }
 }

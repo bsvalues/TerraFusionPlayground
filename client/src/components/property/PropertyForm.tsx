@@ -1,17 +1,17 @@
 /**
  * Property Form
- * 
+ *
  * Form for editing property data.
  */
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Form, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
   FormControl,
-  FormDescription 
+  FormDescription,
 } from '@/components/ui/form';
 import { SyncStatus } from '@terrafusion/offline-sync/src/crdt-sync';
 import { PropertyDocState } from '@terrafusion/offline-sync/src/hooks/usePropertyDoc';
@@ -29,22 +29,22 @@ export interface PropertyFormProps {
    * Property data
    */
   data: PropertyDocState;
-  
+
   /**
    * Loading state
    */
   isLoading?: boolean;
-  
+
   /**
    * Sync status
    */
   syncStatus?: SyncStatus;
-  
+
   /**
    * On change callback
    */
   onChange?: (data: Partial<PropertyDocState>) => void;
-  
+
   /**
    * On sync request callback
    */
@@ -59,31 +59,31 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
   isLoading = false,
   syncStatus = SyncStatus.UNSYNCED,
   onChange,
-  onSyncRequest
+  onSyncRequest,
 }) => {
   // Local state to track form values
   const [formValues, setFormValues] = useState<Partial<PropertyDocState>>({});
-  
+
   // Update form values when data changes
   useEffect(() => {
     setFormValues(data);
   }, [data]);
-  
+
   // Handle field change
   const handleChange = (field: keyof PropertyDocState, value: any) => {
     setFormValues(prev => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
-    
+
     // Call onChange callback
     if (onChange) {
       onChange({
-        [field]: value
+        [field]: value,
       });
     }
   };
-  
+
   // Handle feature change
   const handleFeaturesChange = (value: string) => {
     // Split by commas and trim
@@ -91,57 +91,69 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
       .split(',')
       .map(feature => feature.trim())
       .filter(Boolean);
-    
+
     setFormValues(prev => ({
       ...prev,
-      features
+      features,
     }));
-    
+
     // Call onChange callback
     if (onChange) {
       onChange({
-        features
+        features,
       });
     }
   };
-  
+
   // Handle sync request
   const handleSyncRequest = () => {
     if (onSyncRequest) {
       onSyncRequest();
     }
   };
-  
+
   // Get features string
   const featuresString = formValues.features?.join(', ') || '';
-  
+
   // Get sync status badge
   const getSyncStatusBadge = () => {
     switch (syncStatus) {
       case SyncStatus.SYNCED:
         return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
+          <Badge
+            variant="outline"
+            className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1"
+          >
             <CheckCircle className="h-3 w-3" />
             Synced
           </Badge>
         );
       case SyncStatus.SYNCING:
         return (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
+          <Badge
+            variant="outline"
+            className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1"
+          >
             <RefreshCw className="h-3 w-3 animate-spin" />
             Syncing
           </Badge>
         );
       case SyncStatus.FAILED:
         return (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 flex items-center gap-1">
+          <Badge
+            variant="outline"
+            className="bg-red-50 text-red-700 border-red-200 flex items-center gap-1"
+          >
             <AlertCircle className="h-3 w-3" />
             Sync Failed
           </Badge>
         );
       case SyncStatus.CONFLICT:
         return (
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 flex items-center gap-1">
+          <Badge
+            variant="outline"
+            className="bg-yellow-50 text-yellow-700 border-yellow-200 flex items-center gap-1"
+          >
             <AlertCircle className="h-3 w-3" />
             Conflict
           </Badge>
@@ -149,14 +161,17 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
       case SyncStatus.UNSYNCED:
       default:
         return (
-          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 flex items-center gap-1">
+          <Badge
+            variant="outline"
+            className="bg-gray-50 text-gray-700 border-gray-200 flex items-center gap-1"
+          >
             <CloudOff className="h-3 w-3" />
             Unsynced
           </Badge>
         );
     }
   };
-  
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -175,7 +190,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
           </Button>
         </div>
       </div>
-      
+
       <Form>
         <div className="space-y-4">
           {/* Property ID - Read-only */}
@@ -185,16 +200,12 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               <FormItem>
                 <FormLabel>Property ID</FormLabel>
                 <FormControl>
-                  <Input 
-                    value={formValues.id || ''} 
-                    readOnly 
-                    disabled
-                  />
+                  <Input value={formValues.id || ''} readOnly disabled />
                 </FormControl>
               </FormItem>
             )}
           />
-          
+
           {/* Address */}
           <FormField
             name="address"
@@ -202,9 +213,9 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               <FormItem>
                 <FormLabel>Address</FormLabel>
                 <FormControl>
-                  <Input 
-                    value={formValues.address || ''} 
-                    onChange={(e) => handleChange('address', e.target.value)}
+                  <Input
+                    value={formValues.address || ''}
+                    onChange={e => handleChange('address', e.target.value)}
                     disabled={isLoading}
                     placeholder="Enter property address"
                   />
@@ -212,7 +223,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               </FormItem>
             )}
           />
-          
+
           {/* Owner */}
           <FormField
             name="owner"
@@ -220,9 +231,9 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               <FormItem>
                 <FormLabel>Owner</FormLabel>
                 <FormControl>
-                  <Input 
-                    value={formValues.owner || ''} 
-                    onChange={(e) => handleChange('owner', e.target.value)}
+                  <Input
+                    value={formValues.owner || ''}
+                    onChange={e => handleChange('owner', e.target.value)}
                     disabled={isLoading}
                     placeholder="Enter property owner"
                   />
@@ -230,7 +241,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               </FormItem>
             )}
           />
-          
+
           {/* Value */}
           <FormField
             name="value"
@@ -238,10 +249,10 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               <FormItem>
                 <FormLabel>Value</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
-                    value={formValues.value || ''} 
-                    onChange={(e) => handleChange('value', e.target.valueAsNumber)}
+                  <Input
+                    type="number"
+                    value={formValues.value || ''}
+                    onChange={e => handleChange('value', e.target.valueAsNumber)}
                     disabled={isLoading}
                     placeholder="Enter property value"
                   />
@@ -249,7 +260,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               </FormItem>
             )}
           />
-          
+
           {/* Last Inspection */}
           <FormField
             name="lastInspection"
@@ -257,17 +268,17 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               <FormItem>
                 <FormLabel>Last Inspection</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="date" 
-                    value={formValues.lastInspection || ''} 
-                    onChange={(e) => handleChange('lastInspection', e.target.value)}
+                  <Input
+                    type="date"
+                    value={formValues.lastInspection || ''}
+                    onChange={e => handleChange('lastInspection', e.target.value)}
                     disabled={isLoading}
                   />
                 </FormControl>
               </FormItem>
             )}
           />
-          
+
           {/* Features */}
           <FormField
             name="features"
@@ -275,9 +286,9 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               <FormItem>
                 <FormLabel>Features</FormLabel>
                 <FormControl>
-                  <Input 
-                    value={featuresString} 
-                    onChange={(e) => handleFeaturesChange(e.target.value)}
+                  <Input
+                    value={featuresString}
+                    onChange={e => handleFeaturesChange(e.target.value)}
                     disabled={isLoading}
                     placeholder="Enter features, separated by commas"
                   />
@@ -288,7 +299,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               </FormItem>
             )}
           />
-          
+
           {/* Notes */}
           <FormField
             name="notes"
@@ -296,9 +307,9 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               <FormItem>
                 <FormLabel>Notes</FormLabel>
                 <FormControl>
-                  <Textarea 
-                    value={formValues.notes || ''} 
-                    onChange={(e) => handleChange('notes', e.target.value)}
+                  <Textarea
+                    value={formValues.notes || ''}
+                    onChange={e => handleChange('notes', e.target.value)}
                     disabled={isLoading}
                     placeholder="Enter property notes"
                     className="min-h-32"

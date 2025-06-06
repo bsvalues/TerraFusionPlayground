@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 
-// Just use a free public token here for demonstration 
+// Just use a free public token here for demonstration
 // In production, this would be from an environment variable
-const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA';
+const MAPBOX_TOKEN =
+  'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA';
 
 // Set the token for mapboxgl
 mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -25,12 +26,12 @@ const MapboxMap = ({
   className = '',
   showControls = true,
   interactive = true,
-  styleUrl = 'mapbox://styles/mapbox/streets-v12'
+  styleUrl = 'mapbox://styles/mapbox/streets-v12',
 }: MapboxMapProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  
+
   const {
     center,
     setCenter,
@@ -41,13 +42,13 @@ const MapboxMap = ({
     isLayersPanelOpen,
     toggleLayersPanel,
     visibleLayers,
-    layerOpacity
+    layerOpacity,
   } = useGIS();
 
   // Initialize map
   useEffect(() => {
     if (map.current) return; // initialize map only once
-    
+
     if (mapContainer.current) {
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
@@ -55,13 +56,13 @@ const MapboxMap = ({
         center: center,
         zoom: zoom,
         interactive: interactive,
-        attributionControl: false
+        attributionControl: false,
       });
-      
+
       map.current.on('load', () => {
         setMapLoaded(true);
       });
-      
+
       map.current.on('move', () => {
         if (map.current) {
           const newCenter = map.current.getCenter().toArray() as [number, number];
@@ -72,13 +73,10 @@ const MapboxMap = ({
 
       // Add navigation control
       if (showControls) {
-        map.current.addControl(
-          new mapboxgl.NavigationControl(),
-          'top-right'
-        );
+        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
       }
     }
-    
+
     return () => {
       if (map.current) {
         map.current.remove();
@@ -130,7 +128,7 @@ const MapboxMap = ({
   // Draw custom controls
   const renderControls = () => {
     if (!showControls) return null;
-    
+
     return (
       <div className="absolute bottom-3 left-3 z-10 flex flex-col gap-2">
         <Button
@@ -141,7 +139,7 @@ const MapboxMap = ({
         >
           <Layers className="h-4 w-4" />
         </Button>
-        
+
         <Button
           variant="secondary"
           size="icon"
@@ -150,7 +148,7 @@ const MapboxMap = ({
         >
           <Maximize className="h-4 w-4" />
         </Button>
-        
+
         <Button
           variant="secondary"
           size="icon"
@@ -161,7 +159,7 @@ const MapboxMap = ({
                 center: center,
                 zoom: zoom,
                 bearing: 0,
-                pitch: 0
+                pitch: 0,
               });
             }
           }}
@@ -175,7 +173,7 @@ const MapboxMap = ({
   // Render layers panel
   const renderLayersPanel = () => {
     if (!isLayersPanelOpen) return null;
-    
+
     return (
       <div className="absolute top-3 left-3 z-10 bg-white bg-opacity-90 p-4 rounded-md shadow-md max-h-[80vh] overflow-y-auto w-64">
         <h3 className="text-sm font-medium mb-2">Layers</h3>
@@ -193,15 +191,10 @@ const MapboxMap = ({
                 Parcels
               </label>
               <div className="w-24">
-                <Slider
-                  defaultValue={[100]}
-                  max={100}
-                  step={1}
-                  className="h-2"
-                />
+                <Slider defaultValue={[100]} max={100} step={1} className="h-2" />
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <label className="text-xs flex items-center">
                 <input
@@ -213,15 +206,10 @@ const MapboxMap = ({
                 Zoning
               </label>
               <div className="w-24">
-                <Slider
-                  defaultValue={[70]}
-                  max={100}
-                  step={1}
-                  className="h-2"
-                />
+                <Slider defaultValue={[70]} max={100} step={1} className="h-2" />
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <label className="text-xs flex items-center">
                 <input
@@ -233,16 +221,11 @@ const MapboxMap = ({
                 Flood Zones
               </label>
               <div className="w-24">
-                <Slider
-                  defaultValue={[80]}
-                  max={100}
-                  step={1}
-                  className="h-2"
-                />
+                <Slider defaultValue={[80]} max={100} step={1} className="h-2" />
               </div>
             </div>
           </div>
-          
+
           <div className="pt-2 border-t border-gray-200">
             <h4 className="text-xs font-medium mb-1">Base Maps</h4>
             <div className="space-y-1">
@@ -256,7 +239,7 @@ const MapboxMap = ({
                 />
                 Streets
               </label>
-              
+
               <label className="text-xs flex items-center">
                 <input
                   type="radio"
@@ -267,7 +250,7 @@ const MapboxMap = ({
                 />
                 Satellite
               </label>
-              
+
               <label className="text-xs flex items-center">
                 <input
                   type="radio"

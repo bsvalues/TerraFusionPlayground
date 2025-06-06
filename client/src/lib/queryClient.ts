@@ -1,4 +1,4 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { QueryClient, QueryFunction } from '@tanstack/react-query';
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -10,16 +10,16 @@ async function throwIfResNotOk(res: Response) {
 // Add authentication headers to requests
 function addAuthHeaders(url: string, options?: RequestInit): RequestInit {
   const headers = options?.headers || {};
-  
+
   // Default options
   const requestOptions: RequestInit = {
     ...options,
-    credentials: "include",
+    credentials: 'include',
     headers: {
       ...headers,
-    }
+    },
   };
-  
+
   // Add API key for agent routes
   if (url.startsWith('/api/agents')) {
     requestOptions.headers = {
@@ -27,7 +27,7 @@ function addAuthHeaders(url: string, options?: RequestInit): RequestInit {
       'X-API-Key': 'dev-api-key-mcp',
     };
   }
-  
+
   return requestOptions;
 }
 
@@ -42,12 +42,9 @@ export interface ExtendedRequestInit extends RequestInit {
  * Makes an API request and returns the response object without parsing
  * Use this for more control over response handling
  */
-export async function apiRequest(
-  url: string,
-  options?: ExtendedRequestInit
-): Promise<Response> {
+export async function apiRequest(url: string, options?: ExtendedRequestInit): Promise<Response> {
   let requestOptions = { ...options };
-  
+
   // Handle data property by converting it to JSON and setting the appropriate headers
   if (options?.data) {
     requestOptions = {
@@ -58,11 +55,11 @@ export async function apiRequest(
         'Content-Type': 'application/json',
       },
     };
-    
+
     // Remove data property as it's not a standard RequestInit property
     delete requestOptions.data;
   }
-  
+
   const authRequestOptions = addAuthHeaders(url, requestOptions);
   const res = await fetch(url, authRequestOptions);
   return res;
@@ -77,13 +74,11 @@ export async function apiJsonRequest<T = any>(
 ): Promise<T> {
   const res = await apiRequest(url, options);
   await throwIfResNotOk(res);
-  return await res.json() as T;
+  return (await res.json()) as T;
 }
 
-type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
+type UnauthorizedBehavior = 'returnNull' | 'throw';
+export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     try {
@@ -91,7 +86,7 @@ export const getQueryFn: <T>(options: {
       const requestOptions = addAuthHeaders(url);
       const res = await fetch(url, requestOptions);
 
-      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+      if (unauthorizedBehavior === 'returnNull' && res.status === 401) {
         return null;
       }
 
@@ -111,7 +106,7 @@ export const getQueryFn: <T>(options: {
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
+      queryFn: getQueryFn({ on401: 'throw' }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: Infinity,

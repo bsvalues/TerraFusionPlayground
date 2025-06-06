@@ -24,7 +24,7 @@ import {
   Settings,
   Compass,
   Download,
-  Users
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -49,7 +49,7 @@ interface QGISFeature {
 const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
-  
+
   // Fetch QGIS info from the backend
   const { data: qgisInfo, isLoading } = useQuery({
     queryKey: ['/api/gis/qgis-info'],
@@ -68,33 +68,35 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
           'Free and open-source',
           'Cross-platform (Windows, Mac, Linux)',
           'Extensive plugin ecosystem',
-          'OGC standards compliant'
-        ]
+          'OGC standards compliant',
+        ],
       };
-    }
+    },
   });
-  
+
   // List of QGIS features to showcase
   const features: QGISFeature[] = [
     {
       id: 'data-formats',
       title: 'Open Data Format Support',
-      description: 'QGIS supports a wide variety of open geospatial data formats without vendor lock-in.',
+      description:
+        'QGIS supports a wide variety of open geospatial data formats without vendor lock-in.',
       category: 'data',
       icon: <Database className="h-5 w-5 text-green-600" />,
       benefits: [
         'No license fees for data formats',
         'Interoperability with other systems',
         'Freedom from vendor lock-in',
-        'Support for industry-standard formats'
+        'Support for industry-standard formats',
       ],
       useCases: [
         'Import GeoJSON, Shapefile, GeoTIFF, and more',
         'Seamlessly use OpenStreetMap data',
-        'Work with government open data catalogs'
+        'Work with government open data catalogs',
       ],
       isFree: true,
-      documentationUrl: 'https://docs.qgis.org/3.22/en/docs/user_manual/managing_data_source/index.html'
+      documentationUrl:
+        'https://docs.qgis.org/3.22/en/docs/user_manual/managing_data_source/index.html',
     },
     {
       id: 'spatial-analysis',
@@ -106,16 +108,16 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
         'No additional costs for analysis tools',
         'Transparency in analysis algorithms',
         'Community-reviewed reliable calculations',
-        'Continually improved methodologies'
+        'Continually improved methodologies',
       ],
       useCases: [
         'Property valuation by location',
         'Tax district boundary analysis',
         'Proximity and clustering analysis',
-        'Service area calculations'
+        'Service area calculations',
       ],
       isFree: true,
-      documentationUrl: 'https://docs.qgis.org/3.22/en/docs/user_manual/processing_algs/index.html'
+      documentationUrl: 'https://docs.qgis.org/3.22/en/docs/user_manual/processing_algs/index.html',
     },
     {
       id: 'styling-customization',
@@ -127,58 +129,62 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
         'Complete control over map appearance',
         'Data-driven styling capabilities',
         'Custom symbology and labeling',
-        'Print-quality map production'
+        'Print-quality map production',
       ],
       useCases: [
         'Property value choropleth maps',
         'Assessment date visualizations',
         'Custom branded tax maps',
-        'High-quality property reports'
+        'High-quality property reports',
       ],
       isFree: true,
-      documentationUrl: 'https://docs.qgis.org/3.22/en/docs/user_manual/working_with_vector/vector_properties.html'
+      documentationUrl:
+        'https://docs.qgis.org/3.22/en/docs/user_manual/working_with_vector/vector_properties.html',
     },
     {
       id: 'database-integration',
       title: 'Native Database Integration',
-      description: 'Connect directly to spatial databases like PostGIS for enterprise-grade data management.',
+      description:
+        'Connect directly to spatial databases like PostGIS for enterprise-grade data management.',
       category: 'integration',
       icon: <Database className="h-5 w-5 text-amber-600" />,
       benefits: [
         'Enterprise-level data management',
         'Direct connection to spatial databases',
         'No middleware required',
-        'High-performance data access'
+        'High-performance data access',
       ],
       useCases: [
         'County-wide property database access',
         'Multi-user concurrent editing',
         'Historical property data analysis',
-        'Real-time data updates'
+        'Real-time data updates',
       ],
       isFree: true,
-      documentationUrl: 'https://docs.qgis.org/3.22/en/docs/user_manual/managing_data_source/opening_data.html#database-related-tools'
+      documentationUrl:
+        'https://docs.qgis.org/3.22/en/docs/user_manual/managing_data_source/opening_data.html#database-related-tools',
     },
     {
       id: 'python-scripting',
       title: 'Python & Automation',
-      description: 'Extend QGIS functionality with Python scripting for custom workflows and automation.',
+      description:
+        'Extend QGIS functionality with Python scripting for custom workflows and automation.',
       category: 'integration',
       icon: <Code className="h-5 w-5 text-indigo-600" />,
       benefits: [
         'Automate repetitive tasks',
         'Create custom tools and algorithms',
         'Extend core functionality',
-        'Integrate with other systems via APIs'
+        'Integrate with other systems via APIs',
       ],
       useCases: [
         'Automated property value calculations',
         'Custom tax district reports',
         'Scheduled data updates',
-        'Integration with legacy systems'
+        'Integration with legacy systems',
       ],
       isFree: true,
-      documentationUrl: 'https://docs.qgis.org/3.22/en/docs/pyqgis_developer_cookbook/index.html'
+      documentationUrl: 'https://docs.qgis.org/3.22/en/docs/pyqgis_developer_cookbook/index.html',
     },
     {
       id: 'processing-framework',
@@ -190,16 +196,16 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
         'Hundreds of built-in algorithms',
         'Model builder for complex workflows',
         'Batch processing capabilities',
-        'Integration with external tools like GRASS'
+        'Integration with external tools like GRASS',
       ],
       useCases: [
         'Mass property reappraisal calculations',
         'Complex tax district creation',
         'Multi-step data processing pipelines',
-        'Statistical analysis of property values'
+        'Statistical analysis of property values',
       ],
       isFree: true,
-      documentationUrl: 'https://docs.qgis.org/3.22/en/docs/user_manual/processing/index.html'
+      documentationUrl: 'https://docs.qgis.org/3.22/en/docs/user_manual/processing/index.html',
     },
     {
       id: 'plugin-ecosystem',
@@ -211,74 +217,75 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
         'Thousands of free plugins available',
         'Specialized industry tools',
         'Regular updates and improvements',
-        'Community support and documentation'
+        'Community support and documentation',
       ],
       useCases: [
         'Property report generation',
         'Advanced cartography for tax maps',
         'Property data import/export tools',
-        'Specialized analysis plugins'
+        'Specialized analysis plugins',
       ],
       isFree: true,
-      documentationUrl: 'https://plugins.qgis.org/'
+      documentationUrl: 'https://plugins.qgis.org/',
     },
     {
       id: 'community-support',
       title: 'Global Community Support',
-      description: 'Access a worldwide community of GIS professionals for support and collaboration.',
+      description:
+        'Access a worldwide community of GIS professionals for support and collaboration.',
       category: 'community',
       icon: <Users className="h-5 w-5 text-blue-600" />,
       benefits: [
         'Free community support forums',
         'Documentation in multiple languages',
         'Regular training webinars and resources',
-        'User groups and conferences'
+        'User groups and conferences',
       ],
       useCases: [
         'Problem-solving assistance',
         'Best practice guidance',
         'Training materials and tutorials',
-        'Knowledge sharing across jurisdictions'
+        'Knowledge sharing across jurisdictions',
       ],
       isFree: true,
-      documentationUrl: 'https://qgis.org/en/site/forusers/support.html'
-    }
+      documentationUrl: 'https://qgis.org/en/site/forusers/support.html',
+    },
   ];
-  
+
   // Get feature by ID
   const getFeatureById = (id: string): QGISFeature | undefined => {
     return features.find(feature => feature.id === id);
   };
-  
+
   // Selected feature
   const selectedFeature = selectedFeatureId ? getFeatureById(selectedFeatureId) : null;
-  
+
   // Toggle panel expansion
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
   };
-  
+
   // Handle feature selection
   const handleFeatureSelect = (featureId: string) => {
     setSelectedFeatureId(featureId === selectedFeatureId ? null : featureId);
     setIsExpanded(true);
   };
-  
+
   // Get features by category
   const getFeaturesByCategory = (category: string) => {
     return features.filter(feature => feature.category === category);
   };
-  
+
   return (
-    <div 
+    <div
       className={cn(
-        "tf-qgis-showcase absolute right-4 top-20 bg-white rounded-lg shadow-lg transition-all duration-300 z-30",
-        isExpanded ? "w-80" : "w-12",
+        'tf-qgis-showcase absolute right-4 top-20 bg-white rounded-lg shadow-lg transition-all duration-300 z-30',
+        isExpanded ? 'w-80' : 'w-12',
         className
       )}
     >
       {/* Expand/Collapse Toggle */}
-      <div 
+      <div
         className="absolute -left-3 top-1/2 transform -translate-y-1/2 bg-primary rounded-full p-1 cursor-pointer shadow-md"
         onClick={toggleExpand}
       >
@@ -288,7 +295,7 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
           <ChevronLeft className="h-4 w-4 text-white" />
         )}
       </div>
-      
+
       {/* Collapsed View */}
       {!isExpanded && (
         <div className="flex flex-col items-center py-4">
@@ -298,7 +305,7 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
           </div>
         </div>
       )}
-      
+
       {/* Expanded View */}
       {isExpanded && (
         <div className="p-4">
@@ -313,7 +320,7 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
               </Button>
             )}
           </div>
-          
+
           {isLoading ? (
             <div className="flex justify-center py-6">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -321,22 +328,22 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
           ) : selectedFeature ? (
             /* Feature Detail View */
             <div className="space-y-4">
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="mb-2 -ml-2 text-sm"
                 onClick={() => setSelectedFeatureId(null)}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" /> Back to features
               </Button>
-              
+
               <div className="flex items-center space-x-2">
                 {selectedFeature.icon}
                 <h4 className="text-base font-medium">{selectedFeature.title}</h4>
               </div>
-              
+
               <p className="text-sm text-gray-600">{selectedFeature.description}</p>
-              
+
               <div className="space-y-1 mt-3">
                 <h5 className="text-sm font-medium">Benefits:</h5>
                 <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
@@ -345,7 +352,7 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
                   ))}
                 </ul>
               </div>
-              
+
               <div className="space-y-1 mt-3">
                 <h5 className="text-sm font-medium">Use Cases:</h5>
                 <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
@@ -354,7 +361,7 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
                   ))}
                 </ul>
               </div>
-              
+
               <div className="flex items-center justify-between mt-4">
                 {selectedFeature.isFree ? (
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -365,11 +372,11 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
                     <Lock className="h-3 w-3 mr-1" /> Premium Feature
                   </Badge>
                 )}
-                
+
                 {selectedFeature.documentationUrl && (
-                  <a 
-                    href={selectedFeature.documentationUrl} 
-                    target="_blank" 
+                  <a
+                    href={selectedFeature.documentationUrl}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-primary hover:underline flex items-center"
                   >
@@ -384,19 +391,26 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
               {qgisInfo && (
                 <div className="mb-4 border-b pb-3">
                   <div className="flex items-center mb-2">
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <Badge
+                      variant="outline"
+                      className="bg-green-50 text-green-700 border-green-200"
+                    >
                       <GitBranch className="h-3 w-3 mr-1" /> Open Source
                     </Badge>
-                    <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 border-blue-200">
+                    <Badge
+                      variant="outline"
+                      className="ml-2 bg-blue-50 text-blue-700 border-blue-200"
+                    >
                       <Heart className="h-3 w-3 mr-1" /> Free
                     </Badge>
                   </div>
                   <p className="text-xs text-gray-600 mt-1">
-                    QGIS is released under the GNU General Public License, ensuring it remains free and open-source for everyone.
+                    QGIS is released under the GNU General Public License, ensuring it remains free
+                    and open-source for everyone.
                   </p>
                 </div>
               )}
-              
+
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="data">
                   <AccordionTrigger className="text-sm">
@@ -419,7 +433,7 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
                     </div>
                   </AccordionContent>
                 </AccordionItem>
-                
+
                 <AccordionItem value="analysis">
                   <AccordionTrigger className="text-sm">
                     <BarChart4 className="h-4 w-4 mr-2 text-red-600" /> Analysis Tools
@@ -441,7 +455,7 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
                     </div>
                   </AccordionContent>
                 </AccordionItem>
-                
+
                 <AccordionItem value="visualization">
                   <AccordionTrigger className="text-sm">
                     <Layers className="h-4 w-4 mr-2 text-purple-600" /> Visualization
@@ -463,7 +477,7 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
                     </div>
                   </AccordionContent>
                 </AccordionItem>
-                
+
                 <AccordionItem value="integration">
                   <AccordionTrigger className="text-sm">
                     <Settings className="h-4 w-4 mr-2 text-amber-600" /> Extensions
@@ -485,7 +499,7 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
                     </div>
                   </AccordionContent>
                 </AccordionItem>
-                
+
                 <AccordionItem value="community">
                   <AccordionTrigger className="text-sm">
                     <Users className="h-4 w-4 mr-2 text-green-600" /> Community
@@ -508,11 +522,13 @@ const QGISFeaturesShowcase = ({ className, onClose, map }: QGISFeaturesShowcaseP
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
-              
+
               {/* TerraFusion QGIS Integration Info */}
               <div className="mt-4 border-t pt-3">
                 <p className="text-xs text-gray-600">
-                  <span className="text-green-600">▲</span> TerraFusion leverages QGIS open-source technology to provide powerful GIS capabilities without vendor lock-in or expensive licensing.
+                  <span className="text-green-600">▲</span> TerraFusion leverages QGIS open-source
+                  technology to provide powerful GIS capabilities without vendor lock-in or
+                  expensive licensing.
                 </p>
               </div>
             </div>

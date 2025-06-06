@@ -1,6 +1,6 @@
 /**
  * Intelligent Learning System Routes
- * 
+ *
  * Provides API endpoints for continuous learning and improvement:
  * - Knowledge repository management
  * - Best practice recommendations
@@ -21,35 +21,38 @@ router.post('/extract-component-knowledge', async (req, res) => {
   try {
     const requestSchema = z.object({
       componentId: z.number(),
-      modelId: z.string()
+      modelId: z.string(),
     });
-    
+
     const validationResult = requestSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
       return res.status(400).json({ error: validationResult.error });
     }
-    
+
     const { componentId, modelId } = validationResult.data;
-    
+
     // Get component and model
     const intelligentLearningSystem = getIntelligentLearningSystem();
     const storage = intelligentLearningSystem.storage;
-    
+
     const component = await storage.getModelComponent(componentId);
     const model = await storage.getAssessmentModelByModelId(modelId);
-    
+
     if (!component) {
       return res.status(404).json({ error: 'Component not found' });
     }
-    
+
     if (!model) {
       return res.status(404).json({ error: 'Model not found' });
     }
-    
+
     // Extract knowledge
-    const knowledgeItem = await intelligentLearningSystem.extractKnowledgeFromComponent(component, model);
-    
+    const knowledgeItem = await intelligentLearningSystem.extractKnowledgeFromComponent(
+      component,
+      model
+    );
+
     return res.json({ knowledgeItem });
   } catch (error) {
     console.error('Error extracting component knowledge:', error);
@@ -64,35 +67,38 @@ router.post('/extract-calculation-knowledge', async (req, res) => {
   try {
     const requestSchema = z.object({
       calculationId: z.number(),
-      modelId: z.string()
+      modelId: z.string(),
     });
-    
+
     const validationResult = requestSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
       return res.status(400).json({ error: validationResult.error });
     }
-    
+
     const { calculationId, modelId } = validationResult.data;
-    
+
     // Get calculation and model
     const intelligentLearningSystem = getIntelligentLearningSystem();
     const storage = intelligentLearningSystem.storage;
-    
+
     const calculation = await storage.getModelCalculation(calculationId);
     const model = await storage.getAssessmentModelByModelId(modelId);
-    
+
     if (!calculation) {
       return res.status(404).json({ error: 'Calculation not found' });
     }
-    
+
     if (!model) {
       return res.status(404).json({ error: 'Model not found' });
     }
-    
+
     // Extract knowledge
-    const knowledgeItem = await intelligentLearningSystem.extractKnowledgeFromCalculation(calculation, model);
-    
+    const knowledgeItem = await intelligentLearningSystem.extractKnowledgeFromCalculation(
+      calculation,
+      model
+    );
+
     return res.json({ knowledgeItem });
   } catch (error) {
     console.error('Error extracting calculation knowledge:', error);
@@ -108,21 +114,25 @@ router.post('/find-similar-knowledge', async (req, res) => {
     const requestSchema = z.object({
       query: z.string(),
       category: z.string().optional(),
-      tags: z.array(z.string()).optional()
+      tags: z.array(z.string()).optional(),
     });
-    
+
     const validationResult = requestSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
       return res.status(400).json({ error: validationResult.error });
     }
-    
+
     const { query, category, tags } = validationResult.data;
-    
+
     // Find similar knowledge items
     const intelligentLearningSystem = getIntelligentLearningSystem();
-    const knowledgeItems = await intelligentLearningSystem.findSimilarKnowledgeItems(query, category, tags);
-    
+    const knowledgeItems = await intelligentLearningSystem.findSimilarKnowledgeItems(
+      query,
+      category,
+      tags
+    );
+
     return res.json({ knowledgeItems });
   } catch (error) {
     console.error('Error finding similar knowledge:', error);
@@ -136,21 +146,21 @@ router.post('/find-similar-knowledge', async (req, res) => {
 router.post('/generate-best-practices', async (req, res) => {
   try {
     const requestSchema = z.object({
-      modelType: z.string().optional()
+      modelType: z.string().optional(),
     });
-    
+
     const validationResult = requestSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
       return res.status(400).json({ error: validationResult.error });
     }
-    
+
     const { modelType } = validationResult.data;
-    
+
     // Generate best practices
     const intelligentLearningSystem = getIntelligentLearningSystem();
     const bestPractices = await intelligentLearningSystem.generateBestPractices(modelType);
-    
+
     return res.json({ bestPractices });
   } catch (error) {
     console.error('Error generating best practices:', error);
@@ -164,21 +174,21 @@ router.post('/generate-best-practices', async (req, res) => {
 router.post('/generate-improvement-suggestions', async (req, res) => {
   try {
     const requestSchema = z.object({
-      modelId: z.string()
+      modelId: z.string(),
     });
-    
+
     const validationResult = requestSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
       return res.status(400).json({ error: validationResult.error });
     }
-    
+
     const { modelId } = validationResult.data;
-    
+
     // Generate improvement suggestions
     const intelligentLearningSystem = getIntelligentLearningSystem();
     const suggestions = await intelligentLearningSystem.generateImprovementSuggestions(modelId);
-    
+
     return res.json({ suggestions });
   } catch (error) {
     console.error('Error generating improvement suggestions:', error);
@@ -194,7 +204,7 @@ router.post('/detect-learning-patterns', async (req, res) => {
     // Detect learning patterns
     const intelligentLearningSystem = getIntelligentLearningSystem();
     const patterns = await intelligentLearningSystem.detectLearningPatterns();
-    
+
     return res.json({ patterns });
   } catch (error) {
     console.error('Error detecting learning patterns:', error);
@@ -209,10 +219,10 @@ router.get('/knowledge', async (req, res) => {
   try {
     const category = req.query.category as string | undefined;
     const tags = req.query.tags ? (req.query.tags as string).split(',') : undefined;
-    
+
     const intelligentLearningSystem = getIntelligentLearningSystem();
     const knowledgeItems = await intelligentLearningSystem.getKnowledgeItems(category, tags);
-    
+
     return res.json({ knowledgeItems });
   } catch (error) {
     console.error('Error getting knowledge items:', error);
@@ -227,10 +237,10 @@ router.get('/best-practices', async (req, res) => {
   try {
     const category = req.query.category as string | undefined;
     const modelType = req.query.modelType as string | undefined;
-    
+
     const intelligentLearningSystem = getIntelligentLearningSystem();
     const bestPractices = await intelligentLearningSystem.getBestPractices(category, modelType);
-    
+
     return res.json({ bestPractices });
   } catch (error) {
     console.error('Error getting best practices:', error);
@@ -245,10 +255,13 @@ router.get('/improvement-suggestions/:modelId', async (req, res) => {
   try {
     const { modelId } = req.params;
     const targetEntityType = req.query.targetEntityType as string | undefined;
-    
+
     const intelligentLearningSystem = getIntelligentLearningSystem();
-    const suggestions = await intelligentLearningSystem.getImprovementSuggestions(modelId, targetEntityType);
-    
+    const suggestions = await intelligentLearningSystem.getImprovementSuggestions(
+      modelId,
+      targetEntityType
+    );
+
     return res.json({ suggestions });
   } catch (error) {
     console.error('Error getting improvement suggestions:', error);
@@ -262,10 +275,10 @@ router.get('/improvement-suggestions/:modelId', async (req, res) => {
 router.get('/learning-patterns', async (req, res) => {
   try {
     const patternType = req.query.patternType as string | undefined;
-    
+
     const intelligentLearningSystem = getIntelligentLearningSystem();
     const patterns = await intelligentLearningSystem.getLearningPatterns(patternType);
-    
+
     return res.json({ patterns });
   } catch (error) {
     console.error('Error getting learning patterns:', error);

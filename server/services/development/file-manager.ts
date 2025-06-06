@@ -1,11 +1,11 @@
 import { db } from '../../db';
 import { eq, and } from 'drizzle-orm';
-import { 
-  devProjectFiles, 
+import {
+  devProjectFiles,
   DevFileType,
   insertDevProjectFileSchema,
   type DevProjectFile,
-  type InsertDevProjectFile
+  type InsertDevProjectFile,
 } from '../../../shared/schema';
 import path from 'path';
 
@@ -22,7 +22,11 @@ export interface FileManagerInterface {
   createFile(file: InsertDevProjectFile): Promise<DevProjectFile>;
   getProjectFiles(projectId: string): Promise<DevProjectFile[]>;
   getFileByPath(projectId: string, filePath: string): Promise<DevProjectFile | null>;
-  updateFile(projectId: string, filePath: string, updatedData: Partial<InsertDevProjectFile>): Promise<DevProjectFile | null>;
+  updateFile(
+    projectId: string,
+    filePath: string,
+    updatedData: Partial<InsertDevProjectFile>
+  ): Promise<DevProjectFile | null>;
   deleteFile(projectId: string, filePath: string): Promise<boolean>;
   buildFileTree(projectId: string): Promise<FileInfo[]>;
 }
@@ -33,13 +37,16 @@ class FileManager implements FileManagerInterface {
    */
   async createFile(file: InsertDevProjectFile): Promise<DevProjectFile> {
     const validatedData = insertDevProjectFileSchema.parse(file);
-    
-    const newFile = await db.insert(devProjectFiles).values({
-      ...validatedData,
-      size: validatedData.content ? Buffer.from(validatedData.content).length : 0,
-      lastUpdated: new Date()
-    }).returning();
-    
+
+    const newFile = await db
+      .insert(devProjectFiles)
+      .values({
+        ...validatedData,
+        size: validatedData.content ? Buffer.from(validatedData.content).length : 0,
+        lastUpdated: new Date(),
+      })
+      .returning();
+
     return newFile[0];
   }
 
@@ -61,13 +68,8 @@ class FileManager implements FileManagerInterface {
     const result = await db
       .select()
       .from(devProjectFiles)
-      .where(
-        and(
-          eq(devProjectFiles.projectId, projectId),
-          eq(devProjectFiles.path, filePath)
-        )
-      );
-    
+      .where(and(eq(devProjectFiles.projectId, projectId), eq(devProjectFiles.path, filePath)));
+
     return result.length > 0 ? result[0] : null;
   }
 
@@ -81,23 +83,18 @@ class FileManager implements FileManagerInterface {
   ): Promise<DevProjectFile | null> {
     // Recalculate size if content was updated
     const fileData: Partial<InsertDevProjectFile> = { ...updatedData };
-    
+
     if (fileData.content) {
       fileData.size = Buffer.from(fileData.content).length;
     }
-    
+
     const result = await db
       .update(devProjectFiles)
       .set({
         ...fileData,
-        lastUpdated: new Date()
+        lastUpdated: new Date(),
       })
-      .where(
-        and(
-          eq(devProjectFiles.projectId, projectId),
-          eq(devProjectFiles.path, filePath)
-        )
-      )
+      .where(and(eq(devProjectFiles.projectId, projectId), eq(devProjectFiles.path, filePath)))
       .returning();
 
     return result.length > 0 ? result[0] : null;
@@ -109,12 +106,7 @@ class FileManager implements FileManagerInterface {
   async deleteFile(projectId: string, filePath: string): Promise<boolean> {
     const result = await db
       .delete(devProjectFiles)
-      .where(
-        and(
-          eq(devProjectFiles.projectId, projectId),
-          eq(devProjectFiles.path, filePath)
-        )
-      )
+      .where(and(eq(devProjectFiles.projectId, projectId), eq(devProjectFiles.path, filePath)))
       .returning();
 
     return result.length > 0;
@@ -135,28 +127,28 @@ class FileManager implements FileManagerInterface {
         path: file.path,
         type: file.type,
         size: file.size || undefined,
-        content: file.type === DevFileType.FILE ? (file.content || undefined) : undefined,
-        children: file.type === DevFileType.DIRECTORY ? [] : undefined
+        content: file.type === DevFileType.FILE ? file.content || undefined : undefined,
+        children: file.type === DevFileType.DIRECTORY ? [] : undefined,
       };
-      
+
       map[file.path] = fileInfo;
-      
+
       // If root level
       if (!file.parentPath) {
         root.push(fileInfo);
       }
     });
-    
+
     // Second pass: link children to parents
     files.forEach(file => {
       if (file.parentPath && map[file.parentPath] && map[file.parentPath].children) {
         map[file.parentPath].children!.push(map[file.path]);
       }
     });
-    
+
     return root;
   }
-  
+
   /**
    * Get the parent directory path
    */

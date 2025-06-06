@@ -36,30 +36,36 @@ export async function getPropertyLineage(propertyId: string): Promise<PropertyLi
   const response = await apiRequest(`/api/data-lineage/property/${propertyId}`, {
     method: 'GET',
   });
-  
+
   // Parse dates in the response
   if (response.lineage) {
     Object.keys(response.lineage).forEach(field => {
       response.lineage[field] = response.lineage[field].map(parseLineageRecord);
     });
   }
-  
+
   return response;
 }
 
 /**
  * Get lineage data by date range
  */
-export async function getDateRangeLineage(startDate: string, endDate: string): Promise<LineageListResponse> {
-  const response = await apiRequest(`/api/data-lineage/date-range?startDate=${startDate}&endDate=${endDate}`, {
-    method: 'GET',
-  });
-  
+export async function getDateRangeLineage(
+  startDate: string,
+  endDate: string
+): Promise<LineageListResponse> {
+  const response = await apiRequest(
+    `/api/data-lineage/date-range?startDate=${startDate}&endDate=${endDate}`,
+    {
+      method: 'GET',
+    }
+  );
+
   // Parse dates in the response
   if (response.lineage) {
     response.lineage = response.lineage.map(parseLineageRecord);
   }
-  
+
   return response;
 }
 
@@ -70,12 +76,12 @@ export async function getSourceLineage(source: string): Promise<LineageListRespo
   const response = await apiRequest(`/api/data-lineage/source/${source}`, {
     method: 'GET',
   });
-  
+
   // Parse dates in the response
   if (response.lineage) {
     response.lineage = response.lineage.map(parseLineageRecord);
   }
-  
+
   return response;
 }
 
@@ -86,12 +92,12 @@ export async function getUserLineage(userId: number): Promise<LineageListRespons
   const response = await apiRequest(`/api/data-lineage/user/${userId}`, {
     method: 'GET',
   });
-  
+
   // Parse dates in the response
   if (response.lineage) {
     response.lineage = response.lineage.map(parseLineageRecord);
   }
-  
+
   return response;
 }
 
@@ -102,7 +108,7 @@ function parseLineageRecord(record: any): DataLineageRecord {
   return {
     ...record,
     changeTimestamp: new Date(record.changeTimestamp),
-    createdAt: new Date(record.createdAt)
+    createdAt: new Date(record.createdAt),
   };
 }
 

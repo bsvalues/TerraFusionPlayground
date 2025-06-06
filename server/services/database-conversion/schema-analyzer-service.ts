@@ -1,33 +1,33 @@
 /**
  * Schema Analyzer Service
- * 
+ *
  * This service analyzes database schemas and provides AI-powered insights
  * for optimization, data modeling improvements, and migration recommendations.
  */
 
 import { IStorage } from '../../storage';
 import { LLMService } from '../llm-service';
-import { 
-  DatabaseType, 
+import {
+  DatabaseType,
   SchemaAnalysisResult,
   TableSchema,
   ColumnSchema,
   IndexSchema,
   ForeignKeySchema,
   ConnectionTestResult,
-  ConnectionStatus
+  ConnectionStatus,
 } from './types';
 import { queryDatabaseSchema } from './db-adapters';
 
 export class SchemaAnalyzerService {
   private storage: IStorage;
   private llmService?: LLMService;
-  
+
   constructor(storage: IStorage, llmService?: LLMService) {
     this.storage = storage;
     this.llmService = llmService;
   }
-  
+
   /**
    * Analyze a database schema
    */
@@ -38,9 +38,12 @@ export class SchemaAnalyzerService {
   ): Promise<SchemaAnalysisResult> {
     try {
       // Log the analysis start
-      await this.log('schema_analysis', 'info', 
-        `Starting schema analysis for ${databaseType} database`);
-      
+      await this.log(
+        'schema_analysis',
+        'info',
+        `Starting schema analysis for ${databaseType} database`
+      );
+
       // Query database schema using the appropriate adapter
       const rawSchema = await queryDatabaseSchema(connectionString, databaseType, {
         includeViews: options.includeViews !== false,
@@ -48,9 +51,9 @@ export class SchemaAnalyzerService {
         includeFunctions: options.includeFunctions,
         includeTriggers: options.includeTriggers,
         includeConstraints: options.includeConstraints !== false,
-        tableFilter: options.includeTables
+        tableFilter: options.includeTables,
       });
-      
+
       // Create the base analysis result
       const result: SchemaAnalysisResult = {
         databaseType,
@@ -61,37 +64,41 @@ export class SchemaAnalyzerService {
         triggers: rawSchema.triggers || [],
         estimatedSizeMb: rawSchema.estimatedSizeMb,
         dbInfo: rawSchema.databaseInfo,
-        analysisTimestamp: new Date().toISOString()
+        analysisTimestamp: new Date().toISOString(),
       };
-      
+
       // Calculate high-level statistics for each table
       await this.calculateTableStatistics(result);
-      
+
       // Identify potential schema issues
       await this.identifySchemaIssues(result);
-      
+
       // Identify potential performance bottlenecks
       await this.identifyPerformanceIssues(result);
-      
+
       // Generate AI-powered recommendations if requested and LLM service is available
       if (options.useAI && this.llmService) {
         await this.generateAIRecommendations(result);
       }
-      
+
       // Log the completion of analysis
-      await this.log('schema_analysis', 'info', 
-        `Completed schema analysis for ${databaseType} database with ${result.tables.length} tables`);
-      
+      await this.log(
+        'schema_analysis',
+        'info',
+        `Completed schema analysis for ${databaseType} database with ${result.tables.length} tables`
+      );
+
       return result;
     } catch (error) {
       // Log the error
-      await this.log('schema_analysis', 'error', 
-        `Error analyzing schema: ${error.message}`, { error: error.stack });
-      
+      await this.log('schema_analysis', 'error', `Error analyzing schema: ${error.message}`, {
+        error: error.stack,
+      });
+
       throw error;
     }
   }
-  
+
   /**
    * Calculate statistics for tables
    */
@@ -105,41 +112,41 @@ export class SchemaAnalyzerService {
       let uniqueColumns = 0;
       let indexedColumns = 0;
       let autoIncrementColumns = 0;
-      
+
       // Process each column
       for (const column of table.columns) {
         // Count by type
         const normalizedType = column.type.toLowerCase().replace(/\(.*\)/, '');
         columnTypes[normalizedType] = (columnTypes[normalizedType] || 0) + 1;
-        
+
         // Count nullable
         if (column.nullable) {
           nullableColumns++;
         }
-        
+
         // Count primary keys
         if (column.isPrimaryKey) {
           primaryKeyColumns++;
         }
-        
+
         // Count unique
         if (column.isUnique) {
           uniqueColumns++;
         }
-        
+
         // Count auto increment
         if (column.autoIncrement) {
           autoIncrementColumns++;
         }
       }
-      
+
       // Count indexed columns
       if (table.indexes) {
         for (const index of table.indexes) {
           indexedColumns += index.columnNames.length;
         }
       }
-      
+
       // Set the statistics
       table.statistics = {
         totalColumns: table.columns.length,
@@ -151,11 +158,11 @@ export class SchemaAnalyzerService {
         autoIncrementColumns,
         hasForeignKeys: table.foreignKeys?.length > 0,
         foreignKeyCount: table.foreignKeys?.length || 0,
-        indexCount: table.indexes?.length || 0
+        indexCount: table.indexes?.length || 0,
       };
     }
   }
-  
+
   /**
    * Identify potential schema issues
    */
@@ -167,23 +174,25 @@ export class SchemaAnalyzerService {
       inconsistentNaming: [],
       redundantIndexes: [],
       missingIndexes: [],
-      circularDependencies: []
+      circularDependencies: [],
     };
-    
+
     // Process each table
     for (const table of result.tables) {
       // Check for tables without primary key
-      const hasPrimaryKey = table.columns.some(c => c.isPrimaryKey) || 
-                           (table.primaryKey && table.primaryKey.length > 0);
-      
+      const hasPrimaryKey =
+        table.columns.some(c => c.isPrimaryKey) ||
+        (table.primaryKey && table.primaryKey.length > 0);
+
       if (!hasPrimaryKey) {
         result.schemaIssues.tablesWithoutPrimaryKey.push({
           tableName: table.name,
           issue: 'No primary key defined',
-          recommendation: 'Add a primary key to ensure data integrity and improve query performance'
+          recommendation:
+            'Add a primary key to ensure data integrity and improve query performance',
         });
       }
-      
+
       // Check for columns without type
       for (const column of table.columns) {
         if (!column.type || column.type.trim() === '') {
@@ -191,40 +200,40 @@ export class SchemaAnalyzerService {
             tableName: table.name,
             columnName: column.name,
             issue: 'Column has no type defined',
-            recommendation: 'Define a data type for this column'
+            recommendation: 'Define a data type for this column',
           });
         }
       }
-      
+
       // Check for inconsistent naming patterns
       this.checkInconsistentNaming(table, result.schemaIssues.inconsistentNaming);
-      
+
       // Check for redundant indexes
       this.checkRedundantIndexes(table, result.schemaIssues.redundantIndexes);
-      
+
       // Check for missing indexes on foreign keys
       this.checkMissingIndexes(table, result.schemaIssues.missingIndexes);
     }
-    
+
     // Check for circular dependencies
     this.checkCircularDependencies(result.tables, result.schemaIssues.circularDependencies);
   }
-  
+
   /**
    * Check for inconsistent naming patterns
    */
   private checkInconsistentNaming(
-    table: TableSchema, 
-    inconsistentNaming: Array<{tableName: string; issue: string; recommendation: string}>
+    table: TableSchema,
+    inconsistentNaming: Array<{ tableName: string; issue: string; recommendation: string }>
   ): void {
     // Different naming conventions
     const namingStyles = {
       snakeCase: /^[a-z]+(_[a-z]+)*$/,
       camelCase: /^[a-z]+([A-Z][a-z]*)*$/,
       pascalCase: /^[A-Z][a-z]*([A-Z][a-z]*)*$/,
-      kebabCase: /^[a-z]+(-[a-z]+)*$/
+      kebabCase: /^[a-z]+(-[a-z]+)*$/,
     };
-    
+
     // Check table name
     let tableStyle = '';
     for (const [style, pattern] of Object.entries(namingStyles)) {
@@ -233,7 +242,7 @@ export class SchemaAnalyzerService {
         break;
       }
     }
-    
+
     // Check column names
     const columnStyles: Record<string, number> = {};
     for (const column of table.columns) {
@@ -244,63 +253,67 @@ export class SchemaAnalyzerService {
         }
       }
     }
-    
+
     // If there's more than one style, report it
     const styles = Object.keys(columnStyles);
     if (styles.length > 1) {
       inconsistentNaming.push({
         tableName: table.name,
         issue: `Inconsistent column naming conventions: ${styles.join(', ')}`,
-        recommendation: 'Standardize naming conventions across all columns'
+        recommendation: 'Standardize naming conventions across all columns',
       });
     }
-    
+
     // If table style doesn't match dominant column style
     if (tableStyle && styles.length > 0) {
-      const dominantStyle = Object.entries(columnStyles)
-        .sort(([, a], [, b]) => b - a)[0][0];
-      
+      const dominantStyle = Object.entries(columnStyles).sort(([, a], [, b]) => b - a)[0][0];
+
       if (tableStyle !== dominantStyle) {
         inconsistentNaming.push({
           tableName: table.name,
           issue: `Table name uses ${tableStyle}, but columns predominantly use ${dominantStyle}`,
-          recommendation: 'Use consistent naming style for tables and columns'
+          recommendation: 'Use consistent naming style for tables and columns',
         });
       }
     }
   }
-  
+
   /**
    * Check for redundant indexes
    */
   private checkRedundantIndexes(
-    table: TableSchema, 
-    redundantIndexes: Array<{tableName: string; indexName: string; issue: string; recommendation: string}>
+    table: TableSchema,
+    redundantIndexes: Array<{
+      tableName: string;
+      indexName: string;
+      issue: string;
+      recommendation: string;
+    }>
   ): void {
     // If the table has no indexes, nothing to check
     if (!table.indexes || table.indexes.length <= 1) {
       return;
     }
-    
+
     // Check each index against others
     for (let i = 0; i < table.indexes.length; i++) {
       const index = table.indexes[i];
-      
+
       for (let j = i + 1; j < table.indexes.length; j++) {
         const otherIndex = table.indexes[j];
-        
+
         // Skip if one index is unique and the other is not
         if (index.isUnique !== otherIndex.isUnique) {
           continue;
         }
-        
+
         // Case 1: This index's columns are a prefix of the other index
         if (isPrefix(index.columnNames, otherIndex.columnNames)) {
           redundantIndexes.push({
             tableName: table.name,
             indexName: index.name,
             issue: `Index ${index.name} is redundant because its columns are a prefix of index ${otherIndex.name}`,
-            recommendation: `Consider removing index ${index.name}`
+            recommendation: `Consider removing index ${index.name}`,
           });
         }
         // Case 2: Other index's columns are a prefix of this index
@@ -309,40 +322,45 @@ export class SchemaAnalyzerService {
             tableName: table.name,
             indexName: otherIndex.name,
             issue: `Index ${otherIndex.name} is redundant because its columns are a prefix of index ${index.name}`,
-            recommendation: `Consider removing index ${otherIndex.name}`
+            recommendation: `Consider removing index ${otherIndex.name}`,
           });
         }
       }
     }
-    
+
     // Helper function to check if array a is a prefix of array b
     function isPrefix(a: string[], b: string[]): boolean {
       if (a.length > b.length) {
         return false;
       }
-      
+
       for (let i = 0; i < a.length; i++) {
         if (a[i] !== b[i]) {
           return false;
         }
       }
-      
+
       return true;
     }
   }
-  
+
   /**
    * Check for missing indexes on foreign keys
    */
   private checkMissingIndexes(
-    table: TableSchema, 
-    missingIndexes: Array<{tableName: string; columnNames: string[]; issue: string; recommendation: string}>
+    table: TableSchema,
+    missingIndexes: Array<{
+      tableName: string;
+      columnNames: string[];
+      issue: string;
+      recommendation: string;
+    }>
   ): void {
     // If the table has no foreign keys, nothing to check
     if (!table.foreignKeys || table.foreignKeys.length === 0) {
       return;
     }
-    
+
     // Get all indexed columns
     const indexedColumns = new Set<string>();
     if (table.indexes) {
@@ -352,38 +370,38 @@ export class SchemaAnalyzerService {
         }
       }
     }
-    
+
     // Check each foreign key
     for (const fk of table.foreignKeys) {
       // Check if all FK columns are covered by an index
       const missingIndexColumns = fk.columnNames.filter(col => !indexedColumns.has(col));
-      
+
       if (missingIndexColumns.length > 0) {
         missingIndexes.push({
           tableName: table.name,
           columnNames: missingIndexColumns,
           issue: `Foreign key columns ${missingIndexColumns.join(', ')} have no index`,
-          recommendation: `Create an index on columns ${missingIndexColumns.join(', ')} to improve join performance`
+          recommendation: `Create an index on columns ${missingIndexColumns.join(', ')} to improve join performance`,
         });
       }
     }
   }
-  
+
   /**
    * Check for circular dependencies between tables
    */
   private checkCircularDependencies(
-    tables: TableSchema[], 
-    circularDependencies: Array<{tablesInvolved: string[]; issue: string; recommendation: string}>
+    tables: TableSchema[],
+    circularDependencies: Array<{ tablesInvolved: string[]; issue: string; recommendation: string }>
   ): void {
     // Build a graph of table dependencies
     const graph: Record<string, string[]> = {};
-    
+
     // Initialize the graph with empty adjacency lists
     for (const table of tables) {
       graph[table.name] = [];
     }
-    
+
     // Add edges based on foreign keys
     for (const table of tables) {
       if (table.foreignKeys) {
@@ -392,16 +410,16 @@ export class SchemaAnalyzerService {
         }
       }
     }
-    
+
     // Check for cycles using DFS
     const visited: Record<string, boolean> = {};
     const recursionStack: Record<string, boolean> = {};
-    
+
     const detectCycle = (node: string, path: string[]): string[] | null => {
       visited[node] = true;
       recursionStack[node] = true;
       path.push(node);
-      
+
       for (const neighbor of graph[node] || []) {
         if (!visited[neighbor]) {
           const cyclePath = detectCycle(neighbor, [...path]);
@@ -412,11 +430,11 @@ export class SchemaAnalyzerService {
           return [...path, neighbor];
         }
       }
-      
+
       recursionStack[node] = false;
       return null;
     };
-    
+
     // Check each unvisited node
     for (const table of tables) {
       if (!visited[table.name]) {
@@ -425,20 +443,21 @@ export class SchemaAnalyzerService {
           // Find the start of the cycle
           const cycleStart = cyclePath.indexOf(cyclePath[cyclePath.length - 1]);
           const cycle = cyclePath.slice(cycleStart);
-          
+
           circularDependencies.push({
             tablesInvolved: cycle,
             issue: `Circular dependency detected between tables: ${cycle.join(' -> ')}`,
-            recommendation: 'Consider breaking the circular dependency or ensuring proper deletion order'
+            recommendation:
+              'Consider breaking the circular dependency or ensuring proper deletion order',
           });
-          
+
           // No need to check more cycles for this starting node
           break;
         }
       }
     }
   }
-  
+
   /**
    * Identify potential performance issues
    */
@@ -450,9 +469,9 @@ export class SchemaAnalyzerService {
       largeTextColumnsWithoutIndexes: [],
       tablesWithoutPrimaryKey: [],
       inefficientDataTypes: [],
-      highCardinalityTextColumns: []
+      highCardinalityTextColumns: [],
     };
-    
+
     // Process each table
     for (const table of result.tables) {
       // Check for tables without indexes
@@ -460,141 +479,164 @@ export class SchemaAnalyzerService {
         result.performanceIssues.tablesWithoutIndexes.push({
           tableName: table.name,
           issue: 'Table has no indexes',
-          recommendation: 'Add appropriate indexes based on query patterns'
+          recommendation: 'Add appropriate indexes based on query patterns',
         });
       }
-      
+
       // Check for wide indexes (indexes with many columns)
       if (table.indexes) {
         for (const index of table.indexes) {
-          if (index.columnNames.length > 3) { // Arbitrary threshold, could be configurable
+          if (index.columnNames.length > 3) {
+            // Arbitrary threshold, could be configurable
             result.performanceIssues.wideIndexes.push({
               tableName: table.name,
               indexName: index.name,
               issue: `Wide index with ${index.columnNames.length} columns`,
-              recommendation: 'Consider reducing the number of columns in the index'
+              recommendation: 'Consider reducing the number of columns in the index',
             });
           }
         }
       }
-      
+
       // Check for inefficient data types
       for (const column of table.columns) {
         // Check for large text columns without indexes
         if (isTextType(column.type) && isLargeTextType(column.type)) {
-          const isIndexed = table.indexes?.some(idx => 
-            idx.columnNames.includes(column.name)
-          );
-          
+          const isIndexed = table.indexes?.some(idx => idx.columnNames.includes(column.name));
+
           if (!isIndexed) {
             result.performanceIssues.largeTextColumnsWithoutIndexes.push({
               tableName: table.name,
               columnName: column.name,
               issue: `Large text column without an index`,
-              recommendation: 'Consider adding a functional or partial index if this column is used in search conditions'
+              recommendation:
+                'Consider adding a functional or partial index if this column is used in search conditions',
             });
           }
         }
-        
+
         // Check for inefficient data types
         if (isInefficient(column.type, column.name)) {
           result.performanceIssues.inefficientDataTypes.push({
             tableName: table.name,
             columnName: column.name,
             issue: `Potentially inefficient data type: ${column.type}`,
-            recommendation: getRecommendationType(column.type, column.name)
+            recommendation: getRecommendationType(column.type, column.name),
           });
         }
-        
+
         // Check for high cardinality text columns (this is an approximation)
-        if (isTextType(column.type) && 
-            !isLargeTextType(column.type) && 
-            (column.isUnique || isProbablyHighCardinality(column.name))) {
+        if (
+          isTextType(column.type) &&
+          !isLargeTextType(column.type) &&
+          (column.isUnique || isProbablyHighCardinality(column.name))
+        ) {
           result.performanceIssues.highCardinalityTextColumns.push({
             tableName: table.name,
             columnName: column.name,
             issue: `High cardinality text column, potential for inefficient string comparisons`,
-            recommendation: 'Consider using hash indexes or materialized views for frequent queries on this column'
+            recommendation:
+              'Consider using hash indexes or materialized views for frequent queries on this column',
           });
         }
       }
     }
-    
+
     // Helper functions
     function isTextType(type: string): boolean {
       const t = type.toLowerCase();
-      return t.includes('text') || t.includes('char') || t.includes('varchar') || t.includes('string');
+      return (
+        t.includes('text') || t.includes('char') || t.includes('varchar') || t.includes('string')
+      );
     }
-    
+
     function isLargeTextType(type: string): boolean {
       const t = type.toLowerCase();
-      return t === 'text' || t === 'longtext' || t === 'mediumtext' || 
-             t === 'clob' || t.includes('varchar(max)') || t.includes('nvarchar(max)');
+      return (
+        t === 'text' ||
+        t === 'longtext' ||
+        t === 'mediumtext' ||
+        t === 'clob' ||
+        t.includes('varchar(max)') ||
+        t.includes('nvarchar(max)')
+      );
     }
-    
+
     function isInefficient(type: string, columnName: string): boolean {
       const t = type.toLowerCase();
-      
+
       // Inefficient numeric types
-      if ((t === 'float' || t === 'real' || t === 'double') && 
-          (columnName.toLowerCase().includes('price') || 
-           columnName.toLowerCase().includes('amount') || 
-           columnName.toLowerCase().includes('cost'))) {
+      if (
+        (t === 'float' || t === 'real' || t === 'double') &&
+        (columnName.toLowerCase().includes('price') ||
+          columnName.toLowerCase().includes('amount') ||
+          columnName.toLowerCase().includes('cost'))
+      ) {
         return true;
       }
-      
+
       // Inefficient character types
       if (t.includes('varchar') && !t.includes('(') && !t.includes('max')) {
         return true;
       }
-      
+
       // Inefficient date types
-      if (t === 'datetime' && 
-          (columnName.toLowerCase().includes('date') && !columnName.toLowerCase().includes('time'))) {
+      if (
+        t === 'datetime' &&
+        columnName.toLowerCase().includes('date') &&
+        !columnName.toLowerCase().includes('time')
+      ) {
         return true;
       }
-      
+
       return false;
     }
-    
+
     function getRecommendationType(type: string, columnName: string): string {
       const t = type.toLowerCase();
-      
+
       // Recommendations for numeric types
-      if ((t === 'float' || t === 'real' || t === 'double') && 
-          (columnName.toLowerCase().includes('price') || 
-           columnName.toLowerCase().includes('amount') || 
-           columnName.toLowerCase().includes('cost'))) {
+      if (
+        (t === 'float' || t === 'real' || t === 'double') &&
+        (columnName.toLowerCase().includes('price') ||
+          columnName.toLowerCase().includes('amount') ||
+          columnName.toLowerCase().includes('cost'))
+      ) {
         return 'For monetary values, consider using a fixed-point type like DECIMAL/NUMERIC to avoid rounding errors';
       }
-      
+
       // Recommendations for character types
       if (t.includes('varchar') && !t.includes('(') && !t.includes('max')) {
         return 'Specify a maximum length for the VARCHAR column to optimize storage';
       }
-      
+
       // Recommendations for date types
-      if (t === 'datetime' && 
-          (columnName.toLowerCase().includes('date') && !columnName.toLowerCase().includes('time'))) {
+      if (
+        t === 'datetime' &&
+        columnName.toLowerCase().includes('date') &&
+        !columnName.toLowerCase().includes('time')
+      ) {
         return 'If only date precision is needed, consider using DATE type instead of DATETIME';
       }
-      
+
       return 'Consider reviewing this data type for efficiency';
     }
-    
+
     function isProbablyHighCardinality(columnName: string): boolean {
       const name = columnName.toLowerCase();
-      return name.includes('name') || 
-             name.includes('title') || 
-             name.includes('email') || 
-             name.includes('address') || 
-             name.includes('key') || 
-             name.includes('token') || 
-             name.includes('url') || 
-             name.includes('path');
+      return (
+        name.includes('name') ||
+        name.includes('title') ||
+        name.includes('email') ||
+        name.includes('address') ||
+        name.includes('key') ||
+        name.includes('token') ||
+        name.includes('url') ||
+        name.includes('path')
+      );
     }
   }
-  
+
   /**
    * Generate AI-powered recommendations for schema optimization
    */
@@ -602,12 +644,11 @@ export class SchemaAnalyzerService {
     if (!this.llmService) {
       return;
     }
-    
+
     try {
       // Log that we're generating AI recommendations
-      await this.log('schema_analysis', 'info', 
-        'Generating AI-powered schema recommendations');
-      
+      await this.log('schema_analysis', 'info', 'Generating AI-powered schema recommendations');
+
       // Prepare a simplified version of the schema for the AI
       const simplifiedSchema = {
         databaseType: result.databaseType,
@@ -618,17 +659,17 @@ export class SchemaAnalyzerService {
             type: col.type,
             nullable: col.nullable,
             isPrimaryKey: col.isPrimaryKey,
-            isUnique: col.isUnique
+            isUnique: col.isUnique,
           })),
           foreignKeys: table.foreignKeys,
-          primaryKey: table.primaryKey
+          primaryKey: table.primaryKey,
         })),
         views: result.views.map(view => ({
           name: view.name,
-          definition: view.definition
-        }))
+          definition: view.definition,
+        })),
       };
-      
+
       // Create prompts for different AI analysis tasks
       const indexOptimizationPrompt = `
         Analyze this database schema and suggest optimizations for indexes:
@@ -665,7 +706,7 @@ export class SchemaAnalyzerService {
           ]
         }
       `;
-      
+
       const dataModelImprovementsPrompt = `
         Analyze this database schema and suggest improvements to the data model:
         ${JSON.stringify(simplifiedSchema, null, 2)}
@@ -713,13 +754,13 @@ export class SchemaAnalyzerService {
           ]
         }
       `;
-      
+
       // Make parallel API calls to the LLM service
       const [indexOptimizationResponse, dataModelResponse] = await Promise.all([
         this.llmService.generateContent(indexOptimizationPrompt),
-        this.llmService.generateContent(dataModelImprovementsPrompt)
+        this.llmService.generateContent(dataModelImprovementsPrompt),
       ]);
-      
+
       // Parse the responses
       try {
         const indexOptimizations = JSON.parse(indexOptimizationResponse);
@@ -729,7 +770,7 @@ export class SchemaAnalyzerService {
       } catch (parseError) {
         console.error('Error parsing index optimization response:', parseError);
       }
-      
+
       try {
         const dataModelImprovements = JSON.parse(dataModelResponse);
         result.aiNormalizationIssues = dataModelImprovements.normalizationIssues || [];
@@ -739,42 +780,45 @@ export class SchemaAnalyzerService {
       } catch (parseError) {
         console.error('Error parsing data model improvements response:', parseError);
       }
-      
+
       // Add AI recommendations to individual tables
       for (const table of result.tables) {
         // Add suggested indexes for this table
-        table.aiSuggestedIndexes = result.aiSuggestedIndexes?.filter(idx => 
-          idx.tableName === table.name
-        ) || [];
-        
+        table.aiSuggestedIndexes =
+          result.aiSuggestedIndexes?.filter(idx => idx.tableName === table.name) || [];
+
         // Add suggested data type improvements for this table
-        table.aiSuggestedDataTypes = result.aiDataTypeImprovements?.filter(imp => 
-          imp.tableName === table.name
-        ) || [];
-        
+        table.aiSuggestedDataTypes =
+          result.aiDataTypeImprovements?.filter(imp => imp.tableName === table.name) || [];
+
         // Add normalization suggestions for this table
-        table.aiNormalizationSuggestions = result.aiNormalizationIssues?.filter(issue => 
-          issue.tableName === table.name
-        ) || [];
-        
+        table.aiNormalizationSuggestions =
+          result.aiNormalizationIssues?.filter(issue => issue.tableName === table.name) || [];
+
         // Add suggested columns (from suggested tables that might relate to this one)
         table.aiSuggestedColumns = [];
-        
+
         // Add suggested relationships
         table.aiSuggestedRelationships = [];
       }
-      
+
       // Log completion of AI recommendations
-      await this.log('schema_analysis', 'info', 
-        'Completed generating AI-powered schema recommendations');
-      
+      await this.log(
+        'schema_analysis',
+        'info',
+        'Completed generating AI-powered schema recommendations'
+      );
     } catch (error) {
       // Log the error but don't halt the process
-      await this.log('schema_analysis', 'warning', 
-        `Error generating AI recommendations: ${error.message}`, { error: error.stack });
+      await this.log(
+        'schema_analysis',
+        'warning',
+        `Error generating AI recommendations: ${error.message}`,
+        { error: error.stack }
+      );
     }
   }
-  
+
   /**
    * Test a database connection
    */
@@ -784,37 +828,40 @@ export class SchemaAnalyzerService {
   ): Promise<ConnectionTestResult> {
     try {
       // Log the connection test start
-      await this.log('connection_test', 'info', 
-        `Testing connection to ${databaseType} database`);
-      
+      await this.log('connection_test', 'info', `Testing connection to ${databaseType} database`);
+
       // Query database info using the appropriate adapter with testConnectionOnly flag
       const result = await queryDatabaseSchema(connectionString, databaseType, {
-        testConnectionOnly: true
+        testConnectionOnly: true,
       });
-      
+
       // Log the connection test completion
-      await this.log('connection_test', 'info', 
-        `Successfully connected to ${databaseType} database: ${result.databaseInfo.name}`);
-      
+      await this.log(
+        'connection_test',
+        'info',
+        `Successfully connected to ${databaseType} database: ${result.databaseInfo.name}`
+      );
+
       return {
         status: ConnectionStatus.Success,
         databaseName: result.databaseInfo.name,
         databaseVersion: result.databaseInfo.version,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     } catch (error) {
       // Log the connection error
-      await this.log('connection_test', 'error', 
-        `Connection test failed: ${error.message}`, { error: error.stack });
-      
+      await this.log('connection_test', 'error', `Connection test failed: ${error.message}`, {
+        error: error.stack,
+      });
+
       return {
         status: ConnectionStatus.Failed,
         error: error.message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
   }
-  
+
   /**
    * Get information about a database type
    */
@@ -828,19 +875,27 @@ export class SchemaAnalyzerService {
           'JSON support',
           'Full-text search',
           'Geospatial data support',
-          'Advanced indexing options'
+          'Advanced indexing options',
         ],
         connectionStringTemplate: 'postgresql://username:password@host:port/database',
         commonDrivers: ['pg', 'node-postgres', 'sequelize-pg', 'prisma-postgresql'],
         datatypes: {
           text: ['varchar', 'text', 'char'],
-          numeric: ['integer', 'smallint', 'bigint', 'decimal', 'numeric', 'real', 'double precision'],
+          numeric: [
+            'integer',
+            'smallint',
+            'bigint',
+            'decimal',
+            'numeric',
+            'real',
+            'double precision',
+          ],
           boolean: ['boolean'],
           datetime: ['date', 'time', 'timestamp', 'timestamptz', 'interval'],
           json: ['json', 'jsonb'],
           binary: ['bytea'],
-          special: ['uuid', 'inet', 'cidr', 'macaddr', 'point', 'line', 'circle']
-        }
+          special: ['uuid', 'inet', 'cidr', 'macaddr', 'point', 'line', 'circle'],
+        },
       },
       [DatabaseType.MySQL]: {
         name: 'MySQL',
@@ -850,7 +905,7 @@ export class SchemaAnalyzerService {
           'JSON support',
           'Full-text search',
           'Replication',
-          'Partitioning'
+          'Partitioning',
         ],
         connectionStringTemplate: 'mysql://username:password@host:port/database',
         commonDrivers: ['mysql2', 'sequelize-mysql', 'prisma-mysql'],
@@ -861,8 +916,8 @@ export class SchemaAnalyzerService {
           datetime: ['DATE', 'TIME', 'DATETIME', 'TIMESTAMP', 'YEAR'],
           json: ['JSON'],
           binary: ['BLOB', 'BINARY'],
-          special: ['GEOMETRY', 'POINT', 'LINESTRING', 'POLYGON']
-        }
+          special: ['GEOMETRY', 'POINT', 'LINESTRING', 'POLYGON'],
+        },
       },
       [DatabaseType.SQLite]: {
         name: 'SQLite',
@@ -872,7 +927,7 @@ export class SchemaAnalyzerService {
           'Zero configuration',
           'Single file database',
           'Cross-platform',
-          'Self-contained'
+          'Self-contained',
         ],
         connectionStringTemplate: 'file:path/to/database.sqlite',
         commonDrivers: ['sqlite3', 'sequelize-sqlite', 'prisma-sqlite'],
@@ -883,20 +938,21 @@ export class SchemaAnalyzerService {
           datetime: ['TEXT', 'INTEGER'],
           json: ['TEXT'],
           binary: ['BLOB'],
-          special: []
-        }
+          special: [],
+        },
       },
       [DatabaseType.SQLServer]: {
         name: 'SQL Server',
-        description: 'Microsoft\'s enterprise relational database management system',
+        description: "Microsoft's enterprise relational database management system",
         features: [
           'ACID compliance',
           'JSON support',
           'Full-text search',
           'In-memory OLTP',
-          'Columnstore indexes'
+          'Columnstore indexes',
         ],
-        connectionStringTemplate: 'Server=host,port;Database=database;User Id=username;Password=password;',
+        connectionStringTemplate:
+          'Server=host,port;Database=database;User Id=username;Password=password;',
         commonDrivers: ['mssql', 'tedious', 'sequelize-mssql', 'prisma-sqlserver'],
         datatypes: {
           text: ['VARCHAR', 'NVARCHAR', 'CHAR', 'NCHAR', 'TEXT', 'NTEXT'],
@@ -905,8 +961,8 @@ export class SchemaAnalyzerService {
           datetime: ['DATE', 'TIME', 'DATETIME', 'DATETIME2', 'DATETIMEOFFSET', 'SMALLDATETIME'],
           json: ['NVARCHAR(MAX)'],
           binary: ['BINARY', 'VARBINARY', 'IMAGE'],
-          special: ['UNIQUEIDENTIFIER', 'XML', 'HIERARCHYID', 'GEOGRAPHY', 'GEOMETRY']
-        }
+          special: ['UNIQUEIDENTIFIER', 'XML', 'HIERARCHYID', 'GEOGRAPHY', 'GEOMETRY'],
+        },
       },
       [DatabaseType.MongoDB]: {
         name: 'MongoDB',
@@ -916,7 +972,7 @@ export class SchemaAnalyzerService {
           'Schemaless',
           'High availability',
           'Horizontal scaling',
-          'Aggregation framework'
+          'Aggregation framework',
         ],
         connectionStringTemplate: 'mongodb://username:password@host:port/database',
         commonDrivers: ['mongodb', 'mongoose', 'prisma-mongodb'],
@@ -927,18 +983,18 @@ export class SchemaAnalyzerService {
           datetime: ['Date'],
           json: ['Object', 'Array'],
           binary: ['Buffer', 'Binary'],
-          special: ['ObjectId', 'RegExp', 'Symbol']
-        }
+          special: ['ObjectId', 'RegExp', 'Symbol'],
+        },
       },
       [DatabaseType.Oracle]: {
         name: 'Oracle',
-        description: 'Oracle\'s enterprise relational database management system',
+        description: "Oracle's enterprise relational database management system",
         features: [
           'ACID compliance',
           'High availability',
           'Partitioning',
           'Parallel processing',
-          'Advanced security features'
+          'Advanced security features',
         ],
         connectionStringTemplate: 'oracle://username:password@host:port/service',
         commonDrivers: ['oracledb', 'node-oracledb', 'sequelize-oracle'],
@@ -949,18 +1005,18 @@ export class SchemaAnalyzerService {
           datetime: ['DATE', 'TIMESTAMP', 'INTERVAL YEAR TO MONTH', 'INTERVAL DAY TO SECOND'],
           json: ['CLOB'],
           binary: ['BLOB', 'BFILE', 'RAW', 'LONG RAW'],
-          special: ['XMLTYPE', 'ROWID', 'UROWID']
-        }
+          special: ['XMLTYPE', 'ROWID', 'UROWID'],
+        },
       },
       [DatabaseType.DynamoDB]: {
         name: 'DynamoDB',
-        description: 'Amazon\'s fully managed NoSQL database service',
+        description: "Amazon's fully managed NoSQL database service",
         features: [
           'Fully managed',
           'Serverless',
           'Auto scaling',
           'Global tables',
-          'Point-in-time recovery'
+          'Point-in-time recovery',
         ],
         connectionStringTemplate: 'AWS configuration required',
         commonDrivers: ['aws-sdk', 'dynamodb-doc', 'dynamoose'],
@@ -971,8 +1027,8 @@ export class SchemaAnalyzerService {
           datetime: ['String'],
           json: ['Map', 'List'],
           binary: ['Binary'],
-          special: ['Set']
-        }
+          special: ['Set'],
+        },
       },
       [DatabaseType.Cassandra]: {
         name: 'Cassandra',
@@ -982,9 +1038,10 @@ export class SchemaAnalyzerService {
           'Linear scalability',
           'Fault-tolerant',
           'Tunable consistency',
-          'CQL query language'
+          'CQL query language',
         ],
-        connectionStringTemplate: 'cassandra-contact-points=host1,host2;cassandra-port=port;cassandra-keyspace=keyspace',
+        connectionStringTemplate:
+          'cassandra-contact-points=host1,host2;cassandra-port=port;cassandra-keyspace=keyspace',
         commonDrivers: ['cassandra-driver', 'datastax-driver'],
         datatypes: {
           text: ['text', 'varchar', 'ascii'],
@@ -993,21 +1050,23 @@ export class SchemaAnalyzerService {
           datetime: ['timestamp', 'date', 'time'],
           json: ['map', 'list', 'set'],
           binary: ['blob'],
-          special: ['uuid', 'timeuuid', 'inet', 'counter']
-        }
+          special: ['uuid', 'timeuuid', 'inet', 'counter'],
+        },
+      },
+    };
+
+    return (
+      databaseTypeInfo[databaseType] || {
+        name: databaseType,
+        description: 'Database type information not available',
+        features: [],
+        connectionStringTemplate: '',
+        commonDrivers: [],
+        datatypes: {},
       }
-    };
-    
-    return databaseTypeInfo[databaseType] || {
-      name: databaseType,
-      description: 'Database type information not available',
-      features: [],
-      connectionStringTemplate: '',
-      commonDrivers: [],
-      datatypes: {}
-    };
+    );
   }
-  
+
   /**
    * Get supported database types
    */
@@ -1017,92 +1076,87 @@ export class SchemaAnalyzerService {
         id: DatabaseType.PostgreSQL,
         name: 'PostgreSQL',
         description: 'An advanced open-source relational database management system',
-        supportLevel: 'Full'
+        supportLevel: 'Full',
       },
       {
         id: DatabaseType.MySQL,
         name: 'MySQL',
         description: 'A popular open-source relational database management system',
-        supportLevel: 'Full'
+        supportLevel: 'Full',
       },
       {
         id: DatabaseType.SQLite,
         name: 'SQLite',
         description: 'A lightweight, file-based relational database',
-        supportLevel: 'Full'
+        supportLevel: 'Full',
       },
       {
         id: DatabaseType.SQLServer,
         name: 'SQL Server',
-        description: 'Microsoft\'s enterprise relational database management system',
-        supportLevel: 'Full'
+        description: "Microsoft's enterprise relational database management system",
+        supportLevel: 'Full',
       },
       {
         id: DatabaseType.MongoDB,
         name: 'MongoDB',
         description: 'A document-oriented NoSQL database',
-        supportLevel: 'Full'
+        supportLevel: 'Full',
       },
       {
         id: DatabaseType.Oracle,
         name: 'Oracle',
-        description: 'Oracle\'s enterprise relational database management system',
-        supportLevel: 'Partial'
+        description: "Oracle's enterprise relational database management system",
+        supportLevel: 'Partial',
       },
       {
         id: DatabaseType.DynamoDB,
         name: 'DynamoDB',
-        description: 'Amazon\'s fully managed NoSQL database service',
-        supportLevel: 'Partial'
+        description: "Amazon's fully managed NoSQL database service",
+        supportLevel: 'Partial',
       },
       {
         id: DatabaseType.Cassandra,
         name: 'Cassandra',
         description: 'A distributed NoSQL database designed for scalability and high availability',
-        supportLevel: 'Partial'
+        supportLevel: 'Partial',
       },
       {
         id: DatabaseType.Redis,
         name: 'Redis',
         description: 'An in-memory data structure store',
-        supportLevel: 'Basic'
+        supportLevel: 'Basic',
       },
       {
         id: DatabaseType.ElasticSearch,
         name: 'Elasticsearch',
         description: 'A distributed search and analytics engine',
-        supportLevel: 'Basic'
+        supportLevel: 'Basic',
       },
       {
         id: DatabaseType.Neo4j,
         name: 'Neo4j',
         description: 'A graph database management system',
-        supportLevel: 'Basic'
+        supportLevel: 'Basic',
       },
       {
         id: DatabaseType.Firestore,
         name: 'Firestore',
-        description: 'Google\'s flexible, scalable database for mobile, web, and server development',
-        supportLevel: 'Basic'
+        description: "Google's flexible, scalable database for mobile, web, and server development",
+        supportLevel: 'Basic',
       },
       {
         id: DatabaseType.CosmosDB,
         name: 'Cosmos DB',
-        description: 'Microsoft\'s globally distributed, multi-model database service',
-        supportLevel: 'Basic'
-      }
+        description: "Microsoft's globally distributed, multi-model database service",
+        supportLevel: 'Basic',
+      },
     ];
   }
-  
+
   /**
    * Log a message
    */
-  private async log(
-    stage: string,
-    level: string,
-    message: string,
-    details?: any
-  ): Promise<void> {
+  private async log(stage: string, level: string, message: string, details?: any): Promise<void> {
     try {
       await this.storage.createDatabaseConversionLog({
         projectId: 'system',
@@ -1110,7 +1164,7 @@ export class SchemaAnalyzerService {
         stage,
         message,
         details,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     } catch (error) {
       console.error('Error logging to database conversion logs:', error);

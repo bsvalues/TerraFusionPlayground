@@ -3,17 +3,10 @@
   "version": "1.0.0",
   "description": "Git tools plugin for CodeAgent with diff analyzer and commit helper",
   "author": "CodeAgent Team",
-  "tools": [
-    "tools/gitDiffAnalyzer.js",
-    "tools/gitCommitHelper.js"
-  ],
+  "tools": ["tools/gitDiffAnalyzer.js", "tools/gitCommitHelper.js"],
   "hooks": {
-    "beforeCommand": [
-      "hooks/beforeCommand.js"
-    ],
-    "afterCommand": [
-      "hooks/afterCommand.js"
-    ]
+    "beforeCommand": ["hooks/beforeCommand.js"],
+    "afterCommand": ["hooks/afterCommand.js"]
   },
   "commands": [],
   "tags": ["git", "scm", "version-control", "development"],

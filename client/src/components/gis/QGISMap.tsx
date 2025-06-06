@@ -32,14 +32,14 @@ const QGISMap = ({
   showControls = true,
   interactive = true,
   baseMapType: initialBaseMapType = 'osm',
-  onMapInit
+  onMapInit,
 }: QGISMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const map = useRef<Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [showQGISFeatures, setShowQGISFeatures] = useState(false);
   // Use context baseMapType instead of local state to ensure synchronization across components
-  
+
   const {
     center,
     setCenter,
@@ -52,7 +52,7 @@ const QGISMap = ({
     visibleLayers,
     layerOpacity,
     baseMapType: contextBaseMapType,
-    setBaseMapType: contextSetBaseMapType
+    setBaseMapType: contextSetBaseMapType,
   } = useGIS();
 
   // Convert center coordinates from [longitude, latitude] to OpenLayers projection
@@ -66,43 +66,45 @@ const QGISMap = ({
           source: new XYZ({
             url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             maxZoom: 19,
-            attributions: 'Tiles © <a href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer">ArcGIS</a>'
-          })
+            attributions:
+              'Tiles © <a href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer">ArcGIS</a>',
+          }),
         });
       case 'terrain':
         return new TileLayer({
           source: new XYZ({
             url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
             maxZoom: 19,
-            attributions: 'Tiles © <a href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer">ArcGIS</a>'
-          })
+            attributions:
+              'Tiles © <a href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer">ArcGIS</a>',
+          }),
         });
       case 'osm':
       default:
         return new TileLayer({
-          source: new OSM()
+          source: new OSM(),
         });
     }
   };
-  
+
   // Initialize map
   useEffect(() => {
     if (map.current) return; // initialize map only once
-    
+
     if (mapRef.current) {
       // Create base layer
       const baseLayer = createBaseLayer(contextBaseMapType);
-      
+
       // Create vector source for GIS features
       const vectorSource = new VectorSource({
-        format: new GeoJSON()
+        format: new GeoJSON(),
       });
-      
+
       // Create vector layer for GIS features
       const vectorLayer = new VectorLayer({
-        source: vectorSource
+        source: vectorSource,
       });
-      
+
       // Create the map
       map.current = new Map({
         target: mapRef.current,
@@ -111,23 +113,23 @@ const QGISMap = ({
           center: olCenter,
           zoom: zoom,
           minZoom: 2,
-          maxZoom: 20
+          maxZoom: 20,
         }),
         controls: defaultControls({
           zoom: showControls,
           rotate: showControls,
-          attribution: true
-        })
+          attribution: true,
+        }),
       });
-      
+
       // Set map as loaded
       setMapLoaded(true);
-      
+
       // Call onMapInit callback if provided
       if (onMapInit && map.current) {
         onMapInit(map.current);
       }
-      
+
       // Update center and zoom when view changes
       map.current.getView().on('change:center', () => {
         if (map.current) {
@@ -140,14 +142,14 @@ const QGISMap = ({
           }
         }
       });
-      
+
       map.current.getView().on('change:resolution', () => {
         if (map.current) {
           setZoom(map.current.getView().getZoom() || zoom);
         }
       });
     }
-    
+
     return () => {
       if (map.current) {
         map.current.setTarget(undefined);
@@ -163,7 +165,7 @@ const QGISMap = ({
       view.animate({
         center: olCenter,
         zoom: zoom,
-        duration: 250
+        duration: 250,
       });
     }
   }, [center, zoom]);
@@ -182,7 +184,7 @@ const QGISMap = ({
       // This would be where you'd update layer opacity
     }
   }, [layerOpacity, mapLoaded]);
-  
+
   // Handle base map type changes
   useEffect(() => {
     if (map.current && mapLoaded) {
@@ -197,21 +199,26 @@ const QGISMap = ({
   }, [contextBaseMapType, mapLoaded]);
 
   return (
-    <div className={cn("relative h-full w-full bg-gray-100 tf-map-container", className, 
-      isFullScreen ? "fixed inset-0 z-50" : "")}>
+    <div
+      className={cn(
+        'relative h-full w-full bg-gray-100 tf-map-container',
+        className,
+        isFullScreen ? 'fixed inset-0 z-50' : ''
+      )}
+    >
       {/* Map Container */}
       <div ref={mapRef} className="h-full w-full" />
-      
+
       {/* QGIS Open Source Badge */}
       <div className="tf-map-overlay top-left tf-qgis-badge">
         <span className="text-green-600 mr-1">▲</span> QGIS Open Source
       </div>
-      
+
       {/* TerraFusion Attribution */}
       <div className="tf-map-attribution">
         TerraFusion | Powered by QGIS | © OpenStreetMap contributors
       </div>
-      
+
       {/* Map Controls */}
       {showControls && (
         <div className="absolute bottom-4 right-4 flex flex-col gap-2 tf-zoom-control">
@@ -223,9 +230,9 @@ const QGISMap = ({
           >
             <Maximize className="h-4 w-4" />
           </Button>
-          
+
           <div className="tf-zoom-divider"></div>
-          
+
           <Button
             variant="outline"
             size="icon"
@@ -234,9 +241,9 @@ const QGISMap = ({
           >
             <Layers className="h-4 w-4" />
           </Button>
-          
+
           <div className="tf-zoom-divider"></div>
-          
+
           <Button
             variant="outline"
             size="icon"
@@ -245,16 +252,16 @@ const QGISMap = ({
               if (map.current) {
                 map.current.getView().animate({
                   rotation: 0,
-                  duration: 250
+                  duration: 250,
                 });
               }
             }}
           >
             <Compass className="h-4 w-4" />
           </Button>
-          
+
           <div className="tf-zoom-divider"></div>
-          
+
           <Button
             variant="outline"
             size="icon"
@@ -265,32 +272,25 @@ const QGISMap = ({
           </Button>
         </div>
       )}
-      
+
       {/* QGIS Features Showcase Panel */}
       {showQGISFeatures && (
-        <QGISFeaturesShowcase
-          map={map.current}
-          onClose={() => setShowQGISFeatures(false)}
-        />
+        <QGISFeaturesShowcase map={map.current} onClose={() => setShowQGISFeatures(false)} />
       )}
-      
+
       {/* Add Property Layer if map is loaded */}
       {mapLoaded && map.current && (
-        <PropertyLayer 
-          map={map.current}
-          visualizationMode="value"
-          opacity={0.7} 
-        />
+        <PropertyLayer map={map.current} visualizationMode="value" opacity={0.7} />
       )}
-      
+
       {/* Layer Control Panel */}
       {isLayersPanelOpen && (
         <div className="absolute left-4 top-12 bg-white p-4 rounded shadow-lg w-64">
           <h3 className="font-medium mb-3 text-primary flex items-center">
-            <Layers className="h-4 w-4 mr-2" /> 
+            <Layers className="h-4 w-4 mr-2" />
             Map Controls
           </h3>
-          
+
           {/* Base Map Type Selector */}
           <div className="mb-4">
             <div className="tf-layer-group-header mb-2">Base Map Type</div>
@@ -315,75 +315,79 @@ const QGISMap = ({
               </button>
             </div>
           </div>
-          
+
           {/* Layer groups */}
           <div className="space-y-3">
             <div className="tf-layer-group">
               <div className="tf-layer-group-header">Base Maps</div>
               <div className="space-y-2">
-                {Object.keys(visibleLayers).slice(0, 2).map((layerId) => (
-                  <div key={layerId} className="flex flex-col space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">{layerId}</span>
-                      <input
-                        type="checkbox"
-                        checked={visibleLayers[layerId]}
-                        onChange={() => {
-                          // Toggle layer visibility
+                {Object.keys(visibleLayers)
+                  .slice(0, 2)
+                  .map(layerId => (
+                    <div key={layerId} className="flex flex-col space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">{layerId}</span>
+                        <input
+                          type="checkbox"
+                          checked={visibleLayers[layerId]}
+                          onChange={() => {
+                            // Toggle layer visibility
+                          }}
+                        />
+                      </div>
+                      <Slider
+                        value={[layerOpacity[layerId] || 100]}
+                        min={0}
+                        max={100}
+                        step={1}
+                        className="mt-2"
+                        onValueChange={value => {
+                          // Update layer opacity
                         }}
                       />
                     </div>
-                    <Slider
-                      value={[layerOpacity[layerId] || 100]}
-                      min={0}
-                      max={100}
-                      step={1}
-                      className="mt-2"
-                      onValueChange={(value) => {
-                        // Update layer opacity
-                      }}
-                    />
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
-            
+
             <div className="tf-layer-group">
               <div className="tf-layer-group-header">Property Data</div>
               <div className="space-y-2">
-                {Object.keys(visibleLayers).slice(2).map((layerId) => (
-                  <div key={layerId} className="flex flex-col space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">{layerId}</span>
-                      <input
-                        type="checkbox"
-                        checked={visibleLayers[layerId]}
-                        onChange={() => {
-                          // Toggle layer visibility
+                {Object.keys(visibleLayers)
+                  .slice(2)
+                  .map(layerId => (
+                    <div key={layerId} className="flex flex-col space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">{layerId}</span>
+                        <input
+                          type="checkbox"
+                          checked={visibleLayers[layerId]}
+                          onChange={() => {
+                            // Toggle layer visibility
+                          }}
+                        />
+                      </div>
+                      <Slider
+                        value={[layerOpacity[layerId] || 100]}
+                        min={0}
+                        max={100}
+                        step={1}
+                        className="mt-2"
+                        onValueChange={value => {
+                          // Update layer opacity
                         }}
                       />
                     </div>
-                    <Slider
-                      value={[layerOpacity[layerId] || 100]}
-                      min={0}
-                      max={100}
-                      step={1}
-                      className="mt-2"
-                      onValueChange={(value) => {
-                        // Update layer opacity
-                      }}
-                    />
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           </div>
-          
+
           {/* QGIS Features Reminder */}
           <div className="mt-4 text-xs text-gray-600">
             <p className="italic">Using QGIS open-source GIS technology</p>
             <p className="mt-1 flex items-center">
-              <span className="text-green-600 mr-1">▲</span> 
+              <span className="text-green-600 mr-1">▲</span>
               TerraFusion leverages QGIS for maximum flexibility and customization
             </p>
           </div>

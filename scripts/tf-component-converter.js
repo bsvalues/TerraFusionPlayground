@@ -2,7 +2,7 @@
 
 /**
  * TerraFusion Component Converter
- * 
+ *
  * This utility helps convert existing components to use TerraFusion styling.
  * It analyzes component files and suggests TerraFusion-compatible styling changes.
  */
@@ -69,25 +69,25 @@ const colorTokenMappings = {
   '#1E88E5': 'var(--color-primary-blue-light)',
   '#1565C0': 'var(--color-primary-blue-dark)',
   'rgb(25, 118, 210)': 'var(--color-primary-blue)',
-  
+
   // Greens
   '#388E3C': 'var(--color-primary-green)',
   '#43A047': 'var(--color-primary-green-light)',
   '#2E7D32': 'var(--color-primary-green-dark)',
   'rgb(56, 142, 60)': 'var(--color-primary-green)',
-  
+
   // Oranges
   '#FF8000': 'var(--color-primary-orange)',
   '#FF9933': 'var(--color-primary-orange-light)',
   '#CC6600': 'var(--color-primary-orange-dark)',
   'rgb(255, 128, 0)': 'var(--color-primary-orange)',
-  
+
   // Reds
   '#E64A19': 'var(--color-primary-red)',
   '#FF5722': 'var(--color-primary-red-light)',
   '#BF360C': 'var(--color-primary-red-dark)',
   'rgb(230, 74, 25)': 'var(--color-primary-red)',
-  
+
   // Grays
   '#212529': 'var(--color-black)',
   '#495057': 'var(--color-primary-gray-dark)',
@@ -96,13 +96,13 @@ const colorTokenMappings = {
   '#DEE2E6': 'var(--color-secondary-gray)',
   '#E9ECEF': 'var(--color-secondary-gray-light)',
   '#F8F9FA': 'var(--color-secondary-gray-ultralight)',
-  
+
   // System colors
   '#28A745': 'var(--color-success)',
   '#FFC107': 'var(--color-warning)',
   '#DC3545': 'var(--color-error)',
   '#17A2B8': 'var(--color-info)',
-  
+
   // Common UI colors
   '#FFFFFF': 'var(--color-white)',
   '#F5F5F5': 'var(--color-background-light)',
@@ -131,7 +131,7 @@ const tailwindClassMappings = {
   'bg-gray-700': 'bg-primary-gray-dark',
   'bg-gray-900': 'bg-black',
   'bg-white': 'bg-white',
-  
+
   // Text color classes
   'text-blue-500': 'text-primary-blue',
   'text-blue-600': 'text-primary-blue-dark',
@@ -152,7 +152,7 @@ const tailwindClassMappings = {
   'text-gray-700': 'text-primary-gray-dark',
   'text-gray-900': 'text-black',
   'text-white': 'text-white',
-  
+
   // Border color classes
   'border-blue-500': 'border-primary-blue',
   'border-blue-600': 'border-primary-blue-dark',
@@ -173,7 +173,7 @@ const tailwindClassMappings = {
   'border-gray-700': 'border-primary-gray-dark',
   'border-gray-900': 'border-black',
   'border-white': 'border-white',
-  
+
   // Font families
   'font-sans': 'tf-font-body',
   'font-serif': 'tf-font-display',
@@ -185,7 +185,7 @@ function processFile(filePath) {
   if (verbose) {
     console.log(chalk.blue(`Processing file: ${filePath}`));
   }
-  
+
   const fileExt = path.extname(filePath).toLowerCase();
   if (!['.js', '.jsx', '.ts', '.tsx', '.css', '.scss'].includes(fileExt)) {
     if (verbose) {
@@ -193,12 +193,12 @@ function processFile(filePath) {
     }
     return;
   }
-  
+
   try {
     let content = fs.readFileSync(filePath, 'utf8');
     let modifiedContent = content;
     let changes = [];
-    
+
     // Process hex color replacements
     for (const [hexColor, token] of Object.entries(colorTokenMappings)) {
       if (content.includes(hexColor)) {
@@ -207,7 +207,7 @@ function processFile(filePath) {
         changes.push(`${chalk.red(hexColor)} → ${chalk.green(token)}`);
       }
     }
-    
+
     // Process Tailwind class name replacements
     for (const [oldClass, newClass] of Object.entries(tailwindClassMappings)) {
       // Look for the class name in various contexts (e.g., in className, in cn() function, etc.)
@@ -217,29 +217,29 @@ function processFile(filePath) {
         `${oldClass}'`, // Class followed by single quote
         `${oldClass}\``, // Class followed by backtick
       ];
-      
+
       for (const pattern of patterns) {
         const regex = new RegExp(pattern, 'g');
         if (regex.test(modifiedContent)) {
-          modifiedContent = modifiedContent.replace(regex, (match) => {
+          modifiedContent = modifiedContent.replace(regex, match => {
             return match.replace(oldClass, newClass);
           });
           changes.push(`${chalk.red(oldClass)} → ${chalk.green(newClass)}`);
         }
       }
     }
-    
+
     // Check if any changes were found
     if (changes.length > 0) {
       console.log(chalk.green(`✓ ${filePath} (${changes.length} changes)`));
-      
+
       if (verbose) {
         console.log(chalk.yellow('Changes:'));
         changes.forEach((change, i) => {
           console.log(`  ${i + 1}. ${change}`);
         });
       }
-      
+
       // Apply changes if not in dry run mode
       if (!dryRun) {
         fs.writeFileSync(filePath, modifiedContent, 'utf8');
@@ -260,13 +260,13 @@ function processDirectory(dirPath) {
   if (verbose) {
     console.log(chalk.blue(`Scanning directory: ${dirPath}`));
   }
-  
+
   try {
     const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry.name);
-      
+
       if (entry.isDirectory()) {
         // Skip node_modules and hidden directories
         if (entry.name !== 'node_modules' && !entry.name.startsWith('.')) {
@@ -288,10 +288,10 @@ function main() {
   console.log(chalk.cyan(`Mode: ${dryRun ? 'Dry run (preview only)' : 'Apply changes'}`));
   console.log(chalk.cyan(`Verbose: ${verbose ? 'Yes' : 'No'}`));
   console.log('');
-  
+
   // Check if target is a file or directory
   const stats = fs.statSync(targetPath);
-  
+
   if (stats.isFile()) {
     processFile(targetPath);
   } else if (stats.isDirectory()) {
@@ -300,7 +300,7 @@ function main() {
     console.error(chalk.red(`Error: ${targetPath} is neither a file nor a directory`));
     process.exit(1);
   }
-  
+
   console.log('');
   console.log(chalk.green('Conversion complete!'));
   if (dryRun) {

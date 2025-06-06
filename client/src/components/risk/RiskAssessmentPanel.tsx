@@ -1,6 +1,6 @@
 /**
  * Risk Assessment Panel Component
- * 
+ *
  * Displays a comprehensive risk assessment for a property, including
  * overall risk score, risk factors by category, and visualizations.
  */
@@ -12,25 +12,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RiskFactorCard } from './RiskFactorCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { 
-  AlertCircle, 
-  ShieldAlert, 
-  Building, 
+import {
+  AlertCircle,
+  ShieldAlert,
+  Building,
   AlertTriangle,
   FileWarning,
   AlertOctagon,
   BarChart3,
   CircleDollarSign,
-  Scale
+  Scale,
 } from 'lucide-react';
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend
-} from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 interface RiskFactor {
   category: string;
@@ -84,26 +77,23 @@ interface RiskAssessmentPanelProps {
   className?: string;
 }
 
-export function RiskAssessmentPanel({ 
-  propertyId, 
-  className = '' 
-}: RiskAssessmentPanelProps) {
+export function RiskAssessmentPanel({ propertyId, className = '' }: RiskAssessmentPanelProps) {
   const [activeTab, setActiveTab] = useState('overview');
-  
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['riskAssessment', propertyId],
     queryFn: async () => {
       const response = await fetch(`/api/risk-assessment/${propertyId}`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to load risk assessment');
       }
-      
+
       return response.json() as Promise<RiskAssessmentData>;
     },
-    enabled: !!propertyId
+    enabled: !!propertyId,
   });
-  
+
   // Get risk level color
   const getRiskLevelColor = (level: string) => {
     if (level === 'Low') return 'text-green-600';
@@ -112,7 +102,7 @@ export function RiskAssessmentPanel({
     if (level === 'Very High') return 'text-red-700';
     return 'text-muted-foreground';
   };
-  
+
   // Get risk level icon
   const getRiskLevelIcon = (level: string) => {
     if (level === 'Low') return <ShieldAlert className="h-5 w-5 text-green-600" />;
@@ -121,12 +111,12 @@ export function RiskAssessmentPanel({
     if (level === 'Very High') return <AlertOctagon className="h-5 w-5 text-red-700" />;
     return <AlertCircle className="h-5 w-5" />;
   };
-  
+
   // Prepare chart data for the risk overview
   const prepareChartData = (assessmentData: RiskAssessmentData) => {
     // Group risk factors by category
-    const categoryMap = new Map<string, { count: number, score: number }>();
-    
+    const categoryMap = new Map<string, { count: number; score: number }>();
+
     assessmentData.riskFactors.forEach(factor => {
       const existing = categoryMap.get(factor.category);
       if (existing) {
@@ -136,19 +126,21 @@ export function RiskAssessmentPanel({
         categoryMap.set(factor.category, { count: 1, score: factor.score });
       }
     });
-    
+
     // Generate chart data with colors
     const colors = ['#1E88E5', '#43A047', '#E53935', '#FFB300', '#5E35B1', '#00ACC1'];
-    
-    const chartData: RiskCategory[] = Array.from(categoryMap.entries()).map(([name, data], index) => ({
-      name,
-      score: Math.round(data.score / data.count), // Average score for the category
-      color: colors[index % colors.length]
-    }));
-    
+
+    const chartData: RiskCategory[] = Array.from(categoryMap.entries()).map(
+      ([name, data], index) => ({
+        name,
+        score: Math.round(data.score / data.count), // Average score for the category
+        color: colors[index % colors.length],
+      })
+    );
+
     return chartData;
   };
-  
+
   if (isLoading) {
     return (
       <Card className={className}>
@@ -167,45 +159,46 @@ export function RiskAssessmentPanel({
       </Card>
     );
   }
-  
+
   if (error) {
     return (
       <Alert variant="destructive" className={className}>
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
-          {error instanceof Error 
-            ? error.message 
+          {error instanceof Error
+            ? error.message
             : 'An error occurred while loading the risk assessment'}
         </AlertDescription>
       </Alert>
     );
   }
-  
+
   if (!data) {
     return (
       <Alert className={className}>
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>No Data Available</AlertTitle>
-        <AlertDescription>
-          No risk assessment data is available for this property.
-        </AlertDescription>
+        <AlertDescription>No risk assessment data is available for this property.</AlertDescription>
       </Alert>
     );
   }
-  
+
   const chartData = prepareChartData(data);
-  
+
   // Group risk factors by category for the factors view
-  const riskFactorsByCategory = data.riskFactors.reduce((acc, factor) => {
-    const category = factor.category;
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(factor);
-    return acc;
-  }, {} as Record<string, RiskFactor[]>);
-  
+  const riskFactorsByCategory = data.riskFactors.reduce(
+    (acc, factor) => {
+      const category = factor.category;
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(factor);
+      return acc;
+    },
+    {} as Record<string, RiskFactor[]>
+  );
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -219,9 +212,7 @@ export function RiskAssessmentPanel({
             <span className="font-medium">{data.riskLevel} Risk</span>
           </div>
         </div>
-        <CardDescription>
-          Comprehensive risk analysis for {data.address}
-        </CardDescription>
+        <CardDescription>Comprehensive risk analysis for {data.address}</CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
@@ -231,7 +222,7 @@ export function RiskAssessmentPanel({
             <TabsTrigger value="regulatory">Regulatory</TabsTrigger>
             <TabsTrigger value="environmental">Environmental</TabsTrigger>
           </TabsList>
-          
+
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -240,46 +231,38 @@ export function RiskAssessmentPanel({
                   <div className="text-sm text-muted-foreground">Overall Risk Score</div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">
-                    {data.overallRiskScore}/100
-                  </div>
+                  <div className="text-3xl font-bold">{data.overallRiskScore}/100</div>
                   <div className={`text-sm mt-1 ${getRiskLevelColor(data.riskLevel)}`}>
                     {data.riskLevel} Risk Level
                   </div>
                 </CardContent>
               </Card>
-              
+
               <Card>
                 <CardHeader className="pb-2">
                   <div className="text-sm text-muted-foreground">Risk Factors</div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">
-                    {data.riskFactors.length}
-                  </div>
-                  <div className="text-sm mt-1 text-muted-foreground">
-                    Identified factors
-                  </div>
+                  <div className="text-3xl font-bold">{data.riskFactors.length}</div>
+                  <div className="text-sm mt-1 text-muted-foreground">Identified factors</div>
                 </CardContent>
               </Card>
-              
+
               <Card>
                 <CardHeader className="pb-2">
                   <div className="text-sm text-muted-foreground">Top Risk Category</div>
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold">
-                    {chartData.length > 0 
-                      ? chartData.sort((a, b) => b.score - a.score)[0].name.split(' ')[0] 
+                    {chartData.length > 0
+                      ? chartData.sort((a, b) => b.score - a.score)[0].name.split(' ')[0]
                       : 'N/A'}
                   </div>
-                  <div className="text-sm mt-1 text-muted-foreground">
-                    Highest risk score
-                  </div>
+                  <div className="text-sm mt-1 text-muted-foreground">Highest risk score</div>
                 </CardContent>
               </Card>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               <div>
                 <h3 className="text-lg font-medium mb-4 flex items-center">
@@ -305,15 +288,13 @@ export function RiskAssessmentPanel({
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip 
-                        formatter={(value) => [`Score: ${value}`, 'Risk Score']}
-                      />
+                      <Tooltip formatter={value => [`Score: ${value}`, 'Risk Score']} />
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
               </div>
-              
+
               <div>
                 <h3 className="text-lg font-medium mb-4">Top Risk Factors</h3>
                 <div className="space-y-3">
@@ -321,52 +302,60 @@ export function RiskAssessmentPanel({
                     .sort((a, b) => b.score - a.score)
                     .slice(0, 3)
                     .map((factor, index) => (
-                      <div key={index} className="flex items-center space-x-3 p-3 border rounded-md">
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center 
-                          ${factor.level.toLowerCase().includes('low') 
-                            ? 'bg-green-100 text-green-600' 
-                            : factor.level.toLowerCase().includes('moderate') 
-                              ? 'bg-amber-100 text-amber-600'
-                              : 'bg-red-100 text-red-600'}`}>
+                      <div
+                        key={index}
+                        className="flex items-center space-x-3 p-3 border rounded-md"
+                      >
+                        <div
+                          className={`h-10 w-10 rounded-full flex items-center justify-center 
+                          ${
+                            factor.level.toLowerCase().includes('low')
+                              ? 'bg-green-100 text-green-600'
+                              : factor.level.toLowerCase().includes('moderate')
+                                ? 'bg-amber-100 text-amber-600'
+                                : 'bg-red-100 text-red-600'
+                          }`}
+                        >
                           {getRiskLevelIcon(factor.level)}
                         </div>
                         <div>
                           <div className="font-medium">{factor.category}</div>
-                          <div className="text-sm text-muted-foreground">{factor.level} - Score: {factor.score}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {factor.level} - Score: {factor.score}
+                          </div>
                         </div>
                       </div>
                     ))}
                 </div>
               </div>
             </div>
-            
+
             <div>
               <h3 className="text-lg font-medium mb-4">Risk Factor Details</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(riskFactorsByCategory)
-                  .flatMap(([category, factors]) => 
-                    factors.map((factor, index) => (
-                      <RiskFactorCard
-                        key={`${category}-${index}`}
-                        category={factor.category}
-                        score={factor.score}
-                        level={factor.level}
-                        description={factor.description}
-                        mitigationSuggestions={factor.mitigationSuggestions}
-                      />
-                    ))
-                  )}
+                {Object.entries(riskFactorsByCategory).flatMap(([category, factors]) =>
+                  factors.map((factor, index) => (
+                    <RiskFactorCard
+                      key={`${category}-${index}`}
+                      category={factor.category}
+                      score={factor.score}
+                      level={factor.level}
+                      description={factor.description}
+                      mitigationSuggestions={factor.mitigationSuggestions}
+                    />
+                  ))
+                )}
               </div>
             </div>
           </TabsContent>
-          
+
           {/* Economic Tab */}
           <TabsContent value="economic" className="space-y-4">
             <div className="flex items-center space-x-2 mb-4">
               <CircleDollarSign className="h-5 w-5" />
               <h3 className="text-lg font-medium">Economic Risk Factors</h3>
             </div>
-            
+
             {data.economicFactors.length === 0 ? (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
@@ -382,11 +371,15 @@ export function RiskAssessmentPanel({
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-center">
                         <CardTitle className="text-base">{factor.name}</CardTitle>
-                        <Badge variant={
-                          factor.impact.toLowerCase().includes('positive') ? 'success' : 
-                          factor.impact.toLowerCase().includes('negative') ? 'destructive' : 
-                          'secondary'
-                        }>
+                        <Badge
+                          variant={
+                            factor.impact.toLowerCase().includes('positive')
+                              ? 'success'
+                              : factor.impact.toLowerCase().includes('negative')
+                                ? 'destructive'
+                                : 'secondary'
+                          }
+                        >
                           {factor.impact}
                         </Badge>
                       </div>
@@ -400,14 +393,14 @@ export function RiskAssessmentPanel({
               </div>
             )}
           </TabsContent>
-          
+
           {/* Regulatory Tab */}
           <TabsContent value="regulatory" className="space-y-4">
             <div className="flex items-center space-x-2 mb-4">
               <Scale className="h-5 w-5" />
               <h3 className="text-lg font-medium">Regulatory Risk Factors</h3>
             </div>
-            
+
             {data.regulatoryFactors.length === 0 ? (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
@@ -424,18 +417,26 @@ export function RiskAssessmentPanel({
                       <div className="flex justify-between items-center">
                         <CardTitle className="text-base">{factor.name}</CardTitle>
                         <div className="flex space-x-2">
-                          <Badge variant={
-                            factor.impact.toLowerCase().includes('high') ? 'destructive' : 
-                            factor.impact.toLowerCase().includes('medium') ? 'warning' : 
-                            'success'
-                          }>
+                          <Badge
+                            variant={
+                              factor.impact.toLowerCase().includes('high')
+                                ? 'destructive'
+                                : factor.impact.toLowerCase().includes('medium')
+                                  ? 'warning'
+                                  : 'success'
+                            }
+                          >
                             {factor.impact} Impact
                           </Badge>
-                          <Badge variant={
-                            factor.probability.toLowerCase().includes('high') ? 'destructive' : 
-                            factor.probability.toLowerCase().includes('medium') ? 'warning' : 
-                            'success'
-                          }>
+                          <Badge
+                            variant={
+                              factor.probability.toLowerCase().includes('high')
+                                ? 'destructive'
+                                : factor.probability.toLowerCase().includes('medium')
+                                  ? 'warning'
+                                  : 'success'
+                            }
+                          >
                             {factor.probability} Probability
                           </Badge>
                         </div>
@@ -449,14 +450,14 @@ export function RiskAssessmentPanel({
               </div>
             )}
           </TabsContent>
-          
+
           {/* Environmental Tab */}
           <TabsContent value="environmental" className="space-y-4">
             <div className="flex items-center space-x-2 mb-4">
               <Building className="h-5 w-5" />
               <h3 className="text-lg font-medium">Environmental Risk Factors</h3>
             </div>
-            
+
             {data.environmentalFactors.length === 0 ? (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
@@ -473,18 +474,26 @@ export function RiskAssessmentPanel({
                       <div className="flex justify-between items-center">
                         <CardTitle className="text-base">{factor.name}</CardTitle>
                         <div className="flex space-x-2">
-                          <Badge variant={
-                            factor.impact.toLowerCase().includes('high') ? 'destructive' : 
-                            factor.impact.toLowerCase().includes('medium') ? 'warning' : 
-                            'success'
-                          }>
+                          <Badge
+                            variant={
+                              factor.impact.toLowerCase().includes('high')
+                                ? 'destructive'
+                                : factor.impact.toLowerCase().includes('medium')
+                                  ? 'warning'
+                                  : 'success'
+                            }
+                          >
                             {factor.impact} Impact
                           </Badge>
-                          <Badge variant={
-                            factor.probability.toLowerCase().includes('high') ? 'destructive' : 
-                            factor.probability.toLowerCase().includes('medium') ? 'warning' : 
-                            'success'
-                          }>
+                          <Badge
+                            variant={
+                              factor.probability.toLowerCase().includes('high')
+                                ? 'destructive'
+                                : factor.probability.toLowerCase().includes('medium')
+                                  ? 'warning'
+                                  : 'success'
+                            }
+                          >
                             {factor.probability} Probability
                           </Badge>
                         </div>

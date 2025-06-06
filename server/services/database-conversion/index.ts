@@ -1,6 +1,6 @@
 /**
  * Database Conversion Service
- * 
+ *
  * This is the main entry point for the database conversion system, providing
  * a unified interface to its various component services.
  */
@@ -16,7 +16,7 @@ import {
   SchemaAnalysisResult,
   ConnectionTestResult,
   ConversionResult,
-  CompatibilityLayerOptions
+  CompatibilityLayerOptions,
 } from './types';
 
 export class DatabaseConversionService {
@@ -30,13 +30,13 @@ export class DatabaseConversionService {
   constructor(storage: IStorage, mcpService: MCPService) {
     this.storage = storage;
     this.mcpService = mcpService;
-    
+
     // Initialize component services
     this.schemaAnalyzer = new SchemaAnalyzerService(storage, mcpService);
     this.dataMigration = new DataMigrationService(storage, mcpService);
     this.dataTransformation = new DataTransformationService(storage, mcpService);
     this.compatibilityLayer = new CompatibilityService(storage, mcpService);
-    
+
     console.log('Database Conversion Service initialized');
   }
 
@@ -46,7 +46,10 @@ export class DatabaseConversionService {
    * @param databaseType Type of database
    * @returns Schema analysis result
    */
-  public async analyzeSchema(connectionString: string, databaseType: string): Promise<SchemaAnalysisResult> {
+  public async analyzeSchema(
+    connectionString: string,
+    databaseType: string
+  ): Promise<SchemaAnalysisResult> {
     try {
       return await this.schemaAnalyzer.analyzeSchema(connectionString, databaseType);
     } catch (error) {
@@ -61,7 +64,10 @@ export class DatabaseConversionService {
    * @param databaseType Type of database
    * @returns Connection test result
    */
-  public async testConnection(connectionString: string, databaseType: string): Promise<ConnectionTestResult> {
+  public async testConnection(
+    connectionString: string,
+    databaseType: string
+  ): Promise<ConnectionTestResult> {
     try {
       return await this.schemaAnalyzer.testConnection(connectionString, databaseType);
     } catch (error) {
@@ -107,13 +113,18 @@ export class DatabaseConversionService {
    * @returns Estimated time in seconds
    */
   public estimateConversionTime(
-    tableCount: number, 
-    recordCount: number, 
-    sourceType: DatabaseType, 
+    tableCount: number,
+    recordCount: number,
+    sourceType: DatabaseType,
     targetType: DatabaseType
   ): number {
     try {
-      return this.dataMigration.estimateConversionTime(tableCount, recordCount, sourceType, targetType);
+      return this.dataMigration.estimateConversionTime(
+        tableCount,
+        recordCount,
+        sourceType,
+        targetType
+      );
     } catch (error) {
       console.error('Error in DatabaseConversionService.estimateConversionTime:', error);
       throw error;

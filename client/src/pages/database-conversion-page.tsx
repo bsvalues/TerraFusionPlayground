@@ -1,27 +1,79 @@
-import { useState, useEffect } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Progress } from "@/components/ui/progress";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "../lib/queryClient";
-import { Loader2, CheckCircle2, AlertCircle, BellRing, Laptop, Database, ArrowRightCircle, Share2, Code2, GitBranch, History, LineChart, Terminal, Check, X, ChevronRight, Copy, Sparkles, Eye, EyeOff } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useState, useEffect } from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { queryClient } from '../lib/queryClient';
+import {
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  BellRing,
+  Laptop,
+  Database,
+  ArrowRightCircle,
+  Share2,
+  Code2,
+  GitBranch,
+  History,
+  LineChart,
+  Terminal,
+  Check,
+  X,
+  ChevronRight,
+  Copy,
+  Sparkles,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 // Enum Types
 enum DatabaseType {
@@ -37,7 +89,7 @@ enum DatabaseType {
   ElasticSearch = 'elasticsearch',
   Neo4j = 'neo4j',
   Firestore = 'firestore',
-  CosmosDB = 'cosmosdb'
+  CosmosDB = 'cosmosdb',
 }
 
 enum ORMType {
@@ -45,13 +97,13 @@ enum ORMType {
   Prisma = 'prisma',
   TypeORM = 'typeorm',
   Sequelize = 'sequelize',
-  Mongoose = 'mongoose'
+  Mongoose = 'mongoose',
 }
 
 enum ConnectionStatus {
   Success = 'success',
-  Failed = 'failed', 
-  Pending = 'pending'
+  Failed = 'failed',
+  Pending = 'pending',
 }
 
 enum ConversionStatus {
@@ -60,10 +112,10 @@ enum ConversionStatus {
   Completed = 'completed',
   Failed = 'failed',
   Cancelled = 'cancelled',
-  Paused = 'paused'
+  Paused = 'paused',
 }
 
-// Interface Types 
+// Interface Types
 interface DatabaseInfo {
   id: string;
   name: string;
@@ -163,90 +215,104 @@ interface ConversionProject {
 // Zod Form Schemas
 const connectionFormSchema = z.object({
   databaseType: z.nativeEnum(DatabaseType, {
-    required_error: "Please select a database type",
+    required_error: 'Please select a database type',
   }),
   connectionString: z.string().min(1, {
-    message: "Connection string is required",
+    message: 'Connection string is required',
   }),
   name: z.string().min(2, {
-    message: "Name must be at least 2 characters",
+    message: 'Name must be at least 2 characters',
   }),
   description: z.string().optional(),
   includeViews: z.boolean().default(true),
   includeProcedures: z.boolean().default(false),
   includeFunctions: z.boolean().default(false),
-  includeTriggers: z.boolean().default(false)
+  includeTriggers: z.boolean().default(false),
 });
 
 const conversionFormSchema = z.object({
   projectId: z.string().min(1, {
-    message: "Project ID is required"
+    message: 'Project ID is required',
   }),
   sourceType: z.nativeEnum(DatabaseType, {
-    required_error: "Please select a source database type",
+    required_error: 'Please select a source database type',
   }),
   sourceConnectionString: z.string().min(1, {
-    message: "Source connection string is required",
+    message: 'Source connection string is required',
   }),
   targetType: z.nativeEnum(DatabaseType, {
-    required_error: "Please select a target database type",
+    required_error: 'Please select a target database type',
   }),
   targetConnectionString: z.string().min(1, {
-    message: "Target connection string is required",
+    message: 'Target connection string is required',
   }),
   generateCompatibilityLayer: z.boolean().default(true),
   ormType: z.nativeEnum(ORMType).optional(),
   includeExamples: z.boolean().default(true),
-  generateMigrations: z.boolean().default(true)
+  generateMigrations: z.boolean().default(true),
 });
 
 const compatibilityFormSchema = z.object({
   projectId: z.string().min(1, {
-    message: "Project ID is required"
+    message: 'Project ID is required',
   }),
   ormType: z.nativeEnum(ORMType, {
-    required_error: "Please select an ORM type",
+    required_error: 'Please select an ORM type',
   }),
   includeExamples: z.boolean().default(true),
   generateMigrations: z.boolean().default(true),
-  targetDirectory: z.string().default("./compatibility")
+  targetDirectory: z.string().default('./compatibility'),
 });
 
 // Component to display database type icon
 const DatabaseTypeIcon = ({ type }: { type: DatabaseType }) => {
   switch (type) {
     case DatabaseType.PostgreSQL:
-      return <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 p-1 rounded">
-        <Database className="h-4 w-4" />
-      </span>;
+      return (
+        <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 p-1 rounded">
+          <Database className="h-4 w-4" />
+        </span>
+      );
     case DatabaseType.MySQL:
-      return <span className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 p-1 rounded">
-        <Database className="h-4 w-4" />
-      </span>;
+      return (
+        <span className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 p-1 rounded">
+          <Database className="h-4 w-4" />
+        </span>
+      );
     case DatabaseType.SQLite:
-      return <span className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 p-1 rounded">
-        <Database className="h-4 w-4" />
-      </span>;
+      return (
+        <span className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 p-1 rounded">
+          <Database className="h-4 w-4" />
+        </span>
+      );
     case DatabaseType.MongoDB:
-      return <span className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 p-1 rounded">
-        <Database className="h-4 w-4" />
-      </span>;
+      return (
+        <span className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 p-1 rounded">
+          <Database className="h-4 w-4" />
+        </span>
+      );
     default:
-      return <span className="bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 p-1 rounded">
-        <Database className="h-4 w-4" />
-      </span>;
+      return (
+        <span className="bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 p-1 rounded">
+          <Database className="h-4 w-4" />
+        </span>
+      );
   }
 };
 
 // Database Card Component
-const DatabaseCard = ({ database, selected, onClick }: { 
-  database: DatabaseInfo; 
-  selected: boolean; 
-  onClick: () => void 
+const DatabaseCard = ({
+  database,
+  selected,
+  onClick,
+}: {
+  database: DatabaseInfo;
+  selected: boolean;
+  onClick: () => void;
 }) => {
   return (
-    <Card 
-      className={`cursor-pointer transition-all hover:border-primary ${selected ? 'border-2 border-primary' : 'border'}`} 
+    <Card
+      className={`cursor-pointer transition-all hover:border-primary ${selected ? 'border-2 border-primary' : 'border'}`}
       onClick={onClick}
     >
       <CardContent className="p-4">
@@ -258,11 +324,15 @@ const DatabaseCard = ({ database, selected, onClick }: {
               <p className="text-xs text-muted-foreground">{database.description}</p>
             </div>
           </div>
-          <Badge variant={
-            database.supportLevel === 'Full' ? 'default' : 
-            database.supportLevel === 'Partial' ? 'secondary' : 
-            'outline'
-          }>
+          <Badge
+            variant={
+              database.supportLevel === 'Full'
+                ? 'default'
+                : database.supportLevel === 'Partial'
+                  ? 'secondary'
+                  : 'outline'
+            }
+          >
             {database.supportLevel}
           </Badge>
         </div>
@@ -280,34 +350,34 @@ const maskConnectionString = (connectionString: string): string => {
       const parts = connectionString.split('@');
       const credentialsPart = parts[0];
       const hostPart = parts[1];
-      
+
       // Find username and password
       const userPassRegex = /^(.*?):(.*)$/;
       const matches = credentialsPart.match(userPassRegex);
-      
+
       if (matches && matches.length >= 3) {
         const protocol = matches[1].split('://')[0];
         const username = matches[1].split('://')[1] || matches[1];
         const password = matches[2];
-        
+
         // Mask the password
         const maskedPassword = '*'.repeat(Math.min(password.length, 8));
-        
+
         return `${protocol}://${username}:${maskedPassword}@${hostPart}`;
       }
     }
-    
+
     // For MongoDB or other special formats
     if (connectionString.includes('mongodb+srv://')) {
       return connectionString.replace(/(mongodb\+srv:\/\/[^:]+:)([^@]+)(@.*)/, '$1********$3');
     }
-    
+
     // For other formats or if parsing fails, mask the middle part
     const len = connectionString.length;
     if (len > 12) {
       return `${connectionString.substring(0, 6)}...${connectionString.substring(len - 6)}`;
     }
-    
+
     return '********'; // Fallback
   } catch (e) {
     console.error('Error masking connection string:', e);
@@ -319,13 +389,19 @@ const DatabaseConversionPage = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('connect');
   const [selectedDatabase, setSelectedDatabase] = useState<DatabaseType | null>(null);
-  const [connectionTestResult, setConnectionTestResult] = useState<ConnectionTestResult | null>(null);
-  const [schemaAnalysisResult, setSchemaAnalysisResult] = useState<SchemaAnalysisResult | null>(null);
+  const [connectionTestResult, setConnectionTestResult] = useState<ConnectionTestResult | null>(
+    null
+  );
+  const [schemaAnalysisResult, setSchemaAnalysisResult] = useState<SchemaAnalysisResult | null>(
+    null
+  );
   const [conversionStatus, setConversionStatus] = useState<ConversionStatusInfo | null>(null);
   const [projectId, setProjectId] = useState<string>('');
   const [statusPolling, setStatusPolling] = useState<NodeJS.Timeout | null>(null);
   const [databaseTypes, setDatabaseTypes] = useState<DatabaseInfo[]>([]);
-  const [compatibilityResult, setCompatibilityResult] = useState<CompatibilityLayerResult | null>(null);
+  const [compatibilityResult, setCompatibilityResult] = useState<CompatibilityLayerResult | null>(
+    null
+  );
   const [showFinalReport, setShowFinalReport] = useState(false);
   const [showConnectionStrings, setShowConnectionStrings] = useState(false);
 
@@ -340,8 +416,8 @@ const DatabaseConversionPage = () => {
       includeViews: true,
       includeProcedures: false,
       includeFunctions: false,
-      includeTriggers: false
-    }
+      includeTriggers: false,
+    },
   });
 
   const conversionForm = useForm<z.infer<typeof conversionFormSchema>>({
@@ -355,8 +431,8 @@ const DatabaseConversionPage = () => {
       generateCompatibilityLayer: true,
       ormType: ORMType.Drizzle,
       includeExamples: true,
-      generateMigrations: true
-    }
+      generateMigrations: true,
+    },
   });
 
   const compatibilityForm = useForm<z.infer<typeof compatibilityFormSchema>>({
@@ -366,8 +442,8 @@ const DatabaseConversionPage = () => {
       ormType: ORMType.Drizzle,
       includeExamples: true,
       generateMigrations: true,
-      targetDirectory: './compatibility'
-    }
+      targetDirectory: './compatibility',
+    },
   });
 
   // Queries
@@ -379,7 +455,7 @@ const DatabaseConversionPage = () => {
         throw new Error('Failed to fetch supported databases');
       }
       return response.json();
-    }
+    },
   });
 
   const { data: conversionProjects, isLoading: isLoadingProjects } = useQuery({
@@ -390,48 +466,48 @@ const DatabaseConversionPage = () => {
         throw new Error('Failed to fetch conversion projects');
       }
       return response.json();
-    }
+    },
   });
 
   // Mutations
   const testConnectionMutation = useMutation({
-    mutationFn: async (data: { connectionString: string, databaseType: DatabaseType }) => {
+    mutationFn: async (data: { connectionString: string; databaseType: DatabaseType }) => {
       const response = await fetch('/api/database-conversion/test-connection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to test connection');
       }
-      
+
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       setConnectionTestResult(data.result);
-      
+
       if (data.success) {
         toast({
-          title: "Connection successful",
+          title: 'Connection successful',
           description: `Connected to ${data.result.databaseName || 'database'} (${data.result.databaseVersion || 'unknown version'})`,
-          variant: "default",
+          variant: 'default',
         });
       } else {
         toast({
-          title: "Connection failed",
-          description: data.result.error || "Could not connect to database",
-          variant: "destructive",
+          title: 'Connection failed',
+          description: data.result.error || 'Could not connect to database',
+          variant: 'destructive',
         });
       }
     },
     onError: (error: Error) => {
       toast({
-        title: "Connection failed",
+        title: 'Connection failed',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   const analyzeSchemasMutation = useMutation({
@@ -439,47 +515,50 @@ const DatabaseConversionPage = () => {
       const response = await fetch('/api/database-conversion/analyze-schema', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to analyze schema');
       }
-      
+
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       if (data.success) {
         setSchemaAnalysisResult(data.result);
         setProjectId(data.result.id || '');
         compatibilityForm.setValue('projectId', data.result.id || '');
         conversionForm.setValue('projectId', data.result.id || '');
         conversionForm.setValue('sourceType', connectionForm.getValues('databaseType'));
-        conversionForm.setValue('sourceConnectionString', connectionForm.getValues('connectionString'));
-        
+        conversionForm.setValue(
+          'sourceConnectionString',
+          connectionForm.getValues('connectionString')
+        );
+
         toast({
-          title: "Schema analysis complete",
+          title: 'Schema analysis complete',
           description: `Analyzed ${data.result?.tables?.length || 0} tables and ${data.result?.views?.length || 0} views`,
-          variant: "default",
+          variant: 'default',
         });
-        
+
         // Auto-navigate to the next tab
         setActiveTab('convert');
       } else {
         toast({
-          title: "Schema analysis failed",
-          description: data.error || "Unknown error",
-          variant: "destructive",
+          title: 'Schema analysis failed',
+          description: data.error || 'Unknown error',
+          variant: 'destructive',
         });
       }
     },
     onError: (error: Error) => {
       toast({
-        title: "Schema analysis failed",
+        title: 'Schema analysis failed',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   const startConversionMutation = useMutation({
@@ -487,56 +566,61 @@ const DatabaseConversionPage = () => {
       const response = await fetch('/api/database-conversion/start-conversion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to start conversion');
       }
-      
+
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       if (data.success) {
         toast({
-          title: "Conversion started",
-          description: "Database conversion process has been initiated",
-          variant: "default",
+          title: 'Conversion started',
+          description: 'Database conversion process has been initiated',
+          variant: 'default',
         });
-        
+
         // Set up polling for conversion status updates
         const interval = setInterval(async () => {
           try {
-            const response = await fetch(`/api/database-conversion/conversion-status?projectId=${data.projectId}`);
+            const response = await fetch(
+              `/api/database-conversion/conversion-status?projectId=${data.projectId}`
+            );
             if (response.ok) {
               const statusData = await response.json();
-              
+
               if (statusData.success) {
                 setConversionStatus(statusData.result);
-                
+
                 // Check if conversion is complete
-                if (statusData.result.status === 'completed' || statusData.result.status === 'failed') {
+                if (
+                  statusData.result.status === 'completed' ||
+                  statusData.result.status === 'failed'
+                ) {
                   if (statusPolling) {
                     clearInterval(statusPolling);
                     setStatusPolling(null);
                   }
-                  
+
                   if (statusData.result.status === 'completed') {
                     toast({
-                      title: "Conversion complete",
-                      description: "Database conversion has been completed successfully",
-                      variant: "default",
+                      title: 'Conversion complete',
+                      description: 'Database conversion has been completed successfully',
+                      variant: 'default',
                     });
-                    
+
                     // If compatibility layer generation was enabled, auto-navigate
                     if (conversionForm.getValues('generateCompatibilityLayer')) {
                       setActiveTab('compatibility');
                     }
                   } else {
                     toast({
-                      title: "Conversion failed",
-                      description: statusData.result.error || "Unknown error",
-                      variant: "destructive",
+                      title: 'Conversion failed',
+                      description: statusData.result.error || 'Unknown error',
+                      variant: 'destructive',
                     });
                   }
                 }
@@ -546,23 +630,23 @@ const DatabaseConversionPage = () => {
             console.error('Error polling conversion status:', error);
           }
         }, 2000);
-        
+
         setStatusPolling(interval);
       } else {
         toast({
-          title: "Conversion failed to start",
-          description: data.error || "Unknown error",
-          variant: "destructive",
+          title: 'Conversion failed to start',
+          description: data.error || 'Unknown error',
+          variant: 'destructive',
         });
       }
     },
     onError: (error: Error) => {
       toast({
-        title: "Conversion failed to start",
+        title: 'Conversion failed to start',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   const generateCompatibilityLayerMutation = useMutation({
@@ -570,43 +654,43 @@ const DatabaseConversionPage = () => {
       const response = await fetch('/api/database-conversion/generate-compatibility-layer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to generate compatibility layer');
       }
-      
+
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       if (data.success) {
         setCompatibilityResult(data.result);
-        
+
         toast({
-          title: "Compatibility layer generated",
+          title: 'Compatibility layer generated',
           description: `Generated ${data.result.generatedFiles.length} files for ${compatibilityForm.getValues('ormType')}`,
-          variant: "default",
+          variant: 'default',
         });
-        
+
         // Auto-navigate to results tab
         setActiveTab('results');
         setShowFinalReport(true);
       } else {
         toast({
-          title: "Failed to generate compatibility layer",
-          description: data.error || "Unknown error",
-          variant: "destructive",
+          title: 'Failed to generate compatibility layer',
+          description: data.error || 'Unknown error',
+          variant: 'destructive',
         });
       }
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to generate compatibility layer",
+        title: 'Failed to generate compatibility layer',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   // Effects
@@ -629,19 +713,19 @@ const DatabaseConversionPage = () => {
   const handleTestConnection = () => {
     const databaseType = connectionForm.getValues('databaseType');
     const connectionString = connectionForm.getValues('connectionString');
-    
+
     if (!databaseType || !connectionString) {
       toast({
-        title: "Missing information",
-        description: "Please provide database type and connection string",
-        variant: "destructive",
+        title: 'Missing information',
+        description: 'Please provide database type and connection string',
+        variant: 'destructive',
       });
       return;
     }
-    
+
     testConnectionMutation.mutate({
       databaseType,
-      connectionString
+      connectionString,
     });
   };
 
@@ -680,7 +764,8 @@ const DatabaseConversionPage = () => {
         <div>
           <h1 className="text-3xl font-bold">Database Conversion System</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-2">
-            Convert your existing database to a new system with intelligent schema analysis and optimizations
+            Convert your existing database to a new system with intelligent schema analysis and
+            optimizations
           </p>
         </div>
 
@@ -706,7 +791,7 @@ const DatabaseConversionPage = () => {
                   <form className="space-y-6">
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Select Database Type</h3>
-                      
+
                       {isLoadingDatabases ? (
                         <div className="flex items-center justify-center p-6">
                           <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -728,10 +813,10 @@ const DatabaseConversionPage = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Connection Details</h3>
-                      
+
                       <FormField
                         control={connectionForm.control}
                         name="connectionString"
@@ -739,7 +824,10 @@ const DatabaseConversionPage = () => {
                           <FormItem>
                             <FormLabel>Connection String</FormLabel>
                             <FormControl>
-                              <Input placeholder="e.g. postgresql://user:password@localhost:5432/mydatabase" {...field} />
+                              <Input
+                                placeholder="e.g. postgresql://user:password@localhost:5432/mydatabase"
+                                {...field}
+                              />
                             </FormControl>
                             <FormDescription>
                               The connection string for your {selectedDatabase || 'database'}
@@ -748,7 +836,7 @@ const DatabaseConversionPage = () => {
                           </FormItem>
                         )}
                       />
-                      
+
                       <div className="flex space-x-2">
                         <Button
                           type="button"
@@ -761,9 +849,11 @@ const DatabaseConversionPage = () => {
                           )}
                           Test Connection
                         </Button>
-                        
+
                         {connectionTestResult && (
-                          <div className={`flex items-center ${getStatusColor(connectionTestResult.status)}`}>
+                          <div
+                            className={`flex items-center ${getStatusColor(connectionTestResult.status)}`}
+                          >
                             {connectionTestResult.status === 'success' ? (
                               <>
                                 <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -778,17 +868,18 @@ const DatabaseConversionPage = () => {
                           </div>
                         )}
                       </div>
-                      
+
                       {connectionTestResult && connectionTestResult.status === 'success' && (
                         <Alert>
                           <CheckCircle2 className="h-4 w-4" />
                           <AlertTitle>Connected Successfully</AlertTitle>
                           <AlertDescription>
-                            Connected to {connectionTestResult.databaseName || 'database'} ({connectionTestResult.databaseVersion || 'unknown version'})
+                            Connected to {connectionTestResult.databaseName || 'database'} (
+                            {connectionTestResult.databaseVersion || 'unknown version'})
                           </AlertDescription>
                         </Alert>
                       )}
-                      
+
                       {connectionTestResult && connectionTestResult.status === 'failed' && (
                         <Alert variant="destructive">
                           <AlertCircle className="h-4 w-4" />
@@ -799,10 +890,10 @@ const DatabaseConversionPage = () => {
                         </Alert>
                       )}
                     </div>
-                    
+
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Project Information</h3>
-                      
+
                       <FormField
                         control={connectionForm.control}
                         name="name"
@@ -816,7 +907,7 @@ const DatabaseConversionPage = () => {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={connectionForm.control}
                         name="description"
@@ -824,17 +915,20 @@ const DatabaseConversionPage = () => {
                           <FormItem>
                             <FormLabel>Description</FormLabel>
                             <FormControl>
-                              <Textarea placeholder="Optional description for this conversion project" {...field} />
+                              <Textarea
+                                placeholder="Optional description for this conversion project"
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     </div>
-                    
+
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Schema Analysis Options</h3>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                           control={connectionForm.control}
@@ -843,20 +937,15 @@ const DatabaseConversionPage = () => {
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                               <div className="space-y-0.5">
                                 <FormLabel>Include Views</FormLabel>
-                                <FormDescription>
-                                  Analyze database views
-                                </FormDescription>
+                                <FormDescription>Analyze database views</FormDescription>
                               </div>
                               <FormControl>
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
                               </FormControl>
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={connectionForm.control}
                           name="includeProcedures"
@@ -864,20 +953,15 @@ const DatabaseConversionPage = () => {
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                               <div className="space-y-0.5">
                                 <FormLabel>Include Procedures</FormLabel>
-                                <FormDescription>
-                                  Analyze stored procedures
-                                </FormDescription>
+                                <FormDescription>Analyze stored procedures</FormDescription>
                               </div>
                               <FormControl>
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
                               </FormControl>
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={connectionForm.control}
                           name="includeFunctions"
@@ -885,20 +969,15 @@ const DatabaseConversionPage = () => {
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                               <div className="space-y-0.5">
                                 <FormLabel>Include Functions</FormLabel>
-                                <FormDescription>
-                                  Analyze database functions
-                                </FormDescription>
+                                <FormDescription>Analyze database functions</FormDescription>
                               </div>
                               <FormControl>
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
                               </FormControl>
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={connectionForm.control}
                           name="includeTriggers"
@@ -906,15 +985,10 @@ const DatabaseConversionPage = () => {
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                               <div className="space-y-0.5">
                                 <FormLabel>Include Triggers</FormLabel>
-                                <FormDescription>
-                                  Analyze database triggers
-                                </FormDescription>
+                                <FormDescription>Analyze database triggers</FormDescription>
                               </div>
                               <FormControl>
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
                               </FormControl>
                             </FormItem>
                           )}
@@ -928,9 +1002,13 @@ const DatabaseConversionPage = () => {
                 <Button variant="outline" onClick={() => connectionForm.reset()}>
                   Reset
                 </Button>
-                <Button 
+                <Button
                   onClick={connectionForm.handleSubmit(handleAnalyzeSchema)}
-                  disabled={analyzeSchemasMutation.isPending || !connectionTestResult || connectionTestResult.status !== 'success'}
+                  disabled={
+                    analyzeSchemasMutation.isPending ||
+                    !connectionTestResult ||
+                    connectionTestResult.status !== 'success'
+                  }
                 >
                   {analyzeSchemasMutation.isPending && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -959,24 +1037,34 @@ const DatabaseConversionPage = () => {
                       <h4 className="font-medium">Conversion in Progress</h4>
                     </div>
                     <p className="text-sm mt-1 mb-3">
-                      {conversionStatus.statusMessage || "Your database is being converted. Please wait..."}
+                      {conversionStatus.statusMessage ||
+                        'Your database is being converted. Please wait...'}
                     </p>
-                    
+
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs">
                         <span>Overall Progress</span>
                         <span>{Math.round(conversionStatus.progress.overallProgress * 100)}%</span>
                       </div>
-                      <Progress value={conversionStatus.progress.overallProgress * 100} className="h-2" />
-                      
+                      <Progress
+                        value={conversionStatus.progress.overallProgress * 100}
+                        className="h-2"
+                      />
+
                       <div className="grid grid-cols-2 gap-4 mt-3">
                         <div className="bg-white dark:bg-gray-800 p-2 rounded border">
                           <div className="text-xs text-muted-foreground">Tables</div>
-                          <div className="font-medium">{conversionStatus.progress.tablesConverted} / {conversionStatus.progress.totalTables}</div>
+                          <div className="font-medium">
+                            {conversionStatus.progress.tablesConverted} /{' '}
+                            {conversionStatus.progress.totalTables}
+                          </div>
                         </div>
                         <div className="bg-white dark:bg-gray-800 p-2 rounded border">
                           <div className="text-xs text-muted-foreground">Records</div>
-                          <div className="font-medium">{conversionStatus.progress.recordsProcessed.toLocaleString()} / {conversionStatus.progress.estimatedTotalRecords.toLocaleString()}</div>
+                          <div className="font-medium">
+                            {conversionStatus.progress.recordsProcessed.toLocaleString()} /{' '}
+                            {conversionStatus.progress.estimatedTotalRecords.toLocaleString()}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -991,7 +1079,8 @@ const DatabaseConversionPage = () => {
                       <h4 className="font-medium">Conversion Failed</h4>
                     </div>
                     <p className="text-sm mt-1">
-                      {conversionStatus.error || "There was an error during the conversion process."}
+                      {conversionStatus.error ||
+                        'There was an error during the conversion process.'}
                     </p>
                     <Button
                       variant="outline"
@@ -1011,9 +1100,7 @@ const DatabaseConversionPage = () => {
                       <CheckCircle2 className="w-5 h-5 text-green-500 mr-2" />
                       <h4 className="font-medium">Conversion Complete</h4>
                     </div>
-                    <p className="text-sm mt-1">
-                      Database conversion was successfully completed.
-                    </p>
+                    <p className="text-sm mt-1">Database conversion was successfully completed.</p>
                     <Button
                       variant="outline"
                       size="sm"
@@ -1048,43 +1135,68 @@ const DatabaseConversionPage = () => {
                     <form className="space-y-6">
                       <div className="space-y-4">
                         <h3 className="text-lg font-medium">Schema Analysis Results</h3>
-                        
+
                         <div className="bg-primary/5 p-4 rounded-md">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div>
-                              <p className="text-sm font-medium text-muted-foreground">Database Type</p>
-                              <p className="text-sm font-bold">{schemaAnalysisResult?.databaseType}</p>
+                              <p className="text-sm font-medium text-muted-foreground">
+                                Database Type
+                              </p>
+                              <p className="text-sm font-bold">
+                                {schemaAnalysisResult?.databaseType}
+                              </p>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-muted-foreground">Tables</p>
-                              <p className="text-sm font-bold">{schemaAnalysisResult?.tables?.length}</p>
+                              <p className="text-sm font-bold">
+                                {schemaAnalysisResult?.tables?.length}
+                              </p>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-muted-foreground">Views</p>
-                              <p className="text-sm font-bold">{schemaAnalysisResult?.views?.length}</p>
+                              <p className="text-sm font-bold">
+                                {schemaAnalysisResult?.views?.length}
+                              </p>
                             </div>
                           </div>
-                          
+
                           {schemaAnalysisResult?.schemaIssues && (
                             <div className="mt-4">
-                              <p className="text-sm font-medium text-muted-foreground">Detected Issues</p>
+                              <p className="text-sm font-medium text-muted-foreground">
+                                Detected Issues
+                              </p>
                               <div className="mt-1 space-y-1">
-                                {(schemaAnalysisResult?.schemaIssues?.tablesWithoutPrimaryKey?.length ?? 0) > 0 && (
+                                {(schemaAnalysisResult?.schemaIssues?.tablesWithoutPrimaryKey
+                                  ?.length ?? 0) > 0 && (
                                   <div className="flex items-center">
                                     <AlertCircle className="w-3 h-3 text-yellow-500 mr-2" />
-                                    <p className="text-xs">{schemaAnalysisResult?.schemaIssues?.tablesWithoutPrimaryKey?.length ?? 0} tables without primary key</p>
+                                    <p className="text-xs">
+                                      {schemaAnalysisResult?.schemaIssues?.tablesWithoutPrimaryKey
+                                        ?.length ?? 0}{' '}
+                                      tables without primary key
+                                    </p>
                                   </div>
                                 )}
-                                {(schemaAnalysisResult?.schemaIssues?.inconsistentNaming?.length ?? 0) > 0 && (
+                                {(schemaAnalysisResult?.schemaIssues?.inconsistentNaming?.length ??
+                                  0) > 0 && (
                                   <div className="flex items-center">
                                     <AlertCircle className="w-3 h-3 text-yellow-500 mr-2" />
-                                    <p className="text-xs">{schemaAnalysisResult?.schemaIssues?.inconsistentNaming?.length ?? 0} inconsistent naming patterns</p>
+                                    <p className="text-xs">
+                                      {schemaAnalysisResult?.schemaIssues?.inconsistentNaming
+                                        ?.length ?? 0}{' '}
+                                      inconsistent naming patterns
+                                    </p>
                                   </div>
                                 )}
-                                {(schemaAnalysisResult?.performanceIssues?.tablesWithoutIndexes?.length ?? 0) > 0 && (
+                                {(schemaAnalysisResult?.performanceIssues?.tablesWithoutIndexes
+                                  ?.length ?? 0) > 0 && (
                                   <div className="flex items-center">
                                     <AlertCircle className="w-3 h-3 text-yellow-500 mr-2" />
-                                    <p className="text-xs">{schemaAnalysisResult?.performanceIssues?.tablesWithoutIndexes?.length ?? 0} tables without indexes</p>
+                                    <p className="text-xs">
+                                      {schemaAnalysisResult?.performanceIssues?.tablesWithoutIndexes
+                                        ?.length ?? 0}{' '}
+                                      tables without indexes
+                                    </p>
                                   </div>
                                 )}
                               </div>
@@ -1092,10 +1204,10 @@ const DatabaseConversionPage = () => {
                           )}
                         </div>
                       </div>
-                      
+
                       <div className="space-y-4">
                         <h3 className="text-lg font-medium">Project Information</h3>
-                        
+
                         <FormField
                           control={conversionForm.control}
                           name="projectId"
@@ -1105,18 +1217,16 @@ const DatabaseConversionPage = () => {
                               <FormControl>
                                 <Input readOnly {...field} />
                               </FormControl>
-                              <FormDescription>
-                                Auto-generated project identifier
-                              </FormDescription>
+                              <FormDescription>Auto-generated project identifier</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
                       </div>
-                      
+
                       <div className="space-y-4">
                         <h3 className="text-lg font-medium">Source Database</h3>
-                        
+
                         <FormField
                           control={conversionForm.control}
                           name="sourceType"
@@ -1124,8 +1234,8 @@ const DatabaseConversionPage = () => {
                             <FormItem>
                               <FormLabel>Source Database Type</FormLabel>
                               <FormControl>
-                                <Select 
-                                  onValueChange={field.onChange} 
+                                <Select
+                                  onValueChange={field.onChange}
                                   defaultValue={field.value}
                                   disabled
                                 >
@@ -1133,11 +1243,13 @@ const DatabaseConversionPage = () => {
                                     <SelectValue placeholder="Select database type" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {databaseTypes?.filter((db: DatabaseInfo) => db.supportLevel === 'Full').map((db: DatabaseInfo) => (
-                                      <SelectItem key={db.id} value={db.id}>
-                                        {db.name}
-                                      </SelectItem>
-                                    ))}
+                                    {databaseTypes
+                                      ?.filter((db: DatabaseInfo) => db.supportLevel === 'Full')
+                                      .map((db: DatabaseInfo) => (
+                                        <SelectItem key={db.id} value={db.id}>
+                                          {db.name}
+                                        </SelectItem>
+                                      ))}
                                   </SelectContent>
                                 </Select>
                               </FormControl>
@@ -1148,7 +1260,7 @@ const DatabaseConversionPage = () => {
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={conversionForm.control}
                           name="sourceConnectionString"
@@ -1157,11 +1269,15 @@ const DatabaseConversionPage = () => {
                               <FormLabel>Source Connection String</FormLabel>
                               <div className="flex items-center space-x-2">
                                 <FormControl>
-                                  <Input 
-                                    {...field} 
-                                    disabled 
-                                    type={showConnectionStrings ? "text" : "password"}
-                                    value={showConnectionStrings ? field.value : maskConnectionString(field.value)}
+                                  <Input
+                                    {...field}
+                                    disabled
+                                    type={showConnectionStrings ? 'text' : 'password'}
+                                    value={
+                                      showConnectionStrings
+                                        ? field.value
+                                        : maskConnectionString(field.value)
+                                    }
                                   />
                                 </FormControl>
                                 <Button
@@ -1170,21 +1286,26 @@ const DatabaseConversionPage = () => {
                                   size="icon"
                                   onClick={() => setShowConnectionStrings(!showConnectionStrings)}
                                 >
-                                  {showConnectionStrings ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                  {showConnectionStrings ? (
+                                    <EyeOff className="h-4 w-4" />
+                                  ) : (
+                                    <Eye className="h-4 w-4" />
+                                  )}
                                 </Button>
                               </div>
                               <FormDescription>
-                                Connection string for the source database (auto-filled from analysis)
+                                Connection string for the source database (auto-filled from
+                                analysis)
                               </FormDescription>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
                       </div>
-                      
+
                       <div className="space-y-4">
                         <h3 className="text-lg font-medium">Target Database</h3>
-                        
+
                         <FormField
                           control={conversionForm.control}
                           name="targetType"
@@ -1192,30 +1313,27 @@ const DatabaseConversionPage = () => {
                             <FormItem>
                               <FormLabel>Target Database Type</FormLabel>
                               <FormControl>
-                                <Select 
-                                  onValueChange={field.onChange} 
-                                  defaultValue={field.value}
-                                >
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select database type" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {databaseTypes?.filter((db: DatabaseInfo) => db.supportLevel === 'Full').map((db: DatabaseInfo) => (
-                                      <SelectItem key={db.id} value={db.id}>
-                                        {db.name}
-                                      </SelectItem>
-                                    ))}
+                                    {databaseTypes
+                                      ?.filter((db: DatabaseInfo) => db.supportLevel === 'Full')
+                                      .map((db: DatabaseInfo) => (
+                                        <SelectItem key={db.id} value={db.id}>
+                                          {db.name}
+                                        </SelectItem>
+                                      ))}
                                   </SelectContent>
                                 </Select>
                               </FormControl>
-                              <FormDescription>
-                                Type of the target database
-                              </FormDescription>
+                              <FormDescription>Type of the target database</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={conversionForm.control}
                           name="targetConnectionString"
@@ -1224,10 +1342,10 @@ const DatabaseConversionPage = () => {
                               <FormLabel>Target Connection String</FormLabel>
                               <div className="flex items-center space-x-2">
                                 <FormControl>
-                                  <Input 
+                                  <Input
                                     placeholder="e.g. postgresql://user:password@localhost:5432/target_db"
-                                    {...field} 
-                                    type={showConnectionStrings ? "text" : "password"}
+                                    {...field}
+                                    type={showConnectionStrings ? 'text' : 'password'}
                                     value={field.value}
                                     onChange={field.onChange}
                                   />
@@ -1238,7 +1356,11 @@ const DatabaseConversionPage = () => {
                                   size="icon"
                                   onClick={() => setShowConnectionStrings(!showConnectionStrings)}
                                 >
-                                  {showConnectionStrings ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                  {showConnectionStrings ? (
+                                    <EyeOff className="h-4 w-4" />
+                                  ) : (
+                                    <Eye className="h-4 w-4" />
+                                  )}
                                 </Button>
                               </div>
                               <FormDescription>
@@ -1249,10 +1371,10 @@ const DatabaseConversionPage = () => {
                           )}
                         />
                       </div>
-                      
+
                       <div className="space-y-4">
                         <h3 className="text-lg font-medium">Compatibility Options</h3>
-                        
+
                         <FormField
                           control={conversionForm.control}
                           name="generateCompatibilityLayer"
@@ -1260,20 +1382,15 @@ const DatabaseConversionPage = () => {
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                               <div className="space-y-0.5">
                                 <FormLabel>Generate Compatibility Layer</FormLabel>
-                                <FormDescription>
-                                  Generate code for ORM integration
-                                </FormDescription>
+                                <FormDescription>Generate code for ORM integration</FormDescription>
                               </div>
                               <FormControl>
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
                               </FormControl>
                             </FormItem>
                           )}
                         />
-                        
+
                         {conversionForm.watch('generateCompatibilityLayer') && (
                           <>
                             <FormField
@@ -1306,7 +1423,7 @@ const DatabaseConversionPage = () => {
                                 </FormItem>
                               )}
                             />
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <FormField
                                 control={conversionForm.control}
@@ -1315,9 +1432,7 @@ const DatabaseConversionPage = () => {
                                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                                     <div className="space-y-0.5">
                                       <FormLabel>Include Examples</FormLabel>
-                                      <FormDescription>
-                                        Generate example code
-                                      </FormDescription>
+                                      <FormDescription>Generate example code</FormDescription>
                                     </div>
                                     <FormControl>
                                       <Switch
@@ -1328,7 +1443,7 @@ const DatabaseConversionPage = () => {
                                   </FormItem>
                                 )}
                               />
-                              
+
                               <FormField
                                 control={conversionForm.control}
                                 name="generateMigrations"
@@ -1362,7 +1477,7 @@ const DatabaseConversionPage = () => {
                   Back
                 </Button>
                 {schemaAnalysisResult && (
-                  <Button 
+                  <Button
                     onClick={conversionForm.handleSubmit(handleStartConversion)}
                     disabled={startConversionMutation.isPending}
                   >
@@ -1382,7 +1497,8 @@ const DatabaseConversionPage = () => {
               <CardHeader>
                 <CardTitle>Compatibility Layer</CardTitle>
                 <CardDescription>
-                  Generate a compatibility layer for your converted database to use with ORM frameworks
+                  Generate a compatibility layer for your converted database to use with ORM
+                  frameworks
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1409,7 +1525,7 @@ const DatabaseConversionPage = () => {
                     <form className="space-y-6">
                       <div className="space-y-4">
                         <h3 className="text-lg font-medium">Project Information</h3>
-                        
+
                         <FormField
                           control={compatibilityForm.control}
                           name="projectId"
@@ -1419,18 +1535,16 @@ const DatabaseConversionPage = () => {
                               <FormControl>
                                 <Input readOnly {...field} />
                               </FormControl>
-                              <FormDescription>
-                                Auto-generated project identifier
-                              </FormDescription>
+                              <FormDescription>Auto-generated project identifier</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
                       </div>
-                      
+
                       <div className="space-y-4">
                         <h3 className="text-lg font-medium">Compatibility Options</h3>
-                        
+
                         <FormField
                           control={compatibilityForm.control}
                           name="ormType"
@@ -1438,10 +1552,7 @@ const DatabaseConversionPage = () => {
                             <FormItem>
                               <FormLabel>ORM Type</FormLabel>
                               <FormControl>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                >
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select ORM type" />
                                   </SelectTrigger>
@@ -1461,7 +1572,7 @@ const DatabaseConversionPage = () => {
                             </FormItem>
                           )}
                         />
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField
                             control={compatibilityForm.control}
@@ -1470,20 +1581,15 @@ const DatabaseConversionPage = () => {
                               <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                                 <div className="space-y-0.5">
                                   <FormLabel>Include Examples</FormLabel>
-                                  <FormDescription>
-                                    Generate example code
-                                  </FormDescription>
+                                  <FormDescription>Generate example code</FormDescription>
                                 </div>
                                 <FormControl>
-                                  <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
+                                  <Switch checked={field.value} onCheckedChange={field.onChange} />
                                 </FormControl>
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={compatibilityForm.control}
                             name="generateMigrations"
@@ -1491,21 +1597,16 @@ const DatabaseConversionPage = () => {
                               <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                                 <div className="space-y-0.5">
                                   <FormLabel>Generate Migrations</FormLabel>
-                                  <FormDescription>
-                                    Create database migration files
-                                  </FormDescription>
+                                  <FormDescription>Create database migration files</FormDescription>
                                 </div>
                                 <FormControl>
-                                  <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
+                                  <Switch checked={field.value} onCheckedChange={field.onChange} />
                                 </FormControl>
                               </FormItem>
                             )}
                           />
                         </div>
-                        
+
                         <FormField
                           control={compatibilityForm.control}
                           name="targetDirectory"
@@ -1532,7 +1633,7 @@ const DatabaseConversionPage = () => {
                   Back
                 </Button>
                 {schemaAnalysisResult && (
-                  <Button 
+                  <Button
                     onClick={compatibilityForm.handleSubmit(handleGenerateCompatibilityLayer)}
                     disabled={generateCompatibilityLayerMutation.isPending}
                   >
@@ -1564,32 +1665,41 @@ const DatabaseConversionPage = () => {
                         <h4 className="font-medium">Conversion Completed Successfully</h4>
                       </div>
                       <p className="text-sm mt-1">
-                        Your database schema has been converted and compatibility layer generated successfully.
+                        Your database schema has been converted and compatibility layer generated
+                        successfully.
                       </p>
                     </div>
-                    
+
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Conversion Summary</h3>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div className="bg-primary/5 p-4 rounded-md">
-                          <p className="text-sm font-medium text-muted-foreground">Source Database</p>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Source Database
+                          </p>
                           <p className="text-sm font-bold">{schemaAnalysisResult?.databaseType}</p>
                         </div>
                         <div className="bg-primary/5 p-4 rounded-md">
-                          <p className="text-sm font-medium text-muted-foreground">Target Database</p>
-                          <p className="text-sm font-bold">{conversionForm.getValues('targetType')}</p>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Target Database
+                          </p>
+                          <p className="text-sm font-bold">
+                            {conversionForm.getValues('targetType')}
+                          </p>
                         </div>
                         <div className="bg-primary/5 p-4 rounded-md">
                           <p className="text-sm font-medium text-muted-foreground">ORM Type</p>
-                          <p className="text-sm font-bold">{compatibilityForm.getValues('ormType')}</p>
+                          <p className="text-sm font-bold">
+                            {compatibilityForm.getValues('ormType')}
+                          </p>
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Generated Files</h3>
-                      
+
                       <div className="space-y-2">
                         {compatibilityResult.generatedFiles.map((file, index) => (
                           <div key={index} className="bg-muted p-3 rounded-md">
@@ -1604,10 +1714,10 @@ const DatabaseConversionPage = () => {
                         ))}
                       </div>
                     </div>
-                    
+
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Next Steps</h3>
-                      
+
                       <div className="space-y-2">
                         <div className="flex items-start space-x-2">
                           <div className="mt-0.5">
@@ -1616,11 +1726,12 @@ const DatabaseConversionPage = () => {
                           <div>
                             <p className="font-medium">Review Generated Code</p>
                             <p className="text-sm text-muted-foreground">
-                              Review the generated compatibility layer code and make any necessary adjustments.
+                              Review the generated compatibility layer code and make any necessary
+                              adjustments.
                             </p>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-start space-x-2">
                           <div className="mt-0.5">
                             <Check className="h-5 w-5 text-green-500" />
@@ -1628,11 +1739,12 @@ const DatabaseConversionPage = () => {
                           <div>
                             <p className="font-medium">Run Migrations</p>
                             <p className="text-sm text-muted-foreground">
-                              Run the generated migrations to create the schema in your target database.
+                              Run the generated migrations to create the schema in your target
+                              database.
                             </p>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-start space-x-2">
                           <div className="mt-0.5">
                             <Check className="h-5 w-5 text-green-500" />
@@ -1646,9 +1758,9 @@ const DatabaseConversionPage = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex space-x-3">
-                      <Button 
+                      <Button
                         onClick={() => {
                           connectionForm.reset();
                           conversionForm.reset();
@@ -1668,7 +1780,8 @@ const DatabaseConversionPage = () => {
                       <h4 className="font-medium">No Completed Conversion</h4>
                     </div>
                     <p className="text-sm mt-1">
-                      You don't have any completed database conversions yet. Please complete the previous steps.
+                      You don't have any completed database conversions yet. Please complete the
+                      previous steps.
                     </p>
                     <Button
                       variant="outline"

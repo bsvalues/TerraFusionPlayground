@@ -23,16 +23,16 @@ interface ExportRequest {
 
 /**
  * GIS Export Service
- * 
+ *
  * Handles exporting geospatial data in various formats
  */
 export class GISExportService {
   private storage: IStorage;
-  
+
   constructor(storage: IStorage) {
     this.storage = storage;
   }
-  
+
   /**
    * Export geospatial data in the requested format
    */
@@ -40,18 +40,18 @@ export class GISExportService {
     try {
       const exportRequest: ExportRequest = req.body;
       const { layers, format, options, filename } = exportRequest;
-      
+
       if (!layers || !layers.length) {
         res.status(400).json({ error: 'No layers specified for export' });
         return;
       }
-      
+
       // Fetch the data for the requested layers
       const layerData = await this.fetchLayerData(layers, options.exportArea);
-      
+
       // Process data according to options
       const processedData = this.processData(layerData, options);
-      
+
       // Generate export in requested format
       switch (format) {
         case 'geojson':
@@ -77,20 +77,20 @@ export class GISExportService {
       res.status(500).json({ error: 'Failed to export data' });
     }
   }
-  
+
   /**
    * Fetch the data for the requested layers
    */
   private async fetchLayerData(layerIds: string[], exportArea: string): Promise<any[]> {
     // Simulate fetching data
     const layerData = [];
-    
+
     for (const layerId of layerIds) {
       // In a real implementation, this would query the database for the layer data
-      
+
       // For demo purposes, generate some sample features
       const features = [];
-      
+
       // Create 5 sample features per layer
       for (let i = 1; i <= 5; i++) {
         features.push({
@@ -99,7 +99,7 @@ export class GISExportService {
             name: `Feature ${i}`,
             value: Math.floor(Math.random() * 1000),
             type: ['residential', 'commercial', 'industrial'][Math.floor(Math.random() * 3)],
-            area: Math.floor(Math.random() * 10000) / 100
+            area: Math.floor(Math.random() * 10000) / 100,
           },
           geometry: {
             type: 'Polygon',
@@ -109,31 +109,31 @@ export class GISExportService {
                 [-119.7 + Math.random() * 0.1, 46.2 + Math.random() * 0.1],
                 [-119.7 + Math.random() * 0.1, 46.2 + Math.random() * 0.1],
                 [-119.7 + Math.random() * 0.1, 46.2 + Math.random() * 0.1],
-                [-119.7 + Math.random() * 0.1, 46.2 + Math.random() * 0.1]
-              ]
-            ]
-          }
+                [-119.7 + Math.random() * 0.1, 46.2 + Math.random() * 0.1],
+              ],
+            ],
+          },
         });
       }
-      
+
       layerData.push({
         layerId,
-        features
+        features,
       });
     }
-    
+
     return layerData;
   }
-  
+
   /**
    * Process data according to export options
    */
   private processData(layerData: any[], options: ExportOptions): any[] {
     const processedData = [];
-    
+
     for (const layer of layerData) {
       const processedLayer = { ...layer };
-      
+
       // Filter attributes if not including them
       if (!options.includeAttributes) {
         processedLayer.features = processedLayer.features.map((feature: any) => {
@@ -141,7 +141,7 @@ export class GISExportService {
           return { id, geometry };
         });
       }
-      
+
       // Filter geometry if not including it
       if (!options.includeGeometry) {
         processedLayer.features = processedLayer.features.map((feature: any) => {
@@ -149,7 +149,7 @@ export class GISExportService {
           return { id, properties };
         });
       }
-      
+
       // Convert coordinate system if needed
       if (options.coordinateSystem !== 'EPSG:4326' && options.includeGeometry) {
         processedLayer.features = processedLayer.features.map((feature: any) => {
@@ -158,13 +158,13 @@ export class GISExportService {
           return feature;
         });
       }
-      
+
       processedData.push(processedLayer);
     }
-    
+
     return processedData;
   }
-  
+
   /**
    * Export data as GeoJSON
    */
@@ -177,20 +177,21 @@ export class GISExportService {
           type: 'Feature',
           id: feature.id,
           properties: feature.properties || {},
-          geometry: feature.geometry
-        }))
+          geometry: feature.geometry,
+        })),
       };
     });
-    
+
     // If there's only one layer, return just that layer's GeoJSON
     // Otherwise, return an object with each layer
-    const response: any = geoJSON.length === 1
-      ? { ...geoJSON[0] }
-      : geoJSON.reduce((acc: Record<string, any>, layer, index) => {
-          acc[layerData[index].layerId] = layer;
-          return acc;
-        }, {});
-    
+    const response: any =
+      geoJSON.length === 1
+        ? { ...geoJSON[0] }
+        : geoJSON.reduce((acc: Record<string, any>, layer, index) => {
+            acc[layerData[index].layerId] = layer;
+            return acc;
+          }, {});
+
     // Add metadata if requested
     if (options.includeMetadata) {
       const metadata = {
@@ -198,19 +199,19 @@ export class GISExportService {
         layerCount: layerData.length,
         featureCount: layerData.reduce((acc, layer) => acc + layer.features.length, 0),
         coordinateSystem: options.coordinateSystem,
-        exportArea: options.exportArea
+        exportArea: options.exportArea,
       };
-      
+
       if (geoJSON.length === 1) {
         response.metadata = metadata;
       } else {
         response._metadata = metadata;
       }
     }
-    
+
     res.json(response);
   }
-  
+
   /**
    * Export data as Shapefile (zipped)
    */
@@ -222,7 +223,7 @@ export class GISExportService {
   ): void {
     // In a real implementation, this would convert the data to Shapefile format
     // For demo purposes, we'll just return GeoJSON with shapefile metadata
-    
+
     // Create a simple shapefile-like structure (as JSON)
     const shapefile: any = {
       type: 'ShapefileExport',
@@ -230,10 +231,10 @@ export class GISExportService {
         name: layer.layerId,
         shapeType: 'polygon',
         features: layer.features,
-        recordCount: layer.features.length
-      }))
+        recordCount: layer.features.length,
+      })),
     };
-    
+
     // Add metadata if requested
     if (options.includeMetadata) {
       shapefile.metadata = {
@@ -241,20 +242,20 @@ export class GISExportService {
         layerCount: layerData.length,
         featureCount: layerData.reduce((acc, layer) => acc + layer.features.length, 0),
         coordinateSystem: options.coordinateSystem,
-        exportArea: options.exportArea
+        exportArea: options.exportArea,
       };
     }
-    
+
     res.json(shapefile);
   }
-  
+
   /**
    * Export data as KML
    */
   private exportAsKML(layerData: any[], options: ExportOptions, res: Response): void {
     // In a real implementation, this would convert the data to KML format
     // For demo purposes, we'll just return a simple KML-like structure (as JSON)
-    
+
     const kml: any = {
       type: 'KMLExport',
       document: {
@@ -264,12 +265,12 @@ export class GISExportService {
           placemarks: layer.features.map((feature: any) => ({
             name: `Feature ${feature.id}`,
             extendedData: options.includeAttributes ? feature.properties : null,
-            geometry: options.includeGeometry ? feature.geometry : null
-          }))
-        }))
-      }
+            geometry: options.includeGeometry ? feature.geometry : null,
+          })),
+        })),
+      },
     };
-    
+
     // Add metadata if requested
     if (options.includeMetadata) {
       kml.metadata = {
@@ -277,29 +278,29 @@ export class GISExportService {
         layerCount: layerData.length,
         featureCount: layerData.reduce((acc, layer) => acc + layer.features.length, 0),
         coordinateSystem: options.coordinateSystem,
-        exportArea: options.exportArea
+        exportArea: options.exportArea,
       };
     }
-    
+
     res.json(kml);
   }
-  
+
   /**
    * Export data as CSV
    */
   private exportAsCSV(layerData: any[], options: ExportOptions, res: Response): void {
     // In a real implementation, this would convert the data to CSV format
     // For demo purposes, we'll create a CSV-like structure (as JSON)
-    
+
     const csv: any = {
       type: 'CSVExport',
-      data: [] as any[]
+      data: [] as any[],
     };
-    
+
     // If we have multiple layers, we'll create a CSV structure for each layer
     if (layerData.length === 1) {
       const layer = layerData[0];
-      
+
       // Get all unique property keys
       const keys = new Set<string>();
       layer.features.forEach((feature: any) => {
@@ -307,56 +308,56 @@ export class GISExportService {
           Object.keys(feature.properties).forEach(key => keys.add(key));
         }
       });
-      
+
       // Add ID column
       const columns = ['id', ...Array.from(keys)];
-      
+
       // Add geometry columns if including geometry
       if (options.includeGeometry) {
         columns.push('geometry_type', 'geometry_coordinates');
       }
-      
+
       csv.columns = columns;
-      
+
       // Add data rows
       csv.data = layer.features.map((feature: any) => {
         const row: any = {
-          id: feature.id
+          id: feature.id,
         };
-        
+
         // Add properties
         if (feature.properties) {
           for (const [key, value] of Object.entries(feature.properties)) {
             row[key] = value;
           }
         }
-        
+
         // Add geometry if including it
         if (options.includeGeometry && feature.geometry) {
           row.geometry_type = feature.geometry.type;
           row.geometry_coordinates = JSON.stringify(feature.geometry.coordinates);
         }
-        
+
         return row;
       });
     } else {
       // Multiple layers - create a simple list of features with layer ID
       csv.columns = ['layer_id', 'feature_id', 'properties'];
-      
+
       // Add data rows
       csv.data = [];
-      
+
       layerData.forEach(layer => {
         layer.features.forEach((feature: any) => {
           csv.data.push({
             layer_id: layer.layerId,
             feature_id: feature.id,
-            properties: options.includeAttributes ? JSON.stringify(feature.properties) : ''
+            properties: options.includeAttributes ? JSON.stringify(feature.properties) : '',
           });
         });
       });
     }
-    
+
     // Add metadata if requested
     if (options.includeMetadata) {
       csv.metadata = {
@@ -364,13 +365,13 @@ export class GISExportService {
         layerCount: layerData.length,
         featureCount: layerData.reduce((acc, layer) => acc + layer.features.length, 0),
         coordinateSystem: options.coordinateSystem,
-        exportArea: options.exportArea
+        exportArea: options.exportArea,
       };
     }
-    
+
     res.json(csv);
   }
-  
+
   /**
    * Export data as Excel
    */

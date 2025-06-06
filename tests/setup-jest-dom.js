@@ -1,6 +1,6 @@
 /**
  * Setup file for Jest DOM testing environment
- * 
+ *
  * This file sets up global browser objects that are used by the ConnectionManager
  */
 
@@ -17,7 +17,7 @@ global.WebSocket = class WebSocket {
     this.CLOSING = 2;
     this.CLOSED = 3;
   }
-  
+
   send() {}
   close() {}
   addEventListener() {}
@@ -35,7 +35,7 @@ global.EventSource = class EventSource {
     this.OPEN = 1;
     this.CLOSED = 2;
   }
-  
+
   close() {}
   addEventListener() {}
   removeEventListener() {}
@@ -47,7 +47,7 @@ global.fetch = jest.fn().mockImplementation(() => {
     json: () => Promise.resolve({}),
     text: () => Promise.resolve(''),
     ok: true,
-    status: 200
+    status: 200,
   });
 });
 
@@ -57,17 +57,17 @@ global.document = {
   createElement: jest.fn().mockImplementation(() => ({
     className: '',
     textContent: '',
-    appendChild: jest.fn()
+    appendChild: jest.fn(),
   })),
-  createTextNode: jest.fn().mockImplementation(text => ({ text }))
+  createTextNode: jest.fn().mockImplementation(text => ({ text })),
 };
 
 // Mock window location for WebSocket URL construction
 global.window = {
   location: {
     protocol: 'https:',
-    host: 'example.com'
-  }
+    host: 'example.com',
+  },
 };
 
 // Set up necessary timing functions

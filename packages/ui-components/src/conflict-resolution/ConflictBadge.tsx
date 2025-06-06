@@ -1,6 +1,6 @@
 /**
  * ConflictBadge Component
- * 
+ *
  * A visual indicator that shows when conflicts exist.
  * Can be used in headers, tabs, or anywhere to alert users.
  */
@@ -44,21 +44,19 @@ export const ConflictBadge: React.FC<ConflictBadgeProps> = ({
 
   // Format the display count
   const displayCount = count > max ? `${max}+` : count.toString();
-  
+
   // Base styles
   const baseClasses = 'inline-flex items-center justify-center rounded-full font-medium';
-  
+
   // Size-specific styles
   const sizeClasses = {
     small: 'text-xs w-5 h-5',
     medium: 'text-sm w-6 h-6',
     large: 'text-base w-7 h-7',
   };
-  
+
   // Color based on count
-  const colorClasses = count > 0
-    ? 'bg-red-500 text-white' 
-    : 'bg-gray-300 text-gray-600';
+  const colorClasses = count > 0 ? 'bg-red-500 text-white' : 'bg-gray-300 text-gray-600';
 
   return (
     <div

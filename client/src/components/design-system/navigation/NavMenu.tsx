@@ -6,27 +6,27 @@ import { ChevronDown } from 'lucide-react';
 /**
  * NavMenu variants using class-variance-authority
  */
-const navMenuVariants = cva("flex", {
+const navMenuVariants = cva('flex', {
   variants: {
     variant: {
-      horizontal: "flex-row items-center",
-      vertical: "flex-col items-start",
+      horizontal: 'flex-row items-center',
+      vertical: 'flex-col items-start',
     },
     size: {
-      sm: "gap-1",
-      md: "gap-2",
-      lg: "gap-4",
+      sm: 'gap-1',
+      md: 'gap-2',
+      lg: 'gap-4',
     },
     spacing: {
-      compact: "gap-1",
-      normal: "gap-2",
-      relaxed: "gap-4",
+      compact: 'gap-1',
+      normal: 'gap-2',
+      relaxed: 'gap-4',
     },
   },
   defaultVariants: {
-    variant: "horizontal",
-    size: "md",
-    spacing: "normal",
+    variant: 'horizontal',
+    size: 'md',
+    spacing: 'normal',
   },
 });
 
@@ -34,43 +34,44 @@ const navMenuVariants = cva("flex", {
  * NavMenuItem variants using class-variance-authority
  */
 const navMenuItemVariants = cva(
-  "relative flex items-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+  'relative flex items-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
   {
     variants: {
       variant: {
-        default: "hover:bg-muted/50 focus:bg-muted",
-        bordered: "border border-border hover:border-primary/50 hover:bg-muted/50 focus:bg-muted",
-        minimal: "hover:text-primary focus:text-primary",
-        ghost: "hover:bg-muted focus:bg-muted",
-        underlined: "border-b-2 border-transparent hover:border-primary/50 rounded-none",
+        default: 'hover:bg-muted/50 focus:bg-muted',
+        bordered: 'border border-border hover:border-primary/50 hover:bg-muted/50 focus:bg-muted',
+        minimal: 'hover:text-primary focus:text-primary',
+        ghost: 'hover:bg-muted focus:bg-muted',
+        underlined: 'border-b-2 border-transparent hover:border-primary/50 rounded-none',
       },
       size: {
-        sm: "text-sm px-2 py-1",
-        md: "px-3 py-2",
-        lg: "text-lg px-4 py-2.5",
+        sm: 'text-sm px-2 py-1',
+        md: 'px-3 py-2',
+        lg: 'text-lg px-4 py-2.5',
       },
       active: {
-        true: "bg-primary/10 text-primary font-medium",
-        false: "",
+        true: 'bg-primary/10 text-primary font-medium',
+        false: '',
       },
     },
     compoundVariants: [
       {
-        variant: "underlined",
+        variant: 'underlined',
         active: true,
-        className: "border-primary",
+        className: 'border-primary',
       },
     ],
     defaultVariants: {
-      variant: "default",
-      size: "md",
+      variant: 'default',
+      size: 'md',
       active: false,
     },
   }
 );
 
-export interface NavMenuItemProps extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-  VariantProps<typeof navMenuItemVariants> {
+export interface NavMenuItemProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof navMenuItemVariants> {
   /**
    * Icon to display before the label
    */
@@ -91,48 +92,30 @@ export interface NavMenuItemProps extends React.ButtonHTMLAttributes<HTMLButtonE
 
 /**
  * NavMenuItem component
- * 
+ *
  * A navigation item within NavMenu.
  */
 export const NavMenuItem = React.forwardRef<HTMLButtonElement, NavMenuItemProps>(
-  ({ 
-    className, 
-    variant, 
-    size, 
-    active,
-    icon,
-    href,
-    itemKey,
-    isDropdown,
-    children,
-    ...props
-  }, ref) => {
+  (
+    { className, variant, size, active, icon, href, itemKey, isDropdown, children, ...props },
+    ref
+  ) => {
     const classes = cn(navMenuItemVariants({ variant, size, active }), className);
-    
+
     // Render as link if href is provided
     if (href) {
       return (
-        <a 
-          href={href} 
-          className={classes}
-          ref={ref as any}
-          {...props as any}
-        >
+        <a href={href} className={classes} ref={ref as any} {...(props as any)}>
           {icon && <span className="mr-2">{icon}</span>}
           <span>{children}</span>
           {isDropdown && <ChevronDown className="ml-1 h-4 w-4" />}
         </a>
       );
     }
-    
+
     // Otherwise render as button
     return (
-      <button
-        type="button"
-        className={classes}
-        ref={ref}
-        {...props}
-      >
+      <button type="button" className={classes} ref={ref} {...props}>
         {icon && <span className="mr-2">{icon}</span>}
         <span>{children}</span>
         {isDropdown && <ChevronDown className="ml-1 h-4 w-4" />}
@@ -193,8 +176,9 @@ export interface NavMenuItemData {
   children?: NavMenuItemData[];
 }
 
-export interface NavMenuProps extends React.HTMLAttributes<HTMLDivElement>,
-  VariantProps<typeof navMenuVariants> {
+export interface NavMenuProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof navMenuVariants> {
   /**
    * Array of menu items
    */
@@ -227,9 +211,9 @@ export interface NavMenuProps extends React.HTMLAttributes<HTMLDivElement>,
 
 /**
  * NavMenu component
- * 
+ *
  * A navigation menu component that displays horizontal or vertical navigation.
- * 
+ *
  * @example
  * ```tsx
  * <NavMenu
@@ -244,37 +228,40 @@ export interface NavMenuProps extends React.HTMLAttributes<HTMLDivElement>,
  * ```
  */
 export const NavMenu = React.forwardRef<HTMLDivElement, NavMenuProps>(
-  ({ 
-    className, 
-    variant, 
-    size,
-    spacing,
-    items = [],
-    itemVariant = 'default',
-    itemSize = 'md',
-    activeKey,
-    onItemClick,
-    groups = [],
-    showGroupDividers = true,
-    children,
-    ...props
-  }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      spacing,
+      items = [],
+      itemVariant = 'default',
+      itemSize = 'md',
+      activeKey,
+      onItemClick,
+      groups = [],
+      showGroupDividers = true,
+      children,
+      ...props
+    },
+    ref
+  ) => {
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-    
+
     const handleItemClick = (item: NavMenuItemData) => {
       if (item.isDropdown) {
         setOpenDropdown(openDropdown === item.key ? null : item.key);
       } else {
         setOpenDropdown(null);
       }
-      
+
       if (onItemClick) {
         onItemClick(item);
       }
     };
-    
-    const renderItems = (menuItems: NavMenuItemData[]) => (
-      menuItems.map((item) => (
+
+    const renderItems = (menuItems: NavMenuItemData[]) =>
+      menuItems.map(item => (
         <div key={item.key} className="relative">
           <NavMenuItem
             variant={itemVariant}
@@ -285,20 +272,20 @@ export const NavMenu = React.forwardRef<HTMLDivElement, NavMenuProps>(
             itemKey={item.key}
             isDropdown={item.isDropdown || (item.children && item.children.length > 0)}
             onClick={() => handleItemClick(item)}
-            className={item.highlight ? "text-primary font-medium" : ""}
+            className={item.highlight ? 'text-primary font-medium' : ''}
           >
             {item.label}
           </NavMenuItem>
-          
+
           {/* Dropdown menu */}
           {item.children && item.children.length > 0 && openDropdown === item.key && (
-            <div 
+            <div
               className={cn(
-                "absolute z-10 mt-1 py-1 bg-card border border-border rounded-md shadow-md min-w-[160px]",
-                variant === 'vertical' ? "left-full top-0" : "left-0 top-full"
+                'absolute z-10 mt-1 py-1 bg-card border border-border rounded-md shadow-md min-w-[160px]',
+                variant === 'vertical' ? 'left-full top-0' : 'left-0 top-full'
               )}
             >
-              {item.children.map((child) => (
+              {item.children.map(child => (
                 <NavMenuItem
                   key={child.key}
                   variant="ghost"
@@ -319,18 +306,17 @@ export const NavMenu = React.forwardRef<HTMLDivElement, NavMenuProps>(
             </div>
           )}
         </div>
-      ))
-    );
-    
+      ));
+
     return (
-      <nav 
-        ref={ref} 
+      <nav
+        ref={ref}
         className={cn(navMenuVariants({ variant, size, spacing }), className)}
         {...props}
       >
         {/* Render items without groups */}
         {items.length > 0 && !groups.length && renderItems(items)}
-        
+
         {/* Render grouped items */}
         {groups.length > 0 && (
           <>
@@ -340,7 +326,7 @@ export const NavMenu = React.forwardRef<HTMLDivElement, NavMenuProps>(
                 {index > 0 && showGroupDividers && variant === 'vertical' && (
                   <hr className="w-full my-2 border-t border-border" />
                 )}
-                
+
                 {/* Group label */}
                 {variant === 'vertical' && (
                   <div className="px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -348,18 +334,22 @@ export const NavMenu = React.forwardRef<HTMLDivElement, NavMenuProps>(
                     {group.label}
                   </div>
                 )}
-                
+
                 {/* Group items */}
-                <div className={cn(
-                  variant === 'vertical' ? "flex flex-col w-full gap-1" : "flex items-center gap-2"
-                )}>
+                <div
+                  className={cn(
+                    variant === 'vertical'
+                      ? 'flex flex-col w-full gap-1'
+                      : 'flex items-center gap-2'
+                  )}
+                >
                   {renderItems(group.items)}
                 </div>
               </React.Fragment>
             ))}
           </>
         )}
-        
+
         {/* Render children */}
         {children}
       </nav>

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 /**
  * Plugin Manifest Schema
- * 
+ *
  * Defines the structure and validation rules for plugin manifest files
  * which are used to describe and load plugins in the TerraFusion platform.
  */
@@ -24,7 +24,7 @@ export const pluginLicenseSchema = z.enum([
   'GPL-3.0',
   'BSD-3-Clause',
   'proprietary',
-  'custom'
+  'custom',
 ]);
 
 export type PluginLicense = z.infer<typeof pluginLicenseSchema>;
@@ -50,18 +50,13 @@ export const pluginPermissionSchema = z.enum([
   'user:read',
   'team:read',
   'gis:read',
-  'gis:write'
+  'gis:write',
 ]);
 
 export type PluginPermission = z.infer<typeof pluginPermissionSchema>;
 
 // Plugin pricing model schema
-export const pluginPricingModelSchema = z.enum([
-  'free',
-  'freemium',
-  'paid',
-  'subscription'
-]);
+export const pluginPricingModelSchema = z.enum(['free', 'freemium', 'paid', 'subscription']);
 
 export type PluginPricingModel = z.infer<typeof pluginPricingModelSchema>;
 
@@ -79,7 +74,11 @@ export type PluginPaymentInfo = z.infer<typeof pluginPaymentInfoSchema>;
 
 // Main plugin manifest schema
 export const pluginManifestSchema = z.object({
-  id: z.string().min(3).max(100).regex(/^[a-z0-9-]+$/),
+  id: z
+    .string()
+    .min(3)
+    .max(100)
+    .regex(/^[a-z0-9-]+$/),
   name: z.string().min(1).max(100),
   description: z.string().max(500),
   version: z.string().regex(/^(\d+\.\d+\.\d+)$/),
@@ -90,7 +89,10 @@ export const pluginManifestSchema = z.object({
   main: z.string().default('index.js'),
   typings: z.string().optional(),
   minApiVersion: z.string().regex(/^(\d+\.\d+\.\d+)$/),
-  maxApiVersion: z.string().regex(/^(\d+\.\d+\.\d+)$/).optional(),
+  maxApiVersion: z
+    .string()
+    .regex(/^(\d+\.\d+\.\d+)$/)
+    .optional(),
   dependencies: z.array(pluginDependencySchema).default([]),
   permissions: z.array(pluginPermissionSchema).default([]),
   tags: z.array(z.string()).default([]),
@@ -104,7 +106,7 @@ export type PluginManifest = z.infer<typeof pluginManifestSchema>;
 
 // Export insert/update schema for API endpoints
 export const pluginManifestInsertSchema = pluginManifestSchema.omit({
-  signature: true
+  signature: true,
 });
 
 export type PluginManifestInsert = z.infer<typeof pluginManifestInsertSchema>;

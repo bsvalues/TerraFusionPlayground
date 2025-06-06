@@ -1,6 +1,6 @@
 /**
  * AI Assistant Service
- * 
+ *
  * This service provides a unified interface for the AI Assistant feature,
  * supporting OpenAI, Anthropic, and Perplexity as AI providers.
  */
@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { LLMService } from './llm-service';
 import { perplexityService, PerplexityService } from './perplexity-service';
 
-// Define types for context 
+// Define types for context
 export interface MessageContext {
   recentMessages: Array<{
     id: string;
@@ -110,19 +110,19 @@ export class AIAssistantService {
    */
   public getAvailableProviders(): ('openai' | 'anthropic' | 'perplexity')[] {
     const providers: ('openai' | 'anthropic' | 'perplexity')[] = [];
-    
+
     if (this.isProviderAvailable('openai')) {
       providers.push('openai');
     }
-    
+
     if (this.isProviderAvailable('anthropic')) {
       providers.push('anthropic');
     }
-    
+
     if (this.isProviderAvailable('perplexity')) {
       providers.push('perplexity');
     }
-    
+
     return providers;
   }
 
@@ -131,18 +131,18 @@ export class AIAssistantService {
    */
   public async generateResponse(request: AIAssistantRequest): Promise<AIAssistantResponse> {
     const { message, context, provider, options } = request;
-    
+
     // Validate that the provider is available
     if (!this.isProviderAvailable(provider)) {
       throw new Error(`AI provider '${provider}' is not available. Check API key configuration.`);
     }
-    
+
     // Generate system prompt from context
     const systemPrompt = this.generateSystemPrompt(context);
-    
+
     // Format messages for the AI provider
     const messages = this.formatMessages(message, context, systemPrompt);
-    
+
     // Call the appropriate provider
     switch (provider) {
       case 'openai':
@@ -189,13 +189,9 @@ ${context.recentQueries.map(query => `- ${query}`).join('\n')}`;
   /**
    * Format messages for the AI provider
    */
-  private formatMessages(
-    message: string, 
-    context?: MessageContext,
-    systemPrompt?: string
-  ): any[] {
+  private formatMessages(message: string, context?: MessageContext, systemPrompt?: string): any[] {
     const formattedMessages: any[] = [];
-    
+
     // Add system message
     if (systemPrompt) {
       formattedMessages.push({
@@ -203,7 +199,7 @@ ${context.recentQueries.map(query => `- ${query}`).join('\n')}`;
         content: systemPrompt,
       });
     }
-    
+
     // Add recent messages for context
     if (context?.recentMessages && context.recentMessages.length > 0) {
       for (const recentMsg of context.recentMessages) {
@@ -215,13 +211,13 @@ ${context.recentQueries.map(query => `- ${query}`).join('\n')}`;
         }
       }
     }
-    
+
     // Add the current message
     formattedMessages.push({
       role: 'user',
       content: message,
     });
-    
+
     return formattedMessages;
   }
 
@@ -256,7 +252,9 @@ ${context.recentQueries.map(query => `- ${query}`).join('\n')}`;
       };
     } catch (error) {
       console.error('Error calling OpenAI:', error);
-      throw new Error(`OpenAI API error: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `OpenAI API error: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -275,7 +273,7 @@ ${context.recentQueries.map(query => `- ${query}`).join('\n')}`;
       // Find system message
       const systemMessage = messages.find(msg => msg.role === 'system');
       const systemPrompt = systemMessage ? systemMessage.content : '';
-      
+
       // Filter out system message for Anthropic format
       const anthropicMessages = messages.filter(msg => msg.role !== 'system');
 
@@ -290,18 +288,22 @@ ${context.recentQueries.map(query => `- ${query}`).join('\n')}`;
 
       // Handle different types of content from Anthropic
       let responseContent = 'Response content format not supported';
-      
+
       if (response.content && response.content.length > 0) {
         const firstContent = response.content[0];
         if (typeof firstContent === 'object' && firstContent !== null) {
           if ('text' in firstContent && typeof firstContent.text === 'string') {
             responseContent = firstContent.text;
-          } else if ('type' in firstContent && firstContent.type === 'text' && 'text' in firstContent) {
+          } else if (
+            'type' in firstContent &&
+            firstContent.type === 'text' &&
+            'text' in firstContent
+          ) {
             responseContent = String(firstContent.text);
           }
         }
       }
-      
+
       return {
         message: responseContent,
         model: response.model,
@@ -314,7 +316,9 @@ ${context.recentQueries.map(query => `- ${query}`).join('\n')}`;
       };
     } catch (error) {
       console.error('Error calling Anthropic:', error);
-      throw new Error(`Anthropic API error: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Anthropic API error: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -333,14 +337,14 @@ ${context.recentQueries.map(query => `- ${query}`).join('\n')}`;
       // Convert messages for Perplexity format
       const perplexityMessages = messages.map(msg => ({
         role: msg.role,
-        content: msg.content
+        content: msg.content,
       }));
 
       const response = await this.perplexityService.query(perplexityMessages, {
         temperature: options?.temperature,
         maxTokens: options?.maxTokens,
         // the newest Perplexity model is "llama-3.1-sonar-small-128k-online"
-        model: "llama-3.1-sonar-small-128k-online"
+        model: 'llama-3.1-sonar-small-128k-online',
       });
 
       return {
@@ -354,7 +358,9 @@ ${context.recentQueries.map(query => `- ${query}`).join('\n')}`;
       };
     } catch (error) {
       console.error('Error calling Perplexity:', error);
-      throw new Error(`Perplexity API error: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Perplexity API error: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 }

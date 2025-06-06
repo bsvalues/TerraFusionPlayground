@@ -1,6 +1,6 @@
 /**
  * Agent System Type Definitions
- * 
+ *
  * This file contains TypeScript interfaces for the agent system.
  * These types are shared between frontend and backend code to ensure
  * consistent data structures.
@@ -73,24 +73,24 @@ export interface ExecuteCapabilityResponse {
 }
 
 /**
- * Market trend analysis 
+ * Market trend analysis
  */
 export interface MarketTrend {
-  metric: string;          // The name of the metric (median_price, days_on_market, etc.)
-  timeframe: string;       // The timeframe for the trend (1_month, 3_months, 1_year, etc.)
-  value: number;           // The current value of the metric
+  metric: string; // The name of the metric (median_price, days_on_market, etc.)
+  timeframe: string; // The timeframe for the trend (1_month, 3_months, 1_year, etc.)
+  value: number; // The current value of the metric
   trend: 'increasing' | 'decreasing' | 'stable'; // The direction of the trend
-  confidence: number;      // Confidence level between 0 and 1
+  confidence: number; // Confidence level between 0 and 1
 }
 
 /**
  * Economic indicator
  */
 export interface EconomicIndicator {
-  name: string;            // Name of the indicator (interest_rate, unemployment_rate, etc.)
-  value: number;           // Current value of the indicator
+  name: string; // Name of the indicator (interest_rate, unemployment_rate, etc.)
+  value: number; // Current value of the indicator
   impact: 'positive' | 'negative' | 'neutral'; // Impact on property values
-  significance: number;    // Significance/weight between 0 and 1
+  significance: number; // Significance/weight between 0 and 1
 }
 
 /**

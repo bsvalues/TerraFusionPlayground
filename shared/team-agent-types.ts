@@ -1,6 +1,6 @@
 /**
  * Team Agent Types
- * 
+ *
  * This file contains type definitions for team agents and related entities.
  */
 
@@ -12,7 +12,7 @@ export enum TeamAgentRole {
   BACKEND_DEVELOPER = 'backend_developer',
   DESIGNER = 'designer',
   QA_TESTER = 'qa_tester',
-  COUNTY_ASSESSOR = 'county_assessor'
+  COUNTY_ASSESSOR = 'county_assessor',
 }
 
 /**
@@ -22,7 +22,7 @@ export enum TeamAgentStatus {
   AVAILABLE = 'available',
   BUSY = 'busy',
   AWAY = 'away',
-  OFFLINE = 'offline'
+  OFFLINE = 'offline',
 }
 
 /**
@@ -32,7 +32,7 @@ export enum ExpertiseLevel {
   JUNIOR = 'junior',
   MID = 'mid',
   SENIOR = 'senior',
-  EXPERT = 'expert'
+  EXPERT = 'expert',
 }
 
 /**
@@ -79,7 +79,7 @@ export enum TaskPriority {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  CRITICAL = 'critical'
+  CRITICAL = 'critical',
 }
 
 /**
@@ -91,7 +91,7 @@ export enum TaskStatus {
   REVIEW = 'review',
   COMPLETED = 'completed',
   BLOCKED = 'blocked',
-  CANCELLED = 'cancelled'
+  CANCELLED = 'cancelled',
 }
 
 /**
@@ -167,7 +167,7 @@ export enum TeamCollaborationMessageType {
   ERROR = 'error',
   AUTH_REQUIRED = 'auth_required',
   AUTH_SUCCESS = 'auth_success',
-  SESSION_STATE = 'session_state'
+  SESSION_STATE = 'session_state',
 }
 
 /**

@@ -1,6 +1,6 @@
 /**
  * Plandex AI Code Generator
- * 
+ *
  * This component provides a UI for generating code using Plandex AI.
  * It allows users to specify a prompt, programming language, and context.
  */
@@ -8,8 +8,21 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Loader2, Code, Wand2 } from 'lucide-react';
 import { usePlandexAI } from '@/providers/plandex-ai-provider';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -21,10 +34,10 @@ interface PlandexAICodeGeneratorProps {
   className?: string;
 }
 
-export function PlandexAICodeGenerator({ 
+export function PlandexAICodeGenerator({
   onCodeGenerated,
   showGeneratedCode = true,
-  className = ''
+  className = '',
 }: PlandexAICodeGeneratorProps) {
   // State
   const [prompt, setPrompt] = useState<string>('');
@@ -32,7 +45,7 @@ export function PlandexAICodeGenerator({
   const [context, setContext] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatedCode, setGeneratedCode] = useState<string>('');
-  
+
   // Get the Plandex AI context
   const { isAvailable, isLoading, generateCode } = usePlandexAI();
 
@@ -45,11 +58,11 @@ export function PlandexAICodeGenerator({
       const code = await generateCode({
         prompt,
         language,
-        context: context || undefined
+        context: context || undefined,
       });
 
       setGeneratedCode(code);
-      
+
       if (onCodeGenerated) {
         onCodeGenerated(code);
       }
@@ -86,7 +99,7 @@ export function PlandexAICodeGenerator({
             Describe what you want to generate and get AI-powered code suggestions
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center p-4">
@@ -121,7 +134,7 @@ export function PlandexAICodeGenerator({
                 <label className="block text-sm font-medium mb-1">Describe the code you need</label>
                 <Textarea
                   value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
+                  onChange={e => setPrompt(e.target.value)}
                   placeholder="E.g., 'Create a function to calculate property tax based on assessed value and tax rate'"
                   rows={5}
                 />
@@ -131,38 +144,38 @@ export function PlandexAICodeGenerator({
                 <label className="block text-sm font-medium mb-1">Context (Optional)</label>
                 <Textarea
                   value={context}
-                  onChange={(e) => setContext(e.target.value)}
+                  onChange={e => setContext(e.target.value)}
                   placeholder="Provide additional context such as existing code, specific requirements, or constraints"
                   rows={3}
                 />
               </div>
             </div>
           )}
-          
+
           {showGeneratedCode && generatedCode && (
             <div className="mt-6">
               <label className="block text-sm font-medium mb-2">Generated Code</label>
-              <CodeHighlighter 
-                code={generatedCode} 
-                language={language} 
+              <CodeHighlighter
+                code={generatedCode}
+                language={language}
                 className="max-h-96 overflow-auto"
               />
             </div>
           )}
         </CardContent>
-        
+
         <CardFooter className="flex justify-between">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleClear}
             disabled={isLoading || isGenerating || (!prompt && !context && !generatedCode)}
           >
             Clear
           </Button>
-          
+
           <div className="flex gap-2">
             {generatedCode && (
-              <Button 
+              <Button
                 onClick={handleUseCode}
                 disabled={!generatedCode || isGenerating}
                 className="flex-nowrap whitespace-nowrap"
@@ -171,9 +184,9 @@ export function PlandexAICodeGenerator({
                 Use Code
               </Button>
             )}
-            
-            <Button 
-              onClick={handleGenerateCode} 
+
+            <Button
+              onClick={handleGenerateCode}
               disabled={!prompt.trim() || isGenerating || !isAvailable || isLoading}
             >
               {isGenerating ? (

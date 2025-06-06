@@ -51,7 +51,7 @@ export function createGisRoutes(storage: IStorage) {
   router.get('/property-boundaries', async (req, res) => {
     try {
       const boundaries = await qgisService.getPropertyBoundaries(
-        req.query.bbox as string, 
+        req.query.bbox as string,
         req.query.filter as string
       );
       res.json(boundaries);
@@ -91,7 +91,7 @@ export function createGisRoutes(storage: IStorage) {
   router.post('/export/image', async (req, res) => {
     try {
       const { bbox, width, height, layers, format } = req.body;
-      
+
       const imageBuffer = await qgisService.exportMapImage(
         bbox,
         width,
@@ -99,7 +99,7 @@ export function createGisRoutes(storage: IStorage) {
         layers,
         format || 'png'
       );
-      
+
       res.set('Content-Type', `image/${format || 'png'}`);
       res.send(imageBuffer);
     } catch (error) {
@@ -112,7 +112,7 @@ export function createGisRoutes(storage: IStorage) {
   router.post('/export/pdf', async (req, res) => {
     try {
       const { bbox, width, height, layers, title, includeAttribution } = req.body;
-      
+
       // For now, use the existing exportMap method as exportMapPDF is not available
       const projectId = 'property-assessment'; // Default project
       const pdfBuffer = await qgisService.exportMap(
@@ -122,7 +122,7 @@ export function createGisRoutes(storage: IStorage) {
         height,
         'pdf'
       );
-      
+
       if (pdfBuffer) {
         res.set('Content-Type', 'application/pdf');
         res.set('Content-Disposition', 'attachment; filename="map-export.pdf"');
@@ -141,7 +141,7 @@ export function createGisRoutes(storage: IStorage) {
     const qgisInfo = qgisService.getQGISInfo();
     res.json(qgisInfo);
   });
-  
+
   // Get available basemaps
   router.get('/basemaps', async (req, res) => {
     try {
@@ -152,7 +152,7 @@ export function createGisRoutes(storage: IStorage) {
       res.status(500).json({ error: 'Failed to fetch basemaps' });
     }
   });
-  
+
   // Get all available GIS layers
   router.get('/layers', async (req, res) => {
     try {
@@ -163,64 +163,66 @@ export function createGisRoutes(storage: IStorage) {
           name: 'Property Parcels',
           type: 'vector',
           visible: true,
-          description: 'Property boundaries and parcel information'
+          description: 'Property boundaries and parcel information',
         },
         {
           id: 'zoning',
           name: 'Zoning Areas',
           type: 'vector',
           visible: false,
-          description: 'Zoning designations and regulations'
+          description: 'Zoning designations and regulations',
         },
         {
           id: 'terrain',
           name: 'Terrain Elevation',
           type: 'raster',
           visible: false,
-          description: 'Terrain elevation data with hillshading'
+          description: 'Terrain elevation data with hillshading',
         },
         {
           id: 'aerial',
           name: 'Aerial Imagery',
           type: 'raster',
           visible: false,
-          description: 'High-resolution aerial photography'
-        }
+          description: 'High-resolution aerial photography',
+        },
       ];
-      
+
       res.json(layers);
     } catch (error) {
       console.error('Error fetching GIS layers:', error);
       res.status(500).json({ error: 'Failed to fetch GIS layers' });
     }
   });
-  
+
   // Mount the prediction routes
   router.use('/', createPredictionRoutes(storage));
-  
+
   // Get sample data points for clustering demo
   router.get('/clustering-demo/data', async (req, res) => {
     try {
       // Retrieve properties from storage for clustering demo
       const properties = await storage.getAllProperties();
-      
+
       // Format for clustering demo with coordinates
       const dataPoints = properties.map(property => {
         // Generate coordinates near Benton County if none exist
         const center = [-119.7, 46.2]; // Benton County, WA
         const randomOffset = () => (Math.random() - 0.5) * 0.4; // ~20km radius
-        
+
         // Use property coordinates from extraFields if available, otherwise generate random ones
-        const propertyCoordinates = property.extraFields && 
-          typeof property.extraFields === 'object' && 
-          'coordinates' in property.extraFields ?
-          (property.extraFields as any).coordinates : null;
-        
+        const propertyCoordinates =
+          property.extraFields &&
+          typeof property.extraFields === 'object' &&
+          'coordinates' in property.extraFields
+            ? (property.extraFields as any).coordinates
+            : null;
+
         const coordinates = propertyCoordinates || [
           center[0] + randomOffset(),
-          center[1] + randomOffset()
+          center[1] + randomOffset(),
         ];
-        
+
         return {
           id: property.propertyId,
           position: coordinates,
@@ -228,11 +230,11 @@ export function createGisRoutes(storage: IStorage) {
             address: property.address,
             value: property.value,
             type: property.propertyType,
-            status: property.status
-          }
+            status: property.status,
+          },
         };
       });
-      
+
       res.json(dataPoints);
     } catch (error) {
       console.error('Error fetching clustering data:', error);

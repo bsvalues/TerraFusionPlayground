@@ -1,6 +1,10 @@
 import express from 'express';
 import { workflowOptimizerService } from '../services/workflow-optimizer-service';
-import { insertWorkflowOptimizationRequestSchema, WorkflowOptimizationType, WorkflowOptimizationStatus } from '@shared/schema';
+import {
+  insertWorkflowOptimizationRequestSchema,
+  WorkflowOptimizationType,
+  WorkflowOptimizationStatus,
+} from '@shared/schema';
 import { z } from 'zod';
 import { getSeedWorkflowOptimizerData } from '../seed-workflow-data';
 
@@ -13,45 +17,48 @@ const router = express.Router();
 router.get('/requests', async (req, res) => {
   try {
     const { status, type, userId, repositoryId } = req.query;
-    
+
     console.log('GET /api/workflow-optimizer/requests query params:', {
-      status, type, userId, repositoryId
+      status,
+      type,
+      userId,
+      repositoryId,
     });
-    
+
     // Get seed data directly to bypass storage issues
     let requests = getSeedWorkflowOptimizerData().requests;
     console.log(`Retrieved ${requests.length} workflow optimization requests from seed data`);
-    
+
     // Apply filters if needed
     if (status) {
       requests = requests.filter(request => request.status === status);
     }
-    
+
     if (type) {
       requests = requests.filter(request => request.optimizationType === type);
     }
-    
+
     if (userId) {
       const userIdNum = parseInt(userId as string);
       if (!isNaN(userIdNum)) {
         requests = requests.filter(request => request.userId === userIdNum);
       }
     }
-    
+
     if (repositoryId) {
       const repoIdNum = parseInt(repositoryId as string);
       if (!isNaN(repoIdNum)) {
         requests = requests.filter(request => request.repositoryId === repoIdNum);
       }
     }
-    
+
     console.log(`Returning ${requests.length} workflow optimization requests after filtering`);
-    
+
     res.json(requests);
   } catch (error) {
     console.error('Error retrieving workflow optimization requests:', error);
     console.error('Error details:', JSON.stringify(error));
-    
+
     // Return an empty array instead of an error to prevent UI from showing error state
     res.json([]);
   }
@@ -64,21 +71,21 @@ router.get('/requests', async (req, res) => {
 router.get('/requests/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    
+
     if (isNaN(id)) {
       return res.status(400).json({ error: 'Invalid request ID' });
     }
-    
+
     // Get seed data directly and find by id
     const requests = getSeedWorkflowOptimizerData().requests;
     const request = requests.find(req => req.id === id);
-    
+
     console.log(`Looking for request with id ${id}, found: ${request ? 'yes' : 'no'}`);
-    
+
     if (!request) {
       return res.status(404).json({ error: 'Optimization request not found' });
     }
-    
+
     res.json(request);
   } catch (error) {
     console.error('Error retrieving workflow optimization request:', error);
@@ -94,22 +101,22 @@ router.post('/requests', async (req, res) => {
   try {
     // Validate the request body
     const validationResult = insertWorkflowOptimizationRequestSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
-      return res.status(400).json({ 
-        error: 'Invalid request data', 
-        details: validationResult.error.format() 
+      return res.status(400).json({
+        error: 'Invalid request data',
+        details: validationResult.error.format(),
       });
     }
-    
+
     // Create the optimization request
     const request = await workflowOptimizerService.createOptimizationRequest(validationResult.data);
-    
+
     // If the request is set to process immediately, kick it off
     if (request.status === WorkflowOptimizationStatus.IN_PROGRESS) {
       // Process the request (handled inside service, this is just for clarity)
     }
-    
+
     res.status(201).json(request);
   } catch (error) {
     console.error('Error creating workflow optimization request:', error);
@@ -124,35 +131,38 @@ router.post('/requests', async (req, res) => {
 router.put('/requests/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    
+
     if (isNaN(id)) {
       return res.status(400).json({ error: 'Invalid request ID' });
     }
-    
+
     // Validate the request body
     const validationSchema = insertWorkflowOptimizationRequestSchema.partial();
     const validationResult = validationSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
-      return res.status(400).json({ 
-        error: 'Invalid request data', 
-        details: validationResult.error.format() 
+      return res.status(400).json({
+        error: 'Invalid request data',
+        details: validationResult.error.format(),
       });
     }
-    
+
     // Update the optimization request
-    const updatedRequest = await workflowOptimizerService.updateOptimizationRequest(id, validationResult.data);
-    
+    const updatedRequest = await workflowOptimizerService.updateOptimizationRequest(
+      id,
+      validationResult.data
+    );
+
     if (!updatedRequest) {
       return res.status(404).json({ error: 'Optimization request not found' });
     }
-    
+
     // If the request is being set to process, kick it off
     if (validationResult.data.status === WorkflowOptimizationStatus.IN_PROGRESS) {
       // Start processing the request
       workflowOptimizerService.processOptimizationRequest(id);
     }
-    
+
     res.json(updatedRequest);
   } catch (error) {
     console.error('Error updating workflow optimization request:', error);
@@ -167,17 +177,17 @@ router.put('/requests/:id', async (req, res) => {
 router.delete('/requests/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    
+
     if (isNaN(id)) {
       return res.status(400).json({ error: 'Invalid request ID' });
     }
-    
+
     const deleted = await workflowOptimizerService.deleteOptimizationRequest(id);
-    
+
     if (!deleted) {
       return res.status(404).json({ error: 'Optimization request not found' });
     }
-    
+
     res.status(204).end();
   } catch (error) {
     console.error('Error deleting workflow optimization request:', error);
@@ -209,17 +219,17 @@ router.get('/results', async (req, res) => {
 router.get('/results/:requestId', async (req, res) => {
   try {
     const requestId = req.params.requestId;
-    
+
     // Get seed data directly and filter by requestId
     const allResults = getSeedWorkflowOptimizerData().results;
     const filteredResults = allResults.filter(result => result.requestId === requestId);
-    
+
     console.log(`Found ${filteredResults.length} results for requestId ${requestId}`);
-    
+
     if (filteredResults.length === 0) {
       return res.status(404).json({ error: 'No optimization results found for the request' });
     }
-    
+
     res.json(filteredResults);
   } catch (error) {
     console.error('Error retrieving workflow optimization results:', error);
@@ -235,19 +245,21 @@ router.get('/results/:requestId', async (req, res) => {
 router.get('/types', (req, res) => {
   try {
     const types = Object.values(WorkflowOptimizationType);
-    
+
     const typesWithDescriptions = types.map(type => {
       let description = '';
-      
+
       switch (type) {
         case WorkflowOptimizationType.CODE_QUALITY:
-          description = 'Analyzes code for maintainability, readability, and adherence to best practices';
+          description =
+            'Analyzes code for maintainability, readability, and adherence to best practices';
           break;
         case WorkflowOptimizationType.PERFORMANCE:
           description = 'Identifies performance bottlenecks and optimization opportunities';
           break;
         case WorkflowOptimizationType.ARCHITECTURE:
-          description = 'Evaluates code architecture for modularity, separation of concerns, and design patterns';
+          description =
+            'Evaluates code architecture for modularity, separation of concerns, and design patterns';
           break;
         case WorkflowOptimizationType.SECURITY:
           description = 'Identifies security vulnerabilities and recommends mitigation strategies';
@@ -265,13 +277,13 @@ router.get('/types', (req, res) => {
           description = 'Analyzes test coverage, quality, and suggests testing improvements';
           break;
       }
-      
+
       return {
         type,
-        description
+        description,
       };
     });
-    
+
     res.json(typesWithDescriptions);
   } catch (error) {
     console.error('Error retrieving optimization types:', error);

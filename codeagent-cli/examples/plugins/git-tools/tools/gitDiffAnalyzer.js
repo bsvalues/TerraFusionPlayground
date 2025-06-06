@@ -18,14 +18,14 @@ export class GitDiffAnalyzer extends BaseTool {
           description: 'The base branch to compare with (default: main)',
           type: 'string',
           required: false,
-          default: 'main'
+          default: 'main',
         },
         path: {
           name: 'path',
           description: 'Path to analyze (default: current directory)',
           type: 'string',
           required: false,
-          default: '.'
+          default: '.',
         },
         format: {
           name: 'format',
@@ -33,29 +33,29 @@ export class GitDiffAnalyzer extends BaseTool {
           type: 'string',
           required: false,
           default: 'summary',
-          enum: ['summary', 'detailed', 'json']
-        }
+          enum: ['summary', 'detailed', 'json'],
+        },
       },
       ['git', 'analysis']
     );
   }
-  
+
   async execute(args) {
     try {
       const baseBranch = args.baseBranch || 'main';
       const path = args.path || '.';
       const format = args.format || 'summary';
-      
+
       // Get the diff
       const { stdout: diffOutput } = await execAsync(`git diff ${baseBranch} -- ${path}`);
-      
+
       // Get the current branch
       const { stdout: branchOutput } = await execAsync('git branch --show-current');
       const currentBranch = branchOutput.trim();
-      
+
       // Parse the diff
       const analysis = this.analyzeDiff(diffOutput);
-      
+
       // Format the output
       let output;
       if (format === 'json') {
@@ -65,21 +65,21 @@ export class GitDiffAnalyzer extends BaseTool {
       } else {
         output = this.formatSummaryOutput(analysis, currentBranch, baseBranch);
       }
-      
+
       return {
         success: true,
         output,
-        data: analysis
+        data: analysis,
       };
     } catch (error) {
       return {
         success: false,
         output: `Error analyzing git diff: ${error.message}`,
-        error
+        error,
       };
     }
   }
-  
+
   /**
    * Analyze the git diff output
    */
@@ -91,7 +91,7 @@ export class GitDiffAnalyzer extends BaseTool {
     let deletions = 0;
     let currentFile = null;
     const fileChanges = {};
-    
+
     for (const line of lines) {
       if (line.startsWith('diff --git')) {
         // New file in the diff
@@ -115,11 +115,11 @@ export class GitDiffAnalyzer extends BaseTool {
         }
       }
     }
-    
+
     // Calculate simple metrics
     const totalChanges = insertions + deletions;
     const changeRatio = deletions > 0 ? insertions / deletions : insertions;
-    
+
     // Determine complexity based on simple metrics
     let complexity = 'low';
     if (totalChanges > 500) {
@@ -127,7 +127,7 @@ export class GitDiffAnalyzer extends BaseTool {
     } else if (totalChanges > 100) {
       complexity = 'medium';
     }
-    
+
     return {
       filesChanged,
       insertions,
@@ -135,10 +135,10 @@ export class GitDiffAnalyzer extends BaseTool {
       totalChanges,
       changeRatio,
       complexity,
-      fileChanges
+      fileChanges,
     };
   }
-  
+
   /**
    * Format summary output
    */
@@ -152,7 +152,7 @@ Summary:
 - Total changes: ${analysis.totalChanges}
 - Complexity: ${analysis.complexity}`;
   }
-  
+
   /**
    * Format detailed output
    */
@@ -168,12 +168,12 @@ Summary:
 - Complexity: ${analysis.complexity}
 
 File Details:`;
-    
+
     // Add details for each file
     for (const [file, changes] of Object.entries(analysis.fileChanges)) {
       output += `\n- ${file}: +${changes.insertions} -${changes.deletions} (${changes.insertions + changes.deletions} total)`;
     }
-    
+
     return output;
   }
 }

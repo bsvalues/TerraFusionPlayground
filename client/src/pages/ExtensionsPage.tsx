@@ -9,7 +9,7 @@ export function ExtensionsPage() {
           Manage and configure extensions that enhance the capabilities of the platform.
         </p>
       </div>
-      
+
       <ExtensionsPanel />
     </div>
   );

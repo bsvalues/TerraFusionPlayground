@@ -1,11 +1,6 @@
 import * as React from 'react';
 import { format } from 'date-fns';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -46,7 +41,7 @@ export function LineageTimeline({
 }: LineageTimelineProps) {
   const [selectedSource, setSelectedSource] = React.useState<string | null>(null);
   const [selectedView, setSelectedView] = React.useState('timeline');
-  
+
   // Source event counter to show badges
   const sourceEventCounts = React.useMemo(() => {
     const counts: Record<string, number> = {};
@@ -55,17 +50,17 @@ export function LineageTimeline({
     });
     return counts;
   }, [entries]);
-  
+
   // Filtered entries based on selected source
   const filteredEntries = React.useMemo(() => {
     if (!selectedSource) return entries;
     return entries.filter(entry => entry.source === selectedSource);
   }, [entries, selectedSource]);
-  
+
   // Group entries by day for timeline view
   const entriesByDay = React.useMemo(() => {
     const grouped: Record<string, DataLineageEntry[]> = {};
-    
+
     filteredEntries.forEach(entry => {
       const day = format(new Date(entry.changeTimestamp), 'yyyy-MM-dd');
       if (!grouped[day]) {
@@ -73,30 +68,28 @@ export function LineageTimeline({
       }
       grouped[day].push(entry);
     });
-    
+
     // Sort each day's entries by timestamp (newest first)
     Object.keys(grouped).forEach(day => {
-      grouped[day].sort((a, b) => 
-        new Date(b.changeTimestamp).getTime() - new Date(a.changeTimestamp).getTime()
+      grouped[day].sort(
+        (a, b) => new Date(b.changeTimestamp).getTime() - new Date(a.changeTimestamp).getTime()
       );
     });
-    
+
     return grouped;
   }, [filteredEntries]);
-  
+
   // Get sorted days for display (newest first)
   const sortedDays = React.useMemo(() => {
-    return Object.keys(entriesByDay).sort((a, b) => 
-      new Date(b).getTime() - new Date(a).getTime()
-    );
+    return Object.keys(entriesByDay).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
   }, [entriesByDay]);
-  
+
   // Get all unique sources
   const sources = React.useMemo(() => {
     const uniqueSources = [...new Set(entries.map(entry => entry.source))];
     return uniqueSources.sort();
   }, [entries]);
-  
+
   // Return class for source type badge
   const getSourceBadgeColor = (source: string) => {
     switch (source.toLowerCase()) {
@@ -116,7 +109,7 @@ export function LineageTimeline({
         return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     }
   };
-  
+
   // Format and abbreviate values for display
   const formatValue = (value: string) => {
     if (!value) return '(empty)';
@@ -125,7 +118,7 @@ export function LineageTimeline({
     }
     return value;
   };
-  
+
   // Show "no data" message when appropriate
   if (!isLoading && entries.length === 0) {
     return (
@@ -137,14 +130,14 @@ export function LineageTimeline({
           <FileText className="h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">No lineage data available</h3>
           <p className="text-muted-foreground max-w-md">
-            There are no recorded changes for the selected filters. Try adjusting your filters or 
+            There are no recorded changes for the selected filters. Try adjusting your filters or
             selecting a different time range.
           </p>
         </CardContent>
       </Card>
     );
   }
-  
+
   return (
     <Card>
       <CardHeader>
@@ -154,9 +147,7 @@ export function LineageTimeline({
             <Button
               variant="outline"
               size="sm"
-              className={cn(
-                selectedView === 'timeline' && 'bg-muted'
-              )}
+              className={cn(selectedView === 'timeline' && 'bg-muted')}
               onClick={() => setSelectedView('timeline')}
             >
               <FileText className="mr-1 h-4 w-4" />
@@ -165,9 +156,7 @@ export function LineageTimeline({
             <Button
               variant="outline"
               size="sm"
-              className={cn(
-                selectedView === 'table' && 'bg-muted'
-              )}
+              className={cn(selectedView === 'table' && 'bg-muted')}
               onClick={() => setSelectedView('table')}
             >
               <SlidersHorizontal className="mr-1 h-4 w-4" />
@@ -182,33 +171,24 @@ export function LineageTimeline({
             <Button
               size="sm"
               variant="outline"
-              className={cn(
-                'text-xs',
-                selectedSource === null && 'bg-muted'
-              )}
+              className={cn('text-xs', selectedSource === null && 'bg-muted')}
               onClick={() => setSelectedSource(null)}
             >
               <Filter className="mr-1 h-3 w-3" />
               All Sources
             </Button>
-            
+
             {sources.map(source => (
               <Button
                 key={source}
                 size="sm"
                 variant="outline"
-                className={cn(
-                  'text-xs',
-                  selectedSource === source && 'bg-muted'
-                )}
+                className={cn('text-xs', selectedSource === source && 'bg-muted')}
                 onClick={() => setSelectedSource(selectedSource === source ? null : source)}
               >
                 {source.charAt(0).toUpperCase() + source.slice(1)}
                 {sourceEventCounts[source] > 0 && (
-                  <Badge 
-                    variant="secondary" 
-                    className="ml-1 px-1.5 py-0"
-                  >
+                  <Badge variant="secondary" className="ml-1 px-1.5 py-0">
                     {sourceEventCounts[source]}
                   </Badge>
                 )}
@@ -216,7 +196,7 @@ export function LineageTimeline({
             ))}
           </div>
         )}
-        
+
         <Tabs value={selectedView} className="w-full">
           <TabsContent value="timeline" className="mt-0">
             {sortedDays.length === 0 ? (
@@ -228,9 +208,7 @@ export function LineageTimeline({
                 {sortedDays.map(day => (
                   <div key={day} className="relative">
                     <div className="sticky top-0 bg-card z-10 py-2 border-b mb-4">
-                      <h3 className="font-medium">
-                        {format(new Date(day), 'EEEE, MMMM d, yyyy')}
-                      </h3>
+                      <h3 className="font-medium">{format(new Date(day), 'EEEE, MMMM d, yyyy')}</h3>
                     </div>
                     <div className="space-y-4">
                       {entriesByDay[day].map(entry => (
@@ -245,12 +223,10 @@ export function LineageTimeline({
                           </div>
                           <div className="flex-grow">
                             <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-                              <div className="font-medium">
-                                {entry.fieldName}
-                              </div>
-                              <Badge 
+                              <div className="font-medium">{entry.fieldName}</div>
+                              <Badge
                                 className={cn(
-                                  "px-1.5 py-0.5 text-xs",
+                                  'px-1.5 py-0.5 text-xs',
                                   getSourceBadgeColor(entry.source)
                                 )}
                                 variant="outline"
@@ -267,13 +243,17 @@ export function LineageTimeline({
                             <div className="text-sm grid grid-cols-1 md:grid-cols-2 gap-2">
                               <div>
                                 <span className="text-muted-foreground">From: </span>
-                                <span className={entry.oldValue ? '' : 'italic text-muted-foreground'}>
+                                <span
+                                  className={entry.oldValue ? '' : 'italic text-muted-foreground'}
+                                >
                                   {formatValue(entry.oldValue) || '(empty)'}
                                 </span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground">To: </span>
-                                <span className={entry.newValue ? '' : 'italic text-muted-foreground'}>
+                                <span
+                                  className={entry.newValue ? '' : 'italic text-muted-foreground'}
+                                >
                                   {formatValue(entry.newValue) || '(empty)'}
                                 </span>
                               </div>
@@ -287,7 +267,7 @@ export function LineageTimeline({
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="table" className="mt-0">
             <div className="border rounded-md overflow-hidden">
               <Table>
@@ -310,7 +290,7 @@ export function LineageTimeline({
                     </TableRow>
                   ) : (
                     filteredEntries.map(entry => (
-                      <TableRow 
+                      <TableRow
                         key={entry.id}
                         className={onEntryClick ? 'cursor-pointer hover:bg-muted/50' : undefined}
                         onClick={() => onEntryClick?.(entry)}
@@ -320,9 +300,9 @@ export function LineageTimeline({
                         </TableCell>
                         <TableCell className="font-medium">{entry.fieldName}</TableCell>
                         <TableCell>
-                          <Badge 
+                          <Badge
                             className={cn(
-                              "px-1.5 py-0.5 text-xs whitespace-nowrap",
+                              'px-1.5 py-0.5 text-xs whitespace-nowrap',
                               getSourceBadgeColor(entry.source)
                             )}
                             variant="outline"
@@ -331,10 +311,14 @@ export function LineageTimeline({
                           </Badge>
                         </TableCell>
                         <TableCell>{entry.userName || `User #${entry.userId}`}</TableCell>
-                        <TableCell className={!entry.oldValue ? 'italic text-muted-foreground' : ''}>
+                        <TableCell
+                          className={!entry.oldValue ? 'italic text-muted-foreground' : ''}
+                        >
                           {formatValue(entry.oldValue) || '(empty)'}
                         </TableCell>
-                        <TableCell className={!entry.newValue ? 'italic text-muted-foreground' : ''}>
+                        <TableCell
+                          className={!entry.newValue ? 'italic text-muted-foreground' : ''}
+                        >
                           {formatValue(entry.newValue) || '(empty)'}
                         </TableCell>
                       </TableRow>

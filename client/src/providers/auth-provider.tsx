@@ -18,14 +18,14 @@ const defaultUser: User = {
   id: 1,
   name: 'Admin User',
   email: 'admin@example.com',
-  role: 'Administrator'
+  role: 'Administrator',
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(defaultUser);
-  
+
   // Mock login function
   const login = async (email: string, password: string) => {
     // In a real app, you would validate credentials against an API
@@ -35,19 +35,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     return false;
   };
-  
+
   // Mock logout function
   const logout = () => {
     setUser(null);
   };
-  
+
   const value = {
     user,
     login,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
   };
-  
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

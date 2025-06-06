@@ -1,6 +1,6 @@
 /**
  * AgentCoordinator.ts
- * 
+ *
  * Coordinates agent activities, task routing, and load balancing
  */
 
@@ -8,14 +8,14 @@ import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
 import { AgentRegistry } from './AgentRegistry';
 import { LogService } from './LogService';
-import { 
-  AgentCapability, 
-  AgentPriority, 
-  AgentStatus, 
-  AgentTask, 
-  AgentTaskResult, 
-  AgentContext, 
-  AgentEventType 
+import {
+  AgentCapability,
+  AgentPriority,
+  AgentStatus,
+  AgentTask,
+  AgentTaskResult,
+  AgentContext,
+  AgentEventType,
 } from './types';
 
 /**
@@ -36,7 +36,7 @@ enum AgentSelectionStrategy {
   PRIORITY = 'priority',
   ROUND_ROBIN = 'round_robin',
   LOAD_BALANCED = 'load_balanced',
-  CAPABILITY_MATCH = 'capability_match'
+  CAPABILITY_MATCH = 'capability_match',
 }
 
 /**
@@ -65,7 +65,7 @@ export class AgentCoordinator extends EventEmitter {
   private taskPoller: NodeJS.Timer | null = null;
   private agentLoads: Map<string, number>;
   private lastSelectedAgent: string | null = null;
-  
+
   /**
    * Private constructor (use getInstance)
    */
@@ -77,7 +77,7 @@ export class AgentCoordinator extends EventEmitter {
     this.completedTasks = new Map<string, AgentTaskResult>();
     this.logger = new LogService('AgentCoordinator');
     this.agentLoads = new Map<string, number>();
-    
+
     // Default configuration
     this.config = {
       maxQueueSize: 1000,
@@ -85,13 +85,13 @@ export class AgentCoordinator extends EventEmitter {
       defaultTimeout: 60000, // 1 minute
       defaultSelectionStrategy: AgentSelectionStrategy.CAPABILITY_MATCH,
       taskPollInterval: 500, // 500ms
-      ...config
+      ...config,
     };
-    
+
     // Listen for agent registry events
     this.setupRegistryListeners();
   }
-  
+
   /**
    * Get singleton instance
    */
@@ -101,97 +101,100 @@ export class AgentCoordinator extends EventEmitter {
     }
     return AgentCoordinator.instance;
   }
-  
+
   /**
    * Setup registry event listeners
    */
   private setupRegistryListeners(): void {
     // Agent started
-    this.registry.on(AgentEventType.STARTED, (data) => {
+    this.registry.on(AgentEventType.STARTED, data => {
       this.logger.debug(`Agent started: ${data.agentId}`);
       // Check if there are any pending tasks for this agent
       this.processPendingTasks();
     });
-    
+
     // Agent stopped
-    this.registry.on(AgentEventType.SHUTDOWN, (data) => {
+    this.registry.on(AgentEventType.SHUTDOWN, data => {
       this.logger.debug(`Agent stopped: ${data.agentId}`);
       // Handle any tasks assigned to this agent
       this.handleAgentShutdown(data.agentId);
     });
   }
-  
+
   /**
    * Start the coordinator
    */
   public start(): void {
     this.logger.info('Starting Agent Coordinator');
-    
+
     // Start task polling
     if (!this.taskPoller) {
       this.taskPoller = setInterval(() => {
         this.processPendingTasks();
       }, this.config.taskPollInterval);
     }
-    
+
     this.logger.info('Agent Coordinator started');
   }
-  
+
   /**
    * Stop the coordinator
    */
   public stop(): void {
     this.logger.info('Stopping Agent Coordinator');
-    
+
     // Stop task polling
     if (this.taskPoller) {
       clearInterval(this.taskPoller);
       this.taskPoller = null;
     }
-    
+
     this.logger.info('Agent Coordinator stopped');
   }
-  
+
   /**
    * Submit a task to the coordinator
    * @param task Task to submit
    * @param context Optional context for the task
    */
-  public async submitTask(task: Omit<AgentTask, 'id' | 'createdAt'>, context?: AgentContext): Promise<string> {
+  public async submitTask(
+    task: Omit<AgentTask, 'id' | 'createdAt'>,
+    context?: AgentContext
+  ): Promise<string> {
     // Check if queue is full
     if (this.taskQueue.size >= this.config.maxQueueSize) {
       throw new Error('Task queue is full');
     }
-    
+
     // Create a complete task with ID and timestamp
     const completeTask: AgentTask = {
       id: uuidv4(),
       ...task,
-      createdAt: new Date()
+      createdAt: new Date(),
     };
-    
+
     // Create queue entry
     const queueEntry: TaskQueueEntry = {
       task: completeTask,
       attempts: 0,
       metadata: {
         context,
-        submittedAt: new Date()
-      }
+        submittedAt: new Date(),
+      },
     };
-    
+
     // Add to queue
     this.taskQueue.set(completeTask.id, queueEntry);
-    
+
     this.logger.info(`Task submitted: ${completeTask.id} (${completeTask.type})`);
     this.emit(AgentEventType.TASK_RECEIVED, { taskId: completeTask.id, task: completeTask });
-    
+
     // Process task immediately if possible
     setTimeout(() => this.processPendingTasks(), 0);
-    
+
     return completeTask.id;
   }
-  
+
   /**
    * Process pending tasks in the queue
    */
@@ -199,16 +202,17 @@ export class AgentCoordinator extends EventEmitter {
     if (this.taskQueue.size === 0) {
       return;
     }
-    
+
     // Sort tasks by priority (higher first)
-    const sortedTasks = Array.from(this.taskQueue.entries())
-      .sort((a, b) => b[1].task.priority - a[1].task.priority);
-    
+    const sortedTasks = Array.from(this.taskQueue.entries()).sort(
+      (a, b) => b[1].task.priority - a[1].task.priority
+    );
+
     for (const [taskId, queueEntry] of sortedTasks) {
       this.processTask(taskId, queueEntry);
     }
   }
-  
+
   /**
    * Process a specific task
    * @param taskId Task ID
@@ -216,60 +220,60 @@ export class AgentCoordinator extends EventEmitter {
    */
   private async processTask(taskId: string, queueEntry: TaskQueueEntry): Promise<void> {
     const task = queueEntry.task;
-    
+
     // Check if already assigned
     if (queueEntry.assignedAgentId) {
       return;
     }
-    
+
     // Select an agent for the task
     const agentId = this.selectAgentForTask(task);
-    
+
     if (!agentId) {
       // No suitable agent found
       this.logger.debug(`No suitable agent found for task: ${taskId}`);
       return;
     }
-    
+
     // Get agent instance
     const agent = this.registry.getAgentInstanceById(agentId);
-    
+
     if (!agent) {
       this.logger.error(`Agent not found: ${agentId}`);
       return;
     }
-    
+
     // Check agent status
     if (agent.getStatus() !== AgentStatus.RUNNING) {
       this.logger.debug(`Agent not running: ${agentId}`);
       return;
     }
-    
+
     // Assign agent
     queueEntry.assignedAgentId = agentId;
     queueEntry.attempts++;
     queueEntry.lastAttempt = new Date();
-    
+
     // Move to in-progress
     this.taskQueue.delete(taskId);
     this.inProgressTasks.set(taskId, queueEntry);
-    
+
     // Update agent load
     this.updateAgentLoad(agentId, 1);
-    
+
     // Execute task
     this.logger.info(`Executing task ${taskId} on agent ${agentId}`);
     this.emit(AgentEventType.TASK_STARTED, { taskId, agentId });
-    
+
     try {
       const startTime = Date.now();
       const context = queueEntry.metadata.context;
-      
+
       // Execute the task on the agent
       const result = await agent.executeTask(task, context);
-      
+
       const processingTime = Date.now() - startTime;
-      
+
       // Create task result
       const taskResult: AgentTaskResult = {
         taskId,
@@ -279,26 +283,25 @@ export class AgentCoordinator extends EventEmitter {
         completedAt: new Date(),
         metadata: {
           agentId,
-          attempts: queueEntry.attempts
-        }
+          attempts: queueEntry.attempts,
+        },
       };
-      
+
       // Store result
       this.completedTasks.set(taskId, taskResult);
-      
+
       // Remove from in-progress
       this.inProgressTasks.delete(taskId);
-      
+
       // Update agent load
       this.updateAgentLoad(agentId, -1);
-      
+
       // Emit completion event
       this.logger.info(`Task ${taskId} completed successfully`);
       this.emit(AgentEventType.TASK_COMPLETED, { taskId, result: taskResult });
-      
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      
+
       // Create task result with error
       const taskResult: AgentTaskResult = {
         taskId,
@@ -308,10 +311,10 @@ export class AgentCoordinator extends EventEmitter {
         completedAt: new Date(),
         metadata: {
           agentId,
-          attempts: queueEntry.attempts
-        }
+          attempts: queueEntry.attempts,
+        },
       };
-      
+
       // Handle retry if needed
       if (queueEntry.attempts < this.config.maxRetries) {
         // Put back in queue
@@ -324,15 +327,15 @@ export class AgentCoordinator extends EventEmitter {
         this.logger.error(`Task ${taskId} failed after ${queueEntry.attempts} attempts`);
         this.emit(AgentEventType.TASK_FAILED, { taskId, error, result: taskResult });
       }
-      
+
       // Remove from in-progress
       this.inProgressTasks.delete(taskId);
-      
+
       // Update agent load
       this.updateAgentLoad(agentId, -1);
     }
   }
-  
+
   /**
    * Select an agent for a task based on strategy
    * @param task Task to assign
@@ -340,39 +343,39 @@ export class AgentCoordinator extends EventEmitter {
    */
   private selectAgentForTask(task: AgentTask): string | null {
     let agentId: string | null = null;
-    
+
     // Default to capability matching if task type matches a capability
     const strategy = this.config.defaultSelectionStrategy;
-    
+
     switch (strategy) {
       case AgentSelectionStrategy.CAPABILITY_MATCH:
         // Find agents with matching capability
         agentId = this.selectAgentByCapability(task);
         break;
-        
+
       case AgentSelectionStrategy.PRIORITY:
         // Select highest priority agent
         agentId = this.selectAgentByPriority();
         break;
-        
+
       case AgentSelectionStrategy.ROUND_ROBIN:
         // Select next agent in rotation
         agentId = this.selectAgentByRoundRobin();
         break;
-        
+
       case AgentSelectionStrategy.LOAD_BALANCED:
         // Select agent with lowest load
         agentId = this.selectAgentByLoad();
         break;
-        
+
       default:
         // Default to capability match
         agentId = this.selectAgentByCapability(task);
     }
-    
+
     return agentId;
   }
-  
+
   /**
    * Select agent by capability
    * @param task Task to match
@@ -381,19 +384,20 @@ export class AgentCoordinator extends EventEmitter {
   private selectAgentByCapability(task: AgentTask): string | null {
     // Try to match task type to a capability
     const capability = task.type as AgentCapability;
-    
+
     // Find agents with this capability
-    const agents = this.registry.findAgentsByCapability(capability)
+    const agents = this.registry
+      .findAgentsByCapability(capability)
       .filter(agent => agent.status === AgentStatus.RUNNING);
-    
+
     if (agents.length === 0) {
       return null;
     }
-    
+
     // If multiple agents, prefer the one with the lowest load
     return this.selectLowestLoadAgent(agents.map(agent => agent.id));
   }
-  
+
   /**
    * Select agent by priority
    * @returns Agent ID or null
@@ -401,17 +405,17 @@ export class AgentCoordinator extends EventEmitter {
   private selectAgentByPriority(): string | null {
     // Get all running agents
     const agents = this.registry.findAgentsByStatus(AgentStatus.RUNNING);
-    
+
     if (agents.length === 0) {
       return null;
     }
-    
+
     // Sort by priority (highest first)
     const sorted = agents.sort((a, b) => b.priority - a.priority);
-    
+
     return sorted[0].id;
   }
-  
+
   /**
    * Select agent by round robin
    * @returns Agent ID or null
@@ -419,11 +423,11 @@ export class AgentCoordinator extends EventEmitter {
   private selectAgentByRoundRobin(): string | null {
     // Get all running agents
     const agents = this.registry.findAgentsByStatus(AgentStatus.RUNNING);
-    
+
     if (agents.length === 0) {
       return null;
     }
-    
+
     // Find index of last selected agent
     let nextIndex = 0;
     if (this.lastSelectedAgent) {
@@ -432,13 +436,13 @@ export class AgentCoordinator extends EventEmitter {
         nextIndex = (lastIndex + 1) % agents.length;
       }
     }
-    
+
     // Update last selected
     this.lastSelectedAgent = agents[nextIndex].id;
-    
+
     return this.lastSelectedAgent;
   }
-  
+
   /**
    * Select agent by load
    * @returns Agent ID or null
@@ -446,14 +450,14 @@ export class AgentCoordinator extends EventEmitter {
   private selectAgentByLoad(): string | null {
     // Get all running agents
     const agents = this.registry.findAgentsByStatus(AgentStatus.RUNNING);
-    
+
     if (agents.length === 0) {
       return null;
     }
-    
+
     return this.selectLowestLoadAgent(agents.map(agent => agent.id));
   }
-  
+
   /**
    * Select agent with lowest load from a list
    * @param agentIds List of agent IDs
@@ -464,11 +468,11 @@ export class AgentCoordinator extends EventEmitter {
     if (agentIds.length === 0) {
       return '';
     }
-    
+
     // Find agent with lowest load
     let lowestLoad = Number.MAX_VALUE;
     let lowestLoadAgentId = agentIds[0];
-    
+
     for (const agentId of agentIds) {
       const load = this.agentLoads.get(agentId) || 0;
       if (load < lowestLoad) {
@@ -476,10 +480,10 @@ export class AgentCoordinator extends EventEmitter {
         lowestLoadAgentId = agentId;
       }
     }
-    
+
     return lowestLoadAgentId;
   }
-  
+
   /**
    * Update an agent's load
    * @param agentId Agent ID
@@ -490,7 +494,7 @@ export class AgentCoordinator extends EventEmitter {
     const newLoad = Math.max(0, currentLoad + delta);
     this.agentLoads.set(agentId, newLoad);
   }
-  
+
   /**
    * Handle an agent shutting down
    * @param agentId Agent ID
@@ -503,20 +507,20 @@ export class AgentCoordinator extends EventEmitter {
         queueEntry.assignedAgentId = undefined;
         this.taskQueue.set(taskId, queueEntry);
         this.inProgressTasks.delete(taskId);
-        
+
         this.logger.info(`Task ${taskId} reassigned due to agent shutdown`);
       }
     }
-    
+
     // Reset load
     this.agentLoads.delete(agentId);
-    
+
     // Reset lastSelectedAgent if needed
     if (this.lastSelectedAgent === agentId) {
       this.lastSelectedAgent = null;
     }
   }
-  
+
   /**
    * Get task result
    * @param taskId Task ID
@@ -525,7 +529,7 @@ export class AgentCoordinator extends EventEmitter {
   public getTaskResult(taskId: string): AgentTaskResult | null {
     return this.completedTasks.get(taskId) || null;
   }
-  
+
   /**
    * Get task status
    * @param taskId Task ID
@@ -535,18 +539,18 @@ export class AgentCoordinator extends EventEmitter {
     if (this.taskQueue.has(taskId)) {
       return 'queued';
     }
-    
+
     if (this.inProgressTasks.has(taskId)) {
       return 'in_progress';
     }
-    
+
     if (this.completedTasks.has(taskId)) {
       return 'completed';
     }
-    
+
     return 'not_found';
   }
-  
+
   /**
    * Get queue statistics
    */
@@ -556,10 +560,10 @@ export class AgentCoordinator extends EventEmitter {
       inProgressTasks: this.inProgressTasks.size,
       completedTasks: this.completedTasks.size,
       totalAgents: this.registry.getAllAgents().length,
-      activeAgents: this.registry.findAgentsByStatus(AgentStatus.RUNNING).length
+      activeAgents: this.registry.findAgentsByStatus(AgentStatus.RUNNING).length,
     };
   }
-  
+
   /**
    * Clear completed tasks history
    */

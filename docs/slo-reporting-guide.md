@@ -9,6 +9,7 @@ This guide explains how to set up, maintain, and interpret the Monthly Health Re
 1. Create a new dashboard named "Web Vitals SLO Dashboard"
 
 2. Add the following variables:
+
    - `timeframe`: Dropdown with options "Last 7 days", "Last 30 days", "Last 90 days"
    - `route`: Multi-select with data from Prometheus label values
    - `environment`: Options for "production", "staging", "development"
@@ -29,6 +30,7 @@ sum(rate(web_vitals_lcp_bucket{le="+Inf"}[30d]))
 The query above calculates what percentage of LCP measurements were under the 2.5s budget threshold.
 
 Configure similar queries for all Web Vitals metrics:
+
 - TTFB: le="0.6"
 - CLS: le="0.1"
 - FID: le="0.1"
@@ -36,6 +38,7 @@ Configure similar queries for all Web Vitals metrics:
 - FCP: le="1.8"
 
 Format the panel as a gauge chart with thresholds:
+
 - Green: > 99.5%
 - Yellow: 95% - 99.5%
 - Red: < 95%
@@ -111,11 +114,13 @@ curl -X POST --data-urlencode "payload={\"channel\": \"#performance-monitoring\"
 ### Taking Action Based on Reports
 
 1. If SLO compliance drops below target:
+
    - Conduct detailed analysis of regression
    - Create JIRA ticket for investigation
    - Schedule performance review in engineering meeting
 
 2. If trend shows consistent decline:
+
    - Review recent deployments
    - Evaluate third-party script impact
    - Check for backend service degradation
@@ -127,21 +132,25 @@ curl -X POST --data-urlencode "payload={\"channel\": \"#performance-monitoring\"
 ## Monthly Report Presentation Template
 
 ### Executive Summary
+
 - Overall SLO compliance status (Green/Yellow/Red)
 - Most significant changes since last month
 - Key action items
 
 ### Detailed Metrics
+
 - Compliance percentage for each Web Vital
 - Breakdown by device type (Mobile vs Desktop)
 - Breakdown by geographic region
 
 ### Performance Improvements
+
 - Changes implemented in the past month
 - Impact of those changes on metrics
 - Planned improvements for next month
 
 ### Technical Deep Dive
+
 - Root causes of any SLO violations
 - Recommended architectural changes
 - Resource estimates for proposed fixes

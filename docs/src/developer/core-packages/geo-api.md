@@ -157,7 +157,7 @@ geoApi.fitBounds(map, {
 // Get distance between two points
 const distance = geoApi.utils.calculateDistance(
   { lat: 47.6062, lng: -122.3321 }, // Seattle
-  { lat: 47.6588, lng: -117.4260 }  // Spokane
+  { lat: 47.6588, lng: -117.426 } // Spokane
 );
 ```
 

@@ -5,6 +5,7 @@ A comprehensive library of React UI components for the TerraFusion platform, wit
 ## Key Features
 
 ### Conflict Resolution UI
+
 - Visual components for displaying and resolving data conflicts
 - Side-by-side and inline diff views
 - User-friendly conflict resolution workflows
@@ -12,6 +13,7 @@ A comprehensive library of React UI components for the TerraFusion platform, wit
 - Comprehensive conflict management hooks
 
 ### Component Categories
+
 - Data display components
 - Form components
 - Layout components
@@ -31,32 +33,24 @@ npm install @terrafusion/ui-components
 
 ```tsx
 import React from 'react';
-import { 
+import {
   ConflictManager,
-  ConflictBadge, 
-  ConflictResolutionModal 
+  ConflictBadge,
+  ConflictResolutionModal,
 } from '@terrafusion/ui-components';
-import { 
-  createConflictResolutionManager 
-} from '@terrafusion/offline-sync';
+import { createConflictResolutionManager } from '@terrafusion/offline-sync';
 
 function MyApp({ conflictManager, userId }) {
   return (
     <div className="app">
       <header>
         <h1>TerraFusion App</h1>
-        
+
         {/* Conflict manager with badge */}
-        <ConflictManager
-          conflictManager={conflictManager}
-          userId={userId}
-          autoOpenModal={false}
-        />
+        <ConflictManager conflictManager={conflictManager} userId={userId} autoOpenModal={false} />
       </header>
-      
-      <main>
-        {/* Your app content */}
-      </main>
+
+      <main>{/* Your app content */}</main>
     </div>
   );
 }
@@ -66,10 +60,10 @@ function MyApp({ conflictManager, userId }) {
 
 ```tsx
 import React from 'react';
-import { 
+import {
   useConflictResolution,
   ConflictResolutionModal,
-  ConflictBadge
+  ConflictBadge,
 } from '@terrafusion/ui-components';
 import { ResolutionStrategy } from '@terrafusion/offline-sync';
 
@@ -82,22 +76,19 @@ function ConflictHandler({ conflictManager, userId }) {
     closeModal,
     resolveConflict,
     hasUnresolvedConflicts,
-    unresolvedCount
+    unresolvedCount,
   } = useConflictResolution({
     conflictManager,
     userId,
     autoOpenModal: true,
-    showNotifications: true
+    showNotifications: true,
   });
-  
+
   return (
     <>
       {/* Conflict badge */}
-      <ConflictBadge 
-        count={unresolvedCount} 
-        onClick={openModal}
-      />
-      
+      <ConflictBadge count={unresolvedCount} onClick={openModal} />
+
       {/* Conflict resolution modal */}
       <ConflictResolutionModal
         conflicts={unresolvedConflicts}
@@ -121,7 +112,7 @@ function ConflictViewer({ conflict }) {
   return (
     <div className="conflict-viewer">
       <h2>Conflict Details</h2>
-      
+
       {/* Show differences between local and remote */}
       <ConflictDiff
         conflict={conflict}
@@ -138,24 +129,21 @@ function ConflictViewer({ conflict }) {
 
 ```tsx
 import React, { useState } from 'react';
-import { 
-  ConflictActionBar,
-  ResolutionStrategy 
-} from '@terrafusion/ui-components';
+import { ConflictActionBar, ResolutionStrategy } from '@terrafusion/ui-components';
 
 function ConflictResolver({ conflict, onResolve, userId }) {
   const [selectedStrategy, setSelectedStrategy] = useState(null);
   const [customValue, setCustomValue] = useState(null);
-  
+
   const handleResolve = async (id, strategy, userId, customValue) => {
     setSelectedStrategy(strategy);
     await onResolve(id, strategy, userId, customValue);
   };
-  
+
   return (
     <div className="conflict-resolver">
       <h2>Resolve Conflict</h2>
-      
+
       <ConflictActionBar
         conflictId={conflict.id}
         userId={userId}
@@ -174,11 +162,12 @@ function ConflictResolver({ conflict, onResolve, userId }) {
 ### Conflict Resolution Components
 
 #### `ConflictBadge`
+
 A badge that shows the number of conflicts.
 
 ```tsx
-<ConflictBadge 
-  count={5} 
+<ConflictBadge
+  count={5}
   max={99}
   size="medium" // "small" | "medium" | "large"
   onClick={() => handleClick()}
@@ -186,10 +175,11 @@ A badge that shows the number of conflicts.
 ```
 
 #### `ConflictCard`
+
 A card that displays information about a single conflict.
 
 ```tsx
-<ConflictCard 
+<ConflictCard
   conflict={conflict}
   selected={isSelected}
   showFullPath={false}
@@ -198,6 +188,7 @@ A card that displays information about a single conflict.
 ```
 
 #### `ConflictList`
+
 A list of conflicts with filtering and sorting options.
 
 ```tsx
@@ -211,6 +202,7 @@ A list of conflicts with filtering and sorting options.
 ```
 
 #### `ConflictDiff`
+
 Shows differences between local and remote versions of data.
 
 ```tsx
@@ -224,6 +216,7 @@ Shows differences between local and remote versions of data.
 ```
 
 #### `ConflictActionBar`
+
 Provides action buttons for resolving conflicts.
 
 ```tsx
@@ -239,6 +232,7 @@ Provides action buttons for resolving conflicts.
 ```
 
 #### `ConflictResolutionModal`
+
 A modal that combines conflict list, diff view, and action bar.
 
 ```tsx
@@ -254,6 +248,7 @@ A modal that combines conflict list, diff view, and action bar.
 ```
 
 #### `ConflictManager`
+
 A component that wraps the conflict resolution components.
 
 ```tsx
@@ -269,6 +264,7 @@ A component that wraps the conflict resolution components.
 ### Hooks
 
 #### `useConflictResolution`
+
 A hook that provides conflict resolution functionality.
 
 ```tsx
@@ -281,13 +277,13 @@ const {
   resolveConflict,
   loading,
   hasUnresolvedConflicts,
-  unresolvedCount
+  unresolvedCount,
 } = useConflictResolution({
   conflictManager,
   userId,
   documentId,
   autoOpenModal,
-  showNotifications
+  showNotifications,
 });
 ```
 

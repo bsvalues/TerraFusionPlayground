@@ -1,7 +1,7 @@
 /**
  * Test script that directly accesses the sharing-utils.ts functions
  * for testing QR code generation and PDF export data preparation.
- * 
+ *
  * This is a workaround for dealing with express and Vite middleware conflicts.
  */
 
@@ -14,7 +14,7 @@ import path from 'path';
 async function runTsxScript() {
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(__dirname, 'run-sharing-tests.ts');
-    
+
     // Create the TypeScript test script
     const tsxContent = `
 import { SharingUtilsService } from '../server/services/sharing-utils';
@@ -92,22 +92,22 @@ async function run() {
 
 run();
 `;
-    
+
     fs.writeFileSync(scriptPath, tsxContent);
     console.log(`Created TypeScript test script at ${scriptPath}`);
-    
+
     // Run the script using tsx
     const tsx = spawn('npx', ['tsx', scriptPath]);
-    
-    tsx.stdout.on('data', (data) => {
+
+    tsx.stdout.on('data', data => {
       console.log(data.toString());
     });
-    
-    tsx.stderr.on('data', (data) => {
+
+    tsx.stderr.on('data', data => {
       console.error(data.toString());
     });
-    
-    tsx.on('close', (code) => {
+
+    tsx.on('close', code => {
       if (code === 0) {
         console.log('TSX script executed successfully');
         resolve();
@@ -130,12 +130,12 @@ const testShare = {
   propertyId: 'BC001',
   title: 'Test Property Insight',
   insightType: 'story',
-  insightData: { 
+  insightData: {
     text: 'This is a test property insight for BC001.',
     sections: [
       { title: 'Overview', content: 'This property is located in Benton County.' },
-      { title: 'Valuation', content: 'The assessed value is $250,000.' }
-    ]
+      { title: 'Valuation', content: 'The assessed value is $250,000.' },
+    ],
   },
   format: 'detailed',
   createdBy: 1,
@@ -145,33 +145,33 @@ const testShare = {
   updatedAt: new Date(),
   isPublic: true,
   password: null,
-  allowedDomains: null
+  allowedDomains: null,
 };
 
 // Test QR code generation
 async function testQRCode() {
   try {
     console.log('Generating QR code...');
-    
+
     // Generate QR code
     const qrOptions = {
       width: 300,
       margin: 4,
       color: {
         dark: '#000000',
-        light: '#FFFFFF'
-      }
+        light: '#FFFFFF',
+      },
     };
-    
+
     const qrCodeDataUrl = await sharingUtils.generateQRCode(testShare.shareId, qrOptions);
     console.log('QR code data URL received, length:', qrCodeDataUrl.length);
-    
+
     // Save QR code to file
     const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, '');
     const filePath = path.join(__dirname, '..', 'test-qrcode.png');
     fs.writeFileSync(filePath, base64Data, 'base64');
     console.log(`QR code saved to ${filePath}`);
-    
+
     return qrCodeDataUrl;
   } catch (error) {
     console.error('Error generating QR code:', error);
@@ -183,18 +183,18 @@ async function testQRCode() {
 function testPDFData() {
   try {
     console.log('Preparing PDF export data...');
-    
+
     // Generate PDF export data
     const pdfOptions = {
       title: 'Test Property Insight Report',
-      author: 'Benton County Assessor\'s Office',
+      author: "Benton County Assessor's Office",
       includeImages: true,
-      includeMetadata: true
+      includeMetadata: true,
     };
-    
+
     const pdfData = sharingUtils.preparePDFExportData(testShare, pdfOptions);
     console.log('PDF export data:', JSON.stringify(pdfData, null, 2));
-    
+
     return pdfData;
   } catch (error) {
     console.error('Error preparing PDF data:', error);

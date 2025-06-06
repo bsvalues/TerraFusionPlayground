@@ -8,23 +8,23 @@ import { Improvement, Property } from '@/lib/types';
 
 const Improvements = () => {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
-  
+
   // Fetch properties
   const { data: properties = [], isLoading: propertiesLoading } = useQuery<Property[]>({
     queryKey: ['/api/properties'],
   });
-  
+
   // Fetch improvements for selected property
   const { data: improvements = [], isLoading: improvementsLoading } = useQuery<Improvement[]>({
     queryKey: ['/api/properties', selectedPropertyId, 'improvements'],
     enabled: !!selectedPropertyId,
   });
-  
+
   // Get selected property details
-  const selectedProperty = selectedPropertyId 
-    ? properties.find(p => p.propertyId === selectedPropertyId) 
+  const selectedProperty = selectedPropertyId
+    ? properties.find(p => p.propertyId === selectedPropertyId)
     : null;
-  
+
   // Header actions
   const headerActions = (
     <Button className="inline-flex items-center">
@@ -35,12 +35,8 @@ const Improvements = () => {
 
   return (
     <>
-      <PageHeader 
-        title="Improvements" 
-        subtitle="Data Management"
-        actions={headerActions}
-      />
-      
+      <PageHeader title="Improvements" subtitle="Data Management" actions={headerActions} />
+
       <div className="px-4 sm:px-6 lg:max-w-7xl lg:mx-auto lg:px-8 py-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Property Selection Panel */}
@@ -56,11 +52,11 @@ const Improvements = () => {
               ) : (
                 <div className="space-y-2">
                   {properties.map(property => (
-                    <div 
+                    <div
                       key={property.propertyId}
                       className={`p-3 rounded-md cursor-pointer flex items-center ${
-                        selectedPropertyId === property.propertyId 
-                          ? 'bg-primary-50 border border-primary-200' 
+                        selectedPropertyId === property.propertyId
+                          ? 'bg-primary-50 border border-primary-200'
                           : 'hover:bg-gray-50'
                       }`}
                       onClick={() => setSelectedPropertyId(property.propertyId)}
@@ -84,8 +80,8 @@ const Improvements = () => {
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="text-xl">
-                {selectedProperty 
-                  ? `Improvements for ${selectedProperty.address}` 
+                {selectedProperty
+                  ? `Improvements for ${selectedProperty.address}`
                   : 'Select a property to view improvements'}
               </CardTitle>
             </CardHeader>
@@ -110,12 +106,24 @@ const Improvements = () => {
                   <table className="min-w-full divide-y divide-gray-300">
                     <thead>
                       <tr>
-                        <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">Type</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Year Built</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Square Feet</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Bed/Bath</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Quality</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Condition</th>
+                        <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">
+                          Type
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Year Built
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Square Feet
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Bed/Bath
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Quality
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Condition
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">

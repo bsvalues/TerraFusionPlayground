@@ -1,13 +1,13 @@
 /**
  * WebSocket Connection Manager
- * 
+ *
  * A robust client-side WebSocket connection manager that handles:
  * - Connection establishment and maintenance
  * - Automatic reconnection with exponential backoff
  * - Message serialization/deserialization
  * - Connection state management and monitoring
  * - Fallback to HTTP endpoints when WebSocket is unavailable
- * 
+ *
  * This class works with the server's MainWebSocketServer implementation.
  */
 
@@ -19,20 +19,20 @@ export enum ConnectionState {
   CONNECTING = 'connecting',
   CONNECTED = 'connected',
   RECONNECTING = 'reconnecting',
-  ERROR = 'error'
+  ERROR = 'error',
 }
 
 // Options for WebSocket connection
 export interface WebSocketOptions {
   // URL to connect to (defaults to auto-detection based on window.location)
   url?: string;
-  
+
   // Path for WebSocket connection (default: '/ws')
   path?: string;
-  
+
   // Whether to automatically reconnect (default: true)
   autoReconnect?: boolean;
-  
+
   // Reconnection strategy options
   reconnectStrategy?: {
     // Initial delay in ms (default: 1000)
@@ -44,13 +44,13 @@ export interface WebSocketOptions {
     // Maximum reconnection attempts (default: 10)
     maxAttempts?: number;
   };
-  
+
   // Heartbeat interval in ms (default: 30000)
   heartbeatInterval?: number;
-  
+
   // Whether to use HTTP fallback when WebSocket is unavailable (default: true)
   useHttpFallback?: boolean;
-  
+
   // HTTP endpoint for fallback (default: '/api/ws-fallback/send')
   httpFallbackEndpoint?: string;
 }
@@ -72,13 +72,13 @@ export type ErrorHandler = (error: Error, context?: string) => void;
 export class WebSocketConnectionManager {
   // WebSocket instance
   private socket: WebSocket | null = null;
-  
+
   // Current connection state
   private state: ConnectionState = ConnectionState.DISCONNECTED;
-  
+
   // Connection options
   private options: Required<WebSocketOptions>;
-  
+
   // Default options
   private static readonly DEFAULT_OPTIONS: Required<WebSocketOptions> = {
     url: '',
@@ -88,34 +88,34 @@ export class WebSocketConnectionManager {
       initialDelay: 1000,
       maxDelay: 30000,
       multiplier: 1.5,
-      maxAttempts: 10
+      maxAttempts: 10,
     },
     heartbeatInterval: 30000,
     useHttpFallback: true,
-    httpFallbackEndpoint: '/api/ws-fallback/send'
+    httpFallbackEndpoint: '/api/ws-fallback/send',
   };
-  
+
   // Reconnection state
   private reconnectAttempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  
+
   // Heartbeat state
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private lastHeartbeatResponse: number | null = null;
-  
+
   // Message handlers
   private messageHandlers: Map<string, Set<MessageHandler>> = new Map();
   private defaultMessageHandlers: Set<MessageHandler> = new Set();
-  
+
   // State change handlers
   private stateChangeHandlers: Set<StateChangeHandler> = new Set();
-  
+
   // Error handlers
   private errorHandlers: Set<ErrorHandler> = new Set();
-  
+
   // Client ID assigned by server
   private clientId: string | null = null;
-  
+
   // Stats
   private stats = {
     messagesReceived: 0,
@@ -124,9 +124,9 @@ export class WebSocketConnectionManager {
     errors: 0,
     lastLatency: null as number | null,
     averageLatency: null as number | null,
-    latencySamples: [] as number[]
+    latencySamples: [] as number[],
   };
-  
+
   /**
    * Create WebSocketConnectionManager instance
    * @param options Configuration options
@@ -138,20 +138,20 @@ export class WebSocketConnectionManager {
       ...options,
       reconnectStrategy: {
         ...WebSocketConnectionManager.DEFAULT_OPTIONS.reconnectStrategy,
-        ...(options.reconnectStrategy || {})
-      }
+        ...(options.reconnectStrategy || {}),
+      },
     };
-    
+
     // Auto-generate URL if not provided
     if (!this.options.url) {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       this.options.url = `${protocol}//${window.location.host}${this.options.path}`;
     }
-    
+
     // Register internal message handlers
     this.registerInternalHandlers();
   }
-  
+
   /**
    * Connect to WebSocket server
    */
@@ -161,16 +161,16 @@ export class WebSocketConnectionManager {
       logger.info('[WebSocketManager] Already connected or connecting');
       return;
     }
-    
+
     // Update state
     this.updateState(ConnectionState.CONNECTING);
-    
+
     try {
       logger.info(`[WebSocketManager] Connecting to ${this.options.url}`);
-      
+
       // Create WebSocket connection
       this.socket = new WebSocket(this.options.url);
-      
+
       // Set up event handlers
       this.socket.onopen = this.handleOpen.bind(this);
       this.socket.onmessage = this.handleMessage.bind(this);
@@ -180,20 +180,20 @@ export class WebSocketConnectionManager {
       this.handleConnectionError(error as Error);
     }
   }
-  
+
   /**
    * Disconnect from WebSocket server
    */
   public disconnect(): void {
     // Clear timers
     this.clearTimers();
-    
+
     // Only proceed if we have a socket
     if (!this.socket) {
       this.updateState(ConnectionState.DISCONNECTED);
       return;
     }
-    
+
     try {
       // Close socket if open
       if (this.socket.readyState === WebSocket.OPEN) {
@@ -202,28 +202,28 @@ export class WebSocketConnectionManager {
     } catch (error) {
       logger.error('[WebSocketManager] Error while disconnecting', { error });
     }
-    
+
     // Clean up
     this.socket = null;
     this.updateState(ConnectionState.DISCONNECTED);
   }
-  
+
   /**
    * Reconnect to WebSocket server
    */
   public reconnect(): void {
     logger.info('[WebSocketManager] Manually reconnecting');
-    
+
     // Disconnect if connected
     this.disconnect();
-    
+
     // Reset reconnect attempts (for manual reconnect)
     this.reconnectAttempt = 0;
-    
+
     // Connect again
     this.connect();
   }
-  
+
   /**
    * Send a message to the server
    * @param message Message to send
@@ -233,36 +233,36 @@ export class WebSocketConnectionManager {
     // Check if connected
     if (this.state !== ConnectionState.CONNECTED || !this.socket) {
       logger.warn('[WebSocketManager] Cannot send message: not connected');
-      
+
       // Try HTTP fallback if enabled
       if (this.options.useHttpFallback) {
         return this.sendViaHttpFallback(message);
       }
-      
+
       return false;
     }
-    
+
     try {
       // Convert message to string if needed
       const messageStr = typeof message === 'string' ? message : JSON.stringify(message);
-      
+
       // Send message
       this.socket.send(messageStr);
       this.stats.messagesSent++;
-      
+
       return true;
     } catch (error) {
       this.handleError(error as Error);
-      
+
       // Try HTTP fallback if enabled
       if (this.options.useHttpFallback) {
         return this.sendViaHttpFallback(message);
       }
-      
+
       return false;
     }
   }
-  
+
   /**
    * Send a message via HTTP fallback
    * @param message Message to send
@@ -272,26 +272,27 @@ export class WebSocketConnectionManager {
     if (!this.options.useHttpFallback) {
       return false;
     }
-    
+
     try {
       // Convert message to object if needed
-      const messageObj = typeof message === 'string' ? { type: 'message', content: message } : message;
-      
+      const messageObj =
+        typeof message === 'string' ? { type: 'message', content: message } : message;
+
       // Send via fetch
       fetch(this.options.httpFallbackEndpoint, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           message: messageObj,
-          clientId: this.clientId
-        })
+          clientId: this.clientId,
+        }),
       })
         .then(response => response.json())
         .then(data => {
           logger.info('[WebSocketManager] HTTP fallback response:', { data });
-          
+
           // Process response as if it came from WebSocket
           this.processReceivedMessage(data);
         })
@@ -299,7 +300,7 @@ export class WebSocketConnectionManager {
           logger.error('[WebSocketManager] HTTP fallback error:', { error });
           this.notifyErrorHandlers(error, 'http-fallback');
         });
-      
+
       return true;
     } catch (error) {
       logger.error('[WebSocketManager] Error using HTTP fallback:', { error });
@@ -307,7 +308,7 @@ export class WebSocketConnectionManager {
       return false;
     }
   }
-  
+
   /**
    * Send a ping message
    * @returns True if successful, false otherwise
@@ -315,10 +316,10 @@ export class WebSocketConnectionManager {
   public ping(): boolean {
     return this.send({
       type: 'ping',
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
-  
+
   /**
    * Register a message handler for a specific message type
    * @param messageType Message type to handle
@@ -329,11 +330,11 @@ export class WebSocketConnectionManager {
     if (!this.messageHandlers.has(messageType)) {
       this.messageHandlers.set(messageType, new Set());
     }
-    
+
     // Add handler
     this.messageHandlers.get(messageType)!.add(handler);
   }
-  
+
   /**
    * Register a default message handler for all messages
    * @param handler Handler function
@@ -341,7 +342,7 @@ export class WebSocketConnectionManager {
   public onAnyMessage(handler: MessageHandler): void {
     this.defaultMessageHandlers.add(handler);
   }
-  
+
   /**
    * Register a state change handler
    * @param handler Handler function
@@ -349,7 +350,7 @@ export class WebSocketConnectionManager {
   public onStateChange(handler: StateChangeHandler): void {
     this.stateChangeHandlers.add(handler);
   }
-  
+
   /**
    * Register an error handler
    * @param handler Handler function
@@ -357,7 +358,7 @@ export class WebSocketConnectionManager {
   public onError(handler: ErrorHandler): void {
     this.errorHandlers.add(handler);
   }
-  
+
   /**
    * Remove a message handler
    * @param messageType Message type
@@ -369,7 +370,7 @@ export class WebSocketConnectionManager {
       handlers.delete(handler);
     }
   }
-  
+
   /**
    * Remove a default message handler
    * @param handler Handler to remove
@@ -377,7 +378,7 @@ export class WebSocketConnectionManager {
   public offAnyMessage(handler: MessageHandler): void {
     this.defaultMessageHandlers.delete(handler);
   }
-  
+
   /**
    * Remove a state change handler
    * @param handler Handler to remove
@@ -385,7 +386,7 @@ export class WebSocketConnectionManager {
   public offStateChange(handler: StateChangeHandler): void {
     this.stateChangeHandlers.delete(handler);
   }
-  
+
   /**
    * Remove an error handler
    * @param handler Handler to remove
@@ -393,28 +394,28 @@ export class WebSocketConnectionManager {
   public offError(handler: ErrorHandler): void {
     this.errorHandlers.delete(handler);
   }
-  
+
   /**
    * Get current connection state
    */
   public getState(): ConnectionState {
     return this.state;
   }
-  
+
   /**
    * Get statistics about the connection
    */
   public getStats(): typeof this.stats {
     return { ...this.stats };
   }
-  
+
   /**
    * Get client ID assigned by server
    */
   public getClientId(): string | null {
     return this.clientId;
   }
-  
+
   /**
    * Update connection options
    * @param options New options
@@ -422,62 +423,62 @@ export class WebSocketConnectionManager {
   public updateOptions(options: Partial<WebSocketOptions>): void {
     const oldUrl = this.options.url;
     const oldPath = this.options.path;
-    
+
     // Update options
     this.options = {
       ...this.options,
       ...options,
       reconnectStrategy: {
         ...this.options.reconnectStrategy,
-        ...(options.reconnectStrategy || {})
-      }
+        ...(options.reconnectStrategy || {}),
+      },
     };
-    
+
     // Check if we need to reconnect
     const urlChanged = options.url !== undefined && options.url !== oldUrl;
     const pathChanged = options.path !== undefined && options.path !== oldPath;
-    
+
     // Regenerate URL if path changed but URL not explicitly set
     if (pathChanged && !urlChanged && !options.url) {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       this.options.url = `${protocol}//${window.location.host}${this.options.path}`;
     }
-    
+
     // Reconnect if URL or path changed and we're connected
     if ((urlChanged || pathChanged) && this.state === ConnectionState.CONNECTED) {
       logger.info('[WebSocketManager] Connection options changed, reconnecting');
       this.reconnect();
     }
-    
+
     // Restart heartbeat if interval changed
     if (options.heartbeatInterval !== undefined && this.state === ConnectionState.CONNECTED) {
       this.restartHeartbeat();
     }
   }
-  
+
   /**
    * Handle WebSocket open event
    */
   private handleOpen(): void {
     logger.info('[WebSocketManager] Connection established');
-    
+
     // Update state
     this.updateState(ConnectionState.CONNECTED);
-    
+
     // Reset reconnect attempts
     this.reconnectAttempt = 0;
-    
+
     // Start heartbeat
     this.startHeartbeat();
   }
-  
+
   /**
    * Handle WebSocket message event
    */
   private handleMessage(event: MessageEvent): void {
     // Update stats
     this.stats.messagesReceived++;
-    
+
     try {
       // Parse message
       const message = JSON.parse(event.data);
@@ -487,7 +488,7 @@ export class WebSocketConnectionManager {
       this.notifyErrorHandlers(error as Error, 'parse');
     }
   }
-  
+
   /**
    * Process a received message (from WebSocket or HTTP fallback)
    */
@@ -497,23 +498,25 @@ export class WebSocketConnectionManager {
       this.clientId = message.clientId;
       logger.info(`[WebSocketManager] Received client ID: ${this.clientId}`);
     }
-    
+
     // Update heartbeat status if this is a pong
     if (message.type === 'pong') {
       this.handlePong(message);
     }
-    
+
     // Notify specific message handlers
     if (message.type && this.messageHandlers.has(message.type)) {
       for (const handler of this.messageHandlers.get(message.type)!) {
         try {
           handler(message);
         } catch (error) {
-          logger.error(`[WebSocketManager] Error in message handler for type '${message.type}'`, { error });
+          logger.error(`[WebSocketManager] Error in message handler for type '${message.type}'`, {
+            error,
+          });
         }
       }
     }
-    
+
     // Notify default message handlers
     for (const handler of this.defaultMessageHandlers) {
       try {
@@ -523,51 +526,55 @@ export class WebSocketConnectionManager {
       }
     }
   }
-  
+
   /**
    * Handle pong message
    */
   private handlePong(message: any): void {
     // Update last heartbeat response
     this.lastHeartbeatResponse = Date.now();
-    
+
     // Calculate latency if timestamp is included
     if (message.timestamp) {
       const latency = Date.now() - message.timestamp;
       this.stats.lastLatency = latency;
-      
+
       // Update average latency
       this.stats.latencySamples.push(latency);
       if (this.stats.latencySamples.length > 10) {
         this.stats.latencySamples.shift();
       }
-      
+
       const sum = this.stats.latencySamples.reduce((a, b) => a + b, 0);
       this.stats.averageLatency = Math.round(sum / this.stats.latencySamples.length);
-      
-      logger.debug(`[WebSocketManager] Latency: ${latency}ms (avg: ${this.stats.averageLatency}ms)`);
+
+      logger.debug(
+        `[WebSocketManager] Latency: ${latency}ms (avg: ${this.stats.averageLatency}ms)`
+      );
     }
   }
-  
+
   /**
    * Handle WebSocket close event
    */
   private handleClose(event: CloseEvent): void {
-    logger.info(`[WebSocketManager] Connection closed (code: ${event.code}, reason: ${event.reason || 'No reason provided'})`);
-    
+    logger.info(
+      `[WebSocketManager] Connection closed (code: ${event.code}, reason: ${event.reason || 'No reason provided'})`
+    );
+
     // Clean up
     this.socket = null;
     this.clearTimers();
-    
+
     // Update state
     this.updateState(ConnectionState.DISCONNECTED, { code: event.code, reason: event.reason });
-    
+
     // Attempt to reconnect if appropriate
     if (this.shouldReconnect(event.code)) {
       this.scheduleReconnect();
     }
   }
-  
+
   /**
    * Handle WebSocket error event
    */
@@ -575,28 +582,28 @@ export class WebSocketConnectionManager {
     const error = event instanceof Error ? event : new Error('WebSocket error');
     this.handleConnectionError(error);
   }
-  
+
   /**
    * Handle connection error
    */
   private handleConnectionError(error: Error): void {
     logger.error('[WebSocketManager] Connection error', { error });
-    
+
     // Update stats
     this.stats.errors++;
-    
+
     // Update state
     this.updateState(ConnectionState.ERROR, { error });
-    
+
     // Notify error handlers
     this.notifyErrorHandlers(error, 'connection');
-    
+
     // Attempt to reconnect if appropriate
     if (this.shouldReconnect()) {
       this.scheduleReconnect();
     }
   }
-  
+
   /**
    * Determine if we should attempt to reconnect
    */
@@ -605,21 +612,23 @@ export class WebSocketConnectionManager {
     if (!this.options.autoReconnect) {
       return false;
     }
-    
+
     // Don't reconnect if we've exceeded max attempts
     if (this.reconnectAttempt >= this.options.reconnectStrategy.maxAttempts) {
-      logger.warn(`[WebSocketManager] Max reconnection attempts (${this.options.reconnectStrategy.maxAttempts}) reached`);
+      logger.warn(
+        `[WebSocketManager] Max reconnection attempts (${this.options.reconnectStrategy.maxAttempts}) reached`
+      );
       return false;
     }
-    
+
     // Don't reconnect on normal closure (1000) or going away (1001)
     if (closeCode === 1000 || closeCode === 1001) {
       return false;
     }
-    
+
     return true;
   }
-  
+
   /**
    * Schedule reconnection attempt
    */
@@ -629,26 +638,28 @@ export class WebSocketConnectionManager {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    
+
     // Increment attempt counter
     this.reconnectAttempt++;
-    
+
     // Calculate delay using exponential backoff
     const { initialDelay, maxDelay, multiplier } = this.options.reconnectStrategy;
     const delay = Math.min(
       initialDelay * Math.pow(multiplier, this.reconnectAttempt - 1),
       maxDelay
     );
-    
+
     // Update state
-    this.updateState(ConnectionState.RECONNECTING, { 
-      attempt: this.reconnectAttempt, 
+    this.updateState(ConnectionState.RECONNECTING, {
+      attempt: this.reconnectAttempt,
       maxAttempts: this.options.reconnectStrategy.maxAttempts,
-      delay 
+      delay,
     });
-    
-    logger.info(`[WebSocketManager] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempt}/${this.options.reconnectStrategy.maxAttempts})`);
-    
+
+    logger.info(
+      `[WebSocketManager] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempt}/${this.options.reconnectStrategy.maxAttempts})`
+    );
+
     // Schedule reconnection
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
@@ -656,39 +667,43 @@ export class WebSocketConnectionManager {
       this.stats.reconnects++;
     }, delay);
   }
-  
+
   /**
    * Start heartbeat mechanism
    */
   private startHeartbeat(): void {
     // Clear any existing heartbeat timer
     this.clearHeartbeatTimer();
-    
+
     // Only start if interval is positive
     if (this.options.heartbeatInterval <= 0) {
       return;
     }
-    
-    logger.debug(`[WebSocketManager] Starting heartbeat (interval: ${this.options.heartbeatInterval}ms)`);
-    
+
+    logger.debug(
+      `[WebSocketManager] Starting heartbeat (interval: ${this.options.heartbeatInterval}ms)`
+    );
+
     // Send initial ping
     this.ping();
-    
+
     // Start heartbeat timer
     this.heartbeatTimer = setInterval(() => {
       this.ping();
-      
+
       // Check if we've missed too many heartbeats
       if (this.lastHeartbeatResponse) {
         const elapsed = Date.now() - this.lastHeartbeatResponse;
         if (elapsed > this.options.heartbeatInterval * 3) {
-          logger.warn(`[WebSocketManager] Missed heartbeats detected (${elapsed}ms since last response)`);
+          logger.warn(
+            `[WebSocketManager] Missed heartbeats detected (${elapsed}ms since last response)`
+          );
           this.reconnect();
         }
       }
     }, this.options.heartbeatInterval);
   }
-  
+
   /**
    * Restart heartbeat mechanism
    */
@@ -696,7 +711,7 @@ export class WebSocketConnectionManager {
     this.clearHeartbeatTimer();
     this.startHeartbeat();
   }
-  
+
   /**
    * Update connection state and notify handlers
    */
@@ -705,10 +720,10 @@ export class WebSocketConnectionManager {
     if (this.state === state) {
       return;
     }
-    
+
     // Update state
     this.state = state;
-    
+
     // Notify state change handlers
     for (const handler of this.stateChangeHandlers) {
       try {
@@ -718,7 +733,7 @@ export class WebSocketConnectionManager {
       }
     }
   }
-  
+
   /**
    * Notify error handlers
    */
@@ -731,7 +746,7 @@ export class WebSocketConnectionManager {
       }
     }
   }
-  
+
   /**
    * Clear all timers
    */
@@ -739,7 +754,7 @@ export class WebSocketConnectionManager {
     this.clearReconnectTimer();
     this.clearHeartbeatTimer();
   }
-  
+
   /**
    * Clear reconnect timer
    */
@@ -749,7 +764,7 @@ export class WebSocketConnectionManager {
       this.reconnectTimer = null;
     }
   }
-  
+
   /**
    * Clear heartbeat timer
    */
@@ -759,59 +774,63 @@ export class WebSocketConnectionManager {
       this.heartbeatTimer = null;
     }
   }
-  
+
   /**
    * Register internal message handlers
    */
   private registerInternalHandlers(): void {
     // Register handler for system messages
-    this.onMessage('system', (message) => {
+    this.onMessage('system', message => {
       if (message.event === 'connected') {
         logger.info('[WebSocketManager] Received system connected message');
-        
+
         // Store client ID if provided
         if (message.clientId) {
           this.clientId = message.clientId;
         }
-        
+
         // Update heartbeat interval based on server config (if provided)
         if (message.config?.heartbeatInterval) {
           const serverHeartbeatInterval = message.config.heartbeatInterval;
           if (serverHeartbeatInterval !== this.options.heartbeatInterval) {
-            logger.info(`[WebSocketManager] Updating heartbeat interval from ${this.options.heartbeatInterval}ms to ${serverHeartbeatInterval}ms (server config)`);
+            logger.info(
+              `[WebSocketManager] Updating heartbeat interval from ${this.options.heartbeatInterval}ms to ${serverHeartbeatInterval}ms (server config)`
+            );
             this.options.heartbeatInterval = serverHeartbeatInterval;
             this.restartHeartbeat();
           }
         }
       }
     });
-    
+
     // Register handler for config messages
-    this.onMessage('config', (message) => {
+    this.onMessage('config', message => {
       logger.info('[WebSocketManager] Received config message', { message });
-      
+
       // Update heartbeat interval if provided
       if (message.keepaliveInterval) {
         const serverHeartbeatInterval = message.keepaliveInterval;
         if (serverHeartbeatInterval !== this.options.heartbeatInterval) {
-          logger.info(`[WebSocketManager] Updating heartbeat interval from ${this.options.heartbeatInterval}ms to ${serverHeartbeatInterval}ms (server config)`);
+          logger.info(
+            `[WebSocketManager] Updating heartbeat interval from ${this.options.heartbeatInterval}ms to ${serverHeartbeatInterval}ms (server config)`
+          );
           this.options.heartbeatInterval = serverHeartbeatInterval;
           this.restartHeartbeat();
         }
       }
-      
+
       // Update reconnect strategy if provided
       if (message.reconnectStrategy) {
         logger.info('[WebSocketManager] Updating reconnect strategy from server config');
         this.options.reconnectStrategy = {
           ...this.options.reconnectStrategy,
-          ...message.reconnectStrategy
+          ...message.reconnectStrategy,
         };
       }
     });
-    
+
     // Register handler for error messages
-    this.onMessage('error', (message) => {
+    this.onMessage('error', message => {
       logger.warn('[WebSocketManager] Received error message from server', { message });
       this.notifyErrorHandlers(new Error(message.message || 'Server error'), 'server');
     });

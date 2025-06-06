@@ -1,6 +1,6 @@
 /**
  * API Catalog
- * 
+ *
  * Provides a comprehensive catalog of all APIs in the system including:
  * - REST endpoints
  * - GraphQL queries and mutations
@@ -17,7 +17,7 @@ export enum ApiType {
   REST = 'rest',
   GRAPHQL = 'graphql',
   WEBSOCKET = 'websocket',
-  GRPC = 'grpc'
+  GRPC = 'grpc',
 }
 
 // API Security Scheme
@@ -26,16 +26,16 @@ export enum ApiSecurityScheme {
   HTTP = 'http',
   OAUTH2 = 'oauth2',
   OPENID = 'openid',
-  NONE = 'none'
+  NONE = 'none',
 }
 
 // API Versioning Strategy
 export enum ApiVersioningStrategy {
-  URL_PATH = 'url_path',       // e.g., /v1/resources
+  URL_PATH = 'url_path', // e.g., /v1/resources
   QUERY_PARAM = 'query_param', // e.g., /resources?version=1
-  HEADER = 'header',           // e.g., X-API-Version: 1
-  MEDIA_TYPE = 'media_type',   // e.g., Accept: application/vnd.api+json;version=1
-  NONE = 'none'
+  HEADER = 'header', // e.g., X-API-Version: 1
+  MEDIA_TYPE = 'media_type', // e.g., Accept: application/vnd.api+json;version=1
+  NONE = 'none',
 }
 
 // API Status
@@ -44,7 +44,7 @@ export enum ApiStatus {
   DEPRECATED = 'deprecated',
   BETA = 'beta',
   ALPHA = 'alpha',
-  ARCHIVED = 'archived'
+  ARCHIVED = 'archived',
 }
 
 // API Authentication Method
@@ -176,44 +176,47 @@ export class ApiCatalogManager extends EventEmitter {
    */
   public registerApi(api: Omit<ApiEntity, 'id' | 'createdAt' | 'updatedAt'>): ApiEntity {
     const id = `api-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     const newApi: ApiEntity = {
       ...api,
       id,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.apis.set(id, newApi);
-    
+
     console.log(`API registered: ${newApi.name} (${newApi.type})`);
     this.emit('api:registered', newApi);
-    
+
     return newApi;
   }
 
   /**
    * Update an existing API
    */
-  public updateApi(id: string, updates: Partial<Omit<ApiEntity, 'id' | 'createdAt' | 'updatedAt'>>): ApiEntity | null {
+  public updateApi(
+    id: string,
+    updates: Partial<Omit<ApiEntity, 'id' | 'createdAt' | 'updatedAt'>>
+  ): ApiEntity | null {
     const api = this.apis.get(id);
-    
+
     if (!api) {
       console.error(`API not found: ${id}`);
       return null;
     }
-    
+
     const updatedApi: ApiEntity = {
       ...api,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.apis.set(id, updatedApi);
-    
+
     console.log(`API updated: ${updatedApi.name} (${updatedApi.id})`);
     this.emit('api:updated', updatedApi);
-    
+
     return updatedApi;
   }
 
@@ -222,94 +225,100 @@ export class ApiCatalogManager extends EventEmitter {
    */
   public addEndpoint(apiId: string, endpoint: Omit<ApiEndpoint, 'id'>): ApiEndpoint | null {
     const api = this.apis.get(apiId);
-    
+
     if (!api) {
       console.error(`API not found: ${apiId}`);
       return null;
     }
-    
+
     if (api.type !== ApiType.REST) {
       console.error(`API ${apiId} is not a REST API`);
       return null;
     }
-    
+
     const id = `endpoint-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     const newEndpoint: ApiEndpoint = {
       ...endpoint,
-      id
+      id,
     };
-    
+
     api.endpoints = [...(api.endpoints || []), newEndpoint];
     api.updatedAt = new Date();
-    
+
     console.log(`Endpoint added: ${newEndpoint.method} ${newEndpoint.path}`);
     this.emit('endpoint:added', { api, endpoint: newEndpoint });
-    
+
     return newEndpoint;
   }
 
   /**
    * Add a GraphQL operation
    */
-  public addGraphQLOperation(apiId: string, operation: Omit<GraphQLOperation, 'id'>): GraphQLOperation | null {
+  public addGraphQLOperation(
+    apiId: string,
+    operation: Omit<GraphQLOperation, 'id'>
+  ): GraphQLOperation | null {
     const api = this.apis.get(apiId);
-    
+
     if (!api) {
       console.error(`API not found: ${apiId}`);
       return null;
     }
-    
+
     if (api.type !== ApiType.GRAPHQL) {
       console.error(`API ${apiId} is not a GraphQL API`);
       return null;
     }
-    
+
     const id = `operation-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     const newOperation: GraphQLOperation = {
       ...operation,
-      id
+      id,
     };
-    
+
     api.graphqlOperations = [...(api.graphqlOperations || []), newOperation];
     api.updatedAt = new Date();
-    
+
     console.log(`GraphQL operation added: ${newOperation.type} ${newOperation.name}`);
     this.emit('graphql-operation:added', { api, operation: newOperation });
-    
+
     return newOperation;
   }
 
   /**
    * Add a WebSocket event
    */
-  public addWebSocketEvent(apiId: string, event: Omit<WebSocketEvent, 'id'>): WebSocketEvent | null {
+  public addWebSocketEvent(
+    apiId: string,
+    event: Omit<WebSocketEvent, 'id'>
+  ): WebSocketEvent | null {
     const api = this.apis.get(apiId);
-    
+
     if (!api) {
       console.error(`API not found: ${apiId}`);
       return null;
     }
-    
+
     if (api.type !== ApiType.WEBSOCKET) {
       console.error(`API ${apiId} is not a WebSocket API`);
       return null;
     }
-    
+
     const id = `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     const newEvent: WebSocketEvent = {
       ...event,
-      id
+      id,
     };
-    
+
     api.websocketEvents = [...(api.websocketEvents || []), newEvent];
     api.updatedAt = new Date();
-    
+
     console.log(`WebSocket event added: ${newEvent.name}`);
     this.emit('websocket-event:added', { api, event: newEvent });
-    
+
     return newEvent;
   }
 
@@ -318,17 +327,17 @@ export class ApiCatalogManager extends EventEmitter {
    */
   public registerSDK(sdk: Omit<SDK, 'id'>): SDK {
     const id = `sdk-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     const newSDK: SDK = {
       ...sdk,
-      id
+      id,
     };
-    
+
     this.sdks.set(id, newSDK);
-    
+
     console.log(`SDK registered: ${newSDK.name} (${newSDK.language})`);
     this.emit('sdk:registered', newSDK);
-    
+
     return newSDK;
   }
 
@@ -338,23 +347,23 @@ export class ApiCatalogManager extends EventEmitter {
   public linkSDKToApi(sdkId: string, apiId: string): boolean {
     const sdk = this.sdks.get(sdkId);
     const api = this.apis.get(apiId);
-    
+
     if (!sdk) {
       console.error(`SDK not found: ${sdkId}`);
       return false;
     }
-    
+
     if (!api) {
       console.error(`API not found: ${apiId}`);
       return false;
     }
-    
+
     api.sdks = [...(api.sdks || []), sdk];
     api.updatedAt = new Date();
-    
+
     console.log(`SDK ${sdk.name} linked to API ${api.name}`);
     this.emit('sdk:linked', { api, sdk });
-    
+
     return true;
   }
 
@@ -426,7 +435,7 @@ export class ApiCatalogManager extends EventEmitter {
    */
   public searchApis(query: string): ApiEntity[] {
     query = query.toLowerCase();
-    
+
     return this.getAllApis().filter(api => {
       return (
         api.name.toLowerCase().includes(query) ||
@@ -442,17 +451,17 @@ export class ApiCatalogManager extends EventEmitter {
    */
   public generateOpenAPISpec(apiId: string): any {
     const api = this.apis.get(apiId);
-    
+
     if (!api) {
       console.error(`API not found: ${apiId}`);
       return null;
     }
-    
+
     if (api.type !== ApiType.REST) {
       console.error(`API ${apiId} is not a REST API`);
       return null;
     }
-    
+
     // Generate OpenAPI spec
     const spec = {
       openapi: '3.0.0',
@@ -460,22 +469,24 @@ export class ApiCatalogManager extends EventEmitter {
         title: api.name,
         description: api.description,
         version: api.version,
-        contact: api.contactEmail ? {
-          email: api.contactEmail
-        } : undefined
+        contact: api.contactEmail
+          ? {
+              email: api.contactEmail,
+            }
+          : undefined,
       },
       servers: [
         {
           url: api.basePath,
-          description: `${api.name} API`
-        }
+          description: `${api.name} API`,
+        },
       ],
       paths: {},
       components: {
-        securitySchemes: {}
-      }
+        securitySchemes: {},
+      },
     };
-    
+
     // Add security schemes
     if (api.authentication && api.authentication.length > 0) {
       for (const auth of api.authentication) {
@@ -484,31 +495,31 @@ export class ApiCatalogManager extends EventEmitter {
             type: 'apiKey',
             name: auth.name,
             in: auth.location || 'header',
-            description: auth.description
+            description: auth.description,
           };
         } else if (auth.type === ApiSecurityScheme.HTTP) {
           spec.components.securitySchemes[auth.name] = {
             type: 'http',
             scheme: auth.scheme || 'bearer',
-            description: auth.description
+            description: auth.description,
           };
         } else if (auth.type === ApiSecurityScheme.OAUTH2) {
           spec.components.securitySchemes[auth.name] = {
             type: 'oauth2',
             flows: auth.flows,
-            description: auth.description
+            description: auth.description,
           };
         }
       }
     }
-    
+
     // Add paths
     if (api.endpoints && api.endpoints.length > 0) {
       for (const endpoint of api.endpoints) {
         if (!spec.paths[endpoint.path]) {
           spec.paths[endpoint.path] = {};
         }
-        
+
         spec.paths[endpoint.path][endpoint.method.toLowerCase()] = {
           summary: endpoint.summary,
           description: endpoint.description,
@@ -519,29 +530,33 @@ export class ApiCatalogManager extends EventEmitter {
             in: param.location,
             description: param.description,
             required: param.required,
-            schema: param.schema
+            schema: param.schema,
           })),
           requestBody: endpoint.requestBody,
           responses: Object.entries(endpoint.responses).reduce((acc, [code, response]) => {
             acc[code] = {
               description: response.description,
-              content: response.schema ? {
-                'application/json': {
-                  schema: response.schema
-                }
-              } : undefined,
-              examples: response.examples
+              content: response.schema
+                ? {
+                    'application/json': {
+                      schema: response.schema,
+                    },
+                  }
+                : undefined,
+              examples: response.examples,
             };
             return acc;
           }, {}),
-          security: endpoint.security ? endpoint.security.map(auth => ({ [auth.name]: [] })) : undefined
+          security: endpoint.security
+            ? endpoint.security.map(auth => ({ [auth.name]: [] }))
+            : undefined,
         };
       }
     }
-    
+
     console.log(`OpenAPI spec generated for ${api.name}`);
     this.emit('openapi:generated', { api, spec });
-    
+
     return spec;
   }
 
@@ -550,12 +565,12 @@ export class ApiCatalogManager extends EventEmitter {
    */
   public generateApiDocumentation(apiId: string): any {
     const api = this.apis.get(apiId);
-    
+
     if (!api) {
       console.error(`API not found: ${apiId}`);
       return null;
     }
-    
+
     // Generate documentation structure
     const documentation = {
       id: apiId,
@@ -569,11 +584,11 @@ export class ApiCatalogManager extends EventEmitter {
         type: auth.type,
         name: auth.name,
         description: auth.description,
-        details: this.getAuthDetails(auth)
+        details: this.getAuthDetails(auth),
       })),
-      sections: []
+      sections: [],
     };
-    
+
     // Add appropriate sections based on API type
     if (api.type === ApiType.REST && api.endpoints) {
       documentation.sections.push({
@@ -584,8 +599,8 @@ export class ApiCatalogManager extends EventEmitter {
           parameters: endpoint.parameters,
           requestBody: endpoint.requestBody,
           responses: endpoint.responses,
-          examples: this.generateEndpointExamples(endpoint)
-        }))
+          examples: this.generateEndpointExamples(endpoint),
+        })),
       });
     } else if (api.type === ApiType.GRAPHQL && api.graphqlOperations) {
       documentation.sections.push({
@@ -596,8 +611,8 @@ export class ApiCatalogManager extends EventEmitter {
           arguments: op.arguments,
           returnType: op.returnType,
           returnTypeDescription: op.returnTypeDescription,
-          example: op.example
-        }))
+          example: op.example,
+        })),
       });
     } else if (api.type === ApiType.WEBSOCKET && api.websocketEvents) {
       documentation.sections.push({
@@ -607,11 +622,11 @@ export class ApiCatalogManager extends EventEmitter {
           description: event.description,
           direction: event.direction,
           payload: event.payloadSchema,
-          example: event.example
-        }))
+          example: event.example,
+        })),
       });
     }
-    
+
     // Add SDK section if available
     if (api.sdks && api.sdks.length > 0) {
       documentation.sections.push({
@@ -622,14 +637,14 @@ export class ApiCatalogManager extends EventEmitter {
           version: sdk.version,
           installation: sdk.installationInstructions,
           repository: sdk.repositoryUrl,
-          documentation: sdk.documentationUrl
-        }))
+          documentation: sdk.documentationUrl,
+        })),
       });
     }
-    
+
     console.log(`Documentation generated for ${api.name}`);
     this.emit('documentation:generated', { api, documentation });
-    
+
     return documentation;
   }
 
@@ -650,7 +665,7 @@ export class ApiCatalogManager extends EventEmitter {
     } else if (auth.type === ApiSecurityScheme.OPENID) {
       return `OpenID Connect: Use OpenID Connect for authentication`;
     }
-    
+
     return 'No authentication required';
   }
 
@@ -660,13 +675,13 @@ export class ApiCatalogManager extends EventEmitter {
   private generateEndpointExamples(endpoint: ApiEndpoint): any {
     // Generate curl example
     let curlExample = `curl -X ${endpoint.method} "${endpoint.path}"`;
-    
+
     // Add headers
     const headerParams = endpoint.parameters.filter(p => p.location === 'header');
     for (const param of headerParams) {
       curlExample += ` -H "${param.name}: ${param.example || 'value'}"`;
     }
-    
+
     // Add query parameters
     const queryParams = endpoint.parameters.filter(p => p.location === 'query');
     if (queryParams.length > 0) {
@@ -675,22 +690,22 @@ export class ApiCatalogManager extends EventEmitter {
         curlExample += ` --data-urlencode "${param.name}=${param.example || 'value'}"`;
       }
     }
-    
+
     // Add request body
     if (endpoint.requestBody && endpoint.requestBody.required) {
       curlExample += ` -d '${JSON.stringify({ example: 'data' }, null, 2)}'`;
     }
-    
+
     return {
       curl: curlExample,
       responses: Object.entries(endpoint.responses).reduce((acc, [code, response]) => {
         acc[code] = response.examples || {
           'application/json': {
-            example: 'response data'
-          }
+            example: 'response data',
+          },
         };
         return acc;
-      }, {})
+      }, {}),
     };
   }
 }

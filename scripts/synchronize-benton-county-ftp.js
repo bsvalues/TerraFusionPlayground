@@ -1,6 +1,6 @@
 /**
  * Benton County FTP Synchronization Script
- * 
+ *
  * This script connects to the Benton County FTP server and synchronizes
  * all property assessment data files to the local downloads directory.
  */
@@ -8,10 +8,10 @@
 import { FtpService } from '../server/services/ftp-service.js';
 // Use console.log instead of logger for simplicity in the JS version
 const logger = {
-  info: (msg) => console.log(`[INFO] ${msg}`),
-  warn: (msg) => console.warn(`[WARN] ${msg}`),
-  error: (msg) => console.error(`[ERROR] ${msg}`),
-  debug: (msg) => console.log(`[DEBUG] ${msg}`)
+  info: msg => console.log(`[INFO] ${msg}`),
+  warn: msg => console.warn(`[WARN] ${msg}`),
+  error: msg => console.error(`[ERROR] ${msg}`),
+  debug: msg => console.log(`[DEBUG] ${msg}`),
 };
 import dotenv from 'dotenv';
 import path from 'path';
@@ -40,7 +40,7 @@ if (!fs.existsSync(downloadPath)) {
  */
 async function synchronizeBentonCountyFTP() {
   logger.info('Starting Benton County FTP synchronization...');
-  
+
   // Create FTP service instance
   const ftpService = new FtpService({
     host: process.env.FTP_HOST || 'ftp.bentoncounty.spatialest.com',
@@ -48,18 +48,18 @@ async function synchronizeBentonCountyFTP() {
     user: process.env.FTP_USER || 'bcftp',
     password: process.env.FTP_PASSWORD || 'anonymous',
     secure: process.env.FTP_SECURE === 'true', // Use secure connection if specified
-    downloadPath: downloadPath
+    downloadPath: downloadPath,
   });
-  
+
   try {
     // Initialize the FTP service
     await ftpService.initialize();
     logger.info('FTP service initialized successfully');
-    
+
     // Connect to the FTP server
     await ftpService.connect();
     logger.info('Connected to Benton County FTP server');
-    
+
     // Synchronize property assessment data
     const result = await ftpService.syncDirectory('/property-assessment-data', {
       recursive: true,
@@ -67,15 +67,15 @@ async function synchronizeBentonCountyFTP() {
       retryOptions: {
         maxRetries: 3,
         retryDelay: 2000, // 2 seconds
-        exponentialBackoff: true
-      }
+        exponentialBackoff: true,
+      },
     });
-    
+
     // Log detailed summary
     logger.info('Synchronization completed successfully');
     logger.info(`Files synchronized: ${result.filesDownloaded}`);
     logger.info(`Total size: ${(result.totalSizeBytes / 1024 / 1024).toFixed(2)} MB`);
-    
+
     // Log skipped and failed files if any
     if (result.skippedFiles.length > 0) {
       logger.info(`Skipped files: ${result.skippedFiles.length}`);
@@ -83,14 +83,14 @@ async function synchronizeBentonCountyFTP() {
         logger.debug(`Skipped: ${file}`);
       }
     }
-    
+
     if (result.failedFiles.length > 0) {
       logger.warn(`Failed files: ${result.failedFiles.length}`);
       for (const file of result.failedFiles) {
         logger.warn(`Failed: ${file.path} - ${file.error}`);
       }
     }
-    
+
     // Return the result for any caller
     return result;
   } catch (error) {
@@ -110,11 +110,11 @@ async function synchronizeBentonCountyFTP() {
 // Run the synchronization if the script is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   synchronizeBentonCountyFTP()
-    .then((result) => {
+    .then(result => {
       console.log(`Synchronization completed: ${result.filesDownloaded} files downloaded`);
       process.exit(0);
     })
-    .catch((error) => {
+    .catch(error => {
       console.error(`Synchronization failed: ${error.message}`);
       process.exit(1);
     });

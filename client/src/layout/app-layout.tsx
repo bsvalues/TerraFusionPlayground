@@ -42,10 +42,10 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       {/* Page Content */}
       <main className="flex-1 relative overflow-y-auto focus:outline-none">
         {children}
-        
+
         {/* Floating Voice Command Button */}
         <div className="fixed bottom-6 right-6 z-40">
-          <AgentVoiceCommandButton 
+          <AgentVoiceCommandButton
             onStateChange={handleStateChange}
             onResult={handleVoiceCommandResult}
             agentId="assessment_assistant"
@@ -54,21 +54,21 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             className="shadow-lg"
           />
         </div>
-        
+
         {/* Voice Command Results Panel */}
         {showCommandResults && lastResult && (
           <div className="fixed bottom-24 right-6 z-40 w-80 animate-in slide-in-from-right-10 duration-300">
-            <AgentVoiceCommandResults 
+            <AgentVoiceCommandResults
               result={lastResult}
               onClose={() => setShowCommandResults(false)}
             />
           </div>
         )}
       </main>
-      
+
       {/* AI Assistant Sidebar */}
       <AIAssistantSidebar />
-      
+
       {/* Quick Access Menu */}
       <QuickAccessMenu />
     </div>

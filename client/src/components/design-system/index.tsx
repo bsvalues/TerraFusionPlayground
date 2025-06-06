@@ -1,6 +1,6 @@
 /**
  * TerraFusion Design System Documentation
- * 
+ *
  * This file exports all design system components and documentation tools.
  * Use this as the entry point when importing design system components.
  */

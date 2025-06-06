@@ -1,6 +1,6 @@
 /**
  * Plandex AI Bug Fixer
- * 
+ *
  * This component provides a UI for fixing bugs in code using Plandex AI.
  * It allows users to input buggy code and an error message to get a fixed version.
  */
@@ -8,8 +8,21 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Loader2, Bug, CheckCircle2, Code, ArrowRight } from 'lucide-react';
 import { usePlandexAI } from '@/providers/plandex-ai-provider';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -22,11 +35,11 @@ interface PlandexAIBugFixerProps {
   className?: string;
 }
 
-export function PlandexAIBugFixer({ 
+export function PlandexAIBugFixer({
   initialCode = '',
   initialError = '',
   onFixedCode,
-  className = ''
+  className = '',
 }: PlandexAIBugFixerProps) {
   // State
   const [buggyCode, setBuggyCode] = useState<string>(initialCode);
@@ -34,7 +47,7 @@ export function PlandexAIBugFixer({
   const [language, setLanguage] = useState<string>('typescript');
   const [isFixing, setIsFixing] = useState<boolean>(false);
   const [fixedCode, setFixedCode] = useState<string>('');
-  
+
   // Get the Plandex AI context
   const { isAvailable, isLoading, fixBugs } = usePlandexAI();
 
@@ -47,7 +60,7 @@ export function PlandexAIBugFixer({
       const result = await fixBugs({
         buggyCode,
         errorMessage,
-        language
+        language,
       });
 
       setFixedCode(result);
@@ -80,11 +93,9 @@ export function PlandexAIBugFixer({
             <Bug className="h-5 w-5" />
             Plandex AI Bug Fixer
           </CardTitle>
-          <CardDescription>
-            Automatically fix bugs in your code using AI
-          </CardDescription>
+          <CardDescription>Automatically fix bugs in your code using AI</CardDescription>
         </CardHeader>
-        
+
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center p-4">
@@ -119,7 +130,7 @@ export function PlandexAIBugFixer({
                 <label className="block text-sm font-medium mb-1">Buggy Code</label>
                 <Textarea
                   value={buggyCode}
-                  onChange={(e) => setBuggyCode(e.target.value)}
+                  onChange={e => setBuggyCode(e.target.value)}
                   placeholder="Paste your code with bugs here"
                   className="font-mono text-sm min-h-[200px] resize-y"
                 />
@@ -129,7 +140,7 @@ export function PlandexAIBugFixer({
                 <label className="block text-sm font-medium mb-1">Error Message</label>
                 <Textarea
                   value={errorMessage}
-                  onChange={(e) => setErrorMessage(e.target.value)}
+                  onChange={e => setErrorMessage(e.target.value)}
                   placeholder="Paste the error message or describe the problem"
                   className="min-h-[100px] resize-y"
                 />
@@ -139,9 +150,9 @@ export function PlandexAIBugFixer({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="block text-sm font-medium">Fixed Code</label>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={handleUseFixedCode}
                       disabled={!fixedCode}
                       className="h-8"
@@ -150,13 +161,13 @@ export function PlandexAIBugFixer({
                       Use This Code
                     </Button>
                   </div>
-                  
-                  <CodeHighlighter 
-                    code={fixedCode} 
-                    language={language} 
+
+                  <CodeHighlighter
+                    code={fixedCode}
+                    language={language}
                     className="max-h-[300px] overflow-auto"
                   />
-                  
+
                   <div className="p-3 bg-muted rounded-md">
                     <div className="flex items-center gap-2 text-sm font-medium text-green-600 dark:text-green-500 mb-1">
                       <CheckCircle2 className="h-4 w-4" />
@@ -171,19 +182,21 @@ export function PlandexAIBugFixer({
             </div>
           )}
         </CardContent>
-        
+
         <CardFooter className="flex justify-between">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleClear}
             disabled={isLoading || isFixing || (!buggyCode && !errorMessage && !fixedCode)}
           >
             Clear
           </Button>
-          
-          <Button 
-            onClick={handleFixBugs} 
-            disabled={!buggyCode.trim() || !errorMessage.trim() || isFixing || !isAvailable || isLoading}
+
+          <Button
+            onClick={handleFixBugs}
+            disabled={
+              !buggyCode.trim() || !errorMessage.trim() || isFixing || !isAvailable || isLoading
+            }
           >
             {isFixing ? (
               <>

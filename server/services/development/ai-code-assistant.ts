@@ -15,7 +15,7 @@ export interface CodeAssistantInterface {
  */
 class AICodeAssistant implements CodeAssistantInterface {
   private aiAssistantService: AIAssistantService;
-  
+
   constructor(aiAssistantService: AIAssistantService) {
     this.aiAssistantService = aiAssistantService;
   }
@@ -25,25 +25,27 @@ class AICodeAssistant implements CodeAssistantInterface {
    */
   async generateCodeSuggestion(prompt: string, fileContext?: string): Promise<string> {
     const providers = this.aiAssistantService.getAvailableProviders();
-    
+
     // Create a context with system prompt
     const context: MessageContext = {
-      recentMessages: [{
-        id: '1',
-        role: 'system',
-        content: `You are an expert programming assistant specialized in property assessment and valuation code. 
+      recentMessages: [
+        {
+          id: '1',
+          role: 'system',
+          content: `You are an expert programming assistant specialized in property assessment and valuation code. 
         Your task is to generate high-quality, clean, and efficient code based on the user's requirements.
         Focus particularly on assessment terminology and patterns appropriate for property tax administration.
         Generate code that follows best practices and includes appropriate comments.`,
-        timestamp: Date.now()
-      }]
+          timestamp: Date.now(),
+        },
+      ],
     };
-    
+
     let fullPrompt = prompt;
     if (fileContext) {
       fullPrompt = `Current file context:\n\`\`\`\n${fileContext}\n\`\`\`\n\nUser request: ${prompt}`;
     }
-    
+
     // If no providers available, return a basic implementation
     if (providers.length === 0) {
       console.warn('No AI providers available, returning fallback implementation');
@@ -72,22 +74,22 @@ function assessProperty(property) {
   };
 }`;
     }
-    
+
     // Try each provider in order
     for (const provider of providers) {
       try {
         console.log(`Attempting to generate code using provider: ${provider}`);
-        
+
         const response = await this.aiAssistantService.generateResponse({
           message: fullPrompt,
           context: context,
           provider: provider,
           options: {
             temperature: 0.3,
-            maxTokens: 2000
-          }
+            maxTokens: 2000,
+          },
         });
-        
+
         // Extract code from response if it's wrapped in markdown code blocks
         const codeRegex = /```(?:\w*\n)?([\s\S]*?)```/g;
         const match = codeRegex.exec(response.message);
@@ -97,7 +99,7 @@ function assessProperty(property) {
         // Continue to the next provider
       }
     }
-    
+
     // If all providers failed, return a fallback implementation
     console.warn('All AI providers failed, returning fallback implementation');
     return `// Fallback implementation - AI provider errors
@@ -133,12 +135,12 @@ function assessProperty(property) {
     const systemPrompt = `You are an expert code completion assistant for ${language} programming, 
     specializing in property assessment and tax administration code. 
     Complete the provided code snippet with high-quality, efficient code that follows best practices.`;
-    
+
     const promptMessage = `Complete this ${language} code:\n\`\`\`${language}\n${codeSnippet}\n\`\`\`\nProvide only the completed code without explanations.`;
-    
+
     // Try available providers in order of preference
     const providers = this.aiAssistantService.getAvailableProviders();
-    
+
     if (providers.length === 0) {
       return `
 function calculateTaxableValue(assessedValue, exemptions) {
@@ -150,20 +152,20 @@ function calculateTaxableValue(assessedValue, exemptions) {
   return taxableValue;
 }`;
     }
-    
+
     for (const provider of providers) {
       try {
         console.log(`Attempting to complete code using provider: ${provider}`);
-        
+
         const response = await this.aiAssistantService.generateResponse({
           message: promptMessage,
           provider: provider,
           options: {
             temperature: 0.2,
-            maxTokens: 1500
-          }
+            maxTokens: 1500,
+          },
         });
-        
+
         // Extract code from response
         const codeRegex = /```(?:\w*\n)?([\s\S]*?)```/g;
         const match = codeRegex.exec(response.message);
@@ -173,7 +175,7 @@ function calculateTaxableValue(assessedValue, exemptions) {
         // Continue to the next provider
       }
     }
-    
+
     // If all providers failed, return a basic implementation
     console.warn('All AI providers failed, returning fallback implementation');
     return `
@@ -193,46 +195,48 @@ function calculateTaxableValue(assessedValue, exemptions) {
   async explainCode(code: string): Promise<string> {
     // Create a context with system prompt
     const context: MessageContext = {
-      recentMessages: [{
-        id: '1',
-        role: 'system',
-        content: `You are an expert code explainer specializing in property assessment and valuation software.
+      recentMessages: [
+        {
+          id: '1',
+          role: 'system',
+          content: `You are an expert code explainer specializing in property assessment and valuation software.
         Explain the provided code in clear, non-technical terms that assessors and appraisers would understand.
         Focus on what the code does in the context of property assessment, not just the technical implementation.
         Use terminology familiar to the assessment industry.`,
-        timestamp: Date.now()
-      }]
+          timestamp: Date.now(),
+        },
+      ],
     };
-    
+
     const promptMessage = `Explain this code in the context of property assessment:\n\`\`\`\n${code}\n\`\`\``;
     const providers = this.aiAssistantService.getAvailableProviders();
-    
+
     if (providers.length === 0) {
       // Return a simplified explanation if no AI providers
       return "This code appears to be related to property assessment calculations. It likely performs operations on property data to determine valuations based on standard assessment methodologies. Without AI assistance, a more detailed explanation isn't available.";
     }
-    
+
     for (const provider of providers) {
       try {
         console.log(`Attempting to explain code using provider: ${provider}`);
-        
+
         const response = await this.aiAssistantService.generateResponse({
           message: promptMessage,
           context: context,
           provider: provider,
           options: {
             temperature: 0.7,
-            maxTokens: 1000
-          }
+            maxTokens: 1000,
+          },
         });
-        
+
         return response.message;
       } catch (error) {
         console.error(`Error explaining code with provider ${provider}:`, error);
         // Continue to next provider
       }
     }
-    
+
     // Fallback if all providers fail
     return "This code appears to be related to property assessment calculations. It likely performs operations on property data to determine valuations based on standard assessment methodologies. Without AI assistance, a more detailed explanation isn't available.";
   }
@@ -243,39 +247,41 @@ function calculateTaxableValue(assessedValue, exemptions) {
   async fixBugs(code: string, errorMessage: string): Promise<string> {
     // Create a context with system prompt
     const context: MessageContext = {
-      recentMessages: [{
-        id: '1',
-        role: 'system',
-        content: `You are an expert debugging assistant specializing in property assessment software.
+      recentMessages: [
+        {
+          id: '1',
+          role: 'system',
+          content: `You are an expert debugging assistant specializing in property assessment software.
         Analyze the provided code and error message to identify and fix the issues.
         Provide the corrected code along with brief explanations of what was wrong and how you fixed it.
         Ensure the fixed code maintains the original functionality and intent.`,
-        timestamp: Date.now()
-      }]
+          timestamp: Date.now(),
+        },
+      ],
     };
-    
+
     const promptMessage = `Fix this code that has the following error:\n\nERROR: ${errorMessage}\n\nCODE:\n\`\`\`\n${code}\n\`\`\`\n\nPlease provide the corrected code.`;
     const providers = this.aiAssistantService.getAvailableProviders();
-    
+
     if (providers.length === 0) {
       // Return a basic fix attempt if no AI providers available
       return this.generateBasicFix(code, errorMessage);
     }
-    
+
     for (const provider of providers) {
       try {
         console.log(`Attempting to fix bugs using provider: ${provider}`);
-        
+
         const response = await this.aiAssistantService.generateResponse({
           message: promptMessage,
           context: context,
           provider: provider,
           options: {
             temperature: 0.3,
-            maxTokens: 2000
-          }
+            maxTokens: 2000,
+          },
         });
-        
+
         // Extract code from response
         const codeRegex = /```(?:\w*\n)?([\s\S]*?)```/g;
         const match = codeRegex.exec(response.message);
@@ -285,11 +291,11 @@ function calculateTaxableValue(assessedValue, exemptions) {
         // Continue to next provider
       }
     }
-    
+
     // If all providers failed, return a basic fix attempt
     return this.generateBasicFix(code, errorMessage);
   }
-  
+
   /**
    * Generate a basic fix attempt based on common error patterns
    * Used as fallback when AI providers are unavailable
@@ -299,21 +305,21 @@ function calculateTaxableValue(assessedValue, exemptions) {
     if (errorMessage.includes('SyntaxError') || errorMessage.includes('Unexpected token')) {
       // Check for missing brackets, parentheses, or semicolons
       const fixedCode = code
-        .replace(/\(\s*\n/g, '(\n')  // Fix spacing in parentheses
-        .replace(/\s*\)/g, ')')      // Fix spacing before closing parentheses
-        .replace(/if\s*\((.+?)\)(\s*\w+)/g, 'if ($1) {$2}')  // Add braces to if statements
-        .replace(/(\w+)\s*=\s*(.+?)([^\s;])\s*\n/g, '$1 = $2$3;\n');  // Add missing semicolons
-      
+        .replace(/\(\s*\n/g, '(\n') // Fix spacing in parentheses
+        .replace(/\s*\)/g, ')') // Fix spacing before closing parentheses
+        .replace(/if\s*\((.+?)\)(\s*\w+)/g, 'if ($1) {$2}') // Add braces to if statements
+        .replace(/(\w+)\s*=\s*(.+?)([^\s;])\s*\n/g, '$1 = $2$3;\n'); // Add missing semicolons
+
       return fixedCode;
     }
-    
+
     if (errorMessage.includes('undefined') || errorMessage.includes('is not defined')) {
       // Add variable declarations for potentially undefined variables
       return `// Attempted fix for undefined variable error
 // You may need to define variables properly
 ${code}`;
     }
-    
+
     // For other errors, return the original code with a comment
     return `// Attempted to fix the following error:
 // ${errorMessage}
@@ -333,10 +339,11 @@ ${code}`;
   async recommendImprovement(code: string): Promise<string> {
     // Create a context with system prompt
     const context: MessageContext = {
-      recentMessages: [{
-        id: '1',
-        role: 'system',
-        content: `You are an expert code reviewer specializing in property assessment and valuation software.
+      recentMessages: [
+        {
+          id: '1',
+          role: 'system',
+          content: `You are an expert code reviewer specializing in property assessment and valuation software.
         Analyze the provided code and suggest improvements in terms of:
         1. Performance optimization
         2. Readability and maintainability
@@ -344,13 +351,14 @@ ${code}`;
         4. Security considerations
         5. Edge case handling relevant to property data
         Provide specific, actionable recommendations with examples where appropriate.`,
-        timestamp: Date.now()
-      }]
+          timestamp: Date.now(),
+        },
+      ],
     };
-    
+
     const promptMessage = `Review this code and suggest improvements specific to assessment software:\n\`\`\`\n${code}\n\`\`\``;
     const providers = this.aiAssistantService.getAvailableProviders();
-    
+
     if (providers.length === 0) {
       // Return basic recommendations if no AI providers
       return `# Code Review: Improvement Recommendations
@@ -367,28 +375,28 @@ This code appears to be related to property assessment calculations. Without AI 
 
 For a more detailed analysis, please try again when AI services are available.`;
     }
-    
+
     for (const provider of providers) {
       try {
         console.log(`Attempting to recommend improvements using provider: ${provider}`);
-        
+
         const response = await this.aiAssistantService.generateResponse({
           message: promptMessage,
           context: context,
           provider: provider,
           options: {
             temperature: 0.6,
-            maxTokens: 1500
-          }
+            maxTokens: 1500,
+          },
         });
-        
+
         return response.message;
       } catch (error) {
         console.error(`Error recommending improvements with provider ${provider}:`, error);
         // Continue to next provider
       }
     }
-    
+
     // If all providers failed, return basic recommendations
     return `# Code Review: Improvement Recommendations
 
@@ -411,40 +419,42 @@ For a more detailed analysis, please try again when AI services are available.`;
   async generateAssessmentModel(requirements: string): Promise<string> {
     // Create a context with system prompt
     const context: MessageContext = {
-      recentMessages: [{
-        id: '1',
-        role: 'system',
-        content: `You are an expert in CAMA (Computer Assisted Mass Appraisal) and assessment model development.
+      recentMessages: [
+        {
+          id: '1',
+          role: 'system',
+          content: `You are an expert in CAMA (Computer Assisted Mass Appraisal) and assessment model development.
         Create high-quality, industry-standard code for property assessment models based on the provided requirements.
         Include appropriate statistical methods, valuation approaches (cost, market, income), and assessment-specific validation.
         Use assessment terminology correctly and implement industry best practices.
         The code should be well-documented with explanations of the valuation methodology.`,
-        timestamp: Date.now()
-      }]
+          timestamp: Date.now(),
+        },
+      ],
     };
-    
+
     const promptMessage = `Generate a property assessment model based on these requirements:\n${requirements}\n\nProvide the complete code with appropriate documentation.`;
     const providers = this.aiAssistantService.getAvailableProviders();
-    
+
     if (providers.length === 0) {
       // Return a basic model implementation if no AI providers
       return this.generateBasicAssessmentModel(requirements);
     }
-    
+
     for (const provider of providers) {
       try {
         console.log(`Attempting to generate assessment model using provider: ${provider}`);
-        
+
         const response = await this.aiAssistantService.generateResponse({
           message: promptMessage,
           context: context,
           provider: provider,
           options: {
             temperature: 0.4,
-            maxTokens: 3000
-          }
+            maxTokens: 3000,
+          },
         });
-        
+
         // Extract code from response
         const codeRegex = /```(?:\w*\n)?([\s\S]*?)```/g;
         const match = codeRegex.exec(response.message);
@@ -454,25 +464,27 @@ For a more detailed analysis, please try again when AI services are available.`;
         // Continue to next provider
       }
     }
-    
+
     // If all providers failed, return a basic model implementation
     return this.generateBasicAssessmentModel(requirements);
   }
-  
+
   /**
    * Generate a basic assessment model based on common patterns
    * Used as fallback when AI providers are unavailable
    */
   private generateBasicAssessmentModel(requirements: string): string {
     // Analyze requirements to determine model type
-    const isResidential = requirements.toLowerCase().includes('residential') || 
-                          requirements.toLowerCase().includes('house') || 
-                          requirements.toLowerCase().includes('home');
-    
-    const isCommercial = requirements.toLowerCase().includes('commercial') || 
-                        requirements.toLowerCase().includes('business') || 
-                        requirements.toLowerCase().includes('office');
-    
+    const isResidential =
+      requirements.toLowerCase().includes('residential') ||
+      requirements.toLowerCase().includes('house') ||
+      requirements.toLowerCase().includes('home');
+
+    const isCommercial =
+      requirements.toLowerCase().includes('commercial') ||
+      requirements.toLowerCase().includes('business') ||
+      requirements.toLowerCase().includes('office');
+
     // Generate model based on property type
     if (isResidential) {
       return `/**

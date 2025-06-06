@@ -4,12 +4,12 @@ import WebSocket from 'ws';
 // Function to create a connection to the WebSocket server
 function createWebSocketConnection() {
   const ws = new WebSocket('ws://localhost:5000/api/notifications/ws');
-  
+
   ws.on('open', () => {
     console.log('WebSocket connection established');
   });
-  
-  ws.on('message', (data) => {
+
+  ws.on('message', data => {
     try {
       const message = JSON.parse(data);
       console.log('Received message:', message);
@@ -18,15 +18,17 @@ function createWebSocketConnection() {
       console.log('Raw message:', data);
     }
   });
-  
-  ws.on('error', (error) => {
+
+  ws.on('error', error => {
     console.error('WebSocket error:', error);
   });
-  
+
   ws.on('close', (code, reason) => {
-    console.log(`WebSocket connection closed: Code ${code}, Reason: ${reason || 'No reason provided'}`);
+    console.log(
+      `WebSocket connection closed: Code ${code}, Reason: ${reason || 'No reason provided'}`
+    );
   });
-  
+
   return ws;
 }
 
@@ -37,15 +39,17 @@ const ws = createWebSocketConnection();
 setTimeout(() => {
   // Try to authenticate
   try {
-    ws.send(JSON.stringify({
-      type: 'auth',
-      userId: '1'
-    }));
+    ws.send(
+      JSON.stringify({
+        type: 'auth',
+        userId: '1',
+      })
+    );
     console.log('Authentication message sent');
   } catch (error) {
     console.error('Error sending authentication message:', error);
   }
-  
+
   // Keep the process running for a while to observe WebSocket behavior
   setTimeout(() => {
     console.log('Test completed, closing connection');

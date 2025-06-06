@@ -1,6 +1,6 @@
 /**
  * Health Controller
- * 
+ *
  * Provides health check endpoints for monitoring the system.
  */
 
@@ -19,17 +19,19 @@ interface HealthCheckResult {
   details: Record<string, any>;
 }
 
-const Get = (path: string) => (_target: any, _key: string, descriptor: PropertyDescriptor) => descriptor;
+const Get = (path: string) => (_target: any, _key: string, descriptor: PropertyDescriptor) =>
+  descriptor;
 const Controller = (path: string) => (constructor: Function) => constructor;
-const HealthCheck = () => (_target: any, _key: string, descriptor: PropertyDescriptor) => descriptor;
+const HealthCheck = () => (_target: any, _key: string, descriptor: PropertyDescriptor) =>
+  descriptor;
 
 class HealthCheckService {
   constructor() {}
-  
+
   async check(indicators: Array<() => Promise<any>>): Promise<HealthCheckResult> {
     const results: any = {};
     let isHealthy = true;
-    
+
     for (const indicator of indicators) {
       try {
         const result = await indicator();
@@ -41,24 +43,24 @@ class HealthCheckService {
         }
       }
     }
-    
+
     return {
       status: isHealthy ? 'ok' : 'error',
       info: {},
       error: {},
-      details: results
+      details: results,
     };
   }
 }
 
 class TypeOrmHealthIndicator {
   constructor() {}
-  
+
   async pingCheck(key: string, options: any): Promise<any> {
     return {
       [key]: {
-        status: 'up'
-      }
+        status: 'up',
+      },
     };
   }
 }
@@ -76,7 +78,7 @@ export class HealthController {
     private agentIndicator: AgentHealthIndicator,
     private dbIndicator: TypeOrmHealthIndicator
   ) {}
-  
+
   /**
    * Readiness check - verifies if the system is ready to accept traffic
    */
@@ -86,12 +88,12 @@ export class HealthController {
     return this.health.check([
       // Check database connection
       () => this.dbIndicator.pingCheck('database', { timeout: 1500 }),
-      
+
       // Check agent system health
-      () => this.agentIndicator.isHealthy('ai-agent')
+      () => this.agentIndicator.isHealthy('ai-agent'),
     ]);
   }
-  
+
   /**
    * Liveness check - verifies if the system is alive and functioning
    */
@@ -100,7 +102,7 @@ export class HealthController {
   liveness(): Promise<HealthCheckResult> {
     return this.health.check([
       // Check agent system basic functionality
-      () => this.agentIndicator.ping()
+      () => this.agentIndicator.ping(),
     ]);
   }
 }

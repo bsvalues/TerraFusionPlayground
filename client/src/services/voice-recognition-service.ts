@@ -1,6 +1,6 @@
 /**
  * Voice Recognition Service
- * 
+ *
  * This service handles the transcription of voice recordings and extraction
  * of structured search parameters using OpenAI.
  */

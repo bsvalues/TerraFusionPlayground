@@ -3,14 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { 
-  Upload, 
-  FileUp, 
-  Database, 
-  CheckCircle2, 
-  Clock, 
+import {
+  Upload,
+  FileUp,
+  Database,
+  CheckCircle2,
+  Clock,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 import { PacsModule } from '@/lib/types';
 import { usePacsModules } from '@/hooks/use-pacs-modules';
@@ -29,14 +29,14 @@ interface ImportStatus {
 const Imports = () => {
   const { modules, isLoading: modulesLoading, initializePacsModules } = usePacsModules();
   const [selectedTab, setSelectedTab] = useState<'modules' | 'history'>('modules');
-  
+
   // This would be a real API call in production
   const { data: importHistory = [], isLoading: historyLoading } = useQuery<ImportStatus[]>({
     queryKey: ['/api/imports/history'],
     // Disable this query as it's not implemented in the backend yet
     enabled: false,
   });
-  
+
   // Sample import history for UI demonstration
   const sampleImportHistory: ImportStatus[] = [
     {
@@ -69,13 +69,13 @@ const Imports = () => {
       recordsCount: 0,
       startTime: new Date(Date.now() - 10800000).toISOString(),
       endTime: new Date(Date.now() - 10780000).toISOString(),
-      errorMessage: 'Invalid file format'
-    }
+      errorMessage: 'Invalid file format',
+    },
   ];
-  
+
   // For now, use sample data since the backend API isn't fully implemented
   const history = importHistory.length > 0 ? importHistory : sampleImportHistory;
-  
+
   // Header actions
   const headerActions = (
     <Button className="inline-flex items-center">
@@ -83,7 +83,7 @@ const Imports = () => {
       Start New Import
     </Button>
   );
-  
+
   // Status icon for import history
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -102,12 +102,8 @@ const Imports = () => {
 
   return (
     <>
-      <PageHeader 
-        title="Data Imports" 
-        subtitle="Data Management"
-        actions={headerActions}
-      />
-      
+      <PageHeader title="Data Imports" subtitle="Data Management" actions={headerActions} />
+
       <div className="px-4 sm:px-6 lg:max-w-7xl lg:mx-auto lg:px-8 py-6">
         {/* Tab navigation */}
         <div className="border-b border-gray-200 mb-6">
@@ -134,7 +130,7 @@ const Imports = () => {
             </button>
           </nav>
         </div>
-        
+
         {/* Tab content */}
         {selectedTab === 'modules' ? (
           <Card>
@@ -148,20 +144,28 @@ const Imports = () => {
                 <div className="text-center py-10">
                   <Database className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                   <p className="text-gray-500 mb-4">No PACS modules have been initialized yet</p>
-                  <Button onClick={() => initializePacsModules()}>
-                    Initialize PACS Modules
-                  </Button>
+                  <Button onClick={() => initializePacsModules()}>Initialize PACS Modules</Button>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-300">
                     <thead>
                       <tr>
-                        <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">Module Name</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Source</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Integration Status</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Description</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Actions</th>
+                        <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">
+                          Module Name
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Source
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Integration Status
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Description
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
@@ -174,14 +178,17 @@ const Imports = () => {
                             {module.source}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              module.integration === 'active' 
-                                ? 'bg-green-100 text-green-800' 
-                                : module.integration === 'pending'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {module.integration.charAt(0).toUpperCase() + module.integration.slice(1)}
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                module.integration === 'active'
+                                  ? 'bg-green-100 text-green-800'
+                                  : module.integration === 'pending'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {module.integration.charAt(0).toUpperCase() +
+                                module.integration.slice(1)}
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
@@ -192,7 +199,9 @@ const Imports = () => {
                               <FileUp className="h-4 w-4 mr-2" />
                               Import
                             </Button>
-                            <Button variant="ghost" size="sm">Configure</Button>
+                            <Button variant="ghost" size="sm">
+                              Configure
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -220,12 +229,24 @@ const Imports = () => {
                   <table className="min-w-full divide-y divide-gray-300">
                     <thead>
                       <tr>
-                        <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">Module</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Records</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Start Time</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">End Time</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Actions</th>
+                        <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">
+                          Module
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Status
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Records
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Start Time
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          End Time
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
@@ -237,9 +258,7 @@ const Imports = () => {
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                             <div className="flex items-center">
                               {getStatusIcon(item.status)}
-                              <span className="ml-2 capitalize">
-                                {item.status}
-                              </span>
+                              <span className="ml-2 capitalize">{item.status}</span>
                             </div>
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
@@ -252,8 +271,8 @@ const Imports = () => {
                             {item.endTime ? new Date(item.endTime).toLocaleString() : '-'}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
                               disabled={item.status === 'processing'}
                             >

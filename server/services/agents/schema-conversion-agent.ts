@@ -1,6 +1,6 @@
 /**
  * Schema Conversion Agent
- * 
+ *
  * An AI agent that specializes in converting data between different GIS formats and schemas.
  * This agent can transform data from one format to another, handle coordinate system
  * transformations, and ensure data integrity during conversion.
@@ -59,10 +59,10 @@ export interface ConversionResult {
 export class SchemaConversionAgent extends BaseAgent {
   private gisDataService: GISDataService;
   private llmService: LLMService | null = null;
-  
+
   constructor(
-    storage: IStorage, 
-    mcpService: MCPService, 
+    storage: IStorage,
+    mcpService: MCPService,
     gisDataService: GISDataService,
     llmService?: LLMService
   ) {
@@ -77,60 +77,69 @@ export class SchemaConversionAgent extends BaseAgent {
         'format_transformation',
         'coordinate_system_transformation',
         'attribute_mapping',
-        'data_validation'
+        'data_validation',
       ],
     };
-    
+
     // Initialize the base agent with the config
     super(storage, mcpService, config);
-    
+
     // Store service references
     this.gisDataService = gisDataService;
-    
+
     if (llmService) {
       this.llmService = llmService;
     }
   }
-  
+
   /**
    * Initialize the agent
    */
   public async initialize(): Promise<void> {
     // Call parent initialize method
     await super.initialize();
-    
+
     // Register message handlers
-    this.registerMessageHandler('schema_conversion_request', this.handleSchemaConversionRequest.bind(this));
-    this.registerMessageHandler('attribute_mapping_request', this.handleAttributeMappingRequest.bind(this));
-    
+    this.registerMessageHandler(
+      'schema_conversion_request',
+      this.handleSchemaConversionRequest.bind(this)
+    );
+    this.registerMessageHandler(
+      'attribute_mapping_request',
+      this.handleAttributeMappingRequest.bind(this)
+    );
+
     // Log initialization success
     await this.logActivity('initialization', 'Schema Conversion Agent initialized successfully');
   }
-  
+
   /**
    * Handle schema conversion requests
    */
   private async handleSchemaConversionRequest(message: any): Promise<any> {
     try {
       const request = message.data as SchemaConversionRequest;
-      
+
       if (!request || !request.sourceSchema || !request.targetSchema || !request.data) {
         return {
           success: false,
-          error: 'Invalid schema conversion request. Missing required parameters.'
+          error: 'Invalid schema conversion request. Missing required parameters.',
         };
       }
-      
+
       // Log the operation
-      await this.logActivity('schema_conversion', `Converting from ${request.sourceFormat} to ${request.targetFormat}`);
-      
+      await this.logActivity(
+        'schema_conversion',
+        `Converting from ${request.sourceFormat} to ${request.targetFormat}`
+      );
+
       // Generate attribute mappings
       const attributeMappings = await this.generateAttributeMappings(
         request.sourceSchema,
         request.targetSchema,
         request.options
       );
-      
+
       // Convert the data
       const conversionResult = await this.convertData(
         request.data,
@@ -139,7 +148,7 @@ export class SchemaConversionAgent extends BaseAgent {
         attributeMappings,
         request.options
       );
-      
+
       return {
         success: true,
         attributeMappings,
@@ -147,22 +156,23 @@ export class SchemaConversionAgent extends BaseAgent {
         metadata: {
           timestamp: new Date().toISOString(),
           sourceFormat: request.sourceFormat,
-          targetFormat: request.targetFormat
-        }
+          targetFormat: request.targetFormat,
+        },
       };
-      
     } catch (err) {
       const error = err as Error;
       console.error('Error handling schema conversion request:', error);
-      await this.logActivity('error', `Schema conversion error: ${error.message}`, { error: error.message });
-      
+      await this.logActivity('error', `Schema conversion error: ${error.message}`, {
+        error: error.message,
+      });
+
       return {
         success: false,
-        error: `Failed to perform schema conversion: ${error.message}`
+        error: `Failed to perform schema conversion: ${error.message}`,
       };
     }
   }
-  
+
   /**
    * Generate attribute mappings between source and target schemas
    */
@@ -172,15 +182,15 @@ export class SchemaConversionAgent extends BaseAgent {
     options?: any
   ): Promise<AttributeMapping[]> {
     const mappings: AttributeMapping[] = [];
-    
+
     // Extract field names from schemas
     const sourceFields = this.extractFieldNames(sourceSchema);
     const targetFields = this.extractFieldNames(targetSchema);
-    
+
     // Options
     const useAI = options?.useAI ?? true;
     const preserveAttributes = options?.preserveAttributes ?? true;
-    
+
     // Direct field matches (exact matches)
     for (const sourceField of sourceFields) {
       // Check for exact match
@@ -188,17 +198,21 @@ export class SchemaConversionAgent extends BaseAgent {
         mappings.push({
           sourceField,
           targetField: sourceField,
-          preserveOriginal: preserveAttributes
+          preserveOriginal: preserveAttributes,
         });
       }
     }
-    
+
     // If AI is enabled and there are unmapped fields, use LLM to suggest mappings
     if (useAI && this.llmService && mappings.length < sourceFields.length) {
       const mappedSourceFields = mappings.map(m => m.sourceField);
-      const unmappedSourceFields = sourceFields.filter(field => !mappedSourceFields.includes(field));
-      const unmappedTargetFields = targetFields.filter(field => !mappings.some(m => m.targetField === field));
-      
+      const unmappedSourceFields = sourceFields.filter(
+        field => !mappedSourceFields.includes(field)
+      );
+      const unmappedTargetFields = targetFields.filter(
+        field => !mappings.some(m => m.targetField === field)
+      );
+
       if (unmappedSourceFields.length > 0 && unmappedTargetFields.length > 0) {
         const aiMappings = await this.generateAIMappings(
           unmappedSourceFields,
@@ -206,14 +220,14 @@ export class SchemaConversionAgent extends BaseAgent {
           sourceSchema,
           targetSchema
         );
-        
+
         mappings.push(...aiMappings);
       }
     }
-    
+
     return mappings;
   }
-  
+
   /**
    * Use AI to generate field mappings for schema conversion
    */
@@ -224,7 +238,7 @@ export class SchemaConversionAgent extends BaseAgent {
     targetSchema: any
   ): Promise<AttributeMapping[]> {
     if (!this.llmService) return [];
-    
+
     const prompt = `
       I need to map fields from a source GIS schema to a target GIS schema for data conversion.
       
@@ -243,24 +257,24 @@ export class SchemaConversionAgent extends BaseAgent {
       
       Only include mappings where there is a reasonable semantic match.
     `;
-    
+
     try {
       const response = await this.llmService.getCompletion(prompt);
       const aiMappings = JSON.parse(response);
-      
+
       // Convert AI response to our mapping format
       return aiMappings.map((mapping: any) => ({
         sourceField: mapping.sourceField,
         targetField: mapping.targetField,
         transformation: mapping.transformation,
-        preserveOriginal: mapping.preserveOriginal
+        preserveOriginal: mapping.preserveOriginal,
       }));
     } catch (error) {
       console.error('Error generating AI mappings for schema conversion:', error);
       return [];
     }
   }
-  
+
   /**
    * Convert data from one format to another
    */
@@ -275,22 +289,22 @@ export class SchemaConversionAgent extends BaseAgent {
     const sourceCoordinateSystem = options?.coordinateSystem || 'EPSG:4326';
     const targetCoordinateSystem = options?.targetCoordinateSystem || sourceCoordinateSystem;
     const validateOutput = options?.validateOutput ?? true;
-    
+
     // Warnings and errors
     const warnings: string[] = [];
     const errors: string[] = [];
-    
+
     // Track start time for performance metrics
     const startTime = new Date();
-    
+
     // Pre-conversion validation
     this.validateInputData(data, sourceFormat, warnings, errors);
-    
+
     // Convert data based on source and target formats
     let convertedData: any = null;
     let recordCount = 0;
     let attributeCount = 0;
-    
+
     try {
       // Different conversion paths based on formats
       if (sourceFormat === 'geojson' && targetFormat === 'geojson') {
@@ -322,7 +336,7 @@ export class SchemaConversionAgent extends BaseAgent {
         // Unsupported conversion
         throw new Error(`Conversion from ${sourceFormat} to ${targetFormat} is not supported yet.`);
       }
-      
+
       // Coordinate system transformation if needed
       if (sourceCoordinateSystem !== targetCoordinateSystem) {
         convertedData = this.transformCoordinateSystem(
@@ -332,17 +346,22 @@ export class SchemaConversionAgent extends BaseAgent {
           targetFormat
         );
       }
-      
+
       // Post-conversion validation
       let validationResult = null;
       if (validateOutput) {
-        validationResult = this.validateConvertedData(convertedData, targetFormat, warnings, errors);
+        validationResult = this.validateConvertedData(
+          convertedData,
+          targetFormat,
+          warnings,
+          errors
+        );
       }
-      
+
       // Track end time
       const endTime = new Date();
       const conversionTime = endTime.getTime() - startTime.getTime();
-      
+
       // Prepare metadata
       const metadata: any = {
         sourceFormat,
@@ -351,23 +370,22 @@ export class SchemaConversionAgent extends BaseAgent {
         attributeCount,
         conversionTimestamp: new Date().toISOString(),
         warnings,
-        errors
+        errors,
       };
-      
+
       // Add extra metadata
       metadata.processingTimeMs = conversionTime;
-      
+
       return {
         success: errors.length === 0,
         convertedData,
         metadata,
-        validationResult
+        validationResult,
       };
-      
     } catch (err) {
       const error = err as Error;
       errors.push(error.message);
-      
+
       return {
         success: false,
         convertedData: null,
@@ -378,12 +396,12 @@ export class SchemaConversionAgent extends BaseAgent {
           attributeCount: 0,
           conversionTimestamp: new Date().toISOString(),
           warnings,
-          errors
-        }
+          errors,
+        },
       };
     }
   }
-  
+
   /**
    * Convert GeoJSON to GeoJSON (schema conversion)
    */
@@ -392,39 +410,39 @@ export class SchemaConversionAgent extends BaseAgent {
     if (!data || !data.type) {
       throw new Error('Invalid GeoJSON input data');
     }
-    
+
     // Clone the data to avoid modifying the original
     const result = JSON.parse(JSON.stringify(data));
-    
+
     // Process based on GeoJSON type
     if (data.type === 'FeatureCollection' && Array.isArray(data.features)) {
       // Process features in a FeatureCollection
-      result.features = data.features.map((feature: any) => 
+      result.features = data.features.map((feature: any) =>
         this.convertGeoJSONFeature(feature, attributeMappings)
       );
     } else if (data.type === 'Feature') {
       // Process a single Feature
       return this.convertGeoJSONFeature(data, attributeMappings);
     }
-    
+
     return result;
   }
-  
+
   /**
    * Convert a single GeoJSON feature by applying attribute mappings
    */
   private convertGeoJSONFeature(feature: any, attributeMappings: AttributeMapping[]): any {
     // Clone the feature to avoid modifying the original
     const result = JSON.parse(JSON.stringify(feature));
-    
+
     // Create new properties object
     const newProperties: any = {};
-    
+
     // Apply attribute mappings
     for (const mapping of attributeMappings) {
       if (feature.properties && feature.properties[mapping.sourceField] !== undefined) {
         let value = feature.properties[mapping.sourceField];
-        
+
         // Apply transformation if specified
         if (mapping.transformation) {
           try {
@@ -435,86 +453,107 @@ export class SchemaConversionAgent extends BaseAgent {
             console.error(`Error applying transformation ${mapping.transformation}:`, error);
           }
         }
-        
+
         // Set the value in the new properties
         newProperties[mapping.targetField] = value;
-        
+
         // Preserve original if requested
         if (mapping.preserveOriginal && mapping.sourceField !== mapping.targetField) {
           newProperties[mapping.sourceField] = feature.properties[mapping.sourceField];
         }
       }
     }
-    
+
     // Update properties
     result.properties = newProperties;
-    
+
     return result;
   }
-  
+
   /**
    * Convert CSV to GeoJSON
    */
-  private convertCSVtoGeoJSON(csv: string, attributeMappings: AttributeMapping[], options?: any): any {
+  private convertCSVtoGeoJSON(
+    csv: string,
+    attributeMappings: AttributeMapping[],
+    options?: any
+  ): any {
     // This is a placeholder implementation
     // In a real implementation, you would parse the CSV and create GeoJSON features
-    
+
     const features: any[] = [];
     // CSV parsing and conversion would happen here
-    
+
     return {
       type: 'FeatureCollection',
-      features
+      features,
     };
   }
-  
+
   /**
    * Convert Shapefile to GeoJSON
    */
-  private convertShapefileToGeoJSON(data: any, attributeMappings: AttributeMapping[], options?: any): any {
+  private convertShapefileToGeoJSON(
+    data: any,
+    attributeMappings: AttributeMapping[],
+    options?: any
+  ): any {
     // This is a placeholder implementation
     // In a real implementation, you would parse the Shapefile and create GeoJSON features
-    
+
     return {
       type: 'FeatureCollection',
-      features: []
+      features: [],
     };
   }
-  
+
   /**
    * Convert KML to GeoJSON
    */
-  private convertKMLtoGeoJSON(kml: string, attributeMappings: AttributeMapping[], options?: any): any {
+  private convertKMLtoGeoJSON(
+    kml: string,
+    attributeMappings: AttributeMapping[],
+    options?: any
+  ): any {
     // This is a placeholder implementation
     // In a real implementation, you would parse the KML and create GeoJSON features
-    
+
     return {
       type: 'FeatureCollection',
-      features: []
+      features: [],
     };
   }
-  
+
   /**
    * Convert GeoJSON to CSV
    */
-  private convertGeoJSONtoCSV(data: any, attributeMappings: AttributeMapping[], options?: any): string {
+  private convertGeoJSONtoCSV(
+    data: any,
+    attributeMappings: AttributeMapping[],
+    options?: any
+  ): string {
     // This is a placeholder implementation
     // In a real implementation, you would extract properties from GeoJSON features
     // and create CSV rows
-    
+
     return '';
   }
-  
+
   /**
    * Transform coordinate system
    */
-  private transformCoordinateSystem(data: any, sourceSystem: string, targetSystem: string, format: string): any {
+  private transformCoordinateSystem(
+    data: any,
+    sourceSystem: string,
+    targetSystem: string,
+    format: string
+  ): any {
     // This is a placeholder implementation
     // In a real implementation, you would use a library like proj4js to transform coordinates
-    
+
     return data;
   }
-  
+
   /**
    * Validate input data
    */
@@ -532,7 +571,7 @@ export class SchemaConversionAgent extends BaseAgent {
         warnings.push(`No validation available for format: ${format}`);
     }
   }
-  
+
   /**
    * Validate GeoJSON
    */
@@ -541,36 +580,36 @@ export class SchemaConversionAgent extends BaseAgent {
       errors.push('No data provided');
       return;
     }
-    
+
     // Check type
     if (!data.type) {
       errors.push('Missing "type" property in GeoJSON');
       return;
     }
-    
+
     // Validate FeatureCollection
     if (data.type === 'FeatureCollection') {
       if (!Array.isArray(data.features)) {
         errors.push('FeatureCollection missing "features" array');
         return;
       }
-      
+
       // Check features
       if (data.features.length === 0) {
         warnings.push('FeatureCollection contains no features');
       }
-      
+
       // Validate each feature
       for (let i = 0; i < data.features.length; i++) {
         const feature = data.features[i];
         if (!feature.type || feature.type !== 'Feature') {
           errors.push(`Item at index ${i} in "features" array is not a valid Feature`);
         }
-        
+
         if (!feature.geometry) {
           warnings.push(`Feature at index ${i} is missing geometry`);
         }
-        
+
         if (!feature.properties) {
           warnings.push(`Feature at index ${i} is missing properties`);
         }
@@ -581,16 +620,15 @@ export class SchemaConversionAgent extends BaseAgent {
       if (!data.geometry) {
         warnings.push('Feature is missing geometry');
       }
-      
+
       if (!data.properties) {
         warnings.push('Feature is missing properties');
       }
-    }
-    else {
+    } else {
       errors.push(`Unsupported GeoJSON type: ${data.type}`);
     }
   }
-  
+
   /**
    * Validate CSV
    */
@@ -599,58 +637,68 @@ export class SchemaConversionAgent extends BaseAgent {
       errors.push('No CSV data provided');
       return;
     }
-    
+
     // Split into lines
-    const lines = csv.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    
+    const lines = csv
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
     if (lines.length === 0) {
       errors.push('CSV contains no data');
       return;
     }
-    
+
     // Check header
     const header = lines[0].split(',');
     if (header.length === 0) {
       errors.push('CSV header is empty');
       return;
     }
-    
+
     // Check for latitude/longitude columns
-    const hasLat = header.some(col => 
-      col.toLowerCase().includes('lat') || 
-      col.toLowerCase() === 'y'
+    const hasLat = header.some(
+      col => col.toLowerCase().includes('lat') || col.toLowerCase() === 'y'
     );
-    
-    const hasLon = header.some(col => 
-      col.toLowerCase().includes('lon') || 
-      col.toLowerCase().includes('lng') || 
-      col.toLowerCase() === 'x'
+
+    const hasLon = header.some(
+      col =>
+        col.toLowerCase().includes('lon') ||
+        col.toLowerCase().includes('lng') ||
+        col.toLowerCase() === 'x'
     );
-    
+
     if (!hasLat || !hasLon) {
       warnings.push('CSV may not contain latitude/longitude columns');
     }
-    
+
     // Check rows
     if (lines.length === 1) {
       warnings.push('CSV contains only a header row, no data rows');
       return;
     }
-    
+
     // Check if all rows have the same number of columns
     const headerColumnCount = header.length;
     for (let i = 1; i < lines.length; i++) {
       const columns = lines[i].split(',');
       if (columns.length !== headerColumnCount) {
-        warnings.push(`Row ${i + 1} has ${columns.length} columns, but header has ${headerColumnCount} columns`);
+        warnings.push(
+          `Row ${i + 1} has ${columns.length} columns, but header has ${headerColumnCount} columns`
+        );
       }
     }
   }
-  
+
   /**
    * Validate converted data
    */
-  private validateConvertedData(data: any, format: string, warnings: string[], errors: string[]): any {
+  private validateConvertedData(
+    data: any,
+    format: string,
+    warnings: string[],
+    errors: string[]
+  ): any {
     // Validate based on format
     switch (format) {
       case 'geojson':
@@ -663,103 +711,108 @@ export class SchemaConversionAgent extends BaseAgent {
       default:
         warnings.push(`No validation available for format: ${format}`);
     }
-    
+
     return {
       valid: errors.length === 0,
       warnings,
-      errors
+      errors,
     };
   }
-  
+
   /**
    * Count records in converted data
    */
   private countRecords(data: any): number {
     if (!data) return 0;
-    
+
     // Count based on format
     if (data.type === 'FeatureCollection' && Array.isArray(data.features)) {
       return data.features.length;
     } else if (data.type === 'Feature') {
       return 1;
     }
-    
+
     return 0;
   }
-  
+
   /**
    * Count rows in CSV
    */
   private countCSVRows(csv: string): number {
     if (!csv) return 0;
-    
+
     // Split into lines and count non-empty lines
-    const lines = csv.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    
+    const lines = csv
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
     // Subtract header row
     return Math.max(0, lines.length - 1);
   }
-  
+
   /**
    * Extract field names from a schema
    */
   private extractFieldNames(schema: any): string[] {
     if (!schema) return [];
-    
+
     // Handle different schema formats
     if (schema.properties) {
       // JSON Schema format
       return Object.keys(schema.properties);
     } else if (schema.fields) {
       // Array of field definitions
-      return schema.fields.map((field: any) => 
+      return schema.fields.map((field: any) =>
         typeof field === 'string' ? field : field.name || field.field
       );
     } else if (typeof schema === 'object' && !Array.isArray(schema)) {
       // Simple object with field names as keys
       return Object.keys(schema);
     }
-    
+
     return [];
   }
-  
+
   /**
    * Handle attribute mapping requests
    */
   private async handleAttributeMappingRequest(message: any): Promise<any> {
     try {
       const { sourceSchema, targetSchema, options } = message.data;
-      
+
       if (!sourceSchema || !targetSchema) {
         return {
           success: false,
-          error: 'Invalid attribute mapping request. Missing required parameters.'
+          error: 'Invalid attribute mapping request. Missing required parameters.',
         };
       }
-      
+
       // Log the operation
       await this.logActivity('attribute_mapping', 'Processing attribute mapping request');
-      
+
       // Generate attribute mappings
       const mappings = await this.generateAttributeMappings(sourceSchema, targetSchema, options);
-      
+
       return {
         success: true,
         mappings,
         metadata: {
           timestamp: new Date().toISOString(),
           sourceSchemaFields: this.extractFieldNames(sourceSchema).length,
-          targetSchemaFields: this.extractFieldNames(targetSchema).length
-        }
+          targetSchemaFields: this.extractFieldNames(targetSchema).length,
+        },
       };
     } catch (err) {
       const error = err as Error;
       console.error('Error handling attribute mapping request:', error);
-      await this.logActivity('error', `Attribute mapping error: ${error.message}`, { error: error.message });
-      
+      await this.logActivity('error', `Attribute mapping error: ${error.message}`, {
+        error: error.message,
+      });
+
       return {
         success: false,
-        error: `Failed to generate attribute mappings: ${error.message}`
+        error: `Failed to generate attribute mappings: ${error.message}`,
       };
     }
   }

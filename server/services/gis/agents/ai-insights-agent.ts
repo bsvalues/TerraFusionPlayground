@@ -1,6 +1,6 @@
 /**
  * AI Insights Agent
- * 
+ *
  * This agent handles spatial operations like intersections, buffering, and overlays.
  * It receives requests from the frontend, processes them using PostGIS functions,
  * and returns results in GeoJSON or vector tile formats.
@@ -19,7 +19,7 @@ import { db } from '../../../db';
 export function createAIInsightsAgent(storage: IStorage) {
   // Generate a unique ID for this agent instance
   const agentId = `ai-insights-agent-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`;
-  
+
   return new AIInsightsAgent(storage, agentId);
 }
 
@@ -29,13 +29,14 @@ class AIInsightsAgent extends BaseGISAgent {
     const config = {
       id: agentId,
       name: 'AI Insights Agent',
-      description: 'Processes spatial operations like intersections, buffering, and overlays using PostGIS',
+      description:
+        'Processes spatial operations like intersections, buffering, and overlays using PostGIS',
       capabilities: [],
-      permissions: ['gis:read', 'gis:write', 'gis:analyze']
+      permissions: ['gis:read', 'gis:write', 'gis:analyze'],
     };
-    
+
     super(storage, config);
-    
+
     // Now add the capabilities after super() has been called
     this.config.capabilities = [
       {
@@ -44,19 +45,30 @@ class AIInsightsAgent extends BaseGISAgent {
         parameters: {
           sourceLayerId: { type: 'number', description: 'ID of the source layer' },
           targetLayerId: { type: 'number', description: 'ID of the target layer' },
-          options: { type: 'object', optional: true, description: 'Additional options for the intersection operation' }
+          options: {
+            type: 'object',
+            optional: true,
+            description: 'Additional options for the intersection operation',
+          },
         },
-        handler: this.performIntersection.bind(this)
+        handler: this.performIntersection.bind(this),
       },
       {
         name: 'createBuffer',
         description: 'Create a buffer around geometries',
         parameters: {
           layerId: { type: 'number', description: 'ID of the layer to buffer' },
-          distance: { type: 'number', description: 'Buffer distance in the layer\'s unit of measure' },
-          options: { type: 'object', optional: true, description: 'Additional options for the buffer operation' }
+          distance: {
+            type: 'number',
+            description: "Buffer distance in the layer's unit of measure",
+          },
+          options: {
+            type: 'object',
+            optional: true,
+            description: 'Additional options for the buffer operation',
+          },
         },
-        handler: this.createBuffer.bind(this)
+        handler: this.createBuffer.bind(this),
       },
       {
         name: 'performSpatialOverlay',
@@ -64,21 +76,41 @@ class AIInsightsAgent extends BaseGISAgent {
         parameters: {
           sourceLayerId: { type: 'number', description: 'ID of the source layer' },
           targetLayerId: { type: 'number', description: 'ID of the target layer' },
-          operation: { type: 'string', enum: ['union', 'difference', 'symmetric_difference'], description: 'Type of overlay operation' },
-          options: { type: 'object', optional: true, description: 'Additional options for the overlay operation' }
+          operation: {
+            type: 'string',
+            enum: ['union', 'difference', 'symmetric_difference'],
+            description: 'Type of overlay operation',
+          },
+          options: {
+            type: 'object',
+            optional: true,
+            description: 'Additional options for the overlay operation',
+          },
         },
-        handler: this.performSpatialOverlay.bind(this)
+        handler: this.performSpatialOverlay.bind(this),
       },
       {
         name: 'nearestNeighborAnalysis',
         description: 'Find nearest neighbors for points in a layer',
         parameters: {
           layerId: { type: 'number', description: 'ID of the layer containing points' },
-          targetLayerId: { type: 'number', optional: true, description: 'Optional target layer to find neighbors from' },
-          maxDistance: { type: 'number', optional: true, description: 'Maximum distance to search for neighbors' },
-          maxResults: { type: 'number', optional: true, description: 'Maximum number of results per point' }
+          targetLayerId: {
+            type: 'number',
+            optional: true,
+            description: 'Optional target layer to find neighbors from',
+          },
+          maxDistance: {
+            type: 'number',
+            optional: true,
+            description: 'Maximum distance to search for neighbors',
+          },
+          maxResults: {
+            type: 'number',
+            optional: true,
+            description: 'Maximum number of results per point',
+          },
         },
-        handler: this.nearestNeighborAnalysis.bind(this)
+        handler: this.nearestNeighborAnalysis.bind(this),
       },
       {
         name: 'convertGeoJSONToSQL',
@@ -86,10 +118,14 @@ class AIInsightsAgent extends BaseGISAgent {
         parameters: {
           geoJSON: { type: 'object', description: 'GeoJSON object to convert' },
           tableName: { type: 'string', description: 'Target table name' },
-          options: { type: 'object', optional: true, description: 'Additional options for the conversion' }
+          options: {
+            type: 'object',
+            optional: true,
+            description: 'Additional options for the conversion',
+          },
         },
-        handler: this.convertGeoJSONToSQL.bind(this)
-      }
+        handler: this.convertGeoJSONToSQL.bind(this),
+      },
     ];
   }
 
@@ -99,14 +135,14 @@ class AIInsightsAgent extends BaseGISAgent {
   public async initialize(): Promise<void> {
     try {
       await this.baseInitialize();
-      
+
       // Log the initialization
       await this.createAgentMessage({
         type: 'INFO',
         content: `Agent ${this.name} (${this.agentId}) initialized`,
-        agentId: this.agentId
+        agentId: this.agentId,
       });
-      
+
       console.log(`AI Insights Agent (${this.agentId}) initialized successfully`);
     } catch (error) {
       console.error(`Error initializing AI Insights Agent:`, error);
@@ -120,28 +156,28 @@ class AIInsightsAgent extends BaseGISAgent {
   private async performIntersection(params: any): Promise<any> {
     try {
       const { sourceLayerId, targetLayerId, options = {} } = params;
-      
+
       // Validate parameters
       if (!sourceLayerId || !targetLayerId) {
         throw new Error('Source and target layer IDs are required');
       }
-      
+
       // Get the source and target layers
       const sourceLayer = await this.storage.getGISLayer(sourceLayerId);
       const targetLayer = await this.storage.getGISLayer(targetLayerId);
-      
+
       if (!sourceLayer || !targetLayer) {
         throw new Error('One or both layers do not exist');
       }
-      
+
       // Log the operation
       await this.createAgentMessage({
         type: 'INFO',
         content: `Performing intersection between layers ${sourceLayer.name} and ${targetLayer.name}`,
         agentId: this.agentId,
-        metadata: { sourceLayerId, targetLayerId, options }
+        metadata: { sourceLayerId, targetLayerId, options },
       });
-      
+
       // Perform intersection using PostGIS
       // Note: This would typically involve a JOIN with ST_Intersects and ST_Intersection
       const result = await db.execute(sql`
@@ -155,10 +191,10 @@ class AIInsightsAgent extends BaseGISAgent {
         WHERE 
           ST_Intersects(source.geometry, target.geometry)
       `);
-      
+
       // Processing and format conversion would happen here
       // This is a simplified implementation
-      
+
       return {
         success: true,
         message: `Successfully performed intersection between layers ${sourceLayer.name} and ${targetLayer.name}`,
@@ -168,20 +204,20 @@ class AIInsightsAgent extends BaseGISAgent {
         metadata: {
           count: result.rows.length,
           operation: 'intersection',
-          timestamp: new Date()
-        }
+          timestamp: new Date(),
+        },
       };
     } catch (error) {
       console.error(`Error in performIntersection:`, error);
-      
+
       // Log the error
       await this.createAgentMessage({
         type: 'ERROR',
         content: `Error performing intersection: ${error.message}`,
         agentId: this.agentId,
-        metadata: { error: error.message, params }
+        metadata: { error: error.message, params },
       });
-      
+
       throw error;
     }
   }
@@ -192,27 +228,27 @@ class AIInsightsAgent extends BaseGISAgent {
   private async createBuffer(params: any): Promise<any> {
     try {
       const { layerId, distance, options = {} } = params;
-      
+
       // Validate parameters
       if (!layerId || distance === undefined) {
         throw new Error('Layer ID and distance are required');
       }
-      
+
       // Get the layer
       const layer = await this.storage.getGISLayer(layerId);
-      
+
       if (!layer) {
         throw new Error('Layer does not exist');
       }
-      
+
       // Log the operation
       await this.createAgentMessage({
         type: 'INFO',
         content: `Creating buffer of distance ${distance} around geometries in layer ${layer.name}`,
         agentId: this.agentId,
-        metadata: { layerId, distance, options }
+        metadata: { layerId, distance, options },
       });
-      
+
       // Create buffer using PostGIS
       const result = await db.execute(sql`
         SELECT 
@@ -221,7 +257,7 @@ class AIInsightsAgent extends BaseGISAgent {
         FROM 
           ${sql.identifier(layer.table_name)}
       `);
-      
+
       return {
         success: true,
         message: `Successfully created buffer around geometries in layer ${layer.name}`,
@@ -231,20 +267,20 @@ class AIInsightsAgent extends BaseGISAgent {
         metadata: {
           count: result.rows.length,
           operation: 'buffer',
-          timestamp: new Date()
-        }
+          timestamp: new Date(),
+        },
       };
     } catch (error) {
       console.error(`Error in createBuffer:`, error);
-      
+
       // Log the error
       await this.createAgentMessage({
         type: 'ERROR',
         content: `Error creating buffer: ${error.message}`,
         agentId: this.agentId,
-        metadata: { error: error.message, params }
+        metadata: { error: error.message, params },
       });
-      
+
       throw error;
     }
   }
@@ -255,34 +291,36 @@ class AIInsightsAgent extends BaseGISAgent {
   private async performSpatialOverlay(params: any): Promise<any> {
     try {
       const { sourceLayerId, targetLayerId, operation, options = {} } = params;
-      
+
       // Validate parameters
       if (!sourceLayerId || !targetLayerId || !operation) {
         throw new Error('Source layer ID, target layer ID, and operation are required');
       }
-      
+
       // Validate operation
       const validOperations = ['union', 'difference', 'symmetric_difference'];
       if (!validOperations.includes(operation)) {
-        throw new Error(`Invalid operation: ${operation}. Must be one of: ${validOperations.join(', ')}`);
+        throw new Error(
+          `Invalid operation: ${operation}. Must be one of: ${validOperations.join(', ')}`
+        );
       }
-      
+
       // Get the source and target layers
       const sourceLayer = await this.storage.getGISLayer(sourceLayerId);
       const targetLayer = await this.storage.getGISLayer(targetLayerId);
-      
+
       if (!sourceLayer || !targetLayer) {
         throw new Error('One or both layers do not exist');
       }
-      
+
       // Log the operation
       await this.createAgentMessage({
         type: 'INFO',
         content: `Performing ${operation} overlay between layers ${sourceLayer.name} and ${targetLayer.name}`,
         agentId: this.agentId,
-        metadata: { sourceLayerId, targetLayerId, operation, options }
+        metadata: { sourceLayerId, targetLayerId, operation, options },
       });
-      
+
       // Map operation to PostGIS function
       let pgisFunction: string;
       switch (operation) {
@@ -296,7 +334,7 @@ class AIInsightsAgent extends BaseGISAgent {
           pgisFunction = 'ST_SymDifference';
           break;
       }
-      
+
       // Perform overlay using PostGIS
       const result = await db.execute(sql`
         SELECT 
@@ -309,7 +347,7 @@ class AIInsightsAgent extends BaseGISAgent {
         WHERE 
           ST_Intersects(source.geometry, target.geometry)
       `);
-      
+
       return {
         success: true,
         message: `Successfully performed ${operation} between layers ${sourceLayer.name} and ${targetLayer.name}`,
@@ -320,20 +358,20 @@ class AIInsightsAgent extends BaseGISAgent {
         metadata: {
           count: result.rows.length,
           operation,
-          timestamp: new Date()
-        }
+          timestamp: new Date(),
+        },
       };
     } catch (error) {
       console.error(`Error in performSpatialOverlay:`, error);
-      
+
       // Log the error
       await this.createAgentMessage({
         type: 'ERROR',
         content: `Error performing spatial overlay: ${error.message}`,
         agentId: this.agentId,
-        metadata: { error: error.message, params }
+        metadata: { error: error.message, params },
       });
-      
+
       throw error;
     }
   }
@@ -344,19 +382,19 @@ class AIInsightsAgent extends BaseGISAgent {
   private async nearestNeighborAnalysis(params: any): Promise<any> {
     try {
       const { layerId, targetLayerId, maxDistance = 1000, maxResults = 5 } = params;
-      
+
       // Validate parameters
       if (!layerId) {
         throw new Error('Layer ID is required');
       }
-      
+
       // Get the layer
       const layer = await this.storage.getGISLayer(layerId);
-      
+
       if (!layer) {
         throw new Error('Layer does not exist');
       }
-      
+
       // Get target layer if specified
       let targetLayer;
       if (targetLayerId) {
@@ -365,19 +403,19 @@ class AIInsightsAgent extends BaseGISAgent {
           throw new Error('Target layer does not exist');
         }
       }
-      
+
       // Log the operation
       await this.createAgentMessage({
         type: 'INFO',
-        content: targetLayer 
+        content: targetLayer
           ? `Finding nearest neighbors between layers ${layer.name} and ${targetLayer.name}`
           : `Finding nearest neighbors within layer ${layer.name}`,
         agentId: this.agentId,
-        metadata: { layerId, targetLayerId, maxDistance, maxResults }
+        metadata: { layerId, targetLayerId, maxDistance, maxResults },
       });
-      
+
       let result;
-      
+
       if (targetLayer) {
         // Find nearest neighbors between two layers
         result = await db.execute(sql`
@@ -414,10 +452,10 @@ class AIInsightsAgent extends BaseGISAgent {
             ${maxResults * layer.feature_count || 1000}
         `);
       }
-      
+
       return {
         success: true,
-        message: targetLayer 
+        message: targetLayer
           ? `Successfully found nearest neighbors between layers ${layer.name} and ${targetLayer.name}`
           : `Successfully found nearest neighbors within layer ${layer.name}`,
         sourceLayer: layer.name,
@@ -428,20 +466,20 @@ class AIInsightsAgent extends BaseGISAgent {
           operation: 'nearest_neighbor',
           maxDistance,
           maxResults,
-          timestamp: new Date()
-        }
+          timestamp: new Date(),
+        },
       };
     } catch (error) {
       console.error(`Error in nearestNeighborAnalysis:`, error);
-      
+
       // Log the error
       await this.createAgentMessage({
         type: 'ERROR',
         content: `Error performing nearest neighbor analysis: ${error.message}`,
         agentId: this.agentId,
-        metadata: { error: error.message, params }
+        metadata: { error: error.message, params },
       });
-      
+
       throw error;
     }
   }
@@ -452,36 +490,36 @@ class AIInsightsAgent extends BaseGISAgent {
   private async convertGeoJSONToSQL(params: any): Promise<any> {
     try {
       const { geoJSON, tableName, options = {} } = params;
-      
+
       // Validate parameters
       if (!geoJSON || !tableName) {
         throw new Error('GeoJSON and table name are required');
       }
-      
+
       // Log the operation
       await this.createAgentMessage({
         type: 'INFO',
         content: `Converting GeoJSON to SQL for table ${tableName}`,
         agentId: this.agentId,
-        metadata: { tableName, options }
+        metadata: { tableName, options },
       });
-      
+
       // Extract features from GeoJSON
       const features = geoJSON.features || [];
-      
+
       if (features.length === 0) {
         throw new Error('No features found in GeoJSON');
       }
-      
+
       // Generate SQL statements for each feature
       const sqlStatements = features.map((feature, index) => {
         // Get properties
         const properties = feature.properties || {};
-        
+
         // Create property columns and values
         const propertyColumns = Object.keys(properties);
         const propertyValues = Object.values(properties);
-        
+
         // Generate SQL insert statement
         return `
           INSERT INTO ${tableName} (
@@ -490,19 +528,19 @@ class AIInsightsAgent extends BaseGISAgent {
             geometry
           ) VALUES (
             ${options.idStart || 1} + ${index}, 
-            ${propertyValues.map(v => typeof v === 'string' ? `'${v}'` : v).join(', ')}, 
+            ${propertyValues.map(v => (typeof v === 'string' ? `'${v}'` : v)).join(', ')}, 
             ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}')
           );
         `;
       });
-      
+
       // Create table creation SQL if requested
       let createTableSQL = '';
       if (options.createTable) {
         // Sample first feature to get properties
         const sampleFeature = features[0];
         const properties = sampleFeature.properties || {};
-        
+
         // Generate column definitions
         const columnDefs = Object.entries(properties).map(([key, value]) => {
           let type = 'text';
@@ -513,7 +551,7 @@ class AIInsightsAgent extends BaseGISAgent {
           }
           return `${key} ${type}`;
         });
-        
+
         // Generate create table statement
         createTableSQL = `
           CREATE TABLE ${tableName} (
@@ -524,7 +562,7 @@ class AIInsightsAgent extends BaseGISAgent {
           CREATE INDEX ${tableName}_geom_idx ON ${tableName} USING GIST (geometry);
         `;
       }
-      
+
       return {
         success: true,
         message: `Successfully converted GeoJSON to SQL for table ${tableName}`,
@@ -533,20 +571,20 @@ class AIInsightsAgent extends BaseGISAgent {
         metadata: {
           featureCount: features.length,
           operation: 'geojson_to_sql',
-          timestamp: new Date()
-        }
+          timestamp: new Date(),
+        },
       };
     } catch (error) {
       console.error(`Error in convertGeoJSONToSQL:`, error);
-      
+
       // Log the error
       await this.createAgentMessage({
         type: 'ERROR',
         content: `Error converting GeoJSON to SQL: ${error.message}`,
         agentId: this.agentId,
-        metadata: { error: error.message, params }
+        metadata: { error: error.message, params },
       });
-      
+
       throw error;
     }
   }

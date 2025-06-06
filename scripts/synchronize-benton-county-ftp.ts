@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
  * Benton County FTP Synchronization Script
- * 
+ *
  * This script provides a command-line interface for synchronizing data from the
  * Benton County SpatialEst FTP server. It includes options for scheduling,
  * manual synchronization, and detailed status reporting.
- * 
+ *
  * Usage:
  *   ts-node scripts/synchronize-benton-county-ftp.ts [options] [command]
- * 
+ *
  * Commands:
  *   sync [path]             Synchronize data from specified path (or all if not specified)
  *   status                  Show current FTP connection and sync status
  *   schedule [options]      Configure automatic synchronization schedule
- * 
+ *
  * Options:
  *   --silent                Run with minimal output (useful for cron jobs)
  *   --verbose               Show detailed debug information
@@ -21,13 +21,13 @@
  *   --dryrun                Show what would be synchronized without downloading
  *   --retry=N               Set maximum retry attempts (default: 3)
  *   --timeout=N             Set connection timeout in seconds (default: 30)
- * 
+ *
  * Schedule Options:
  *   --enable                Enable scheduled synchronization
  *   --disable               Disable scheduled synchronization
  *   --interval=N            Set interval in hours (1-168)
  *   --once                  Run once immediately then exit
- * 
+ *
  * Examples:
  *   ts-node scripts/synchronize-benton-county-ftp.ts sync /valuations
  *   ts-node scripts/synchronize-benton-county-ftp.ts schedule --enable --interval=24
@@ -59,7 +59,7 @@ const options: Record<string, any> = {
   enable: false,
   disable: false,
   interval: null,
-  once: false
+  once: false,
 };
 
 // Command and path variables
@@ -69,7 +69,7 @@ let remotePath: string | null = null;
 // Parse arguments
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
-  
+
   // Parse options (start with --)
   if (arg.startsWith('--')) {
     const optionName = arg.substring(2);
@@ -81,7 +81,7 @@ for (let i = 0; i < args.length; i++) {
     }
     continue;
   }
-  
+
   // Parse command and path
   if (!command) {
     command = arg;
@@ -103,34 +103,34 @@ if (options.silent) {
 function checkEnvironment(): boolean {
   const requiredVars = ['FTP_HOST', 'FTP_USERNAME', 'FTP_PASSWORD'];
   const missing = requiredVars.filter(varName => !process.env[varName]);
-  
+
   if (missing.length > 0) {
     logger.error(`Missing required environment variables: ${missing.join(', ')}`);
     console.error(`Error: Missing required environment variables: ${missing.join(', ')}`);
     console.error('Please ensure these variables are set in your environment or .env file.');
     return false;
   }
-  
+
   return true;
 }
 
 // Initialize FTP agent
 async function initializeAgent(): Promise<FtpDataAgent> {
   const storage = await StorageFactory.createStorage();
-  
+
   // Initialize FTP agent with config options
   const ftpAgent = new FtpDataAgent(storage);
   await ftpAgent.initialize();
-  
+
   // Apply command line options to agent config
   if (options.retry) {
     ftpAgent.setRetryAttempts(parseInt(options.retry, 10));
   }
-  
+
   if (options.timeout) {
     ftpAgent.setTimeout(parseInt(options.timeout, 10) * 1000);
   }
-  
+
   return ftpAgent;
 }
 
@@ -145,18 +145,18 @@ function formatDuration(milliseconds: number): string {
   if (milliseconds < 1000) {
     return `${milliseconds}ms`;
   }
-  
+
   const seconds = Math.floor(milliseconds / 1000);
   if (seconds < 60) {
     return `${seconds}s`;
   }
-  
+
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
   if (minutes < 60) {
     return `${minutes}m ${remainingSeconds}s`;
   }
-  
+
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   return `${hours}h ${remainingMinutes}m ${remainingSeconds}s`;
@@ -165,18 +165,18 @@ function formatDuration(milliseconds: number): string {
 // Show current FTP agent status
 async function showStatus(ftpAgent: FtpDataAgent): Promise<void> {
   if (options.silent) return;
-  
+
   const status = await ftpAgent.getFtpStatus();
   const scheduleInfo = await ftpAgent.getSyncScheduleInfo();
-  
+
   console.log('\n=== Benton County FTP Synchronization Status ===\n');
-  
+
   // Connection status
   console.log('Connection:');
   console.log(`  Status: ${status.connected ? 'Connected' : 'Disconnected'}`);
   console.log(`  Host: ${process.env.FTP_HOST || 'Not configured'}`);
   console.log(`  Last connection: ${formatTime(status.lastConnectionTime)}`);
-  
+
   // Synchronization status
   console.log('\nSynchronization:');
   console.log(`  Status: ${status.inProgress ? 'In Progress' : 'Idle'}`);
@@ -185,7 +185,7 @@ async function showStatus(ftpAgent: FtpDataAgent): Promise<void> {
     console.log(`  Last duration: ${formatDuration(status.lastSyncDuration)}`);
   }
   console.log(`  Success rate: ${status.successRate || 0}%`);
-  
+
   // Schedule information
   console.log('\nSchedule:');
   console.log(`  Status: ${scheduleInfo.enabled ? 'Enabled' : 'Disabled'}`);
@@ -193,29 +193,31 @@ async function showStatus(ftpAgent: FtpDataAgent): Promise<void> {
     console.log(`  Interval: ${scheduleInfo.intervalHours} hours`);
     console.log(`  Next sync: ${formatTime(scheduleInfo.nextScheduledSync)}`);
   }
-  
+
   // Statistics
   console.log('\nStatistics:');
   console.log(`  Files downloaded: ${status.filesDownloaded || 0}`);
-  console.log(`  Bytes transferred: ${status.bytesTransferred ? (status.bytesTransferred / 1024 / 1024).toFixed(2) + ' MB' : '0 MB'}`);
+  console.log(
+    `  Bytes transferred: ${status.bytesTransferred ? (status.bytesTransferred / 1024 / 1024).toFixed(2) + ' MB' : '0 MB'}`
+  );
   console.log(`  Successful syncs: ${status.successfulSyncs || 0}`);
   console.log(`  Failed syncs: ${status.failedSyncs || 0}`);
-  
+
   console.log('\n');
 }
 
 // Configure synchronization schedule
 async function configureSchedule(ftpAgent: FtpDataAgent): Promise<void> {
   const scheduleOptions: any = {};
-  
+
   if (options.enable) {
     scheduleOptions.enabled = true;
   }
-  
+
   if (options.disable) {
     scheduleOptions.enabled = false;
   }
-  
+
   if (options.interval) {
     const interval = parseInt(options.interval, 10);
     if (isNaN(interval) || interval < 1 || interval > 168) {
@@ -224,14 +226,14 @@ async function configureSchedule(ftpAgent: FtpDataAgent): Promise<void> {
     }
     scheduleOptions.intervalHours = interval;
   }
-  
+
   if (options.once) {
     scheduleOptions.runOnce = true;
   }
-  
+
   try {
     await ftpAgent.scheduleFtpSync(scheduleOptions);
-    
+
     if (!options.silent) {
       console.log('Schedule configuration updated successfully.');
       await showStatus(ftpAgent);
@@ -249,22 +251,22 @@ async function synchronizeData(ftpAgent: FtpDataAgent, path: string | null): Pro
     if (!options.silent) {
       console.log(`Starting synchronization${path ? ` for ${path}` : ''}...`);
     }
-    
+
     const syncOptions = {
       path: path || '/',
       force: options.force || false,
-      dryRun: options.dryrun || false
+      dryRun: options.dryrun || false,
     };
-    
+
     const result = await ftpAgent.synchronizeFtpData(syncOptions);
-    
+
     if (!options.silent) {
       console.log('Synchronization completed successfully.');
       console.log(`Files processed: ${result.filesProcessed}`);
       console.log(`Files downloaded: ${result.filesDownloaded}`);
       console.log(`Bytes transferred: ${(result.bytesTransferred / 1024 / 1024).toFixed(2)} MB`);
       console.log(`Duration: ${formatDuration(result.duration)}`);
-      
+
       if (options.dryrun) {
         console.log('\nNote: This was a dry run. No files were actually downloaded.');
       }
@@ -282,25 +284,25 @@ async function main(): Promise<void> {
   if (!checkEnvironment()) {
     process.exit(1);
   }
-  
+
   try {
     // Initialize FTP agent
     const ftpAgent = await initializeAgent();
-    
+
     // Execute the appropriate command
     switch (command) {
       case 'sync':
         await synchronizeData(ftpAgent, remotePath);
         break;
-      
+
       case 'status':
         await showStatus(ftpAgent);
         break;
-      
+
       case 'schedule':
         await configureSchedule(ftpAgent);
         break;
-      
+
       default:
         // Default to showing status if no command provided
         if (!command) {
@@ -312,7 +314,7 @@ async function main(): Promise<void> {
         }
         break;
     }
-    
+
     // Exit cleanly
     process.exit(0);
   } catch (error: any) {

@@ -23,7 +23,7 @@ interface VoiceCommandResult {
 
 /**
  * Voice Command Service
- * 
+ *
  * Provides voice recognition and command processing capabilities
  */
 export class VoiceCommandService extends EventEmitter {
@@ -37,45 +37,45 @@ export class VoiceCommandService extends EventEmitter {
   private audioFilePath: string = '';
   private audioRecorder: AudioRecorder;
   private useRealRecording: boolean = false;
-  
+
   constructor() {
     super();
     this.commands = new Map();
     this.commandPatterns = new Map();
-    
+
     // Create a client with default credentials
     this.client = new speech.SpeechClient();
-    
+
     // Set temporary file location
     const homeDir = process.env.HOME || process.env.USERPROFILE || '.';
     this.audioFilePath = path.join(homeDir, '.codeagent', 'temp', 'audio.wav');
-    
+
     // Ensure temp directory exists
     const tempDir = path.dirname(this.audioFilePath);
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
-    
+
     // Initialize audio recorder
     this.audioRecorder = new AudioRecorder();
     this.audioRecorder.setOutputPath(this.audioFilePath);
-    
+
     // Set up audio recorder event listeners
     this.setupAudioRecorderEvents();
-    
+
     // Initialize with default commands
     this.initializeCommands();
   }
-  
+
   /**
    * Set up event listeners for the audio recorder
    */
   private setupAudioRecorderEvents(): void {
-    this.audioRecorder.on('recording', (data) => {
+    this.audioRecorder.on('recording', data => {
       this.emit('recording', data);
     });
-    
-    this.audioRecorder.on('recorded', async (data) => {
+
+    this.audioRecorder.on('recorded', async data => {
       if (data.path) {
         await this.processAudioFile(data.path);
       } else if (data.text) {
@@ -87,20 +87,20 @@ export class VoiceCommandService extends EventEmitter {
         }
       }
     });
-    
+
     this.audioRecorder.on('stopped', () => {
       this.emit('recording_stopped');
     });
-    
-    this.audioRecorder.on('error', (error) => {
+
+    this.audioRecorder.on('error', error => {
       this.emit('error', error);
     });
-    
-    this.audioRecorder.on('warning', (warning) => {
+
+    this.audioRecorder.on('warning', warning => {
       this.emit('warning', warning);
     });
   }
-  
+
   /**
    * Initialize default commands
    */
@@ -109,72 +109,72 @@ export class VoiceCommandService extends EventEmitter {
     this.registerCommand('help', () => {
       this.emit('command', { command: 'help', action: 'showHelp' });
     });
-    
+
     this.registerCommand('list plugins', () => {
-      this.emit('command', { command: 'list plugins', action: 'executeCommand', parameters: { command: 'plugin --list' } });
+      this.emit('command', {
+        command: 'list plugins',
+        action: 'executeCommand',
+        parameters: { command: 'plugin --list' },
+      });
     });
-    
+
     this.registerCommand('create plugin', () => {
-      this.emit('command', { command: 'create plugin', action: 'executeCommand', parameters: { command: 'plugin --wizard' } });
+      this.emit('command', {
+        command: 'create plugin',
+        action: 'executeCommand',
+        parameters: { command: 'plugin --wizard' },
+      });
     });
-    
+
     // Register command patterns with parameter extraction
-    this.registerCommandPattern(
-      'install plugin {name}',
-      /install plugin (?<name>.+)/i,
-      (params) => {
-        this.emit('command', { 
-          command: `install plugin ${params?.name}`, 
-          action: 'executeCommand', 
-          parameters: { command: `plugin --install ${params?.name}` } 
-        });
-      }
-    );
-    
-    this.registerCommandPattern(
-      'edit plugin {name}',
-      /edit plugin (?<name>.+)/i,
-      (params) => {
-        this.emit('command', { 
-          command: `edit plugin ${params?.name}`, 
-          action: 'executeCommand', 
-          parameters: { command: `plugin --wizard ${params?.name}` } 
-        });
-      }
-    );
-    
+    this.registerCommandPattern('install plugin {name}', /install plugin (?<name>.+)/i, params => {
+      this.emit('command', {
+        command: `install plugin ${params?.name}`,
+        action: 'executeCommand',
+        parameters: { command: `plugin --install ${params?.name}` },
+      });
+    });
+
+    this.registerCommandPattern('edit plugin {name}', /edit plugin (?<name>.+)/i, params => {
+      this.emit('command', {
+        command: `edit plugin ${params?.name}`,
+        action: 'executeCommand',
+        parameters: { command: `plugin --wizard ${params?.name}` },
+      });
+    });
+
     this.registerCommandPattern(
       'edit settings for {plugin}',
       /edit settings for (?<plugin>.+)/i,
-      (params) => {
-        this.emit('command', { 
-          command: `edit settings for ${params?.plugin}`, 
-          action: 'executeCommand', 
-          parameters: { command: `plugin-settings --edit ${params?.plugin}` } 
+      params => {
+        this.emit('command', {
+          command: `edit settings for ${params?.plugin}`,
+          action: 'executeCommand',
+          parameters: { command: `plugin-settings --edit ${params?.plugin}` },
         });
       }
     );
-    
+
     // Ask command with parameter extraction
-    this.registerCommandPattern(
-      'ask {question}',
-      /ask (?<question>.+)/i,
-      (params) => {
-        this.emit('command', { 
-          command: `ask ${params?.question}`, 
-          action: 'executeCommand', 
-          parameters: { command: `ask "${params?.question}"` } 
-        });
-      }
-    );
-    
+    this.registerCommandPattern('ask {question}', /ask (?<question>.+)/i, params => {
+      this.emit('command', {
+        command: `ask ${params?.question}`,
+        action: 'executeCommand',
+        parameters: { command: `ask "${params?.question}"` },
+      });
+    });
+
     // System commands
     this.registerCommand('stop listening', () => {
       this.stopListening();
-      this.emit('command', { command: 'stop listening', action: 'systemMessage', parameters: { message: 'Voice recognition stopped' } });
+      this.emit('command', {
+        command: 'stop listening',
+        action: 'systemMessage',
+        parameters: { message: 'Voice recognition stopped' },
+      });
     });
   }
-  
+
   /**
    * Register a new voice command
    * @param command The command phrase
@@ -183,7 +183,7 @@ export class VoiceCommandService extends EventEmitter {
   registerCommand(command: string, callback: (params?: Record<string, string>) => void): void {
     this.commands.set(command.toLowerCase(), callback);
   }
-  
+
   /**
    * Register a command pattern with parameter extraction
    * @param name Descriptive name for the command
@@ -198,7 +198,7 @@ export class VoiceCommandService extends EventEmitter {
     this.commandPatterns.set(name, pattern);
     this.registerCommand(name, callback);
   }
-  
+
   /**
    * Start listening for voice commands
    * @param withKeywordDetection Use keyword detection (wake word)
@@ -206,28 +206,28 @@ export class VoiceCommandService extends EventEmitter {
    * @param useRealRecording Whether to use real audio recording (if available)
    */
   async startListening(
-    withKeywordDetection: boolean = false, 
+    withKeywordDetection: boolean = false,
     wakeWord?: string,
     useRealRecording: boolean = false
   ): Promise<void> {
     if (this.isListening) {
       return;
     }
-    
+
     this.isListening = true;
     this.keywordDetectionEnabled = withKeywordDetection;
     this.useRealRecording = useRealRecording;
-    
+
     if (wakeWord) {
       this.wakeWord = wakeWord.toLowerCase();
     }
-    
-    this.emit('status', { 
-      listening: true, 
+
+    this.emit('status', {
+      listening: true,
       keywordDetection: this.keywordDetectionEnabled,
-      useRealRecording: this.useRealRecording
+      useRealRecording: this.useRealRecording,
     });
-    
+
     if (this.useRealRecording) {
       // Start recording with a continuous recording (0 duration)
       this.startRecording();
@@ -237,7 +237,7 @@ export class VoiceCommandService extends EventEmitter {
       this.simulateVoiceInput();
     }
   }
-  
+
   /**
    * Stop listening for voice commands
    */
@@ -245,16 +245,16 @@ export class VoiceCommandService extends EventEmitter {
     if (!this.isListening) {
       return;
     }
-    
+
     this.isListening = false;
-    
+
     if (this.useRealRecording) {
       this.audioRecorder.stopRecording();
     }
-    
+
     this.emit('status', { listening: false });
   }
-  
+
   /**
    * Start recording audio
    * @param duration Recording duration in seconds (0 for continuous)
@@ -264,13 +264,13 @@ export class VoiceCommandService extends EventEmitter {
       await this.audioRecorder.startRecording(duration);
     } catch (error) {
       this.emit('error', { error });
-      
+
       // Fall back to simulation mode
       this.useRealRecording = false;
       this.simulateVoiceInput();
     }
   }
-  
+
   /**
    * Process a voice command
    * @param text The transcript of the voice command
@@ -278,9 +278,9 @@ export class VoiceCommandService extends EventEmitter {
    */
   processCommand(text: string): VoiceCommandResult | null {
     if (!text) return null;
-    
+
     const input = text.toLowerCase().trim();
-    
+
     // Check if using keyword detection and waiting for wake word
     if (this.keywordDetectionEnabled) {
       if (input.includes(this.wakeWord)) {
@@ -295,7 +295,7 @@ export class VoiceCommandService extends EventEmitter {
             command: this.wakeWord,
             confidence: 1.0,
             isMatch: true,
-            action: 'wake'
+            action: 'wake',
           };
         }
       } else {
@@ -307,7 +307,7 @@ export class VoiceCommandService extends EventEmitter {
       return this.matchCommand(input);
     }
   }
-  
+
   /**
    * Match a command string against registered commands and patterns
    * @param input The command input string
@@ -321,11 +321,11 @@ export class VoiceCommandService extends EventEmitter {
         return {
           command,
           confidence: 1.0,
-          isMatch: true
+          isMatch: true,
         };
       }
     }
-    
+
     // Then check for command patterns
     for (const [name, pattern] of this.commandPatterns.entries()) {
       const match = input.match(pattern);
@@ -335,23 +335,23 @@ export class VoiceCommandService extends EventEmitter {
           callback(match.groups);
           return {
             command: name,
-            confidence: 0.9,  // Slightly lower confidence for pattern matches
+            confidence: 0.9, // Slightly lower confidence for pattern matches
             isMatch: true,
-            parameters: match.groups
+            parameters: match.groups,
           };
         }
       }
     }
-    
+
     // No match found
     this.emit('nomatch', { input });
     return {
       command: input,
       confidence: 0,
-      isMatch: false
+      isMatch: false,
     };
   }
-  
+
   /**
    * Process an audio file for speech recognition
    * @param audioFilePath Path to the audio file (WAV format)
@@ -360,13 +360,13 @@ export class VoiceCommandService extends EventEmitter {
     if (this.processingAudio || !this.isListening) {
       return;
     }
-    
+
     this.processingAudio = true;
-    
+
     try {
       // Read the audio file
       const audioBytes = fs.readFileSync(audioFilePath).toString('base64');
-      
+
       // Configure the request
       const audio = {
         content: audioBytes,
@@ -380,16 +380,16 @@ export class VoiceCommandService extends EventEmitter {
         audio,
         config,
       };
-      
+
       // Detects speech in the audio file
       const [response] = await this.client.recognize(request);
-      const transcription = response.results
-        ?.map(result => result.alternatives?.[0]?.transcript || '')
-        .join('\n') || '';
-      
+      const transcription =
+        response.results?.map(result => result.alternatives?.[0]?.transcript || '').join('\n') ||
+        '';
+
       if (transcription) {
         this.emit('transcription', { text: transcription });
-        
+
         // Process the command
         const commandResult = this.processCommand(transcription);
         if (commandResult) {
@@ -403,46 +403,46 @@ export class VoiceCommandService extends EventEmitter {
       this.processingAudio = false;
     }
   }
-  
+
   /**
    * Simulate voice input for demonstration purposes
-   * 
+   *
    * In a real implementation, this would be replaced with actual
    * audio recording capability using native libraries.
    */
   private simulateVoiceInput(): void {
     if (!this.isListening) return;
-    
+
     // Set up a demo command processing interface
     console.log('\n🎤 Voice Command Simulation (no actual audio recording)');
     console.log('---------------------------------------------------');
     console.log('Enter text to simulate voice commands. Type "exit" to stop.\n');
-    
+
     // Use stdin to simulate voice input
-    process.stdin.on('data', (data) => {
+    process.stdin.on('data', data => {
       const input = data.toString().trim();
-      
+
       if (input.toLowerCase() === 'exit') {
         this.stopListening();
         console.log('Voice command simulation stopped.');
         return;
       }
-      
+
       // Simulate transcription event
       this.emit('transcription', { text: input });
-      
+
       // Process the command
       const commandResult = this.processCommand(input);
       if (commandResult) {
         this.emit('result', commandResult);
-        
+
         if (!commandResult.isMatch) {
           console.log('Command not recognized. Try another command.');
         }
       }
     });
   }
-  
+
   /**
    * Check if Google Cloud Speech credentials are available
    */
@@ -453,7 +453,7 @@ export class VoiceCommandService extends EventEmitter {
       if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
         return false;
       }
-      
+
       // Just check if we can initialize the client without errors
       const isClient = !!this.client;
       return isClient;

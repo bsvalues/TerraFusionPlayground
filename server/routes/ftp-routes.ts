@@ -1,6 +1,6 @@
 /**
  * FTP Routes
- * 
+ *
  * This file contains the routes for FTP-based data import and export operations,
  * specifically for transferring data to and from the SpatialEst FTP server.
  */
@@ -23,9 +23,9 @@ router.get('/test-connection', async (req, res) => {
     res.json({ connected });
   } catch (error: any) {
     console.error('FTP connection test error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to test FTP connection',
-      details: error.message
+      details: error.message,
     });
   }
 });
@@ -38,14 +38,14 @@ router.get('/test-connection', async (req, res) => {
  */
 router.get('/list', async (req, res) => {
   try {
-    const dir = req.query.dir as string || '/';
+    const dir = (req.query.dir as string) || '/';
     const files = await ftpService.listFiles(dir);
     res.json(files);
   } catch (error: any) {
     console.error('FTP list files error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to list files on FTP server',
-      details: error.message
+      details: error.message,
     });
   }
 });
@@ -59,18 +59,18 @@ router.get('/list', async (req, res) => {
 router.post('/import', async (req, res) => {
   try {
     const { filePath } = req.body;
-    
+
     if (!filePath) {
       return res.status(400).json({ error: 'File path is required' });
     }
-    
+
     const result = await ftpService.importPropertiesFromFtp(filePath);
     res.json(result);
   } catch (error: any) {
     console.error('FTP import error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to import properties from FTP file',
-      details: error.message
+      details: error.message,
     });
   }
 });
@@ -84,18 +84,18 @@ router.post('/import', async (req, res) => {
 router.post('/stage', async (req, res) => {
   try {
     const { filePath } = req.body;
-    
+
     if (!filePath) {
       return res.status(400).json({ error: 'File path is required' });
     }
-    
+
     const result = await ftpService.stagePropertiesFromFtp(filePath);
     res.json(result);
   } catch (error: any) {
     console.error('FTP staging error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to stage properties from FTP file',
-      details: error.message
+      details: error.message,
     });
   }
 });
@@ -110,18 +110,18 @@ router.post('/stage', async (req, res) => {
 router.post('/export', async (req, res) => {
   try {
     const { filePath, propertyIds } = req.body;
-    
+
     if (!filePath) {
       return res.status(400).json({ error: 'File path is required' });
     }
-    
+
     const result = await ftpService.exportPropertiesToFtp(filePath, propertyIds);
     res.json(result);
   } catch (error: any) {
     console.error('FTP export error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to export properties to FTP',
-      details: error.message
+      details: error.message,
     });
   }
 });

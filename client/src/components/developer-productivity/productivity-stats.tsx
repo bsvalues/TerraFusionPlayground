@@ -1,23 +1,26 @@
 /**
  * Productivity Stats Component
- * 
+ *
  * Display productivity statistics and trends
  */
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Clock, CheckCircle, XCircle, Code, AlertCircle } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent } from '@/components/ui/card';
+import { Loader2, Clock, CheckCircle, XCircle, Code, AlertCircle } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const ProductivityStats = () => {
   const [timeRange, setTimeRange] = useState('7');
-  
+
   // Fetch productivity statistics
-  const { 
-    data: stats, 
-    isLoading: isLoadingStats 
-  } = useQuery({
+  const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['/api/productivity/statistics', timeRange],
     queryFn: async () => {
       const response = await fetch(`/api/productivity/statistics?days=${timeRange}`);
@@ -27,12 +30,9 @@ const ProductivityStats = () => {
       return await response.json();
     },
   });
-  
+
   // Fetch productivity trends
-  const { 
-    data: trends, 
-    isLoading: isLoadingTrends 
-  } = useQuery({
+  const { data: trends, isLoading: isLoadingTrends } = useQuery({
     queryKey: ['/api/productivity/trends', timeRange],
     queryFn: async () => {
       const response = await fetch(`/api/productivity/trends?days=${timeRange}`);
@@ -42,7 +42,7 @@ const ProductivityStats = () => {
       return await response.json();
     },
   });
-  
+
   if (isLoadingStats || isLoadingTrends) {
     return (
       <div className="flex justify-center py-6">
@@ -50,7 +50,7 @@ const ProductivityStats = () => {
       </div>
     );
   }
-  
+
   // If no data yet
   if (!stats || !trends) {
     return (
@@ -60,7 +60,7 @@ const ProductivityStats = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -76,7 +76,7 @@ const ProductivityStats = () => {
           </SelectContent>
         </Select>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-2">
         <Card>
           <CardContent className="p-3">
@@ -87,7 +87,7 @@ const ProductivityStats = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center">
@@ -97,7 +97,7 @@ const ProductivityStats = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center">
@@ -107,7 +107,7 @@ const ProductivityStats = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center">
@@ -118,7 +118,7 @@ const ProductivityStats = () => {
           </CardContent>
         </Card>
       </div>
-      
+
       <div className="space-y-3">
         <h3 className="text-sm font-medium">Energy Level Distribution</h3>
         <div className="space-y-2">
@@ -126,28 +126,37 @@ const ProductivityStats = () => {
             <span>High</span>
             <span>{trends.energyLevelDistribution.HIGH || 0} days</span>
           </div>
-          <Progress value={calculatePercentage(trends.energyLevelDistribution.HIGH, timeRange)} className="bg-blue-200 h-2">
+          <Progress
+            value={calculatePercentage(trends.energyLevelDistribution.HIGH, timeRange)}
+            className="bg-blue-200 h-2"
+          >
             <div className="bg-green-500 h-full" />
           </Progress>
-          
+
           <div className="flex justify-between text-xs">
             <span>Medium</span>
             <span>{trends.energyLevelDistribution.MEDIUM || 0} days</span>
           </div>
-          <Progress value={calculatePercentage(trends.energyLevelDistribution.MEDIUM, timeRange)} className="bg-blue-200 h-2">
+          <Progress
+            value={calculatePercentage(trends.energyLevelDistribution.MEDIUM, timeRange)}
+            className="bg-blue-200 h-2"
+          >
             <div className="bg-amber-500 h-full" />
           </Progress>
-          
+
           <div className="flex justify-between text-xs">
             <span>Low</span>
             <span>{trends.energyLevelDistribution.LOW || 0} days</span>
           </div>
-          <Progress value={calculatePercentage(trends.energyLevelDistribution.LOW, timeRange)} className="bg-blue-200 h-2">
+          <Progress
+            value={calculatePercentage(trends.energyLevelDistribution.LOW, timeRange)}
+            className="bg-blue-200 h-2"
+          >
             <div className="bg-red-500 h-full" />
           </Progress>
         </div>
       </div>
-      
+
       <div className="space-y-3">
         <h3 className="text-sm font-medium">Focus Level Distribution</h3>
         <div className="space-y-2">
@@ -155,31 +164,43 @@ const ProductivityStats = () => {
             <span>Deep</span>
             <span>{trends.focusLevelDistribution.DEEP || 0} days</span>
           </div>
-          <Progress value={calculatePercentage(trends.focusLevelDistribution.DEEP, timeRange)} className="bg-blue-200 h-2">
+          <Progress
+            value={calculatePercentage(trends.focusLevelDistribution.DEEP, timeRange)}
+            className="bg-blue-200 h-2"
+          >
             <div className="bg-indigo-600 h-full" />
           </Progress>
-          
+
           <div className="flex justify-between text-xs">
             <span>Moderate</span>
             <span>{trends.focusLevelDistribution.MODERATE || 0} days</span>
           </div>
-          <Progress value={calculatePercentage(trends.focusLevelDistribution.MODERATE, timeRange)} className="bg-blue-200 h-2">
+          <Progress
+            value={calculatePercentage(trends.focusLevelDistribution.MODERATE, timeRange)}
+            className="bg-blue-200 h-2"
+          >
             <div className="bg-blue-500 h-full" />
           </Progress>
-          
+
           <div className="flex justify-between text-xs">
             <span>Shallow</span>
             <span>{trends.focusLevelDistribution.SHALLOW || 0} days</span>
           </div>
-          <Progress value={calculatePercentage(trends.focusLevelDistribution.SHALLOW, timeRange)} className="bg-blue-200 h-2">
+          <Progress
+            value={calculatePercentage(trends.focusLevelDistribution.SHALLOW, timeRange)}
+            className="bg-blue-200 h-2"
+          >
             <div className="bg-amber-500 h-full" />
           </Progress>
-          
+
           <div className="flex justify-between text-xs">
             <span>Distracted</span>
             <span>{trends.focusLevelDistribution.DISTRACTED || 0} days</span>
           </div>
-          <Progress value={calculatePercentage(trends.focusLevelDistribution.DISTRACTED, timeRange)} className="bg-blue-200 h-2">
+          <Progress
+            value={calculatePercentage(trends.focusLevelDistribution.DISTRACTED, timeRange)}
+            className="bg-blue-200 h-2"
+          >
             <div className="bg-red-500 h-full" />
           </Progress>
         </div>

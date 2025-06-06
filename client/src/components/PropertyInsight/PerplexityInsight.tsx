@@ -4,7 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Loader2, Lightbulb, Search, Brain } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -21,7 +27,7 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
 
   const handleQuerySubmit = async () => {
     if (!query.trim()) return;
-    
+
     setLoading(true);
     try {
       const data = await apiRequest<{ result: string }>('/api/perplexity/query', {
@@ -29,7 +35,7 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
       });
-      
+
       setResult(data.result);
     } catch (error) {
       console.error('Error querying Perplexity API:', error);
@@ -44,7 +50,7 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
       setResult('Please select a property first to analyze.');
       return;
     }
-    
+
     setLoading(true);
     try {
       const data = await apiRequest<{ result: string }>('/api/perplexity/property-analysis', {
@@ -52,7 +58,7 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ propertyId, analysisType }),
       });
-      
+
       setResult(data.result);
     } catch (error) {
       console.error('Error analyzing property with Perplexity:', error);
@@ -67,7 +73,7 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
       setResult('Please select a property first to get valuation insights.');
       return;
     }
-    
+
     setLoading(true);
     try {
       const data = await apiRequest<{ result: string }>('/api/perplexity/valuation-insights', {
@@ -75,7 +81,7 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ propertyId }),
       });
-      
+
       setResult(data.result);
     } catch (error) {
       console.error('Error getting valuation insights with Perplexity:', error);
@@ -93,7 +99,7 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
           Perplexity-Powered Insights
         </CardTitle>
       </CardHeader>
-      
+
       <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col">
         <TabsList className="grid grid-cols-3 mb-4">
           <TabsTrigger value="query" className="flex items-center gap-1">
@@ -109,21 +115,21 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
             <span>Valuation Insights</span>
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="query" className="flex-1 flex flex-col space-y-4">
           <div>
             <Label htmlFor="query">Ask a property assessment question:</Label>
-            <Textarea 
+            <Textarea
               id="query"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={e => setQuery(e.target.value)}
               placeholder="E.g., How are property values determined in Benton County? What factors influence commercial property assessments?"
               className="h-24 mt-1"
             />
           </div>
-          
-          <Button 
-            onClick={handleQuerySubmit} 
+
+          <Button
+            onClick={handleQuerySubmit}
             disabled={loading || !query.trim()}
             className="self-end"
           >
@@ -131,7 +137,7 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
             Ask Perplexity
           </Button>
         </TabsContent>
-        
+
         <TabsContent value="analysis" className="flex-1 flex flex-col space-y-4">
           <div>
             <Label htmlFor="analysisType">Analysis Type:</Label>
@@ -148,9 +154,9 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
               </SelectContent>
             </Select>
           </div>
-          
-          <Button 
-            onClick={handlePropertyAnalysis} 
+
+          <Button
+            onClick={handlePropertyAnalysis}
             disabled={loading || !propertyId}
             className="self-end"
           >
@@ -158,15 +164,15 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
             Analyze Property
           </Button>
         </TabsContent>
-        
+
         <TabsContent value="valuation" className="flex-1 flex flex-col space-y-4">
           <div className="text-sm text-muted-foreground mb-4">
-            Get comprehensive valuation insights for this property, including key value drivers, 
+            Get comprehensive valuation insights for this property, including key value drivers,
             potential changes, comparables, improvement opportunities, and appeal considerations.
           </div>
-          
-          <Button 
-            onClick={handleValuationInsights} 
+
+          <Button
+            onClick={handleValuationInsights}
             disabled={loading || !propertyId}
             className="self-end"
           >
@@ -175,7 +181,7 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
           </Button>
         </TabsContent>
       </Tabs>
-      
+
       <CardContent className="pt-4 flex-1">
         <div className="border rounded-md p-4 h-[300px] overflow-y-auto whitespace-pre-wrap">
           {result || (
@@ -186,7 +192,7 @@ export const PerplexityInsight = ({ propertyId }: PerplexityInsightProps) => {
           )}
         </div>
       </CardContent>
-      
+
       <CardFooter className="text-xs text-muted-foreground">
         Powered by Perplexity API using the latest Llama 3.1 Sonar model
       </CardFooter>

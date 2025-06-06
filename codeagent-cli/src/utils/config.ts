@@ -12,11 +12,13 @@ const ConfigSchema = z.object({
   logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   plugins: z.array(z.string()).default([]),
   toolSettings: z.record(z.any()).default({}),
-  userPreferences: z.object({
-    codeStyle: z.string().default('standard'),
-    indentation: z.enum(['tabs', '2spaces', '4spaces']).default('2spaces'),
-    commentStyle: z.enum(['minimal', 'moderate', 'verbose']).default('moderate')
-  }).default({})
+  userPreferences: z
+    .object({
+      codeStyle: z.string().default('standard'),
+      indentation: z.enum(['tabs', '2spaces', '4spaces']).default('2spaces'),
+      commentStyle: z.enum(['minimal', 'moderate', 'verbose']).default('moderate'),
+    })
+    .default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -39,14 +41,14 @@ export function resolveConfig(profile: string = 'default'): Config {
     userPreferences: {
       codeStyle: 'standard',
       indentation: '2spaces',
-      commentStyle: 'moderate'
-    }
+      commentStyle: 'moderate',
+    },
   };
-  
+
   // Configuration from the config file
   const homeDir = process.env.HOME || process.env.USERPROFILE || '.';
   const configPath = path.join(homeDir, '.codeagent', 'config.json');
-  
+
   let fileConfig: Partial<Config> = {};
   try {
     if (fs.existsSync(configPath)) {
@@ -56,30 +58,34 @@ export function resolveConfig(profile: string = 'default'): Config {
   } catch (error) {
     console.warn(`Warning: Could not load config file at ${configPath}`);
   }
-  
+
   // Environment variables override
   const envConfig: Partial<Config> = {
     apiKey: process.env.OPENAI_API_KEY,
     model: process.env.CODEAGENT_MODEL,
-    maxTokens: process.env.CODEAGENT_MAX_TOKENS ? parseInt(process.env.CODEAGENT_MAX_TOKENS, 10) : undefined,
-    temperature: process.env.CODEAGENT_TEMPERATURE ? parseFloat(process.env.CODEAGENT_TEMPERATURE) : undefined,
+    maxTokens: process.env.CODEAGENT_MAX_TOKENS
+      ? parseInt(process.env.CODEAGENT_MAX_TOKENS, 10)
+      : undefined,
+    temperature: process.env.CODEAGENT_TEMPERATURE
+      ? parseFloat(process.env.CODEAGENT_TEMPERATURE)
+      : undefined,
     logLevel: process.env.CODEAGENT_LOG_LEVEL as any,
   };
-  
+
   // Filter out undefined values from envConfig
   Object.keys(envConfig).forEach(key => {
     if (envConfig[key] === undefined) {
       delete envConfig[key];
     }
   });
-  
+
   // Merge configurations
   const mergedConfig = {
     ...defaultConfig,
     ...fileConfig,
-    ...envConfig
+    ...envConfig,
   };
-  
+
   // Validate the configuration
   try {
     return ConfigSchema.parse(mergedConfig);

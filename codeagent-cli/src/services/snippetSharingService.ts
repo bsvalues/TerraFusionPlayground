@@ -47,10 +47,10 @@ export class SnippetSharingService extends EventEmitter {
    */
   constructor(serverUrl?: string, baseDir?: string) {
     super();
-    
+
     // Default to localhost for demo/development
     this.sharingServerUrl = serverUrl || 'https://share.codeagent.dev';
-    
+
     // Set up directories
     const codeagentDir = baseDir || path.join(os.homedir(), '.codeagent');
     this.sharedSnippetsDir = path.join(codeagentDir, 'shared');
@@ -68,12 +68,12 @@ export class SnippetSharingService extends EventEmitter {
     try {
       // Create shared snippets directory if it doesn't exist
       await fs.mkdir(this.sharedSnippetsDir, { recursive: true });
-      
+
       // Try to load shared snippets from file
       try {
         const data = await fs.readFile(this.sharedSnippetsFile, 'utf-8');
         const sharedSnippetsArray = JSON.parse(data) as SharedSnippet[];
-        
+
         // Populate map
         this.sharedSnippets.clear();
         sharedSnippetsArray.forEach(sharedSnippet => {
@@ -84,7 +84,7 @@ export class SnippetSharingService extends EventEmitter {
           }
           this.sharedSnippets.set(sharedSnippet.shareId, sharedSnippet);
         });
-        
+
         this.emit('loaded', { count: this.sharedSnippets.size });
       } catch (error) {
         // File doesn't exist or is invalid, create a new one
@@ -95,10 +95,12 @@ export class SnippetSharingService extends EventEmitter {
           throw error;
         }
       }
-      
+
       this.initialized = true;
     } catch (error) {
-      this.emit('error', { message: `Failed to initialize snippet sharing service: ${(error as Error).message}` });
+      this.emit('error', {
+        message: `Failed to initialize snippet sharing service: ${(error as Error).message}`,
+      });
       throw error;
     }
   }
@@ -110,39 +112,39 @@ export class SnippetSharingService extends EventEmitter {
    */
   async shareSnippet(snippet: CodeSnippet, options: ShareOptions = {}): Promise<SharedSnippet> {
     await this.ensureInitialized();
-    
+
     // Create shared snippet object
     const shareId = this.generateShareId();
     const now = new Date();
-    
+
     // Calculate expiry date if specified
     let expiresAt: Date | undefined = undefined;
     if (options.expiryHours && options.expiryHours > 0) {
       expiresAt = new Date(now.getTime() + options.expiryHours * 60 * 60 * 1000);
     }
-    
+
     // Process snippet for sharing (removing certain fields if needed)
     const snippetToShare = { ...snippet };
-    
+
     // Remove tags if specified
     if (options.includeTags === false) {
       snippetToShare.tags = [];
     }
-    
+
     // Remove context if specified
     if (options.includeContext === false) {
       snippetToShare.context = [];
     }
-    
+
     // Generate password hash if password is provided
     let passwordHash: string | undefined = undefined;
     if (options.password) {
       passwordHash = this.hashPassword(options.password);
     }
-    
+
     // Create short link
     const shortLink = `${this.sharingServerUrl}/${shareId}`;
-    
+
     const sharedSnippet: SharedSnippet = {
       shareId,
       snippet: snippetToShare,
@@ -150,15 +152,15 @@ export class SnippetSharingService extends EventEmitter {
       accessCount: 0,
       created: now,
       shortLink,
-      password: passwordHash
+      password: passwordHash,
     };
-    
+
     // Add to map and save
     this.sharedSnippets.set(shareId, sharedSnippet);
     await this.saveSharedSnippets();
-    
+
     this.emit('shared', { shareId, shortLink });
-    
+
     return sharedSnippet;
   }
 
@@ -167,37 +169,37 @@ export class SnippetSharingService extends EventEmitter {
    */
   async getSharedSnippet(shareId: string, password?: string): Promise<SharedSnippet | null> {
     await this.ensureInitialized();
-    
+
     const sharedSnippet = this.sharedSnippets.get(shareId);
     if (!sharedSnippet) {
       return null;
     }
-    
+
     // Check if expired
     if (sharedSnippet.expiresAt && sharedSnippet.expiresAt < new Date()) {
       return null;
     }
-    
+
     // Check password if set
     if (sharedSnippet.password) {
       if (!password) {
         this.emit('error', { message: 'Password required to access this snippet' });
         return null;
       }
-      
+
       const passwordHash = this.hashPassword(password);
       if (passwordHash !== sharedSnippet.password) {
         this.emit('error', { message: 'Incorrect password' });
         return null;
       }
     }
-    
+
     // Increment access count
     sharedSnippet.accessCount++;
     await this.saveSharedSnippets();
-    
+
     this.emit('accessed', { shareId, accessCount: sharedSnippet.accessCount });
-    
+
     return sharedSnippet;
   }
 
@@ -206,10 +208,11 @@ export class SnippetSharingService extends EventEmitter {
    */
   async listSharedSnippets(): Promise<SharedSnippet[]> {
     await this.ensureInitialized();
-    
+
     // Return a sorted list (newest first)
-    return Array.from(this.sharedSnippets.values())
-      .sort((a, b) => b.created.getTime() - a.created.getTime());
+    return Array.from(this.sharedSnippets.values()).sort(
+      (a, b) => b.created.getTime() - a.created.getTime()
+    );
   }
 
   /**
@@ -217,17 +220,17 @@ export class SnippetSharingService extends EventEmitter {
    */
   async revokeSharedSnippet(shareId: string): Promise<boolean> {
     await this.ensureInitialized();
-    
+
     const hasSharedSnippet = this.sharedSnippets.has(shareId);
     if (!hasSharedSnippet) {
       return false;
     }
-    
+
     this.sharedSnippets.delete(shareId);
     await this.saveSharedSnippets();
-    
+
     this.emit('revoked', { shareId });
-    
+
     return true;
   }
 
@@ -236,22 +239,22 @@ export class SnippetSharingService extends EventEmitter {
    */
   async cleanupExpiredSnippets(): Promise<number> {
     await this.ensureInitialized();
-    
+
     const now = new Date();
     let count = 0;
-    
+
     for (const [shareId, sharedSnippet] of this.sharedSnippets.entries()) {
       if (sharedSnippet.expiresAt && sharedSnippet.expiresAt < now) {
         this.sharedSnippets.delete(shareId);
         count++;
       }
     }
-    
+
     if (count > 0) {
       await this.saveSharedSnippets();
       this.emit('cleaned', { count });
     }
-    
+
     return count;
   }
 
@@ -262,27 +265,29 @@ export class SnippetSharingService extends EventEmitter {
    */
   async uploadSharedSnippet(shareId: string): Promise<{ url: string }> {
     await this.ensureInitialized();
-    
+
     const sharedSnippet = this.sharedSnippets.get(shareId);
     if (!sharedSnippet) {
       throw new Error(`Shared snippet with ID ${shareId} not found`);
     }
-    
+
     try {
       // In a real implementation, this would make an API call
       // For demo purposes, we're just simulating the upload
-      
+
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       // Generate a URL for accessing the snippet
       const accessUrl = `${this.sharingServerUrl}/${shareId}`;
-      
+
       this.emit('uploaded', { shareId, url: accessUrl });
-      
+
       return { url: accessUrl };
     } catch (error) {
-      this.emit('error', { message: `Failed to upload shared snippet: ${(error as Error).message}` });
+      this.emit('error', {
+        message: `Failed to upload shared snippet: ${(error as Error).message}`,
+      });
       throw error;
     }
   }
@@ -297,29 +302,29 @@ export class SnippetSharingService extends EventEmitter {
     passwordProtected: number;
   }> {
     await this.ensureInitialized();
-    
+
     const now = new Date();
     let totalAccesses = 0;
     let passwordProtected = 0;
     let activeShares = 0;
-    
+
     for (const sharedSnippet of this.sharedSnippets.values()) {
       totalAccesses += sharedSnippet.accessCount;
-      
+
       if (sharedSnippet.password) {
         passwordProtected++;
       }
-      
+
       if (!sharedSnippet.expiresAt || sharedSnippet.expiresAt >= now) {
         activeShares++;
       }
     }
-    
+
     return {
       totalShares: this.sharedSnippets.size,
       activeShares,
       totalAccesses,
-      passwordProtected
+      passwordProtected,
     };
   }
 
@@ -329,7 +334,7 @@ export class SnippetSharingService extends EventEmitter {
    */
   async generateQrCode(shareId: string): Promise<string> {
     await this.ensureInitialized();
-    
+
     const sharedSnippet = this.sharedSnippets.get(shareId);
     if (!sharedSnippet) {
       throw new Error(`Shared snippet with ID ${shareId} not found`);
@@ -338,19 +343,19 @@ export class SnippetSharingService extends EventEmitter {
     try {
       // Import qrcode dynamically to avoid issues with import in non-browser environments
       const QRCode = (await import('qrcode')).default;
-      
+
       // Create QR code for the URL
       const qrCodePath = path.join(this.sharedSnippetsDir, `${shareId}-qrcode.png`);
       await QRCode.toFile(qrCodePath, sharedSnippet.shortLink, {
         color: {
           dark: '#000000',
-          light: '#FFFFFF'
+          light: '#FFFFFF',
         },
-        width: 300
+        width: 300,
       });
-      
+
       this.emit('qrCodeGenerated', { shareId, path: qrCodePath });
-      
+
       return qrCodePath;
     } catch (error) {
       this.emit('error', { message: `Failed to generate QR code: ${(error as Error).message}` });
@@ -363,7 +368,11 @@ export class SnippetSharingService extends EventEmitter {
    */
   private async saveSharedSnippets(): Promise<void> {
     const sharedSnippetsArray = Array.from(this.sharedSnippets.values());
-    await fs.writeFile(this.sharedSnippetsFile, JSON.stringify(sharedSnippetsArray, null, 2), 'utf-8');
+    await fs.writeFile(
+      this.sharedSnippetsFile,
+      JSON.stringify(sharedSnippetsArray, null, 2),
+      'utf-8'
+    );
   }
 
   /**

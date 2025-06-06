@@ -1,6 +1,6 @@
 /**
  * Storage Interface
- * 
+ *
  * Defines the storage interface used by agent components.
  */
 
@@ -12,42 +12,42 @@ export interface IStorage {
    * Initialize the storage
    */
   initialize(): Promise<void>;
-  
+
   /**
    * Get an item by key from storage
    */
   getItem<T>(collection: string, key: string): Promise<T | null>;
-  
+
   /**
    * Set an item in storage
    */
   setItem<T>(collection: string, key: string, value: T): Promise<void>;
-  
+
   /**
    * Delete an item from storage
    */
   deleteItem(collection: string, key: string): Promise<boolean>;
-  
+
   /**
    * Check if an item exists in storage
    */
   hasItem(collection: string, key: string): Promise<boolean>;
-  
+
   /**
    * Find items that match a filter
    */
   find<T>(collection: string, filter?: Record<string, any>, options?: FindOptions): Promise<T[]>;
-  
+
   /**
    * Update items that match a filter
    */
   update<T>(collection: string, filter: Record<string, any>, update: Partial<T>): Promise<number>;
-  
+
   /**
    * Delete items that match a filter
    */
   delete(collection: string, filter: Record<string, any>): Promise<number>;
-  
+
   /**
    * Count items that match a filter
    */
@@ -62,12 +62,12 @@ export interface FindOptions {
    * Number of items to skip
    */
   skip?: number;
-  
+
   /**
    * Number of items to limit
    */
   limit?: number;
-  
+
   /**
    * Sort direction
    */
@@ -79,14 +79,14 @@ export interface FindOptions {
  */
 export class MemoryStorage implements IStorage {
   private storage: Map<string, Map<string, any>> = new Map();
-  
+
   /**
    * Initialize the storage
    */
   public async initialize(): Promise<void> {
     // Memory storage doesn't need initialization
   }
-  
+
   /**
    * Get an item by key from storage
    */
@@ -97,7 +97,7 @@ export class MemoryStorage implements IStorage {
     }
     return collectionMap.get(key) || null;
   }
-  
+
   /**
    * Set an item in storage
    */
@@ -108,7 +108,7 @@ export class MemoryStorage implements IStorage {
     const collectionMap = this.storage.get(collection)!;
     collectionMap.set(key, value);
   }
-  
+
   /**
    * Delete an item from storage
    */
@@ -119,7 +119,7 @@ export class MemoryStorage implements IStorage {
     }
     return collectionMap.delete(key);
   }
-  
+
   /**
    * Check if an item exists in storage
    */
@@ -130,22 +130,22 @@ export class MemoryStorage implements IStorage {
     }
     return collectionMap.has(key);
   }
-  
+
   /**
    * Find items that match a filter
    */
   public async find<T>(
-    collection: string, 
-    filter?: Record<string, any>, 
+    collection: string,
+    filter?: Record<string, any>,
     options?: FindOptions
   ): Promise<T[]> {
     const collectionMap = this.storage.get(collection);
     if (!collectionMap) {
       return [];
     }
-    
+
     let result = Array.from(collectionMap.values()) as T[];
-    
+
     // Apply filter if provided
     if (filter) {
       result = result.filter(item => {
@@ -157,7 +157,7 @@ export class MemoryStorage implements IStorage {
         return true;
       });
     }
-    
+
     // Apply sort if provided
     if (options?.sort) {
       const sortEntries = Object.entries(options.sort);
@@ -173,30 +173,30 @@ export class MemoryStorage implements IStorage {
         });
       }
     }
-    
+
     // Apply pagination if provided
     if (options?.skip || options?.limit) {
       const skip = options.skip || 0;
       const limit = options.limit || result.length;
       result = result.slice(skip, skip + limit);
     }
-    
+
     return result;
   }
-  
+
   /**
    * Update items that match a filter
    */
   public async update<T>(
-    collection: string, 
-    filter: Record<string, any>, 
+    collection: string,
+    filter: Record<string, any>,
     update: Partial<T>
   ): Promise<number> {
     const collectionMap = this.storage.get(collection);
     if (!collectionMap) {
       return 0;
     }
-    
+
     let count = 0;
     for (const [key, item] of collectionMap.entries()) {
       let matches = true;
@@ -206,16 +206,16 @@ export class MemoryStorage implements IStorage {
           break;
         }
       }
-      
+
       if (matches) {
         collectionMap.set(key, { ...item, ...update });
         count++;
       }
     }
-    
+
     return count;
   }
-  
+
   /**
    * Delete items that match a filter
    */
@@ -224,7 +224,7 @@ export class MemoryStorage implements IStorage {
     if (!collectionMap) {
       return 0;
     }
-    
+
     const keysToDelete: string[] = [];
     for (const [key, item] of collectionMap.entries()) {
       let matches = true;
@@ -234,19 +234,19 @@ export class MemoryStorage implements IStorage {
           break;
         }
       }
-      
+
       if (matches) {
         keysToDelete.push(key);
       }
     }
-    
+
     for (const key of keysToDelete) {
       collectionMap.delete(key);
     }
-    
+
     return keysToDelete.length;
   }
-  
+
   /**
    * Count items that match a filter
    */

@@ -26,34 +26,36 @@ router.post('/transcribe', async (req, res) => {
   try {
     // Validate request
     const validationResult = transcriptionSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
-      return res.status(400).json({ error: 'Invalid request data', details: validationResult.error });
+      return res
+        .status(400)
+        .json({ error: 'Invalid request data', details: validationResult.error });
     }
-    
+
     const { audio } = validationResult.data;
-    
+
     // Decode base64 to buffer
     const audioBuffer = Buffer.from(audio, 'base64');
-    
+
     // Create a temporary file with the audio
     const tempFileName = 'temp-audio-' + Date.now() + '.webm';
     const tempFilePath = '/tmp/' + tempFileName;
     require('fs').writeFileSync(tempFilePath, audioBuffer);
-    
+
     try {
       // Transcribe the audio using OpenAI Whisper API
       const transcription = await openai.audio.transcriptions.create({
         file: require('fs').createReadStream(tempFilePath),
         model: 'whisper-1',
       });
-      
+
       // Get the transcribed text
       const text = transcription.text;
-      
+
       // Extract search parameters from the transcribed text
       const searchParams = await extractSearchParameters(text);
-      
+
       res.json({
         text,
         searchParams,
@@ -81,16 +83,18 @@ router.post('/extract-params', async (req, res) => {
   try {
     // Validate request
     const validationResult = extractParamsSchema.safeParse(req.body);
-    
+
     if (!validationResult.success) {
-      return res.status(400).json({ error: 'Invalid request data', details: validationResult.error });
+      return res
+        .status(400)
+        .json({ error: 'Invalid request data', details: validationResult.error });
     }
-    
+
     const { text } = validationResult.data;
-    
+
     // Extract search parameters from the text
     const searchParams = await extractSearchParameters(text);
-    
+
     res.json(searchParams);
   } catch (error) {
     console.error('Error extracting search parameters:', error);
@@ -125,22 +129,22 @@ async function extractSearchParameters(text: string) {
       model: MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: text }
+        { role: 'user', content: text },
       ],
-      response_format: { type: 'json_object' }
+      response_format: { type: 'json_object' },
     });
 
     // Extract and validate the response
     const responseContent = response.choices[0].message.content;
-    
+
     if (!responseContent) {
       console.error('Empty response from OpenAI');
       return {};
     }
-    
+
     // Parse the JSON response
     const parsedResponse = JSON.parse(responseContent);
-    
+
     // Return the extracted parameters
     return parsedResponse;
   } catch (error) {

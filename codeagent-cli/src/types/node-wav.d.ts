@@ -8,5 +8,8 @@ declare module 'node-wav' {
   }
 
   export function decode(buffer: Buffer): WavFileData;
-  export function encode(channelData: Float32Array[], options: { sampleRate: number; bitDepth: number; channels: number }): Buffer;
+  export function encode(
+    channelData: Float32Array[],
+    options: { sampleRate: number; bitDepth: number; channels: number }
+  ): Buffer;
 }

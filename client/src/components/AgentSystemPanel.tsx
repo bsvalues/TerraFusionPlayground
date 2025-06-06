@@ -1,18 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2, Play, Square, FileText, Activity, Database, BarChart } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { Agent, AgentSystemStatus, AgentCapability, ExecuteCapabilityRequest, ExecuteCapabilityResponse } from '@/types/agent-types';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, Play, Square, FileText, Activity, Database, BarChart } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import {
+  Agent,
+  AgentSystemStatus,
+  AgentCapability,
+  ExecuteCapabilityRequest,
+  ExecuteCapabilityResponse,
+} from '@/types/agent-types';
 
 /**
  * Agent System Panel Component
- * 
+ *
  * This component provides a UI for interacting with the MCP Agent System,
  * including system status, agent control, and capability execution.
  */
@@ -26,21 +39,25 @@ export function AgentSystemPanel() {
   const [executing, setExecuting] = useState(false);
 
   // Fetch system status
-  const { data: systemStatus, isLoading: statusLoading, error: statusError } = useQuery<AgentSystemStatus>({
+  const {
+    data: systemStatus,
+    isLoading: statusLoading,
+    error: statusError,
+  } = useQuery<AgentSystemStatus>({
     queryKey: ['/api/agents/status'],
     refetchInterval: 10000, // Refresh every 10 seconds
-    queryFn: () => apiRequest('/api/agents/status')
+    queryFn: () => apiRequest('/api/agents/status'),
   });
-  
+
   // Convert agent object to array if needed
   const agentsArray = React.useMemo<Agent[]>(() => {
     if (!systemStatus?.agents) return [];
-    
+
     // Check if agents is already an array
     if (Array.isArray(systemStatus.agents)) {
       return systemStatus.agents;
     }
-    
+
     // Convert object to array
     return Object.entries(systemStatus.agents).map(([name, agent]) => ({
       name,
@@ -48,7 +65,7 @@ export function AgentSystemPanel() {
     }));
   }, [systemStatus]);
 
-  // Initialize agent system 
+  // Initialize agent system
   const initMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest('/api/agents/initialize', {
@@ -58,18 +75,18 @@ export function AgentSystemPanel() {
     },
     onSuccess: () => {
       toast({
-        title: "Agent System Initialized",
-        description: "The MCP Agent System has been successfully initialized.",
+        title: 'Agent System Initialized',
+        description: 'The MCP Agent System has been successfully initialized.',
       });
       queryClient.invalidateQueries({ queryKey: ['/api/agents/status'] });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Initialization Failed",
+        title: 'Initialization Failed',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   // Start all agents
@@ -82,18 +99,18 @@ export function AgentSystemPanel() {
     },
     onSuccess: () => {
       toast({
-        title: "Agents Started",
-        description: "All agents in the MCP system have been started.",
+        title: 'Agents Started',
+        description: 'All agents in the MCP system have been started.',
       });
       queryClient.invalidateQueries({ queryKey: ['/api/agents/status'] });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Failed to Start Agents",
+        title: 'Failed to Start Agents',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   // Stop all agents
@@ -106,27 +123,27 @@ export function AgentSystemPanel() {
     },
     onSuccess: () => {
       toast({
-        title: "Agents Stopped",
-        description: "All agents in the MCP system have been stopped.",
+        title: 'Agents Stopped',
+        description: 'All agents in the MCP system have been stopped.',
       });
       queryClient.invalidateQueries({ queryKey: ['/api/agents/status'] });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
-        title: "Failed to Stop Agents",
+        title: 'Failed to Stop Agents',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   // Execute capability
   const executeCapability = async () => {
     if (!selectedAgent || !selectedCapability) return;
-    
+
     setExecuting(true);
     setCapabilityResult(null);
-    
+
     try {
       const result = await apiRequest('/api/agents/execute', {
         method: 'POST',
@@ -134,21 +151,21 @@ export function AgentSystemPanel() {
         body: JSON.stringify({
           agent: selectedAgent,
           capability: selectedCapability,
-          parameters: capabilityParams
-        })
+          parameters: capabilityParams,
+        }),
       });
-      
+
       setCapabilityResult(result);
-      
+
       toast({
-        title: "Capability Executed",
+        title: 'Capability Executed',
         description: `Successfully executed ${selectedCapability} on ${selectedAgent} agent.`,
       });
     } catch (error) {
       toast({
-        title: "Execution Failed",
+        title: 'Execution Failed',
         description: error instanceof Error ? error.message : 'Unknown error occurred',
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setExecuting(false);
@@ -172,7 +189,7 @@ export function AgentSystemPanel() {
   // Get agent capabilities based on selected agent
   const getAgentCapabilities = () => {
     if (!systemStatus || !selectedAgent) return [];
-    
+
     const agent = agentsArray.find((a: any) => a.name === selectedAgent);
     return agent?.capabilities || [];
   };
@@ -181,7 +198,7 @@ export function AgentSystemPanel() {
   const getCapabilityParams = () => {
     const capabilities = getAgentCapabilities();
     if (!capabilities.length || !selectedCapability) return [];
-    
+
     const capability = capabilities.find((c: any) => c.name === selectedCapability);
     return capability?.parameters || [];
   };
@@ -190,7 +207,7 @@ export function AgentSystemPanel() {
   const handleParamChange = (paramName: string, value: any) => {
     setCapabilityParams(prev => ({
       ...prev,
-      [paramName]: value
+      [paramName]: value,
     }));
   };
 
@@ -210,32 +227,29 @@ export function AgentSystemPanel() {
   // Determine if system is ready (all agents initialized and not in pending state)
   const isSystemReady = () => {
     if (!systemStatus) return false;
-    return systemStatus.isInitialized && 
-           agentsArray.every((agent: Agent) => agent.status !== 'pending');
+    return (
+      systemStatus.isInitialized && agentsArray.every((agent: Agent) => agent.status !== 'pending')
+    );
   };
 
   // Get status badge for an agent
   const getStatusBadge = (status: string) => {
-    let variant = "default";
+    let variant = 'default';
     switch (status) {
       case 'online':
-        variant = "success";
+        variant = 'success';
         break;
       case 'offline':
-        variant = "destructive";
+        variant = 'destructive';
         break;
       case 'pending':
-        variant = "warning";
+        variant = 'warning';
         break;
       default:
-        variant = "secondary";
+        variant = 'secondary';
     }
-    
-    return (
-      <Badge variant={variant as any}>
-        {status}
-      </Badge>
-    );
+
+    return <Badge variant={variant as any}>{status}</Badge>;
   };
 
   return (
@@ -253,7 +267,7 @@ export function AgentSystemPanel() {
             <TabsTrigger value="control">Agent Control</TabsTrigger>
             <TabsTrigger value="execute">Execute Capability</TabsTrigger>
           </TabsList>
-          
+
           {/* System Status Tab */}
           <TabsContent value="status" className="space-y-4">
             {statusLoading ? (
@@ -261,9 +275,7 @@ export function AgentSystemPanel() {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : statusError ? (
-              <div className="text-center py-4 text-destructive">
-                Error loading system status
-              </div>
+              <div className="text-center py-4 text-destructive">Error loading system status</div>
             ) : (
               <>
                 <div className="grid grid-cols-2 gap-4">
@@ -276,22 +288,28 @@ export function AgentSystemPanel() {
                   <div>
                     <h3 className="text-sm font-medium">Active Agents</h3>
                     <p className="text-lg font-semibold">
-                      {agentsArray.filter((a: Agent) => a.status === 'online').length || 0} / {agentsArray.length || 0}
+                      {agentsArray.filter((a: Agent) => a.status === 'online').length || 0} /{' '}
+                      {agentsArray.length || 0}
                     </p>
                   </div>
                 </div>
-                
+
                 <Separator className="my-4" />
-                
+
                 <h3 className="font-medium mb-2">Agents</h3>
                 <div className="space-y-3">
                   {agentsArray.map((agent: Agent) => (
-                    <div key={agent.name} className="flex items-center justify-between bg-muted/50 p-3 rounded-md">
+                    <div
+                      key={agent.name}
+                      className="flex items-center justify-between bg-muted/50 p-3 rounded-md"
+                    >
                       <div className="flex items-center gap-3">
                         {getAgentIcon(agent.name)}
                         <div>
                           <p className="font-medium">{agent.displayName}</p>
-                          <p className="text-sm text-muted-foreground">{agent.capabilities?.length || 0} capabilities</p>
+                          <p className="text-sm text-muted-foreground">
+                            {agent.capabilities?.length || 0} capabilities
+                          </p>
                         </div>
                       </div>
                       {getStatusBadge(agent.status)}
@@ -301,42 +319,50 @@ export function AgentSystemPanel() {
               </>
             )}
           </TabsContent>
-          
+
           {/* Agent Control Tab */}
           <TabsContent value="control" className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
-              <Button 
+              <Button
                 onClick={() => initMutation.mutate()}
-                disabled={initMutation.isPending || (systemStatus?.isInitialized === true)}
+                disabled={initMutation.isPending || systemStatus?.isInitialized === true}
                 className="w-full"
                 variant="outline"
               >
                 {initMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Initialize Agent System
               </Button>
-              
+
               <div className="grid grid-cols-2 gap-4">
-                <Button 
+                <Button
                   onClick={() => startAgentsMutation.mutate()}
                   disabled={startAgentsMutation.isPending || !systemStatus?.isInitialized}
                   className="w-full"
                   variant="outline"
                 >
-                  {startAgentsMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                  {startAgentsMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="mr-2 h-4 w-4" />
+                  )}
                   Start All Agents
                 </Button>
-                
-                <Button 
+
+                <Button
                   onClick={() => stopAgentsMutation.mutate()}
                   disabled={stopAgentsMutation.isPending || !systemStatus?.isInitialized}
-                  className="w-full" 
+                  className="w-full"
                   variant="outline"
                 >
-                  {stopAgentsMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Square className="mr-2 h-4 w-4" />}
+                  {stopAgentsMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Square className="mr-2 h-4 w-4" />
+                  )}
                   Stop All Agents
                 </Button>
               </div>
-              
+
               <div className="mt-4">
                 <h3 className="font-medium mb-2">Agent Status</h3>
                 {statusLoading ? (
@@ -346,7 +372,10 @@ export function AgentSystemPanel() {
                 ) : (
                   <div className="space-y-2">
                     {agentsArray.map((agent: Agent) => (
-                      <div key={agent.name} className="flex items-center justify-between bg-muted/30 p-2 rounded">
+                      <div
+                        key={agent.name}
+                        className="flex items-center justify-between bg-muted/30 p-2 rounded"
+                      >
                         <span>{agent.displayName}</span>
                         {getStatusBadge(agent.status)}
                       </div>
@@ -356,7 +385,7 @@ export function AgentSystemPanel() {
               </div>
             </div>
           </TabsContent>
-          
+
           {/* Execute Capability Tab */}
           <TabsContent value="execute" className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
@@ -368,7 +397,7 @@ export function AgentSystemPanel() {
                 <select
                   id="agent-select"
                   value={selectedAgent || ''}
-                  onChange={(e) => setSelectedAgent(e.target.value)}
+                  onChange={e => setSelectedAgent(e.target.value)}
                   disabled={!isSystemReady()}
                   className="w-full px-3 py-2 border rounded-md"
                 >
@@ -380,7 +409,7 @@ export function AgentSystemPanel() {
                   ))}
                 </select>
               </div>
-              
+
               {/* Capability Selection (only if agent is selected) */}
               {selectedAgent && (
                 <div>
@@ -390,7 +419,7 @@ export function AgentSystemPanel() {
                   <select
                     id="capability-select"
                     value={selectedCapability || ''}
-                    onChange={(e) => setSelectedCapability(e.target.value)}
+                    onChange={e => setSelectedCapability(e.target.value)}
                     className="w-full px-3 py-2 border rounded-md"
                   >
                     <option value="">-- Select a capability --</option>
@@ -402,7 +431,7 @@ export function AgentSystemPanel() {
                   </select>
                 </div>
               )}
-              
+
               {/* Capability Parameters (only if capability is selected) */}
               {selectedCapability && (
                 <div>
@@ -413,8 +442,11 @@ export function AgentSystemPanel() {
                     <div className="space-y-3">
                       {getCapabilityParams().map((param: AgentCapabilityParameter) => (
                         <div key={param.name}>
-                          <label htmlFor={`param-${param.name}`} className="block text-sm font-medium mb-1">
-                            {param.displayName || param.name} 
+                          <label
+                            htmlFor={`param-${param.name}`}
+                            className="block text-sm font-medium mb-1"
+                          >
+                            {param.displayName || param.name}
                             {param.required && <span className="text-destructive ml-1">*</span>}
                           </label>
                           {param.type === 'boolean' ? (
@@ -422,14 +454,16 @@ export function AgentSystemPanel() {
                               type="checkbox"
                               id={`param-${param.name}`}
                               checked={!!capabilityParams[param.name]}
-                              onChange={(e) => handleParamChange(param.name, e.target.checked)}
+                              onChange={e => handleParamChange(param.name, e.target.checked)}
                             />
                           ) : param.type === 'number' ? (
                             <input
                               type="number"
                               id={`param-${param.name}`}
                               value={capabilityParams[param.name] || ''}
-                              onChange={(e) => handleParamChange(param.name, parseFloat(e.target.value))}
+                              onChange={e =>
+                                handleParamChange(param.name, parseFloat(e.target.value))
+                              }
                               className="w-full px-3 py-2 border rounded-md"
                             />
                           ) : (
@@ -437,18 +471,20 @@ export function AgentSystemPanel() {
                               type="text"
                               id={`param-${param.name}`}
                               value={capabilityParams[param.name] || ''}
-                              onChange={(e) => handleParamChange(param.name, e.target.value)}
+                              onChange={e => handleParamChange(param.name, e.target.value)}
                               className="w-full px-3 py-2 border rounded-md"
                             />
                           )}
                           {param.description && (
-                            <p className="text-xs text-muted-foreground mt-1">{param.description}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {param.description}
+                            </p>
                           )}
                         </div>
                       ))}
                     </div>
                   )}
-                  
+
                   <Button
                     onClick={executeCapability}
                     disabled={executing || !selectedAgent || !selectedCapability}
@@ -459,7 +495,7 @@ export function AgentSystemPanel() {
                   </Button>
                 </div>
               )}
-              
+
               {/* Capability Result (only if there's a result) */}
               {capabilityResult && (
                 <div className="mt-4">
@@ -476,9 +512,7 @@ export function AgentSystemPanel() {
         </Tabs>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <div className="text-sm text-muted-foreground">
-          MCP Agent System v1.0.0
-        </div>
+        <div className="text-sm text-muted-foreground">MCP Agent System v1.0.0</div>
         <div className="text-sm">
           {statusLoading ? (
             <span className="flex items-center">

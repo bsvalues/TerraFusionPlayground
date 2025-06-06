@@ -1,10 +1,10 @@
-import { db } from "../../db";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { db } from '../../db';
+import { eq, and, desc, asc } from 'drizzle-orm';
 import {
   PersonalizedDeveloperAgent,
   InsertPersonalizedDeveloperAgent,
   personalizedDeveloperAgents,
-} from "@shared/schema";
+} from '@shared/schema';
 
 /**
  * Service for managing personalized developer agents
@@ -77,10 +77,7 @@ export class PersonalizedAgentService {
    * @returns The created agent
    */
   async createAgent(agent: InsertPersonalizedDeveloperAgent): Promise<PersonalizedDeveloperAgent> {
-    const [result] = await db
-      .insert(personalizedDeveloperAgents)
-      .values(agent)
-      .returning();
+    const [result] = await db.insert(personalizedDeveloperAgents).values(agent).returning();
 
     return result;
   }
@@ -104,10 +101,7 @@ export class PersonalizedAgentService {
         updatedAt: new Date(),
       })
       .where(
-        and(
-          eq(personalizedDeveloperAgents.id, id),
-          eq(personalizedDeveloperAgents.userId, userId)
-        )
+        and(eq(personalizedDeveloperAgents.id, id), eq(personalizedDeveloperAgents.userId, userId))
       )
       .returning();
 
@@ -124,10 +118,7 @@ export class PersonalizedAgentService {
     const result = await db
       .delete(personalizedDeveloperAgents)
       .where(
-        and(
-          eq(personalizedDeveloperAgents.id, id),
-          eq(personalizedDeveloperAgents.userId, userId)
-        )
+        and(eq(personalizedDeveloperAgents.id, id), eq(personalizedDeveloperAgents.userId, userId))
       );
 
     return result.rowCount !== null && result.rowCount > 0;
@@ -140,7 +131,7 @@ export class PersonalizedAgentService {
    */
   async incrementUsageCount(id: number): Promise<PersonalizedDeveloperAgent | null> {
     const agent = await this.getAgentById(id);
-    
+
     if (!agent) {
       return null;
     }
@@ -185,7 +176,7 @@ export class PersonalizedAgentService {
     if (searchTerm) {
       const result = await query;
       return result.filter(
-        (agent) =>
+        agent =>
           agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (agent.description && agent.description.toLowerCase().includes(searchTerm.toLowerCase()))
       );

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { InfoIcon } from 'lucide-react';
 import { AgentVoiceInterface } from './agent-voice/AgentVoiceInterface';
 import { VoiceCommandResult } from '../services/agent-voice-command-service';
 
@@ -14,17 +14,17 @@ export interface AgentVoiceDemoProps {
 export function AgentVoiceDemo({
   agentId = 'assistant',
   subject = 'assessment',
-  className = ''
+  className = '',
 }: AgentVoiceDemoProps) {
   const [lastResult, setLastResult] = useState<VoiceCommandResult | null>(null);
   const [lastCommandTimestamp, setLastCommandTimestamp] = useState<number>(0);
-  
+
   // Handle voice command results
   const handleVoiceResult = useCallback((result: VoiceCommandResult) => {
     setLastResult(result);
     setLastCommandTimestamp(Date.now());
   }, []);
-  
+
   return (
     <Card className={`agent-voice-demo max-w-3xl mx-auto ${className}`}>
       <CardHeader>
@@ -39,26 +39,23 @@ export function AgentVoiceDemo({
           </ul>
         </CardDescription>
       </CardHeader>
-      
+
       <CardContent className="space-y-6">
         <Alert>
           <InfoIcon className="h-4 w-4" />
           <AlertTitle className="ml-2">Voice Recognition Available</AlertTitle>
           <AlertDescription className="ml-2">
-            Click the microphone button and speak clearly to issue voice commands to the assessment agent.
+            Click the microphone button and speak clearly to issue voice commands to the assessment
+            agent.
           </AlertDescription>
         </Alert>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <h3 className="text-lg font-medium mb-3">Voice Controls</h3>
-            <AgentVoiceInterface 
-              onResult={handleVoiceResult}
-              agentId={agentId}
-              subject={subject}
-            />
+            <AgentVoiceInterface onResult={handleVoiceResult} agentId={agentId} subject={subject} />
           </div>
-          
+
           <div>
             <h3 className="text-lg font-medium mb-3">Command History</h3>
             {!lastResult ? (
@@ -74,9 +71,9 @@ export function AgentVoiceDemo({
                 <div className="rounded-md border p-3">
                   <p className="font-medium">{lastResult.command}</p>
                   <p className="text-sm mt-1">
-                    {lastResult.successful 
-                      ? (lastResult.response || 'Command successful') 
-                      : (lastResult.error || 'Command failed')}
+                    {lastResult.successful
+                      ? lastResult.response || 'Command successful'
+                      : lastResult.error || 'Command failed'}
                   </p>
                 </div>
               </div>

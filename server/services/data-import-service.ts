@@ -1,14 +1,14 @@
 /**
  * Data Import Service
- * 
- * This service handles importing property data from CSV files, 
+ *
+ * This service handles importing property data from CSV files,
  * including validation, parsing, and storing in the database.
- * 
+ *
  * The service supports handling flexible property data through the extraFields column,
  * which allows storage of additional property attributes that are not part of the
  * main property schema. This enables the system to import and store varied property
  * data without requiring schema changes for each new property attribute.
- * 
+ *
  * Key features:
  * - CSV validation with detailed error reporting
  * - Direct property import to database
@@ -65,16 +65,18 @@ export class DataImportService {
       let totalRecords = 0;
 
       fs.createReadStream(filePath)
-        .pipe(parse({
-          columns: true,
-          skip_empty_lines: true,
-          trim: true
-        }))
-        .on('data', (record) => {
+        .pipe(
+          parse({
+            columns: true,
+            skip_empty_lines: true,
+            trim: true,
+          })
+        )
+        .on('data', record => {
           totalRecords++;
           records.push(record);
         })
-        .on('error', (error) => {
+        .on('error', error => {
           reject(error);
         })
         .on('end', () => {
@@ -95,7 +97,7 @@ export class DataImportService {
             validRecords,
             invalidRecords,
             isValid: invalidRecords === 0 && totalRecords > 0,
-            errors: errors.length > 0 ? errors : undefined
+            errors: errors.length > 0 ? errors : undefined,
           });
         });
     });
@@ -113,16 +115,18 @@ export class DataImportService {
       let totalRecords = 0;
 
       fs.createReadStream(filePath)
-        .pipe(parse({
-          columns: true,
-          skip_empty_lines: true,
-          trim: true
-        }))
-        .on('data', (record) => {
+        .pipe(
+          parse({
+            columns: true,
+            skip_empty_lines: true,
+            trim: true,
+          })
+        )
+        .on('data', record => {
           totalRecords++;
           records.push(record);
         })
-        .on('error', (error) => {
+        .on('error', error => {
           reject(error);
         })
         .on('end', async () => {
@@ -156,7 +160,7 @@ export class DataImportService {
             total: totalRecords,
             successfulImports,
             failedImports,
-            errors: errors.length > 0 ? errors : undefined
+            errors: errors.length > 0 ? errors : undefined,
           });
         });
     });
@@ -174,16 +178,18 @@ export class DataImportService {
       let totalRecords = 0;
 
       fs.createReadStream(filePath)
-        .pipe(parse({
-          columns: true,
-          skip_empty_lines: true,
-          trim: true
-        }))
-        .on('data', (record) => {
+        .pipe(
+          parse({
+            columns: true,
+            skip_empty_lines: true,
+            trim: true,
+          })
+        )
+        .on('data', record => {
           totalRecords++;
           records.push(record);
         })
-        .on('error', (error) => {
+        .on('error', error => {
           reject(error);
         })
         .on('end', async () => {
@@ -195,7 +201,10 @@ export class DataImportService {
           for (const record of records) {
             try {
               const property = this.mapRecordToProperty(record);
-              const stagedProperty = await this.stagingService.stageProperty(property, 'csv-import');
+              const stagedProperty = await this.stagingService.stageProperty(
+                property,
+                'csv-import'
+              );
               staged++;
               stagingIds.push(stagedProperty.stagingId);
             } catch (error) {
@@ -210,7 +219,7 @@ export class DataImportService {
             staged,
             failed,
             stagingIds,
-            errors: errors.length > 0 ? errors : undefined
+            errors: errors.length > 0 ? errors : undefined,
           });
         });
     });
@@ -218,17 +227,17 @@ export class DataImportService {
 
   /**
    * Validate a property record from a CSV file
-   * 
+   *
    * Performs validation on the following aspects:
    * 1. Checks for required fields (propertyId, address, parcelNumber, propertyType)
    * 2. Validates propertyId format (alphanumeric, hyphens, underscores only)
    * 3. Ensures numeric fields (acres, value, etc.) contain valid numeric values
    * 4. Validates the status field against a set of allowed values
-   * 
+   *
    * Note: Additional fields not in the main schema will be stored in the extraFields
-   * JSON column and are not strictly validated here, but numeric fields are 
+   * JSON column and are not strictly validated here, but numeric fields are
    * checked to ensure they contain valid numbers.
-   * 
+   *
    * @param record Property record from CSV
    * @returns Validation result with isValid flag and any error messages
    */
@@ -245,7 +254,9 @@ export class DataImportService {
 
     // Validate propertyId format
     if (record.propertyId && !/^[A-Za-z0-9-_]+$/.test(record.propertyId)) {
-      errors.push('Property ID must contain only alphanumeric characters, hyphens, and underscores');
+      errors.push(
+        'Property ID must contain only alphanumeric characters, hyphens, and underscores'
+      );
     }
 
     // Validate numeric fields
@@ -257,23 +268,26 @@ export class DataImportService {
     }
 
     // Validate status
-    if (record.status && !['active', 'pending', 'sold', 'inactive'].includes(record.status.toLowerCase())) {
+    if (
+      record.status &&
+      !['active', 'pending', 'sold', 'inactive'].includes(record.status.toLowerCase())
+    ) {
       errors.push('Status must be one of: active, pending, sold, inactive');
     }
 
     return {
       isValid: errors.length === 0,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
     };
   }
 
   /**
    * Map a CSV record to a property object
-   * 
+   *
    * This method maps all fields from the CSV record to a property object.
    * Fields that are part of the main Property schema are mapped directly.
    * Additional fields are stored in the extraFields JSON object.
-   * 
+   *
    * @param record Property record from CSV
    * @returns Property object conforming to InsertProperty schema
    */
@@ -305,7 +319,7 @@ export class DataImportService {
 
     // Convert numeric fields to strings as required by the InsertProperty type
     // For acres (required numeric field in the schema)
-    const acres = record.acres ? String(Number(record.acres)) : "0"; // Required field, default to "0"
+    const acres = record.acres ? String(Number(record.acres)) : '0'; // Required field, default to "0"
     // For value (optional numeric field in the schema)
     const value = record.value ? String(Number(record.value)) : null; // Optional field
 
@@ -324,7 +338,7 @@ export class DataImportService {
       status: record.status || 'active',
       acres,
       value,
-      extraFields
+      extraFields,
     };
   }
 
@@ -346,12 +360,12 @@ export class DataImportService {
         metadata: {
           importedAt: new Date().toISOString(),
           source: data.source || 'manual_import',
-          version: '1.0'
-        }
+          version: '1.0',
+        },
       };
 
       // Save with transaction support
-      const result = await this.storage.transaction(async (trx) => {
+      const result = await this.storage.transaction(async trx => {
         const saved = await this.storage.saveData(dataWithLineage, trx);
         await this.storage.updateDataLineage(saved.id, dataWithLineage.metadata, trx);
         return saved;
@@ -360,7 +374,7 @@ export class DataImportService {
       return {
         success: true,
         data: result,
-        message: 'Data imported successfully'
+        message: 'Data imported successfully',
       };
     } catch (error) {
       console.error('Data import failed:', error);

@@ -1,6 +1,6 @@
 /**
  * Agent Replay Buffer Service
- * 
+ *
  * This service implements a shared replay buffer for the agent system, enabling
  * collaborative learning and experience sharing between agents. It serves as a
  * central mechanism for collecting, storing, and prioritizing agent experiences
@@ -78,7 +78,7 @@ export class AgentReplayBufferService {
       maxSize: 10000,
       priorityScoreThreshold: 0.7,
       samplingBatchSize: 64,
-      trainingInterval: 60000 // Default to 1 minute
+      trainingInterval: 60000, // Default to 1 minute
     }
   ) {
     this.storage = storage;
@@ -88,7 +88,7 @@ export class AgentReplayBufferService {
     logger.info({
       component: this.componentName,
       message: 'Agent Replay Buffer initialized',
-      config
+      config,
     });
   }
 
@@ -113,7 +113,7 @@ export class AgentReplayBufferService {
       // Store the experience in the buffer
       this.buffer.set(experience.experienceId, {
         experience,
-        priority: priorityScore
+        priority: priorityScore,
       });
 
       // If buffer exceeds max size, remove lowest priority experiences
@@ -127,7 +127,7 @@ export class AgentReplayBufferService {
         message: 'Added experience to buffer',
         experienceId: experience.experienceId,
         agentId: experience.agentId,
-        priority: priorityScore
+        priority: priorityScore,
       });
 
       // If high priority experience, maybe schedule training
@@ -146,9 +146,9 @@ export class AgentReplayBufferService {
           agentName: experience.agentName,
           action: experience.action,
           reward: experience.reward,
-          priority: priorityScore
+          priority: priorityScore,
         },
-        created_at: new Date()
+        created_at: new Date(),
       });
 
       return experience.experienceId;
@@ -156,7 +156,7 @@ export class AgentReplayBufferService {
       logger.error({
         component: this.componentName,
         message: 'Error adding experience to buffer',
-        error
+        error,
       });
       throw error;
     }
@@ -199,14 +199,17 @@ export class AgentReplayBufferService {
       component: this.componentName,
       message: 'Pruned replay buffer',
       removedCount: toRemove.length,
-      newSize: this.buffer.size
+      newSize: this.buffer.size,
     });
   }
 
   /**
    * Sample experiences from the buffer for training
    */
-  public sampleExperiences(batchSize: number = this.config.samplingBatchSize, onlyHighPriority: boolean = false): AgentExperience[] {
+  public sampleExperiences(
+    batchSize: number = this.config.samplingBatchSize,
+    onlyHighPriority: boolean = false
+  ): AgentExperience[] {
     try {
       if (this.buffer.size === 0) {
         return [];
@@ -234,11 +237,11 @@ export class AgentReplayBufferService {
       for (let i = 0; i < batchSize; i++) {
         // Generate random value in range [0, totalPriority)
         const randomValue = Math.random() * totalPriority;
-        
+
         // Find the experience that corresponds to this point in the accumulated priority
         let accumulatedPriority = 0;
         let selectedIndex = -1;
-        
+
         for (let j = 0; j < allExperiences.length; j++) {
           accumulatedPriority += allExperiences[j].priority;
           if (accumulatedPriority >= randomValue) {
@@ -246,11 +249,11 @@ export class AgentReplayBufferService {
             break;
           }
         }
-        
+
         // Add the selected experience to the result
         if (selectedIndex >= 0) {
           sampledExperiences.push(allExperiences[selectedIndex].experience);
-          
+
           // Remove the selected experience to avoid duplicates
           const removed = allExperiences.splice(selectedIndex, 1)[0];
           // Adjust totalPriority accordingly
@@ -262,7 +265,7 @@ export class AgentReplayBufferService {
         component: this.componentName,
         message: 'Sampled experiences from buffer',
         sampleSize: sampledExperiences.length,
-        totalAvailable: this.buffer.size
+        totalAvailable: this.buffer.size,
       });
 
       return sampledExperiences;
@@ -270,7 +273,7 @@ export class AgentReplayBufferService {
       logger.error({
         component: this.componentName,
         message: 'Error sampling experiences from buffer',
-        error
+        error,
       });
       return [];
     }
@@ -287,7 +290,10 @@ export class AgentReplayBufferService {
 
     // Check if enough time has passed since last training
     const now = new Date();
-    if (this.lastTrainingTime && (now.getTime() - this.lastTrainingTime.getTime() < this.config.trainingInterval)) {
+    if (
+      this.lastTrainingTime &&
+      now.getTime() - this.lastTrainingTime.getTime() < this.config.trainingInterval
+    ) {
       return;
     }
 
@@ -298,7 +304,7 @@ export class AgentReplayBufferService {
     logger.debug({
       component: this.componentName,
       message: 'Scheduled training cycle',
-      interval: this.config.trainingInterval
+      interval: this.config.trainingInterval,
     });
   }
 
@@ -316,7 +322,7 @@ export class AgentReplayBufferService {
       if (experiences.length === 0) {
         logger.debug({
           component: this.componentName,
-          message: 'No experiences to train on, skipping training cycle'
+          message: 'No experiences to train on, skipping training cycle',
         });
         return;
       }
@@ -324,7 +330,7 @@ export class AgentReplayBufferService {
       logger.info({
         component: this.componentName,
         message: 'Running training cycle',
-        experienceCount: experiences.length
+        experienceCount: experiences.length,
       });
 
       // Record the start of training
@@ -334,9 +340,9 @@ export class AgentReplayBufferService {
         status: 'info',
         details: {
           experienceCount: experiences.length,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
-        created_at: new Date()
+        created_at: new Date(),
       });
 
       // Generate learning update
@@ -353,22 +359,22 @@ export class AgentReplayBufferService {
         details: {
           updateId: update.updateId,
           experienceCount: experiences.length,
-          updateType: update.updateType
+          updateType: update.updateType,
         },
-        created_at: new Date()
+        created_at: new Date(),
       });
 
       logger.info({
         component: this.componentName,
         message: 'Training cycle completed',
         updateId: update.updateId,
-        updateType: update.updateType
+        updateType: update.updateType,
       });
     } catch (error) {
       logger.error({
         component: this.componentName,
         message: 'Error running training cycle',
-        error
+        error,
       });
 
       // Record the failure
@@ -378,9 +384,9 @@ export class AgentReplayBufferService {
         status: 'error',
         details: {
           error: error.message,
-          stack: error.stack
+          stack: error.stack,
         },
-        created_at: new Date()
+        created_at: new Date(),
       });
     }
   }
@@ -400,10 +406,10 @@ export class AgentReplayBufferService {
     // Process each experience
     for (const exp of experiences) {
       sourceExperiences.push(exp.experienceId);
-      
+
       // Count actions
       actionCounts[exp.action] = (actionCounts[exp.action] || 0) + 1;
-      
+
       // Collect rewards by action
       if (!rewards[exp.action]) {
         rewards[exp.action] = [];
@@ -433,8 +439,8 @@ export class AgentReplayBufferService {
         actionCounts,
         avgRewards,
         effectiveActions,
-        sampleSize: experiences.length
-      }
+        sampleSize: experiences.length,
+      },
     };
 
     return update;
@@ -469,10 +475,10 @@ export class AgentReplayBufferService {
     for (const { experience, priority } of this.buffer.values()) {
       // Count by agent
       agentDistribution[experience.agentId] = (agentDistribution[experience.agentId] || 0) + 1;
-      
+
       // Count by action
       actionDistribution[experience.action] = (actionDistribution[experience.action] || 0) + 1;
-      
+
       // Count high priority experiences
       if (priority >= this.config.priorityScoreThreshold) {
         highPriorityCount++;
@@ -485,7 +491,7 @@ export class AgentReplayBufferService {
       highPriorityCount,
       agentDistribution,
       actionDistribution,
-      updateCount: this.learningUpdates.length
+      updateCount: this.learningUpdates.length,
     };
   }
 
@@ -496,7 +502,7 @@ export class AgentReplayBufferService {
     this.buffer.clear();
     logger.info({
       component: this.componentName,
-      message: 'Replay buffer cleared'
+      message: 'Replay buffer cleared',
     });
   }
 }

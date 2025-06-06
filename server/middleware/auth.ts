@@ -19,7 +19,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
     userId: 1,
     username: 'county_admin',
     role: 'admin',
-    scope: ['admin', 'read', 'write']
+    scope: ['admin', 'read', 'write'],
   };
   next();
 }

@@ -1,6 +1,6 @@
 /**
  * Supabase Client
- * 
+ *
  * This file initializes and exports the Supabase client for use throughout the application.
  * It uses environment variables for configuration.
  */
@@ -35,12 +35,12 @@ export const checkSupabaseHealth = async (): Promise<boolean> => {
   try {
     // Simple query to check connection
     const { error } = await supabase.from('properties').select('id').limit(1);
-    
+
     if (error) {
       logger.error('Supabase health check failed:', error);
       return false;
     }
-    
+
     logger.info('Supabase health check successful');
     return true;
   } catch (error) {

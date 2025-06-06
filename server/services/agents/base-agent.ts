@@ -1,6 +1,6 @@
 /**
  * Base Agent Class
- * 
+ *
  * This class serves as the foundation for all AI agents in the MCP system.
  * It provides core functionality for agent operations, interaction with the MCP,
  * and standardized interfaces for agent capabilities.
@@ -47,39 +47,41 @@ export abstract class BaseAgent {
   protected performanceScore: number = 100;
 
   constructor(
-    storage: IStorage, 
-    mcpService: MCPService, 
+    storage: IStorage,
+    mcpService: MCPService,
     config: AgentConfig,
     replayBuffer?: AgentReplayBufferService
   ) {
     this.storage = storage;
     this.mcpService = mcpService;
     this.config = config;
-    
+
     // Generate a fallback ID in case config.id is invalid
     const fallbackId = `base_agent_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-    
+
     // Validate that config.id is a non-empty string
     if (!config.id || typeof config.id !== 'string' || config.id.trim() === '') {
-      console.warn(`WARNING: Agent created with invalid ID (${config.id}), using fallback: ${fallbackId}`);
+      console.warn(
+        `WARNING: Agent created with invalid ID (${config.id}), using fallback: ${fallbackId}`
+      );
       this.id = fallbackId;
       this.agentId = fallbackId;
     } else {
       this.id = config.id;
       this.agentId = config.id; // Set agentId as an alias for id
     }
-    
+
     // Log confirmation of ID assignment
     console.log(`BaseAgent constructor: assigned ID ${this.id} and agentId ${this.agentId}`);
-    
+
     this.name = config.name;
     this.description = config.description;
     this.permissions = config.permissions || [];
     this.replayBuffer = replayBuffer || null;
-    
+
     // Initialize capabilities map
     this.capabilities = new Map<string, AgentCapability>();
-    
+
     // Register capabilities
     if (config.capabilities && Array.isArray(config.capabilities)) {
       for (const capability of config.capabilities) {
@@ -87,10 +89,10 @@ export abstract class BaseAgent {
       }
     }
   }
-  
+
   /**
    * Register MCP tools for this agent
-   * 
+   *
    * Allows agents to register tools with the MCP system
    */
   protected async registerMCPTools(tools: any[]): Promise<void> {
@@ -100,13 +102,16 @@ export abstract class BaseAgent {
           name: tool.name,
           description: tool.description,
           requiredPermissions: ['authenticated'],
-          execute: tool.handler
+          execute: tool.handler,
         });
       }
       await this.logActivity('tools_registered', `Registered ${tools.length} tools with MCP`);
     } catch (error: any) {
       console.error(`Error registering tools for agent '${this.name}':`, error);
-      await this.logActivity('tools_registration_error', `Error registering tools: ${error.message}`);
+      await this.logActivity(
+        'tools_registration_error',
+        `Error registering tools: ${error.message}`
+      );
     }
   }
 
@@ -114,7 +119,7 @@ export abstract class BaseAgent {
    * Initialize agent (to be implemented by derived classes)
    */
   public abstract initialize(): Promise<void>;
-  
+
   /**
    * Base initialization that can be called by child classes
    */
@@ -155,51 +160,55 @@ export abstract class BaseAgent {
 
     try {
       this.lastActivity = new Date();
-      
+
       // Log capability execution
       await this.logActivity('capability_execution', `Executing capability '${name}'`, {
         capability: name,
-        parameters
+        parameters,
       });
-      
+
       // Execute the capability
       const result = await capability.handler(parameters, this);
-      
+
       // Update performance metrics (simplified model)
       this.performanceScore = Math.min(100, this.performanceScore + 1);
       await this.updateStatus('active', this.performanceScore);
-      
+
       // Log successful execution
       await this.logActivity('capability_success', `Successfully executed capability '${name}'`, {
         capability: name,
-        result: result
+        result: result,
       });
-      
+
       return {
         success: true,
         result,
         agent: this.name,
-        capability: name
+        capability: name,
       };
     } catch (error) {
       // Decrease performance score on error
       this.performanceScore = Math.max(0, this.performanceScore - 5);
       await this.updateStatus('error', this.performanceScore);
-      
+
       // Get the error message safely, handling any type of error
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
+
       // Log error
-      await this.logActivity('capability_error', `Error executing capability '${name}': ${errorMessage}`, {
-        capability: name,
-        error: errorMessage
-      });
-      
+      await this.logActivity(
+        'capability_error',
+        `Error executing capability '${name}': ${errorMessage}`,
+        {
+          capability: name,
+          error: errorMessage,
+        }
+      );
+
       return {
         success: false,
         error: errorMessage,
         agent: this.name,
-        capability: name
+        capability: name,
       };
     }
   }
@@ -211,17 +220,17 @@ export abstract class BaseAgent {
     const request: MCPRequest = {
       tool,
       parameters,
-      agentId: this.agentId
+      agentId: this.agentId,
     };
-    
+
     const context: MCPExecutionContext = {
       agentId: this.agentId,
       isAuthenticated: true,
       permissions: this.permissions,
       requestId: `agent-${this.agentId}-${Date.now()}`,
-      startTime: new Date()
+      startTime: new Date(),
     };
-    
+
     return this.mcpService.executeTool(request, context);
   }
 
@@ -231,7 +240,7 @@ export abstract class BaseAgent {
   protected registerCapability(capability: AgentCapability): void {
     this.capabilities.set(capability.name, capability);
   }
-  
+
   /**
    * Add a development-related capability to this agent
    * This public method allows the development assistant to add capabilities
@@ -251,7 +260,9 @@ export abstract class BaseAgent {
         await this.storage.updateAiAgentStatus(this.agentId, status, performance);
       } else {
         // Fallback: just log to console if the method doesn't exist
-        console.log(`Agent ${this.name} status update: status=${status}, performance=${performance}`);
+        console.log(
+          `Agent ${this.name} status update: status=${status}, performance=${performance}`
+        );
       }
     } catch (error) {
       console.error(`Error updating agent status for '${this.name}':`, error);
@@ -262,8 +273,8 @@ export abstract class BaseAgent {
    * Log agent activity
    */
   protected async logActivity(
-    activityType: string, 
-    message: string, 
+    activityType: string,
+    message: string,
     details: any = {}
   ): Promise<void> {
     try {
@@ -272,15 +283,15 @@ export abstract class BaseAgent {
         console.log(`Agent ${this.name} activity: ${activityType} - ${message}`);
         return;
       }
-      
+
       // Updated to match actual database schema structure - agent_id is an integer
       const activityData: InsertSystemActivity = {
         agent_id: typeof this.agentId === 'number' ? this.agentId : null,
         activity: message || activityType, // Ensure activity is not null
         entity_type: 'agent',
-        entity_id: String(this.agentId)
+        entity_id: String(this.agentId),
       };
-      
+
       // Check if the method exists before calling it
       if (typeof this.storage.createSystemActivity === 'function') {
         await this.storage.createSystemActivity(activityData);
@@ -322,7 +333,7 @@ export abstract class BaseAgent {
       name: this.name,
       isActive: this.isActive,
       lastActivity: this.lastActivity,
-      performanceScore: this.performanceScore
+      performanceScore: this.performanceScore,
     };
   }
 
@@ -348,7 +359,10 @@ export abstract class BaseAgent {
     } = {}
   ): Promise<string | null> {
     if (!this.replayBuffer) {
-      await this.logActivity('replay_buffer_unavailable', 'Replay buffer is not available for storing experience');
+      await this.logActivity(
+        'replay_buffer_unavailable',
+        'Replay buffer is not available for storing experience'
+      );
       return null;
     }
 
@@ -362,26 +376,30 @@ export abstract class BaseAgent {
         state,
         nextState,
         reward,
-        metadata
+        metadata,
       };
 
       const experienceId = await this.replayBuffer.addExperience(experience);
-      
+
       await this.logActivity('experience_stored', `Stored experience in replay buffer: ${action}`, {
         experienceId,
         action,
         reward,
         entityType: metadata.entityType,
-        entityId: metadata.entityId
+        entityId: metadata.entityId,
       });
-      
+
       return experienceId;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      await this.logActivity('experience_storage_error', `Failed to store experience: ${errorMessage}`, {
-        action,
-        error: errorMessage
-      });
+      await this.logActivity(
+        'experience_storage_error',
+        `Failed to store experience: ${errorMessage}`,
+        {
+          action,
+          error: errorMessage,
+        }
+      );
       return null;
     }
   }
@@ -392,26 +410,40 @@ export abstract class BaseAgent {
    * @param highPriorityOnly If true, only retrieves high priority experiences
    * @returns Array of experiences or empty array if buffer is not available
    */
-  protected async getExperiences(count: number = 10, highPriorityOnly: boolean = false): Promise<AgentExperience[]> {
+  protected async getExperiences(
+    count: number = 10,
+    highPriorityOnly: boolean = false
+  ): Promise<AgentExperience[]> {
     if (!this.replayBuffer) {
-      await this.logActivity('replay_buffer_unavailable', 'Replay buffer is not available for retrieving experiences');
+      await this.logActivity(
+        'replay_buffer_unavailable',
+        'Replay buffer is not available for retrieving experiences'
+      );
       return [];
     }
 
     try {
       const experiences = this.replayBuffer.sampleExperiences(count, highPriorityOnly);
-      
-      await this.logActivity('experiences_retrieved', `Retrieved ${experiences.length} experiences from replay buffer`, {
-        count: experiences.length,
-        highPriorityOnly
-      });
-      
+
+      await this.logActivity(
+        'experiences_retrieved',
+        `Retrieved ${experiences.length} experiences from replay buffer`,
+        {
+          count: experiences.length,
+          highPriorityOnly,
+        }
+      );
+
       return experiences;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      await this.logActivity('experience_retrieval_error', `Failed to retrieve experiences: ${errorMessage}`, {
-        error: errorMessage
-      });
+      await this.logActivity(
+        'experience_retrieval_error',
+        `Failed to retrieve experiences: ${errorMessage}`,
+        {
+          error: errorMessage,
+        }
+      );
       return [];
     }
   }
@@ -436,7 +468,7 @@ export abstract class BaseAgent {
     }
 
     const stats = this.replayBuffer.getBufferStats();
-    
+
     // Map fields explicitly instead of using spread operator
     return {
       totalExperiences: stats.size,
@@ -447,7 +479,7 @@ export abstract class BaseAgent {
       highPriorityCount: stats.highPriorityCount,
       agentDistribution: stats.agentDistribution,
       actionDistribution: stats.actionDistribution,
-      updateCount: stats.updateCount
+      updateCount: stats.updateCount,
     };
   }
 

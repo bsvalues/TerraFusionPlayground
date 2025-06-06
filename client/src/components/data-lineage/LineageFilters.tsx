@@ -1,18 +1,9 @@
 import * as React from 'react';
 import { format } from 'date-fns';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MultiSelect } from '@/components/multi-select';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -44,26 +35,26 @@ export function LineageFilters({
 }: LineageFiltersProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [filters, setFilters] = React.useState<LineageFiltersState>(value || {});
-  
+
   // Update filters when external value changes
   React.useEffect(() => {
     setFilters(value || {});
   }, [value]);
-  
+
   // Handle filter changes and notify parent
   const handleFilterChange = (newFilters: Partial<LineageFiltersState>) => {
     const updatedFilters = { ...filters, ...newFilters };
     setFilters(updatedFilters);
     onChange(updatedFilters);
   };
-  
+
   // Clear all filters
   const handleClearAll = () => {
     const clearedFilters = {};
     setFilters(clearedFilters);
     onChange(clearedFilters);
   };
-  
+
   // Format date range for display
   const dateRangeText = React.useMemo(() => {
     if (filters.startDate && filters.endDate) {
@@ -77,7 +68,7 @@ export function LineageFilters({
     }
     return 'All time';
   }, [filters.startDate, filters.endDate]);
-  
+
   // Count applied filters
   const appliedFilterCount = React.useMemo(() => {
     let count = 0;
@@ -88,7 +79,7 @@ export function LineageFilters({
     if (filters.users?.length) count++;
     return count;
   }, [filters]);
-  
+
   return (
     <Card className="mb-6">
       <CardHeader className="py-4">
@@ -102,20 +93,18 @@ export function LineageFilters({
               </span>
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
+          <Button variant="ghost" size="sm" onClick={() => setIsExpanded(!isExpanded)}>
             {isExpanded ? 'Collapse' : 'Expand'}
           </Button>
         </CardTitle>
       </CardHeader>
-      
-      <CardContent className={cn(
-        "grid grid-rows-[0fr] transition-all duration-300",
-        isExpanded && "grid-rows-[1fr]"
-      )}>
+
+      <CardContent
+        className={cn(
+          'grid grid-rows-[0fr] transition-all duration-300',
+          isExpanded && 'grid-rows-[1fr]'
+        )}
+      >
         <div className="overflow-hidden">
           <div className="space-y-6 pb-3">
             {/* Date Range */}
@@ -141,8 +130,8 @@ export function LineageFilters({
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-[200px] mt-1 justify-start text-left font-normal",
-                          !filters.startDate && "text-muted-foreground"
+                          'w-[200px] mt-1 justify-start text-left font-normal',
+                          !filters.startDate && 'text-muted-foreground'
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -153,13 +142,13 @@ export function LineageFilters({
                       <Calendar
                         mode="single"
                         selected={filters.startDate}
-                        onSelect={(date) => handleFilterChange({ startDate: date })}
+                        onSelect={date => handleFilterChange({ startDate: date })}
                         initialFocus
                       />
                     </PopoverContent>
                   </Popover>
                 </div>
-                
+
                 <div>
                   <Label className="text-xs">End Date</Label>
                   <Popover>
@@ -167,8 +156,8 @@ export function LineageFilters({
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-[200px] mt-1 justify-start text-left font-normal",
-                          !filters.endDate && "text-muted-foreground"
+                          'w-[200px] mt-1 justify-start text-left font-normal',
+                          !filters.endDate && 'text-muted-foreground'
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -179,7 +168,7 @@ export function LineageFilters({
                       <Calendar
                         mode="single"
                         selected={filters.endDate}
-                        onSelect={(date) => handleFilterChange({ endDate: date })}
+                        onSelect={date => handleFilterChange({ endDate: date })}
                         initialFocus
                       />
                     </PopoverContent>
@@ -187,9 +176,9 @@ export function LineageFilters({
                 </div>
               </div>
             </div>
-            
+
             <Separator />
-            
+
             {/* Data Sources */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -212,13 +201,13 @@ export function LineageFilters({
                 }))}
                 placeholder="Select sources..."
                 selected={filters.sources || []}
-                onChange={(selected) => handleFilterChange({ sources: selected })}
+                onChange={selected => handleFilterChange({ sources: selected })}
                 className="w-full"
               />
             </div>
-            
+
             <Separator />
-            
+
             {/* Field Names */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -241,13 +230,13 @@ export function LineageFilters({
                 }))}
                 placeholder="Select fields..."
                 selected={filters.fields || []}
-                onChange={(selected) => handleFilterChange({ fields: selected })}
+                onChange={selected => handleFilterChange({ fields: selected })}
                 className="w-full"
               />
             </div>
-            
+
             <Separator />
-            
+
             {/* Users */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -270,13 +259,15 @@ export function LineageFilters({
                 }))}
                 placeholder="Select users..."
                 selected={filters.users?.map(u => u.toString()) || []}
-                onChange={(selected) => handleFilterChange({ 
-                  users: selected.map(s => parseInt(s, 10)) 
-                })}
+                onChange={selected =>
+                  handleFilterChange({
+                    users: selected.map(s => parseInt(s, 10)),
+                  })
+                }
                 className="w-full"
               />
             </div>
-            
+
             <div className="flex justify-end gap-2 pt-2">
               <Button
                 variant="outline"

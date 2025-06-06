@@ -14,6 +14,7 @@ Voice commands allow you to control CodeAgent CLI using speech recognition. The 
 To use real audio recording for voice commands, you need:
 
 1. Audio recording tools (one of the following):
+
    - FFmpeg
    - SoX (Sound eXchange)
    - ALSA (Advanced Linux Sound Architecture) tools

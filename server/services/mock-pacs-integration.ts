@@ -1,6 +1,6 @@
 /**
  * Mock PACS Integration Service
- * 
+ *
  * This is a mock implementation of the PACS Integration Service for development purposes.
  */
 

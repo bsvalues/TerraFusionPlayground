@@ -12,7 +12,7 @@ export function createChangeTrackingApiRoutes(storage: IStorage) {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 10;
       const recentChanges = await storage.getRecentPropertyChanges(limit);
-      
+
       res.json(recentChanges);
     } catch (error) {
       console.error('Error fetching recent property changes:', error);
@@ -30,9 +30,9 @@ export function createChangeTrackingApiRoutes(storage: IStorage) {
         endDate: req.query.endDate as string,
         changedBy: req.query.changedBy as string,
         page: req.query.page ? Number(req.query.page) : 1,
-        limit: req.query.limit ? Number(req.query.limit) : 20
+        limit: req.query.limit ? Number(req.query.limit) : 20,
       };
-      
+
       const changes = await storage.getPropertyChanges(propertyId, params);
       res.json(changes);
     } catch (error) {
@@ -51,9 +51,9 @@ export function createChangeTrackingApiRoutes(storage: IStorage) {
         endDate: req.query.endDate as string,
         changedBy: req.query.changedBy as string,
         page: req.query.page ? Number(req.query.page) : 1,
-        limit: req.query.limit ? Number(req.query.limit) : 20
+        limit: req.query.limit ? Number(req.query.limit) : 20,
       };
-      
+
       const result = await storage.searchPropertyChanges(searchParams);
       res.json(result);
     } catch (error) {
@@ -65,9 +65,9 @@ export function createChangeTrackingApiRoutes(storage: IStorage) {
   // Get change statistics
   router.get('/property-changes/statistics', async (req: Request, res: Response) => {
     try {
-      const timeRange = req.query.timeRange as string || 'month';
+      const timeRange = (req.query.timeRange as string) || 'month';
       const statistics = await storage.getChangeStatistics(timeRange);
-      
+
       res.json(statistics);
     } catch (error) {
       console.error('Error fetching change statistics:', error);
@@ -79,11 +79,11 @@ export function createChangeTrackingApiRoutes(storage: IStorage) {
   router.post('/property-changes', async (req: Request, res: Response) => {
     try {
       const changeData = req.body;
-      
+
       if (!changeData.propertyId) {
         return res.status(400).json({ error: 'Property ID is required' });
       }
-      
+
       const change = await storage.recordPropertyChange(changeData);
       res.status(201).json(change);
     } catch (error) {

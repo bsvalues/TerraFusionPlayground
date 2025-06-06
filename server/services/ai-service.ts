@@ -20,7 +20,7 @@ export class AIService {
   private openaiClient: OpenAI | null = null;
   private anthropicClient: Anthropic | null = null;
   private cache: Map<string, string> = new Map();
-  
+
   /**
    * Create a new AI service
    */
@@ -30,17 +30,17 @@ export class AIService {
         apiKey: process.env.OPENAI_API_KEY,
       });
     }
-    
+
     if (process.env.ANTHROPIC_API_KEY) {
       this.anthropicClient = new Anthropic({
         apiKey: process.env.ANTHROPIC_API_KEY,
       });
     }
   }
-  
+
   /**
    * Generate a completion from the AI based on the conversation history
-   * 
+   *
    * @param messages Conversation history
    * @param options AI service options
    * @returns The AI response
@@ -48,18 +48,18 @@ export class AIService {
   async complete(messages: AIMessage[], options: AIServiceOptions): Promise<string> {
     // Create a cache key based on the messages and options
     const cacheKey = this.createCacheKey(messages, options);
-    
+
     // Check cache first
     if (this.cache.has(cacheKey)) {
       return this.cache.get(cacheKey) as string;
     }
-    
+
     // Determine which provider to use
     const provider = this.determineProvider(options.provider);
-    
+
     // Generate the completion based on the provider
     let response: string;
-    
+
     switch (provider) {
       case 'openai':
         response = await this.completeWithOpenAI(messages, options);
@@ -70,16 +70,16 @@ export class AIService {
       default:
         throw new Error(`Provider ${provider} not supported`);
     }
-    
+
     // Cache the response
     this.cache.set(cacheKey, response);
-    
+
     return response;
   }
-  
+
   /**
    * Create an embedding for a text
-   * 
+   *
    * @param text Text to embed
    * @param provider AI provider to use
    * @returns Vector embedding
@@ -87,7 +87,7 @@ export class AIService {
   async createEmbedding(text: string, provider: AIServiceProvider): Promise<number[]> {
     // Determine which provider to use
     const actualProvider = this.determineProvider(provider);
-    
+
     switch (actualProvider) {
       case 'openai':
         return this.createEmbeddingWithOpenAI(text);
@@ -98,17 +98,17 @@ export class AIService {
         throw new Error(`Provider ${provider} not supported for embeddings`);
     }
   }
-  
+
   /**
    * Clear the cache
    */
   clearCache(): void {
     this.cache.clear();
   }
-  
+
   /**
    * Create a cache key based on the messages and options
-   * 
+   *
    * @param messages Conversation history
    * @param options AI service options
    * @returns Cache key
@@ -118,10 +118,10 @@ export class AIService {
     const optionsStr = JSON.stringify(options);
     return `${messagesStr}|${optionsStr}`;
   }
-  
+
   /**
    * Determine which provider to use based on availability
-   * 
+   *
    * @param requestedProvider Requested provider
    * @returns Actual provider to use
    */
@@ -133,7 +133,9 @@ export class AIService {
       } else if (this.openaiClient) {
         return 'openai';
       } else {
-        throw new Error('No AI provider is configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY in your environment.');
+        throw new Error(
+          'No AI provider is configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY in your environment.'
+        );
       }
     } else if (requestedProvider === 'openai') {
       if (!this.openaiClient) {
@@ -146,84 +148,90 @@ export class AIService {
       }
       return 'anthropic';
     }
-    
+
     throw new Error(`Provider ${requestedProvider} not supported`);
   }
-  
+
   /**
    * Generate a completion with OpenAI
-   * 
+   *
    * @param messages Conversation history
    * @param options AI service options
    * @returns The AI response
    */
-  private async completeWithOpenAI(messages: AIMessage[], options: AIServiceOptions): Promise<string> {
+  private async completeWithOpenAI(
+    messages: AIMessage[],
+    options: AIServiceOptions
+  ): Promise<string> {
     if (!this.openaiClient) {
       throw new Error('OpenAI is not configured. Set OPENAI_API_KEY in your environment.');
     }
-    
+
     try {
       const response = await this.openaiClient.chat.completions.create({
         model: options.model,
         messages: messages.map(msg => ({
           role: msg.role,
           content: msg.content,
-          name: msg.name
+          name: msg.name,
         })),
         temperature: options.temperature,
         max_tokens: options.maxTokens,
-        stop: options.stopSequences.length > 0 ? options.stopSequences : undefined
+        stop: options.stopSequences.length > 0 ? options.stopSequences : undefined,
       });
-      
+
       return response.choices[0]?.message?.content || '';
     } catch (error) {
       console.error('Error generating completion with OpenAI:', error);
       throw error;
     }
   }
-  
+
   /**
    * Generate a completion with Anthropic
-   * 
+   *
    * @param messages Conversation history
    * @param options AI service options
    * @returns The AI response
    */
-  private async completeWithAnthropic(messages: AIMessage[], options: AIServiceOptions): Promise<string> {
+  private async completeWithAnthropic(
+    messages: AIMessage[],
+    options: AIServiceOptions
+  ): Promise<string> {
     if (!this.anthropicClient) {
       throw new Error('Anthropic is not configured. Set ANTHROPIC_API_KEY in your environment.');
     }
-    
+
     try {
       // Convert the messages to Anthropic format
       const systemMessage = messages.find(msg => msg.role === 'system')?.content || '';
-      
+
       // Filter out system messages as they're handled separately in Anthropic
       const anthropicMessages = messages
         .filter(msg => msg.role !== 'system')
         .map(msg => ({
           role: msg.role === 'assistant' ? 'assistant' : 'user',
-          content: msg.content
+          content: msg.content,
         }));
-      
+
       const response = await this.anthropicClient.messages.create({
         model: options.model.includes('claude') ? options.model : 'claude-3-opus-20240229',
         max_tokens: options.maxTokens,
         temperature: options.temperature,
         system: systemMessage,
-        messages: anthropicMessages as any
+        messages: anthropicMessages as any,
       });
-      
+
       return response.content[0]?.text || '';
     } catch (error) {
       console.error('Error generating completion with Anthropic:', error);
       throw error;
     }
   }
-  
+
   /**
    * Create an embedding with OpenAI
-   * 
+   *
    * @param text Text to embed
    * @returns Vector embedding
    */
@@ -231,13 +239,13 @@ export class AIService {
     if (!this.openaiClient) {
       throw new Error('OpenAI is not configured. Set OPENAI_API_KEY in your environment.');
     }
-    
+
     try {
       const response = await this.openaiClient.embeddings.create({
         model: 'text-embedding-ada-002',
-        input: text
+        input: text,
       });
-      
+
       return response.data[0]?.embedding || [];
     } catch (error) {
       console.error('Error creating embedding with OpenAI:', error);

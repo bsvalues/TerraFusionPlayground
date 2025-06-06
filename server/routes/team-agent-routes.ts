@@ -29,11 +29,11 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
     try {
       const id = parseInt(req.params.id);
       const agent = await storage.getTeamMember(id);
-      
+
       if (!agent) {
         return res.status(404).json({ error: 'Team agent not found' });
       }
-      
+
       res.json(agent);
     } catch (error) {
       console.error('Error getting team agent:', error);
@@ -47,11 +47,11 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
   app.post('/api/team-agents', async (req: Request, res: Response) => {
     try {
       const agent = req.body;
-      
+
       if (!agent.name || !agent.role) {
         return res.status(400).json({ error: 'Name and role are required' });
       }
-      
+
       const newAgent = await storage.createTeamMember({
         name: agent.name,
         role: agent.role,
@@ -65,14 +65,14 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
             hoursPerWeek: 40,
             preferredWorkingHours: {
               start: '09:00',
-              end: '17:00'
+              end: '17:00',
             },
-            timeZone: 'UTC'
-          }
+            timeZone: 'UTC',
+          },
         },
-        avatar: agent.avatar || null
+        avatar: agent.avatar || null,
       });
-      
+
       await storage.createSystemActivity({
         activity_type: 'team_collaboration',
         component: 'team_agents',
@@ -80,10 +80,10 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
         details: {
           agentId: newAgent.id,
           agentName: newAgent.name,
-          agentRole: newAgent.role
-        }
+          agentRole: newAgent.role,
+        },
       });
-      
+
       res.status(201).json(newAgent);
     } catch (error) {
       console.error('Error creating team agent:', error);
@@ -98,14 +98,14 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
     try {
       const id = parseInt(req.params.id);
       const agent = req.body;
-      
+
       const existingAgent = await storage.getTeamMember(id);
       if (!existingAgent) {
         return res.status(404).json({ error: 'Team agent not found' });
       }
-      
+
       const updatedAgent = await storage.updateTeamMember(id, agent);
-      
+
       await storage.createSystemActivity({
         activity_type: 'team_collaboration',
         component: 'team_agents',
@@ -114,10 +114,10 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
           agentId: updatedAgent.id,
           agentName: updatedAgent.name,
           agentRole: updatedAgent.role,
-          changes: Object.keys(agent)
-        }
+          changes: Object.keys(agent),
+        },
       });
-      
+
       res.json(updatedAgent);
     } catch (error) {
       console.error('Error updating team agent:', error);
@@ -131,13 +131,15 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
   app.get('/api/team-tasks', async (req: Request, res: Response) => {
     try {
       const tasks = await storage.getTasks();
-      
+
       // Enhance tasks with comments
-      const enhancedTasks = await Promise.all(tasks.map(async (task) => {
-        const comments = await storage.getTaskComments(task.id);
-        return { ...task, comments };
-      }));
-      
+      const enhancedTasks = await Promise.all(
+        tasks.map(async task => {
+          const comments = await storage.getTaskComments(task.id);
+          return { ...task, comments };
+        })
+      );
+
       res.json(enhancedTasks);
     } catch (error) {
       console.error('Error getting team tasks:', error);
@@ -152,13 +154,13 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
     try {
       const taskId = req.params.id;
       const task = await storage.getTask(taskId);
-      
+
       if (!task) {
         return res.status(404).json({ error: 'Task not found' });
       }
-      
+
       const comments = await storage.getTaskComments(taskId);
-      
+
       res.json({ ...task, comments });
     } catch (error) {
       console.error('Error getting task:', error);
@@ -172,11 +174,11 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
   app.post('/api/team-tasks', async (req: Request, res: Response) => {
     try {
       const task = req.body;
-      
+
       if (!task.title || !task.createdBy) {
         return res.status(400).json({ error: 'Title and creator are required' });
       }
-      
+
       const newTask = await storage.createTask({
         id: uuidv4(),
         title: task.title,
@@ -191,9 +193,9 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
         estimatedHours: task.estimatedHours || null,
         actualHours: task.actualHours || null,
         tags: task.tags || [],
-        attachments: task.attachments || []
+        attachments: task.attachments || [],
       });
-      
+
       await storage.createSystemActivity({
         activity_type: 'team_collaboration',
         component: 'team_tasks',
@@ -202,10 +204,10 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
           taskId: newTask.id,
           taskTitle: newTask.title,
           assignedTo: newTask.assignedTo,
-          createdBy: newTask.createdBy
-        }
+          createdBy: newTask.createdBy,
+        },
       });
-      
+
       res.status(201).json(newTask);
     } catch (error) {
       console.error('Error creating task:', error);
@@ -220,20 +222,20 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
     try {
       const taskId = req.params.id;
       const update = req.body;
-      
+
       const existingTask = await storage.getTask(taskId);
       if (!existingTask) {
         return res.status(404).json({ error: 'Task not found' });
       }
-      
+
       // Prepare the update
       const taskUpdate = {
         ...update,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
-      
+
       const updatedTask = await storage.updateTask(taskId, taskUpdate);
-      
+
       await storage.createSystemActivity({
         activity_type: 'team_collaboration',
         component: 'team_tasks',
@@ -243,10 +245,10 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
           taskTitle: updatedTask.title,
           assignedTo: updatedTask.assignedTo,
           status: updatedTask.status,
-          changes: Object.keys(update)
-        }
+          changes: Object.keys(update),
+        },
       });
-      
+
       res.json(updatedTask);
     } catch (error) {
       console.error('Error updating task:', error);
@@ -261,7 +263,7 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
     try {
       const taskId = req.params.id;
       const comments = await storage.getTaskComments(taskId);
-      
+
       res.json(comments);
     } catch (error) {
       console.error('Error getting task comments:', error);
@@ -276,24 +278,24 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
     try {
       const taskId = req.params.id;
       const { userId, content } = req.body;
-      
+
       if (!userId || !content) {
         return res.status(400).json({ error: 'User ID and content are required' });
       }
-      
+
       const task = await storage.getTask(taskId);
       if (!task) {
         return res.status(404).json({ error: 'Task not found' });
       }
-      
+
       const comment = await storage.createTaskComment({
         id: uuidv4(),
         taskId,
         userId,
         content,
-        createdAt: new Date()
+        createdAt: new Date(),
       });
-      
+
       await storage.createSystemActivity({
         activity_type: 'team_collaboration',
         component: 'task_comments',
@@ -303,10 +305,10 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
           taskTitle: task.title,
           commentId: comment.id,
           userId,
-          contentPreview: content.substring(0, 50) + (content.length > 50 ? '...' : '')
-        }
+          contentPreview: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+        },
       });
-      
+
       res.status(201).json(comment);
     } catch (error) {
       console.error('Error creating task comment:', error);
@@ -321,7 +323,7 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
     try {
       const sessionId = req.params.sessionId;
       const messages = await storage.getTeamChatMessages(sessionId);
-      
+
       res.json(messages);
     } catch (error) {
       console.error('Error getting team chat messages:', error);
@@ -336,20 +338,20 @@ export function registerTeamAgentRoutes(app: Express, storage: IStorage) {
     try {
       const sessionId = req.params.sessionId;
       const { fromUserId, content, threadId } = req.body;
-      
+
       if (!fromUserId || !content) {
         return res.status(400).json({ error: 'User ID and content are required' });
       }
-      
+
       const message = await storage.createTeamChatMessage({
         id: uuidv4(),
         sessionId,
         fromUserId,
         content,
         timestamp: new Date(),
-        threadId: threadId || null
+        threadId: threadId || null,
       });
-      
+
       res.status(201).json(message);
     } catch (error) {
       console.error('Error creating team chat message:', error);

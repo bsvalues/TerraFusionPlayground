@@ -16,7 +16,7 @@ export const themeColors = {
     800: '#00344d',
     900: '#00131a',
   },
-  
+
   // Secondary brand colors
   secondary: {
     50: '#f0f9e8',
@@ -30,7 +30,7 @@ export const themeColors = {
     800: '#2c5512',
     900: '#152f09',
   },
-  
+
   // Neutral tones
   neutral: {
     50: '#f9f9f9',
@@ -44,7 +44,7 @@ export const themeColors = {
     800: '#383838',
     900: '#1a1a1a',
   },
-  
+
   // Semantic colors
   success: '#4caf50',
   warning: '#ff9800',
@@ -54,7 +54,7 @@ export const themeColors = {
 
 /**
  * Adjusts a hex color to a different opacity
- * 
+ *
  * @param hexColor Hex color string (3 or 6 characters)
  * @param opacity Opacity value (0-1)
  * @returns RGBA color string
@@ -62,46 +62,54 @@ export const themeColors = {
 export function hexToRgba(hexColor: string, opacity: number): string {
   // Remove # if present
   const cleanHex = hexColor.replace('#', '');
-  
+
   // Convert short hex to full hex
-  const fullHex = cleanHex.length === 3
-    ? cleanHex.split('').map(c => c + c).join('')
-    : cleanHex;
-    
+  const fullHex =
+    cleanHex.length === 3
+      ? cleanHex
+          .split('')
+          .map(c => c + c)
+          .join('')
+      : cleanHex;
+
   // Parse hex values to RGB
   const r = parseInt(fullHex.slice(0, 2), 16);
   const g = parseInt(fullHex.slice(2, 4), 16);
   const b = parseInt(fullHex.slice(4, 6), 16);
-  
+
   // Return rgba string
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
 /**
  * Determines if a color is light or dark
- * 
+ *
  * @param hexColor Hex color string
  * @returns True if color is light, false if dark
  */
 export function isLightColor(hexColor: string): boolean {
   const cleanHex = hexColor.replace('#', '');
-  const fullHex = cleanHex.length === 3
-    ? cleanHex.split('').map(c => c + c).join('')
-    : cleanHex;
-    
+  const fullHex =
+    cleanHex.length === 3
+      ? cleanHex
+          .split('')
+          .map(c => c + c)
+          .join('')
+      : cleanHex;
+
   const r = parseInt(fullHex.slice(0, 2), 16);
   const g = parseInt(fullHex.slice(2, 4), 16);
   const b = parseInt(fullHex.slice(4, 6), 16);
-  
+
   // Calculate perceived brightness using YIQ formula
-  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-  
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+
   return yiq >= 128;
 }
 
 /**
  * Returns a contrasting text color (black or white) based on background color
- * 
+ *
  * @param backgroundColor Background color in hex
  * @returns '#ffffff' or '#000000' depending on contrast
  */

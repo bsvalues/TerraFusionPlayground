@@ -1,6 +1,6 @@
 /**
  * Base Agent abstract class
- * 
+ *
  * Provides the foundation for all agent types in the TerraFusion platform.
  */
 
@@ -20,7 +20,7 @@ export abstract class BaseAgent {
 
   constructor(
     id: string,
-    name: string, 
+    name: string,
     description: string,
     config: AgentConfig,
     storage: IStorage,
@@ -132,7 +132,7 @@ export abstract class BaseAgent {
   }
 
   /**
-   * Register agent capabilities 
+   * Register agent capabilities
    * Must be implemented by each agent subclass
    */
   protected abstract registerCapabilities(): void;

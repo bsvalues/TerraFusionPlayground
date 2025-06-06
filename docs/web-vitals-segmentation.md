@@ -14,6 +14,7 @@ We capture network connection quality using the Network Information API's `effec
 - **4g**: Fast connections (700+ kbps) - equivalent to 4G/LTE or fast WiFi
 
 This dimension is crucial for:
+
 - Understanding performance for users in low-connectivity areas
 - Identifying features that don't work well on slow networks
 - Creating adaptive experiences based on network quality
@@ -31,6 +32,7 @@ We categorize different pages in the application by their type using the `page_t
 - **editor**: Editor experiences for property data
 
 This dimension helps:
+
 - Identify which particular page types are underperforming
 - Focus optimization efforts on the most critical pages
 - Set appropriate performance budgets based on page complexity
@@ -84,18 +86,21 @@ pageType: (payload.tags as any)?.pageType || 'unknown'
 ### Dashboards
 
 The segmented Web Vitals Dashboard provides filtering and visualization by:
+
 - Network quality
 - Page type
 - Combined views (e.g., specific page types on specific networks)
 
 Key panels include:
+
 - LCP by Network and Page Type
-- CLS by Network and Page Type 
+- CLS by Network and Page Type
 - Performance heatmaps segmented by both dimensions
 
 ### Alerts
 
 Specialized alerts for:
+
 - Slow performance on critical pages
 - Poor performance on slow networks
 - Mobile experience on varying network qualities
@@ -116,6 +121,7 @@ return (
 ```
 
 2. **Monitoring Best Practices**:
+
    - Review the segmented dashboard regularly
    - Prioritize issues on critical page types
    - Pay special attention to mobile + slow network segments
@@ -124,14 +130,15 @@ return (
 3. **Recommended Thresholds**:
    | Metric | Fast Networks | Slow Networks (3G) | Slow Networks (2G) |
    |--------|--------------|--------------------|--------------------|
-   | LCP    | < 2.5s       | < 4.0s             | < 6.0s             |
-   | FID    | < 100ms      | < 200ms            | < 300ms            |
-   | CLS    | < 0.1        | < 0.1              | < 0.15             |
-   | TTFB   | < 600ms      | < 1.0s             | < 1.5s             |
+   | LCP | < 2.5s | < 4.0s | < 6.0s |
+   | FID | < 100ms | < 200ms | < 300ms |
+   | CLS | < 0.1 | < 0.1 | < 0.15 |
+   | TTFB | < 600ms | < 1.0s | < 1.5s |
 
 ## Future Enhancements
 
 Planned enhancements for segmentation:
+
 1. User role-based segmentation
 2. Geographic region segmentation with more granularity
 3. Feature flag-based segmentation for A/B testing

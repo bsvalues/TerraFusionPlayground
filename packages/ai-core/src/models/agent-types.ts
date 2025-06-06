@@ -10,7 +10,7 @@ export enum AgentStatus {
   READY = 'ready',
   WORKING = 'working',
   ERROR = 'error',
-  STOPPED = 'stopped'
+  STOPPED = 'stopped',
 }
 
 /**
@@ -21,32 +21,32 @@ export interface AgentConfig {
    * Maximum number of concurrent operations
    */
   maxConcurrentOperations?: number;
-  
+
   /**
    * LLM model identifier to use for this agent
    */
   modelName?: string;
-  
+
   /**
    * Temperature setting for LLM operations
    */
   temperature?: number;
-  
+
   /**
    * Maximum tokens to generate in LLM responses
    */
   maxTokens?: number;
-  
+
   /**
    * Whether to cache agent responses
    */
   enableCache?: boolean;
-  
+
   /**
    * Cache time-to-live in seconds
    */
   cacheTTL?: number;
-  
+
   /**
    * Additional agent-specific configuration
    */
@@ -61,22 +61,22 @@ export interface AgentCapability {
    * Unique capability identifier
    */
   id: string;
-  
+
   /**
    * Human-readable capability name
    */
   name: string;
-  
+
   /**
    * Capability description
    */
   description: string;
-  
+
   /**
    * Parameter schema for this capability
    */
   parameterSchema?: Record<string, any>;
-  
+
   /**
    * Function that implements this capability
    */
@@ -91,12 +91,12 @@ export interface AgentFactoryOptions {
    * Storage provider
    */
   storage: any;
-  
+
   /**
    * LLM service provider
    */
   llmService: any;
-  
+
   /**
    * Default agent configuration
    */
@@ -111,22 +111,22 @@ export interface AgentCreationOptions {
    * Agent type identifier
    */
   type: string;
-  
+
   /**
    * Agent identifier
    */
   id: string;
-  
+
   /**
    * Agent name
    */
   name: string;
-  
+
   /**
    * Agent description
    */
   description: string;
-  
+
   /**
    * Agent configuration
    */

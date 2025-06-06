@@ -1,14 +1,14 @@
 /**
  * Productivity Tracker Widget
- * 
+ *
  * Main container component for the productivity tracking features
  */
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Zap, LayoutPanelTop, LineChart } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Zap, LayoutPanelTop, LineChart } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import EnergyLevelSelector from './energy-level-selector';
 import FocusLevelSelector from './focus-level-selector';
 import ActivitySessionTracker from './activity-session-tracker';
@@ -18,27 +18,21 @@ const ProductivityTrackerWidget = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-  
+
   // Fetch current user's productivity data for today
-  const { 
-    data: todayData, 
-    isLoading: isLoadingToday 
-  } = useQuery({
+  const { data: todayData, isLoading: isLoadingToday } = useQuery({
     queryKey: ['/api/productivity/today'],
     queryFn: async () => {
       const response = await fetch('/api/productivity/today');
       if (!response.ok) {
-        throw new Error('Failed to fetch today\'s productivity data');
+        throw new Error("Failed to fetch today's productivity data");
       }
       return await response.json();
     },
   });
-  
+
   // Fetch active sessions
-  const { 
-    data: activeSessions = [], 
-    isLoading: isLoadingSessions 
-  } = useQuery({
+  const { data: activeSessions = [], isLoading: isLoadingSessions } = useQuery({
     queryKey: ['/api/productivity/sessions/active'],
     queryFn: async () => {
       const response = await fetch('/api/productivity/sessions/active');
@@ -49,7 +43,7 @@ const ProductivityTrackerWidget = () => {
     },
     refetchInterval: 30000, // Refresh every 30 seconds
   });
-  
+
   // Update energy level mutation
   const updateEnergyMutation = useMutation({
     mutationFn: async (energyLevel: string) => {
@@ -60,11 +54,11 @@ const ProductivityTrackerWidget = () => {
         },
         body: JSON.stringify({ energyLevel, date: today }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update energy level');
       }
-      
+
       return await response.json();
     },
     onSuccess: () => {
@@ -82,7 +76,7 @@ const ProductivityTrackerWidget = () => {
       });
     },
   });
-  
+
   // Update focus level mutation
   const updateFocusMutation = useMutation({
     mutationFn: async (focusLevel: string) => {
@@ -93,11 +87,11 @@ const ProductivityTrackerWidget = () => {
         },
         body: JSON.stringify({ focusLevel, date: today }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update focus level');
       }
-      
+
       return await response.json();
     },
     onSuccess: () => {
@@ -115,17 +109,17 @@ const ProductivityTrackerWidget = () => {
       });
     },
   });
-  
+
   // Handle energy level change
   const handleEnergyChange = (level: string) => {
     updateEnergyMutation.mutate(level);
   };
-  
+
   // Handle focus level change
   const handleFocusChange = (level: string) => {
     updateFocusMutation.mutate(level);
   };
-  
+
   return (
     <Card className="col-span-1">
       <CardHeader className="pb-2">
@@ -135,9 +129,7 @@ const ProductivityTrackerWidget = () => {
           </div>
         </div>
         <CardTitle className="mt-2">Developer Productivity</CardTitle>
-        <CardDescription>
-          Track your energy, focus, and activity sessions
-        </CardDescription>
+        <CardDescription>Track your energy, focus, and activity sessions</CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="energy" className="space-y-4">
@@ -152,7 +144,7 @@ const ProductivityTrackerWidget = () => {
               <LineChart className="h-3 w-3 mr-1" /> Stats
             </TabsTrigger>
           </TabsList>
-          
+
           {/* Energy & Focus Tab */}
           <TabsContent value="energy" className="space-y-4">
             <div className="space-y-4">
@@ -163,14 +155,14 @@ const ProductivityTrackerWidget = () => {
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
-                  <EnergyLevelSelector 
-                    currentLevel={todayData?.energyLevel || 'MEDIUM'} 
+                  <EnergyLevelSelector
+                    currentLevel={todayData?.energyLevel || 'MEDIUM'}
                     onLevelChange={handleEnergyChange}
                     isUpdating={updateEnergyMutation.isPending}
                   />
                 )}
               </div>
-              
+
               <div>
                 <p className="text-sm font-medium mb-2">Current Focus Level</p>
                 {isLoadingToday ? (
@@ -178,8 +170,8 @@ const ProductivityTrackerWidget = () => {
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
-                  <FocusLevelSelector 
-                    currentLevel={todayData?.focusLevel || 'MODERATE'} 
+                  <FocusLevelSelector
+                    currentLevel={todayData?.focusLevel || 'MODERATE'}
                     onLevelChange={handleFocusChange}
                     isUpdating={updateFocusMutation.isPending}
                   />
@@ -187,15 +179,12 @@ const ProductivityTrackerWidget = () => {
               </div>
             </div>
           </TabsContent>
-          
+
           {/* Activity Sessions Tab */}
           <TabsContent value="sessions">
-            <ActivitySessionTracker 
-              activeSessions={activeSessions} 
-              isLoading={isLoadingSessions}
-            />
+            <ActivitySessionTracker activeSessions={activeSessions} isLoading={isLoadingSessions} />
           </TabsContent>
-          
+
           {/* Productivity Stats Tab */}
           <TabsContent value="stats">
             <ProductivityStats />

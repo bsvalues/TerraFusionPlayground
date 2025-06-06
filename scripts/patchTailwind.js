@@ -5,7 +5,7 @@
 
 // eslint-disable-next-line
 module.exports = function terrafusionPlugin() {
-  return function({ addUtilities, theme, variants, e, addComponents, config, addBase }) {
+  return function ({ addUtilities, theme, variants, e, addComponents, config, addBase }) {
     // Add TerraFusion colors to Tailwind
     addComponents({
       // Primary colors
@@ -21,7 +21,7 @@ module.exports = function terrafusionPlugin() {
       '.text-primary-red': { color: 'var(--color-primary-red)' },
       '.text-primary-red-light': { color: 'var(--color-primary-red-light)' },
       '.text-primary-red-dark': { color: 'var(--color-primary-red-dark)' },
-      
+
       // Background colors
       '.bg-primary-blue': { backgroundColor: 'var(--color-primary-blue)' },
       '.bg-primary-blue-light': { backgroundColor: 'var(--color-primary-blue-light)' },
@@ -35,7 +35,7 @@ module.exports = function terrafusionPlugin() {
       '.bg-primary-red': { backgroundColor: 'var(--color-primary-red)' },
       '.bg-primary-red-light': { backgroundColor: 'var(--color-primary-red-light)' },
       '.bg-primary-red-dark': { backgroundColor: 'var(--color-primary-red-dark)' },
-      
+
       // Border colors
       '.border-primary-blue': { borderColor: 'var(--color-primary-blue)' },
       '.border-primary-blue-light': { borderColor: 'var(--color-primary-blue-light)' },
@@ -49,7 +49,7 @@ module.exports = function terrafusionPlugin() {
       '.border-primary-red': { borderColor: 'var(--color-primary-red)' },
       '.border-primary-red-light': { borderColor: 'var(--color-primary-red-light)' },
       '.border-primary-red-dark': { borderColor: 'var(--color-primary-red-dark)' },
-      
+
       // Accent colors
       '.text-primary-teal': { color: 'var(--color-accent-teal)' },
       '.text-primary-teal-dark': { color: 'hsl(180, 70%, 35%)' },

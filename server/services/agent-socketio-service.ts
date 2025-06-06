@@ -1,6 +1,6 @@
 /**
  * Agent Socket.IO Service
- * 
+ *
  * This service provides Socket.IO communication channels for agents,
  * allowing real-time bidirectional communication between agents and the frontend.
  * This is a drop-in replacement for agent-websocket-service.ts using Socket.IO
@@ -10,7 +10,12 @@
 
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
-import { AgentMessage, AgentMessageType, MessagePriority, AgentProtocol } from '../extensions/agent-protocol';
+import {
+  AgentMessage,
+  AgentMessageType,
+  MessagePriority,
+  AgentProtocol,
+} from '../extensions/agent-protocol';
 import { logger } from '../utils/logger';
 
 // Define LogOptions interface to fix TypeScript errors
@@ -24,7 +29,7 @@ interface LogOptions {
 export enum ClientType {
   FRONTEND = 'frontend',
   AGENT = 'agent',
-  EXTENSION = 'extension'
+  EXTENSION = 'extension',
 }
 
 /**
@@ -68,7 +73,7 @@ export class AgentSocketIOService {
 
   /**
    * Initialize the Socket.IO server
-   * 
+   *
    * @param server HTTP server to attach to
    */
   public initialize(server: HttpServer) {
@@ -80,16 +85,16 @@ export class AgentSocketIOService {
           origin: '*',
           methods: ['GET', 'POST'],
           credentials: true,
-          allowedHeaders: ['content-type']
+          allowedHeaders: ['content-type'],
         },
         allowEIO3: true,
         connectTimeout: 45000,
         // Add these settings for better compatibility with various proxies and improved connection stability
-        transports: ['websocket', 'polling'],  // Enable polling as fallback
+        transports: ['websocket', 'polling'], // Enable polling as fallback
         allowUpgrades: true,
         pingTimeout: 60000, // Increased ping timeout for better reliability
         pingInterval: 25000,
-        cookie: false
+        cookie: false,
       });
 
       if (!this.io) {
@@ -130,7 +135,7 @@ export class AgentSocketIOService {
         socket.emit('connection_established', {
           clientId,
           message: 'Connection established',
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
 
         // Store client information
@@ -138,7 +143,7 @@ export class AgentSocketIOService {
           socket,
           id: clientId,
           type: ClientType.FRONTEND, // Default to frontend - will be updated during auth
-          isAuthenticated: false
+          isAuthenticated: false,
         };
 
         this.clients.set(clientId, client);
@@ -172,10 +177,10 @@ export class AgentSocketIOService {
           try {
             // Check authentication
             if (!client.isAuthenticated) {
-              const result = { 
-                success: false, 
+              const result = {
+                success: false,
                 error: 'Not authenticated',
-                code: 'AUTH_REQUIRED' 
+                code: 'AUTH_REQUIRED',
               };
 
               if (typeof callback === 'function') {
@@ -200,10 +205,10 @@ export class AgentSocketIOService {
           try {
             // Check authentication
             if (!client.isAuthenticated) {
-              const result = { 
-                success: false, 
+              const result = {
+                success: false,
                 error: 'Not authenticated',
-                code: 'AUTH_REQUIRED' 
+                code: 'AUTH_REQUIRED',
               };
 
               if (typeof callback === 'function') {
@@ -244,10 +249,10 @@ export class AgentSocketIOService {
           try {
             // Check authentication
             if (!client.isAuthenticated) {
-              const result = { 
-                success: false, 
+              const result = {
+                success: false,
                 error: 'Not authenticated',
-                code: 'AUTH_REQUIRED' 
+                code: 'AUTH_REQUIRED',
               };
 
               if (typeof callback === 'function') {
@@ -265,7 +270,7 @@ export class AgentSocketIOService {
             // Send response
             const response = {
               success: true,
-              messages: pendingMsgs
+              messages: pendingMsgs,
             };
 
             if (typeof callback === 'function') {
@@ -274,7 +279,10 @@ export class AgentSocketIOService {
               socket.emit('pending_messages', response);
             }
           } catch (error) {
-            logger.error(`Error handling get_pending_messages event for client ${clientId}:`, error);
+            logger.error(
+              `Error handling get_pending_messages event for client ${clientId}:`,
+              error
+            );
             // Call the callback with error if provided
             if (typeof callback === 'function') {
               callback({ success: false, error: String(error) });
@@ -283,7 +291,7 @@ export class AgentSocketIOService {
         });
 
         // Disconnection
-        socket.on('disconnect', (reason) => {
+        socket.on('disconnect', reason => {
           logger.info(`Client ${clientId} disconnected from Socket.IO: ${reason}`);
 
           // Clean up client resources
@@ -301,21 +309,25 @@ export class AgentSocketIOService {
    */
   private setupAgentProtocolSubscriptions() {
     // Subscribe to all coordination messages
-    const coordinationSub = this.agentProtocol.subscribe('socketio-bridge', 'coordination', (message) => {
-      this.broadcastToType(ClientType.FRONTEND, 'agent_coordination', message);
-    });
+    const coordinationSub = this.agentProtocol.subscribe(
+      'socketio-bridge',
+      'coordination',
+      message => {
+        this.broadcastToType(ClientType.FRONTEND, 'agent_coordination', message);
+      }
+    );
 
     this.agentSubscriptions.set('coordination', coordinationSub);
 
     // Subscribe to all agent activities
-    const activitySub = this.agentProtocol.subscribe('socketio-bridge', 'activity', (message) => {
+    const activitySub = this.agentProtocol.subscribe('socketio-bridge', 'activity', message => {
       this.broadcastToType(ClientType.FRONTEND, 'agent_activity', message);
     });
 
     this.agentSubscriptions.set('activity', activitySub);
 
     // Subscribe to capability announcements
-    const capabilitySub = this.agentProtocol.subscribe('socketio-bridge', 'capability', (message) => {
+    const capabilitySub = this.agentProtocol.subscribe('socketio-bridge', 'capability', message => {
       this.broadcastToType(ClientType.FRONTEND, 'agent_capability', message);
     });
 
@@ -324,7 +336,7 @@ export class AgentSocketIOService {
 
   /**
    * Handle client authentication
-   * 
+   *
    * @param client Client information
    * @param data Authentication data
    * @return Authentication result
@@ -355,7 +367,7 @@ export class AgentSocketIOService {
           success: true,
           type: 'auth_success',
           message: `Authenticated as ${client.type}`,
-          clientId: client.id
+          clientId: client.id,
         };
 
         logger.info(`Client ${client.id} authenticated as ${client.type}`);
@@ -366,7 +378,7 @@ export class AgentSocketIOService {
           success: false,
           type: 'auth_failed',
           message: 'Missing client type',
-          code: 'INVALID_AUTH'
+          code: 'INVALID_AUTH',
         };
 
         return result;
@@ -377,14 +389,14 @@ export class AgentSocketIOService {
         success: false,
         type: 'auth_failed',
         message: String(error),
-        code: 'AUTH_ERROR'
+        code: 'AUTH_ERROR',
       };
     }
   }
 
   /**
    * Handle agent messages from clients
-   * 
+   *
    * @param client Client information
    * @param data Message data
    * @param callback Optional callback function
@@ -395,7 +407,7 @@ export class AgentSocketIOService {
         success: false,
         type: 'error',
         message: 'Invalid agent message',
-        code: 'INVALID_MESSAGE'
+        code: 'INVALID_MESSAGE',
       };
 
       if (typeof callback === 'function') {
@@ -407,48 +419,49 @@ export class AgentSocketIOService {
     }
 
     // Forward message to agent protocol
-    this.agentProtocol.sendMessage({
-      ...data.message,
-      senderId: `socket-client-${client.id}`,
-      timestamp: Date.now(),
-      type: data.message.type || AgentMessageType.QUERY
-    })
-    .then((messageId) => {
-      // Acknowledge message receipt
-      const response = {
-        success: true,
-        type: 'message_sent',
-        messageId,
-        originalMessage: data.message
-      };
+    this.agentProtocol
+      .sendMessage({
+        ...data.message,
+        senderId: `socket-client-${client.id}`,
+        timestamp: Date.now(),
+        type: data.message.type || AgentMessageType.QUERY,
+      })
+      .then(messageId => {
+        // Acknowledge message receipt
+        const response = {
+          success: true,
+          type: 'message_sent',
+          messageId,
+          originalMessage: data.message,
+        };
 
-      if (typeof callback === 'function') {
-        callback(response);
-      } else {
-        client.socket.emit('message_sent', response);
-      }
-    })
-    .catch((error) => {
-      // Report error
-      const response = {
-        success: false,
-        type: 'error',
-        message: 'Failed to send agent message',
-        code: 'MESSAGE_SEND_FAILED',
-        details: error.message
-      };
+        if (typeof callback === 'function') {
+          callback(response);
+        } else {
+          client.socket.emit('message_sent', response);
+        }
+      })
+      .catch(error => {
+        // Report error
+        const response = {
+          success: false,
+          type: 'error',
+          message: 'Failed to send agent message',
+          code: 'MESSAGE_SEND_FAILED',
+          details: error.message,
+        };
 
-      if (typeof callback === 'function') {
-        callback(response);
-      } else {
-        client.socket.emit('error', response);
-      }
-    });
+        if (typeof callback === 'function') {
+          callback(response);
+        } else {
+          client.socket.emit('error', response);
+        }
+      });
   }
 
   /**
    * Handle action requests from clients
-   * 
+   *
    * @param client Client information
    * @param data Action data
    * @param callback Optional callback function
@@ -459,7 +472,7 @@ export class AgentSocketIOService {
         success: false,
         type: 'error',
         message: 'Invalid action request',
-        code: 'INVALID_ACTION'
+        code: 'INVALID_ACTION',
       };
 
       if (typeof callback === 'function') {
@@ -471,54 +484,55 @@ export class AgentSocketIOService {
     }
 
     // Create and send an action message to the target agent
-    this.agentProtocol.sendMessage({
-      type: AgentMessageType.ACTION,
-      senderId: `socket-client-${client.id}`,
-      recipientId: data.targetAgent,
-      topic: 'action',
-      priority: MessagePriority.NORMAL,
-      payload: {
-        action: data.action,
-        params: data.params || {}
-      }
-    })
-    .then((messageId) => {
-      // Acknowledge action request
-      const response = {
-        success: true,
-        type: 'action_sent',
-        messageId,
-        action: data.action,
-        targetAgent: data.targetAgent
-      };
+    this.agentProtocol
+      .sendMessage({
+        type: AgentMessageType.ACTION,
+        senderId: `socket-client-${client.id}`,
+        recipientId: data.targetAgent,
+        topic: 'action',
+        priority: MessagePriority.NORMAL,
+        payload: {
+          action: data.action,
+          params: data.params || {},
+        },
+      })
+      .then(messageId => {
+        // Acknowledge action request
+        const response = {
+          success: true,
+          type: 'action_sent',
+          messageId,
+          action: data.action,
+          targetAgent: data.targetAgent,
+        };
 
-      if (typeof callback === 'function') {
-        callback(response);
-      } else {
-        client.socket.emit('action_sent', response);
-      }
-    })
-    .catch((error) => {
-      // Report error
-      const response = {
-        success: false,
-        type: 'error',
-        message: 'Failed to send action request',
-        code: 'ACTION_SEND_FAILED',
-        details: error.message
-      };
+        if (typeof callback === 'function') {
+          callback(response);
+        } else {
+          client.socket.emit('action_sent', response);
+        }
+      })
+      .catch(error => {
+        // Report error
+        const response = {
+          success: false,
+          type: 'error',
+          message: 'Failed to send action request',
+          code: 'ACTION_SEND_FAILED',
+          details: error.message,
+        };
 
-      if (typeof callback === 'function') {
-        callback(response);
-      } else {
-        client.socket.emit('error', response);
-      }
-    });
+        if (typeof callback === 'function') {
+          callback(response);
+        } else {
+          client.socket.emit('error', response);
+        }
+      });
   }
 
   /**
    * Send a message to a specific client
-   * 
+   *
    * @param clientId Client ID
    * @param eventName Event name
    * @param message Message to send
@@ -546,7 +560,7 @@ export class AgentSocketIOService {
 
   /**
    * Store a message for a client to retrieve later
-   * 
+   *
    * @param clientId Client ID
    * @param eventName Event name
    * @param message Message content
@@ -562,7 +576,7 @@ export class AgentSocketIOService {
     pendingMsgs.push({
       event: eventName,
       data: message,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
 
     // Limit the number of pending messages to 100
@@ -573,7 +587,7 @@ export class AgentSocketIOService {
 
   /**
    * Broadcast a message to all clients of a specific type
-   * 
+   *
    * @param clientType Client type to broadcast to
    * @param eventName Event name
    * @param message Message to send
@@ -601,7 +615,7 @@ export class AgentSocketIOService {
 
   /**
    * Broadcast a message to all authenticated clients
-   * 
+   *
    * @param eventName Event name
    * @param message Message to send
    */
@@ -628,21 +642,27 @@ export class AgentSocketIOService {
 
   /**
    * Send a notification to all clients of a specific type
-   * 
+   *
    * @param clientType Client type to notify
    * @param title Notification title
    * @param message Notification message
    * @param level Notification level (info, warning, error)
    * @param data Additional data
    */
-  public notify(clientType: ClientType, title: string, message: string, level: 'info' | 'warning' | 'error' = 'info', data?: any) {
+  public notify(
+    clientType: ClientType,
+    title: string,
+    message: string,
+    level: 'info' | 'warning' | 'error' = 'info',
+    data?: any
+  ) {
     const notificationData = {
       type: 'notification',
       title,
       message,
       level,
       timestamp: Date.now(),
-      data
+      data,
     };
 
     this.broadcastToType(clientType, 'notification', notificationData);
@@ -650,9 +670,9 @@ export class AgentSocketIOService {
 
   /**
    * Get routes handler for Express app
-   * 
+   *
    * This method provides the REST API fallback routes for the agent WebSocket service
-   * 
+   *
    * @returns Express router handlers
    */
   public getRestRoutes() {
@@ -665,12 +685,13 @@ export class AgentSocketIOService {
           if (!clientType) {
             return res.status(400).json({
               success: false,
-              message: 'Missing required fields'
+              message: 'Missing required fields',
             });
           }
 
           // Generate a client ID if not provided
-          const actualClientId = clientId || `rest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          const actualClientId =
+            clientId || `rest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
           // Store in pending messages map
           if (!this.pendingMessages.has(actualClientId)) {
@@ -680,13 +701,13 @@ export class AgentSocketIOService {
           // Return success
           return res.json({
             success: true,
-            clientId: actualClientId
+            clientId: actualClientId,
           });
         } catch (error) {
           logger.error('Error in REST auth endpoint:', error);
           return res.status(500).json({
             success: false,
-            message: 'Server error processing authentication'
+            message: 'Server error processing authentication',
           });
         }
       },
@@ -699,7 +720,7 @@ export class AgentSocketIOService {
           if (!recipientId || !message) {
             return res.status(400).json({
               success: false,
-              message: 'Missing required fields'
+              message: 'Missing required fields',
             });
           }
 
@@ -709,19 +730,19 @@ export class AgentSocketIOService {
             senderId: `rest-client-${req.body.clientId || 'anonymous'}`,
             recipientId,
             timestamp: Date.now(),
-            type: message.type || AgentMessageType.QUERY
+            type: message.type || AgentMessageType.QUERY,
           });
 
           // Return success
           return res.json({
             success: true,
-            messageId
+            messageId,
           });
         } catch (error) {
           logger.error('Error in REST message endpoint:', error);
           return res.status(500).json({
             success: false,
-            message: 'Server error processing message'
+            message: 'Server error processing message',
           });
         }
       },
@@ -734,7 +755,7 @@ export class AgentSocketIOService {
           if (!targetAgent || !action) {
             return res.status(400).json({
               success: false,
-              message: 'Missing required fields'
+              message: 'Missing required fields',
             });
           }
 
@@ -747,20 +768,20 @@ export class AgentSocketIOService {
             priority: MessagePriority.NORMAL,
             payload: {
               action,
-              params: params || {}
-            }
+              params: params || {},
+            },
           });
 
           // Return success
           return res.json({
             success: true,
-            messageId
+            messageId,
           });
         } catch (error) {
           logger.error('Error in REST action endpoint:', error);
           return res.status(500).json({
             success: false,
-            message: 'Server error processing action'
+            message: 'Server error processing action',
           });
         }
       },
@@ -773,7 +794,7 @@ export class AgentSocketIOService {
           if (!clientId) {
             return res.status(400).json({
               success: false,
-              message: 'Missing clientId query parameter'
+              message: 'Missing clientId query parameter',
             });
           }
 
@@ -786,16 +807,16 @@ export class AgentSocketIOService {
           // Return messages
           return res.json({
             success: true,
-            messages: pendingMsgs
+            messages: pendingMsgs,
           });
         } catch (error) {
           logger.error('Error in REST pending messages endpoint:', error);
           return res.status(500).json({
             success: false,
-            message: 'Server error retrieving pending messages'
+            message: 'Server error retrieving pending messages',
           });
         }
-      }
+      },
     };
   }
 }

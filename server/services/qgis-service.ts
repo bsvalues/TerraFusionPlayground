@@ -1,6 +1,6 @@
 /**
  * QGIS Integration Service
- * 
+ *
  * This service provides an interface to interact with QGIS Server features
  * and exposes QGIS capabilities to our TerraFusion platform.
  */
@@ -54,45 +54,45 @@ export class QGISService {
   private storage: IStorage;
   private projects: Map<string, QGISProject> = new Map();
   private featuresCache: Map<string, QGISFeature[]> = new Map();
-  
+
   constructor(storage: IStorage, config?: Partial<QGISServiceConfig>) {
     this.storage = storage;
-    
+
     // Default configuration
     this.config = {
       projectsDirectory: path.join(process.cwd(), 'qgis-projects'),
       cacheDirectory: path.join(process.cwd(), 'cache', 'qgis'),
       enableOfflineMode: true,
-      ...config
+      ...config,
     };
-    
+
     // Ensure directories exist
     this.ensureDirectories();
   }
-  
+
   /**
    * Initialize the QGIS service
    */
   public async initialize(): Promise<void> {
     console.log('Initializing QGIS Service...');
-    
+
     try {
       // Load all projects
       await this.loadProjects();
       console.log(`Loaded ${this.projects.size} QGIS projects`);
-      
+
       // Initialize cache
       if (this.config.enableOfflineMode) {
         await this.initializeCache();
       }
-      
+
       console.log('QGIS Service initialized successfully');
     } catch (error) {
       console.error('Failed to initialize QGIS Service:', error);
       throw error;
     }
   }
-  
+
   /**
    * Create directories needed for QGIS service
    */
@@ -104,7 +104,7 @@ export class QGISService {
       console.error('Failed to create QGIS service directories:', error);
     }
   }
-  
+
   /**
    * Load all QGIS projects from the projects directory
    */
@@ -112,7 +112,7 @@ export class QGISService {
     try {
       // In a real implementation, this would load .qgs or .qgz files
       // For this demo, we'll create sample projects
-      
+
       // Sample property assessment project
       const assessmentProject: QGISProject = {
         title: 'Property Assessment',
@@ -124,8 +124,8 @@ export class QGISService {
             source: 'parcels.geojson',
             visible: true,
             metadata: {
-              description: 'Property parcel boundaries'
-            }
+              description: 'Property parcel boundaries',
+            },
           },
           {
             id: 'zoning',
@@ -134,8 +134,8 @@ export class QGISService {
             source: 'zoning.geojson',
             visible: false,
             metadata: {
-              description: 'Zoning designations'
-            }
+              description: 'Zoning designations',
+            },
           },
           {
             id: 'aerial',
@@ -144,23 +144,23 @@ export class QGISService {
             source: 'aerial.tif',
             visible: false,
             metadata: {
-              description: 'High-resolution aerial photography'
-            }
-          }
+              description: 'High-resolution aerial photography',
+            },
+          },
         ],
         initialExtent: [-122.5, 47.1, -122.2, 47.3], // Sample for Benton County area
         projection: 'EPSG:4326',
-        description: 'Property assessment project for TerraFusion platform'
+        description: 'Property assessment project for TerraFusion platform',
       };
-      
+
       // Add projects to map
       this.projects.set('property-assessment', assessmentProject);
-      
+
       // Save project metadata to database
       // For development purposes, we'll just handle in-memory
       // In a production environment, this would save to the database
       console.log(`Loaded QGIS project: ${assessmentProject.title}`);
-      
+
       // Log the layers
       for (const layer of assessmentProject.layers) {
         console.log(`  - Layer: ${layer.name} (${layer.type})`);
@@ -170,7 +170,7 @@ export class QGISService {
       // In development, we can continue even if project loading fails
     }
   }
-  
+
   /**
    * Initialize the feature cache for offline mode
    */
@@ -179,32 +179,32 @@ export class QGISService {
     // For this demo, we'll just log that caching is enabled
     console.log('QGIS feature caching enabled');
   }
-  
+
   /**
    * Get all available QGIS projects
    */
-  public async getProjects(): Promise<{ id: string, title: string, description?: string }[]> {
-    const projects: { id: string, title: string, description?: string }[] = [];
-    
+  public async getProjects(): Promise<{ id: string; title: string; description?: string }[]> {
+    const projects: { id: string; title: string; description?: string }[] = [];
+
     // Convert Map to array of entries and then process
     Array.from(this.projects.entries()).forEach(([id, project]) => {
       projects.push({
         id,
         title: project.title,
-        description: project.description
+        description: project.description,
       });
     });
-    
+
     return projects;
   }
-  
+
   /**
    * Get a specific QGIS project by ID
    */
   public async getProject(projectId: string): Promise<QGISProject | null> {
     return this.projects.get(projectId) || null;
   }
-  
+
   /**
    * Get layers for a specific QGIS project
    */
@@ -212,7 +212,7 @@ export class QGISService {
     const project = this.projects.get(projectId);
     return project ? project.layers : [];
   }
-  
+
   /**
    * Get features from a specific layer in a QGIS project
    * This is a simplified implementation
@@ -222,10 +222,10 @@ export class QGISService {
     // For now, we return an empty array
     return [];
   }
-  
+
   /**
    * Get property boundaries as GeoJSON
-   * 
+   *
    * @param bbox Optional bounding box string in format 'minLon,minLat,maxLon,maxLat'
    * @param filter Optional filter string for property attributes
    */
@@ -233,60 +233,73 @@ export class QGISService {
     try {
       // In a real implementation, this would query QGIS server, PostGIS, or database
       // For now, return sample data
-      
+
       // Parse bbox if provided
       let bounds;
       if (bbox) {
         const [minLon, minLat, maxLon, maxLat] = bbox.split(',').map(Number);
         bounds = { minLon, minLat, maxLon, maxLat };
       }
-      
+
       // Generate sample property boundaries
       const features = [];
-      
+
       // Add some sample properties
       for (let i = 0; i < 20; i++) {
         // Generate property ID
         const propertyId = `BC-${10000 + i}`;
-        
+
         // Generate base coordinates (would be real coordinates in actual implementation)
-        const baseLon = -122.3 + (Math.random() * 0.1);
-        const baseLat = 47.2 + (Math.random() * 0.1);
-        
+        const baseLon = -122.3 + Math.random() * 0.1;
+        const baseLat = 47.2 + Math.random() * 0.1;
+
         // Skip if outside bounding box
-        if (bounds && (
-          baseLon < bounds.minLon || 
-          baseLon > bounds.maxLon || 
-          baseLat < bounds.minLat || 
-          baseLat > bounds.maxLat
-        )) {
+        if (
+          bounds &&
+          (baseLon < bounds.minLon ||
+            baseLon > bounds.maxLon ||
+            baseLat < bounds.minLat ||
+            baseLat > bounds.maxLat)
+        ) {
           continue;
         }
-        
+
         // Generate property polygon (simplified for example)
-        const size = 0.002 + (Math.random() * 0.003);
-        const coordinates = [[[
-          [baseLon, baseLat],
-          [baseLon + size, baseLat],
-          [baseLon + size, baseLat + size],
-          [baseLon, baseLat + size],
-          [baseLon, baseLat]
-        ]]];
-        
+        const size = 0.002 + Math.random() * 0.003;
+        const coordinates = [
+          [
+            [
+              [baseLon, baseLat],
+              [baseLon + size, baseLat],
+              [baseLon + size, baseLat + size],
+              [baseLon, baseLat + size],
+              [baseLon, baseLat],
+            ],
+          ],
+        ];
+
         // Generate property attributes
         const value = Math.floor(100000 + Math.random() * 500000);
-        const propertyTypes = ['residential', 'commercial', 'agricultural', 'industrial', 'vacant', 'exempt'];
+        const propertyTypes = [
+          'residential',
+          'commercial',
+          'agricultural',
+          'industrial',
+          'vacant',
+          'exempt',
+        ];
         const propertyStatuses = ['current', 'delinquent', 'exempt', 'appealed'];
-        
+
         const propertyType = propertyTypes[Math.floor(Math.random() * propertyTypes.length)];
-        const propertyStatus = propertyStatuses[Math.floor(Math.random() * propertyStatuses.length)];
-        
+        const propertyStatus =
+          propertyStatuses[Math.floor(Math.random() * propertyStatuses.length)];
+
         // Create GeoJSON feature
         features.push({
           type: 'Feature',
           geometry: {
             type: 'Polygon',
-            coordinates: coordinates
+            coordinates: coordinates,
           },
           properties: {
             propertyId: propertyId,
@@ -295,7 +308,11 @@ export class QGISService {
             assessedValue: value,
             marketValue: Math.floor(value * (1 + Math.random() * 0.3)),
             taxAmount: Math.floor(value * 0.01),
-            lastAssessmentDate: new Date(2022, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1),
+            lastAssessmentDate: new Date(
+              2022,
+              Math.floor(Math.random() * 12),
+              Math.floor(Math.random() * 28) + 1
+            ),
             propertyType: propertyType,
             propertyStatus: propertyStatus,
             yearBuilt: Math.floor(1950 + Math.random() * 70),
@@ -303,22 +320,22 @@ export class QGISService {
             landArea: Math.floor(5000 + Math.random() * 20000),
             bedrooms: Math.floor(2 + Math.random() * 4),
             bathrooms: Math.floor(1 + Math.random() * 3),
-            valueChangePercent: Math.floor(-20 + Math.random() * 40)
-          }
+            valueChangePercent: Math.floor(-20 + Math.random() * 40),
+          },
         });
       }
-      
+
       // Return GeoJSON FeatureCollection
       return {
         type: 'FeatureCollection',
-        features: features
+        features: features,
       };
     } catch (error) {
       console.error('Error getting property boundaries:', error);
       throw error;
     }
   }
-  
+
   /**
    * Get detailed information for a specific property
    */
@@ -326,15 +343,22 @@ export class QGISService {
     try {
       // In a real implementation, this would query QGIS server, PostGIS, or database
       // For now, return sample data
-      
+
       // Generate property details
       const value = Math.floor(100000 + Math.random() * 500000);
-      const propertyTypes = ['residential', 'commercial', 'agricultural', 'industrial', 'vacant', 'exempt'];
+      const propertyTypes = [
+        'residential',
+        'commercial',
+        'agricultural',
+        'industrial',
+        'vacant',
+        'exempt',
+      ];
       const propertyStatuses = ['current', 'delinquent', 'exempt', 'appealed'];
-      
+
       const propertyType = propertyTypes[Math.floor(Math.random() * propertyTypes.length)];
       const propertyStatus = propertyStatuses[Math.floor(Math.random() * propertyStatuses.length)];
-      
+
       return {
         propertyId: propertyId,
         address: `123 Main St, Benton County`,
@@ -342,7 +366,11 @@ export class QGISService {
         assessedValue: value,
         marketValue: Math.floor(value * (1 + Math.random() * 0.3)),
         taxAmount: Math.floor(value * 0.01),
-        lastAssessmentDate: new Date(2022, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1),
+        lastAssessmentDate: new Date(
+          2022,
+          Math.floor(Math.random() * 12),
+          Math.floor(Math.random() * 28) + 1
+        ),
         propertyType: propertyType,
         propertyStatus: propertyStatus,
         yearBuilt: Math.floor(1950 + Math.random() * 70),
@@ -350,14 +378,14 @@ export class QGISService {
         landArea: Math.floor(5000 + Math.random() * 20000),
         bedrooms: Math.floor(2 + Math.random() * 4),
         bathrooms: Math.floor(1 + Math.random() * 3),
-        valueChangePercent: Math.floor(-20 + Math.random() * 40)
+        valueChangePercent: Math.floor(-20 + Math.random() * 40),
       };
     } catch (error) {
       console.error(`Error getting property details for ${propertyId}:`, error);
       throw error;
     }
   }
-  
+
   /**
    * Search properties by address or ID
    */
@@ -365,53 +393,59 @@ export class QGISService {
     try {
       // In a real implementation, this would query a search index
       // For now, return sample data
-      
+
       // Generate search results
       const results = [];
-      
+
       // If query is empty, return empty results
       if (!query.trim()) {
         return [];
       }
-      
+
       // Generate 5 sample results
       for (let i = 0; i < 5; i++) {
         const propertyId = `BC-${10000 + i}`;
-        
+
         // Generate base coordinates
-        const baseLon = -122.3 + (Math.random() * 0.1);
-        const baseLat = 47.2 + (Math.random() * 0.1);
-        
+        const baseLon = -122.3 + Math.random() * 0.1;
+        const baseLat = 47.2 + Math.random() * 0.1;
+
         // Generate property polygon (simplified for example)
-        const size = 0.002 + (Math.random() * 0.003);
-        const coordinates = [[[
-          [baseLon, baseLat],
-          [baseLon + size, baseLat],
-          [baseLon + size, baseLat + size],
-          [baseLon, baseLat + size],
-          [baseLon, baseLat]
-        ]]];
-        
+        const size = 0.002 + Math.random() * 0.003;
+        const coordinates = [
+          [
+            [
+              [baseLon, baseLat],
+              [baseLon + size, baseLat],
+              [baseLon + size, baseLat + size],
+              [baseLon, baseLat + size],
+              [baseLon, baseLat],
+            ],
+          ],
+        ];
+
         results.push({
           propertyId: propertyId,
           address: `${1000 + i} Main St, Benton County`,
           ownerName: `Owner ${i}`,
           assessedValue: Math.floor(100000 + Math.random() * 500000),
-          propertyType: ['residential', 'commercial', 'agricultural'][Math.floor(Math.random() * 3)],
+          propertyType: ['residential', 'commercial', 'agricultural'][
+            Math.floor(Math.random() * 3)
+          ],
           geometry: {
             type: 'Polygon',
-            coordinates: coordinates
-          }
+            coordinates: coordinates,
+          },
         });
       }
-      
+
       return results;
     } catch (error) {
       console.error(`Error searching properties with query "${query}":`, error);
       throw error;
     }
   }
-  
+
   /**
    * Export map as image
    */
@@ -425,7 +459,7 @@ export class QGISService {
     try {
       // In a real implementation, this would use QGIS server to render the map
       // For now, return a placeholder buffer
-      
+
       // This is a placeholder - in a real implementation, we'd render using QGIS
       return Buffer.from('Placeholder image data');
     } catch (error) {
@@ -433,12 +467,12 @@ export class QGISService {
       throw error;
     }
   }
-  
+
   /**
    * Export a map to an image format
    */
   public async exportMap(
-    projectId: string, 
+    projectId: string,
     extent: [number, number, number, number],
     width: number,
     height: number,
@@ -449,20 +483,17 @@ export class QGISService {
     console.log(`Export map requested for project ${projectId} in ${format} format`);
     return null;
   }
-  
+
   /**
    * Perform a spatial query using QGIS analysis capabilities
    */
-  public async performSpatialQuery(
-    projectId: string,
-    query: any
-  ): Promise<any[]> {
+  public async performSpatialQuery(projectId: string, query: any): Promise<any[]> {
     // In a real implementation, this would use QGIS processing algorithms
     // For now, we return an empty array
     console.log(`Spatial query requested for project ${projectId}`);
     return [];
   }
-  
+
   /**
    * Get the capabilities of QGIS Server
    */
@@ -473,10 +504,10 @@ export class QGISService {
       processingAlgorithms: true,
       supportsSpatialQueries: true,
       supportsGeoJSON: true,
-      supportsRasterAnalysis: true
+      supportsRasterAnalysis: true,
     };
   }
-  
+
   /**
    * Get available basemaps
    */
@@ -489,38 +520,41 @@ export class QGISService {
         url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19,
-        preview: '/basemaps/osm-preview.png'
+        preview: '/basemaps/osm-preview.png',
       },
       {
         id: 'satellite',
         name: 'Satellite Imagery',
         type: 'xyz',
         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        attribution: 'Esri, Maxar, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community',
+        attribution:
+          'Esri, Maxar, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community',
         maxZoom: 19,
-        preview: '/basemaps/satellite-preview.png'
+        preview: '/basemaps/satellite-preview.png',
       },
       {
         id: 'terrain',
         name: 'Terrain',
         type: 'xyz',
         url: 'https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg',
-        attribution: 'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL',
+        attribution:
+          'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL',
         maxZoom: 18,
-        preview: '/basemaps/terrain-preview.png'
+        preview: '/basemaps/terrain-preview.png',
       },
       {
         id: 'topo',
         name: 'Topographic',
         type: 'xyz',
         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-        attribution: 'Esri, HERE, Garmin, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), (c) OpenStreetMap contributors, and the GIS User Community',
+        attribution:
+          'Esri, HERE, Garmin, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), (c) OpenStreetMap contributors, and the GIS User Community',
         maxZoom: 19,
-        preview: '/basemaps/topo-preview.png'
-      }
+        preview: '/basemaps/topo-preview.png',
+      },
     ];
   }
-  
+
   /**
    * Highlight the open source nature of QGIS
    */
@@ -540,8 +574,8 @@ export class QGISService {
         'Native support for PostgreSQL/PostGIS',
         'Python scripting and automation',
         'Full customization of the user interface',
-        'Regular release cycle with community support'
-      ]
+        'Regular release cycle with community support',
+      ],
     };
   }
 }

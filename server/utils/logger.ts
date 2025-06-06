@@ -1,6 +1,6 @@
 /**
  * Server-side logging utility
- * 
+ *
  * A centralized logging system with consistent formatting,
  * configurable log levels, and structured log output.
  */
@@ -11,16 +11,16 @@ export enum LogLevel {
   INFO = 1,
   WARN = 2,
   ERROR = 3,
-  NONE = 4
+  NONE = 4,
 }
 
 // Map log level strings to numeric values
 const LOG_LEVEL_MAP: Record<string, LogLevel> = {
-  'debug': LogLevel.DEBUG,
-  'info': LogLevel.INFO,
-  'warn': LogLevel.WARN,
-  'error': LogLevel.ERROR,
-  'none': LogLevel.NONE
+  debug: LogLevel.DEBUG,
+  info: LogLevel.INFO,
+  warn: LogLevel.WARN,
+  error: LogLevel.ERROR,
+  none: LogLevel.NONE,
 };
 
 // Default log level
@@ -31,14 +31,14 @@ const DEFAULT_LOG_LEVEL = process.env.NODE_ENV === 'production' ? LogLevel.INFO 
  */
 class Logger {
   private level: LogLevel;
-  
+
   /**
    * Create a new logger instance
    */
   constructor() {
     this.level = this.getLogLevelFromEnv();
   }
-  
+
   /**
    * Set the current log level
    * @param level Log level to set
@@ -53,14 +53,14 @@ class Logger {
       this.level = level;
     }
   }
-  
+
   /**
    * Get the current log level
    */
   public getLevel(): LogLevel {
     return this.level;
   }
-  
+
   /**
    * Log a debug message
    * @param message Message to log
@@ -71,7 +71,7 @@ class Logger {
       this.log('debug', message, data);
     }
   }
-  
+
   /**
    * Log an informational message
    * @param message Message to log
@@ -82,7 +82,7 @@ class Logger {
       this.log('info', message, data);
     }
   }
-  
+
   /**
    * Log a warning message
    * @param message Message to log
@@ -93,7 +93,7 @@ class Logger {
       this.log('warn', message, data);
     }
   }
-  
+
   /**
    * Log an error message
    * @param message Message to log
@@ -103,19 +103,19 @@ class Logger {
     if (this.level <= LogLevel.ERROR) {
       // Format error object if provided
       let formattedError = error;
-      
+
       if (error instanceof Error) {
         formattedError = {
           name: error.name,
           message: error.message,
-          stack: error.stack
+          stack: error.stack,
         };
       }
-      
+
       this.log('error', message, formattedError);
     }
   }
-  
+
   /**
    * Internal method to log a message with consistent formatting
    * @param level Log level
@@ -124,14 +124,14 @@ class Logger {
    */
   private log(level: string, message: string | object, data?: any): void {
     const timestamp = new Date().toISOString();
-    
+
     // Structure the log entry
     const logEntry: any = {
       timestamp,
       level,
-      component: 'app'
+      component: 'app',
     };
-    
+
     // Handle message formatting
     if (typeof message === 'string') {
       logEntry.message = message;
@@ -141,10 +141,10 @@ class Logger {
     } else {
       logEntry.message = message;
     }
-    
+
     // Format for console output
     const consoleOutput = JSON.stringify(logEntry);
-    
+
     // Output to appropriate console method
     switch (level) {
       case 'debug':
@@ -163,17 +163,17 @@ class Logger {
         console.log(consoleOutput);
     }
   }
-  
+
   /**
    * Get log level from environment variable
    */
   private getLogLevelFromEnv(): LogLevel {
     const envLevel = process.env.LOG_LEVEL;
-    
+
     if (envLevel && LOG_LEVEL_MAP[envLevel.toLowerCase()] !== undefined) {
       return LOG_LEVEL_MAP[envLevel.toLowerCase()];
     }
-    
+
     return DEFAULT_LOG_LEVEL;
   }
 }

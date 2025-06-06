@@ -9,14 +9,14 @@
  */
 export function formatDate(date: Date, format: string = 'MM/DD/YYYY'): string {
   if (!date) return '';
-  
+
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const seconds = String(date.getSeconds()).padStart(2, '0');
-  
+
   switch (format) {
     case 'YYYY-MM-DD':
       return `${year}-${month}-${day}`;
@@ -28,8 +28,18 @@ export function formatDate(date: Date, format: string = 'MM/DD/YYYY'): string {
       return `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`;
     case 'MMMM D, YYYY':
       const monthNames = [
-        'January', 'February', 'March', 'April', 'May', 'June', 
-        'July', 'August', 'September', 'October', 'November', 'December'
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
       ];
       return `${monthNames[date.getMonth()]} ${date.getDate()}, ${year}`;
     default:
@@ -96,7 +106,7 @@ export function isDateInRange(date: Date, startDate: Date, endDate: Date): boole
 export function fiscalYear(date: Date): number {
   const year = date.getFullYear();
   const month = date.getMonth();
-  
+
   // If month is January through June (0-5), fiscal year is the current year
   // If month is July through December (6-11), fiscal year is the next year
   return month < 6 ? year : year + 1;
@@ -113,6 +123,10 @@ export function isCurrentFiscalYear(date: Date): boolean {
 /**
  * Format a date range as a string
  */
-export function formatDateRange(startDate: Date, endDate: Date, format: string = 'MM/DD/YYYY'): string {
+export function formatDateRange(
+  startDate: Date,
+  endDate: Date,
+  format: string = 'MM/DD/YYYY'
+): string {
   return `${formatDate(startDate, format)} - ${formatDate(endDate, format)}`;
 }

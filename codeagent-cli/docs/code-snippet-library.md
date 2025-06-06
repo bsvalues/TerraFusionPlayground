@@ -25,6 +25,7 @@ codeagent snippet create
 ```
 
 This will start an interactive process that:
+
 1. Automatically detects your current development context (language, framework, file type)
 2. Prompts you for snippet details (name, description, etc.)
 3. Allows you to paste code from clipboard or enter it in an editor
@@ -94,6 +95,7 @@ codeagent snippet suggest
 ```
 
 This will:
+
 1. Analyze your current directory to detect:
    - Programming language
    - Framework
@@ -183,29 +185,29 @@ codeagent snippet list --favorite
 
 ## Command Reference
 
-| Command | Description |
-|---------|-------------|
-| `snippet create` | Create a new snippet |
-| `snippet list` | List all snippets |
-| `snippet view <id>` | View a specific snippet |
-| `snippet edit <id>` | Edit a snippet |
-| `snippet delete <id>` | Delete a snippet |
-| `snippet import <file>` | Import snippets from JSON |
-| `snippet export <file>` | Export snippets to JSON |
-| `snippet suggest` | Get context-aware suggestions |
+| Command                 | Description                   |
+| ----------------------- | ----------------------------- |
+| `snippet create`        | Create a new snippet          |
+| `snippet list`          | List all snippets             |
+| `snippet view <id>`     | View a specific snippet       |
+| `snippet edit <id>`     | Edit a snippet                |
+| `snippet delete <id>`   | Delete a snippet              |
+| `snippet import <file>` | Import snippets from JSON     |
+| `snippet export <file>` | Export snippets to JSON       |
+| `snippet suggest`       | Get context-aware suggestions |
 
 ### List Options
 
-| Option | Description |
-|--------|-------------|
-| `--tags <tags...>` | Filter by tags |
-| `--language <language>` | Filter by language |
-| `--favorite` | Show only favorites |
-| `--query <query>` | Search by text |
-| `--context` | Filter by current context |
+| Option                  | Description               |
+| ----------------------- | ------------------------- |
+| `--tags <tags...>`      | Filter by tags            |
+| `--language <language>` | Filter by language        |
+| `--favorite`            | Show only favorites       |
+| `--query <query>`       | Search by text            |
+| `--context`             | Filter by current context |
 
 ### Suggest Options
 
-| Option | Description |
-|--------|-------------|
+| Option             | Description                     |
+| ------------------ | ------------------------------- |
 | `--limit <number>` | Limit the number of suggestions |

@@ -1,6 +1,6 @@
 /**
  * LLM Service
- * 
+ *
  * This service provides a unified interface for interacting with multiple LLM providers.
  * It supports OpenAI (GPT models), Anthropic (Claude), and offers a flexible architecture
  * for routing different types of property analysis tasks to the most appropriate model.
@@ -13,9 +13,9 @@ import Anthropic from '@anthropic-ai/sdk';
 // Define a message type for LLM requests
 export type LLMRole = 'user' | 'assistant' | 'system';
 
-export type LLMMessage = { 
-  role: LLMRole; 
-  content: string 
+export type LLMMessage = {
+  role: LLMRole;
+  content: string;
 };
 
 // Type guard to check if a message is a valid LLM message
@@ -23,8 +23,8 @@ export function isValidLLMMessage(message: any): message is LLMMessage {
   return (
     typeof message === 'object' &&
     message !== null &&
-    ('role' in message) &&
-    ('content' in message) &&
+    'role' in message &&
+    'content' in message &&
     typeof message.content === 'string' &&
     (message.role === 'user' || message.role === 'assistant' || message.role === 'system')
   );
@@ -95,7 +95,7 @@ export class LLMService {
   private openaiClient: OpenAI | null = null;
   private anthropicClient: Anthropic | null = null;
   private config: LLMServiceConfig;
-  
+
   constructor(config?: LLMServiceConfig) {
     // Set default config if none provided
     // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
@@ -104,15 +104,15 @@ export class LLMService {
       defaultProvider: 'openai',
       defaultModels: {
         openai: 'gpt-4o',
-        anthropic: 'claude-3-7-sonnet-20250219'
-      }
+        anthropic: 'claude-3-7-sonnet-20250219',
+      },
     };
-    
+
     // Ensure defaultModels is initialized
     if (!this.config.defaultModels) {
       this.config.defaultModels = {
         openai: 'gpt-4o',
-        anthropic: 'claude-3-7-sonnet-20250219'
+        anthropic: 'claude-3-7-sonnet-20250219',
       };
     } else {
       // Ensure both providers are defined
@@ -123,29 +123,29 @@ export class LLMService {
         this.config.defaultModels.anthropic = 'claude-3-7-sonnet-20250219';
       }
     }
-    
+
     // Initialize OpenAI client if API key provided
-    if ((this.config.openaiApiKey || process.env.OPENAI_API_KEY)) {
+    if (this.config.openaiApiKey || process.env.OPENAI_API_KEY) {
       this.openaiClient = new OpenAI({
         apiKey: this.config.openaiApiKey || process.env.OPENAI_API_KEY,
       });
     }
-    
+
     // Initialize Anthropic client if API key provided
-    if ((this.config.anthropicApiKey || process.env.ANTHROPIC_API_KEY)) {
+    if (this.config.anthropicApiKey || process.env.ANTHROPIC_API_KEY) {
       this.anthropicClient = new Anthropic({
         apiKey: this.config.anthropicApiKey || process.env.ANTHROPIC_API_KEY,
       });
     }
   }
-  
+
   /**
    * Check if the service is properly configured
    */
   public isConfigured(): boolean {
     return !!(this.openaiClient || this.anthropicClient);
   }
-  
+
   /**
    * Get models available from configured LLM providers
    */
@@ -155,22 +155,24 @@ export class LLMService {
       anthropic: !!this.anthropicClient,
     };
   }
-  
+
   /**
    * Update the LLM service configuration
    */
-  public setConfig(config: {provider?: 'openai' | 'anthropic', apiKey?: string}): void {
+  public setConfig(config: { provider?: 'openai' | 'anthropic'; apiKey?: string }): void {
     // Update default provider if specified
     if (config.provider) {
       this.config.defaultProvider = config.provider;
     }
-    
+
     // Update API key based on the provider
     if (config.apiKey) {
-      if (config.provider === 'anthropic' || 
-          (!config.provider && this.config.defaultProvider === 'anthropic')) {
+      if (
+        config.provider === 'anthropic' ||
+        (!config.provider && this.config.defaultProvider === 'anthropic')
+      ) {
         this.config.anthropicApiKey = config.apiKey;
-        
+
         // Initialize or reinitialize the Anthropic client
         this.anthropicClient = new Anthropic({
           apiKey: config.apiKey,
@@ -178,7 +180,7 @@ export class LLMService {
       } else {
         // Default to OpenAI if provider is not specified or is openai
         this.config.openaiApiKey = config.apiKey;
-        
+
         // Initialize or reinitialize the OpenAI client
         this.openaiClient = new OpenAI({
           apiKey: config.apiKey,
@@ -186,14 +188,21 @@ export class LLMService {
       }
     }
   }
-  
+
   /**
    * Route a request to the appropriate LLM provider based on task type
    */
   private getProviderForTask(taskType: string): 'openai' | 'anthropic' {
-    if (this.config.specializationRouting?.[taskType as keyof typeof this.config.specializationRouting]) {
-      const provider = this.config.specializationRouting[taskType as keyof typeof this.config.specializationRouting];
-      
+    if (
+      this.config.specializationRouting?.[
+        taskType as keyof typeof this.config.specializationRouting
+      ]
+    ) {
+      const provider =
+        this.config.specializationRouting[
+          taskType as keyof typeof this.config.specializationRouting
+        ];
+
       // Check if the specified provider is available
       if (provider === 'openai' && this.openaiClient) {
         return 'openai';
@@ -201,18 +210,18 @@ export class LLMService {
         return 'anthropic';
       }
     }
-    
+
     // Fall back to default provider if specialized routing not specified or provider not available
     if (this.config.defaultProvider === 'openai' && this.openaiClient) {
       return 'openai';
     } else if (this.config.defaultProvider === 'anthropic' && this.anthropicClient) {
       return 'anthropic';
     }
-    
+
     // Final fallback: use whatever is available
     return this.openaiClient ? 'openai' : 'anthropic';
   }
-  
+
   /**
    * Send a prompt to OpenAI
    */
@@ -225,22 +234,22 @@ export class LLMService {
     if (!this.openaiClient) {
       throw new Error('OpenAI client not configured');
     }
-    
+
     const selectedModel = model || this.config.defaultModels.openai || 'gpt-4o';
-    
+
     try {
       const requestOptions: any = {
         model: selectedModel,
         messages,
         temperature,
       };
-      
+
       if (responseFormat) {
         requestOptions.response_format = responseFormat;
       }
-      
+
       const response = await this.openaiClient.chat.completions.create(requestOptions);
-      
+
       return {
         text: response.choices[0]?.message.content || '',
         model: selectedModel,
@@ -253,10 +262,12 @@ export class LLMService {
       };
     } catch (error) {
       console.error('OpenAI API error:', error);
-      throw new Error(`OpenAI API error: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `OpenAI API error: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
-  
+
   /**
    * Send a prompt to Anthropic
    */
@@ -268,28 +279,30 @@ export class LLMService {
     if (!this.anthropicClient) {
       throw new Error('Anthropic client not configured');
     }
-    
-    const selectedModel = model || this.config.defaultModels.anthropic || 'claude-3-7-sonnet-20250219';
-    
+
+    const selectedModel =
+      model || this.config.defaultModels.anthropic || 'claude-3-7-sonnet-20250219';
+
     try {
       // Convert messages to Anthropic format
       const formattedMessages = messages.map(msg => ({
         role: msg.role === 'system' ? 'user' : msg.role,
         content: msg.content,
       }));
-      
+
       const response = await this.anthropicClient.messages.create({
         model: selectedModel,
         messages: formattedMessages,
         temperature,
         max_tokens: 4000,
       });
-      
+
       // Check if the response has content and if the first content item has text
-      const contentText = response.content[0] && 'text' in response.content[0] 
-        ? response.content[0].text 
-        : JSON.stringify(response.content);
-        
+      const contentText =
+        response.content[0] && 'text' in response.content[0]
+          ? response.content[0].text
+          : JSON.stringify(response.content);
+
       return {
         text: contentText,
         model: selectedModel,
@@ -302,10 +315,12 @@ export class LLMService {
       };
     } catch (error) {
       console.error('Anthropic API error:', error);
-      throw new Error(`Anthropic API error: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Anthropic API error: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
-  
+
   /**
    * Ensure messages have the correct type for LLM prompting
    */
@@ -313,33 +328,35 @@ export class LLMService {
     if (!Array.isArray(messages)) {
       throw new Error('Messages must be an array');
     }
-    
+
     // If messages are already valid, return them
     if (isValidLLMMessageArray(messages)) {
       return messages;
     }
-    
+
     // Otherwise, try to convert them to valid format
     return messages.map(msg => {
       if (!msg || typeof msg !== 'object') {
         throw new Error(`Invalid message format: ${JSON.stringify(msg)}`);
       }
-      
+
       // Check if message has required properties
       if (!('role' in msg) || !('content' in msg)) {
         throw new Error(`Message is missing required properties: ${JSON.stringify(msg)}`);
       }
-      
+
       // Validate role
       const role = String(msg.role).toLowerCase();
       if (role !== 'user' && role !== 'assistant' && role !== 'system') {
-        throw new Error(`Invalid role in message: ${role}. Must be 'user', 'assistant', or 'system'`);
+        throw new Error(
+          `Invalid role in message: ${role}. Must be 'user', 'assistant', or 'system'`
+        );
       }
-      
+
       // Return properly formatted message
       return {
         role: role as LLMRole,
-        content: String(msg.content)
+        content: String(msg.content),
       };
     });
   }
@@ -358,7 +375,7 @@ export class LLMService {
   ): Promise<LLMResponse> {
     const provider = options?.provider || this.config.defaultProvider;
     const validatedMessages = this.validateMessages(messages);
-    
+
     if (provider === 'openai' && this.openaiClient) {
       return this.promptOpenAI(
         validatedMessages as ChatCompletionMessageParam[],
@@ -367,27 +384,20 @@ export class LLMService {
         options?.responseFormat
       );
     } else if (provider === 'anthropic' && this.anthropicClient) {
-      return this.promptAnthropic(
-        validatedMessages,
-        options?.model,
-        options?.temperature
-      );
+      return this.promptAnthropic(validatedMessages, options?.model, options?.temperature);
     } else {
       throw new Error(`No LLM provider available for ${provider}`);
     }
   }
-  
+
   /**
    * Analyze property trends using the LLM
    */
-  public async analyzePropertyTrends(
-    request: PropertyTrendAnalysisRequest
-  ): Promise<LLMResponse> {
+  public async analyzePropertyTrends(request: PropertyTrendAnalysisRequest): Promise<LLMResponse> {
     const provider = this.getProviderForTask('trendAnalysis');
-    
+
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an expert property value analyst specializing in trend analysis. 
+    const systemPrompt = `You are an expert property value analyst specializing in trend analysis. 
        Analyze the provided property data and historical trends to provide a detailed 
        assessment of value trends over time. Consider market factors, seasonal patterns, 
        and external economic indicators. Your analysis should be data-driven, objective, 
@@ -403,9 +413,8 @@ export class LLMService {
        4. Key Factors Influencing Value
        5. Future Outlook
        6. Confidence Assessment`;
-    
-    const userPrompt = 
-      `Property ID: ${request.propertyId}
+
+    const userPrompt = `Property ID: ${request.propertyId}
        
        Property Data:
        ${JSON.stringify(request.propertyData, null, 2)}
@@ -415,34 +424,34 @@ export class LLMService {
        ${request.comparables ? `Comparable Properties:\n${JSON.stringify(request.comparables, null, 2)}` : ''}
        
        ${request.marketFactors ? `Market Factors to Consider:\n${request.marketFactors.join(', ')}` : ''}`;
-    
+
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM
     return this.prompt(messages, {
       provider,
       temperature: 0.2,
       // Use a more advanced model for comprehensive analysis
-      model: request.analysisDepth === 'comprehensive' 
-        ? (provider === 'openai' ? 'gpt-4o' : 'claude-3-opus-20240229')
-        : undefined
+      model:
+        request.analysisDepth === 'comprehensive'
+          ? provider === 'openai'
+            ? 'gpt-4o'
+            : 'claude-3-opus-20240229'
+          : undefined,
     });
   }
-  
+
   /**
    * Generate property valuation using the LLM
    */
-  public async generatePropertyValuation(
-    request: PropertyValuationRequest
-  ): Promise<LLMResponse> {
+  public async generatePropertyValuation(request: PropertyValuationRequest): Promise<LLMResponse> {
     const provider = this.getProviderForTask('propertyValuation');
-    
+
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an expert property appraiser with decades of experience in real estate valuation.
+    const systemPrompt = `You are an expert property appraiser with decades of experience in real estate valuation.
        Your task is to analyze the provided property data and generate a comprehensive valuation 
        using multiple methodologies: comparable sales approach, cost approach, and income approach where applicable.
        
@@ -454,9 +463,8 @@ export class LLMService {
        5. Key value drivers and risk factors
        
        Format your response as a professional appraisal report with clear sections and numerical analysis.`;
-    
-    const userPrompt = 
-      `Property ID: ${request.propertyId}
+
+    const userPrompt = `Property ID: ${request.propertyId}
        
        Property Data:
        ${JSON.stringify(request.propertyData, null, 2)}
@@ -470,31 +478,28 @@ export class LLMService {
        ${request.marketConditions ? `Market Conditions:\n${JSON.stringify(request.marketConditions, null, 2)}` : ''}
        
        ${request.specialFactors ? `Special Factors to Consider:\n${request.specialFactors.join(', ')}` : ''}`;
-    
+
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM
     return this.prompt(messages, {
       provider,
       temperature: 0.2,
-      responseFormat: { type: 'text' }
+      responseFormat: { type: 'text' },
     });
   }
-  
+
   /**
    * Analyze neighborhood data using the LLM
    */
-  public async analyzeNeighborhood(
-    request: NeighborhoodAnalysisRequest
-  ): Promise<LLMResponse> {
+  public async analyzeNeighborhood(request: NeighborhoodAnalysisRequest): Promise<LLMResponse> {
     const provider = this.getProviderForTask('neighborhoodAnalysis');
-    
+
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an expert in neighborhood analysis and real estate market trends.
+    const systemPrompt = `You are an expert in neighborhood analysis and real estate market trends.
        Your task is to analyze the provided neighborhood data and generate a comprehensive 
        report on property distribution, value patterns, demographic influences, and future outlook.
        
@@ -508,9 +513,8 @@ export class LLMService {
        
        Format your response as a structured neighborhood analysis report with clear sections and data-driven insights.
        Include specific numerical analysis where possible.`;
-    
-    const userPrompt = 
-      `Zip Code: ${request.zipCode}
+
+    const userPrompt = `Zip Code: ${request.zipCode}
        Timeframe: ${request.timeframe || 'Current'}
        
        Properties in Neighborhood:
@@ -519,20 +523,20 @@ export class LLMService {
        ${request.demographicData ? `Demographic Data:\n${JSON.stringify(request.demographicData, null, 2)}` : ''}
        
        ${request.economicIndicators ? `Economic Indicators:\n${JSON.stringify(request.economicIndicators, null, 2)}` : ''}`;
-    
+
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM
     return this.prompt(messages, {
       provider,
       temperature: 0.3,
-      responseFormat: { type: 'text' }
+      responseFormat: { type: 'text' },
     });
   }
-  
+
   /**
    * Predict future property value using the LLM
    */
@@ -545,10 +549,9 @@ export class LLMService {
     marketFactorExplanation?: string
   ): Promise<LLMResponse> {
     const provider = this.getProviderForTask('futurePrediction');
-    
+
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an expert in property value forecasting and predictive analytics.
+    const systemPrompt = `You are an expert in property value forecasting and predictive analytics.
        Your task is to generate a detailed prediction of future property value based on 
        historical data, current property characteristics, and market factors.
        
@@ -583,9 +586,8 @@ export class LLMService {
            "pessimistic": {"value": number, "description": "string"}
          }
        }`;
-    
-    const userPrompt = 
-      `Property ID: ${propertyId}
+
+    const userPrompt = `Property ID: ${propertyId}
        Years Ahead to Predict: ${yearsAhead}
        
        Property Data:
@@ -597,20 +599,20 @@ export class LLMService {
        ${marketFactors ? `Market Factors to Consider:\n${marketFactors.join('\n- ')}` : ''}
        
        ${marketFactorExplanation ? `\nDetailed Market Factor Analysis:\n${marketFactorExplanation}` : ''}`;
-    
+
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM with JSON format response
     return this.prompt(messages, {
       provider,
       temperature: 0.2,
-      responseFormat: { type: 'json_object' }
+      responseFormat: { type: 'json_object' },
     });
   }
-  
+
   /**
    * Detect anomalies in property valuation using the LLM
    */
@@ -621,10 +623,9 @@ export class LLMService {
     threshold: number = 0.25
   ): Promise<LLMResponse> {
     const provider = this.getProviderForTask('anomalyDetection');
-    
+
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an expert in property valuation and anomaly detection.
+    const systemPrompt = `You are an expert in property valuation and anomaly detection.
        Your task is to analyze the provided property data and identify potential anomalies
        in the property valuation compared to similar properties.
        
@@ -660,9 +661,8 @@ export class LLMService {
          },
          "analysisDate": "string (ISO date)"
        }`;
-    
-    const userPrompt = 
-      `Property ID: ${propertyId}
+
+    const userPrompt = `Property ID: ${propertyId}
        Anomaly Threshold: ${threshold * 100}%
        
        Property Data:
@@ -670,34 +670,33 @@ export class LLMService {
        
        Comparable Properties:
        ${JSON.stringify(comparables, null, 2)}`;
-    
+
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM with JSON format response
     return this.prompt(messages, {
       provider,
       temperature: 0.1, // Lower temperature for more deterministic results
-      responseFormat: { type: 'json_object' }
+      responseFormat: { type: 'json_object' },
     });
   }
-  
+
   /**
    * Analyze property with enhanced capabilities for the superintelligence agent
    */
   public async analyzeProperty(options: {
-    provider: string; 
-    model: string; 
-    property: any; 
+    provider: string;
+    model: string;
+    property: any;
     landRecords: any[];
     improvements: any[];
     analysisDepth: string;
   }): Promise<any> {
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an advanced AI property analyst with superintelligent capabilities.
+    const systemPrompt = `You are an advanced AI property analyst with superintelligent capabilities.
        Your task is to perform an exceptionally deep analysis of the provided property data.
        
        Analysis depth requested: ${options.analysisDepth}
@@ -717,9 +716,8 @@ export class LLMService {
        
        Format your response as a structured JSON object with clear sections and numerical assessments.
        Ensure extreme depth while maintaining analytical clarity.`;
-    
-    const userPrompt = 
-      `Property Data:
+
+    const userPrompt = `Property Data:
        ${JSON.stringify(options.property, null, 2)}
        
        Land Records:
@@ -727,21 +725,21 @@ export class LLMService {
        
        Improvements:
        ${JSON.stringify(options.improvements, null, 2)}`;
-    
+
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM
     return this.prompt(messages, {
       provider: options.provider as 'openai' | 'anthropic',
       model: options.model,
       temperature: 0.2,
-      responseFormat: { type: 'json_object' }
+      responseFormat: { type: 'json_object' },
     });
   }
-  
+
   /**
    * Predict regional trends using advanced capabilities for the superintelligence agent
    */
@@ -755,8 +753,7 @@ export class LLMService {
     timeframeYears: number;
   }): Promise<any> {
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an advanced AI regional market analyst with superintelligent capabilities.
+    const systemPrompt = `You are an advanced AI regional market analyst with superintelligent capabilities.
        Your task is to predict and analyze property market trends for the specified region.
        
        Timeframe for prediction: ${options.timeframeYears} years
@@ -780,9 +777,8 @@ export class LLMService {
        - Categorical performance predictions by property type
        - Risk-adjusted forecasts
        - Confidence intervals for all predictions`;
-    
-    const userPrompt = 
-      `Region: ${options.region}
+
+    const userPrompt = `Region: ${options.region}
        Timeframe: ${options.timeframeYears} years
        
        Properties in Region:
@@ -793,21 +789,21 @@ export class LLMService {
        
        Economic Indicators:
        ${JSON.stringify(options.economicIndicators, null, 2)}`;
-    
+
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM
     return this.prompt(messages, {
       provider: options.provider as 'openai' | 'anthropic',
       model: options.model,
       temperature: 0.2,
-      responseFormat: { type: 'json_object' }
+      responseFormat: { type: 'json_object' },
     });
   }
-  
+
   /**
    * Generate regulatory scenarios using advanced capabilities for the superintelligence agent
    */
@@ -821,8 +817,7 @@ export class LLMService {
     scenarioCount: number;
   }): Promise<any> {
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an advanced AI regulatory analyst with superintelligent capabilities.
+    const systemPrompt = `You are an advanced AI regulatory analyst with superintelligent capabilities.
        Your task is to generate potential regulatory scenarios that could impact property values.
        
        Number of scenarios to generate: ${options.scenarioCount}
@@ -845,9 +840,8 @@ export class LLMService {
        - Adaptation strategies
        
        Format your response as a structured JSON object with an array of scenarios.`;
-    
-    const userPrompt = 
-      `Region: ${options.region}
+
+    const userPrompt = `Region: ${options.region}
        Property Type: ${options.propertyType || 'All types'}
        Scenario Count: ${options.scenarioCount}
        
@@ -856,21 +850,21 @@ export class LLMService {
        
        Historical Regulatory Changes:
        ${JSON.stringify(options.historicalRegulatory, null, 2)}`;
-    
+
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM
     return this.prompt(messages, {
       provider: options.provider as 'openai' | 'anthropic',
       model: options.model,
       temperature: 0.3, // Slightly higher temperature for creative scenario generation
-      responseFormat: { type: 'json_object' }
+      responseFormat: { type: 'json_object' },
     });
   }
-  
+
   /**
    * Synthesize multimodal data using advanced capabilities for the superintelligence agent
    */
@@ -881,8 +875,7 @@ export class LLMService {
     synthesisDepth: string;
   }): Promise<any> {
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an advanced AI data synthesizer with superintelligent capabilities.
+    const systemPrompt = `You are an advanced AI data synthesizer with superintelligent capabilities.
        Your task is to synthesize multiple data modalities into coherent property insights.
        
        Synthesis depth: ${options.synthesisDepth}
@@ -902,7 +895,7 @@ export class LLMService {
        - Emergent insights not visible in individual sources
        - Confidence metrics for synthesized findings
        - Recommendations based on synthesized understanding`;
-    
+
     // Generate a detailed description of what data sources are available
     const dataSourcesOverview = Object.entries(options.dataSources)
       .map(([key, value]) => {
@@ -913,28 +906,27 @@ export class LLMService {
         }
       })
       .join(', ');
-    
-    const userPrompt = 
-      `Synthesis Depth: ${options.synthesisDepth}
+
+    const userPrompt = `Synthesis Depth: ${options.synthesisDepth}
        Available Data Sources: ${dataSourcesOverview}
        
        Data for Synthesis:
        ${JSON.stringify(options.dataSources, null, 2)}`;
-    
+
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM
     return this.prompt(messages, {
       provider: options.provider as 'openai' | 'anthropic',
       model: options.model,
       temperature: 0.2,
-      responseFormat: { type: 'json_object' }
+      responseFormat: { type: 'json_object' },
     });
   }
-  
+
   /**
    * Analyze property scenario using advanced capabilities for the superintelligence agent
    */
@@ -946,8 +938,7 @@ export class LLMService {
     timeframe: number;
   }): Promise<any> {
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an advanced AI scenario analyst with superintelligent capabilities.
+    const systemPrompt = `You are an advanced AI scenario analyst with superintelligent capabilities.
        Your task is to analyze how a specific scenario would impact a property over time.
        
        Timeframe: ${options.timeframe} years
@@ -965,30 +956,29 @@ export class LLMService {
        
        Format your response as a structured JSON object with clear sections, quantified impacts,
        and confidence assessments for each projection.`;
-    
-    const userPrompt = 
-      `Property:
+
+    const userPrompt = `Property:
        ${JSON.stringify(options.property, null, 2)}
        
        Scenario:
        ${JSON.stringify(options.scenario, null, 2)}
        
        Analysis Timeframe: ${options.timeframe} years`;
-    
+
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM
     return this.prompt(messages, {
       provider: options.provider as 'openai' | 'anthropic',
       model: options.model,
       temperature: 0.2,
-      responseFormat: { type: 'json_object' }
+      responseFormat: { type: 'json_object' },
     });
   }
-  
+
   /**
    * Synthesize model outputs using advanced capabilities for the superintelligence agent
    */
@@ -999,8 +989,7 @@ export class LLMService {
     synthesisType: string;
   }): Promise<any> {
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an advanced AI model synthesizer with superintelligent capabilities.
+    const systemPrompt = `You are an advanced AI model synthesizer with superintelligent capabilities.
        Your task is to synthesize outputs from multiple AI models into a coherent, consensus output.
        
        Synthesis type: ${options.synthesisType}
@@ -1015,34 +1004,35 @@ export class LLMService {
        
        Format your response as a structured JSON object appropriate for the synthesis type,
        with clear explanations of how the synthesis was performed and confidence metrics.`;
-    
+
     // Generate a summary of models used
-    const modelSummary = options.modelResults.map(result => {
-      return `Model: ${result.provider}/${result.model}, Weight: ${result.weight}`;
-    }).join('\n');
-    
-    const userPrompt = 
-      `Synthesis Type: ${options.synthesisType}
+    const modelSummary = options.modelResults
+      .map(result => {
+        return `Model: ${result.provider}/${result.model}, Weight: ${result.weight}`;
+      })
+      .join('\n');
+
+    const userPrompt = `Synthesis Type: ${options.synthesisType}
        Models Used:
        ${modelSummary}
        
        Model Results to Synthesize:
        ${JSON.stringify(options.modelResults, null, 2)}`;
-    
+
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM
     return this.prompt(messages, {
       provider: options.provider as 'openai' | 'anthropic',
       model: options.model,
       temperature: 0.1, // Lower temperature for more deterministic synthesis
-      responseFormat: { type: 'json_object' }
+      responseFormat: { type: 'json_object' },
     });
   }
-  
+
   /**
    * Synthesize regulatory scenarios using advanced capabilities for the superintelligence agent
    */
@@ -1053,8 +1043,7 @@ export class LLMService {
     scenarioCount: number;
   }): Promise<any> {
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an advanced AI scenario synthesizer with superintelligent capabilities.
+    const systemPrompt = `You are an advanced AI scenario synthesizer with superintelligent capabilities.
        Your task is to synthesize regulatory scenarios from multiple AI models into a coherent set.
        
        Number of scenarios to synthesize: ${options.scenarioCount}
@@ -1069,34 +1058,35 @@ export class LLMService {
        
        Format your response as a structured JSON object with an array of synthesized scenarios,
        each with detailed descriptions, impact assessments, and probability estimates.`;
-    
+
     // Generate a summary of scenarios from each model
-    const scenarioSummary = options.scenariosFromModels.map(modelResult => {
-      return `Model: ${modelResult.provider}/${modelResult.model}, Scenarios: ${modelResult.scenarios.length}`;
-    }).join('\n');
-    
-    const userPrompt = 
-      `Scenario Count: ${options.scenarioCount}
+    const scenarioSummary = options.scenariosFromModels
+      .map(modelResult => {
+        return `Model: ${modelResult.provider}/${modelResult.model}, Scenarios: ${modelResult.scenarios.length}`;
+      })
+      .join('\n');
+
+    const userPrompt = `Scenario Count: ${options.scenarioCount}
        Models:
        ${scenarioSummary}
        
        Scenarios from All Models:
        ${JSON.stringify(options.scenariosFromModels, null, 2)}`;
-    
+
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM
     return this.prompt(messages, {
       provider: options.provider as 'openai' | 'anthropic',
       model: options.model,
       temperature: 0.2,
-      responseFormat: { type: 'json_object' }
+      responseFormat: { type: 'json_object' },
     });
   }
-  
+
   /**
    * Analyze regulatory scenario impact using advanced capabilities for the superintelligence agent
    */
@@ -1109,8 +1099,7 @@ export class LLMService {
     properties: any[];
   }): Promise<any> {
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an advanced AI regulatory impact analyst with superintelligent capabilities.
+    const systemPrompt = `You are an advanced AI regulatory impact analyst with superintelligent capabilities.
        Your task is to analyze the impact of a regulatory scenario on properties in a region.
        
        Region: ${options.region}
@@ -1128,9 +1117,8 @@ export class LLMService {
        
        Format your response as a structured JSON object with impact metrics,
        quantified assessments, and confidence levels.`;
-    
-    const userPrompt = 
-      `Region: ${options.region}
+
+    const userPrompt = `Region: ${options.region}
        Property Type: ${options.propertyType || 'All types'}
        
        Regulatory Scenario:
@@ -1138,21 +1126,21 @@ export class LLMService {
        
        Properties in Region:
        ${JSON.stringify(options.properties, null, 2)}`;
-    
+
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM
     return this.prompt(messages, {
       provider: options.provider as 'openai' | 'anthropic',
       model: options.model,
       temperature: 0.2,
-      responseFormat: { type: 'json_object' }
+      responseFormat: { type: 'json_object' },
     });
   }
-  
+
   /**
    * Analyze scenario interdependencies using advanced capabilities for the superintelligence agent
    */
@@ -1163,8 +1151,7 @@ export class LLMService {
     property: any;
   }): Promise<any> {
     // Create a detailed prompt for the LLM
-    const systemPrompt = 
-      `You are an advanced AI interdependency analyst with superintelligent capabilities.
+    const systemPrompt = `You are an advanced AI interdependency analyst with superintelligent capabilities.
        Your task is to analyze how multiple scenarios might interact with and influence each other,
        creating compound effects on a property.
        
@@ -1179,25 +1166,24 @@ export class LLMService {
        
        Format your response as a structured JSON object with detailed interdependency mappings,
        compound effects, and overall system dynamics.`;
-    
-    const userPrompt = 
-      `Property:
+
+    const userPrompt = `Property:
        ${JSON.stringify(options.property, null, 2)}
        
        Scenario Analyses:
        ${JSON.stringify(options.scenarioAnalyses, null, 2)}`;
-    
+
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: userPrompt },
     ];
-    
+
     // Send to the appropriate LLM
     return this.prompt(messages, {
       provider: options.provider as 'openai' | 'anthropic',
       model: options.model,
       temperature: 0.2,
-      responseFormat: { type: 'json_object' }
+      responseFormat: { type: 'json_object' },
     });
   }
 }

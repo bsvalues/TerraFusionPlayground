@@ -22,6 +22,7 @@ The Agent System manages and coordinates specialized AI agents. Each agent has a
 #### Property Assessment Agent
 
 Specializes in property valuation and assessment with capabilities:
+
 - `analyzeProperty`: Comprehensive property analysis
 - `generatePropertyStory`: Creates narrative property descriptions
 - `findComparableProperties`: Identifies similar properties for comparison
@@ -32,6 +33,7 @@ Specializes in property valuation and assessment with capabilities:
 #### Data Ingestion Agent
 
 Manages data import/export operations with capabilities:
+
 - `importFromFTP`: Imports property data from FTP servers
 - `validateImportData`: Validates data before import
 - `loadValidatedData`: Loads validated data into the system
@@ -40,6 +42,7 @@ Manages data import/export operations with capabilities:
 #### Reporting Agent
 
 Handles report generation with capabilities:
+
 - `createReport`: Creates new report templates
 - `runReport`: Executes reports against property data
 - `listReports`: Lists available reports
@@ -49,6 +52,7 @@ Handles report generation with capabilities:
 ### MCP Service
 
 The MCP Service provides a secure interface for agents to access data and functionality, with:
+
 - Tool registration and discovery
 - Permission enforcement
 - Request validation
@@ -58,6 +62,7 @@ The MCP Service provides a secure interface for agents to access data and functi
 ## Permission Model
 
 The MCP system uses a comprehensive permission model:
+
 - Agents have defined permission sets
 - Each MCP tool has required permissions
 - All access is validated against these permissions
@@ -67,6 +72,7 @@ The MCP system uses a comprehensive permission model:
 ## Logging and Auditing
 
 The system maintains detailed logs:
+
 - Tool execution logs with parameters and results
 - Agent activity logs
 - System activity logs
@@ -76,6 +82,7 @@ The system maintains detailed logs:
 ## API Integration
 
 The MCP system is exposed through a RESTful API that allows:
+
 - Agent capability execution
 - System status monitoring
 - Agent lifecycle management
@@ -84,6 +91,7 @@ The MCP system is exposed through a RESTful API that allows:
 ## Security Measures
 
 Security is maintained through:
+
 - Authentication for all requests
 - Permission validation
 - Input sanitization
@@ -93,6 +101,7 @@ Security is maintained through:
 ## Integration Points
 
 The system integrates with:
+
 - PACS (Property Appraisal and Collection System)
 - FTP services for data import/export
 - External AI services (OpenAI, Anthropic, Perplexity)

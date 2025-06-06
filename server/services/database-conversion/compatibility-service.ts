@@ -1,6 +1,6 @@
 /**
  * Compatibility Service
- * 
+ *
  * This service is responsible for generating compatibility layers between
  * different database systems. It creates code and configuration files
  * to help applications work with converted databases.
@@ -8,21 +8,17 @@
 
 import { IStorage } from '../../storage';
 import { LLMService } from '../llm-service';
-import { 
-  DatabaseType, 
-  SchemaAnalysisResult,
-  CompatibilityLayerOptions 
-} from './types';
+import { DatabaseType, SchemaAnalysisResult, CompatibilityLayerOptions } from './types';
 
 export class CompatibilityService {
   private storage: IStorage;
   private llmService?: LLMService;
-  
+
   constructor(storage: IStorage, llmService?: LLMService) {
     this.storage = storage;
     this.llmService = llmService;
   }
-  
+
   /**
    * Generate compatibility layer for a converted database
    */
@@ -32,30 +28,35 @@ export class CompatibilityService {
   ): Promise<any> {
     try {
       // Log the operation start
-      await this.log(projectId, 'info', 'compatibility_generation', 'Starting compatibility layer generation');
-      
+      await this.log(
+        projectId,
+        'info',
+        'compatibility_generation',
+        'Starting compatibility layer generation'
+      );
+
       // Retrieve the project
       const project = await this.storage.getDatabaseConversionProject(projectId);
       if (!project) {
         throw new Error(`Project ${projectId} not found`);
       }
-      
+
       // Retrieve the source schema
       const sourceSchemaAnalysis = await this.storage.getDatabaseConversionSourceSchema(projectId);
       if (!sourceSchemaAnalysis) {
         throw new Error(`Source schema for project ${projectId} not found`);
       }
-      
+
       // Retrieve the target schema mapping
       const schemaMapping = await this.storage.getDatabaseConversionSchemaMapping(projectId);
       if (!schemaMapping) {
         throw new Error(`Schema mapping for project ${projectId} not found`);
       }
-      
+
       // Get ORM type
       const ormType = options.ormType || 'drizzle';
       const language = options.language || 'typescript';
-      
+
       // Generate the compatibility layer
       let compatibilityLayer;
       switch (ormType.toLowerCase()) {
@@ -68,7 +69,7 @@ export class CompatibilityService {
             options
           );
           break;
-          
+
         case 'prisma':
           compatibilityLayer = await this.generatePrismaCompatibility(
             projectId,
@@ -78,7 +79,7 @@ export class CompatibilityService {
             options
           );
           break;
-          
+
         case 'typeorm':
           compatibilityLayer = await this.generateTypeORMCompatibility(
             projectId,
@@ -88,7 +89,7 @@ export class CompatibilityService {
             options
           );
           break;
-          
+
         case 'sequelize':
           compatibilityLayer = await this.generateSequelizeCompatibility(
             projectId,
@@ -98,7 +99,7 @@ export class CompatibilityService {
             options
           );
           break;
-          
+
         case 'mongoose':
           compatibilityLayer = await this.generateMongooseCompatibility(
             projectId,
@@ -108,11 +109,11 @@ export class CompatibilityService {
             options
           );
           break;
-          
+
         default:
           throw new Error(`Unsupported ORM type: ${ormType}`);
       }
-      
+
       // Store the compatibility layer
       await this.storage.createDatabaseConversionCompatibilityLayer(projectId, {
         projectId,
@@ -120,17 +121,17 @@ export class CompatibilityService {
         language,
         files: compatibilityLayer.files,
         documentation: compatibilityLayer.documentation,
-        generatedAt: new Date().toISOString()
+        generatedAt: new Date().toISOString(),
       });
-      
+
       // Log the operation completion
       await this.log(
-        projectId, 
-        'info', 
-        'compatibility_generation', 
+        projectId,
+        'info',
+        'compatibility_generation',
         `Completed compatibility layer generation with ${compatibilityLayer.files.length} files`
       );
-      
+
       return {
         projectId,
         ormType,
@@ -138,24 +139,24 @@ export class CompatibilityService {
         files: compatibilityLayer.files.map((file: any) => ({
           name: file.name,
           path: file.path,
-          size: file.content.length
+          size: file.content.length,
         })),
-        documentation: compatibilityLayer.documentation
+        documentation: compatibilityLayer.documentation,
       };
     } catch (error) {
       // Log the error
       await this.log(
-        projectId, 
-        'error', 
-        'compatibility_generation', 
+        projectId,
+        'error',
+        'compatibility_generation',
         `Error generating compatibility layer: ${error.message}`,
         { error: error.stack }
       );
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Generate compatibility layer for Drizzle ORM
    */
@@ -168,43 +169,43 @@ export class CompatibilityService {
   ): Promise<any> {
     // Create files array
     const files = [];
-    
+
     // Generate schema file
     const schemaFile = this.generateDrizzleSchemaFile(sourceSchema, schemaMapping);
     files.push(schemaFile);
-    
+
     // Generate client file
     const clientFile = this.generateDrizzleClientFile(targetType, options);
     files.push(clientFile);
-    
+
     // Generate query helpers if requested
     if (options.includeQueryHelpers) {
       const helpersFile = this.generateDrizzleQueryHelpers(sourceSchema, schemaMapping);
       files.push(helpersFile);
     }
-    
+
     // Generate CRUD operations if requested
     if (options.includeCRUDOperations) {
       const crudFile = this.generateDrizzleCRUDOperations(sourceSchema, schemaMapping);
       files.push(crudFile);
     }
-    
+
     // Generate migrations if requested
     if (options.includeMigrations) {
       const migrationsFile = this.generateDrizzleMigrations(sourceSchema, targetType);
       files.push(migrationsFile);
     }
-    
+
     // Generate README with documentation
     const readme = this.generateDrizzleReadme(sourceSchema, targetType, options);
     files.push(readme);
-    
+
     return {
       files,
-      documentation: readme.content
+      documentation: readme.content,
     };
   }
-  
+
   /**
    * Generate Drizzle Schema File
    */
@@ -239,34 +240,34 @@ import { relations } from 'drizzle-orm';
 
     // Define tables
     content += `\n// Define tables\n`;
-    
+
     // Track foreign key relationships for relations
     const relationMap = new Map();
-    
+
     // Generate table definitions
     for (const mapping of schemaMapping.tableMappings || []) {
       const sourceTable = sourceSchema.tables.find(t => t.name === mapping.sourceTable);
       if (!sourceTable) continue;
-      
+
       const tableName = mapping.targetTable;
       const tableVarName = this.camelCase(tableName);
-      
+
       content += `export const ${tableVarName} = pgTable('${tableName}', {\n`;
-      
+
       // Add columns
       for (const columnMapping of mapping.columnMappings || []) {
         const sourceColumn = sourceTable.columns.find(c => c.name === columnMapping.sourceColumn);
         if (!sourceColumn) continue;
-        
+
         const columnName = columnMapping.targetColumn;
         const columnVarName = this.camelCase(columnName);
-        
+
         // Map column type to Drizzle type
         let columnType = this.mapToDrizzleType(sourceColumn.type);
-        
+
         // Add column options
         const options = [];
-        
+
         if (sourceColumn.isPrimaryKey) {
           if (sourceColumn.autoIncrement) {
             columnType = 'serial';
@@ -275,80 +276,80 @@ import { relations } from 'drizzle-orm';
             options.push('primaryKey: true');
           }
         }
-        
+
         if (sourceColumn.isUnique) {
           options.push('unique: true');
         }
-        
+
         if (!sourceColumn.nullable) {
           options.push('notNull: true');
         }
-        
+
         if (sourceColumn.defaultValue) {
           options.push(`default: ${sourceColumn.defaultValue}`);
         }
-        
+
         // Add the column definition
         content += `  ${columnVarName}: ${columnType}('${columnName}'${options.length > 0 ? ', { ' + options.join(', ') + ' }' : ''}),\n`;
-        
+
         // Track foreign key relationships
         if (sourceColumn.isForeignKey) {
-          const foreignKey = sourceTable.foreignKeys?.find(fk => 
+          const foreignKey = sourceTable.foreignKeys?.find(fk =>
             fk.columnNames.includes(sourceColumn.name)
           );
-          
+
           if (foreignKey) {
             if (!relationMap.has(tableName)) {
               relationMap.set(tableName, []);
             }
-            
+
             // Find the target table mapping
             const refTableMapping = schemaMapping.tableMappings.find(
               (m: any) => m.sourceTable === foreignKey.referencedTableName
             );
-            
+
             if (refTableMapping) {
               relationMap.get(tableName).push({
                 sourceColumn: columnName,
                 targetTable: refTableMapping.targetTable,
-                targetColumn: foreignKey.referencedColumnNames[0] // Simplified for now
+                targetColumn: foreignKey.referencedColumnNames[0], // Simplified for now
               });
             }
           }
         }
       }
-      
+
       content += `});\n\n`;
     }
-    
+
     // Add relations
     content += `// Define relations\n`;
     for (const [tableName, relations] of relationMap.entries()) {
       const tableVarName = this.camelCase(tableName);
-      
+
       content += `export const ${tableVarName}Relations = relations(${tableVarName}, ({ one, many }) => ({\n`;
-      
+
       // Add relation definitions
       for (const relation of relations) {
         const targetTableVarName = this.camelCase(relation.targetTable);
         const relationName = this.camelCase(relation.targetTable);
-        
+
         content += `  ${relationName}: one(${targetTableVarName}, {\n`;
         content += `    fields: [${tableVarName}.${this.camelCase(relation.sourceColumn)}],\n`;
         content += `    references: [${targetTableVarName}.${this.camelCase(relation.targetColumn)}],\n`;
         content += `  }),\n`;
       }
-      
+
       content += `}));\n\n`;
     }
-    
+
     return {
       name: 'schema.ts',
       path: 'db/schema.ts',
-      content
+      content,
     };
   }
-  
+
   /**
    * Generate Drizzle Client File
    */
@@ -357,7 +358,7 @@ import { relations } from 'drizzle-orm';
     options: CompatibilityLayerOptions
   ): { name: string; path: string; content: string } {
     let dbClient;
-    
+
     // Select the appropriate client based on target database type
     switch (targetType) {
       case DatabaseType.PostgreSQL:
@@ -373,7 +374,7 @@ const pool = new Pool({
 // Create Drizzle ORM instance
 export const db = drizzle(pool, { schema });`;
         break;
-        
+
       case DatabaseType.MySQL:
         dbClient = `import { drizzle } from 'drizzle-orm/mysql2';
 import mysql from 'mysql2/promise';
@@ -387,7 +388,7 @@ const pool = mysql.createPool({
 // Create Drizzle ORM instance
 export const db = drizzle(pool, { schema });`;
         break;
-        
+
       case DatabaseType.SQLite:
         dbClient = `import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
@@ -399,7 +400,7 @@ const sqlite = new Database(process.env.DATABASE_PATH || 'sqlite.db');
 // Create Drizzle ORM instance
 export const db = drizzle(sqlite, { schema });`;
         break;
-        
+
       default:
         dbClient = `// Unsupported database type: ${targetType}
 // Please check the documentation for how to set up a connection.
@@ -407,7 +408,7 @@ import * as schema from './schema';
 
 export const db = null; // Replace with appropriate client setup`;
     }
-    
+
     return {
       name: 'client.ts',
       path: 'db/client.ts',
@@ -419,10 +420,10 @@ export const db = null; // Replace with appropriate client setup`;
  */
 
 ${dbClient}
-`
+`,
     };
   }
-  
+
   /**
    * Generate Drizzle Query Helpers
    */
@@ -448,11 +449,11 @@ import * as schema from './schema';
     for (const mapping of schemaMapping.tableMappings || []) {
       const sourceTable = sourceSchema.tables.find(t => t.name === mapping.sourceTable);
       if (!sourceTable) continue;
-      
+
       const tableName = mapping.targetTable;
       const tableVarName = this.camelCase(tableName);
       const entityName = this.pascalCase(this.singularize(tableName));
-      
+
       // Find primary key columns
       const primaryKeyColumns = sourceTable.columns
         .filter(c => c.isPrimaryKey)
@@ -460,30 +461,28 @@ import * as schema from './schema';
           const colMapping = mapping.columnMappings.find((m: any) => m.sourceColumn === c.name);
           return colMapping ? colMapping.targetColumn : c.name;
         });
-      
+
       if (primaryKeyColumns.length === 0) continue;
-      
+
       const primaryKey = primaryKeyColumns[0];
       const primaryKeyVar = this.camelCase(primaryKey);
-      
+
       // Find a "name" or similar column for display
-      const nameColumn = sourceTable.columns.find(c => 
+      const nameColumn = sourceTable.columns.find(c =>
         ['name', 'title', 'label', 'username', 'email'].includes(c.name.toLowerCase())
       );
-      
+
       let nameColumnMapping;
       if (nameColumn) {
         nameColumnMapping = mapping.columnMappings.find(
           (m: any) => m.sourceColumn === nameColumn.name
         );
       }
-      
-      const displayField = nameColumnMapping 
-        ? nameColumnMapping.targetColumn 
-        : primaryKey;
-      
+
+      const displayField = nameColumnMapping ? nameColumnMapping.targetColumn : primaryKey;
+
       const displayFieldVar = this.camelCase(displayField);
-      
+
       // Generate find by ID function
       content += `// ${entityName} helpers\n`;
       content += `export async function find${entityName}ById(${primaryKeyVar}: number | string) {
@@ -514,10 +513,10 @@ import * as schema from './schema';
     return {
       name: 'helpers.ts',
       path: 'db/helpers.ts',
-      content
+      content,
     };
   }
-  
+
   /**
    * Generate Drizzle CRUD Operations
    */
@@ -543,11 +542,11 @@ import * as schema from './schema';
     for (const mapping of schemaMapping.tableMappings || []) {
       const sourceTable = sourceSchema.tables.find(t => t.name === mapping.sourceTable);
       if (!sourceTable) continue;
-      
+
       const tableName = mapping.targetTable;
       const tableVarName = this.camelCase(tableName);
       const entityName = this.pascalCase(this.singularize(tableName));
-      
+
       // Find primary key columns
       const primaryKeyColumns = sourceTable.columns
         .filter(c => c.isPrimaryKey)
@@ -555,20 +554,20 @@ import * as schema from './schema';
           const colMapping = mapping.columnMappings.find((m: any) => m.sourceColumn === c.name);
           return colMapping ? colMapping.targetColumn : c.name;
         });
-      
+
       if (primaryKeyColumns.length === 0) continue;
-      
+
       const primaryKey = primaryKeyColumns[0];
       const primaryKeyVar = this.camelCase(primaryKey);
-      
+
       // Generate type for the entity
       content += `// ${entityName} types\n`;
       content += `export type ${entityName} = typeof schema.${tableVarName}.$inferSelect;\n`;
       content += `export type New${entityName} = typeof schema.${tableVarName}.$inferInsert;\n\n`;
-      
+
       // Generate CRUD functions
       content += `// ${entityName} CRUD operations\n`;
-      
+
       // Create function
       content += `export async function create${entityName}(data: New${entityName}) {
   return await db.insert(schema.${tableVarName})
@@ -610,10 +609,10 @@ import * as schema from './schema';
     return {
       name: 'crud.ts',
       path: 'db/crud.ts',
-      content
+      content,
     };
   }
-  
+
   /**
    * Generate Drizzle Migrations
    */
@@ -647,10 +646,10 @@ export async function runMigrations() {
     return {
       name: 'migrations.ts',
       path: 'db/migrations.ts',
-      content
+      content,
     };
   }
-  
+
   /**
    * Generate Drizzle README
    */
@@ -750,10 +749,10 @@ https://orm.drizzle.team/docs/overview
     return {
       name: 'README.md',
       path: 'db/README.md',
-      content
+      content,
     };
   }
-  
+
   /**
    * Generate compatibility layer for Prisma ORM
    */
@@ -766,27 +765,27 @@ https://orm.drizzle.team/docs/overview
   ): Promise<any> {
     // For this example, we'll provide a simplified implementation
     // In a real application, this would be more comprehensive
-    
+
     const files = [];
-    
+
     // Generate schema.prisma file
     const schemaFile = this.generatePrismaSchemaFile(sourceSchema, targetType, schemaMapping);
     files.push(schemaFile);
-    
+
     // Generate client file
     const clientFile = this.generatePrismaClientFile();
     files.push(clientFile);
-    
+
     // Generate README with documentation
     const readme = this.generatePrismaReadme(sourceSchema, targetType, options);
     files.push(readme);
-    
+
     return {
       files,
-      documentation: readme.content
+      documentation: readme.content,
     };
   }
-  
+
   /**
    * Generate Prisma Schema File
    */
@@ -798,7 +797,7 @@ https://orm.drizzle.team/docs/overview
     // Determine the database provider
     let provider;
     let connectionUrl;
-    
+
     switch (targetType) {
       case DatabaseType.PostgreSQL:
         provider = 'postgresql';
@@ -824,7 +823,7 @@ https://orm.drizzle.team/docs/overview
         provider = 'postgresql';
         connectionUrl = 'env("DATABASE_URL")';
     }
-    
+
     let content = `// This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -843,42 +842,45 @@ datasource db {
     for (const mapping of schemaMapping.tableMappings || []) {
       const sourceTable = sourceSchema.tables.find(t => t.name === mapping.sourceTable);
       if (!sourceTable) continue;
-      
+
       const tableName = mapping.targetTable;
       const modelName = this.pascalCase(this.singularize(tableName));
-      
+
       content += `model ${modelName} {\n`;
-      
+
       // Add fields
       for (const columnMapping of mapping.columnMappings || []) {
         const sourceColumn = sourceTable.columns.find(c => c.name === columnMapping.sourceColumn);
         if (!sourceColumn) continue;
-        
+
         const fieldName = this.camelCase(columnMapping.targetColumn);
-        
+
         // Map to Prisma type
         const fieldType = this.mapToPrismaType(sourceColumn.type);
-        
+
         // Add field attributes
         const attributes = [];
-        
+
         if (sourceColumn.isPrimaryKey) {
           attributes.push('@id');
-          
+
           if (sourceColumn.autoIncrement) {
             attributes.push('@default(autoincrement())');
           }
         }
-        
+
         if (sourceColumn.isUnique) {
           attributes.push('@unique');
         }
-        
+
         if (sourceColumn.defaultValue) {
           // Simplistic handling of default values
           if (sourceColumn.defaultValue === 'CURRENT_TIMESTAMP') {
             attributes.push('@default(now())');
-          } else if (sourceColumn.defaultValue === 'true' || sourceColumn.defaultValue === 'false') {
+          } else if (
+            sourceColumn.defaultValue === 'true' ||
+            sourceColumn.defaultValue === 'false'
+          ) {
             attributes.push(`@default(${sourceColumn.defaultValue})`);
           } else if (!isNaN(Number(sourceColumn.defaultValue))) {
             attributes.push(`@default(${sourceColumn.defaultValue})`);
@@ -886,34 +888,34 @@ datasource db {
             attributes.push(`@default("${sourceColumn.defaultValue}")`);
           }
         }
-        
+
         // Add database field mapping if different
         if (fieldName !== columnMapping.targetColumn) {
           attributes.push(`@map("${columnMapping.targetColumn}")`);
         }
-        
+
         // Combine the field definition
         content += `  ${fieldName} ${fieldType}${sourceColumn.nullable ? '?' : ''}${attributes.length > 0 ? ' ' + attributes.join(' ') : ''}\n`;
       }
-      
+
       // Add relation fields
       // This is a simplified implementation and would need to be enhanced for real use
-      
+
       // Add table mapping if different
       if (modelName.toLowerCase() !== tableName.toLowerCase()) {
         content += `\n  @@map("${tableName}")\n`;
       }
-      
+
       content += `}\n\n`;
     }
-    
+
     return {
       name: 'schema.prisma',
       path: 'prisma/schema.prisma',
-      content
+      content,
     };
   }
-  
+
   /**
    * Generate Prisma Client File
    */
@@ -933,10 +935,10 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export default prisma;
-`
+`,
     };
   }
-  
+
   /**
    * Generate Prisma README
    */
@@ -1015,10 +1017,10 @@ https://www.prisma.io/docs/
     return {
       name: 'README.md',
       path: 'prisma/README.md',
-      content
+      content,
     };
   }
-  
+
   /**
    * Generate compatibility layer for TypeORM
    */
@@ -1031,9 +1033,9 @@ https://www.prisma.io/docs/
   ): Promise<any> {
     // For this example, we'll return a stub implementation
     // In a real application, this would be fully implemented
-    
+
     const files = [];
-    
+
     // Generate stub README
     const readme = {
       name: 'README.md',
@@ -1049,17 +1051,17 @@ Due to the current implementation scope, this is a placeholder. In a complete im
 3. Configuration for connecting to the database
 4. Migration scripts if requested
 5. Documentation on usage
-`
+`,
     };
-    
+
     files.push(readme);
-    
+
     return {
       files,
-      documentation: readme.content
+      documentation: readme.content,
     };
   }
-  
+
   /**
    * Generate compatibility layer for Sequelize
    */
@@ -1072,9 +1074,9 @@ Due to the current implementation scope, this is a placeholder. In a complete im
   ): Promise<any> {
     // For this example, we'll return a stub implementation
     // In a real application, this would be fully implemented
-    
+
     const files = [];
-    
+
     // Generate stub README
     const readme = {
       name: 'README.md',
@@ -1090,17 +1092,17 @@ Due to the current implementation scope, this is a placeholder. In a complete im
 3. Configuration for connecting to the database
 4. Migration scripts if requested
 5. Documentation on usage
-`
+`,
     };
-    
+
     files.push(readme);
-    
+
     return {
       files,
-      documentation: readme.content
+      documentation: readme.content,
     };
   }
-  
+
   /**
    * Generate compatibility layer for Mongoose
    */
@@ -1113,9 +1115,9 @@ Due to the current implementation scope, this is a placeholder. In a complete im
   ): Promise<any> {
     // For this example, we'll return a stub implementation
     // In a real application, this would be fully implemented
-    
+
     const files = [];
-    
+
     // Generate stub README
     const readme = {
       name: 'README.md',
@@ -1131,24 +1133,24 @@ Due to the current implementation scope, this is a placeholder. In a complete im
 3. Configuration for connecting to MongoDB
 4. Utility functions for common operations
 5. Documentation on usage
-`
+`,
     };
-    
+
     files.push(readme);
-    
+
     return {
       files,
-      documentation: readme.content
+      documentation: readme.content,
     };
   }
-  
+
   /**
    * Map a database data type to a Drizzle type
    */
   private mapToDrizzleType(sourceType: string): string {
     // Normalize the type name
     const normalizedType = sourceType.toLowerCase().replace(/\(.*\)/, '');
-    
+
     // Map to Drizzle type
     switch (normalizedType) {
       case 'varchar':
@@ -1156,59 +1158,59 @@ Due to the current implementation scope, this is a placeholder. In a complete im
       case 'text':
       case 'string':
         return 'varchar';
-        
+
       case 'int':
       case 'integer':
       case 'smallint':
       case 'tinyint':
       case 'number':
         return 'integer';
-        
+
       case 'bigint':
         return 'bigint';
-        
+
       case 'float':
       case 'double':
       case 'real':
         return 'real';
-        
+
       case 'decimal':
       case 'numeric':
         return 'numeric';
-        
+
       case 'boolean':
       case 'bool':
         return 'boolean';
-        
+
       case 'date':
         return 'date';
-        
+
       case 'time':
         return 'time';
-        
+
       case 'timestamp':
       case 'datetime':
         return 'timestamp';
-        
+
       case 'json':
       case 'jsonb':
         return 'json';
-        
+
       case 'uuid':
         return 'uuid';
-        
+
       default:
         return 'text';
     }
   }
-  
+
   /**
    * Map a database data type to a Prisma type
    */
   private mapToPrismaType(sourceType: string): string {
     // Normalize the type name
     const normalizedType = sourceType.toLowerCase().replace(/\(.*\)/, '');
-    
+
     // Map to Prisma type
     switch (normalizedType) {
       case 'varchar':
@@ -1216,49 +1218,49 @@ Due to the current implementation scope, this is a placeholder. In a complete im
       case 'text':
       case 'string':
         return 'String';
-        
+
       case 'int':
       case 'integer':
       case 'smallint':
       case 'tinyint':
         return 'Int';
-        
+
       case 'bigint':
         return 'BigInt';
-        
+
       case 'float':
       case 'double':
       case 'real':
       case 'decimal':
       case 'numeric':
         return 'Float';
-        
+
       case 'boolean':
       case 'bool':
         return 'Boolean';
-        
+
       case 'date':
         return 'DateTime';
-        
+
       case 'time':
         return 'String'; // Prisma doesn't have a dedicated time type
-        
+
       case 'timestamp':
       case 'datetime':
         return 'DateTime';
-        
+
       case 'json':
       case 'jsonb':
         return 'Json';
-        
+
       case 'uuid':
         return 'String'; // Often stored as String with @id or @unique
-        
+
       default:
         return 'String';
     }
   }
-  
+
   /**
    * Convert a string to camelCase
    */
@@ -1268,7 +1270,7 @@ Due to the current implementation scope, this is a placeholder. In a complete im
       .replace(/[-_]([a-z])/g, (_, letter) => letter.toUpperCase())
       .replace(/^([A-Z])/, (_, letter) => letter.toLowerCase());
   }
-  
+
   /**
    * Convert a string to PascalCase
    */
@@ -1278,7 +1280,7 @@ Due to the current implementation scope, this is a placeholder. In a complete im
     // Then capitalize first letter
     return camel.charAt(0).toUpperCase() + camel.slice(1);
   }
-  
+
   /**
    * Convert a string to singular form
    */
@@ -1291,7 +1293,7 @@ Due to the current implementation scope, this is a placeholder. In a complete im
     }
     return str;
   }
-  
+
   /**
    * Convert a string to plural form
    */
@@ -1299,20 +1301,26 @@ Due to the current implementation scope, this is a placeholder. In a complete im
     // Very simplistic implementation
     if (str.endsWith('y') && !this.isVowel(str.charAt(str.length - 2))) {
       return str.slice(0, -1) + 'ies';
-    } else if (str.endsWith('s') || str.endsWith('x') || str.endsWith('z') || str.endsWith('ch') || str.endsWith('sh')) {
+    } else if (
+      str.endsWith('s') ||
+      str.endsWith('x') ||
+      str.endsWith('z') ||
+      str.endsWith('ch') ||
+      str.endsWith('sh')
+    ) {
       return str + 'es';
     } else {
       return str + 's';
     }
   }
-  
+
   /**
    * Check if a character is a vowel
    */
   private isVowel(char: string): boolean {
     return ['a', 'e', 'i', 'o', 'u'].includes(char.toLowerCase());
   }
-  
+
   /**
    * Log a message
    */
@@ -1330,7 +1338,7 @@ Due to the current implementation scope, this is a placeholder. In a complete im
         stage,
         message,
         details,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     } catch (error) {
       console.error('Error logging to database conversion logs:', error);

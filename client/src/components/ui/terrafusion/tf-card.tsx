@@ -1,5 +1,12 @@
 import React, { ReactNode } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 /**
@@ -54,7 +61,7 @@ export interface TFCardProps {
 
 /**
  * TerraFusion Card Component
- * 
+ *
  * A styled card component for the TerraFusion UI design system
  */
 export const TFCard: React.FC<TFCardProps> = ({
@@ -104,7 +111,7 @@ export const TFCard: React.FC<TFCardProps> = ({
   ].join(' ');
 
   return (
-    <Card 
+    <Card
       className={cn(
         levelClasses[level],
         sizeClasses[size],
@@ -123,18 +130,12 @@ export const TFCard: React.FC<TFCardProps> = ({
             {title && <CardTitle className="text-xl font-semibold">{title}</CardTitle>}
             {description && <CardDescription>{description}</CardDescription>}
           </div>
-          {headerActions && (
-            <div className="flex items-center space-x-2">
-              {headerActions}
-            </div>
-          )}
+          {headerActions && <div className="flex items-center space-x-2">{headerActions}</div>}
         </CardHeader>
       )}
-      
-      <CardContent className={cn('', contentClassName)}>
-        {children}
-      </CardContent>
-      
+
+      <CardContent className={cn('', contentClassName)}>{children}</CardContent>
+
       {footer && (
         <CardFooter className={cn('flex items-center justify-between', footerClassName)}>
           {footer}

@@ -8,14 +8,10 @@ interface PreviewPanelProps {
   onTogglePreview: () => void;
 }
 
-const PreviewPanel: React.FC<PreviewPanelProps> = ({ 
-  projectId, 
-  status, 
-  onTogglePreview 
-}) => {
+const PreviewPanel: React.FC<PreviewPanelProps> = ({ projectId, status, onTogglePreview }) => {
   // In a real implementation, we would fetch the preview URL from the server
   const previewUrl = `/api/development/projects/${projectId}/preview`;
-  
+
   const handleOpenInNewTab = () => {
     window.open(previewUrl, '_blank');
   };
@@ -37,14 +33,9 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
             </span>
           )}
         </div>
-        
+
         <div className="flex space-x-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="h-8" 
-            onClick={onTogglePreview}
-          >
+          <Button variant="outline" size="sm" className="h-8" onClick={onTogglePreview}>
             {status === 'RUNNING' ? (
               <>
                 <Square className="h-4 w-4 mr-1" />
@@ -57,25 +48,20 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
               </>
             )}
           </Button>
-          
+
           {status === 'RUNNING' && (
             <>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-8" 
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
                 onClick={() => window.location.reload()}
               >
                 <RefreshCw className="h-4 w-4 mr-1" />
                 Refresh
               </Button>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-8" 
-                onClick={handleOpenInNewTab}
-              >
+
+              <Button variant="outline" size="sm" className="h-8" onClick={handleOpenInNewTab}>
                 <ExternalLink className="h-4 w-4 mr-1" />
                 Open in New Tab
               </Button>
@@ -83,12 +69,12 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
           )}
         </div>
       </div>
-      
+
       <div className="flex-1">
         {status === 'RUNNING' ? (
-          <iframe 
-            src={previewUrl} 
-            className="w-full h-full border-0" 
+          <iframe
+            src={previewUrl}
+            className="w-full h-full border-0"
             title="Project Preview"
             sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
           />
@@ -99,9 +85,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
             <p className="text-red-600 text-center mb-4">
               There was an error starting the preview. Please check your code for errors.
             </p>
-            <Button onClick={onTogglePreview}>
-              Try Again
-            </Button>
+            <Button onClick={onTogglePreview}>Try Again</Button>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full bg-gray-50 p-6">
@@ -110,9 +94,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
             <p className="text-gray-500 text-center mb-4">
               Start the preview to see your application in action.
             </p>
-            <Button onClick={onTogglePreview}>
-              Start Preview
-            </Button>
+            <Button onClick={onTogglePreview}>Start Preview</Button>
           </div>
         )}
       </div>

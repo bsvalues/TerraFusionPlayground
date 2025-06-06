@@ -1,15 +1,15 @@
 /**
  * useConflictResolution Hook
- * 
+ *
  * A React hook that provides conflict resolution functionality.
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  ConflictDetails, 
-  ConflictType, 
-  ResolutionStrategy, 
-  ConflictResolutionManager 
+import {
+  ConflictDetails,
+  ConflictType,
+  ResolutionStrategy,
+  ConflictResolutionManager,
 } from '@terrafusion/offline-sync/src/conflict-resolution';
 
 export interface UseConflictResolutionOptions {
@@ -48,9 +48,9 @@ export interface UseConflictResolutionResult {
   getUnresolvedConflictsForDocument: (docId: string) => ConflictDetails[];
   /** Resolve a conflict */
   resolveConflict: (
-    conflictId: string, 
-    strategy: ResolutionStrategy, 
-    userId: string, 
+    conflictId: string,
+    strategy: ResolutionStrategy,
+    userId: string,
     customValue?: any
   ) => Promise<boolean>;
   /** Whether conflicts are being loaded */
@@ -80,31 +80,31 @@ export function useConflictResolution({
   const [conflicts, setConflicts] = useState<ConflictDetails[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  
+
   // Derived state
   const unresolvedConflicts = conflicts.filter(c => !c.resolved);
   const hasUnresolvedConflicts = unresolvedConflicts.length > 0;
   const unresolvedCount = unresolvedConflicts.length;
-  
+
   // Refresh conflicts
   const refreshConflicts = useCallback(() => {
     setLoading(true);
-    
+
     // Get conflicts from the manager
     let allConflicts: ConflictDetails[];
-    
+
     if (documentId) {
       allConflicts = conflictManager.getConflictsForDocument(documentId);
     } else {
       allConflicts = conflictManager.getAllConflicts();
     }
-    
+
     setConflicts(allConflicts);
     setLoading(false);
-    
+
     // Check for new unresolved conflicts
     const newUnresolvedConflicts = allConflicts.filter(c => !c.resolved);
-    
+
     if (newUnresolvedConflicts.length > 0) {
       // Auto-resolve conflicts if configured
       if (autoResolveStrategies) {
@@ -114,16 +114,16 @@ export function useConflictResolution({
             conflictManager.resolveConflict(conflict.id, strategy, userId);
           }
         });
-        
+
         // Refresh again after auto-resolving
         setTimeout(refreshConflicts, 0);
       }
-      
+
       // Notify
       if (onConflictsDetected) {
         onConflictsDetected(newUnresolvedConflicts);
       }
-      
+
       // Show notification
       if (showNotifications) {
         // Use browser notification API if available
@@ -133,83 +133,82 @@ export function useConflictResolution({
           });
         }
       }
-      
+
       // Auto-open modal
       if (autoOpenModal && newUnresolvedConflicts.length > 0) {
         setIsModalOpen(true);
       }
     }
   }, [
-    conflictManager, 
-    documentId, 
-    autoOpenModal, 
-    showNotifications, 
+    conflictManager,
+    documentId,
+    autoOpenModal,
+    showNotifications,
     onConflictsDetected,
     autoResolveStrategies,
-    userId
+    userId,
   ]);
-  
+
   // Initialize
   useEffect(() => {
     refreshConflicts();
-    
+
     // Listen for conflict changes
     const handleConflictDetected = () => refreshConflicts();
     const handleConflictResolved = () => {
       refreshConflicts();
-      
+
       // Notify
       if (onConflictsResolved) {
         onConflictsResolved(conflicts.filter(c => c.resolved));
       }
     };
-    
+
     conflictManager.on('conflict:detected', handleConflictDetected);
     conflictManager.on('conflict:resolved', handleConflictResolved);
-    
+
     return () => {
       conflictManager.off('conflict:detected', handleConflictDetected);
       conflictManager.off('conflict:resolved', handleConflictResolved);
     };
-  }, [
-    conflictManager, 
-    refreshConflicts, 
-    onConflictsResolved,
-    conflicts
-  ]);
-  
+  }, [conflictManager, refreshConflicts, onConflictsResolved, conflicts]);
+
   // Get conflicts for a document
-  const getConflictsForDocument = useCallback((docId: string) => {
-    return conflictManager.getConflictsForDocument(docId);
-  }, [conflictManager]);
-  
+  const getConflictsForDocument = useCallback(
+    (docId: string) => {
+      return conflictManager.getConflictsForDocument(docId);
+    },
+    [conflictManager]
+  );
+
   // Get unresolved conflicts for a document
-  const getUnresolvedConflictsForDocument = useCallback((docId: string) => {
-    return conflictManager.getUnresolvedConflictsForDocument(docId);
-  }, [conflictManager]);
-  
+  const getUnresolvedConflictsForDocument = useCallback(
+    (docId: string) => {
+      return conflictManager.getUnresolvedConflictsForDocument(docId);
+    },
+    [conflictManager]
+  );
+
   // Resolve a conflict
-  const resolveConflict = useCallback(async (
-    conflictId: string, 
-    strategy: ResolutionStrategy, 
-    userId: string, 
-    customValue?: any
-  ) => {
-    const result = conflictManager.resolveConflict(conflictId, strategy, userId, customValue);
-    refreshConflicts();
-    return result;
-  }, [conflictManager, refreshConflicts]);
-  
+  const resolveConflict = useCallback(
+    async (conflictId: string, strategy: ResolutionStrategy, userId: string, customValue?: any) => {
+      const result = conflictManager.resolveConflict(conflictId, strategy, userId, customValue);
+      refreshConflicts();
+      return result;
+    },
+    [conflictManager, refreshConflicts]
+  );
+
   // Open modal
   const openModal = useCallback(() => {
     setIsModalOpen(true);
   }, []);
-  
+
   // Close modal
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
   }, []);
-  
+
   return {
     conflicts,
     unresolvedConflicts,

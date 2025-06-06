@@ -19,11 +19,13 @@ This document outlines the comprehensive rebranding effort to transition the pla
 We created a comprehensive design token system that forms the foundation of the TerraFusion brand identity. The tokens are implemented as CSS custom properties and integrated with Tailwind CSS.
 
 **Key Files:**
+
 - `tokens/terrafusion.json` - Source of truth for design tokens
 - `client/src/styles/terrafusion-tokens.css` - CSS custom properties implementation
 - `scripts/patchTailwind.ts` - Tailwind CSS integration
 
 **Color System:**
+
 - Primary colors: Blue, Green, Orange, Red
 - Secondary colors: Lighter variations of primary colors
 - Neutral colors: Black, Gray, White
@@ -31,11 +33,13 @@ We created a comprehensive design token system that forms the foundation of the 
 - System colors: Success, Warning, Error, Info
 
 **Typography:**
+
 - Display font: Inter (headings, large text)
 - Body font: Inter (primary text)
 - Mono font: JetBrains Mono (code, technical content)
 
 **Spacing & Sizing:**
+
 - Comprehensive scale from 0 to 40 (0.125rem to 10rem)
 
 ### 2. UI Component Updates
@@ -50,10 +54,9 @@ We updated the following UI components to use TerraFusion tokens:
 - Form components
 
 **Example (Button):**
+
 ```tsx
-<button className="bg-primary-blue text-white hover:bg-primary-blue-dark">
-  Click me
-</button>
+<button className="bg-primary-blue text-white hover:bg-primary-blue-dark">Click me</button>
 ```
 
 ### 3. Developer Tools
@@ -67,6 +70,7 @@ We created several developer tools to facilitate the adoption of TerraFusion sty
 #### Component Converter
 
 `scripts/tf-component-converter.js` helps convert existing components to use TerraFusion styling by:
+
 - Replacing hardcoded hex/RGB values with token variables
 - Converting standard Tailwind classes to TerraFusion classes
 - Providing suggestions for styling improvements
@@ -74,6 +78,7 @@ We created several developer tools to facilitate the adoption of TerraFusion sty
 #### Automated Rebranding Script
 
 `scripts/apply-terrafusion-rebrand.js` automates the process of applying the TerraFusion rebrand to an existing codebase:
+
 1. Verifies necessary files
 2. Applies CSS tokens
 3. Updates Tailwind configuration
@@ -100,6 +105,7 @@ We enhanced the CI/CD pipeline with security scanning capabilities to ensure tha
 #### ZAP Security Scan
 
 `ci-templates/zap.yml` provides automated web application security scanning using OWASP ZAP. It identifies vulnerabilities such as:
+
 - Injection flaws
 - Broken authentication
 - Cross-site scripting (XSS)
@@ -108,6 +114,7 @@ We enhanced the CI/CD pipeline with security scanning capabilities to ensure tha
 #### Trivy Vulnerability Scanner
 
 `ci-templates/trivy.yml` scans for vulnerabilities in:
+
 - Dependencies
 - Container images
 - Infrastructure as code
@@ -122,24 +129,27 @@ We enhanced the CI/CD pipeline with security scanning capabilities to ensure tha
 For developers working on the platform, follow these guidelines to maintain the TerraFusion brand identity:
 
 1. Always use TerraFusion tokens instead of hardcoded values:
+
    ```css
    /* Don't */
-   color: #1976D2;
-   
+   color: #1976d2;
+
    /* Do */
    color: var(--color-primary-blue);
    ```
 
 2. Use the Tailwind classes with TerraFusion tokens:
+
    ```html
    <!-- Don't -->
    <div class="bg-blue-500">
-   
-   <!-- Do -->
-   <div class="bg-primary-blue">
+     <!-- Do -->
+     <div class="bg-primary-blue"></div>
+   </div>
    ```
 
 3. Use the TerraFusion typography classes:
+
    ```html
    <h1 class="tf-font-display">Heading</h1>
    <p class="tf-font-body">Body text</p>
@@ -147,9 +157,10 @@ For developers working on the platform, follow these guidelines to maintain the 
    ```
 
 4. Use the TerraFusion component library:
+
    ```tsx
-   import { Button } from "@/components/ui/button";
-   
+   import { Button } from '@/components/ui/button';
+
    function Component() {
      return <Button variant="primary">Click me</Button>;
    }

@@ -1,6 +1,6 @@
 /**
  * Risk Assessment Engine
- * 
+ *
  * Advanced service for evaluating various risk factors affecting property values.
  * This includes regulatory risks, market risks, environmental risks, and more.
  * The engine provides quantitative risk scores along with confidence metrics.
@@ -28,7 +28,7 @@ export interface RiskAssessment {
     [category: string]: {
       score: number;
       factors: number;
-    }
+    };
   };
   assessmentDate: Date;
   recommendations: string[];
@@ -46,13 +46,13 @@ export interface RegulatoryFramework {
 export class RiskAssessmentEngine {
   private storage: IStorage;
   private llmService: LLMService | null = null;
-  
+
   // Cache for regulatory frameworks
-  private regulatoryCache: Map<string, { data: RegulatoryFramework, timestamp: Date }> = new Map();
-  
+  private regulatoryCache: Map<string, { data: RegulatoryFramework; timestamp: Date }> = new Map();
+
   constructor(storage: IStorage, llmService?: LLMService) {
     this.storage = storage;
-    
+
     if (llmService) {
       this.llmService = llmService;
     } else {
@@ -61,12 +61,12 @@ export class RiskAssessmentEngine {
         defaultProvider: 'openai',
         defaultModels: {
           openai: 'gpt-4o',
-          anthropic: 'claude-3-opus-20240229'
-        }
+          anthropic: 'claude-3-opus-20240229',
+        },
       });
     }
   }
-  
+
   /**
    * Assess risks for a specific property
    */
@@ -76,83 +76,84 @@ export class RiskAssessmentEngine {
     if (!property) {
       throw new Error(`Property with ID ${propertyId} not found`);
     }
-    
+
     // Get property-specific data
     const landRecords = await this.storage.getLandRecordsByPropertyId(propertyId);
     const improvements = await this.storage.getImprovementsByPropertyId(propertyId);
-    
+
     // Get region-specific data
     const regulatoryFramework = await this.getRegulatoryFramework(property.region || 'unknown');
-    
+
     // Get environmental risk data if available
     const environmentalRisks = await this.getEnvironmentalRisks(property);
-    
+
     // Analyze market risks
     const marketRisks = await this.analyzeMarketRisks(property);
-    
+
     // Analyze property-specific risks
     const propertyRisks = await this.analyzePropertyRisks(property, improvements);
-    
+
     // Analyze regulatory risks
     const regulatoryRisks = await this.analyzeRegulatoryRisks(property, regulatoryFramework);
-    
+
     // Analyze environmental risks
     const environmentalRiskFactors = await this.analyzeEnvironmentalRisks(
-      property, 
+      property,
       environmentalRisks
     );
-    
+
     // Compile all risk factors
     const allRiskFactors = [
       ...marketRisks,
       ...propertyRisks,
       ...regulatoryRisks,
-      ...environmentalRiskFactors
+      ...environmentalRiskFactors,
     ];
-    
+
     // Calculate overall risk score (weighted average)
     const weights = {
-      'Market': 0.3,
-      'Property': 0.25,
-      'Regulatory': 0.25,
-      'Environmental': 0.2
+      Market: 0.3,
+      Property: 0.25,
+      Regulatory: 0.25,
+      Environmental: 0.2,
     };
-    
+
     // Group by category and calculate weighted scores
     const riskCategories = {};
     let weightedScoreSum = 0;
     let totalWeight = 0;
-    
+
     for (const [category, weight] of Object.entries(weights)) {
       // Get factors for this category
       const categoryFactors = allRiskFactors.filter(f => f.category === category);
-      
+
       if (categoryFactors.length > 0) {
         // Calculate average score for this category
-        const categoryScore = categoryFactors.reduce((sum, f) => sum + f.score, 0) / categoryFactors.length;
-        
+        const categoryScore =
+          categoryFactors.reduce((sum, f) => sum + f.score, 0) / categoryFactors.length;
+
         // Add to weighted sum
         weightedScoreSum += categoryScore * weight;
         totalWeight += weight;
-        
+
         // Save category details
         riskCategories[category] = {
           score: categoryScore,
-          factors: categoryFactors.length
+          factors: categoryFactors.length,
         };
       }
     }
-    
+
     // Calculate final score
     const overallRiskScore = Math.round(weightedScoreSum / totalWeight);
-    
+
     // Generate recommendations
     const recommendations = await this.generateRiskMitigationRecommendations(
       property,
       allRiskFactors,
       overallRiskScore
     );
-    
+
     // Construct assessment result
     const assessment: RiskAssessment = {
       propertyId,
@@ -161,12 +162,12 @@ export class RiskAssessmentEngine {
       riskFactors: allRiskFactors,
       riskCategories,
       assessmentDate: new Date(),
-      recommendations
+      recommendations,
     };
-    
+
     return assessment;
   }
-  
+
   /**
    * Get the regulatory framework for a region
    */
@@ -174,29 +175,29 @@ export class RiskAssessmentEngine {
     // Check cache first
     const cacheKey = `regulatory_${region}`;
     const cachedData = this.regulatoryCache.get(cacheKey);
-    
+
     // If we have cached data less than 24 hours old, use it
-    if (cachedData && (new Date().getTime() - cachedData.timestamp.getTime()) < 86400000) {
+    if (cachedData && new Date().getTime() - cachedData.timestamp.getTime() < 86400000) {
       return cachedData.data;
     }
-    
+
     // Try to fetch from storage
     try {
       const storedFramework = await this.storage.getRegulatoryFramework(region);
-      
+
       if (storedFramework) {
         // Cache the results
         this.regulatoryCache.set(cacheKey, {
           data: storedFramework,
-          timestamp: new Date()
+          timestamp: new Date(),
         });
-        
+
         return storedFramework;
       }
     } catch (error) {
       console.warn(`Error fetching regulatory framework from storage: ${error.message}`);
     }
-    
+
     // If no stored data, create a placeholder framework (in production this would come from a regulatory API)
     const framework: RegulatoryFramework = {
       region,
@@ -210,9 +211,9 @@ export class RiskAssessmentEngine {
             setbacks: {
               front: '20 ft',
               side: '5 ft',
-              rear: '20 ft'
-            }
-          }
+              rear: '20 ft',
+            },
+          },
         },
         {
           code: 'C-1',
@@ -222,60 +223,60 @@ export class RiskAssessmentEngine {
             setbacks: {
               front: '10 ft',
               side: '5 ft',
-              rear: '15 ft'
-            }
-          }
-        }
+              rear: '15 ft',
+            },
+          },
+        },
       ],
       buildingCodes: [
         {
           code: 'IBC-2021',
           description: 'International Building Code 2021',
-          applicability: 'All commercial structures'
+          applicability: 'All commercial structures',
         },
         {
           code: 'IRC-2021',
           description: 'International Residential Code 2021',
-          applicability: 'All residential structures'
-        }
+          applicability: 'All residential structures',
+        },
       ],
       environmentalRegulations: [
         {
           code: 'FEMA-FP',
           description: 'FEMA Floodplain Regulations',
-          requirements: 'Elevated structures in flood zones, special permits'
+          requirements: 'Elevated structures in flood zones, special permits',
         },
         {
           code: 'WET-1',
           description: 'Wetlands Protection',
-          requirements: 'No development within 100ft of designated wetlands'
-        }
+          requirements: 'No development within 100ft of designated wetlands',
+        },
       ],
       taxPolicies: [
         {
           code: 'PROP-TAX',
           description: 'Property Tax Rate',
           rate: '1.2% of assessed value',
-          reassessment: 'Every 2 years'
+          reassessment: 'Every 2 years',
         },
         {
           code: 'TRAN-TAX',
           description: 'Transfer Tax',
-          rate: '0.5% of sale price'
-        }
+          rate: '0.5% of sale price',
+        },
       ],
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     };
-    
+
     // Cache the results
     this.regulatoryCache.set(cacheKey, {
       data: framework,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
-    
+
     return framework;
   }
-  
+
   /**
    * Get historical regulatory changes for a region
    */
@@ -283,14 +284,14 @@ export class RiskAssessmentEngine {
     // Try to fetch from storage
     try {
       const storedChanges = await this.storage.getHistoricalRegulatoryChanges(region);
-      
+
       if (storedChanges && storedChanges.length > 0) {
         return storedChanges;
       }
     } catch (error) {
       console.warn(`Error fetching historical regulatory changes: ${error.message}`);
     }
-    
+
     // If no stored data, create placeholder data (in production this would come from a regulatory database)
     const currentYear = new Date().getFullYear();
     const changes = [
@@ -298,31 +299,31 @@ export class RiskAssessmentEngine {
         year: currentYear - 5,
         description: 'Updated zoning regulations for downtown area',
         impact: 'Increased density and mixed-use development',
-        category: 'Zoning'
+        category: 'Zoning',
       },
       {
         year: currentYear - 3,
         description: 'New environmental impact assessment requirements',
         impact: 'Extended approval timelines for large developments',
-        category: 'Environmental'
+        category: 'Environmental',
       },
       {
         year: currentYear - 2,
         description: 'Property tax rate increase',
         impact: '0.2% increase in property tax rates',
-        category: 'Taxation'
+        category: 'Taxation',
       },
       {
         year: currentYear - 1,
         description: 'Updated building codes for energy efficiency',
         impact: 'Higher standards for insulation and HVAC systems',
-        category: 'Building Codes'
-      }
+        category: 'Building Codes',
+      },
     ];
-    
+
     return changes;
   }
-  
+
   /**
    * Private: Get environmental risks for a property
    */
@@ -330,45 +331,45 @@ export class RiskAssessmentEngine {
     // Try to fetch from storage
     try {
       const storedRisks = await this.storage.getEnvironmentalRisks(property.propertyId);
-      
+
       if (storedRisks) {
         return storedRisks;
       }
     } catch (error) {
       console.warn(`Error fetching environmental risks: ${error.message}`);
     }
-    
+
     // If no stored data, create placeholder risk data (in production, this would come from environmental APIs)
     return {
       floodRisk: {
         zone: 'X',
         description: 'Minimal flood risk',
-        score: 15
+        score: 15,
       },
       earthquakeRisk: {
         zone: 'Low',
         description: 'Low seismic activity area',
-        score: 10
+        score: 10,
       },
       wildfireRisk: {
         zone: 'Moderate',
         description: 'Some wildfire risk in dry seasons',
-        score: 40
+        score: 40,
       },
       soilStability: {
         condition: 'Stable',
         description: 'No known soil stability issues',
-        score: 5
-      }
+        score: 5,
+      },
     };
   }
-  
+
   /**
    * Private: Analyze market risks
    */
   private async analyzeMarketRisks(property: any): Promise<RiskFactor[]> {
     const marketRisks: RiskFactor[] = [];
-    
+
     // Market volatility risk
     marketRisks.push({
       category: 'Market',
@@ -376,9 +377,9 @@ export class RiskAssessmentEngine {
       score: 45,
       impact: 'medium',
       likelihood: 'possible',
-      description: 'Moderate market fluctuations expected based on historical trends'
+      description: 'Moderate market fluctuations expected based on historical trends',
     });
-    
+
     // Interest rate risk
     marketRisks.push({
       category: 'Market',
@@ -386,9 +387,9 @@ export class RiskAssessmentEngine {
       score: 65,
       impact: 'high',
       likelihood: 'likely',
-      description: 'Expected interest rate increases could reduce buyer demand'
+      description: 'Expected interest rate increases could reduce buyer demand',
     });
-    
+
     // Supply-demand imbalance
     marketRisks.push({
       category: 'Market',
@@ -396,9 +397,9 @@ export class RiskAssessmentEngine {
       score: 40,
       impact: 'medium',
       likelihood: 'possible',
-      description: 'Current inventory levels suggest moderate supply-demand balance'
+      description: 'Current inventory levels suggest moderate supply-demand balance',
     });
-    
+
     // Economic downturn risk
     marketRisks.push({
       category: 'Market',
@@ -406,27 +407,27 @@ export class RiskAssessmentEngine {
       score: 55,
       impact: 'high',
       likelihood: 'possible',
-      description: 'Moderate risk of economic downturn affecting property values'
+      description: 'Moderate risk of economic downturn affecting property values',
     });
-    
+
     return marketRisks;
   }
-  
+
   /**
    * Private: Analyze property-specific risks
    */
   private async analyzePropertyRisks(property: any, improvements: any[]): Promise<RiskFactor[]> {
     const propertyRisks: RiskFactor[] = [];
-    
+
     // Age-related risk
     let ageScore = 20; // Default
     let ageDescription = 'Property age related risks are minimal';
     let ageImpact: 'low' | 'medium' | 'high' | 'very-high' = 'low';
     let ageLikelihood: 'unlikely' | 'possible' | 'likely' | 'very-likely' = 'unlikely';
-    
+
     if (property.yearBuilt) {
       const age = new Date().getFullYear() - parseInt(property.yearBuilt);
-      
+
       if (age > 50) {
         ageScore = 75;
         ageDescription = 'Older property with significant age-related maintenance risks';
@@ -444,16 +445,16 @@ export class RiskAssessmentEngine {
         ageLikelihood = 'possible';
       }
     }
-    
+
     propertyRisks.push({
       category: 'Property',
       name: 'Age-Related Deterioration',
       score: ageScore,
       impact: ageImpact,
       likelihood: ageLikelihood,
-      description: ageDescription
+      description: ageDescription,
     });
-    
+
     // Maintenance risk
     propertyRisks.push({
       category: 'Property',
@@ -461,13 +462,13 @@ export class RiskAssessmentEngine {
       score: 35,
       impact: 'medium',
       likelihood: 'possible',
-      description: 'Some maintenance items may affect property value if not addressed'
+      description: 'Some maintenance items may affect property value if not addressed',
     });
-    
+
     // Property type risk
     let typeScore = 30;
     let typeDescription = 'Standard property type with average market liquidity';
-    
+
     if (property.propertyType === 'Commercial') {
       typeScore = 45;
       typeDescription = 'Commercial properties face some additional market constraints';
@@ -478,28 +479,28 @@ export class RiskAssessmentEngine {
       typeScore = 70;
       typeDescription = 'Special purpose properties have very limited buyer pools';
     }
-    
+
     propertyRisks.push({
       category: 'Property',
       name: 'Property Type Marketability',
       score: typeScore,
       impact: typeScore > 50 ? 'high' : 'medium',
       likelihood: typeScore > 60 ? 'likely' : 'possible',
-      description: typeDescription
+      description: typeDescription,
     });
-    
+
     return propertyRisks;
   }
-  
+
   /**
    * Private: Analyze regulatory risks
    */
   private async analyzeRegulatoryRisks(
-    property: any, 
+    property: any,
     regulatoryFramework: RegulatoryFramework
   ): Promise<RiskFactor[]> {
     const regulatoryRisks: RiskFactor[] = [];
-    
+
     // Zoning change risk
     regulatoryRisks.push({
       category: 'Regulatory',
@@ -510,10 +511,10 @@ export class RiskAssessmentEngine {
       description: 'Potential for zoning regulations to change affecting property use',
       mitigationStrategies: [
         'Monitor local planning commission activities',
-        'Participate in community development discussions'
-      ]
+        'Participate in community development discussions',
+      ],
     });
-    
+
     // Building code risk
     regulatoryRisks.push({
       category: 'Regulatory',
@@ -524,10 +525,10 @@ export class RiskAssessmentEngine {
       description: 'Building code updates may require modifications for future renovations',
       mitigationStrategies: [
         'Stay informed of code update schedules',
-        'Plan for retrofits during normal maintenance cycles'
-      ]
+        'Plan for retrofits during normal maintenance cycles',
+      ],
     });
-    
+
     // Tax policy risk
     regulatoryRisks.push({
       category: 'Regulatory',
@@ -538,22 +539,22 @@ export class RiskAssessmentEngine {
       description: 'Historical trends suggest continued property tax increases',
       mitigationStrategies: [
         'Budget for expected increases',
-        'Consider tax appeal if assessment seems inaccurate'
-      ]
+        'Consider tax appeal if assessment seems inaccurate',
+      ],
     });
-    
+
     return regulatoryRisks;
   }
-  
+
   /**
    * Private: Analyze environmental risks
    */
   private async analyzeEnvironmentalRisks(
-    property: any, 
+    property: any,
     environmentalRisks: any
   ): Promise<RiskFactor[]> {
     const risks: RiskFactor[] = [];
-    
+
     // Flood risk
     if (environmentalRisks.floodRisk) {
       risks.push({
@@ -563,13 +564,10 @@ export class RiskAssessmentEngine {
         impact: this.scoreToImpact(environmentalRisks.floodRisk.score),
         likelihood: this.scoreToLikelihood(environmentalRisks.floodRisk.score),
         description: `Flood zone ${environmentalRisks.floodRisk.zone}: ${environmentalRisks.floodRisk.description}`,
-        mitigationStrategies: [
-          'Maintain flood insurance',
-          'Consider flood-proofing measures'
-        ]
+        mitigationStrategies: ['Maintain flood insurance', 'Consider flood-proofing measures'],
       });
     }
-    
+
     // Earthquake risk
     if (environmentalRisks.earthquakeRisk) {
       risks.push({
@@ -579,13 +577,10 @@ export class RiskAssessmentEngine {
         impact: this.scoreToImpact(environmentalRisks.earthquakeRisk.score),
         likelihood: this.scoreToLikelihood(environmentalRisks.earthquakeRisk.score),
         description: `Seismic zone ${environmentalRisks.earthquakeRisk.zone}: ${environmentalRisks.earthquakeRisk.description}`,
-        mitigationStrategies: [
-          'Verify structural integrity',
-          'Consider seismic retrofitting'
-        ]
+        mitigationStrategies: ['Verify structural integrity', 'Consider seismic retrofitting'],
       });
     }
-    
+
     // Wildfire risk
     if (environmentalRisks.wildfireRisk) {
       risks.push({
@@ -597,11 +592,11 @@ export class RiskAssessmentEngine {
         description: `Wildfire zone ${environmentalRisks.wildfireRisk.zone}: ${environmentalRisks.wildfireRisk.description}`,
         mitigationStrategies: [
           'Maintain defensible space',
-          'Use fire-resistant building materials'
-        ]
+          'Use fire-resistant building materials',
+        ],
       });
     }
-    
+
     // Soil stability
     if (environmentalRisks.soilStability) {
       risks.push({
@@ -611,13 +606,10 @@ export class RiskAssessmentEngine {
         impact: this.scoreToImpact(environmentalRisks.soilStability.score),
         likelihood: this.scoreToLikelihood(environmentalRisks.soilStability.score),
         description: environmentalRisks.soilStability.description,
-        mitigationStrategies: [
-          'Monitor for settlement or erosion',
-          'Maintain proper drainage'
-        ]
+        mitigationStrategies: ['Monitor for settlement or erosion', 'Maintain proper drainage'],
       });
     }
-    
+
     // Climate change risk (general)
     risks.push({
       category: 'Environmental',
@@ -628,13 +620,13 @@ export class RiskAssessmentEngine {
       description: 'Increasing severity of weather events and long-term climate changes',
       mitigationStrategies: [
         'Consider weatherization improvements',
-        'Evaluate long-term sustainability'
-      ]
+        'Evaluate long-term sustainability',
+      ],
     });
-    
+
     return risks;
   }
-  
+
   /**
    * Private: Generate recommendations based on risk assessment
    */
@@ -646,24 +638,26 @@ export class RiskAssessmentEngine {
     // Start with standard recommendations
     const recommendations: string[] = [
       'Maintain adequate property insurance coverage',
-      'Develop a regular property maintenance schedule'
+      'Develop a regular property maintenance schedule',
     ];
-    
+
     // Add recommendations based on high-risk factors
     const highRiskFactors = riskFactors.filter(
       factor => factor.score >= 65 || factor.impact === 'high' || factor.impact === 'very-high'
     );
-    
+
     for (const factor of highRiskFactors) {
       if (factor.mitigationStrategies && factor.mitigationStrategies.length > 0) {
         // Add specific mitigation strategies if available
         recommendations.push(...factor.mitigationStrategies);
       } else {
         // Generate a generic recommendation based on the risk factor
-        recommendations.push(`Develop specific mitigation strategy for ${factor.name.toLowerCase()} risk`);
+        recommendations.push(
+          `Develop specific mitigation strategy for ${factor.name.toLowerCase()} risk`
+        );
       }
     }
-    
+
     // Add recommendations based on property type
     if (property.propertyType === 'Commercial') {
       recommendations.push('Conduct regular market analysis to assess lease rate competitiveness');
@@ -672,7 +666,7 @@ export class RiskAssessmentEngine {
       recommendations.push('Monitor neighborhood development patterns and property values');
       recommendations.push('Consider strategic improvements with highest ROI potential');
     }
-    
+
     // Add recommendation based on overall risk score
     if (overallRiskScore > 70) {
       recommendations.push('Consider comprehensive risk management consultation');
@@ -681,34 +675,35 @@ export class RiskAssessmentEngine {
       recommendations.push('Prioritize addressing highest impact risk factors');
       recommendations.push('Schedule regular risk assessment updates');
     }
-    
+
     // Remove duplicates and return
     return [...new Set(recommendations)];
   }
-  
+
   /**
    * Helper: Calculate confidence score based on risk factors
    */
   private calculateConfidenceScore(riskFactors: RiskFactor[]): number {
     // Start with base confidence
     const baseConfidence = 0.85;
-    
+
     // Calculate average risk score
-    const avgRiskScore = riskFactors.reduce((sum, factor) => sum + factor.score, 0) / riskFactors.length;
-    
+    const avgRiskScore =
+      riskFactors.reduce((sum, factor) => sum + factor.score, 0) / riskFactors.length;
+
     // Higher risk tends to decrease confidence slightly
     const riskAdjustment = -0.05 * (avgRiskScore / 50);
-    
+
     // More risk factors increases confidence (more data points)
     const factorCountAdjustment = Math.min(0.05, 0.005 * riskFactors.length);
-    
+
     // Calculate final confidence score
     const confidenceScore = baseConfidence + riskAdjustment + factorCountAdjustment;
-    
+
     // Ensure confidence is between 0 and 1
     return Math.min(0.98, Math.max(0.6, confidenceScore));
   }
-  
+
   /**
    * Helper: Convert numeric score to impact category
    */
@@ -718,7 +713,7 @@ export class RiskAssessmentEngine {
     if (score >= 25) return 'medium';
     return 'low';
   }
-  
+
   /**
    * Helper: Convert numeric score to likelihood category
    */

@@ -1,16 +1,16 @@
 /**
  * index.ts
- * 
+ *
  * Export domain-specific agents
  */
 
 // Export Database Intelligence Agent
-export { 
+export {
   DatabaseIntelligenceAgent,
   DatabaseConfig,
   QueryAnalysisResult,
   SchemaRecommendation,
-  DatabaseTaskType
+  DatabaseTaskType,
 } from './DatabaseIntelligenceAgent';
 
 // Export GIS Specialist Agent
@@ -21,7 +21,7 @@ export {
   BoundingBox,
   GisLayer,
   SpatialQueryResult,
-  GisTaskType
+  GisTaskType,
 } from './GisSpecialistAgent';
 
 // Export Development Pipeline Agent
@@ -31,5 +31,5 @@ export {
   TestConfig,
   PipelineStageResult,
   CodeQualityMetrics,
-  DevelopmentTaskType
+  DevelopmentTaskType,
 } from './DevelopmentPipelineAgent';

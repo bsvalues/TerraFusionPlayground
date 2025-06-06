@@ -1,6 +1,6 @@
 /**
  * index.ts
- * 
+ *
  * Export core agent components
  */
 
@@ -17,22 +17,15 @@ export { AgentRegistry } from './AgentRegistry';
 export { AgentCoordinator } from './AgentCoordinator';
 
 // Export state manager
-export { 
-  StateManager, 
-  StorageProvider, 
-  FileSystemStorageProvider, 
-  MemoryStorageProvider 
+export {
+  StateManager,
+  StorageProvider,
+  FileSystemStorageProvider,
+  MemoryStorageProvider,
 } from './StateManager';
 
 // Export event bus
-export { 
-  EventBus, 
-  AgentEvent 
-} from './EventBus';
+export { EventBus, AgentEvent } from './EventBus';
 
 // Export logging
-export { 
-  LogService, 
-  LogLevel, 
-  LogEntry 
-} from './LogService';
+export { LogService, LogLevel, LogEntry } from './LogService';

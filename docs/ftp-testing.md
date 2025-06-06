@@ -44,6 +44,7 @@ Validates the FTP server's directory structure and ensures that the expected dir
 Tests the FTP data processor, which is responsible for parsing fixed-width files from the property assessment system.
 
 **Commands:**
+
 - **Config Tests:** `node scripts/test-ftp-data-processor.js --test-configs`
 - **Field Mapping Tests:** `node scripts/test-ftp-data-processor.js --test-mappings`
 - **Parsing Tests:** `node scripts/test-ftp-data-processor.js --test-parsing`
@@ -53,6 +54,7 @@ Tests the FTP data processor, which is responsible for parsing fixed-width files
 Tests the synchronization scheduler and the locking mechanism that prevents multiple synchronization jobs from running simultaneously.
 
 **Commands:**
+
 - **Scheduler Test:** `node scripts/setup-ftp-cron.js --test`
 - **Lock Mechanism Test:** `node tests/ftp-agent-scheduler.test.js`
 

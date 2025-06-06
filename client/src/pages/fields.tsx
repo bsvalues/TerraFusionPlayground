@@ -8,23 +8,23 @@ import { Field, Property } from '@/lib/types';
 
 const Fields = () => {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
-  
+
   // Fetch properties
   const { data: properties = [], isLoading: propertiesLoading } = useQuery<Property[]>({
     queryKey: ['/api/properties'],
   });
-  
+
   // Fetch fields for selected property
   const { data: fields = [], isLoading: fieldsLoading } = useQuery<Field[]>({
     queryKey: ['/api/properties', selectedPropertyId, 'fields'],
     enabled: !!selectedPropertyId,
   });
-  
+
   // Get selected property details
-  const selectedProperty = selectedPropertyId 
-    ? properties.find(p => p.propertyId === selectedPropertyId) 
+  const selectedProperty = selectedPropertyId
+    ? properties.find(p => p.propertyId === selectedPropertyId)
     : null;
-  
+
   // Header actions
   const headerActions = (
     <Button className="inline-flex items-center">
@@ -35,12 +35,8 @@ const Fields = () => {
 
   return (
     <>
-      <PageHeader 
-        title="Custom Fields" 
-        subtitle="Data Management"
-        actions={headerActions}
-      />
-      
+      <PageHeader title="Custom Fields" subtitle="Data Management" actions={headerActions} />
+
       <div className="px-4 sm:px-6 lg:max-w-7xl lg:mx-auto lg:px-8 py-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Property Selection Panel */}
@@ -56,11 +52,11 @@ const Fields = () => {
               ) : (
                 <div className="space-y-2">
                   {properties.map(property => (
-                    <div 
+                    <div
                       key={property.propertyId}
                       className={`p-3 rounded-md cursor-pointer flex items-center ${
-                        selectedPropertyId === property.propertyId 
-                          ? 'bg-primary-50 border border-primary-200' 
+                        selectedPropertyId === property.propertyId
+                          ? 'bg-primary-50 border border-primary-200'
                           : 'hover:bg-gray-50'
                       }`}
                       onClick={() => setSelectedPropertyId(property.propertyId)}
@@ -84,8 +80,8 @@ const Fields = () => {
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="text-xl">
-                {selectedProperty 
-                  ? `Custom Fields for ${selectedProperty.address}` 
+                {selectedProperty
+                  ? `Custom Fields for ${selectedProperty.address}`
                   : 'Select a property to view custom fields'}
               </CardTitle>
             </CardHeader>
@@ -110,11 +106,21 @@ const Fields = () => {
                   <table className="min-w-full divide-y divide-gray-300">
                     <thead>
                       <tr>
-                        <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">Field Type</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Value</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Created At</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Last Updated</th>
-                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Actions</th>
+                        <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">
+                          Field Type
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Value
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Created At
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Last Updated
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
@@ -133,7 +139,9 @@ const Fields = () => {
                             {new Date(field.lastUpdated).toLocaleDateString()}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            <Button variant="ghost" size="sm">Edit</Button>
+                            <Button variant="ghost" size="sm">
+                              Edit
+                            </Button>
                           </td>
                         </tr>
                       ))}

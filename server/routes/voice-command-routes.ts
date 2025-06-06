@@ -1,6 +1,6 @@
 /**
  * Voice Command Routes Index
- * 
+ *
  * This file consolidates all the voice command related routes into a single router.
  */
 

@@ -45,11 +45,11 @@ export interface ChangeStatistics {
 export async function getRecentPropertyChanges(limit: number = 10): Promise<PropertyChange[]> {
   try {
     const response = await fetch(`/api/property-changes/recent?limit=${limit}`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch recent property changes: ${response.statusText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error fetching recent property changes:', error);
@@ -66,20 +66,20 @@ export async function getPropertyChanges(
 ): Promise<PropertyChange[]> {
   try {
     const queryParams = new URLSearchParams();
-    
+
     if (params.changeType) queryParams.append('changeType', params.changeType);
     if (params.startDate) queryParams.append('startDate', params.startDate);
     if (params.endDate) queryParams.append('endDate', params.endDate);
     if (params.changedBy) queryParams.append('changedBy', params.changedBy);
     if (params.page) queryParams.append('page', params.page.toString());
     if (params.limit) queryParams.append('limit', params.limit.toString());
-    
+
     const response = await fetch(`/api/properties/${propertyId}/changes?${queryParams}`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch property changes: ${response.statusText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error(`Error fetching changes for property ${propertyId}:`, error);
@@ -90,10 +90,12 @@ export async function getPropertyChanges(
 /**
  * Search for property changes across all properties.
  */
-export async function searchPropertyChanges(params: PropertyChangeSearchParams): Promise<PropertyChangeSearchResult> {
+export async function searchPropertyChanges(
+  params: PropertyChangeSearchParams
+): Promise<PropertyChangeSearchResult> {
   try {
     const queryParams = new URLSearchParams();
-    
+
     if (params.propertyId) queryParams.append('propertyId', params.propertyId);
     if (params.changeType) queryParams.append('changeType', params.changeType);
     if (params.startDate) queryParams.append('startDate', params.startDate);
@@ -101,13 +103,13 @@ export async function searchPropertyChanges(params: PropertyChangeSearchParams):
     if (params.changedBy) queryParams.append('changedBy', params.changedBy);
     if (params.page) queryParams.append('page', params.page.toString());
     if (params.limit) queryParams.append('limit', params.limit.toString());
-    
+
     const response = await fetch(`/api/property-changes/search?${queryParams}`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to search property changes: ${response.statusText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error searching property changes:', error);
@@ -121,11 +123,11 @@ export async function searchPropertyChanges(params: PropertyChangeSearchParams):
 export async function getChangeStatistics(timeRange: string = 'month'): Promise<ChangeStatistics> {
   try {
     const response = await fetch(`/api/property-changes/statistics?timeRange=${timeRange}`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch change statistics: ${response.statusText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error fetching change statistics:', error);
@@ -136,7 +138,9 @@ export async function getChangeStatistics(timeRange: string = 'month'): Promise<
 /**
  * Record a property change.
  */
-export async function recordPropertyChange(changeData: Partial<PropertyChange>): Promise<PropertyChange> {
+export async function recordPropertyChange(
+  changeData: Partial<PropertyChange>
+): Promise<PropertyChange> {
   try {
     const response = await fetch('/api/property-changes', {
       method: 'POST',
@@ -145,11 +149,11 @@ export async function recordPropertyChange(changeData: Partial<PropertyChange>):
       },
       body: JSON.stringify(changeData),
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to record property change: ${response.statusText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error recording property change:', error);

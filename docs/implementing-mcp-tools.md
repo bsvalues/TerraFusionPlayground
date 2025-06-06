@@ -21,7 +21,7 @@ Add your tool definition to the `MCPToolDefinition` array in the MCP service:
 ```typescript
 export const MCPToolDefinitions: MCPToolDefinition[] = [
   // ... existing tools
-  
+
   {
     name: 'myNewTool',
     description: 'Detailed description of what this tool does',
@@ -31,8 +31,8 @@ export const MCPToolDefinitions: MCPToolDefinition[] = [
       param2: z.number().optional().describe('Optional numeric parameter'),
       // Add all parameters with their types and validations
     }),
-    handler: myNewToolHandler
-  }
+    handler: myNewToolHandler,
+  },
 ];
 ```
 
@@ -49,15 +49,15 @@ async function myNewToolHandler(
   if (specialValidationNeeded(params.param1)) {
     throw new Error('Invalid parameter: param1');
   }
-  
+
   // Implement tool logic
   const result = await performOperation(params);
-  
+
   // Log operation if needed (sensitive operations should be logged)
   if (isSignificantOperation) {
     await context.logAction('myNewTool executed', { params });
   }
-  
+
   // Return result
   return result;
 }
@@ -92,9 +92,9 @@ Create tests for your new tool in the `tests/test-mcp.js` file:
 ```javascript
 // Test your new tool
 console.log('\nTesting myNewTool:');
-const myToolResult = await executeTool(token, 'myNewTool', { 
+const myToolResult = await executeTool(token, 'myNewTool', {
   param1: 'test',
-  param2: 123
+  param2: 123,
 });
 if (myToolResult) {
   console.log('Tool executed successfully:');
@@ -120,21 +120,21 @@ async function searchPropertiesHandler(
 ): Promise<Property[]> {
   // Validate parameters beyond schema validation
   securityService.checkSqlInjection(params.addressContains);
-  
+
   // Execute the search
   const properties = await storage.getAllProperties();
-  
+
   // Filter results
-  const filtered = properties.filter(p => 
+  const filtered = properties.filter(p =>
     p.address.toLowerCase().includes(params.addressContains.toLowerCase())
   ).slice(0, params.limit);
-  
+
   // Log the search
-  await context.logAction('Property search executed', { 
+  await context.logAction('Property search executed', {
     query: params.addressContains,
     resultCount: filtered.length
   });
-  
+
   // Return results
   return filtered;
 }
@@ -173,6 +173,7 @@ When designing tools for AI agent use:
 After implementing your tool, register it in the MCP service by adding it to the `MCPToolDefinitions` array.
 
 The MCP service will automatically:
+
 1. Register your tool in the available tools list
 2. Apply parameter validation through Zod
 3. Enforce permission requirements

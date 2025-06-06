@@ -1,11 +1,11 @@
 /**
  * Focus Level Selector Component
- * 
+ *
  * Interactive component for selecting developer focus levels
  */
 import React from 'react';
-import { Button } from "@/components/ui/button";
-import { Loader2, Target, Layers, ZoomOut, Dices } from "lucide-react";
+import { Button } from '@/components/ui/button';
+import { Loader2, Target, Layers, ZoomOut, Dices } from 'lucide-react';
 
 interface FocusLevelSelectorProps {
   currentLevel: string;
@@ -16,7 +16,7 @@ interface FocusLevelSelectorProps {
 const FocusLevelSelector: React.FC<FocusLevelSelectorProps> = ({
   currentLevel,
   onLevelChange,
-  isUpdating
+  isUpdating,
 }) => {
   return (
     <div className="grid grid-cols-4 gap-2">
@@ -34,7 +34,7 @@ const FocusLevelSelector: React.FC<FocusLevelSelectorProps> = ({
         )}
         Deep
       </Button>
-      
+
       <Button
         variant={currentLevel === 'MODERATE' ? 'default' : 'outline'}
         className={`flex items-center justify-center ${currentLevel === 'MODERATE' ? 'bg-blue-500 hover:bg-blue-600' : ''}`}
@@ -49,7 +49,7 @@ const FocusLevelSelector: React.FC<FocusLevelSelectorProps> = ({
         )}
         Moderate
       </Button>
-      
+
       <Button
         variant={currentLevel === 'SHALLOW' ? 'default' : 'outline'}
         className={`flex items-center justify-center ${currentLevel === 'SHALLOW' ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
@@ -64,7 +64,7 @@ const FocusLevelSelector: React.FC<FocusLevelSelectorProps> = ({
         )}
         Shallow
       </Button>
-      
+
       <Button
         variant={currentLevel === 'DISTRACTED' ? 'default' : 'outline'}
         className={`flex items-center justify-center ${currentLevel === 'DISTRACTED' ? 'bg-red-500 hover:bg-red-600' : ''}`}

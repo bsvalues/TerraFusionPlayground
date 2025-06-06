@@ -6,6 +6,6 @@ declare module 'open' {
     url?: boolean | undefined;
     newInstance?: boolean | undefined;
   }
-  
+
   export default function open(target: string, options?: Options): Promise<any>;
 }

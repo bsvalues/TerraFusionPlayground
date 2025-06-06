@@ -1,7 +1,7 @@
-import * as React from "react";
-import { cn } from "@/lib/utils";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import * as React from 'react';
+import { cn } from '@/lib/utils';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface CardSkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   /**
@@ -14,14 +14,9 @@ interface CardSkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   footer?: boolean;
 }
 
-export function CardSkeleton({
-  className,
-  rows = 3,
-  footer = false,
-  ...props
-}: CardSkeletonProps) {
+export function CardSkeleton({ className, rows = 3, footer = false, ...props }: CardSkeletonProps) {
   return (
-    <Card className={cn("overflow-hidden", className)} {...props}>
+    <Card className={cn('overflow-hidden', className)} {...props}>
       <CardHeader className="gap-2">
         <Skeleton className="h-5 w-1/3" />
         <Skeleton className="h-4 w-1/2" />

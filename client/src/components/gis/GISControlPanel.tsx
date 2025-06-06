@@ -1,38 +1,27 @@
 import { useState } from 'react';
 import { useGIS } from '@/modules/gis/contexts/GISContext';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from "@/components/ui/tabs";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
-import { 
-  Search, 
-  SlidersHorizontal, 
-  Map, 
-  Database, 
-  FileDown, 
-  Camera, 
-  RotateCw, 
+import {
+  Search,
+  SlidersHorizontal,
+  Map,
+  Database,
+  FileDown,
+  Camera,
+  RotateCw,
   Compass,
-  BookOpen 
+  BookOpen,
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -46,15 +35,15 @@ const GISControlPanel = () => {
     setZoom,
     setCenter,
     createSnapshot,
-    exportCurrentView
+    exportCurrentView,
   } = useGIS();
-  
+
   const [activeTab, setActiveTab] = useState('layers');
   const [isExporting, setIsExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState('png');
   const [addressSearchValue, setAddressSearchValue] = useState('');
   const [is3DEnabled, setIs3DEnabled] = useState(false);
-  
+
   // Handle address search
   const handleAddressSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +53,7 @@ const GISControlPanel = () => {
     setCenter([-119.7, 46.2]);
     setZoom(13);
   };
-  
+
   // Handle snapshot
   const handleCreateSnapshot = async () => {
     try {
@@ -75,7 +64,7 @@ const GISControlPanel = () => {
       console.error('Failed to create snapshot:', error);
     }
   };
-  
+
   // Handle export
   const handleExport = async () => {
     setIsExporting(true);
@@ -89,23 +78,21 @@ const GISControlPanel = () => {
       setIsExporting(false);
     }
   };
-  
+
   // Render layers tab
   const renderLayersTab = () => {
     return (
       <div className="space-y-4">
         <div className="space-y-1">
-          <Label htmlFor="layer-filter" className="text-xs">Filter Layers</Label>
+          <Label htmlFor="layer-filter" className="text-xs">
+            Filter Layers
+          </Label>
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="layer-filter"
-              placeholder="Search layers..."
-              className="pl-8"
-            />
+            <Input id="layer-filter" placeholder="Search layers..." className="pl-8" />
           </div>
         </div>
-        
+
         <div className="space-y-3">
           <div className="bg-secondary/50 p-2 rounded-sm">
             <h4 className="text-xs font-medium mb-1">Base Maps</h4>
@@ -120,7 +107,7 @@ const GISControlPanel = () => {
                 />
                 Streets
               </label>
-              
+
               <label className="text-xs flex items-center">
                 <input
                   type="radio"
@@ -131,7 +118,7 @@ const GISControlPanel = () => {
                 />
                 Satellite
               </label>
-              
+
               <label className="text-xs flex items-center">
                 <input
                   type="radio"
@@ -144,7 +131,7 @@ const GISControlPanel = () => {
               </label>
             </div>
           </div>
-          
+
           <div className="pb-1 text-sm font-medium">Data Layers</div>
           <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
             <div className="bg-card rounded-sm p-2 border border-input">
@@ -164,15 +151,10 @@ const GISControlPanel = () => {
               </div>
               <div className="mt-2">
                 <div className="text-xs text-muted-foreground mb-1">Opacity</div>
-                <Slider
-                  defaultValue={[100]}
-                  max={100}
-                  step={1}
-                  className="h-2"
-                />
+                <Slider defaultValue={[100]} max={100} step={1} className="h-2" />
               </div>
             </div>
-            
+
             <div className="bg-card rounded-sm p-2 border border-input">
               <div className="flex items-center justify-between">
                 <label className="text-xs flex items-center">
@@ -190,15 +172,10 @@ const GISControlPanel = () => {
               </div>
               <div className="mt-2">
                 <div className="text-xs text-muted-foreground mb-1">Opacity</div>
-                <Slider
-                  defaultValue={[70]}
-                  max={100}
-                  step={1}
-                  className="h-2"
-                />
+                <Slider defaultValue={[70]} max={100} step={1} className="h-2" />
               </div>
             </div>
-            
+
             <div className="bg-card rounded-sm p-2 border border-input">
               <div className="flex items-center justify-between">
                 <label className="text-xs flex items-center">
@@ -216,12 +193,7 @@ const GISControlPanel = () => {
               </div>
               <div className="mt-2">
                 <div className="text-xs text-muted-foreground mb-1">Opacity</div>
-                <Slider
-                  defaultValue={[80]}
-                  max={100}
-                  step={1}
-                  className="h-2"
-                />
+                <Slider defaultValue={[80]} max={100} step={1} className="h-2" />
               </div>
             </div>
           </div>
@@ -229,14 +201,16 @@ const GISControlPanel = () => {
       </div>
     );
   };
-  
+
   // Render search tab
   const renderSearchTab = () => {
     return (
       <div className="space-y-4">
         <form onSubmit={handleAddressSearch}>
           <div className="space-y-1">
-            <Label htmlFor="address-search" className="text-xs">Search Address</Label>
+            <Label htmlFor="address-search" className="text-xs">
+              Search Address
+            </Label>
             <div className="flex">
               <div className="relative flex-1">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -245,7 +219,7 @@ const GISControlPanel = () => {
                   placeholder="Enter address..."
                   className="pl-8"
                   value={addressSearchValue}
-                  onChange={(e) => setAddressSearchValue(e.target.value)}
+                  onChange={e => setAddressSearchValue(e.target.value)}
                 />
               </div>
               <Button type="submit" size="sm" className="ml-2">
@@ -254,7 +228,7 @@ const GISControlPanel = () => {
             </div>
           </div>
         </form>
-        
+
         <div className="space-y-2">
           <Label className="text-xs">Property Filter</Label>
           <Select defaultValue="all">
@@ -269,20 +243,26 @@ const GISControlPanel = () => {
               <SelectItem value="agricultural">Agricultural</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label htmlFor="min-value" className="text-xs">Min Value</Label>
+              <Label htmlFor="min-value" className="text-xs">
+                Min Value
+              </Label>
               <Input id="min-value" type="number" placeholder="0" />
             </div>
             <div>
-              <Label htmlFor="max-value" className="text-xs">Max Value</Label>
+              <Label htmlFor="max-value" className="text-xs">
+                Max Value
+              </Label>
               <Input id="max-value" type="number" placeholder="1,000,000" />
             </div>
           </div>
-          
+
           <div>
-            <Label htmlFor="district" className="text-xs">District</Label>
+            <Label htmlFor="district" className="text-xs">
+              District
+            </Label>
             <Select defaultValue="">
               <SelectTrigger id="district">
                 <SelectValue placeholder="Select District" />
@@ -296,7 +276,7 @@ const GISControlPanel = () => {
               </SelectContent>
             </Select>
           </div>
-          
+
           <Button className="w-full mt-2" size="sm">
             Apply Filters
           </Button>
@@ -304,18 +284,18 @@ const GISControlPanel = () => {
       </div>
     );
   };
-  
+
   // Render tools tab
   const renderToolsTab = () => {
     return (
       <div className="space-y-4">
         <div className="space-y-2">
           <h3 className="text-sm font-medium">Map Controls</h3>
-          
+
           <div className="grid grid-cols-2 gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="flex justify-start items-center"
               onClick={() => {
                 setCenter([-119.7, 46.2]);
@@ -325,30 +305,30 @@ const GISControlPanel = () => {
               <Compass className="h-4 w-4 mr-2" />
               <span className="text-xs">Reset View</span>
             </Button>
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
+
+            <Button
+              variant="outline"
+              size="sm"
               className="flex justify-start items-center"
               onClick={() => setIs3DEnabled(!is3DEnabled)}
             >
               <Map className="h-4 w-4 mr-2" />
               <span className="text-xs">Toggle 3D</span>
             </Button>
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
+
+            <Button
+              variant="outline"
+              size="sm"
               className="flex justify-start items-center"
               onClick={handleCreateSnapshot}
             >
               <Camera className="h-4 w-4 mr-2" />
               <span className="text-xs">Snapshot</span>
             </Button>
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
+
+            <Button
+              variant="outline"
+              size="sm"
               className="flex justify-start items-center"
               onClick={() => {}}
             >
@@ -357,15 +337,12 @@ const GISControlPanel = () => {
             </Button>
           </div>
         </div>
-        
+
         <div className="space-y-2">
           <h3 className="text-sm font-medium">Export</h3>
-          
+
           <div className="flex space-x-2">
-            <Select 
-              defaultValue="png" 
-              onValueChange={(value) => setExportFormat(value)}
-            >
+            <Select defaultValue="png" onValueChange={value => setExportFormat(value)}>
               <SelectTrigger className="w-[110px]">
                 <SelectValue placeholder="Format" />
               </SelectTrigger>
@@ -375,31 +352,29 @@ const GISControlPanel = () => {
                 <SelectItem value="pdf">PDF Document</SelectItem>
               </SelectContent>
             </Select>
-            
-            <Button 
-              variant="default" 
-              size="sm" 
+
+            <Button
+              variant="default"
+              size="sm"
               className="flex-1"
               onClick={handleExport}
               disabled={isExporting}
             >
               <FileDown className="h-4 w-4 mr-2" />
-              <span className="text-xs">
-                {isExporting ? 'Exporting...' : 'Export Map'}
-              </span>
+              <span className="text-xs">{isExporting ? 'Exporting...' : 'Export Map'}</span>
             </Button>
           </div>
         </div>
-        
+
         <div className="space-y-2">
           <h3 className="text-sm font-medium">Data Operations</h3>
-          
+
           {/* Geospatial Export Wizard */}
           <GeospatialExportWizard />
-          
+
           {/* Geospatial Storytelling Wizard */}
           <GeospatialStorytellingWizard />
-          
+
           <div className="flex items-center space-x-2 mt-3">
             <Label htmlFor="ai-analysis" className="text-xs flex-1">
               AI-Enhanced Analysis
@@ -410,7 +385,7 @@ const GISControlPanel = () => {
       </div>
     );
   };
-  
+
   return (
     <Card>
       <CardHeader className="pb-3">

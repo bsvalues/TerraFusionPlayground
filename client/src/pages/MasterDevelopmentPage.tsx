@@ -1,98 +1,136 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { queryClient } from "@/lib/queryClient";
-import { LoaderCircle, Shield, Database, Zap, CheckCircle, XCircle, AlertCircle, PackageOpen, Code, Brain } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { queryClient } from '@/lib/queryClient';
+import {
+  LoaderCircle,
+  Shield,
+  Database,
+  Zap,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  PackageOpen,
+  Code,
+  Brain,
+} from 'lucide-react';
 import RealTimeMonitoringDashboard from '@/components/master-development/RealTimeMonitoringDashboard';
 import ApplicationManagerPanel from '@/components/master-development/ApplicationManagerPanel';
 import CodeAssistantPanel from '@/components/master-development/CodeAssistantPanel.test';
 
 // Schema for schema validation form
 const schemaValidationFormSchema = z.object({
-  entityType: z.string().min(1, "Entity type is required"),
-  entity: z.string().min(2, "Entity data is required").refine(value => {
-    try {
-      JSON.parse(value);
-      return true;
-    } catch {
-      return false;
-    }
-  }, {
-    message: "Must be valid JSON"
-  })
+  entityType: z.string().min(1, 'Entity type is required'),
+  entity: z
+    .string()
+    .min(2, 'Entity data is required')
+    .refine(
+      value => {
+        try {
+          JSON.parse(value);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      {
+        message: 'Must be valid JSON',
+      }
+    ),
 });
 
 // Schema for schema update form
 const schemaUpdateFormSchema = z.object({
-  entityType: z.string().min(1, "Entity type is required"),
-  schemaUpdate: z.string().min(2, "Schema update is required").refine(value => {
-    try {
-      JSON.parse(value);
-      return true;
-    } catch {
-      return false;
-    }
-  }, {
-    message: "Must be valid JSON"
-  })
+  entityType: z.string().min(1, 'Entity type is required'),
+  schemaUpdate: z
+    .string()
+    .min(2, 'Schema update is required')
+    .refine(
+      value => {
+        try {
+          JSON.parse(value);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      {
+        message: 'Must be valid JSON',
+      }
+    ),
 });
 
 type SchemaValidationFormValues = z.infer<typeof schemaValidationFormSchema>;
 type SchemaUpdateFormValues = z.infer<typeof schemaUpdateFormSchema>;
 
 export default function MasterDevelopmentPage() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState('overview');
   const [validationResult, setValidationResult] = useState<any>(null);
   const [schemaUpdateResult, setSchemaUpdateResult] = useState<any>(null);
 
   // Query for agent status
-  const { 
-    data: agentStatus, 
+  const {
+    data: agentStatus,
     isLoading: isLoadingStatus,
-    error: statusError
+    error: statusError,
   } = useQuery({
     queryKey: ['/api/agents/master-development-status'],
-    refetchInterval: 30000 // Refresh every 30 seconds
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Query for security policies
   const {
     data: securityPolicies,
     isLoading: isLoadingPolicies,
-    error: policiesError
+    error: policiesError,
   } = useQuery({
     queryKey: ['/api/agents/master-development/security-policies'],
-    enabled: activeTab === "security"
+    enabled: activeTab === 'security',
   });
 
   // Form setup for schema validation
   const validationForm = useForm<SchemaValidationFormValues>({
     resolver: zodResolver(schemaValidationFormSchema),
     defaultValues: {
-      entityType: "",
-      entity: "{}"
-    }
+      entityType: '',
+      entity: '{}',
+    },
   });
 
   // Form setup for schema update
   const schemaUpdateForm = useForm<SchemaUpdateFormValues>({
     resolver: zodResolver(schemaUpdateFormSchema),
     defaultValues: {
-      entityType: "",
-      schemaUpdate: "{}"
-    }
+      entityType: '',
+      schemaUpdate: '{}',
+    },
   });
 
   // Mutation for schema validation
@@ -101,24 +139,24 @@ export default function MasterDevelopmentPage() {
       const response = await fetch('/api/agents/master-development/validate-schema', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           entityType: data.entityType,
-          entity: JSON.parse(data.entity)
-        })
+          entity: JSON.parse(data.entity),
+        }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to validate schema');
       }
-      
+
       return await response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       setValidationResult(data);
-    }
+    },
   });
 
   // Mutation for schema update
@@ -127,25 +165,25 @@ export default function MasterDevelopmentPage() {
       const response = await fetch('/api/agents/master-development/update-schema', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           entityType: data.entityType,
-          schemaUpdate: JSON.parse(data.schemaUpdate)
-        })
+          schemaUpdate: JSON.parse(data.schemaUpdate),
+        }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to update schema');
       }
-      
+
       return await response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       setSchemaUpdateResult(data);
       queryClient.invalidateQueries({ queryKey: ['/api/agents/master-development-status'] });
-    }
+    },
   });
 
   // Handle form submissions
@@ -166,7 +204,8 @@ export default function MasterDevelopmentPage() {
     <div className="container mx-auto py-6">
       <h1 className="text-3xl font-bold mb-2">BCBS GeoAssessment Development Hub</h1>
       <p className="text-gray-500 mb-6">
-        BSBCmaster Lead - Manage architecture, authentication, and advanced development tools for Benton County
+        BSBCmaster Lead - Manage architecture, authentication, and advanced development tools for
+        Benton County
       </p>
 
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
@@ -197,9 +236,7 @@ export default function MasterDevelopmentPage() {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                Failed to load Master Development Agent status.
-              </AlertDescription>
+              <AlertDescription>Failed to load Master Development Agent status.</AlertDescription>
             </Alert>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -212,13 +249,19 @@ export default function MasterDevelopmentPage() {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Status:</span>
-                      <Badge variant={agentStatus?.status === 'operational' ? 'default' : 'destructive'}>
+                      <Badge
+                        variant={agentStatus?.status === 'operational' ? 'default' : 'destructive'}
+                      >
                         {agentStatus?.status || 'Unknown'}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Last Updated:</span>
-                      <span className="text-sm">{agentStatus?.lastUpdated ? new Date(agentStatus.lastUpdated).toLocaleString() : 'Unknown'}</span>
+                      <span className="text-sm">
+                        {agentStatus?.lastUpdated
+                          ? new Date(agentStatus.lastUpdated).toLocaleString()
+                          : 'Unknown'}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Component:</span>
@@ -231,7 +274,15 @@ export default function MasterDevelopmentPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">
-                  <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/agents/master-development-status'] })}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      queryClient.invalidateQueries({
+                        queryKey: ['/api/agents/master-development-status'],
+                      })
+                    }
+                  >
                     Refresh
                   </Button>
                 </CardFooter>
@@ -259,7 +310,9 @@ export default function MasterDevelopmentPage() {
               <Card className="md:col-span-2">
                 <CardHeader>
                   <CardTitle>Specialist Agents</CardTitle>
-                  <CardDescription>Specialist agents managed by the Master Development Agent</CardDescription>
+                  <CardDescription>
+                    Specialist agents managed by the Master Development Agent
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -285,7 +338,10 @@ export default function MasterDevelopmentPage() {
               </CardHeader>
               <CardContent>
                 <Form {...validationForm}>
-                  <form onSubmit={validationForm.handleSubmit(onValidationSubmit)} className="space-y-4">
+                  <form
+                    onSubmit={validationForm.handleSubmit(onValidationSubmit)}
+                    className="space-y-4"
+                  >
                     <FormField
                       control={validationForm.control}
                       name="entityType"
@@ -293,19 +349,14 @@ export default function MasterDevelopmentPage() {
                         <FormItem>
                           <FormLabel>Entity Type</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="e.g., property, user, assessment" 
-                              {...field} 
-                            />
+                            <Input placeholder="e.g., property, user, assessment" {...field} />
                           </FormControl>
-                          <FormDescription>
-                            The type of entity to validate
-                          </FormDescription>
+                          <FormDescription>The type of entity to validate</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={validationForm.control}
                       name="entity"
@@ -313,22 +364,20 @@ export default function MasterDevelopmentPage() {
                         <FormItem>
                           <FormLabel>Entity Data (JSON)</FormLabel>
                           <FormControl>
-                            <Textarea 
-                              placeholder='{"id": "123", "name": "Example"}' 
+                            <Textarea
+                              placeholder='{"id": "123", "name": "Example"}'
                               className="font-mono h-[200px]"
-                              {...field} 
+                              {...field}
                             />
                           </FormControl>
-                          <FormDescription>
-                            JSON representation of the entity
-                          </FormDescription>
+                          <FormDescription>JSON representation of the entity</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
-                    <Button 
-                      type="submit" 
+
+                    <Button
+                      type="submit"
                       disabled={validateSchemaMutation.isPending}
                       className="w-full"
                     >
@@ -349,7 +398,10 @@ export default function MasterDevelopmentPage() {
               </CardHeader>
               <CardContent>
                 <Form {...schemaUpdateForm}>
-                  <form onSubmit={schemaUpdateForm.handleSubmit(onSchemaUpdateSubmit)} className="space-y-4">
+                  <form
+                    onSubmit={schemaUpdateForm.handleSubmit(onSchemaUpdateSubmit)}
+                    className="space-y-4"
+                  >
                     <FormField
                       control={schemaUpdateForm.control}
                       name="entityType"
@@ -357,19 +409,14 @@ export default function MasterDevelopmentPage() {
                         <FormItem>
                           <FormLabel>Entity Type</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="e.g., property, user, assessment" 
-                              {...field} 
-                            />
+                            <Input placeholder="e.g., property, user, assessment" {...field} />
                           </FormControl>
-                          <FormDescription>
-                            The type of schema to update
-                          </FormDescription>
+                          <FormDescription>The type of schema to update</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={schemaUpdateForm.control}
                       name="schemaUpdate"
@@ -377,22 +424,20 @@ export default function MasterDevelopmentPage() {
                         <FormItem>
                           <FormLabel>Schema Definition (JSON)</FormLabel>
                           <FormControl>
-                            <Textarea 
-                              placeholder='{"required": ["id"], "properties": {"id": {"type": "string"}}}' 
+                            <Textarea
+                              placeholder='{"required": ["id"], "properties": {"id": {"type": "string"}}}'
                               className="font-mono h-[200px]"
-                              {...field} 
+                              {...field}
                             />
                           </FormControl>
-                          <FormDescription>
-                            JSON schema definition
-                          </FormDescription>
+                          <FormDescription>JSON schema definition</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
-                    <Button 
-                      type="submit" 
+
+                    <Button
+                      type="submit"
                       disabled={updateSchemaMutation.isPending}
                       className="w-full"
                     >
@@ -412,8 +457,8 @@ export default function MasterDevelopmentPage() {
                 <CardHeader>
                   <CardTitle>Validation Results</CardTitle>
                   <CardDescription>
-                    Entity type: {validationResult.entityType} • 
-                    Timestamp: {new Date(validationResult.timestamp).toLocaleString()}
+                    Entity type: {validationResult.entityType} • Timestamp:{' '}
+                    {new Date(validationResult.timestamp).toLocaleString()}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -421,7 +466,10 @@ export default function MasterDevelopmentPage() {
                     <div className="flex items-center">
                       <span className="font-medium mr-2">Status:</span>
                       {validationResult.validationResult.valid ? (
-                        <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-200">
+                        <Badge
+                          variant="success"
+                          className="bg-green-100 text-green-800 hover:bg-green-200"
+                        >
                           <CheckCircle className="h-4 w-4 mr-1" /> Valid
                         </Badge>
                       ) : (
@@ -432,19 +480,22 @@ export default function MasterDevelopmentPage() {
                     </div>
                   </div>
 
-                  {!validationResult.validationResult.valid && validationResult.validationResult.errors && (
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium mb-2">Validation Errors:</h4>
-                      <ul className="space-y-1 text-sm text-red-600">
-                        {validationResult.validationResult.errors.map((error: string, index: number) => (
-                          <li key={index} className="flex items-start">
-                            <AlertCircle className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
-                            <span>{error}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  {!validationResult.validationResult.valid &&
+                    validationResult.validationResult.errors && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium mb-2">Validation Errors:</h4>
+                        <ul className="space-y-1 text-sm text-red-600">
+                          {validationResult.validationResult.errors.map(
+                            (error: string, index: number) => (
+                              <li key={index} className="flex items-start">
+                                <AlertCircle className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                                <span>{error}</span>
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
                 </CardContent>
               </Card>
             )}
@@ -455,8 +506,8 @@ export default function MasterDevelopmentPage() {
                 <CardHeader>
                   <CardTitle>Schema Update Results</CardTitle>
                   <CardDescription>
-                    Entity type: {schemaUpdateResult.entityType} • 
-                    Timestamp: {new Date(schemaUpdateResult.timestamp).toLocaleString()}
+                    Entity type: {schemaUpdateResult.entityType} • Timestamp:{' '}
+                    {new Date(schemaUpdateResult.timestamp).toLocaleString()}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -464,7 +515,10 @@ export default function MasterDevelopmentPage() {
                     <div className="flex items-center">
                       <span className="font-medium mr-2">Status:</span>
                       {schemaUpdateResult.success ? (
-                        <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-200">
+                        <Badge
+                          variant="success"
+                          className="bg-green-100 text-green-800 hover:bg-green-200"
+                        >
                           <CheckCircle className="h-4 w-4 mr-1" /> Success
                         </Badge>
                       ) : (
@@ -495,9 +549,7 @@ export default function MasterDevelopmentPage() {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                Failed to load security policies.
-              </AlertDescription>
+              <AlertDescription>Failed to load security policies.</AlertDescription>
             </Alert>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -506,8 +558,10 @@ export default function MasterDevelopmentPage() {
                   <div>
                     <CardTitle>Security Policy Overview</CardTitle>
                     <CardDescription>
-                      Version: {securityPolicies?.version} • 
-                      Last Updated: {securityPolicies?.lastUpdated ? new Date(securityPolicies.lastUpdated).toLocaleString() : 'Unknown'}
+                      Version: {securityPolicies?.version} • Last Updated:{' '}
+                      {securityPolicies?.lastUpdated
+                        ? new Date(securityPolicies.lastUpdated).toLocaleString()
+                        : 'Unknown'}
                     </CardDescription>
                   </div>
                   <Shield className="h-6 w-6 text-primary" />
@@ -522,7 +576,9 @@ export default function MasterDevelopmentPage() {
                         <div className="flex justify-between">
                           <span>Multi-Factor Auth:</span>
                           <Badge variant="outline" className="text-xs">
-                            {securityPolicies?.authentication?.mfaRequired ? 'Required for some roles' : 'Optional'}
+                            {securityPolicies?.authentication?.mfaRequired
+                              ? 'Required for some roles'
+                              : 'Optional'}
                           </Badge>
                         </div>
                         <div className="flex justify-between">
@@ -533,7 +589,9 @@ export default function MasterDevelopmentPage() {
                         </div>
                         <div className="flex justify-between">
                           <span>Token Expiry:</span>
-                          <span>{securityPolicies?.authentication?.tokenExpiry?.access || 0} seconds</span>
+                          <span>
+                            {securityPolicies?.authentication?.tokenExpiry?.access || 0} seconds
+                          </span>
                         </div>
                       </CardContent>
                     </Card>
@@ -546,19 +604,24 @@ export default function MasterDevelopmentPage() {
                         <div className="flex justify-between">
                           <span>Encryption at Rest:</span>
                           <Badge variant="outline" className="text-xs">
-                            {securityPolicies?.dataProtection?.encryptionAtRest ? 'Enabled' : 'Disabled'}
+                            {securityPolicies?.dataProtection?.encryptionAtRest
+                              ? 'Enabled'
+                              : 'Disabled'}
                           </Badge>
                         </div>
                         <div className="flex justify-between">
                           <span>Field-Level Encryption:</span>
                           <Badge variant="outline" className="text-xs">
-                            {securityPolicies?.dataProtection?.fieldLevelEncryption?.length || 0} fields
+                            {securityPolicies?.dataProtection?.fieldLevelEncryption?.length || 0}{' '}
+                            fields
                           </Badge>
                         </div>
                         <div className="flex justify-between">
                           <span>Data Masking:</span>
                           <Badge variant="outline" className="text-xs">
-                            {securityPolicies?.dataProtection?.maskingSensitiveData ? 'Enabled' : 'Disabled'}
+                            {securityPolicies?.dataProtection?.maskingSensitiveData
+                              ? 'Enabled'
+                              : 'Disabled'}
                           </Badge>
                         </div>
                       </CardContent>
@@ -572,17 +635,23 @@ export default function MasterDevelopmentPage() {
                         <div className="flex justify-between">
                           <span>Rate Limiting:</span>
                           <Badge variant="outline" className="text-xs">
-                            {securityPolicies?.apiSecurity?.rateLimiting?.enabled ? 'Enabled' : 'Disabled'}
+                            {securityPolicies?.apiSecurity?.rateLimiting?.enabled
+                              ? 'Enabled'
+                              : 'Disabled'}
                           </Badge>
                         </div>
                         <div className="flex justify-between">
                           <span>Default Limit:</span>
-                          <span>{securityPolicies?.apiSecurity?.rateLimiting?.defaultLimit || 0} req/min</span>
+                          <span>
+                            {securityPolicies?.apiSecurity?.rateLimiting?.defaultLimit || 0} req/min
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span>CORS Policy:</span>
                           <Badge variant="outline" className="text-xs">
-                            {securityPolicies?.apiSecurity?.corsPolicy?.enabled ? 'Enabled' : 'Disabled'}
+                            {securityPolicies?.apiSecurity?.corsPolicy?.enabled
+                              ? 'Enabled'
+                              : 'Disabled'}
                           </Badge>
                         </div>
                       </CardContent>
@@ -604,7 +673,15 @@ export default function MasterDevelopmentPage() {
                   </ScrollArea>
                 </CardContent>
                 <CardFooter>
-                  <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/agents/master-development/security-policies'] })}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      queryClient.invalidateQueries({
+                        queryKey: ['/api/agents/master-development/security-policies'],
+                      })
+                    }
+                  >
                     Refresh Policies
                   </Button>
                 </CardFooter>
@@ -624,9 +701,7 @@ export default function MasterDevelopmentPage() {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                Failed to load active services.
-              </AlertDescription>
+              <AlertDescription>Failed to load active services.</AlertDescription>
             </Alert>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -634,16 +709,17 @@ export default function MasterDevelopmentPage() {
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <div>
                     <CardTitle>Active Services</CardTitle>
-                    <CardDescription>
-                      Currently active system services
-                    </CardDescription>
+                    <CardDescription>Currently active system services</CardDescription>
                   </div>
                   <Zap className="h-6 w-6 text-primary" />
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-3">
                     {agentStatus?.activeServices?.map((service: string, index: number) => (
-                      <div key={index} className="flex items-center p-2 rounded-md bg-gray-100 dark:bg-gray-800">
+                      <div
+                        key={index}
+                        className="flex items-center p-2 rounded-md bg-gray-100 dark:bg-gray-800"
+                      >
                         <div className="w-2 h-2 rounded-full bg-green-500 mr-2" />
                         <span className="text-sm font-medium">{service.replace(/_/g, ' ')}</span>
                       </div>
@@ -656,9 +732,7 @@ export default function MasterDevelopmentPage() {
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <div>
                     <CardTitle>Integration State</CardTitle>
-                    <CardDescription>
-                      Current integration system status
-                    </CardDescription>
+                    <CardDescription>Current integration system status</CardDescription>
                   </div>
                   <Database className="h-6 w-6 text-primary" />
                 </CardHeader>
@@ -666,13 +740,13 @@ export default function MasterDevelopmentPage() {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Connection Status:</span>
-                      <Badge 
+                      <Badge
                         variant={
-                          agentStatus?.integrationState?.connectionStatus === 'connected' 
-                            ? 'default' 
+                          agentStatus?.integrationState?.connectionStatus === 'connected'
+                            ? 'default'
                             : agentStatus?.integrationState?.connectionStatus === 'initializing'
-                            ? 'outline'
-                            : 'destructive'
+                              ? 'outline'
+                              : 'destructive'
                         }
                       >
                         {agentStatus?.integrationState?.connectionStatus || 'Unknown'}
@@ -681,8 +755,10 @@ export default function MasterDevelopmentPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Last Sync:</span>
                       <span className="text-sm">
-                        {agentStatus?.integrationState?.lastSyncTimestamp 
-                          ? new Date(agentStatus.integrationState.lastSyncTimestamp).toLocaleString() 
+                        {agentStatus?.integrationState?.lastSyncTimestamp
+                          ? new Date(
+                              agentStatus.integrationState.lastSyncTimestamp
+                            ).toLocaleString()
                           : 'Never'}
                       </span>
                     </div>
@@ -694,7 +770,11 @@ export default function MasterDevelopmentPage() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Pending Requests:</span>
-                      <Badge variant={agentStatus?.integrationState?.pendingRequests > 0 ? 'outline' : 'default'}>
+                      <Badge
+                        variant={
+                          agentStatus?.integrationState?.pendingRequests > 0 ? 'outline' : 'default'
+                        }
+                      >
                         {agentStatus?.integrationState?.pendingRequests || 0}
                       </Badge>
                     </div>
@@ -714,7 +794,14 @@ export default function MasterDevelopmentPage() {
                       <div className="flex justify-between items-center mb-2">
                         <div className="flex items-center">
                           <span className="font-medium">Authentication Service</span>
-                          <Badge className="ml-2" variant={agentStatus?.healthDetails?.authentication?.status === 'healthy' ? 'default' : 'destructive'}>
+                          <Badge
+                            className="ml-2"
+                            variant={
+                              agentStatus?.healthDetails?.authentication?.status === 'healthy'
+                                ? 'default'
+                                : 'destructive'
+                            }
+                          >
                             {agentStatus?.healthDetails?.authentication?.status || 'Unknown'}
                           </Badge>
                         </div>
@@ -725,15 +812,21 @@ export default function MasterDevelopmentPage() {
                       <div className="grid grid-cols-3 gap-4 text-sm">
                         <div>
                           <span className="text-gray-500">Latency:</span>
-                          <span className="ml-2 font-medium">{agentStatus?.healthDetails?.authentication?.latency || 0} ms</span>
+                          <span className="ml-2 font-medium">
+                            {agentStatus?.healthDetails?.authentication?.latency || 0} ms
+                          </span>
                         </div>
                         <div>
                           <span className="text-gray-500">Error Rate:</span>
-                          <span className="ml-2 font-medium">{agentStatus?.healthDetails?.authentication?.errorRate || 0}%</span>
+                          <span className="ml-2 font-medium">
+                            {agentStatus?.healthDetails?.authentication?.errorRate || 0}%
+                          </span>
                         </div>
                         <div>
                           <span className="text-gray-500">Active Sessions:</span>
-                          <span className="ml-2 font-medium">{agentStatus?.healthDetails?.authentication?.activeSessions || 0}</span>
+                          <span className="ml-2 font-medium">
+                            {agentStatus?.healthDetails?.authentication?.activeSessions || 0}
+                          </span>
                         </div>
                       </div>
                       <Separator className="mt-4" />
@@ -744,7 +837,14 @@ export default function MasterDevelopmentPage() {
                       <div className="flex justify-between items-center mb-2">
                         <div className="flex items-center">
                           <span className="font-medium">Data Services</span>
-                          <Badge className="ml-2" variant={agentStatus?.healthDetails?.dataServices?.status === 'healthy' ? 'default' : 'destructive'}>
+                          <Badge
+                            className="ml-2"
+                            variant={
+                              agentStatus?.healthDetails?.dataServices?.status === 'healthy'
+                                ? 'default'
+                                : 'destructive'
+                            }
+                          >
                             {agentStatus?.healthDetails?.dataServices?.status || 'Unknown'}
                           </Badge>
                         </div>
@@ -755,15 +855,21 @@ export default function MasterDevelopmentPage() {
                       <div className="grid grid-cols-3 gap-4 text-sm">
                         <div>
                           <span className="text-gray-500">Latency:</span>
-                          <span className="ml-2 font-medium">{agentStatus?.healthDetails?.dataServices?.latency || 0} ms</span>
+                          <span className="ml-2 font-medium">
+                            {agentStatus?.healthDetails?.dataServices?.latency || 0} ms
+                          </span>
                         </div>
                         <div>
                           <span className="text-gray-500">Cache Hit Rate:</span>
-                          <span className="ml-2 font-medium">{agentStatus?.healthDetails?.dataServices?.cacheHitRate || 0}%</span>
+                          <span className="ml-2 font-medium">
+                            {agentStatus?.healthDetails?.dataServices?.cacheHitRate || 0}%
+                          </span>
                         </div>
                         <div>
                           <span className="text-gray-500">Active Txns:</span>
-                          <span className="ml-2 font-medium">{agentStatus?.healthDetails?.dataServices?.activeTxns || 0}</span>
+                          <span className="ml-2 font-medium">
+                            {agentStatus?.healthDetails?.dataServices?.activeTxns || 0}
+                          </span>
                         </div>
                       </div>
                       <Separator className="mt-4" />
@@ -774,7 +880,14 @@ export default function MasterDevelopmentPage() {
                       <div className="flex justify-between items-center mb-2">
                         <div className="flex items-center">
                           <span className="font-medium">Integration Services</span>
-                          <Badge className="ml-2" variant={agentStatus?.healthDetails?.integrationServices?.status === 'healthy' ? 'default' : 'destructive'}>
+                          <Badge
+                            className="ml-2"
+                            variant={
+                              agentStatus?.healthDetails?.integrationServices?.status === 'healthy'
+                                ? 'default'
+                                : 'destructive'
+                            }
+                          >
                             {agentStatus?.healthDetails?.integrationServices?.status || 'Unknown'}
                           </Badge>
                         </div>
@@ -785,25 +898,36 @@ export default function MasterDevelopmentPage() {
                       <div className="grid grid-cols-3 gap-4 text-sm">
                         <div>
                           <span className="text-gray-500">Latency:</span>
-                          <span className="ml-2 font-medium">{agentStatus?.healthDetails?.integrationServices?.latency || 0} ms</span>
+                          <span className="ml-2 font-medium">
+                            {agentStatus?.healthDetails?.integrationServices?.latency || 0} ms
+                          </span>
                         </div>
                         <div>
                           <span className="text-gray-500">Error Rate:</span>
-                          <span className="ml-2 font-medium">{agentStatus?.healthDetails?.integrationServices?.errorRate || 0}%</span>
+                          <span className="ml-2 font-medium">
+                            {agentStatus?.healthDetails?.integrationServices?.errorRate || 0}%
+                          </span>
                         </div>
                         <div>
                           <span className="text-gray-500">Queue Size:</span>
-                          <span className="ml-2 font-medium">{agentStatus?.healthDetails?.integrationServices?.messageQueue?.size || 0}</span>
+                          <span className="ml-2 font-medium">
+                            {agentStatus?.healthDetails?.integrationServices?.messageQueue?.size ||
+                              0}
+                          </span>
                         </div>
                       </div>
                     </div>
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/agents/master-development-status'] })}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      queryClient.invalidateQueries({
+                        queryKey: ['/api/agents/master-development-status'],
+                      })
+                    }
                   >
                     Refresh Health Status
                   </Button>
@@ -812,23 +936,24 @@ export default function MasterDevelopmentPage() {
             </div>
           )}
         </TabsContent>
-        
+
         {/* Monitoring Tab */}
         <TabsContent value="monitoring">
           <RealTimeMonitoringDashboard />
         </TabsContent>
-        
+
         {/* Applications Tab */}
         <TabsContent value="applications">
           <ApplicationManagerPanel />
         </TabsContent>
-        
+
         {/* Developer Tab */}
         <TabsContent value="developer">
           <div className="mb-4">
             <h2 className="text-xl font-bold">County-Specific Development Tools</h2>
             <p className="text-gray-500">
-              Professional development environment specialized for Benton County property assessment applications
+              Professional development environment specialized for Benton County property assessment
+              applications
             </p>
           </div>
           <CodeAssistantPanel />

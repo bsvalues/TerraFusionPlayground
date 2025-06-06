@@ -1,16 +1,13 @@
 /**
  * Property Insight Sharing Service
- * 
+ *
  * This service handles the creation, retrieval, and management of shareable property insights.
  * It provides functionality for generating shareable links and tracking access to shared insights.
  */
 
 import { randomUUID } from 'crypto';
 import { IStorage } from '../storage';
-import { 
-  InsertPropertyInsightShare, 
-  PropertyInsightShare 
-} from '../../shared/schema';
+import { InsertPropertyInsightShare, PropertyInsightShare } from '../../shared/schema';
 
 /**
  * Interface for share creation options
@@ -29,7 +26,7 @@ export interface ShareCreationOptions {
 export enum InsightType {
   STORY = 'story',
   COMPARISON = 'comparison',
-  DATA = 'data'
+  DATA = 'data',
 }
 
 /**
@@ -40,7 +37,7 @@ export class PropertyInsightSharingService {
 
   /**
    * Create a shareable property story
-   * 
+   *
    * @param propertyId The ID of the property
    * @param storyContent The generated story content
    * @param format The format of the story (simple, detailed, summary)
@@ -57,7 +54,7 @@ export class PropertyInsightSharingService {
   ): Promise<PropertyInsightShare> {
     // Generate unique share ID
     const shareId = randomUUID();
-    
+
     // Calculate expiration date if provided
     let expiresAt = null;
     if (options.expiresInDays) {
@@ -65,7 +62,7 @@ export class PropertyInsightSharingService {
       expirationDate.setDate(expirationDate.getDate() + options.expiresInDays);
       expiresAt = expirationDate;
     }
-    
+
     // Create a title that includes the property name if available
     let title = options.title;
     if (!title) {
@@ -75,7 +72,7 @@ export class PropertyInsightSharingService {
         title = `Property Insight: ${propertyId}`;
       }
     }
-    
+
     // Create the share entry
     const insightShare: InsertPropertyInsightShare = {
       shareId,
@@ -91,7 +88,7 @@ export class PropertyInsightSharingService {
       allowedDomains: options.allowedDomains,
       expiresAt: expiresAt,
     };
-    
+
     // Store the share in the database
     const createdShare = await this.storage.createPropertyInsightShare(insightShare);
     return createdShare;
@@ -99,7 +96,7 @@ export class PropertyInsightSharingService {
 
   /**
    * Create a shareable property comparison
-   * 
+   *
    * @param propertyIds Array of property IDs
    * @param comparisonContent The generated comparison content
    * @param format The format of the comparison
@@ -116,7 +113,7 @@ export class PropertyInsightSharingService {
   ): Promise<PropertyInsightShare> {
     // Generate unique share ID
     const shareId = randomUUID();
-    
+
     // Calculate expiration date if provided
     let expiresAt = null;
     if (options.expiresInDays) {
@@ -124,7 +121,7 @@ export class PropertyInsightSharingService {
       expirationDate.setDate(expirationDate.getDate() + options.expiresInDays);
       expiresAt = expirationDate;
     }
-    
+
     // Format property names for display if available
     let title = options.title;
     if (!title) {
@@ -134,7 +131,7 @@ export class PropertyInsightSharingService {
         title = `Property Comparison: ${propertyIds.join(', ')}`;
       }
     }
-    
+
     // Create the share entry
     const insightShare: InsertPropertyInsightShare = {
       shareId,
@@ -143,9 +140,9 @@ export class PropertyInsightSharingService {
       propertyAddress: propertyAddresses ? propertyAddresses.join(', ') : undefined,
       title,
       insightType: InsightType.COMPARISON,
-      insightData: { 
+      insightData: {
         content: comparisonContent,
-        propertyIds 
+        propertyIds,
       },
       format,
       isPublic: options.isPublic !== undefined ? options.isPublic : true,
@@ -153,7 +150,7 @@ export class PropertyInsightSharingService {
       allowedDomains: options.allowedDomains,
       expiresAt: expiresAt,
     };
-    
+
     // Store the share in the database
     const createdShare = await this.storage.createPropertyInsightShare(insightShare);
     return createdShare;
@@ -161,7 +158,7 @@ export class PropertyInsightSharingService {
 
   /**
    * Create a shareable property data report
-   * 
+   *
    * @param propertyId The ID of the property
    * @param propertyData The property data to share
    * @param options Additional share options
@@ -176,7 +173,7 @@ export class PropertyInsightSharingService {
   ): Promise<PropertyInsightShare> {
     // Generate unique share ID
     const shareId = randomUUID();
-    
+
     // Calculate expiration date if provided
     let expiresAt = null;
     if (options.expiresInDays) {
@@ -184,7 +181,7 @@ export class PropertyInsightSharingService {
       expirationDate.setDate(expirationDate.getDate() + options.expiresInDays);
       expiresAt = expirationDate;
     }
-    
+
     // Create a title that includes the property name if available
     let title = options.title;
     if (!title) {
@@ -194,7 +191,7 @@ export class PropertyInsightSharingService {
         title = `Property Data: ${propertyId}`;
       }
     }
-    
+
     // Create the share entry
     const insightShare: InsertPropertyInsightShare = {
       shareId,
@@ -210,7 +207,7 @@ export class PropertyInsightSharingService {
       allowedDomains: options.allowedDomains,
       expiresAt: expiresAt,
     };
-    
+
     // Store the share in the database
     const createdShare = await this.storage.createPropertyInsightShare(insightShare);
     return createdShare;
@@ -218,39 +215,42 @@ export class PropertyInsightSharingService {
 
   /**
    * Get a shared property insight by share ID
-   * 
+   *
    * @param shareId The unique share ID
    * @param password Optional password for protected shares
    * @returns The shared property insight
    */
-  async getPropertyInsightShare(shareId: string, password?: string): Promise<PropertyInsightShare | null> {
+  async getPropertyInsightShare(
+    shareId: string,
+    password?: string
+  ): Promise<PropertyInsightShare | null> {
     // Get the share from the database
     const share = await this.storage.getPropertyInsightShareById(shareId);
-    
+
     // Return null if not found
     if (!share) {
       return null;
     }
-    
+
     // Check if the share has expired
     if (share.expiresAt && new Date(share.expiresAt) < new Date()) {
       return null;
     }
-    
+
     // Verify password if the share is password-protected
     if (share.password && share.password !== password) {
       throw new Error('Invalid password');
     }
-    
+
     // Increment access count
     await this.incrementAccessCount(shareId);
-    
+
     return share;
   }
 
   /**
    * Delete a property insight share
-   * 
+   *
    * @param shareId The unique share ID
    * @returns True if successful, false otherwise
    */
@@ -260,7 +260,7 @@ export class PropertyInsightSharingService {
 
   /**
    * Get all shares for a property
-   * 
+   *
    * @param propertyId The ID of the property
    * @returns Array of property insight shares
    */
@@ -270,13 +270,13 @@ export class PropertyInsightSharingService {
 
   /**
    * Update a property insight share
-   * 
+   *
    * @param shareId The unique share ID
    * @param updates The updates to apply
    * @returns The updated share
    */
   async updatePropertyInsightShare(
-    shareId: string, 
+    shareId: string,
     updates: Partial<InsertPropertyInsightShare>
   ): Promise<PropertyInsightShare | null> {
     return await this.storage.updatePropertyInsightShare(shareId, updates);
@@ -284,7 +284,7 @@ export class PropertyInsightSharingService {
 
   /**
    * Increment the access count for a shared insight
-   * 
+   *
    * @param shareId The unique share ID
    * @returns The new access count
    */
@@ -293,63 +293,65 @@ export class PropertyInsightSharingService {
     if (!share) {
       throw new Error('Share not found');
     }
-    
+
     const newAccessCount = (share.accessCount || 0) + 1;
-    
+
     // Since accessCount is not part of the InsertPropertyInsightShare type,
     // we'll use a custom query approach through the storage interface
     // We're casting the update object to any to bypass the type check
-    await this.storage.updatePropertyInsightShare(shareId, { 
+    await this.storage.updatePropertyInsightShare(shareId, {
       // Using type assertion to handle the accessCount which is not part of InsertPropertyInsightShare
-      accessCount: newAccessCount 
+      accessCount: newAccessCount,
     } as any);
-    
+
     return newAccessCount;
   }
-  
+
   /**
    * Track access to a shared property insight
-   * 
+   *
    * @param shareId The unique share ID
    * @returns The updated share
    */
   async trackShareAccess(shareId: string): Promise<PropertyInsightShare | null> {
     try {
       const newAccessCount = await this.incrementAccessCount(shareId);
-      
+
       // Create system activity record
       await this.storage.createSystemActivity({
         agentId: 2, // Analysis Agent
         activity: `Property insight share accessed (ID: ${shareId})`,
         entityType: 'propertyInsightShare',
-        entityId: shareId
+        entityId: shareId,
       });
-      
+
       return await this.storage.getPropertyInsightShareById(shareId);
     } catch (error) {
       console.error('Error tracking share access:', error);
       return null;
     }
   }
-  
+
   /**
    * Create a property insight share directly with data
-   * 
+   *
    * @param shareData The share data to insert
    * @returns The created share
    */
-  async createPropertyInsightShare(shareData: InsertPropertyInsightShare): Promise<PropertyInsightShare> {
+  async createPropertyInsightShare(
+    shareData: InsertPropertyInsightShare
+  ): Promise<PropertyInsightShare> {
     // Generate a unique share ID if not provided
     if (!shareData.shareId) {
       shareData.shareId = randomUUID();
     }
-    
+
     return await this.storage.createPropertyInsightShare(shareData);
   }
-  
+
   /**
    * Get all property insight shares
-   * 
+   *
    * @returns Array of all property insight shares
    */
   async getAllPropertyInsightShares(): Promise<PropertyInsightShare[]> {

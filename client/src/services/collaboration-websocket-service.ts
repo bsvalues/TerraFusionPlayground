@@ -1,6 +1,6 @@
 /**
  * Collaboration WebSocket Service - Client Side
- * 
+ *
  * This service provides WebSocket communication for the frontend to interact with
  * the collaboration server. It establishes a connection to the server-side WebSocket
  * service and provides an API for sending messages and receiving notifications
@@ -26,7 +26,7 @@ export class CollaborationWebSocketService {
   private reconnectDelay: number = 2000; // Start with 2 seconds
   private pingInterval: number | null = null;
   private statusHandlers: Set<(status: ConnectionStatus) => void> = new Set();
-  private pendingMessages: Array<{ type: string, payload: any }> = [];
+  private pendingMessages: Array<{ type: string; payload: any }> = [];
   private sessionId: string | null = null;
   private userId: number | null = null;
   private userName: string | null = null;
@@ -52,43 +52,47 @@ export class CollaborationWebSocketService {
    */
   public connect(): Promise<boolean> {
     return new Promise((resolve, reject) => {
-      if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
+      if (
+        this.socket &&
+        (this.socket.readyState === WebSocket.OPEN ||
+          this.socket.readyState === WebSocket.CONNECTING)
+      ) {
         console.log('WebSocket connection already established or in progress');
         resolve(true);
         return;
       }
 
       this.updateConnectionStatus('connecting');
-      
+
       // Use a consistent approach with relative path for better compatibility
       // This works in both local and Replit environments
       const relativePath = '/ws/collaboration';
-      
+
       // Use the protocol from the current page
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      
+
       // Construct URL using host which includes both hostname and port
       const wsUrl = `${wsProtocol}//${window.location.host}${relativePath}`;
-      
+
       // Add debug logging to help diagnose connection issues
       console.log(`[Collaboration WebSocket] Using URL: ${wsUrl}`);
       console.log(`[Collaboration WebSocket] host: ${window.location.host}`);
       console.log(`[Collaboration WebSocket] protocol: ${wsProtocol}`);
       console.log(`[Collaboration WebSocket] relative path: ${relativePath}`);
-      
+
       console.log(`Connecting to collaboration WebSocket at ${wsUrl}`);
-      
+
       try {
         this.socket = new WebSocket(wsUrl);
-        
+
         // Add debug logging for WebSocket connection attempts
         console.log('WebSocket connection attempt initiated, readyState:', this.socket.readyState);
-        
+
         // Setup event handlers
         this.socket.onopen = () => this.handleSocketOpen(resolve);
-        this.socket.onmessage = (event) => this.handleSocketMessage(event);
-        this.socket.onclose = (event) => this.handleSocketClose(event, reject);
-        this.socket.onerror = (error) => this.handleSocketError(error, reject);
+        this.socket.onmessage = event => this.handleSocketMessage(event);
+        this.socket.onclose = event => this.handleSocketClose(event, reject);
+        this.socket.onerror = error => this.handleSocketError(error, reject);
       } catch (error) {
         console.error('Error creating WebSocket connection:', error);
         this.updateConnectionStatus('error');
@@ -105,10 +109,10 @@ export class CollaborationWebSocketService {
     this.updateConnectionStatus('connected');
     this.reconnectAttempts = 0;
     this.reconnectDelay = 2000; // Reset reconnect delay
-    
+
     // Start ping interval to keep connection alive
     this.startPingInterval();
-    
+
     // If we have session information, join the session
     if (this.sessionId && this.userId && this.userName) {
       this.joinSession(this.sessionId, this.userId, this.userName, this.role || 'viewer')
@@ -135,13 +139,13 @@ export class CollaborationWebSocketService {
     try {
       const message = JSON.parse(event.data);
       console.debug('Received WebSocket message:', message);
-      
+
       // Handle connection acknowledgment
       if (message.type === 'connection_established') {
         this.clientId = message.clientId;
         console.log(`Connection established with client ID: ${this.clientId}`);
       }
-      
+
       // Dispatch the message to registered handlers
       this.dispatchMessage(message);
     } catch (error) {
@@ -156,12 +160,12 @@ export class CollaborationWebSocketService {
     console.log(`WebSocket connection closed: ${event.code} - ${event.reason}`);
     this.stopPingInterval();
     this.updateConnectionStatus('disconnected');
-    
+
     // Attempt to reconnect if not a clean close
     if (event.code !== 1000 && event.code !== 1001) {
       this.attemptReconnect();
     }
-    
+
     reject(new Error(`WebSocket connection closed: ${event.code} - ${event.reason}`));
   }
 
@@ -182,12 +186,14 @@ export class CollaborationWebSocketService {
       console.log('Maximum reconnect attempts reached, giving up');
       return;
     }
-    
+
     this.reconnectAttempts++;
     const delay = Math.min(30000, this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1));
-    
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-    
+
+    console.log(
+      `Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+    );
+
     setTimeout(() => {
       if (this.socket?.readyState === WebSocket.CLOSED) {
         console.log('Attempting reconnection...');
@@ -218,13 +224,15 @@ export class CollaborationWebSocketService {
    */
   private startPingInterval(): void {
     this.stopPingInterval(); // Clear any existing interval
-    
+
     this.pingInterval = window.setInterval(() => {
       if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-        this.socket.send(JSON.stringify({ 
-          type: 'ping', 
-          timestamp: Date.now() 
-        }));
+        this.socket.send(
+          JSON.stringify({
+            type: 'ping',
+            timestamp: Date.now(),
+          })
+        );
       }
     }, 30000); // Send ping every 30 seconds
   }
@@ -241,7 +249,7 @@ export class CollaborationWebSocketService {
 
   /**
    * Join a collaboration session
-   * 
+   *
    * @param sessionId Unique identifier for the session
    * @param userId User ID of the joining user
    * @param userName Name of the joining user
@@ -249,9 +257,9 @@ export class CollaborationWebSocketService {
    * @returns Promise that resolves when successfully joined
    */
   public joinSession(
-    sessionId: string, 
-    userId: number, 
-    userName: string, 
+    sessionId: string,
+    userId: number,
+    userName: string,
     role: string
   ): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -260,44 +268,46 @@ export class CollaborationWebSocketService {
       this.userId = userId;
       this.userName = userName;
       this.role = role;
-      
+
       if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
         console.log('WebSocket not connected, queueing join session message');
-        this.pendingMessages.push({ 
-          type: 'join_session', 
-          payload: { 
+        this.pendingMessages.push({
+          type: 'join_session',
+          payload: {
             sessionId,
             userId,
             userName,
-            role
-          }
+            role,
+          },
         });
-        
+
         // Try to connect
         // Connect and queue the join operation for when connection succeeds
         this.connect().catch(error => {
           console.error('Failed to connect:', error);
           // Don't reject here since we've already queued the message
         });
-        
+
         // Resolve instead of reject to prevent unhandled promise rejection
         // The join message is already queued, so it will be sent when connected
         resolve();
         return;
       }
-      
+
       try {
         // Create one-time handlers for session join responses
         const joinHandler = (message: any) => {
-          if (message.type === 'user_joined' && 
-              message.sessionId === sessionId && 
-              message.userId === userId) {
+          if (
+            message.type === 'user_joined' &&
+            message.sessionId === sessionId &&
+            message.userId === userId
+          ) {
             this.off('user_joined', joinHandler);
             this.off('error', errorHandler);
             resolve();
           }
         };
-        
+
         const errorHandler = (message: any) => {
           if (message.type === 'error') {
             this.off('user_joined', joinHandler);
@@ -305,11 +315,11 @@ export class CollaborationWebSocketService {
             reject(new Error(message.message || 'Failed to join session'));
           }
         };
-        
+
         // Register handlers
         this.on('user_joined', joinHandler);
         this.on('error', errorHandler);
-        
+
         // Send join message
         const joinMessage = {
           type: 'join_session',
@@ -318,10 +328,10 @@ export class CollaborationWebSocketService {
           userName,
           timestamp: Date.now(),
           payload: {
-            role
-          }
+            role,
+          },
         };
-        
+
         console.log('Sending join session message:', joinMessage);
         this.socket.send(JSON.stringify(joinMessage));
       } catch (error) {
@@ -333,35 +343,42 @@ export class CollaborationWebSocketService {
 
   /**
    * Leave the current session
-   * 
+   *
    * @returns Promise that resolves when successfully left
    */
   public leaveSession(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (!this.sessionId || !this.userId || !this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      if (
+        !this.sessionId ||
+        !this.userId ||
+        !this.socket ||
+        this.socket.readyState !== WebSocket.OPEN
+      ) {
         reject(new Error('Not in a session or WebSocket not connected'));
         return;
       }
-      
+
       try {
         // Create one-time handlers for session leave responses
         const leaveHandler = (message: any) => {
-          if (message.type === 'user_left' && 
-              message.sessionId === this.sessionId && 
-              message.userId === this.userId) {
+          if (
+            message.type === 'user_left' &&
+            message.sessionId === this.sessionId &&
+            message.userId === this.userId
+          ) {
             this.off('user_left', leaveHandler);
             this.off('error', errorHandler);
-            
+
             // Clear session info
             this.sessionId = null;
             this.userId = null;
             this.userName = null;
             this.role = null;
-            
+
             resolve();
           }
         };
-        
+
         const errorHandler = (message: any) => {
           if (message.type === 'error') {
             this.off('user_left', leaveHandler);
@@ -369,20 +386,20 @@ export class CollaborationWebSocketService {
             reject(new Error(message.message || 'Failed to leave session'));
           }
         };
-        
+
         // Register handlers
         this.on('user_left', leaveHandler);
         this.on('error', errorHandler);
-        
+
         // Send leave message
         const leaveMessage = {
           type: 'leave_session',
           sessionId: this.sessionId,
           userId: this.userId,
           userName: this.userName,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
-        
+
         console.log('Sending leave session message:', leaveMessage);
         this.socket.send(JSON.stringify(leaveMessage));
       } catch (error) {
@@ -394,17 +411,22 @@ export class CollaborationWebSocketService {
 
   /**
    * Send cursor position update
-   * 
+   *
    * @param position Cursor position (x, y, section)
    * @returns Promise that resolves when position is sent
    */
-  public sendCursorPosition(position: { x: number, y: number, section?: string }): Promise<void> {
+  public sendCursorPosition(position: { x: number; y: number; section?: string }): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (!this.sessionId || !this.userId || !this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      if (
+        !this.sessionId ||
+        !this.userId ||
+        !this.socket ||
+        this.socket.readyState !== WebSocket.OPEN
+      ) {
         reject(new Error('Not in a session or WebSocket not connected'));
         return;
       }
-      
+
       try {
         // Send cursor position message
         const cursorMessage = {
@@ -414,10 +436,10 @@ export class CollaborationWebSocketService {
           userName: this.userName,
           timestamp: Date.now(),
           payload: {
-            position
-          }
+            position,
+          },
         };
-        
+
         this.socket.send(JSON.stringify(cursorMessage));
         resolve();
       } catch (error) {
@@ -429,24 +451,29 @@ export class CollaborationWebSocketService {
 
   /**
    * Send an edit operation
-   * 
+   *
    * @param operation Edit operation details
    * @param section Section being edited
    * @returns Promise that resolves when edit is sent
    */
   public sendEditOperation(operation: any, section: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (!this.sessionId || !this.userId || !this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      if (
+        !this.sessionId ||
+        !this.userId ||
+        !this.socket ||
+        this.socket.readyState !== WebSocket.OPEN
+      ) {
         reject(new Error('Not in a session or WebSocket not connected'));
         return;
       }
-      
+
       // Check if user has edit permission
       if (this.role !== 'editor' && this.role !== 'owner') {
         reject(new Error('You do not have permission to edit'));
         return;
       }
-      
+
       try {
         // Send edit operation message
         const editMessage = {
@@ -457,10 +484,10 @@ export class CollaborationWebSocketService {
           timestamp: Date.now(),
           payload: {
             operation,
-            section
-          }
+            section,
+          },
         };
-        
+
         this.socket.send(JSON.stringify(editMessage));
         resolve();
       } catch (error) {
@@ -472,18 +499,23 @@ export class CollaborationWebSocketService {
 
   /**
    * Send a comment
-   * 
+   *
    * @param comment Comment text
    * @param position Position of the comment
    * @returns Promise that resolves when comment is sent
    */
   public sendComment(comment: string, position?: any): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (!this.sessionId || !this.userId || !this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      if (
+        !this.sessionId ||
+        !this.userId ||
+        !this.socket ||
+        this.socket.readyState !== WebSocket.OPEN
+      ) {
         reject(new Error('Not in a session or WebSocket not connected'));
         return;
       }
-      
+
       try {
         // Send comment message
         const commentMessage = {
@@ -494,10 +526,10 @@ export class CollaborationWebSocketService {
           timestamp: Date.now(),
           payload: {
             comment,
-            position
-          }
+            position,
+          },
         };
-        
+
         this.socket.send(JSON.stringify(commentMessage));
         resolve();
       } catch (error) {
@@ -514,38 +546,38 @@ export class CollaborationWebSocketService {
     if (this.pendingMessages.length === 0) {
       return;
     }
-    
+
     console.log(`Sending ${this.pendingMessages.length} pending messages`);
-    
+
     // Copy and clear pending messages
     const messages = [...this.pendingMessages];
     this.pendingMessages = [];
-    
+
     // Send each message
     messages.forEach(({ type, payload }) => {
       if (type === 'join_session') {
-        this.joinSession(
-          payload.sessionId, 
-          payload.userId, 
-          payload.userName, 
-          payload.role
-        ).catch(error => console.error('Error sending pending join session:', error));
+        this.joinSession(payload.sessionId, payload.userId, payload.userName, payload.role).catch(
+          error => console.error('Error sending pending join session:', error)
+        );
       } else if (type === 'cursor_position') {
-        this.sendCursorPosition(payload.position)
-          .catch(error => console.error('Error sending pending cursor position:', error));
+        this.sendCursorPosition(payload.position).catch(error =>
+          console.error('Error sending pending cursor position:', error)
+        );
       } else if (type === 'edit_operation') {
-        this.sendEditOperation(payload.operation, payload.section)
-          .catch(error => console.error('Error sending pending edit operation:', error));
+        this.sendEditOperation(payload.operation, payload.section).catch(error =>
+          console.error('Error sending pending edit operation:', error)
+        );
       } else if (type === 'comment') {
-        this.sendComment(payload.comment, payload.position)
-          .catch(error => console.error('Error sending pending comment:', error));
+        this.sendComment(payload.comment, payload.position).catch(error =>
+          console.error('Error sending pending comment:', error)
+        );
       }
     });
   }
 
   /**
    * Register a handler for a specific message type
-   * 
+   *
    * @param type Message type to listen for
    * @param handler Handler function to call when a message of this type is received
    * @returns Unsubscribe function
@@ -554,9 +586,9 @@ export class CollaborationWebSocketService {
     if (!this.messageHandlers.has(type)) {
       this.messageHandlers.set(type, new Set());
     }
-    
+
     this.messageHandlers.get(type)?.add(handler);
-    
+
     // Return unsubscribe function
     return () => {
       this.off(type, handler);
@@ -565,7 +597,7 @@ export class CollaborationWebSocketService {
 
   /**
    * Remove a handler for a specific message type
-   * 
+   *
    * @param type Message type
    * @param handler Handler function to remove
    */
@@ -578,7 +610,7 @@ export class CollaborationWebSocketService {
 
   /**
    * Dispatch a message to registered handlers
-   * 
+   *
    * @param message Message to dispatch
    */
   private dispatchMessage(message: any): void {
@@ -586,7 +618,7 @@ export class CollaborationWebSocketService {
       console.warn('Received message without type:', message);
       return;
     }
-    
+
     // Get handlers for this message type
     const handlers = this.messageHandlers.get(message.type);
     if (handlers) {
@@ -598,7 +630,7 @@ export class CollaborationWebSocketService {
         }
       });
     }
-    
+
     // Also dispatch to wildcard handlers
     const wildcardHandlers = this.messageHandlers.get('*');
     if (wildcardHandlers) {
@@ -614,13 +646,13 @@ export class CollaborationWebSocketService {
 
   /**
    * Register a handler for connection status changes
-   * 
+   *
    * @param handler Handler function to call when connection status changes
    * @returns Unsubscribe function
    */
   public onStatusChange(handler: (status: ConnectionStatus) => void): () => void {
     this.statusHandlers.add(handler);
-    
+
     // Return unsubscribe function
     return () => {
       this.statusHandlers.delete(handler);
@@ -629,13 +661,13 @@ export class CollaborationWebSocketService {
 
   /**
    * Update connection status and notify handlers
-   * 
+   *
    * @param status New connection status
    */
   private updateConnectionStatus(status: ConnectionStatus): void {
     if (this.connectionStatus !== status) {
       this.connectionStatus = status;
-      
+
       // Notify status handlers
       this.statusHandlers.forEach(handler => {
         try {
@@ -649,7 +681,7 @@ export class CollaborationWebSocketService {
 
   /**
    * Get current connection status
-   * 
+   *
    * @returns Current connection status
    */
   public getStatus(): ConnectionStatus {
@@ -658,15 +690,20 @@ export class CollaborationWebSocketService {
 
   /**
    * Get current session information
-   * 
+   *
    * @returns Current session information
    */
-  public getSessionInfo(): { sessionId: string | null, userId: number | null, userName: string | null, role: string | null } {
+  public getSessionInfo(): {
+    sessionId: string | null;
+    userId: number | null;
+    userName: string | null;
+    role: string | null;
+  } {
     return {
       sessionId: this.sessionId,
       userId: this.userId,
       userName: this.userName,
-      role: this.role
+      role: this.role,
     };
   }
 
@@ -680,16 +717,16 @@ export class CollaborationWebSocketService {
         console.error('Error leaving session during disconnect:', error);
       });
     }
-    
+
     // Stop ping interval
     this.stopPingInterval();
-    
+
     // Close socket
     if (this.socket) {
       this.socket.close();
       this.socket = null;
     }
-    
+
     this.updateConnectionStatus('disconnected');
   }
 }

@@ -1,25 +1,32 @@
 /**
  * Voice Command Shortcuts
- * 
+ *
  * This component allows users to create and manage shortcuts for voice commands.
  * It provides a UI for creating, editing, and deleting shortcuts.
  */
 
 import { useState, useEffect } from 'react';
-import { 
-  getUserShortcuts, 
-  createShortcut, 
-  updateShortcut, 
-  deleteShortcut, 
+import {
+  getUserShortcuts,
+  createShortcut,
+  updateShortcut,
+  deleteShortcut,
   createDefaultShortcuts,
   type VoiceCommandShortcut,
-  type CreateVoiceCommandShortcut
+  type CreateVoiceCommandShortcut,
 } from '@/services/enhanced-voice-command-service';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { 
+import {
   Table,
   TableBody,
   TableCaption,
@@ -27,7 +34,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -36,14 +43,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Form,
   FormControl,
@@ -52,25 +59,25 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
+} from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Plus, 
-  Pencil, 
-  Trash2, 
-  Command, 
-  Check, 
-  X, 
-  RefreshCw, 
-  FileDown, 
-  FileText, 
-  HelpCircle, 
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Command,
+  Check,
+  X,
+  RefreshCw,
+  FileDown,
+  FileText,
+  HelpCircle,
   Loader2,
-  MoveDown
+  MoveDown,
 } from 'lucide-react';
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -80,34 +87,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 // Define form schema
 const formSchema = z.object({
-  shortcutPhrase: z.string()
-    .min(2, "Shortcut must be at least 2 characters")
-    .max(50, "Shortcut cannot exceed 50 characters"),
-  expandedCommand: z.string()
-    .min(5, "Command must be at least 5 characters")
-    .max(500, "Command cannot exceed 500 characters"),
-  commandType: z.string()
-    .min(2, "Type must be at least 2 characters"),
+  shortcutPhrase: z
+    .string()
+    .min(2, 'Shortcut must be at least 2 characters')
+    .max(50, 'Shortcut cannot exceed 50 characters'),
+  expandedCommand: z
+    .string()
+    .min(5, 'Command must be at least 5 characters')
+    .max(500, 'Command cannot exceed 500 characters'),
+  commandType: z.string().min(2, 'Type must be at least 2 characters'),
   description: z.string().optional(),
   priority: z.number().int().min(1).max(100),
   isEnabled: z.boolean(),
-  isGlobal: z.boolean()
+  isGlobal: z.boolean(),
 });
 
 interface VoiceCommandShortcutsProps {
@@ -115,10 +118,7 @@ interface VoiceCommandShortcutsProps {
   className?: string;
 }
 
-export function VoiceCommandShortcuts({
-  userId,
-  className = ''
-}: VoiceCommandShortcutsProps) {
+export function VoiceCommandShortcuts({ userId, className = '' }: VoiceCommandShortcutsProps) {
   // State
   const [shortcuts, setShortcuts] = useState<VoiceCommandShortcut[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -129,9 +129,9 @@ export function VoiceCommandShortcuts({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [commandTypes, setCommandTypes] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState<string>('all');
-  
+
   const { toast } = useToast();
-  
+
   // Form
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -142,25 +142,25 @@ export function VoiceCommandShortcuts({
       description: '',
       priority: 50,
       isEnabled: true,
-      isGlobal: false
-    }
+      isGlobal: false,
+    },
   });
-  
+
   // Load shortcuts when component mounts
   useEffect(() => {
     loadShortcuts();
   }, [userId]);
-  
+
   // Update command types when shortcuts change
   useEffect(() => {
     const types = Array.from(new Set(shortcuts.map(s => s.commandType)));
     setCommandTypes(types);
   }, [shortcuts]);
-  
+
   // Load shortcuts
   const loadShortcuts = async () => {
     setIsLoading(true);
-    
+
     try {
       const data = await getUserShortcuts(userId);
       setShortcuts(data);
@@ -169,29 +169,29 @@ export function VoiceCommandShortcuts({
       toast({
         title: 'Error',
         description: 'Failed to load shortcuts',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   // Create shortcut
   const handleCreateShortcut = async (values: z.infer<typeof formSchema>) => {
     try {
       const shortcutData: CreateVoiceCommandShortcut = {
         ...values,
-        userId
+        userId,
       };
-      
+
       const newShortcut = await createShortcut(shortcutData);
       setShortcuts([...shortcuts, newShortcut]);
-      
+
       toast({
         title: 'Shortcut Created',
-        description: `"${values.shortcutPhrase}" shortcut has been created`
+        description: `"${values.shortcutPhrase}" shortcut has been created`,
       });
-      
+
       form.reset();
       setIsCreating(false);
     } catch (error) {
@@ -199,27 +199,25 @@ export function VoiceCommandShortcuts({
       toast({
         title: 'Error',
         description: 'Failed to create shortcut',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     }
   };
-  
+
   // Update shortcut
   const handleUpdateShortcut = async (values: z.infer<typeof formSchema>) => {
     if (!editingShortcut) return;
-    
+
     try {
       const updatedShortcut = await updateShortcut(editingShortcut.id, values);
-      
-      setShortcuts(shortcuts.map(s => 
-        s.id === updatedShortcut.id ? updatedShortcut : s
-      ));
-      
+
+      setShortcuts(shortcuts.map(s => (s.id === updatedShortcut.id ? updatedShortcut : s)));
+
       toast({
         title: 'Shortcut Updated',
-        description: `"${values.shortcutPhrase}" shortcut has been updated`
+        description: `"${values.shortcutPhrase}" shortcut has been updated`,
       });
-      
+
       form.reset();
       setEditingShortcut(null);
       setIsEditing(false);
@@ -228,91 +226,89 @@ export function VoiceCommandShortcuts({
       toast({
         title: 'Error',
         description: 'Failed to update shortcut',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     }
   };
-  
+
   // Delete shortcut
   const handleDeleteShortcut = async (id: number) => {
     try {
       await deleteShortcut(id);
-      
+
       setShortcuts(shortcuts.filter(s => s.id !== id));
-      
+
       toast({
         title: 'Shortcut Deleted',
-        description: 'Shortcut has been deleted'
+        description: 'Shortcut has been deleted',
       });
     } catch (error) {
       console.error('Error deleting shortcut:', error);
       toast({
         title: 'Error',
         description: 'Failed to delete shortcut',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     }
   };
-  
+
   // Create default shortcuts
   const handleCreateDefaultShortcuts = async () => {
     setIsDefaultLoading(true);
-    
+
     try {
       const defaultShortcuts = await createDefaultShortcuts(userId);
-      
+
       // Merge with existing shortcuts (avoid duplicates)
       const existingIds = shortcuts.map(s => s.id);
       const newShortcuts = defaultShortcuts.filter(s => !existingIds.includes(s.id));
-      
+
       setShortcuts([...shortcuts, ...newShortcuts]);
-      
+
       toast({
         title: 'Default Shortcuts Created',
-        description: `${newShortcuts.length} default shortcuts have been added`
+        description: `${newShortcuts.length} default shortcuts have been added`,
       });
     } catch (error) {
       console.error('Error creating default shortcuts:', error);
       toast({
         title: 'Error',
         description: 'Failed to create default shortcuts',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     } finally {
       setIsDefaultLoading(false);
     }
   };
-  
+
   // Toggle shortcut enabled state
   const toggleShortcutEnabled = async (shortcut: VoiceCommandShortcut) => {
     try {
       const updatedShortcut = await updateShortcut(shortcut.id, {
         isEnabled: !shortcut.isEnabled,
-        userId // Required by the API
+        userId, // Required by the API
       });
-      
-      setShortcuts(shortcuts.map(s => 
-        s.id === updatedShortcut.id ? updatedShortcut : s
-      ));
-      
+
+      setShortcuts(shortcuts.map(s => (s.id === updatedShortcut.id ? updatedShortcut : s)));
+
       toast({
         title: `Shortcut ${updatedShortcut.isEnabled ? 'Enabled' : 'Disabled'}`,
-        description: `"${shortcut.shortcutPhrase}" is now ${updatedShortcut.isEnabled ? 'enabled' : 'disabled'}`
+        description: `"${shortcut.shortcutPhrase}" is now ${updatedShortcut.isEnabled ? 'enabled' : 'disabled'}`,
       });
     } catch (error) {
       console.error('Error updating shortcut:', error);
       toast({
         title: 'Error',
         description: 'Failed to update shortcut',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     }
   };
-  
+
   // Edit shortcut
   const openEditDialog = (shortcut: VoiceCommandShortcut) => {
     setEditingShortcut(shortcut);
-    
+
     form.reset({
       shortcutPhrase: shortcut.shortcutPhrase,
       expandedCommand: shortcut.expandedCommand,
@@ -320,27 +316,26 @@ export function VoiceCommandShortcuts({
       description: shortcut.description || '',
       priority: shortcut.priority,
       isEnabled: shortcut.isEnabled,
-      isGlobal: shortcut.isGlobal
+      isGlobal: shortcut.isGlobal,
     });
-    
+
     setIsEditing(true);
   };
-  
+
   // Filter shortcuts based on search query and type
   const filteredShortcuts = shortcuts.filter(shortcut => {
-    const matchesSearch = 
-      searchQuery === '' || 
+    const matchesSearch =
+      searchQuery === '' ||
       shortcut.shortcutPhrase.toLowerCase().includes(searchQuery.toLowerCase()) ||
       shortcut.expandedCommand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (shortcut.description && shortcut.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    const matchesType = 
-      selectedType === 'all' || 
-      shortcut.commandType === selectedType;
-    
+      (shortcut.description &&
+        shortcut.description.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesType = selectedType === 'all' || shortcut.commandType === selectedType;
+
     return matchesSearch && matchesType;
   });
-  
+
   // Render loading state
   const renderLoading = () => (
     <div className="space-y-4">
@@ -348,9 +343,9 @@ export function VoiceCommandShortcuts({
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-4 w-full" />
       </div>
-      
+
       <Skeleton className="h-8 w-full" />
-      
+
       <div className="space-y-2">
         {[...Array(5)].map((_, i) => (
           <Skeleton key={i} className="h-16 w-full" />
@@ -358,14 +353,14 @@ export function VoiceCommandShortcuts({
       </div>
     </div>
   );
-  
+
   // Render empty state
   const renderEmpty = () => (
     <div className="text-center py-12 text-muted-foreground">
       <Command className="h-12 w-12 mx-auto mb-4 opacity-20" />
       <p className="text-lg font-medium">No Shortcuts</p>
       <p className="mt-1 mb-4">You don't have any voice command shortcuts yet.</p>
-      
+
       <div className="flex justify-center gap-2">
         <Dialog open={isCreating} onOpenChange={setIsCreating}>
           <DialogTrigger asChild>
@@ -376,9 +371,9 @@ export function VoiceCommandShortcuts({
           </DialogTrigger>
           {renderCreateDialog()}
         </Dialog>
-        
-        <Button 
-          variant="outline" 
+
+        <Button
+          variant="outline"
           onClick={handleCreateDefaultShortcuts}
           disabled={isDefaultLoading}
         >
@@ -392,17 +387,15 @@ export function VoiceCommandShortcuts({
       </div>
     </div>
   );
-  
+
   // Render create dialog
   const renderCreateDialog = () => (
     <DialogContent className="sm:max-w-[600px]">
       <DialogHeader>
         <DialogTitle>Create Voice Command Shortcut</DialogTitle>
-        <DialogDescription>
-          Create a new shortcut for a voice command.
-        </DialogDescription>
+        <DialogDescription>Create a new shortcut for a voice command.</DialogDescription>
       </DialogHeader>
-      
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleCreateShortcut)} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -415,14 +408,12 @@ export function VoiceCommandShortcuts({
                   <FormControl>
                     <Input placeholder="e.g. show properties" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    What you'll say to trigger this command
-                  </FormDescription>
+                  <FormDescription>What you'll say to trigger this command</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="commandType"
@@ -432,15 +423,13 @@ export function VoiceCommandShortcuts({
                   <FormControl>
                     <Input placeholder="e.g. property, data, report" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    Category for organizing commands
-                  </FormDescription>
+                  <FormDescription>Category for organizing commands</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
-          
+
           <FormField
             control={form.control}
             name="expandedCommand"
@@ -448,20 +437,18 @@ export function VoiceCommandShortcuts({
               <FormItem>
                 <FormLabel>Expanded Command</FormLabel>
                 <FormControl>
-                  <Textarea 
-                    placeholder="e.g. show all property assessments in Benton County sorted by value" 
+                  <Textarea
+                    placeholder="e.g. show all property assessments in Benton County sorted by value"
                     className="min-h-[100px]"
-                    {...field} 
+                    {...field}
                   />
                 </FormControl>
-                <FormDescription>
-                  The full command that will be executed
-                </FormDescription>
+                <FormDescription>The full command that will be executed</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="description"
@@ -469,10 +456,10 @@ export function VoiceCommandShortcuts({
               <FormItem>
                 <FormLabel>Description (Optional)</FormLabel>
                 <FormControl>
-                  <Textarea 
-                    placeholder="e.g. Shows a list of all properties in the county" 
+                  <Textarea
+                    placeholder="e.g. Shows a list of all properties in the county"
                     className="min-h-[60px]"
-                    {...field} 
+                    {...field}
                   />
                 </FormControl>
                 <FormDescription>
@@ -482,7 +469,7 @@ export function VoiceCommandShortcuts({
               </FormItem>
             )}
           />
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField
               control={form.control}
@@ -491,22 +478,20 @@ export function VoiceCommandShortcuts({
                 <FormItem>
                   <FormLabel>Priority (1-100)</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      min={1} 
-                      max={100} 
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
                       {...field}
                       onChange={e => field.onChange(parseInt(e.target.value))}
                     />
                   </FormControl>
-                  <FormDescription>
-                    Higher priority takes precedence
-                  </FormDescription>
+                  <FormDescription>Higher priority takes precedence</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="isEnabled"
@@ -514,21 +499,16 @@ export function VoiceCommandShortcuts({
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                   <div className="space-y-0.5">
                     <FormLabel>Enabled</FormLabel>
-                    <FormDescription>
-                      Activate this shortcut
-                    </FormDescription>
+                    <FormDescription>Activate this shortcut</FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="isGlobal"
@@ -536,22 +516,17 @@ export function VoiceCommandShortcuts({
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                   <div className="space-y-0.5">
                     <FormLabel>Global</FormLabel>
-                    <FormDescription>
-                      Available in all contexts
-                    </FormDescription>
+                    <FormDescription>Available in all contexts</FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
-          
+
           <DialogFooter>
             <Button type="submit">Create Shortcut</Button>
           </DialogFooter>
@@ -559,17 +534,15 @@ export function VoiceCommandShortcuts({
       </Form>
     </DialogContent>
   );
-  
+
   // Render edit dialog
   const renderEditDialog = () => (
     <DialogContent className="sm:max-w-[600px]">
       <DialogHeader>
         <DialogTitle>Edit Voice Command Shortcut</DialogTitle>
-        <DialogDescription>
-          Update an existing voice command shortcut.
-        </DialogDescription>
+        <DialogDescription>Update an existing voice command shortcut.</DialogDescription>
       </DialogHeader>
-      
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleUpdateShortcut)} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -582,14 +555,12 @@ export function VoiceCommandShortcuts({
                   <FormControl>
                     <Input placeholder="e.g. show properties" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    What you'll say to trigger this command
-                  </FormDescription>
+                  <FormDescription>What you'll say to trigger this command</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="commandType"
@@ -599,15 +570,13 @@ export function VoiceCommandShortcuts({
                   <FormControl>
                     <Input placeholder="e.g. property, data, report" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    Category for organizing commands
-                  </FormDescription>
+                  <FormDescription>Category for organizing commands</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
-          
+
           <FormField
             control={form.control}
             name="expandedCommand"
@@ -615,20 +584,18 @@ export function VoiceCommandShortcuts({
               <FormItem>
                 <FormLabel>Expanded Command</FormLabel>
                 <FormControl>
-                  <Textarea 
-                    placeholder="e.g. show all property assessments in Benton County sorted by value" 
+                  <Textarea
+                    placeholder="e.g. show all property assessments in Benton County sorted by value"
                     className="min-h-[100px]"
-                    {...field} 
+                    {...field}
                   />
                 </FormControl>
-                <FormDescription>
-                  The full command that will be executed
-                </FormDescription>
+                <FormDescription>The full command that will be executed</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="description"
@@ -636,10 +603,10 @@ export function VoiceCommandShortcuts({
               <FormItem>
                 <FormLabel>Description (Optional)</FormLabel>
                 <FormControl>
-                  <Textarea 
-                    placeholder="e.g. Shows a list of all properties in the county" 
+                  <Textarea
+                    placeholder="e.g. Shows a list of all properties in the county"
                     className="min-h-[60px]"
-                    {...field} 
+                    {...field}
                   />
                 </FormControl>
                 <FormDescription>
@@ -649,7 +616,7 @@ export function VoiceCommandShortcuts({
               </FormItem>
             )}
           />
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField
               control={form.control}
@@ -658,22 +625,20 @@ export function VoiceCommandShortcuts({
                 <FormItem>
                   <FormLabel>Priority (1-100)</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      min={1} 
-                      max={100} 
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
                       {...field}
                       onChange={e => field.onChange(parseInt(e.target.value))}
                     />
                   </FormControl>
-                  <FormDescription>
-                    Higher priority takes precedence
-                  </FormDescription>
+                  <FormDescription>Higher priority takes precedence</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="isEnabled"
@@ -681,21 +646,16 @@ export function VoiceCommandShortcuts({
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                   <div className="space-y-0.5">
                     <FormLabel>Enabled</FormLabel>
-                    <FormDescription>
-                      Activate this shortcut
-                    </FormDescription>
+                    <FormDescription>Activate this shortcut</FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="isGlobal"
@@ -703,22 +663,17 @@ export function VoiceCommandShortcuts({
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                   <div className="space-y-0.5">
                     <FormLabel>Global</FormLabel>
-                    <FormDescription>
-                      Available in all contexts
-                    </FormDescription>
+                    <FormDescription>Available in all contexts</FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
-          
+
           <DialogFooter>
             <Button type="submit">Update Shortcut</Button>
           </DialogFooter>
@@ -726,7 +681,7 @@ export function VoiceCommandShortcuts({
       </Form>
     </DialogContent>
   );
-  
+
   // Main render
   return (
     <Card className={className}>
@@ -744,7 +699,7 @@ export function VoiceCommandShortcuts({
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            
+
             <Dialog open={isCreating} onOpenChange={setIsCreating}>
               <DialogTrigger asChild>
                 <Button size="sm">
@@ -756,21 +711,19 @@ export function VoiceCommandShortcuts({
             </Dialog>
           </div>
         </div>
-        <CardDescription>
-          Create and manage shortcuts for voice commands
-        </CardDescription>
-        
+        <CardDescription>Create and manage shortcuts for voice commands</CardDescription>
+
         {shortcuts.length > 0 && (
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <div className="flex-1">
               <Input
                 placeholder="Search shortcuts..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={e => setSearchQuery(e.target.value)}
                 className="w-full"
               />
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Label htmlFor="type-filter" className="whitespace-nowrap">
                 Filter by type:
@@ -782,14 +735,16 @@ export function VoiceCommandShortcuts({
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
                   {commandTypes.map(type => (
-                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            
+
             <Button
-              variant="outline" 
+              variant="outline"
               onClick={handleCreateDefaultShortcuts}
               disabled={isDefaultLoading}
               size="sm"
@@ -804,7 +759,7 @@ export function VoiceCommandShortcuts({
           </div>
         )}
       </CardHeader>
-      
+
       <CardContent>
         {isLoading ? (
           renderLoading()
@@ -814,7 +769,7 @@ export function VoiceCommandShortcuts({
           <div className="text-center py-6 text-muted-foreground">
             <p>No shortcuts match your search.</p>
             <Button
-              variant="ghost" 
+              variant="ghost"
               onClick={() => {
                 setSearchQuery('');
                 setSelectedType('all');
@@ -838,7 +793,7 @@ export function VoiceCommandShortcuts({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredShortcuts.map((shortcut) => (
+                {filteredShortcuts.map(shortcut => (
                   <TableRow key={shortcut.id}>
                     <TableCell>
                       <TooltipProvider>
@@ -866,12 +821,14 @@ export function VoiceCommandShortcuts({
                     <TableCell className="font-medium">
                       {shortcut.shortcutPhrase}
                       {shortcut.isGlobal && (
-                        <Badge variant="secondary" className="ml-2">Global</Badge>
+                        <Badge variant="secondary" className="ml-2">
+                          Global
+                        </Badge>
                       )}
                     </TableCell>
                     <TableCell className="max-w-[300px] truncate" title={shortcut.expandedCommand}>
                       {shortcut.expandedCommand}
-                      
+
                       {shortcut.description && (
                         <TooltipProvider>
                           <Tooltip>
@@ -904,7 +861,7 @@ export function VoiceCommandShortcuts({
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        
+
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
@@ -919,8 +876,8 @@ export function VoiceCommandShortcuts({
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Shortcut</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete the "{shortcut.shortcutPhrase}" shortcut?
-                                This action cannot be undone.
+                                Are you sure you want to delete the "{shortcut.shortcutPhrase}"
+                                shortcut? This action cannot be undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -943,7 +900,7 @@ export function VoiceCommandShortcuts({
           </ScrollArea>
         )}
       </CardContent>
-      
+
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
         {renderEditDialog()}
       </Dialog>

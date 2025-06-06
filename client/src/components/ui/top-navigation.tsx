@@ -42,7 +42,7 @@ const TopNavigation = () => {
     { label: 'Development Platform', path: '/development' },
     { label: 'Database Conversion', path: '/database-conversion' },
   ];
-  
+
   return (
     <header className="bg-card dark:bg-card/40 backdrop-blur-md border-b border-border/40 text-foreground sticky top-0 z-30 shadow-sm">
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
@@ -56,39 +56,61 @@ const TopNavigation = () => {
           >
             <span className="sr-only">Open main menu</span>
             {mobileMenuOpen ? (
-              <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             ) : (
-              <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              <svg
+                className="h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             )}
           </button>
-          
+
           {/* Logo and brand */}
           <div className="flex items-center gap-4">
             <Link href="/">
               <div className="flex items-center gap-2 cursor-pointer">
-                <img 
-                  src="/assets/terrafusion-logo.svg" 
-                  alt="TerraFusion" 
-                  className="h-8 w-auto"
-                />
-                <span className="font-semibold text-lg hidden sm:block tf-heading">TerraFusion</span>
+                <img src="/assets/terrafusion-logo.svg" alt="TerraFusion" className="h-8 w-auto" />
+                <span className="font-semibold text-lg hidden sm:block tf-heading">
+                  TerraFusion
+                </span>
               </div>
             </Link>
           </div>
 
           {/* Main horizontal menu - hidden on mobile */}
           <nav className="hidden md:ml-6 md:flex md:items-center md:space-x-2">
-            {menuItems.map((item) => (
+            {menuItems.map(item => (
               <Link key={item.path} href={item.path}>
                 <div
                   className={cn(
-                    "tf-nav-item text-sm font-medium",
-                    location === item.path && "active",
-                    item.highlight && !location.startsWith(item.path) && "bg-primary/10 text-primary"
+                    'tf-nav-item text-sm font-medium',
+                    location === item.path && 'active',
+                    item.highlight &&
+                      !location.startsWith(item.path) &&
+                      'bg-primary/10 text-primary'
                   )}
                 >
                   {item.label}
@@ -107,7 +129,7 @@ const TopNavigation = () => {
             {/* Search button */}
             <button
               type="button"
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 setSearchOpen(!searchOpen);
               }}
@@ -115,16 +137,25 @@ const TopNavigation = () => {
               aria-label="Search"
             >
               <span className="sr-only">Search</span>
-              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+              <svg
+                className="h-5 w-5"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                  clipRule="evenodd"
+                />
               </svg>
             </button>
 
             {/* Extensions button */}
             <div className="relative">
-              <button 
-                type="button" 
-                onClick={(e) => {
+              <button
+                type="button"
+                onClick={e => {
                   e.stopPropagation();
                   setIsExtensionsMenuOpen(!isExtensionsMenuOpen);
                 }}
@@ -132,15 +163,24 @@ const TopNavigation = () => {
                 aria-label="Extensions"
               >
                 <span className="sr-only">Extensions</span>
-                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+                <svg
+                  className="h-5 w-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"
+                  />
                 </svg>
               </button>
-              
+
               {isExtensionsMenuOpen && (
-                <div 
-                  className="origin-top-right absolute right-0 mt-2 w-64 rounded-xl tf-card-glass backdrop-blur-xl shadow-lg focus:outline-none z-50"
-                >
+                <div className="origin-top-right absolute right-0 mt-2 w-64 rounded-xl tf-card-glass backdrop-blur-xl shadow-lg focus:outline-none z-50">
                   <div className="py-1 tf-font-body">
                     <ExtensionMenuItems onItemClick={() => setIsExtensionsMenuOpen(false)} />
                   </div>
@@ -149,25 +189,50 @@ const TopNavigation = () => {
             </div>
 
             {/* AI assistant button with glow effect */}
-            <button 
+            <button
               type="button"
-              onClick={() => {/* Toggle AI assistant */}}
+              onClick={() => {
+                /* Toggle AI assistant */
+              }}
               className="tf-ai-icon tf-glow-effect p-1.5 rounded-full"
               aria-label="AI Assistant"
             >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M12 12L16 8M12 12L8 8M12 12L16 16M12 12L8 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <svg
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M12 12L16 8M12 12L8 8M12 12L16 16M12 12L8 16"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </button>
 
             {/* User profile button */}
             <div className="relative ml-1">
-              <button 
-                type="button" 
-                className="flex items-center text-sm rounded-full focus:outline-none" 
-                onClick={(e) => {
+              <button
+                type="button"
+                className="flex items-center text-sm rounded-full focus:outline-none"
+                onClick={e => {
                   e.stopPropagation();
                   setIsDropdownOpen(!isDropdownOpen);
                 }}
@@ -177,7 +242,7 @@ const TopNavigation = () => {
                   {user?.name.charAt(0)}
                 </div>
               </button>
-              
+
               {isDropdownOpen && (
                 <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-xl tf-card-glass backdrop-blur-xl shadow-lg focus:outline-none tf-font-body z-50">
                   <div className="py-2 px-3 border-b border-border/20">
@@ -185,9 +250,24 @@ const TopNavigation = () => {
                     <p className="text-xs text-muted-foreground">{user?.email}</p>
                   </div>
                   <div className="py-1">
-                    <a href="#" className="block px-4 py-2 text-sm hover:bg-foreground/5 rounded-md mx-2 transition-colors">Your Profile</a>
-                    <a href="#" className="block px-4 py-2 text-sm hover:bg-foreground/5 rounded-md mx-2 transition-colors">Settings</a>
-                    <a href="#" className="block px-4 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-md mx-2 transition-colors">Sign out</a>
+                    <a
+                      href="#"
+                      className="block px-4 py-2 text-sm hover:bg-foreground/5 rounded-md mx-2 transition-colors"
+                    >
+                      Your Profile
+                    </a>
+                    <a
+                      href="#"
+                      className="block px-4 py-2 text-sm hover:bg-foreground/5 rounded-md mx-2 transition-colors"
+                    >
+                      Settings
+                    </a>
+                    <a
+                      href="#"
+                      className="block px-4 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-md mx-2 transition-colors"
+                    >
+                      Sign out
+                    </a>
                   </div>
                 </div>
               )}
@@ -197,11 +277,17 @@ const TopNavigation = () => {
       </div>
 
       {/* Search overlay */}
-      <div className={`${searchOpen ? 'max-h-16 py-2' : 'max-h-0 py-0'} overflow-hidden transition-all duration-300 px-4 border-t border-border/20 bg-card/60 backdrop-blur-md`}>
+      <div
+        className={`${searchOpen ? 'max-h-16 py-2' : 'max-h-0 py-0'} overflow-hidden transition-all duration-300 px-4 border-t border-border/20 bg-card/60 backdrop-blur-md`}
+      >
         <div className="relative rounded-lg">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg className="h-5 w-5 text-muted-foreground" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"></path>
+              <path
+                fillRule="evenodd"
+                d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                clipRule="evenodd"
+              ></path>
             </svg>
           </div>
           <input
@@ -213,21 +299,19 @@ const TopNavigation = () => {
       </div>
 
       {/* Mobile menu dropdown - animated sliding panel */}
-      <div 
+      <div
         className={`md:hidden fixed inset-x-0 top-16 bg-card/95 backdrop-blur-md transform transition-transform duration-300 ease-in-out z-40 ${
           mobileMenuOpen ? 'translate-y-0 shadow-lg' : '-translate-y-full'
         }`}
       >
         <div className="px-4 pt-4 pb-6 space-y-1 border-t border-border/20">
-          {menuItems.map((item) => (
+          {menuItems.map(item => (
             <Link key={item.path} href={item.path}>
-              <div 
+              <div
                 className={cn(
-                  "flex items-center px-3 py-3 rounded-lg text-base font-medium cursor-pointer tf-font-body",
-                  location === item.path 
-                    ? "bg-primary/15 text-primary" 
-                    : "hover:bg-foreground/5",
-                  item.highlight && !location.startsWith(item.path) && "bg-primary/10 text-primary"
+                  'flex items-center px-3 py-3 rounded-lg text-base font-medium cursor-pointer tf-font-body',
+                  location === item.path ? 'bg-primary/15 text-primary' : 'hover:bg-foreground/5',
+                  item.highlight && !location.startsWith(item.path) && 'bg-primary/10 text-primary'
                 )}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -239,8 +323,17 @@ const TopNavigation = () => {
                 )}
                 {location === item.path && (
                   <span className="ml-auto">
-                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    <svg
+                      className="h-5 w-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </span>
                 )}

@@ -83,7 +83,7 @@ export enum AIAgentStatus {
   Syncing = 'syncing',
   Error = 'error',
   Inactive = 'inactive',
-  Learning = 'learning'
+  Learning = 'learning',
 }
 
 export interface AIAgent {

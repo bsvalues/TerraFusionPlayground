@@ -1,6 +1,6 @@
 /**
  * Database Conversion Schema Updates
- * 
+ *
  * This script adds the necessary tables to the database schema
  * for tracking database conversion projects.
  */
@@ -11,19 +11,19 @@ const path = require('path');
 async function updateSchema() {
   try {
     console.log('Updating schema with database conversion tables...');
-    
+
     // Path to schema file
     const schemaFilePath = path.join(__dirname, '../../../shared/schema.ts');
-    
+
     // Read the current schema file
     const schemaContent = await fs.readFile(schemaFilePath, 'utf-8');
-    
+
     // Check if the conversion project table already exists
     if (schemaContent.includes('export const conversionProjects =')) {
       console.log('Conversion project table already exists in schema. No update needed.');
       return;
     }
-    
+
     // New table definitions to add
     const newTables = `
 // =================== Database Conversion Tables ===================
@@ -90,28 +90,26 @@ export const insertConnectionTemplateSchema = createInsertSchema(connectionTempl
 export type ConnectionTemplate = typeof connectionTemplates.$inferSelect;
 export type InsertConnectionTemplate = z.infer<typeof insertConnectionTemplateSchema>;
 `;
-    
+
     // Find the position to insert the new tables (before the last export statement)
     const lastExportIndex = schemaContent.lastIndexOf('export ');
     if (lastExportIndex === -1) {
       throw new Error('Could not find a suitable position to insert new tables');
     }
-    
+
     // Find the start of the line containing the last export
     let insertPosition = schemaContent.lastIndexOf('\n', lastExportIndex);
     if (insertPosition === -1) {
       insertPosition = 0;
     }
-    
+
     // Insert the new tables
-    const updatedContent = 
-      schemaContent.slice(0, insertPosition) + 
-      newTables + 
-      schemaContent.slice(insertPosition);
-    
+    const updatedContent =
+      schemaContent.slice(0, insertPosition) + newTables + schemaContent.slice(insertPosition);
+
     // Write the updated schema back to the file
     await fs.writeFile(schemaFilePath, updatedContent, 'utf-8');
-    
+
     console.log('Schema updated successfully with database conversion tables.');
   } catch (error) {
     console.error('Error updating schema:', error);

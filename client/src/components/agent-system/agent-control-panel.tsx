@@ -1,6 +1,6 @@
 /**
  * Agent Control Panel Component
- * 
+ *
  * Provides a user interface for interacting with and managing the agent system.
  * Displays agent information, allows sending commands to agents, and manages agent tasks.
  */
@@ -38,7 +38,7 @@ import {
   MessagesSquare,
   PlusCircle,
   ListPlus,
-  Info
+  Info,
 } from 'lucide-react';
 import { agentWebSocketService } from '@/services/agent-websocket-service';
 
@@ -74,7 +74,10 @@ export function AgentControlPanel() {
   const [loadingAgents, setLoadingAgents] = useState<boolean>(false);
   const [loadingTasks, setLoadingTasks] = useState<boolean>(false);
   const [sendingCommand, setSendingCommand] = useState<boolean>(false);
-  const { connectionStatus, sendActionRequest } = useAgentWebSocket({ autoConnect: true, showToasts: true });
+  const { connectionStatus, sendActionRequest } = useAgentWebSocket({
+    autoConnect: true,
+    showToasts: true,
+  });
   const { toast } = useToast();
 
   // Fetch agents from API
@@ -149,12 +152,12 @@ export function AgentControlPanel() {
 
       // Send command to the selected agent
       await sendActionRequest(selectedAgent, command, params);
-      
+
       toast({
         title: 'Command Sent',
         description: `Successfully sent "${command}" to ${selectedAgent}`,
       });
-      
+
       // Clear command input after sending
       setCommand('');
       setCommandParams('{}');
@@ -175,17 +178,20 @@ export function AgentControlPanel() {
     // Initial data load
     fetchAgents();
     fetchTasks();
-    
+
     console.log(`[Agent UI] Setting up polling with connection status: ${connectionStatus}`);
-    
+
     // Always poll for data regardless of WebSocket connection status
     // This ensures the UI stays responsive even if the WebSocket is having issues
-    const pollingInterval = setInterval(() => {
-      console.log(`[Agent UI] Polling for data (connection: ${connectionStatus})`);
-      fetchAgents();
-      fetchTasks();
-    }, connectionStatus === 'connected' ? 10000 : 3000);
-    
+    const pollingInterval = setInterval(
+      () => {
+        console.log(`[Agent UI] Polling for data (connection: ${connectionStatus})`);
+        fetchAgents();
+        fetchTasks();
+      },
+      connectionStatus === 'connected' ? 10000 : 3000
+    );
+
     // Clean up interval on unmount
     return () => {
       clearInterval(pollingInterval);
@@ -197,9 +203,7 @@ export function AgentControlPanel() {
       <div className="flex flex-col md:flex-row gap-4 justify-between items-start">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Agent Control Panel</h2>
-          <p className="text-muted-foreground">
-            Monitor and control the multi-agent system
-          </p>
+          <p className="text-muted-foreground">Monitor and control the multi-agent system</p>
         </div>
         <AgentSystemStatus />
       </div>
@@ -223,30 +227,28 @@ export function AgentControlPanel() {
             Settings
           </TabsTrigger>
         </TabsList>
-        
+
         {/* Agents Tab */}
         <TabsContent value="agents" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Available Agents</h3>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={fetchAgents}
-              disabled={loadingAgents}
-            >
+            <Button variant="outline" size="sm" onClick={fetchAgents} disabled={loadingAgents}>
               <RefreshCw className={`h-4 w-4 mr-2 ${loadingAgents ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {agents.map((agent) => (
-              <Card key={agent.id} className={selectedAgent === agent.agentId ? 'border-primary' : ''}>
+            {agents.map(agent => (
+              <Card
+                key={agent.id}
+                className={selectedAgent === agent.agentId ? 'border-primary' : ''}
+              >
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-md">{agent.name}</CardTitle>
-                    <Button 
-                      variant={selectedAgent === agent.agentId ? "default" : "ghost"} 
+                    <Button
+                      variant={selectedAgent === agent.agentId ? 'default' : 'ghost'}
                       size="sm"
                       onClick={() => setSelectedAgent(agent.agentId)}
                     >
@@ -257,25 +259,26 @@ export function AgentControlPanel() {
                 </CardHeader>
                 <CardContent className="text-sm">
                   <p className="mb-2">{agent.description}</p>
-                  
+
                   <div className="flex items-center gap-2 mb-2">
-                    <div className={`h-2 w-2 rounded-full ${
-                      agent.status === 'active' ? 'bg-green-500' : 
-                      agent.status === 'standby' ? 'bg-yellow-500' : 
-                      'bg-gray-500'
-                    }`}></div>
+                    <div
+                      className={`h-2 w-2 rounded-full ${
+                        agent.status === 'active'
+                          ? 'bg-green-500'
+                          : agent.status === 'standby'
+                            ? 'bg-yellow-500'
+                            : 'bg-gray-500'
+                      }`}
+                    ></div>
                     <span className="capitalize">{agent.status}</span>
                   </div>
-                  
+
                   {agent.capabilities && agent.capabilities.length > 0 && (
                     <div className="mt-2">
                       <p className="text-xs font-semibold mb-1">Capabilities:</p>
                       <div className="flex flex-wrap gap-1">
                         {agent.capabilities.map((capability, idx) => (
-                          <span 
-                            key={idx} 
-                            className="text-xs px-2 py-1 bg-secondary rounded-full"
-                          >
+                          <span key={idx} className="text-xs px-2 py-1 bg-secondary rounded-full">
                             {capability}
                           </span>
                         ))}
@@ -285,18 +288,13 @@ export function AgentControlPanel() {
                 </CardContent>
               </Card>
             ))}
-            
+
             {agents.length === 0 && !loadingAgents && (
               <Card className="col-span-full">
                 <CardContent className="pt-6 flex flex-col items-center justify-center h-40">
                   <Bot className="h-8 w-8 mb-2 text-muted-foreground" />
                   <p className="text-muted-foreground">No agents available</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-4"
-                    onClick={fetchAgents}
-                  >
+                  <Button variant="outline" size="sm" className="mt-4" onClick={fetchAgents}>
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Refresh
                   </Button>
@@ -304,16 +302,14 @@ export function AgentControlPanel() {
               </Card>
             )}
           </div>
-          
+
           {/* Agent Command Interface */}
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-md">Send Command</CardTitle>
-                  <CardDescription>
-                    Direct an agent to perform a specific action
-                  </CardDescription>
+                  <CardDescription>Direct an agent to perform a specific action</CardDescription>
                 </div>
                 <ConnectionStatusIndicator />
               </div>
@@ -331,7 +327,7 @@ export function AgentControlPanel() {
                       <SelectValue placeholder="Select an agent" />
                     </SelectTrigger>
                     <SelectContent>
-                      {agents.map((agent) => (
+                      {agents.map(agent => (
                         <SelectItem key={agent.id} value={agent.agentId}>
                           {agent.name}
                         </SelectItem>
@@ -339,33 +335,35 @@ export function AgentControlPanel() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="command">Command</Label>
                   <Input
                     id="command"
                     placeholder="Enter command (e.g., analyze_property)"
                     value={command}
-                    onChange={(e) => setCommand(e.target.value)}
+                    onChange={e => setCommand(e.target.value)}
                     disabled={!selectedAgent || connectionStatus !== 'connected'}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="params">Parameters (JSON)</Label>
                   <Input
                     id="params"
-                    placeholder='{}'
+                    placeholder="{}"
                     value={commandParams}
-                    onChange={(e) => setCommandParams(e.target.value)}
+                    onChange={e => setCommandParams(e.target.value)}
                     disabled={!selectedAgent || !command || connectionStatus !== 'connected'}
                   />
                 </div>
-                
-                <Button 
-                  type="submit" 
+
+                <Button
+                  type="submit"
                   className="w-full"
-                  disabled={!selectedAgent || !command || sendingCommand || connectionStatus !== 'connected'}
+                  disabled={
+                    !selectedAgent || !command || sendingCommand || connectionStatus !== 'connected'
+                  }
                 >
                   {sendingCommand ? (
                     <>
@@ -383,18 +381,13 @@ export function AgentControlPanel() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         {/* Tasks Tab */}
         <TabsContent value="tasks" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Agent Tasks</h3>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={fetchTasks}
-                disabled={loadingTasks}
-              >
+              <Button variant="outline" size="sm" onClick={fetchTasks} disabled={loadingTasks}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${loadingTasks ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
@@ -404,11 +397,11 @@ export function AgentControlPanel() {
               </Button>
             </div>
           </div>
-          
+
           <ScrollArea className="h-[400px] rounded-md border">
             {tasks.length > 0 ? (
               <div className="p-4 space-y-4">
-                {tasks.map((task) => (
+                {tasks.map(task => (
                   <Card key={task.id} className="mb-4">
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
@@ -435,12 +428,17 @@ export function AgentControlPanel() {
                     <CardContent className="text-sm">
                       <p>{task.description}</p>
                       <div className="flex items-center gap-2 mt-2">
-                        <div className={`h-2.5 w-2.5 rounded-full ${
-                          task.status === 'completed' ? 'bg-green-500' : 
-                          task.status === 'running' ? 'bg-blue-500' : 
-                          task.status === 'failed' ? 'bg-red-500' : 
-                          'bg-yellow-500'
-                        }`}></div>
+                        <div
+                          className={`h-2.5 w-2.5 rounded-full ${
+                            task.status === 'completed'
+                              ? 'bg-green-500'
+                              : task.status === 'running'
+                                ? 'bg-blue-500'
+                                : task.status === 'failed'
+                                  ? 'bg-red-500'
+                                  : 'bg-yellow-500'
+                          }`}
+                        ></div>
                         <span className="capitalize">{task.status}</span>
                         <span className="text-xs text-muted-foreground ml-auto">
                           Created: {new Date(task.createdAt).toLocaleString()}
@@ -454,12 +452,7 @@ export function AgentControlPanel() {
               <div className="h-full flex flex-col items-center justify-center py-10">
                 <ListPlus className="h-10 w-10 mb-4 text-muted-foreground" />
                 <p className="text-muted-foreground">No tasks available</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-4"
-                  onClick={fetchTasks}
-                >
+                <Button variant="outline" size="sm" className="mt-4" onClick={fetchTasks}>
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Refresh
                 </Button>
@@ -467,7 +460,7 @@ export function AgentControlPanel() {
             )}
           </ScrollArea>
         </TabsContent>
-        
+
         {/* Console Tab */}
         <TabsContent value="console" className="space-y-4">
           <div className="flex justify-between items-center">
@@ -483,18 +476,16 @@ export function AgentControlPanel() {
               </Button>
             </div>
           </div>
-          
+
           <AgentMessageLog height="h-[500px]" showControls={true} />
         </TabsContent>
-        
+
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Agent System Settings</CardTitle>
-              <CardDescription>
-                Configure how agents communicate and operate
-              </CardDescription>
+              <CardDescription>Configure how agents communicate and operate</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {connectionStatus !== 'connected' && (
@@ -505,12 +496,13 @@ export function AgentControlPanel() {
                     </div>
                     <div className="ml-3">
                       <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                        Connection Status: {connectionStatus === 'errored' ? 'Error' : connectionStatus}
+                        Connection Status:{' '}
+                        {connectionStatus === 'errored' ? 'Error' : connectionStatus}
                       </h3>
                       <p className="mt-2 text-sm text-blue-700 dark:text-blue-400">
                         The agent system is currently using{' '}
                         {(() => {
-                          switch(connectionStatus) {
+                          switch (connectionStatus) {
                             case 'disconnected':
                             case 'connecting':
                             case 'errored':
@@ -520,9 +512,10 @@ export function AgentControlPanel() {
                             default:
                               return 'Unknown connection method';
                           }
-                        })()} for communication.
+                        })()}{' '}
+                        for communication.
                         {(() => {
-                          switch(connectionStatus) {
+                          switch (connectionStatus) {
                             case 'disconnected':
                             case 'connecting':
                             case 'errored':
@@ -538,15 +531,11 @@ export function AgentControlPanel() {
               )}
               <div className="space-y-2">
                 <Label htmlFor="connection-timeout">Connection Timeout (ms)</Label>
-                <Input 
-                  id="connection-timeout" 
-                  type="number" 
-                  placeholder="30000" 
-                />
+                <Input id="connection-timeout" type="number" placeholder="30000" />
               </div>
-              
+
               <Separator />
-              
+
               <div className="space-y-2">
                 <Label htmlFor="log-level">Log Level</Label>
                 <Select defaultValue="info">
@@ -561,18 +550,14 @@ export function AgentControlPanel() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <Separator />
-              
+
               <div className="space-y-2">
                 <Label htmlFor="agent-timeout">Agent Response Timeout (ms)</Label>
-                <Input 
-                  id="agent-timeout" 
-                  type="number" 
-                  placeholder="5000" 
-                />
+                <Input id="agent-timeout" type="number" placeholder="5000" />
               </div>
-              
+
               <Button className="w-full">Save Settings</Button>
             </CardContent>
           </Card>

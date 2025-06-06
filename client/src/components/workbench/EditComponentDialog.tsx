@@ -5,13 +5,19 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CodeEditor from '@/components/development/CodeEditor';
 import { Save, X } from 'lucide-react';
@@ -45,7 +51,7 @@ const defaultComponent: ModelComponent = {
   type: 'standard',
   description: '',
   code: '// Component code here\n\nfunction calculate(input) {\n  // Implementation goes here\n  return input;\n}\n\nexport default calculate;',
-  modelId: ''
+  modelId: '',
 };
 
 const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
@@ -54,21 +60,21 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
   onSave,
   component,
   modelId,
-  componentTypes = []
+  componentTypes = [],
 }) => {
   const [activeTab, setActiveTab] = useState('details');
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<ModelComponent>(
     component || { ...defaultComponent, modelId }
   );
-  
+
   const handleChange = (field: keyof ModelComponent, value: string) => {
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
-  
+
   const handleSubmit = async () => {
     try {
       setIsSaving(true);
@@ -80,25 +86,25 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
       setIsSaving(false);
     }
   };
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{component ? 'Edit Component' : 'Create New Component'}</DialogTitle>
           <DialogDescription>
-            {component 
+            {component
               ? 'Update an existing assessment model component'
               : 'Create a new component for your assessment model'}
           </DialogDescription>
         </DialogHeader>
-        
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="code">Component Code</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="details" className="space-y-4 py-4">
             <div className="grid grid-cols-4 gap-4">
               <div className="col-span-3">
@@ -110,13 +116,10 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
                   placeholder="Enter component name"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="type">Type</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={value => handleChange('type', value)}
-                >
+                <Select value={formData.type} onValueChange={value => handleChange('type', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -139,7 +142,7 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
                 </Select>
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="description">Description</Label>
               <Textarea
@@ -151,12 +154,13 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
               />
             </div>
           </TabsContent>
-          
+
           <TabsContent value="code" className="py-4">
             <div className="mb-2">
               <Label htmlFor="code">Component Code</Label>
               <p className="text-sm text-gray-500 mb-2">
-                Write the JavaScript code for this component. The component should export a function as default.
+                Write the JavaScript code for this component. The component should export a function
+                as default.
               </p>
             </div>
             <div className="h-[400px] border rounded-md">
@@ -170,7 +174,7 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
             </div>
           </TabsContent>
         </Tabs>
-        
+
         <DialogFooter className="flex space-x-2 justify-end">
           <Button variant="outline" onClick={onClose}>
             <X className="h-4 w-4 mr-1" />

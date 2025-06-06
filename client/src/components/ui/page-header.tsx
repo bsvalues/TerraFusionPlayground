@@ -6,12 +6,12 @@ interface PageHeaderProps {
   actions?: React.ReactNode;
 }
 
-const PageHeader: React.FC<PageHeaderProps> = ({ 
-  title, 
-  subtitle, 
-  lastUpdate = 'Today at 3:45 PM', 
+const PageHeader: React.FC<PageHeaderProps> = ({
+  title,
+  subtitle,
+  lastUpdate = 'Today at 3:45 PM',
   location = 'Benton County, WA',
-  actions 
+  actions,
 }) => {
   return (
     <div className="bg-gradient-to-r from-primary-blue-light/5 to-primary-blue/10 shadow-md border-b border-primary-blue-light/20">
@@ -32,14 +32,32 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                 </div>
                 <div className="mt-1 flex flex-col sm:flex-row sm:flex-wrap sm:mt-0 sm:space-x-6">
                   <div className="mt-2 flex items-center text-sm text-primary-blue tf-font-body">
-                    <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-primary-teal" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                    <svg
+                      className="flex-shrink-0 mr-1.5 h-5 w-5 text-primary-teal"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     Last updated: <span className="font-medium">{lastUpdate}</span>
                   </div>
                   <div className="mt-2 flex items-center text-sm text-primary-blue tf-font-body">
-                    <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-primary-teal" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    <svg
+                      className="flex-shrink-0 mr-1.5 h-5 w-5 text-primary-teal"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     <span className="font-medium">{location}</span>
                   </div>
@@ -47,11 +65,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
               </div>
             </div>
           </div>
-          {actions && (
-            <div className="mt-6 flex space-x-3 md:mt-0 md:ml-4">
-              {actions}
-            </div>
-          )}
+          {actions && <div className="mt-6 flex space-x-3 md:mt-0 md:ml-4">{actions}</div>}
         </div>
       </div>
     </div>

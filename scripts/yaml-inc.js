@@ -2,10 +2,10 @@
 
 /**
  * YAML Include Tool
- * 
+ *
  * This script reads a YAML file and outputs its content,
  * making it easy to include YAML snippets in other files.
- * 
+ *
  * Usage: node yaml-inc.js <yaml-file>
  */
 
@@ -26,10 +26,10 @@ try {
     console.error(`Error: File ${filename} not found`);
     process.exit(1);
   }
-  
+
   // Read the file
   const content = fs.readFileSync(filename, 'utf8');
-  
+
   // Output the content
   process.stdout.write(content);
 } catch (error) {

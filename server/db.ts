@@ -1,6 +1,6 @@
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import ws from 'ws';
 import * as schema from '../shared/schema';
 import * as gisSchema from '../shared/gis-schema';
 
@@ -9,9 +9,7 @@ neonConfig.webSocketConstructor = ws;
 
 // Validate database URL
 if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+  throw new Error('DATABASE_URL must be set. Did you forget to provision a database?');
 }
 
 // Configure PostgreSQL connection

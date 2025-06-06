@@ -1,6 +1,6 @@
 /**
  * Supabase Migration Routes
- * 
+ *
  * This file contains API routes for Supabase data migration and operations.
  */
 
@@ -24,9 +24,9 @@ export function registerSupabaseRoutes(app: express.Application, storage: IStora
       return res.json({ connected: isConnected });
     } catch (error) {
       logger.error('Error checking Supabase connection:', error);
-      return res.status(500).json({ 
-        connected: false, 
-        error: 'Failed to check Supabase connection'
+      return res.status(500).json({
+        connected: false,
+        error: 'Failed to check Supabase connection',
       });
     }
   });
@@ -75,9 +75,9 @@ export function registerSupabaseRoutes(app: express.Application, storage: IStora
       return res.json(result);
     } catch (error) {
       logger.error(`Error migrating ${dataType}:`, error);
-      return res.status(500).json({ 
+      return res.status(500).json({
         success: false,
-        error: `Migration failed for ${dataType}`
+        error: `Migration failed for ${dataType}`,
       });
     }
   });
@@ -89,17 +89,15 @@ export function registerSupabaseRoutes(app: express.Application, storage: IStora
   router.get('/validate', async (req, res) => {
     try {
       const isValid = await migrationService.validateConnection();
-      return res.json({ 
+      return res.json({
         valid: isValid,
-        message: isValid 
-          ? 'Supabase connection is valid'
-          : 'Supabase connection is invalid'
+        message: isValid ? 'Supabase connection is valid' : 'Supabase connection is invalid',
       });
     } catch (error) {
       logger.error('Error validating Supabase connection:', error);
-      return res.status(500).json({ 
-        valid: false, 
-        error: 'Failed to validate Supabase connection'
+      return res.status(500).json({
+        valid: false,
+        error: 'Failed to validate Supabase connection',
       });
     }
   });

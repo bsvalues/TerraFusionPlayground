@@ -2,13 +2,13 @@
 
 /**
  * Observability Linting Script
- * 
+ *
  * This script validates Prometheus rules and Grafana dashboard configurations
  * to ensure they follow best practices and will work properly when deployed.
- * 
+ *
  * Usage:
  *   node scripts/observability-lint.js [--fix]
- * 
+ *
  * Options:
  *   --fix  Attempt to automatically fix common issues
  */
@@ -36,7 +36,7 @@ const COLORS = {
   GREEN: '\x1b[32m',
   YELLOW: '\x1b[33m',
   BLUE: '\x1b[34m',
-  MAGENTA: '\x1b[35m'
+  MAGENTA: '\x1b[35m',
 };
 
 // Counters for summary
@@ -74,22 +74,25 @@ function checkToolInstalled(command, name, installInstructions) {
  */
 function validateYamlFiles(directory, recursive = true) {
   log(`\nValidating YAML files in ${directory}...`, COLORS.BLUE);
-  
+
   try {
     // Get all yaml files
-    const findCommand = recursive 
+    const findCommand = recursive
       ? `find ${directory} -name "*.yml" -o -name "*.yaml"`
       : `find ${directory} -maxdepth 1 -name "*.yml" -o -name "*.yaml"`;
-    
-    const yamlFiles = execSync(findCommand, { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
-    
+
+    const yamlFiles = execSync(findCommand, { encoding: 'utf8' })
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+
     if (yamlFiles.length === 0) {
       log('No YAML files found.', COLORS.YELLOW);
       return;
     }
-    
+
     log(`Found ${yamlFiles.length} YAML files.`);
-    
+
     // Check each file
     yamlFiles.forEach(file => {
       try {
@@ -111,41 +114,52 @@ function validateYamlFiles(directory, recursive = true) {
  * Validate Prometheus rule files
  */
 function validatePrometheusRules() {
-  if (!checkToolInstalled('promtool', 'promtool', 
-      'Install Prometheus (includes promtool) from https://prometheus.io/download/')) {
+  if (
+    !checkToolInstalled(
+      'promtool',
+      'promtool',
+      'Install Prometheus (includes promtool) from https://prometheus.io/download/'
+    )
+  ) {
     return;
   }
 
   log('\nValidating Prometheus rule files...', COLORS.BLUE);
-  
+
   // Check rules directory exists
   if (!fs.existsSync(PROMETHEUS_RULES_DIR)) {
     log(`❌ Rules directory ${PROMETHEUS_RULES_DIR} does not exist`, COLORS.RED);
     errorCount++;
     return;
   }
-  
+
   // Check alerts directory exists
   if (!fs.existsSync(PROMETHEUS_ALERTS_DIR)) {
     log(`❌ Alerts directory ${PROMETHEUS_ALERTS_DIR} does not exist`, COLORS.RED);
     errorCount++;
     return;
   }
-  
+
   // Get all rule files
   const ruleFiles = [
-    ...fs.readdirSync(PROMETHEUS_RULES_DIR).filter(f => f.endsWith('.yml') || f.endsWith('.yaml')).map(f => path.join(PROMETHEUS_RULES_DIR, f)),
-    ...fs.readdirSync(PROMETHEUS_ALERTS_DIR).filter(f => f.endsWith('.yml') || f.endsWith('.yaml')).map(f => path.join(PROMETHEUS_ALERTS_DIR, f))
+    ...fs
+      .readdirSync(PROMETHEUS_RULES_DIR)
+      .filter(f => f.endsWith('.yml') || f.endsWith('.yaml'))
+      .map(f => path.join(PROMETHEUS_RULES_DIR, f)),
+    ...fs
+      .readdirSync(PROMETHEUS_ALERTS_DIR)
+      .filter(f => f.endsWith('.yml') || f.endsWith('.yaml'))
+      .map(f => path.join(PROMETHEUS_ALERTS_DIR, f)),
   ];
-  
+
   if (ruleFiles.length === 0) {
     log('No rule files found.', COLORS.YELLOW);
     warningCount++;
     return;
   }
-  
+
   log(`Found ${ruleFiles.length} rule files.`);
-  
+
   // Check each file
   ruleFiles.forEach(file => {
     try {
@@ -165,27 +179,28 @@ function validatePrometheusRules() {
  */
 function validateGrafanaDashboards() {
   log('\nValidating Grafana dashboards...', COLORS.BLUE);
-  
+
   // Check dashboard directory exists
   if (!fs.existsSync(GRAFANA_DASHBOARDS_DIR)) {
     log(`❌ Dashboard directory ${GRAFANA_DASHBOARDS_DIR} does not exist`, COLORS.RED);
     errorCount++;
     return;
   }
-  
+
   // Get all dashboard files
-  const dashboardFiles = fs.readdirSync(GRAFANA_DASHBOARDS_DIR)
+  const dashboardFiles = fs
+    .readdirSync(GRAFANA_DASHBOARDS_DIR)
     .filter(f => f.endsWith('.json'))
     .map(f => path.join(GRAFANA_DASHBOARDS_DIR, f));
-    
+
   if (dashboardFiles.length === 0) {
     log('No dashboard files found.', COLORS.YELLOW);
     warningCount++;
     return;
   }
-  
+
   log(`Found ${dashboardFiles.length} dashboard files.`);
-  
+
   // Check each file
   dashboardFiles.forEach(file => {
     try {
@@ -204,17 +219,17 @@ function validateGrafanaDashboards() {
  */
 function validateGrafanaProvisioning() {
   log('\nValidating Grafana provisioning configuration...', COLORS.BLUE);
-  
+
   // Check provisioning directory exists
   if (!fs.existsSync(GRAFANA_PROVISIONING_DIR)) {
     log(`❌ Provisioning directory ${GRAFANA_PROVISIONING_DIR} does not exist`, COLORS.RED);
     errorCount++;
     return;
   }
-  
+
   // Validate YAML files in the provisioning directory and its subdirectories
   validateYamlFiles(GRAFANA_PROVISIONING_DIR);
-  
+
   // Check for required directories
   const requiredDirs = ['dashboards', 'datasources'];
   requiredDirs.forEach(dir => {
@@ -232,29 +247,29 @@ function validateGrafanaProvisioning() {
 function main() {
   log('Starting observability configuration linting...', COLORS.MAGENTA);
   log('======================================\n');
-  
+
   // Check YAML syntax for all observability files
   validateYamlFiles(PROMETHEUS_RULES_DIR);
   validateYamlFiles(PROMETHEUS_ALERTS_DIR);
   validateYamlFiles(GRAFANA_PROVISIONING_DIR, true);
-  
+
   // Validate Prometheus rules
   validatePrometheusRules();
-  
+
   // Validate Grafana configurations
   validateGrafanaDashboards();
   validateGrafanaProvisioning();
-  
+
   // Print summary
   log('\n======================================', COLORS.MAGENTA);
   log('Linting complete!', COLORS.MAGENTA);
   log(`Errors: ${errorCount}`, errorCount > 0 ? COLORS.RED : COLORS.GREEN);
   log(`Warnings: ${warningCount}`, warningCount > 0 ? COLORS.YELLOW : COLORS.GREEN);
-  
+
   if (shouldFix) {
     log(`Issues fixed: ${fixedCount}`, COLORS.BLUE);
   }
-  
+
   // Exit with error code if there are errors
   process.exit(errorCount > 0 ? 1 : 0);
 }

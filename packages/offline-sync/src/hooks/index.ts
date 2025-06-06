@@ -1,6 +1,6 @@
 /**
  * Offline Sync Hooks
- * 
+ *
  * Hooks for offline sync functionality.
  */
 

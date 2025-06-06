@@ -1,6 +1,6 @@
 /**
  * Base GIS Agent
- * 
+ *
  * This abstract class serves as the foundation for all GIS agents in the system.
  * It extends the BaseAgent class with GIS-specific functionality.
  */
@@ -16,15 +16,15 @@ export abstract class BaseGISAgent extends BaseAgent {
   constructor(storage: IStorage, config: AgentConfig) {
     // Create a minimal mock MCPService if it's not needed for GIS agents
     const mcpService = new MCPService(storage);
-    
+
     super(storage, mcpService, config);
   }
-  
+
   /**
    * Initialize the agent
    */
   public abstract initialize(): Promise<void>;
-  
+
   /**
    * Create an agent message in the storage system
    */
@@ -34,7 +34,7 @@ export abstract class BaseGISAgent extends BaseAgent {
       if (!message.agentId) {
         message.agentId = this.agentId;
       }
-      
+
       // Create the message in storage
       return await this.storage.createAgentMessage(message);
     } catch (error) {
@@ -43,7 +43,7 @@ export abstract class BaseGISAgent extends BaseAgent {
       return null;
     }
   }
-  
+
   /**
    * Log GIS operation
    */
@@ -56,18 +56,22 @@ export abstract class BaseGISAgent extends BaseAgent {
         metadata: {
           operation,
           timestamp: new Date(),
-          ...details
-        }
+          ...details,
+        },
       });
     } catch (error) {
       console.error(`Error logging GIS operation for ${this.name}:`, error);
     }
   }
-  
+
   /**
    * Record a spatial event
    */
-  protected async recordSpatialEvent(eventType: string, geometry: any, details: any = {}): Promise<any> {
+  protected async recordSpatialEvent(
+    eventType: string,
+    geometry: any,
+    details: any = {}
+  ): Promise<any> {
     try {
       const event = {
         event_type: eventType,
@@ -75,16 +79,18 @@ export abstract class BaseGISAgent extends BaseAgent {
         geometry: JSON.stringify(geometry),
         details: JSON.stringify({
           agentName: this.name,
-          ...details
+          ...details,
         }),
-        created_at: new Date()
+        created_at: new Date(),
       };
-      
+
       // Create the spatial event in storage
       if (typeof this.storage.createSpatialEvent === 'function') {
         return await this.storage.createSpatialEvent(event);
       } else {
-        console.log(`Storage doesn't support createSpatialEvent method. Event not recorded: ${eventType}`);
+        console.log(
+          `Storage doesn't support createSpatialEvent method. Event not recorded: ${eventType}`
+        );
         return null;
       }
     } catch (error) {
@@ -92,7 +98,7 @@ export abstract class BaseGISAgent extends BaseAgent {
       return null;
     }
   }
-  
+
   /**
    * Get recent agent messages
    */
@@ -102,7 +108,9 @@ export abstract class BaseGISAgent extends BaseAgent {
       if (typeof this.storage.getAgentMessagesByAgentId === 'function') {
         return await this.storage.getAgentMessagesByAgentId(this.agentId);
       } else {
-        console.log(`Storage doesn't support getAgentMessagesByAgentId method. Returning empty array.`);
+        console.log(
+          `Storage doesn't support getAgentMessagesByAgentId method. Returning empty array.`
+        );
         return [];
       }
     } catch (error) {

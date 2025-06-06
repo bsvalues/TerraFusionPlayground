@@ -1,6 +1,6 @@
 /**
  * Compliance Reporter
- * 
+ *
  * Generates comprehensive compliance reports that can be used for:
  * - Internal audits
  * - External assessments
@@ -21,14 +21,14 @@ export enum ReportType {
   GAP_ANALYSIS = 'gap_analysis',
   EVIDENCE_SUMMARY = 'evidence_summary',
   POLICY_COMPLIANCE = 'policy_compliance',
-  CUSTOM = 'custom'
+  CUSTOM = 'custom',
 }
 
 // Report status
 export enum ReportStatus {
   DRAFT = 'draft',
   FINAL = 'final',
-  ARCHIVED = 'archived'
+  ARCHIVED = 'archived',
 }
 
 // Report interface
@@ -88,12 +88,12 @@ export class ComplianceReporter extends EventEmitter {
   public generateReport(config: ReportConfig, generatedBy: string): ComplianceReport {
     this.logger.info('Generating compliance report', {
       type: config.type,
-      name: config.name
+      name: config.name,
     });
-    
+
     // Determine which generator to use based on the report type
     let content: any;
-    
+
     switch (config.type) {
       case ReportType.EXECUTIVE_SUMMARY:
         content = this.generateExecutiveSummary(config);
@@ -116,10 +116,10 @@ export class ComplianceReporter extends EventEmitter {
       default:
         throw new Error(`Unsupported report type: ${config.type}`);
     }
-    
+
     // Create the report
     const id = `report-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     const report: ComplianceReport = {
       id,
       name: config.name,
@@ -133,20 +133,20 @@ export class ComplianceReporter extends EventEmitter {
       content,
       metadata: {
         format: config.format || 'json',
-        filters: config.filters
-      }
+        filters: config.filters,
+      },
     };
-    
+
     // Store the report
     this.reports.set(id, report);
-    
+
     this.logger.info('Compliance report generated', {
       reportId: id,
-      type: config.type
+      type: config.type,
     });
-    
+
     this.emit('report:generated', report);
-    
+
     return report;
   }
 
@@ -157,11 +157,11 @@ export class ComplianceReporter extends EventEmitter {
     if (!this.soc2Manager) {
       throw new Error('SOC2 Compliance Manager is required for executive summary reports');
     }
-    
+
     const { compliant, nonCompliant } = this.soc2Manager.runGapAssessment();
     const controlCount = compliant.length + nonCompliant.length;
     const complianceRate = controlCount > 0 ? (compliant.length / controlCount) * 100 : 0;
-    
+
     // Get relevant evidence
     let evidenceSummary;
     if (config.includeEvidence && this.evidenceCollector) {
@@ -169,12 +169,14 @@ export class ComplianceReporter extends EventEmitter {
       evidenceSummary = {
         totalEvidence: evidence.length,
         approvedEvidence: evidence.filter(e => e.status === EvidenceStatus.APPROVED).length,
-        pendingEvidence: evidence.filter(e => e.status === EvidenceStatus.PENDING || e.status === EvidenceStatus.COLLECTED).length,
+        pendingEvidence: evidence.filter(
+          e => e.status === EvidenceStatus.PENDING || e.status === EvidenceStatus.COLLECTED
+        ).length,
         rejectedEvidence: evidence.filter(e => e.status === EvidenceStatus.REJECTED).length,
-        expiredEvidence: evidence.filter(e => e.status === EvidenceStatus.EXPIRED).length
+        expiredEvidence: evidence.filter(e => e.status === EvidenceStatus.EXPIRED).length,
       };
     }
-    
+
     // Get policy information
     let policySummary;
     if (config.includePolicies && this.policyManager) {
@@ -182,23 +184,25 @@ export class ComplianceReporter extends EventEmitter {
       policySummary = {
         totalPolicies: policies.length,
         publishedPolicies: policies.filter(p => p.status === PolicyStatus.PUBLISHED).length,
-        draftPolicies: policies.filter(p => p.status === PolicyStatus.DRAFT || p.status === PolicyStatus.REVIEW).length,
-        policiesNeedingReview: this.policyManager.getPoliciesNeedingReview().length
+        draftPolicies: policies.filter(
+          p => p.status === PolicyStatus.DRAFT || p.status === PolicyStatus.REVIEW
+        ).length,
+        policiesNeedingReview: this.policyManager.getPoliciesNeedingReview().length,
       };
     }
-    
+
     return {
       overallCompliance: {
         compliancePercentage: complianceRate.toFixed(1),
         compliantControls: compliant.length,
         nonCompliantControls: nonCompliant.length,
-        totalControls: controlCount
+        totalControls: controlCount,
       },
       criticalFindings: this.identifyCriticalFindings(nonCompliant),
       complianceTrend: this.calculateComplianceTrend(),
       evidence: evidenceSummary,
       policies: policySummary,
-      keyRecommendations: this.generateRecommendations(nonCompliant)
+      keyRecommendations: this.generateRecommendations(nonCompliant),
     };
   }
 
@@ -209,54 +213,51 @@ export class ComplianceReporter extends EventEmitter {
     if (!this.soc2Manager) {
       throw new Error('SOC2 Compliance Manager is required for detailed assessment reports');
     }
-    
+
     const controls = this.soc2Manager.getAllControls();
     const policies = this.policyManager?.getAllPolicies() || [];
-    
+
     const controlDetails = controls.map(control => {
       const controlEvidence = this.evidenceCollector?.getEvidenceForControl(control.id) || [];
-      const relatedPolicies = policies.filter(policy => 
+      const relatedPolicies = policies.filter(policy =>
         policy.relatedControls?.includes(control.id)
       );
-      
+
       return {
         ...control,
         evidence: controlEvidence.map(e => ({
           id: e.id,
           name: e.name,
           status: e.status,
-          collectDate: e.collectDate
+          collectDate: e.collectDate,
         })),
         policies: relatedPolicies.map(p => ({
           id: p.id,
           name: p.name,
           status: p.status,
-          version: p.version
-        }))
+          version: p.version,
+        })),
       };
     });
-    
+
     return {
       assessmentSummary: {
         totalControls: controls.length,
-        implementedControls: controls.filter(c => 
-          c.status === ControlStatus.IMPLEMENTED || c.status === ControlStatus.VERIFIED
+        implementedControls: controls.filter(
+          c => c.status === ControlStatus.IMPLEMENTED || c.status === ControlStatus.VERIFIED
         ).length,
-        partiallyImplementedControls: controls.filter(c => 
-          c.status === ControlStatus.PARTIALLY_IMPLEMENTED
+        partiallyImplementedControls: controls.filter(
+          c => c.status === ControlStatus.PARTIALLY_IMPLEMENTED
         ).length,
-        notImplementedControls: controls.filter(c => 
-          c.status === ControlStatus.NOT_IMPLEMENTED
-        ).length,
-        failedControls: controls.filter(c => 
-          c.status === ControlStatus.FAILED
-        ).length
+        notImplementedControls: controls.filter(c => c.status === ControlStatus.NOT_IMPLEMENTED)
+          .length,
+        failedControls: controls.filter(c => c.status === ControlStatus.FAILED).length,
       },
       controlDetails,
       assessmentPeriod: {
         startDate: config.periodStart,
-        endDate: config.periodEnd
-      }
+        endDate: config.periodEnd,
+      },
     };
   }
 
@@ -267,32 +268,33 @@ export class ComplianceReporter extends EventEmitter {
     if (!this.soc2Manager) {
       throw new Error('SOC2 Compliance Manager is required for gap analysis reports');
     }
-    
+
     const { compliant, nonCompliant } = this.soc2Manager.runGapAssessment();
-    
+
     return {
       compliantControls: compliant.map(control => ({
         id: control.id,
         name: control.name,
         criteria: control.criteria,
         status: control.status,
-        lastVerified: control.lastVerified
+        lastVerified: control.lastVerified,
       })),
       nonCompliantControls: nonCompliant.map(control => ({
         id: control.id,
         name: control.name,
         criteria: control.criteria,
         status: control.status,
-        remediation: this.generateRemediationPlan(control)
+        remediation: this.generateRemediationPlan(control),
       })),
       gapSummary: {
         totalGaps: nonCompliant.length,
         criticalGaps: nonCompliant.filter(c => this.isControlCritical(c)).length,
         highPriorityGaps: nonCompliant.filter(c => this.getControlPriority(c) === 'high').length,
-        mediumPriorityGaps: nonCompliant.filter(c => this.getControlPriority(c) === 'medium').length,
-        lowPriorityGaps: nonCompliant.filter(c => this.getControlPriority(c) === 'low').length
+        mediumPriorityGaps: nonCompliant.filter(c => this.getControlPriority(c) === 'medium')
+          .length,
+        lowPriorityGaps: nonCompliant.filter(c => this.getControlPriority(c) === 'low').length,
       },
-      recommendations: this.generateGapRecommendations(nonCompliant)
+      recommendations: this.generateGapRecommendations(nonCompliant),
     };
   }
 
@@ -303,14 +305,14 @@ export class ComplianceReporter extends EventEmitter {
     if (!this.evidenceCollector) {
       throw new Error('Evidence Collector is required for evidence summary reports');
     }
-    
+
     const evidence = this.evidenceCollector.getAllEvidence();
-    
+
     // Filter evidence by date range
-    const filteredEvidence = evidence.filter(e => 
-      e.collectDate >= config.periodStart && e.collectDate <= config.periodEnd
+    const filteredEvidence = evidence.filter(
+      e => e.collectDate >= config.periodStart && e.collectDate <= config.periodEnd
     );
-    
+
     return {
       evidenceSummary: {
         totalEvidence: filteredEvidence.length,
@@ -319,9 +321,9 @@ export class ComplianceReporter extends EventEmitter {
           approved: filteredEvidence.filter(e => e.status === EvidenceStatus.APPROVED).length,
           pending: filteredEvidence.filter(e => e.status === EvidenceStatus.PENDING).length,
           rejected: filteredEvidence.filter(e => e.status === EvidenceStatus.REJECTED).length,
-          expired: filteredEvidence.filter(e => e.status === EvidenceStatus.EXPIRED).length
+          expired: filteredEvidence.filter(e => e.status === EvidenceStatus.EXPIRED).length,
         },
-        byType: this.groupEvidenceByType(filteredEvidence)
+        byType: this.groupEvidenceByType(filteredEvidence),
       },
       evidenceDetails: filteredEvidence.map(e => ({
         id: e.id,
@@ -331,9 +333,9 @@ export class ComplianceReporter extends EventEmitter {
         collectDate: e.collectDate,
         controlIds: e.controlIds,
         collector: e.collector,
-        approver: e.approver
+        approver: e.approver,
       })),
-      evidenceGaps: this.identifyEvidenceGaps()
+      evidenceGaps: this.identifyEvidenceGaps(),
     };
   }
 
@@ -344,22 +346,22 @@ export class ComplianceReporter extends EventEmitter {
     if (!this.policyManager) {
       throw new Error('Policy Manager is required for policy compliance reports');
     }
-    
+
     const policies = this.policyManager.getAllPolicies();
-    
+
     // Filter policies by relevant criteria
-    const activePolicies = policies.filter(p => 
-      p.status === PolicyStatus.PUBLISHED || p.status === PolicyStatus.APPROVED
+    const activePolicies = policies.filter(
+      p => p.status === PolicyStatus.PUBLISHED || p.status === PolicyStatus.APPROVED
     );
-    
+
     const policyDetails = activePolicies.map(policy => {
       const acknowledgements = this.policyManager?.getPolicyAcknowledgements(policy.id) || [];
-      
+
       // Filter acknowledgements by date range
-      const periodAcknowledgements = acknowledgements.filter(ack => 
-        ack.acknowledgedAt >= config.periodStart && ack.acknowledgedAt <= config.periodEnd
+      const periodAcknowledgements = acknowledgements.filter(
+        ack => ack.acknowledgedAt >= config.periodStart && ack.acknowledgedAt <= config.periodEnd
       );
-      
+
       return {
         id: policy.id,
         name: policy.name,
@@ -369,19 +371,21 @@ export class ComplianceReporter extends EventEmitter {
         reviewDate: policy.reviewDate,
         acknowledgements: {
           total: periodAcknowledgements.length,
-          details: config.filters?.includeAcknowledgementDetails ? periodAcknowledgements : undefined
-        }
+          details: config.filters?.includeAcknowledgementDetails
+            ? periodAcknowledgements
+            : undefined,
+        },
       };
     });
-    
+
     return {
       policySummary: {
         totalPolicies: activePolicies.length,
         byType: this.groupPoliciesByType(activePolicies),
-        policiesNeedingReview: this.policyManager.getPoliciesNeedingReview().length
+        policiesNeedingReview: this.policyManager.getPoliciesNeedingReview().length,
       },
       policyDetails,
-      policyAdherence: this.calculatePolicyAdherence(activePolicies)
+      policyAdherence: this.calculatePolicyAdherence(activePolicies),
     };
   }
 
@@ -390,32 +394,35 @@ export class ComplianceReporter extends EventEmitter {
    */
   private generateCustomReport(config: ReportConfig): any {
     const sections: Record<string, any> = {};
-    
+
     // Add requested sections
     if (config.customSections?.includes('compliance_summary') && this.soc2Manager) {
       const { compliant, nonCompliant } = this.soc2Manager.runGapAssessment();
       sections.complianceSummary = {
         totalControls: compliant.length + nonCompliant.length,
         compliantControls: compliant.length,
-        complianceRate: ((compliant.length / (compliant.length + nonCompliant.length)) * 100).toFixed(1) + '%'
+        complianceRate:
+          ((compliant.length / (compliant.length + nonCompliant.length)) * 100).toFixed(1) + '%',
       };
     }
-    
+
     if (config.customSections?.includes('critical_findings') && this.soc2Manager) {
       const { nonCompliant } = this.soc2Manager.runGapAssessment();
       sections.criticalFindings = this.identifyCriticalFindings(nonCompliant);
     }
-    
+
     if (config.customSections?.includes('evidence_status') && this.evidenceCollector) {
       const evidence = this.evidenceCollector.getAllEvidence();
       sections.evidenceStatus = {
         totalEvidence: evidence.length,
         approved: evidence.filter(e => e.status === EvidenceStatus.APPROVED).length,
-        pending: evidence.filter(e => e.status === EvidenceStatus.PENDING || e.status === EvidenceStatus.COLLECTED).length,
-        rejected: evidence.filter(e => e.status === EvidenceStatus.REJECTED).length
+        pending: evidence.filter(
+          e => e.status === EvidenceStatus.PENDING || e.status === EvidenceStatus.COLLECTED
+        ).length,
+        rejected: evidence.filter(e => e.status === EvidenceStatus.REJECTED).length,
       };
     }
-    
+
     if (config.customSections?.includes('policy_status') && this.policyManager) {
       const policies = this.policyManager.getAllPolicies();
       sections.policyStatus = {
@@ -423,10 +430,10 @@ export class ComplianceReporter extends EventEmitter {
         published: policies.filter(p => p.status === PolicyStatus.PUBLISHED).length,
         draft: policies.filter(p => p.status === PolicyStatus.DRAFT).length,
         review: policies.filter(p => p.status === PolicyStatus.REVIEW).length,
-        needingReview: this.policyManager.getPoliciesNeedingReview().length
+        needingReview: this.policyManager.getPoliciesNeedingReview().length,
       };
     }
-    
+
     return sections;
   }
 
@@ -436,26 +443,26 @@ export class ComplianceReporter extends EventEmitter {
   private generateSummary(content: any, config: ReportConfig): string {
     // This would generate a textual summary of the report
     // For simplicity, we'll just return a basic summary
-    
+
     switch (config.type) {
       case ReportType.EXECUTIVE_SUMMARY:
         return `Executive summary for compliance status from ${config.periodStart.toDateString()} to ${config.periodEnd.toDateString()}. Overall compliance rate: ${content.overallCompliance.compliancePercentage}%.`;
-      
+
       case ReportType.DETAILED_ASSESSMENT:
         return `Detailed compliance assessment from ${config.periodStart.toDateString()} to ${config.periodEnd.toDateString()}. Covers ${content.assessmentSummary.totalControls} controls.`;
-      
+
       case ReportType.GAP_ANALYSIS:
         return `Gap analysis identifying ${content.nonCompliantControls.length} non-compliant controls that require remediation.`;
-      
+
       case ReportType.EVIDENCE_SUMMARY:
         return `Evidence summary for the period ${config.periodStart.toDateString()} to ${config.periodEnd.toDateString()}. ${content.evidenceSummary.totalEvidence} evidence items collected.`;
-      
+
       case ReportType.POLICY_COMPLIANCE:
         return `Policy compliance report covering ${content.policySummary.totalPolicies} active policies. ${content.policySummary.policiesNeedingReview} policies need review.`;
-      
+
       case ReportType.CUSTOM:
         return `Custom compliance report for the period ${config.periodStart.toDateString()} to ${config.periodEnd.toDateString()}.`;
-      
+
       default:
         return `Compliance report for the period ${config.periodStart.toDateString()} to ${config.periodEnd.toDateString()}.`;
     }
@@ -466,15 +473,15 @@ export class ComplianceReporter extends EventEmitter {
    */
   private identifyCriticalFindings(nonCompliantControls: Control[]): any[] {
     // Identify controls that are critical and non-compliant
-    const criticalControls = nonCompliantControls.filter(control => 
+    const criticalControls = nonCompliantControls.filter(control =>
       this.isControlCritical(control)
     );
-    
+
     return criticalControls.map(control => ({
       id: control.id,
       name: control.name,
       status: control.status,
-      remediation: this.generateRemediationPlan(control)
+      remediation: this.generateRemediationPlan(control),
     }));
   }
 
@@ -495,7 +502,7 @@ export class ComplianceReporter extends EventEmitter {
     if (this.isControlCritical(control)) {
       return 'critical';
     }
-    
+
     // In a real implementation, this would use specific criteria
     // For demonstration, we'll use a simple approach based on control ID
     if (control.id.startsWith('CC1')) return 'high';
@@ -503,7 +510,7 @@ export class ComplianceReporter extends EventEmitter {
     if (control.id.startsWith('CC2')) return 'medium';
     if (control.id.startsWith('CC3')) return 'medium';
     if (control.id.startsWith('CC4')) return 'medium';
-    
+
     return 'low';
   }
 
@@ -513,19 +520,19 @@ export class ComplianceReporter extends EventEmitter {
   private generateRemediationPlan(control: Control): string {
     // In a real implementation, this would generate a specific remediation plan
     // For demonstration, we'll return a generic plan
-    
+
     if (control.status === ControlStatus.NOT_IMPLEMENTED) {
       return `Implement the ${control.name} control by defining policies, procedures, and technical controls.`;
     }
-    
+
     if (control.status === ControlStatus.PARTIALLY_IMPLEMENTED) {
       return `Complete the implementation of the ${control.name} control by addressing gaps in current implementation.`;
     }
-    
+
     if (control.status === ControlStatus.FAILED) {
       return `Fix the ${control.name} control by addressing the issues identified during testing.`;
     }
-    
+
     return `Review and update the ${control.name} control to ensure compliance.`;
   }
 
@@ -535,7 +542,7 @@ export class ComplianceReporter extends EventEmitter {
   private calculateComplianceTrend(): any {
     // In a real implementation, this would compare historical compliance rates
     // For demonstration, we'll return a simple trend
-    
+
     return {
       current: 75,
       previous: 68,
@@ -544,8 +551,8 @@ export class ComplianceReporter extends EventEmitter {
         { date: '2025-01-01', rate: 65 },
         { date: '2025-02-01', rate: 68 },
         { date: '2025-03-01', rate: 70 },
-        { date: '2025-04-01', rate: 75 }
-      ]
+        { date: '2025-04-01', rate: 75 },
+      ],
     };
   }
 
@@ -555,33 +562,43 @@ export class ComplianceReporter extends EventEmitter {
   private generateRecommendations(nonCompliantControls: Control[]): string[] {
     // In a real implementation, this would generate specific recommendations
     // For demonstration, we'll return generic recommendations
-    
+
     const recommendations: string[] = [];
-    
+
     if (nonCompliantControls.some(c => c.id.startsWith('CC1'))) {
-      recommendations.push('Strengthen access control measures by implementing multi-factor authentication and regular access reviews.');
+      recommendations.push(
+        'Strengthen access control measures by implementing multi-factor authentication and regular access reviews.'
+      );
     }
-    
+
     if (nonCompliantControls.some(c => c.id.startsWith('CC2'))) {
-      recommendations.push('Improve communication controls by formalizing and documenting internal communication protocols.');
+      recommendations.push(
+        'Improve communication controls by formalizing and documenting internal communication protocols.'
+      );
     }
-    
+
     if (nonCompliantControls.some(c => c.id.startsWith('CC3'))) {
-      recommendations.push('Enhance risk management processes by implementing a formal risk assessment methodology.');
+      recommendations.push(
+        'Enhance risk management processes by implementing a formal risk assessment methodology.'
+      );
     }
-    
+
     if (nonCompliantControls.some(c => c.id.startsWith('CC4'))) {
-      recommendations.push('Strengthen monitoring activities by implementing automated monitoring tools and regular reviews.');
+      recommendations.push(
+        'Strengthen monitoring activities by implementing automated monitoring tools and regular reviews.'
+      );
     }
-    
+
     if (nonCompliantControls.some(c => c.id.startsWith('CC5'))) {
-      recommendations.push('Improve logical and physical access controls by implementing least privilege principles and regular access reviews.');
+      recommendations.push(
+        'Improve logical and physical access controls by implementing least privilege principles and regular access reviews.'
+      );
     }
-    
+
     if (recommendations.length === 0) {
       recommendations.push('Continue maintaining and improving existing controls.');
     }
-    
+
     return recommendations;
   }
 
@@ -591,27 +608,27 @@ export class ComplianceReporter extends EventEmitter {
   private generateGapRecommendations(nonCompliantControls: Control[]): any[] {
     // Group controls by criteria
     const criteriaGroups = new Map<string, Control[]>();
-    
+
     for (const control of nonCompliantControls) {
       const criteria = control.criteria;
       const group = criteriaGroups.get(criteria) || [];
       group.push(control);
       criteriaGroups.set(criteria, group);
     }
-    
+
     // Generate recommendations for each criteria group
     const recommendations: any[] = [];
-    
+
     for (const [criteria, controls] of criteriaGroups.entries()) {
       recommendations.push({
         criteria,
         gapCount: controls.length,
         priority: this.calculateCriteriaPriority(controls),
         summary: `Address ${controls.length} gaps in ${criteria} controls`,
-        actions: this.generateActionsForCriteria(criteria, controls)
+        actions: this.generateActionsForCriteria(criteria, controls),
       });
     }
-    
+
     return recommendations;
   }
 
@@ -623,13 +640,13 @@ export class ComplianceReporter extends EventEmitter {
     if (controls.some(c => this.isControlCritical(c))) {
       return 'critical';
     }
-    
+
     // Otherwise, use the highest priority among controls
     const priorities = controls.map(c => this.getControlPriority(c));
-    
+
     if (priorities.includes('high')) return 'high';
     if (priorities.includes('medium')) return 'medium';
-    
+
     return 'low';
   }
 
@@ -639,9 +656,9 @@ export class ComplianceReporter extends EventEmitter {
   private generateActionsForCriteria(criteria: string, controls: Control[]): string[] {
     // In a real implementation, this would generate specific actions
     // For demonstration, we'll return generic actions
-    
+
     const actions: string[] = [];
-    
+
     if (criteria === 'security') {
       actions.push('Implement multi-factor authentication for all access to critical systems');
       actions.push('Conduct quarterly access reviews for all systems');
@@ -663,7 +680,7 @@ export class ComplianceReporter extends EventEmitter {
       actions.push('Implement privacy training for all employees');
       actions.push('Implement data subject access request procedures');
     }
-    
+
     return actions;
   }
 
@@ -672,12 +689,12 @@ export class ComplianceReporter extends EventEmitter {
    */
   private groupEvidenceByType(evidence: Evidence[]): Record<string, number> {
     const result: Record<string, number> = {};
-    
+
     for (const item of evidence) {
       const type = item.type;
       result[type] = (result[type] || 0) + 1;
     }
-    
+
     return result;
   }
 
@@ -688,27 +705,27 @@ export class ComplianceReporter extends EventEmitter {
     if (!this.soc2Manager || !this.evidenceCollector) {
       return [];
     }
-    
+
     const controls = this.soc2Manager.getAllControls();
     const gaps: any[] = [];
-    
+
     for (const control of controls) {
       const evidence = this.evidenceCollector.getEvidenceForControl(control.id);
-      
+
       // If the control needs evidence but doesn't have any, or doesn't have any approved evidence
       if (
-        control.evidenceRequired && 
+        control.evidenceRequired &&
         (evidence.length === 0 || !evidence.some(e => e.status === EvidenceStatus.APPROVED))
       ) {
         gaps.push({
           controlId: control.id,
           controlName: control.name,
           evidenceCount: evidence.length,
-          priority: this.getControlPriority(control)
+          priority: this.getControlPriority(control),
         });
       }
     }
-    
+
     return gaps;
   }
 
@@ -717,12 +734,12 @@ export class ComplianceReporter extends EventEmitter {
    */
   private groupPoliciesByType(policies: Policy[]): Record<string, number> {
     const result: Record<string, number> = {};
-    
+
     for (const policy of policies) {
       const type = policy.type;
       result[type] = (result[type] || 0) + 1;
     }
-    
+
     return result;
   }
 
@@ -733,24 +750,24 @@ export class ComplianceReporter extends EventEmitter {
     if (!this.policyManager) {
       return {};
     }
-    
+
     const result: Record<string, any> = {};
-    
+
     for (const policy of activePolicies) {
       const acknowledgements = this.policyManager.getPolicyAcknowledgements(policy.id);
-      
+
       // In a real implementation, this would compare acknowledgements against user count
       // For demonstration, we'll use a random number
       const userCount = 100;
       const adherenceRate = (acknowledgements.length / userCount) * 100;
-      
+
       result[policy.id] = {
         name: policy.name,
         acknowledgements: acknowledgements.length,
-        adherenceRate: adherenceRate.toFixed(1) + '%'
+        adherenceRate: adherenceRate.toFixed(1) + '%',
       };
     }
-    
+
     return result;
   }
 
@@ -759,22 +776,22 @@ export class ComplianceReporter extends EventEmitter {
    */
   public finalizeReport(id: string): ComplianceReport | null {
     const report = this.reports.get(id);
-    
+
     if (!report) {
       this.logger.error('Report not found', { reportId: id });
       return null;
     }
-    
+
     const finalizedReport: ComplianceReport = {
       ...report,
-      status: ReportStatus.FINAL
+      status: ReportStatus.FINAL,
     };
-    
+
     this.reports.set(id, finalizedReport);
-    
+
     this.logger.info('Report finalized', { reportId: id });
     this.emit('report:finalized', finalizedReport);
-    
+
     return finalizedReport;
   }
 
@@ -783,22 +800,22 @@ export class ComplianceReporter extends EventEmitter {
    */
   public archiveReport(id: string): ComplianceReport | null {
     const report = this.reports.get(id);
-    
+
     if (!report) {
       this.logger.error('Report not found', { reportId: id });
       return null;
     }
-    
+
     const archivedReport: ComplianceReport = {
       ...report,
-      status: ReportStatus.ARCHIVED
+      status: ReportStatus.ARCHIVED,
     };
-    
+
     this.reports.set(id, archivedReport);
-    
+
     this.logger.info('Report archived', { reportId: id });
     this.emit('report:archived', archivedReport);
-    
+
     return archivedReport;
   }
 
@@ -834,8 +851,8 @@ export class ComplianceReporter extends EventEmitter {
    * Get reports for a date range
    */
   public getReportsForPeriod(start: Date, end: Date): ComplianceReport[] {
-    return this.getAllReports().filter(report => 
-      report.generatedAt >= start && report.generatedAt <= end
+    return this.getAllReports().filter(
+      report => report.generatedAt >= start && report.generatedAt <= end
     );
   }
 }

@@ -7,41 +7,48 @@ import { TFIconButton } from '@/components/ui/terrafusion/tf-icon-button';
 import { DashboardChartCard, AIAnalysisCard } from '@/components/dashboard/dashboard-chart-card';
 import { ElevationChart } from '@/components/visualization/elevation-chart';
 import { TerrainVisualizationCard } from '@/components/dashboard/terrain-visualization-card';
-import { MapIcon, PlusIcon, DownloadIcon, FilterIcon, RefreshCwIcon, LayoutDashboardIcon } from 'lucide-react';
+import {
+  MapIcon,
+  PlusIcon,
+  DownloadIcon,
+  FilterIcon,
+  RefreshCwIcon,
+  LayoutDashboardIcon,
+} from 'lucide-react';
 
 /**
  * Example Dashboard Page
- * 
+ *
  * Demonstrates the TerraFusion UI components
  */
 const ExampleDashboard: React.FC = () => {
   // Generate sample elevation data for charts
-  const generateElevationData = (count: number, pattern: 'hills' | 'mountains' | 'random' = 'hills') => {
+  const generateElevationData = (
+    count: number,
+    pattern: 'hills' | 'mountains' | 'random' = 'hills'
+  ) => {
     const data = [];
-    
+
     for (let i = 0; i < count; i++) {
       const x = i / (count - 1);
       const y = i / (count - 1);
       let elevation = 0;
-      
+
       if (pattern === 'hills') {
         // Create gentle rolling hills pattern
-        elevation = 100 + 
-          50 * Math.sin(x * Math.PI * 2) + 
-          30 * Math.cos(y * Math.PI * 3);
+        elevation = 100 + 50 * Math.sin(x * Math.PI * 2) + 30 * Math.cos(y * Math.PI * 3);
       } else if (pattern === 'mountains') {
         // Create sharp mountain peaks pattern
-        elevation = 100 + 
-          200 * Math.pow(Math.sin(x * Math.PI), 2) * 
-          Math.pow(Math.cos(y * Math.PI * 2), 2);
+        elevation =
+          100 + 200 * Math.pow(Math.sin(x * Math.PI), 2) * Math.pow(Math.cos(y * Math.PI * 2), 2);
       } else {
         // Random elevation
         elevation = 100 + Math.random() * 200;
       }
-      
+
       data.push({ x, y, elevation });
     }
-    
+
     return data;
   };
 
@@ -54,24 +61,22 @@ const ExampleDashboard: React.FC = () => {
       <Helmet>
         <title>TerraFusion Dashboard Example</title>
       </Helmet>
-      
+
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Property Assessment Dashboard</h1>
           <p className="text-muted-foreground">GIS-powered property analysis tools</p>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <TFButton variant="outline" iconLeft={<FilterIcon className="h-4 w-4" />}>
             Filters
           </TFButton>
-          
-          <TFButton iconLeft={<PlusIcon className="h-4 w-4" />}>
-            New Assessment
-          </TFButton>
+
+          <TFButton iconLeft={<PlusIcon className="h-4 w-4" />}>New Assessment</TFButton>
         </div>
       </div>
-      
+
       {/* Stats Row */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <TFStatCard
@@ -84,7 +89,7 @@ const ExampleDashboard: React.FC = () => {
           icon={<LayoutDashboardIcon className="h-4 w-4" />}
           format="number"
         />
-        
+
         <TFStatCard
           title="Average Value"
           value={452000}
@@ -94,7 +99,7 @@ const ExampleDashboard: React.FC = () => {
           variant="secondary"
           format="currency"
         />
-        
+
         <TFStatCard
           title="Assessment Completion"
           value={87.4}
@@ -104,7 +109,7 @@ const ExampleDashboard: React.FC = () => {
           variant="success"
           format="percentage"
         />
-        
+
         <TFStatCard
           title="Pending Reviews"
           value={124}
@@ -115,7 +120,7 @@ const ExampleDashboard: React.FC = () => {
           format="number"
         />
       </div>
-      
+
       {/* Charts Row */}
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <TerrainVisualizationCard
@@ -124,7 +129,7 @@ const ExampleDashboard: React.FC = () => {
           elevationData={hillsData}
           colorGradient="terrain"
         />
-        
+
         <TerrainVisualizationCard
           title="Commercial District Terrain"
           description="Business district topographical view"
@@ -132,7 +137,7 @@ const ExampleDashboard: React.FC = () => {
           colorGradient="primary"
         />
       </div>
-      
+
       {/* Mixed Content Row */}
       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
         <TerrainVisualizationCard
@@ -141,28 +146,24 @@ const ExampleDashboard: React.FC = () => {
           colorGradient="rainbow"
           height={250}
         />
-        
-        <AIAnalysisCard
-          title="Property Value Analysis"
-          className="h-full"
-        >
+
+        <AIAnalysisCard title="Property Value Analysis" className="h-full">
           <p className="text-sm text-gray-300">
-            Property values in the north-west district show a consistent upward trend of 8.3% over the past quarter, 
-            with single-family homes appreciating faster than condominiums. Market liquidity remains high.
+            Property values in the north-west district show a consistent upward trend of 8.3% over
+            the past quarter, with single-family homes appreciating faster than condominiums. Market
+            liquidity remains high.
           </p>
           <div className="mt-4 flex justify-between text-xs text-gray-400">
             <span>Model: ValuePredictorLLM</span>
             <span>Confidence: 92%</span>
           </div>
         </AIAnalysisCard>
-        
-        <AIAnalysisCard
-          title="Development Opportunity Insights"
-          className="h-full"
-        >
+
+        <AIAnalysisCard title="Development Opportunity Insights" className="h-full">
           <p className="text-sm text-gray-300">
-            Analysis of zoning regulations and market data indicates 3 high-potential areas for mixed-use 
-            development. Recommended parcels have favorable regulatory conditions and infrastructure access.
+            Analysis of zoning regulations and market data indicates 3 high-potential areas for
+            mixed-use development. Recommended parcels have favorable regulatory conditions and
+            infrastructure access.
           </p>
           <div className="mt-4 flex justify-between text-xs text-gray-400">
             <span>Model: ZoningInsightLLM</span>
@@ -170,7 +171,7 @@ const ExampleDashboard: React.FC = () => {
           </div>
         </AIAnalysisCard>
       </div>
-      
+
       {/* Card Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <DashboardChartCard title="Property Types Distribution" variant="default">
@@ -180,7 +181,7 @@ const ExampleDashboard: React.FC = () => {
             </div>
           </div>
         </DashboardChartCard>
-        
+
         <DashboardChartCard title="Assessment Timeline" variant="glass">
           <div className="h-64 w-full p-4">
             <div className="text-center text-sm text-muted-foreground">
@@ -188,7 +189,7 @@ const ExampleDashboard: React.FC = () => {
             </div>
           </div>
         </DashboardChartCard>
-        
+
         <DashboardChartCard title="Property Value Trends" variant="gradient">
           <div className="h-64 w-full p-4">
             <div className="text-center text-sm text-muted-foreground">

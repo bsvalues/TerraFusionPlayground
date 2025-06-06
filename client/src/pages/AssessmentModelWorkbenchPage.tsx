@@ -1,12 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Card,
   CardContent,
@@ -14,18 +9,28 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Table, 
-  TableBody, 
-  TableCaption, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Loader, Plus, FileCode, Calculator, Check, Activity, Database, Code, Settings } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Loader,
+  Plus,
+  FileCode,
+  Calculator,
+  Check,
+  Activity,
+  Database,
+  Code,
+  Settings,
+} from 'lucide-react';
 import DevelopmentWorkspaceLayout from '../layout/development-workspace-layout';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -33,7 +38,13 @@ import CreateModelDialog from '../components/workbench/CreateModelDialog';
 import ViewModelDialog from '../components/workbench/ViewModelDialog';
 import ModelDetailsPanel from '../components/workbench/ModelDetailsPanel';
 
-type ModelType = 'cost_approach' | 'sales_comparison' | 'income_approach' | 'hybrid' | 'statistical' | 'specialized';
+type ModelType =
+  | 'cost_approach'
+  | 'sales_comparison'
+  | 'income_approach'
+  | 'hybrid'
+  | 'statistical'
+  | 'specialized';
 type ModelStatus = 'draft' | 'in_review' | 'approved' | 'published' | 'archived' | 'deprecated';
 
 interface AssessmentModel {
@@ -53,25 +64,39 @@ interface AssessmentModel {
 
 const getStatusBadgeVariant = (status: ModelStatus) => {
   switch (status) {
-    case 'draft': return 'secondary';
-    case 'in_review': return 'warning';
-    case 'approved': return 'success';
-    case 'published': return 'success';
-    case 'archived': return 'outline';
-    case 'deprecated': return 'destructive';
-    default: return 'secondary';
+    case 'draft':
+      return 'secondary';
+    case 'in_review':
+      return 'warning';
+    case 'approved':
+      return 'success';
+    case 'published':
+      return 'success';
+    case 'archived':
+      return 'outline';
+    case 'deprecated':
+      return 'destructive';
+    default:
+      return 'secondary';
   }
 };
 
 const getTypeBadgeVariant = (type: ModelType) => {
   switch (type) {
-    case 'cost_approach': return 'outline';
-    case 'sales_comparison': return 'default';
-    case 'income_approach': return 'secondary';
-    case 'hybrid': return 'warning';
-    case 'statistical': return 'destructive';
-    case 'specialized': return 'success';
-    default: return 'outline';
+    case 'cost_approach':
+      return 'outline';
+    case 'sales_comparison':
+      return 'default';
+    case 'income_approach':
+      return 'secondary';
+    case 'hybrid':
+      return 'warning';
+    case 'statistical':
+      return 'destructive';
+    case 'specialized':
+      return 'success';
+    default:
+      return 'outline';
   }
 };
 
@@ -85,10 +110,10 @@ const AssessmentModelWorkbenchPage = () => {
   const [filterType, setFilterType] = useState<ModelType | 'all'>('all');
 
   // Fetch assessment models
-  const { 
-    data: models, 
+  const {
+    data: models,
     isLoading: isLoadingModels,
-    refetch: refetchModels 
+    refetch: refetchModels,
   } = useQuery({
     queryKey: ['/api/assessment-workbench/models'],
   });
@@ -107,23 +132,23 @@ const AssessmentModelWorkbenchPage = () => {
     try {
       await apiRequest('/api/assessment-workbench/models', {
         method: 'POST',
-        data: modelData
+        data: modelData,
       });
-      
+
       toast({
-        title: "Success",
-        description: "Assessment model created successfully",
+        title: 'Success',
+        description: 'Assessment model created successfully',
       });
-      
+
       // Refresh models list
       queryClient.invalidateQueries({ queryKey: ['/api/assessment-workbench/models'] });
       setIsCreateDialogOpen(false);
     } catch (error) {
       console.error('Failed to create assessment model:', error);
       toast({
-        title: "Error",
-        description: "Failed to create assessment model",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create assessment model',
+        variant: 'destructive',
       });
     }
   };
@@ -133,11 +158,12 @@ const AssessmentModelWorkbenchPage = () => {
     setIsViewDialogOpen(true);
   };
 
-  const filteredModels = models?.filter(model => {
-    if (filterStatus !== 'all' && model.status !== filterStatus) return false;
-    if (filterType !== 'all' && model.type !== filterType) return false;
-    return true;
-  }) || [];
+  const filteredModels =
+    models?.filter(model => {
+      if (filterStatus !== 'all' && model.status !== filterStatus) return false;
+      if (filterType !== 'all' && model.type !== filterType) return false;
+      return true;
+    }) || [];
 
   const openModelDetails = (model: AssessmentModel) => {
     setSelectedModel(model);
@@ -154,7 +180,7 @@ const AssessmentModelWorkbenchPage = () => {
             Design, test, and manage assessment models for property valuation
           </p>
         </div>
-        
+
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-1" />
           New Model
@@ -185,7 +211,7 @@ const AssessmentModelWorkbenchPage = () => {
             Validations
           </TabsTrigger>
         </TabsList>
-        
+
         {/* Tab for Model Details when a model is selected */}
         {selectedModel && (
           <TabsTrigger value="details" className="ml-2 flex items-center justify-center">
@@ -206,33 +232,39 @@ const AssessmentModelWorkbenchPage = () => {
               <div className="flex space-x-4 mb-4">
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Filter by Status</label>
-                  <select 
+                  <select
                     className="border rounded p-2 w-40"
                     value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value as ModelStatus | 'all')}
+                    onChange={e => setFilterStatus(e.target.value as ModelStatus | 'all')}
                   >
                     <option value="all">All Statuses</option>
-                    {modelStatuses && modelStatuses.map((status: string) => (
-                      <option key={status} value={status}>{status.replace('_', ' ')}</option>
-                    ))}
+                    {modelStatuses &&
+                      modelStatuses.map((status: string) => (
+                        <option key={status} value={status}>
+                          {status.replace('_', ' ')}
+                        </option>
+                      ))}
                   </select>
                 </div>
-                
+
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Filter by Type</label>
-                  <select 
+                  <select
                     className="border rounded p-2 w-40"
                     value={filterType}
-                    onChange={(e) => setFilterType(e.target.value as ModelType | 'all')}
+                    onChange={e => setFilterType(e.target.value as ModelType | 'all')}
                   >
                     <option value="all">All Types</option>
-                    {modelTypes && modelTypes.map((type: string) => (
-                      <option key={type} value={type}>{type.replace('_', ' ')}</option>
-                    ))}
+                    {modelTypes &&
+                      modelTypes.map((type: string) => (
+                        <option key={type} value={type}>
+                          {type.replace('_', ' ')}
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>
-              
+
               {/* Models Table */}
               {filteredModels.length > 0 ? (
                 <Table>
@@ -248,8 +280,8 @@ const AssessmentModelWorkbenchPage = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredModels.map((model) => (
-                      <TableRow 
+                    {filteredModels.map(model => (
+                      <TableRow
                         key={model.modelId}
                         className="cursor-pointer hover:bg-slate-50"
                         onClick={() => openModelDetails(model)}
@@ -271,7 +303,7 @@ const AssessmentModelWorkbenchPage = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={(e) => {
+                            onClick={e => {
                               e.stopPropagation();
                               handleSelectModel(model);
                             }}
@@ -297,7 +329,7 @@ const AssessmentModelWorkbenchPage = () => {
             </>
           )}
         </TabsContent>
-        
+
         <TabsContent value="variables" className="mt-4">
           <Card>
             <CardHeader>
@@ -317,19 +349,19 @@ const AssessmentModelWorkbenchPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="components" className="mt-4">
           <Card>
             <CardHeader>
               <CardTitle>Model Components</CardTitle>
-              <CardDescription>
-                Manage reusable components for assessment models
-              </CardDescription>
+              <CardDescription>Manage reusable components for assessment models</CardDescription>
             </CardHeader>
             <CardContent>
               {!selectedModel ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">Select a model first to manage its components</p>
+                  <p className="text-gray-500 mb-4">
+                    Select a model first to manage its components
+                  </p>
                 </div>
               ) : (
                 <p>Components management interface will be implemented here</p>
@@ -337,7 +369,7 @@ const AssessmentModelWorkbenchPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="calculations" className="mt-4">
           <Card>
             <CardHeader>
@@ -349,7 +381,9 @@ const AssessmentModelWorkbenchPage = () => {
             <CardContent>
               {!selectedModel ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">Select a model first to manage its calculations</p>
+                  <p className="text-gray-500 mb-4">
+                    Select a model first to manage its calculations
+                  </p>
                 </div>
               ) : (
                 <p>Calculations management interface will be implemented here</p>
@@ -357,7 +391,7 @@ const AssessmentModelWorkbenchPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="validations" className="mt-4">
           <Card>
             <CardHeader>
@@ -369,7 +403,9 @@ const AssessmentModelWorkbenchPage = () => {
             <CardContent>
               {!selectedModel ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">Select a model first to manage its validation rules</p>
+                  <p className="text-gray-500 mb-4">
+                    Select a model first to manage its validation rules
+                  </p>
                 </div>
               ) : (
                 <p>Validation rules management interface will be implemented here</p>
@@ -377,11 +413,11 @@ const AssessmentModelWorkbenchPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         {/* Model Details Tab */}
         {selectedModel && (
           <TabsContent value="details" className="mt-4">
-            <ModelDetailsPanel 
+            <ModelDetailsPanel
               model={selectedModel}
               onRefresh={() => {
                 refetchModels();
@@ -396,7 +432,7 @@ const AssessmentModelWorkbenchPage = () => {
           </TabsContent>
         )}
       </Tabs>
-      
+
       {/* Create Model Dialog */}
       <CreateModelDialog
         isOpen={isCreateDialogOpen}
@@ -404,7 +440,7 @@ const AssessmentModelWorkbenchPage = () => {
         onSubmit={handleCreateModel}
         modelTypes={modelTypes || []}
       />
-      
+
       {/* View Model Dialog */}
       {selectedModel && (
         <ViewModelDialog

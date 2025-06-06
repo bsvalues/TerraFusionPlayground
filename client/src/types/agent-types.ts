@@ -1,6 +1,6 @@
 /**
  * Agent System Type Definitions
- * 
+ *
  * This file contains TypeScript interfaces for the agent system.
  * These types are shared between frontend and backend code to ensure
  * consistent data structures.

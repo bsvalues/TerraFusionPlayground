@@ -1,6 +1,6 @@
 /**
  * Enhanced Voice Command Button
- * 
+ *
  * This component handles the recording of voice commands.
  * It provides a button to start/stop recording and displays the current state.
  */
@@ -28,20 +28,20 @@ export function EnhancedVoiceCommandButton({
   isProcessing,
   userId,
   contextId,
-  className = ''
+  className = '',
 }: EnhancedVoiceCommandButtonProps) {
   // State
   const [transcript, setTranscript] = useState<string>('');
   const [isListening, setIsListening] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Refs
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  
+
   const { toast } = useToast();
-  
+
   // Initialize speech recognition when component mounts
   useEffect(() => {
     // Check if speech recognition is supported
@@ -49,17 +49,17 @@ export function EnhancedVoiceCommandButton({
       setError('Speech recognition is not supported in your browser.');
       return;
     }
-    
+
     // Create speech recognition object
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognitionRef.current = new SpeechRecognition();
-    
+
     // Configure speech recognition
     if (recognitionRef.current) {
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = 'en-US';
-      
+
       // Set up event handlers
       recognitionRef.current.onstart = () => {
         setIsListening(true);
@@ -67,10 +67,10 @@ export function EnhancedVoiceCommandButton({
         setTranscript('');
         setError(null);
       };
-      
+
       recognitionRef.current.onend = () => {
         setIsListening(false);
-        
+
         // Only process if we have a transcript and we're not already processing
         if (transcript && recordingState === RecordingState.RECORDING) {
           setRecordingState(RecordingState.PROCESSING);
@@ -79,28 +79,28 @@ export function EnhancedVoiceCommandButton({
           setRecordingState(RecordingState.INACTIVE);
         }
       };
-      
-      recognitionRef.current.onerror = (event) => {
+
+      recognitionRef.current.onerror = event => {
         const speechError = event as SpeechRecognitionErrorEvent;
         console.error('Speech recognition error:', speechError.error);
-        
+
         if (speechError.error !== 'aborted' && speechError.error !== 'no-speech') {
           setError(`Speech recognition error: ${speechError.error}`);
           toast({
             title: 'Recognition Error',
             description: `Speech recognition error: ${speechError.error}`,
-            variant: 'destructive'
+            variant: 'destructive',
           });
         }
-        
+
         setIsListening(false);
         setRecordingState(RecordingState.INACTIVE);
       };
-      
-      recognitionRef.current.onresult = (event) => {
+
+      recognitionRef.current.onresult = event => {
         let finalTranscript = '';
         let interimTranscript = '';
-        
+
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
@@ -109,7 +109,7 @@ export function EnhancedVoiceCommandButton({
             interimTranscript += transcript;
           }
         }
-        
+
         // Update transcript
         if (finalTranscript) {
           setTranscript(finalTranscript);
@@ -118,7 +118,7 @@ export function EnhancedVoiceCommandButton({
         }
       };
     }
-    
+
     // Initialize audio context for visualization
     try {
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -128,7 +128,7 @@ export function EnhancedVoiceCommandButton({
       console.error('Error initializing audio context:', error);
       // Audio visualization is optional, so we don't need to show an error
     }
-    
+
     // Clean up when component unmounts
     return () => {
       if (recognitionRef.current) {
@@ -138,20 +138,20 @@ export function EnhancedVoiceCommandButton({
           // Ignore errors when stopping
         }
       }
-      
+
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
       }
     };
   }, []);
-  
+
   // Process transcript when recording stops
   const processTranscript = async (text: string) => {
     if (!text.trim()) {
       setRecordingState(RecordingState.INACTIVE);
       return;
     }
-    
+
     try {
       await onCommand(text.trim());
     } catch (error) {
@@ -159,28 +159,29 @@ export function EnhancedVoiceCommandButton({
       toast({
         title: 'Error',
         description: 'Failed to process voice command',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     }
   };
-  
+
   // Toggle recording
   const toggleRecording = () => {
     if (!recognitionRef.current) {
       setError('Speech recognition is not supported in your browser.');
       return;
     }
-    
+
     if (isProcessing) return;
-    
+
     if (recordingState === RecordingState.INACTIVE) {
       // Start recording
       try {
         recognitionRef.current.start();
-        
+
         // Set up audio input if available
         if (audioContextRef.current && analyserRef.current) {
-          navigator.mediaDevices.getUserMedia({ audio: true })
+          navigator.mediaDevices
+            .getUserMedia({ audio: true })
             .then(stream => {
               const source = audioContextRef.current!.createMediaStreamSource(stream);
               source.connect(analyserRef.current!);
@@ -196,7 +197,7 @@ export function EnhancedVoiceCommandButton({
         toast({
           title: 'Error',
           description: 'Failed to start voice recognition',
-          variant: 'destructive'
+          variant: 'destructive',
         });
       }
     } else if (recordingState === RecordingState.RECORDING) {
@@ -209,7 +210,7 @@ export function EnhancedVoiceCommandButton({
       }
     }
   };
-  
+
   // Button text based on state
   const getButtonText = () => {
     switch (recordingState) {
@@ -223,7 +224,7 @@ export function EnhancedVoiceCommandButton({
         return 'Record Command';
     }
   };
-  
+
   // Button variant based on state
   const getButtonVariant = () => {
     switch (recordingState) {
@@ -237,7 +238,7 @@ export function EnhancedVoiceCommandButton({
         return 'outline';
     }
   };
-  
+
   // Button icon based on state
   const getButtonIcon = () => {
     switch (recordingState) {
@@ -251,7 +252,7 @@ export function EnhancedVoiceCommandButton({
         return <Mic className="h-4 w-4 mr-2" />;
     }
   };
-  
+
   return (
     <div className={className}>
       <Button
@@ -262,7 +263,7 @@ export function EnhancedVoiceCommandButton({
       >
         {getButtonIcon()}
         {getButtonText()}
-        
+
         {recordingState === RecordingState.RECORDING && (
           <span className="absolute -right-1 -top-1 flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -270,12 +271,8 @@ export function EnhancedVoiceCommandButton({
           </span>
         )}
       </Button>
-      
-      {error && (
-        <div className="text-xs text-destructive mt-1">
-          {error}
-        </div>
-      )}
+
+      {error && <div className="text-xs text-destructive mt-1">{error}</div>}
     </div>
   );
 }

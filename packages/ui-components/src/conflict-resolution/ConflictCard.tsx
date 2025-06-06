@@ -1,6 +1,6 @@
 /**
  * ConflictCard Component
- * 
+ *
  * A card that displays information about a single conflict,
  * including its type, path, and a preview of the conflicting values.
  */
@@ -90,12 +90,12 @@ const formatValue = (value: any, maxLength: number = 50): string => {
   if (value === null || value === undefined) {
     return 'null';
   }
-  
+
   if (typeof value === 'object') {
     const json = JSON.stringify(value);
     return json.length > maxLength ? `${json.substring(0, maxLength)}...` : json;
   }
-  
+
   const str = String(value);
   return str.length > maxLength ? `${str.substring(0, maxLength)}...` : str;
 };
@@ -105,10 +105,10 @@ const formatValue = (value: any, maxLength: number = 50): string => {
  */
 const formatPath = (path: string, showFull: boolean = false): string => {
   if (showFull) return path;
-  
+
   const parts = path.split('.');
   if (parts.length <= 2) return path;
-  
+
   return `...${parts.slice(-2).join('.')}`;
 };
 
@@ -126,7 +126,7 @@ export const ConflictCard: React.FC<ConflictCardProps> = ({
   conflictTypes = DEFAULT_CONFLICT_TYPES,
 }) => {
   const typeInfo = conflictTypes[conflict.type] || DEFAULT_CONFLICT_TYPES[ConflictType.OTHER];
-  
+
   return (
     <div
       className={clsx(
@@ -139,32 +139,31 @@ export const ConflictCard: React.FC<ConflictCardProps> = ({
     >
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center">
-          <span className={clsx(
-            'inline-block px-2 py-1 text-xs font-medium rounded',
-            typeInfo.color
-          )}>
+          <span
+            className={clsx('inline-block px-2 py-1 text-xs font-medium rounded', typeInfo.color)}
+          >
             {typeInfo.label}
           </span>
-          
+
           <span className="ml-2 text-sm text-gray-500">
             {new Date(conflict.timestamp).toLocaleString()}
           </span>
         </div>
-        
+
         {conflict.resolved && (
           <span className="inline-block px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
             Resolved
           </span>
         )}
       </div>
-      
+
       <div className="mb-2">
         <div className="text-sm font-medium text-gray-700">Path:</div>
         <div className="text-sm font-mono">
           {conflict.path ? formatPath(conflict.path, showFullPath) : 'Root Object'}
         </div>
       </div>
-      
+
       {showPreview && (
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -173,7 +172,7 @@ export const ConflictCard: React.FC<ConflictCardProps> = ({
               {formatValue(conflict.localValue, previewLength)}
             </div>
           </div>
-          
+
           <div>
             <div className="text-sm font-medium text-gray-700">Remote:</div>
             <div className="text-sm font-mono bg-gray-50 p-2 rounded overflow-hidden text-ellipsis">

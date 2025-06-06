@@ -1,6 +1,6 @@
 /**
  * Base Service Class
- * 
+ *
  * This serves as the foundation for all services in the TaxI_AI system.
  * It provides common functionality and consistent service patterns.
  */
@@ -22,13 +22,13 @@ export abstract class BaseService {
   protected storage: IStorage;
   protected mcpService?: MCPService;
   protected llmService?: LLMService;
-  
+
   constructor(storage: IStorage, mcpService?: MCPService, llmService?: LLMService) {
     this.storage = storage;
     this.mcpService = mcpService;
     this.llmService = llmService;
   }
-  
+
   /**
    * Log an operation for auditing purposes
    */
@@ -45,13 +45,13 @@ export abstract class BaseService {
         entityType,
         entityId: details?.id?.toString() || null,
         details,
-        ipAddress: context?.ipAddress || null
+        ipAddress: context?.ipAddress || null,
       });
     } catch (error) {
       console.error(`Failed to log operation ${action} on ${entityType}:`, error);
     }
   }
-  
+
   /**
    * Make a request to an AI model for assistance with a task
    */
@@ -63,7 +63,7 @@ export abstract class BaseService {
     if (!this.llmService) {
       throw new Error('LLM service not initialized in this service instance');
     }
-    
+
     try {
       // Using the generateText method which should be implemented in LLMService
       if (typeof this.llmService.generateText === 'function') {
@@ -76,15 +76,18 @@ export abstract class BaseService {
       throw new Error(`Failed to get AI assistance: ${error.message}`);
     }
   }
-  
+
   /**
    * Execute an MCP command through the MCP service
    */
-  protected async executeMCPCommand(command: string, params: Record<string, any> = {}): Promise<any> {
+  protected async executeMCPCommand(
+    command: string,
+    params: Record<string, any> = {}
+  ): Promise<any> {
     if (!this.mcpService) {
       throw new Error('MCP service not initialized in this service instance');
     }
-    
+
     try {
       return await this.mcpService.executeCommand(command, params);
     } catch (error) {

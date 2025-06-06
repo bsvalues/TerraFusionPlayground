@@ -1,6 +1,6 @@
 /**
  * Mock LLM Service for testing
- * 
+ *
  * This mock service simulates responses from the LLM service without making actual API calls.
  */
 
@@ -20,8 +20,8 @@ export class LLMService {
       usage: {
         promptTokens: 10,
         completionTokens: 20,
-        totalTokens: 30
-      }
+        totalTokens: 30,
+      },
     };
   }
 
@@ -34,8 +34,8 @@ export class LLMService {
       analysis: {
         trend: 'positive',
         confidence: 0.85,
-        factors: ['location', 'market demand', 'inventory levels']
-      }
+        factors: ['location', 'market demand', 'inventory levels'],
+      },
     };
   }
 
@@ -48,8 +48,8 @@ export class LLMService {
       valuation: {
         estimatedValue: request.propertyData.value * 1.05,
         confidenceScore: 0.82,
-        comparableCount: 5
-      }
+        comparableCount: 5,
+      },
     };
   }
 
@@ -59,7 +59,7 @@ export class LLMService {
       text: `The neighborhood shows positive economic indicators with 
       strong property value stability.`,
       model: 'mock-model',
-      neighborhoodScore: 85
+      neighborhoodScore: 85,
     };
   }
 
@@ -68,28 +68,28 @@ export class LLMService {
     const currentYear = new Date().getFullYear();
     const currentValue = request.property.value || 375000;
     const yearsAhead = request.yearsAhead || 3;
-    
+
     // Mock growth rates for different years
     const yearlyGrowthRates = [2.8, 3.1, 3.4, 3.2, 3.5];
-    
+
     // Generate predicted values for each year
     const predictedValues = [];
     let cumulativeGrowth = 0;
     let lastValue = currentValue;
-    
+
     for (let i = 0; i < yearsAhead; i++) {
       const yearGrowth = yearlyGrowthRates[i] || 3.0;
       cumulativeGrowth += yearGrowth;
       lastValue = lastValue * (1 + yearGrowth / 100);
-      
+
       predictedValues.push({
         year: currentYear + i + 1,
         predictedValue: Math.round(lastValue),
         growthRate: yearGrowth,
-        growthFromPresent: Math.round(cumulativeGrowth * 10) / 10
+        growthFromPresent: Math.round(cumulativeGrowth * 10) / 10,
       });
     }
-    
+
     // Generate confidence intervals
     const confidenceIntervals = predictedValues.map(pv => {
       const marginOfError = 5 + (pv.year - currentYear); // Increasing uncertainty with time
@@ -97,10 +97,10 @@ export class LLMService {
         year: pv.year,
         low: Math.round(pv.predictedValue * (1 - marginOfError / 100)),
         high: Math.round(pv.predictedValue * (1 + marginOfError / 100)),
-        marginOfError
+        marginOfError,
       };
     });
-    
+
     return {
       text: `Based on current market conditions and property characteristics, 
       the estimated future value in ${yearsAhead} years is ${predictedValues[predictedValues.length - 1].predictedValue}.
@@ -114,11 +114,11 @@ export class LLMService {
         marketFactors: [
           { name: 'Interest Rates', impact: 'moderate', trend: 'stable' },
           { name: 'Regional Development', impact: 'positive', trend: 'improving' },
-          { name: 'Employment Growth', impact: 'positive', trend: 'steady' }
+          { name: 'Employment Growth', impact: 'positive', trend: 'steady' },
         ],
         overallConfidence: 0.75,
-        marketOutlook: 'positive'
-      }
+        marketOutlook: 'positive',
+      },
     };
   }
 
@@ -127,7 +127,7 @@ export class LLMService {
     return {
       text: `Analysis completed with no significant anomalies detected.`,
       model: 'mock-model',
-      anomalies: []
+      anomalies: [],
     };
   }
 }

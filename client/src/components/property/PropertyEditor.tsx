@@ -1,6 +1,6 @@
 /**
  * Property Editor
- * 
+ *
  * Component for editing property data with offline sync and conflict resolution.
  */
 
@@ -24,17 +24,17 @@ export interface PropertyEditorProps {
    * Property ID
    */
   propertyId: string;
-  
+
   /**
    * API endpoint
    */
   apiEndpoint?: string;
-  
+
   /**
    * User ID
    */
   userId?: string;
-  
+
   /**
    * On save callback
    */
@@ -48,22 +48,22 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
   propertyId,
   apiEndpoint = '/api/sync',
   userId = 'anonymous',
-  onSave
+  onSave,
 }) => {
   // CRDT document manager
   const [crdtManager] = useState(() => new CRDTDocumentManagerImpl());
-  
+
   // Conflict resolution manager
   const [conflictManager] = useState(() => new ConflictResolutionManager());
-  
+
   // Storage provider
   const [storageProvider] = useState(() => new IndexedDBStorageProvider());
-  
+
   // Initialize storage provider
   useEffect(() => {
     storageProvider.initialize();
   }, [storageProvider]);
-  
+
   // Use property document hook
   const {
     local,
@@ -77,39 +77,34 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
     debouncedUpdate,
     syncWithRemote,
     resolveConflict,
-    resetError
-  } = usePropertyDoc(
-    propertyId,
-    crdtManager,
-    conflictManager,
-    {
-      autoSync: true,
-      autoSyncInterval: 30000, // 30 seconds
-      userId,
-      apiEndpoint
-    }
-  );
-  
+    resetError,
+  } = usePropertyDoc(propertyId, crdtManager, conflictManager, {
+    autoSync: true,
+    autoSyncInterval: 30000, // 30 seconds
+    userId,
+    apiEndpoint,
+  });
+
   // Handle property change
   const handlePropertyChange = (data: any) => {
     debouncedUpdate(data);
   };
-  
+
   // Handle sync request
   const handleSyncRequest = () => {
     syncWithRemote();
   };
-  
+
   // Handle conflict resolution
   const handleResolveConflict = (resolved: any) => {
     resolveConflict(resolved);
-    
+
     // Call onSave callback
     if (onSave) {
       onSave(resolved);
     }
   };
-  
+
   // Handle property save
   const handlePropertySave = () => {
     // Call onSave callback
@@ -117,7 +112,7 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
       onSave(local);
     }
   };
-  
+
   return (
     <div className="space-y-4">
       {/* Error message */}
@@ -125,20 +120,13 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            {error.message}
-          </AlertDescription>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={resetError}
-            className="mt-2"
-          >
+          <AlertDescription>{error.message}</AlertDescription>
+          <Button variant="outline" size="sm" onClick={resetError} className="mt-2">
             Dismiss
           </Button>
         </Alert>
       )}
-      
+
       {/* Loading state */}
       {isLoading && (
         <div className="flex items-center justify-center p-6">
@@ -146,7 +134,7 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
           <span className="ml-2">Loading property data...</span>
         </div>
       )}
-      
+
       {/* Conflict resolution */}
       {hasConflict && remote && (
         <Card className="border-yellow-300 dark:border-yellow-700">
@@ -170,14 +158,15 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
           </CardContent>
         </Card>
       )}
-      
+
       {/* Property form */}
       {!isLoading && (
         <Card>
           <CardHeader>
             <CardTitle>Edit Property</CardTitle>
             <CardDescription>
-              Update property details below. Changes are automatically saved locally and synced when online.
+              Update property details below. Changes are automatically saved locally and synced when
+              online.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -188,12 +177,9 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
               onChange={handlePropertyChange}
               onSyncRequest={handleSyncRequest}
             />
-            
+
             <div className="mt-6 flex justify-end">
-              <Button
-                onClick={handlePropertySave}
-                disabled={isLoading || hasConflict}
-              >
+              <Button onClick={handlePropertySave} disabled={isLoading || hasConflict}>
                 Save Property
               </Button>
             </div>

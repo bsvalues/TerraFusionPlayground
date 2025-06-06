@@ -11,7 +11,7 @@ export enum LLMProviderType {
   AZURE_OPENAI = 'azure_openai',
   COHERE = 'cohere',
   HUGGINGFACE = 'huggingface',
-  CUSTOM = 'custom'
+  CUSTOM = 'custom',
 }
 
 /**
@@ -22,47 +22,47 @@ export interface LLMRequestOptions {
    * Model identifier
    */
   model: string;
-  
+
   /**
    * Temperature setting (0-1)
    */
   temperature?: number;
-  
+
   /**
    * Maximum tokens to generate
    */
   maxTokens?: number;
-  
+
   /**
    * Top-p sampling (nucleus sampling)
    */
   topP?: number;
-  
+
   /**
    * Whether to stream the response
    */
   stream?: boolean;
-  
+
   /**
    * Stop sequences
    */
   stop?: string[];
-  
+
   /**
    * Response format
    */
   responseFormat?: 'text' | 'json';
-  
+
   /**
    * Presence penalty
    */
   presencePenalty?: number;
-  
+
   /**
    * Frequency penalty
    */
   frequencyPenalty?: number;
-  
+
   /**
    * Additional provider-specific options
    */
@@ -77,7 +77,7 @@ export interface CompletionRequest {
    * The prompt to complete
    */
   prompt: string;
-  
+
   /**
    * Request options
    */
@@ -92,17 +92,17 @@ export interface ChatMessage {
    * Role of the message author
    */
   role: 'system' | 'user' | 'assistant' | 'function' | 'tool';
-  
+
   /**
    * Content of the message
    */
   content: string;
-  
+
   /**
    * Name of the author (optional)
    */
   name?: string;
-  
+
   /**
    * Function call info (for function calling)
    */
@@ -110,7 +110,7 @@ export interface ChatMessage {
     name: string;
     arguments: string;
   };
-  
+
   /**
    * Tool call info (for tool calling)
    */
@@ -129,7 +129,7 @@ export interface ChatCompletionRequest {
    * The messages for the conversation
    */
   messages: ChatMessage[];
-  
+
   /**
    * Request options
    */
@@ -144,7 +144,7 @@ export interface EmbeddingRequest {
    * The text to embed
    */
   text: string | string[];
-  
+
   /**
    * Request options
    */
@@ -159,7 +159,7 @@ export interface LLMResponse {
    * The generated text
    */
   text: string;
-  
+
   /**
    * Usage information
    */
@@ -168,7 +168,7 @@ export interface LLMResponse {
     completionTokens: number;
     totalTokens: number;
   };
-  
+
   /**
    * Raw provider response
    */

@@ -4,7 +4,7 @@
 
 /**
  * Combines multiple class names into a single string, filtering out falsy values
- * 
+ *
  * @param classes Array of class names or conditional class expressions
  * @returns Combined class string
  */
@@ -14,7 +14,7 @@ export function cx(...classes: (string | boolean | undefined | null)[]): string 
 
 /**
  * Creates a class name with a variant
- * 
+ *
  * @param base Base class name
  * @param variant Variant name
  * @returns Combined class name with variant
@@ -25,7 +25,7 @@ export function variantClass(base: string, variant?: string): string {
 
 /**
  * Creates a BEM modifier class
- * 
+ *
  * @param block Block name
  * @param element Element name
  * @param modifier Modifier name

@@ -1,7 +1,7 @@
 /**
  * WebSocket Test Page Script
  */
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   // Initialize the connection manager
   const connectionManager = new ConnectionManager({
     wsPath: '/ws',
@@ -10,12 +10,12 @@ document.addEventListener('DOMContentLoaded', function() {
     maxReconnectDelay: 30000,
     reconnectBackoffFactor: 2,
     autoConnect: true,
-    debug: true
+    debug: true,
   });
-  
+
   // Log initialization
   connectionManager.addMessageToLog('WebSocket Test Page loaded', 'info');
-  
+
   // Store reference in window for debugging
   window.connectionManager = connectionManager;
 });

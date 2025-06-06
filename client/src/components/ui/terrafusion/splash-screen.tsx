@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from 'react';
 
 interface SplashScreenProps {
   moduleName: string;
@@ -11,12 +11,12 @@ export function SplashScreen({ moduleName, onComplete, logo }: SplashScreenProps
   const completedRef = useRef(false);
 
   // Default TerraFusion logo if none provided
-  const defaultLogo = "/TerraFusion-logo.svg";
+  const defaultLogo = '/TerraFusion-logo.svg';
 
   // Effect for progress animation
   useEffect(() => {
     const timer = setInterval(() => {
-      setProgress((prev) => {
+      setProgress(prev => {
         if (prev >= 100) {
           clearInterval(timer);
           return 100;
@@ -45,9 +45,7 @@ export function SplashScreen({ moduleName, onComplete, logo }: SplashScreenProps
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-tf-dark-blue z-50">
       {/* Background glow effect */}
       <div className="absolute inset-0">
-        <div 
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-tf-primary opacity-10 blur-[100px] animate-pulse-glow" 
-        />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-tf-primary opacity-10 blur-[100px] animate-pulse-glow" />
       </div>
 
       <div className="flex flex-col md:flex-row items-center justify-center gap-8 z-10 px-6">
@@ -61,9 +59,9 @@ export function SplashScreen({ moduleName, onComplete, logo }: SplashScreenProps
         </div>
 
         {/* Module name */}
-        <h1 
+        <h1
           className="text-4xl font-bold text-white"
-          style={{ textShadow: "0 0 10px rgba(0,229,255,0.5)" }}
+          style={{ textShadow: '0 0 10px rgba(0,229,255,0.5)' }}
         >
           {moduleName}
         </h1>

@@ -9,30 +9,36 @@ The TerraFusion platform includes comprehensive security scanning as part of the
 ### Implemented Security Scans
 
 1. **Dependency Vulnerability Scanning**
+
    - Uses npm audit to identify vulnerabilities in dependencies
    - Produces reports of found vulnerabilities with severity ratings
    - Automatically fails builds with critical vulnerabilities
 
 2. **Code Security Scanning**
+
    - Uses ESLint with security plugins to identify potential code vulnerabilities
    - Checks for common security issues like SQL injection, XSS, etc.
    - Enforces secure coding practices
 
 3. **Secret Detection**
+
    - Uses detect-secrets to identify accidentally committed secrets
    - Prevents API keys, passwords, and other sensitive information from being leaked
    - Creates a baseline of allowed patterns
 
 4. **Static Application Security Testing (SAST)**
+
    - Uses SonarCloud for thorough code analysis
    - Identifies complex security vulnerabilities
    - Provides detailed fix recommendations
 
 5. **Infrastructure as Code Scanning**
+
    - Scans Terraform configurations for security issues
    - Ensures cloud infrastructure follows security best practices
 
 6. **Container Security Scanning**
+
    - Scans Docker images for vulnerabilities
    - Helps maintain secure container deployments
 
@@ -62,14 +68,17 @@ The TerraFusion platform includes comprehensive security scanning as part of the
 The integration with QGIS, our primary mapping system, includes several security measures:
 
 1. **Sandboxed Execution**
+
    - QGIS processing runs in an isolated environment
    - Limited access to system resources
 
 2. **Validated Inputs**
+
    - All GIS inputs are validated before processing
    - Prevents injection attacks in GIS operations
 
 3. **Resource Limiting**
+
    - Memory and CPU usage limits on GIS operations
    - Prevents resource exhaustion attacks
 
@@ -82,10 +91,12 @@ The integration with QGIS, our primary mapping system, includes several security
 In addition to automated scanning, the TerraFusion platform undergoes:
 
 1. **Regular Security Audits**
+
    - Conducted by third-party security professionals
    - Comprehensive review of entire system
 
 2. **Penetration Testing**
+
    - Simulated attacks to identify vulnerabilities
    - Both authenticated and unauthenticated testing
 

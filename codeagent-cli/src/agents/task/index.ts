@@ -1,18 +1,18 @@
 /**
  * index.ts
- * 
+ *
  * Export task-specific agents
  */
 
 // Export Debugging Agent
-export { 
+export {
   DebuggingAgent,
   BugReport,
   CodeIssue,
   CodeFix,
   TraceEntry,
   ProfileEntry,
-  DebuggingTaskType
+  DebuggingTaskType,
 } from './DebuggingAgent';
 
 // Export Local Deployment Agent
@@ -22,7 +22,7 @@ export {
   DeploymentConfig,
   Dependency,
   DeploymentStatus,
-  LocalDeploymentTaskType
+  LocalDeploymentTaskType,
 } from './LocalDeploymentAgent';
 
 // Export Version Control Agent
@@ -33,7 +33,7 @@ export {
   Branch,
   Change,
   PullRequest,
-  VersionControlTaskType
+  VersionControlTaskType,
 } from './VersionControlAgent';
 
 // Export Web Deployment Agent
@@ -43,5 +43,5 @@ export {
   WebDeploymentConfig,
   DeploymentResource,
   WebDeploymentStatus,
-  WebDeploymentTaskType
+  WebDeploymentTaskType,
 } from './WebDeploymentAgent';

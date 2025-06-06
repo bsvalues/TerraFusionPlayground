@@ -1,36 +1,29 @@
 /**
  * Web Vitals Monitoring
- * 
+ *
  * Utilities for capturing and reporting Web Vitals metrics.
  * This helps track real user experience metrics like page load time,
  * interactivity, and visual stability.
  */
 
-import { 
-  onCLS, 
-  onFID, 
-  onLCP, 
-  onTTFB, 
-  onFCP,
-  type Metric
-} from 'web-vitals';
+import { onCLS, onFID, onLCP, onTTFB, onFCP, type Metric } from 'web-vitals';
 
 interface WebVitalsReportingOptions {
   // Whether to enable debug mode
   debug?: boolean;
-  
+
   // The URL to report metrics to
   reportUrl?: string;
-  
+
   // Additional tags to include with metrics
   tags?: Record<string, string>;
-  
+
   // Whether to include device information
   includeDeviceInfo?: boolean;
-  
+
   // Whether to include percentiles with metrics
   includePercentiles?: boolean;
-  
+
   // How often to send batched reports (in milliseconds)
   reportInterval?: number;
 }
@@ -44,7 +37,7 @@ const metricsHistory: Record<string, number[]> = {
   FID: [],
   CLS: [],
   TTFB: [],
-  FCP: []
+  FCP: [],
 };
 
 // Current summary of metrics
@@ -53,7 +46,7 @@ let vitalsSummary = {
   fid: { value: 0, rating: 'unknown' },
   cls: { value: 0, rating: 'unknown' },
   ttfb: { value: 0, rating: 'unknown' },
-  fcp: { value: 0, rating: 'unknown' }
+  fcp: { value: 0, rating: 'unknown' },
 };
 
 // Calculate rating for a metric based on thresholds
@@ -79,14 +72,14 @@ function calculatePercentiles(values: number[]): Record<string, number> {
   if (values.length === 0) {
     return { p50: 0, p75: 0, p95: 0 };
   }
-  
+
   const sorted = [...values].sort((a, b) => a - b);
   const len = sorted.length;
-  
+
   return {
     p50: sorted[Math.floor(len * 0.5)],
     p75: sorted[Math.floor(len * 0.75)],
-    p95: sorted[Math.floor(len * 0.95)]
+    p95: sorted[Math.floor(len * 0.95)],
   };
 }
 
@@ -97,14 +90,18 @@ function getDeviceInfo(): Record<string, string | number | boolean> {
     deviceType: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
     deviceMemory: (navigator as any).deviceMemory || 'unknown',
     hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
-    connectionType: (navigator as any).connection ? (navigator as any).connection.effectiveType : 'unknown',
-    connectionSpeed: (navigator as any).connection ? (navigator as any).connection.downlink : 'unknown',
+    connectionType: (navigator as any).connection
+      ? (navigator as any).connection.effectiveType
+      : 'unknown',
+    connectionSpeed: (navigator as any).connection
+      ? (navigator as any).connection.downlink
+      : 'unknown',
     screenWidth: window.screen.width,
     screenHeight: window.screen.height,
     viewport: {
       width: window.innerWidth,
-      height: window.innerHeight
-    }
+      height: window.innerHeight,
+    },
   };
 }
 
@@ -116,24 +113,24 @@ export function initWebVitalsReporting(options: WebVitalsReportingOptions = {}):
     tags = {},
     includeDeviceInfo = true,
     includePercentiles = true,
-    reportInterval = 10000 // 10 seconds
+    reportInterval = 10000, // 10 seconds
   } = options;
-  
+
   // Create metrics report
   const createReport = () => {
     // Check if we have any metrics to report
     if (Object.keys(metrics).length === 0) {
       return;
     }
-    
+
     // Create report
     const report = {
       timestamp: Date.now(),
       url: window.location.href,
       metrics: Object.values(metrics),
-      tags
+      tags,
     };
-    
+
     // Include percentiles
     if (includePercentiles) {
       report.percentiles = {
@@ -141,39 +138,41 @@ export function initWebVitalsReporting(options: WebVitalsReportingOptions = {}):
         FID: calculatePercentiles(metricsHistory.FID),
         CLS: calculatePercentiles(metricsHistory.CLS),
         TTFB: calculatePercentiles(metricsHistory.TTFB),
-        FCP: calculatePercentiles(metricsHistory.FCP)
+        FCP: calculatePercentiles(metricsHistory.FCP),
       };
     }
-    
+
     // Include device information
     if (includeDeviceInfo) {
       report.deviceInfo = getDeviceInfo();
     }
-    
+
     // Send report
     sendReport(report);
-    
+
     // Reset metrics for next report
     Object.keys(metrics).forEach(key => {
       delete metrics[key];
     });
   };
-  
+
   // Send metrics report to server
   const sendReport = async (report: any) => {
     try {
       const response = await fetch(reportUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(report)
+        body: JSON.stringify(report),
       });
-      
+
       if (!response.ok) {
-        throw new Error(`Failed to send web vitals report: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to send web vitals report: ${response.status} ${response.statusText}`
+        );
       }
-      
+
       if (debug) {
         console.log('[WebVitals] Report sent successfully:', report);
       }
@@ -183,26 +182,26 @@ export function initWebVitalsReporting(options: WebVitalsReportingOptions = {}):
       }
     }
   };
-  
+
   // Handler for metrics
   const handleMetric = (metric: Metric) => {
     // Add rating
     const rating = calculateRating(metric.name, metric.value);
     const metricWithRating = { ...metric, rating };
-    
+
     // Store metric
     metrics[metric.name] = metricWithRating;
-    
+
     // Store metric for history
     if (metricsHistory[metric.name]) {
       metricsHistory[metric.name].push(metric.value);
-      
+
       // Keep history limited to 100 entries
       if (metricsHistory[metric.name].length > 100) {
         metricsHistory[metric.name].shift();
       }
     }
-    
+
     // Update summary
     if (metric.name === 'LCP') {
       vitalsSummary.lcp = { value: metric.value, rating };
@@ -215,28 +214,28 @@ export function initWebVitalsReporting(options: WebVitalsReportingOptions = {}):
     } else if (metric.name === 'FCP') {
       vitalsSummary.fcp = { value: metric.value, rating };
     }
-    
+
     if (debug) {
       console.log(`[WebVitals] ${metric.name}: ${metric.value} (${rating})`);
     }
   };
-  
+
   // Register event handlers for metrics
   onCLS(handleMetric);
   onFID(handleMetric);
   onLCP(handleMetric);
   onTTFB(handleMetric);
   onFCP(handleMetric);
-  
+
   // Setup interval for sending batched reports
   const intervalId = setInterval(createReport, reportInterval);
-  
+
   // Setup cleanup on page unload
   window.addEventListener('unload', () => {
     clearInterval(intervalId);
     createReport();
   });
-  
+
   // Debug logging
   if (debug) {
     console.log('[WebVitals] Monitoring initialized with options:', options);
@@ -266,17 +265,17 @@ export function sendOneTimeReport(): void {
       FID: calculatePercentiles(metricsHistory.FID),
       CLS: calculatePercentiles(metricsHistory.CLS),
       TTFB: calculatePercentiles(metricsHistory.TTFB),
-      FCP: calculatePercentiles(metricsHistory.FCP)
-    }
+      FCP: calculatePercentiles(metricsHistory.FCP),
+    },
   };
-  
+
   // Send report
   fetch('/api/analytics/web-vitals', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     },
-    body: JSON.stringify(report)
+    body: JSON.stringify(report),
   }).catch(error => {
     console.error('[WebVitals] Failed to send one-time report:', error);
   });

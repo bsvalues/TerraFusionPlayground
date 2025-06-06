@@ -1,11 +1,11 @@
 /**
  * Energy Level Selector Component
- * 
+ *
  * Interactive component for selecting developer energy levels
  */
 import React from 'react';
-import { Button } from "@/components/ui/button";
-import { Loader2, BatteryFull, BatteryMedium, BatteryLow } from "lucide-react";
+import { Button } from '@/components/ui/button';
+import { Loader2, BatteryFull, BatteryMedium, BatteryLow } from 'lucide-react';
 
 interface EnergyLevelSelectorProps {
   currentLevel: string;
@@ -16,7 +16,7 @@ interface EnergyLevelSelectorProps {
 const EnergyLevelSelector: React.FC<EnergyLevelSelectorProps> = ({
   currentLevel,
   onLevelChange,
-  isUpdating
+  isUpdating,
 }) => {
   return (
     <div className="grid grid-cols-3 gap-2">
@@ -33,7 +33,7 @@ const EnergyLevelSelector: React.FC<EnergyLevelSelectorProps> = ({
         )}
         High
       </Button>
-      
+
       <Button
         variant={currentLevel === 'MEDIUM' ? 'default' : 'outline'}
         className={`flex items-center justify-center ${currentLevel === 'MEDIUM' ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
@@ -47,7 +47,7 @@ const EnergyLevelSelector: React.FC<EnergyLevelSelectorProps> = ({
         )}
         Medium
       </Button>
-      
+
       <Button
         variant={currentLevel === 'LOW' ? 'default' : 'outline'}
         className={`flex items-center justify-center ${currentLevel === 'LOW' ? 'bg-red-500 hover:bg-red-600' : ''}`}

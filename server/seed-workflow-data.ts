@@ -1,10 +1,10 @@
-import { 
-  WorkflowOptimizationRequest, 
-  WorkflowOptimizationResult, 
-  WorkflowOptimizationStatus, 
-  WorkflowOptimizationType, 
-  WorkflowOptimizationPriority 
-} from "@shared/schema";
+import {
+  WorkflowOptimizationRequest,
+  WorkflowOptimizationResult,
+  WorkflowOptimizationStatus,
+  WorkflowOptimizationType,
+  WorkflowOptimizationPriority,
+} from '@shared/schema';
 import crypto from 'crypto';
 
 export interface SeedWorkflowOptimizerData {
@@ -20,9 +20,9 @@ export function getSeedWorkflowOptimizerData(): SeedWorkflowOptimizerData {
   const results: WorkflowOptimizationResult[] = [];
   let requestId = 1;
   let resultId = 1;
-  
+
   // Create a fixed requestId to ensure consistency across server restarts
-  const codeQualityRequestId = "5d966f0f-8b78-43dc-ac3f-a2e91da14b81"; // Match the one in the results
+  const codeQualityRequestId = '5d966f0f-8b78-43dc-ac3f-a2e91da14b81'; // Match the one in the results
   const codeQualityRequest: WorkflowOptimizationRequest = {
     id: requestId++,
     requestId: codeQualityRequestId,
@@ -37,10 +37,10 @@ export function getSeedWorkflowOptimizerData(): SeedWorkflowOptimizerData {
     tags: ['refactoring', 'maintainability'],
     settings: null,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 23) // 23 hours ago
+    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 23), // 23 hours ago
   };
   requests.push(codeQualityRequest);
-  
+
   // Create code quality optimization result
   const codeQualityResult: WorkflowOptimizationResult = {
     id: resultId++,
@@ -50,7 +50,8 @@ export function getSeedWorkflowOptimizerData(): SeedWorkflowOptimizerData {
       {
         id: crypto.randomUUID(),
         title: 'Improve function parameter validation',
-        description: 'Add proper parameter validation at the beginning of functions to prevent unexpected behavior',
+        description:
+          'Add proper parameter validation at the beginning of functions to prevent unexpected behavior',
         code: 'function processData(data) {\n  if (!data) return null;\n  // Rest of the function\n}',
         filePath: 'server/routes/api.js',
         lineNumbers: [15, 25],
@@ -60,13 +61,14 @@ export function getSeedWorkflowOptimizerData(): SeedWorkflowOptimizerData {
         implementationSteps: [
           'Identify functions with missing validation',
           'Add appropriate checks for required parameters',
-          'Return early if validation fails'
-        ]
+          'Return early if validation fails',
+        ],
       },
       {
         id: crypto.randomUUID(),
         title: 'Extract duplicate code into helper functions',
-        description: 'Multiple routes contain similar data processing logic that could be extracted into shared helper functions',
+        description:
+          'Multiple routes contain similar data processing logic that could be extracted into shared helper functions',
         code: 'function formatResponse(data) {\n  return {\n    success: true,\n    data,\n    timestamp: new Date()\n  };\n}',
         filePath: 'server/utils/helpers.js',
         lineNumbers: null,
@@ -76,19 +78,19 @@ export function getSeedWorkflowOptimizerData(): SeedWorkflowOptimizerData {
         implementationSteps: [
           'Identify duplicate code patterns',
           'Create helper functions in utils folder',
-          'Replace duplicate code with helper function calls'
-        ]
-      }
+          'Replace duplicate code with helper function calls',
+        ],
+      },
     ]),
     improvementScore: 72,
     runTime: 5600,
     modelUsed: 'gpt-4o',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 23) // 23 hours ago
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 23), // 23 hours ago
   };
   results.push(codeQualityResult);
-  
+
   // Create a completed performance optimization request
-  const perfRequestId = "503cadc4-b33e-4955-b6c3-d0a899530792"; // Match the one in the results
+  const perfRequestId = '503cadc4-b33e-4955-b6c3-d0a899530792'; // Match the one in the results
   const perfRequest: WorkflowOptimizationRequest = {
     id: requestId++,
     requestId: perfRequestId,
@@ -103,15 +105,16 @@ export function getSeedWorkflowOptimizerData(): SeedWorkflowOptimizerData {
     tags: ['database', 'api', 'optimization'],
     settings: null,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48), // 2 days ago
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 47) // 47 hours ago
+    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 47), // 47 hours ago
   };
   requests.push(perfRequest);
-  
+
   // Create performance optimization result
   const perfResult: WorkflowOptimizationResult = {
     id: resultId++,
     requestId: perfRequestId,
-    summary: 'Identified several performance bottlenecks in database queries and API response handling',
+    summary:
+      'Identified several performance bottlenecks in database queries and API response handling',
     recommendationsJson: JSON.stringify([
       {
         id: crypto.randomUUID(),
@@ -126,13 +129,13 @@ export function getSeedWorkflowOptimizerData(): SeedWorkflowOptimizerData {
         implementationSteps: [
           'Identify frequently queried columns',
           'Create appropriate indexes',
-          'Monitor query performance after changes'
-        ]
+          'Monitor query performance after changes',
+        ],
       },
       {
         id: crypto.randomUUID(),
         title: 'Implement response caching',
-        description: 'Cache API responses for frequently requested data that doesn\'t change often',
+        description: "Cache API responses for frequently requested data that doesn't change often",
         code: 'const cache = new Map();\n\nfunction getCachedData(key, ttl, fetchFn) {\n  const now = Date.now();\n  const cached = cache.get(key);\n  \n  if (cached && now < cached.expiry) {\n    return cached.data;\n  }\n  \n  const data = await fetchFn();\n  cache.set(key, { data, expiry: now + ttl });\n  return data;\n}',
         filePath: 'server/utils/cache.js',
         lineNumbers: null,
@@ -142,17 +145,17 @@ export function getSeedWorkflowOptimizerData(): SeedWorkflowOptimizerData {
         implementationSteps: [
           'Implement caching utility',
           'Identify API endpoints suitable for caching',
-          'Apply caching with appropriate TTL values'
-        ]
-      }
+          'Apply caching with appropriate TTL values',
+        ],
+      },
     ]),
     improvementScore: 85,
     runTime: 6200,
     modelUsed: 'gpt-4o',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 47) // 47 hours ago
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 47), // 47 hours ago
   };
   results.push(perfResult);
-  
+
   // Create an in-progress security optimization request
   const securityRequestId = crypto.randomUUID();
   const securityRequest: WorkflowOptimizationRequest = {
@@ -169,10 +172,10 @@ export function getSeedWorkflowOptimizerData(): SeedWorkflowOptimizerData {
     tags: ['security', 'authentication', 'validation'],
     settings: null,
     createdAt: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-    updatedAt: new Date(Date.now() - 1000 * 60 * 30) // 30 minutes ago
+    updatedAt: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
   };
   requests.push(securityRequest);
-  
+
   // Create a pending architecture optimization request
   const architectureRequestId = crypto.randomUUID();
   const architectureRequest: WorkflowOptimizationRequest = {
@@ -181,7 +184,8 @@ export function getSeedWorkflowOptimizerData(): SeedWorkflowOptimizerData {
     userId: 1,
     repositoryId: 3,
     title: 'Architecture Review',
-    description: 'Review the current architecture and suggest improvements for scalability and maintainability',
+    description:
+      'Review the current architecture and suggest improvements for scalability and maintainability',
     codebase: '.',
     optimizationType: WorkflowOptimizationType.ARCHITECTURE,
     status: WorkflowOptimizationStatus.PENDING,
@@ -189,9 +193,9 @@ export function getSeedWorkflowOptimizerData(): SeedWorkflowOptimizerData {
     tags: ['architecture', 'scalability', 'design-patterns'],
     settings: null,
     createdAt: new Date(), // Just created
-    updatedAt: new Date() // Just created
+    updatedAt: new Date(), // Just created
   };
   requests.push(architectureRequest);
-  
+
   return { requests, results };
 }

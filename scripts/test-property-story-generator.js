@@ -1,6 +1,6 @@
 /**
  * Property Story Generator Test Script
- * 
+ *
  * This script tests the integration with OpenAI and the Property Story Generator service,
  * demonstrating how property data is transformed into narrative descriptions.
  */
@@ -10,9 +10,9 @@ import { isOpenAIApiKeyValid } from '../server/services/openai-service.js';
 
 // Mock storage for testing
 const mockStorage = {
-  getPropertyByPropertyId: (propertyId) => {
+  getPropertyByPropertyId: propertyId => {
     const properties = {
-      'BC001': {
+      BC001: {
         propertyId: 'BC001',
         address: '1320 N Louis Lane, Benton WA',
         parcelNumber: '12345-123-123',
@@ -29,10 +29,10 @@ const mockStorage = {
           quality: 'Good',
           condition: 'Well Maintained',
           zoning: 'R-1',
-          landUseCode: 'Single Family Residential'
-        }
+          landUseCode: 'Single Family Residential',
+        },
       },
-      'BC002': {
+      BC002: {
         propertyId: 'BC002',
         address: '456 Commercial Parkway, Benton WA',
         parcelNumber: '12345-456-789',
@@ -47,42 +47,42 @@ const mockStorage = {
           quality: 'Excellent',
           condition: 'Good',
           zoning: 'C-2',
-          landUseCode: 'Commercial Retail'
-        }
-      }
+          landUseCode: 'Commercial Retail',
+        },
+      },
     };
-    
+
     return Promise.resolve(properties[propertyId] || null);
   },
-  
-  getImprovementsByPropertyId: (propertyId) => {
+
+  getImprovementsByPropertyId: propertyId => {
     const improvements = {
-      'BC001': [
+      BC001: [
         {
           id: 1,
           propertyId: 'BC001',
           improvementType: 'Main Building',
           yearBuilt: 1985,
           description: 'Two-story home with attached garage',
-          area: 2400
+          area: 2400,
         },
         {
           id: 2,
-          propertyId: 'BC001', 
+          propertyId: 'BC001',
           improvementType: 'Shed',
           yearBuilt: 1990,
           description: 'Garden storage shed',
-          area: 120
-        }
+          area: 120,
+        },
       ],
-      'BC002': [
+      BC002: [
         {
           id: 3,
           propertyId: 'BC002',
           improvementType: 'Retail Building',
           yearBuilt: 2001,
           description: 'Single-story commercial retail space',
-          area: 5500
+          area: 5500,
         },
         {
           id: 4,
@@ -90,17 +90,17 @@ const mockStorage = {
           improvementType: 'Parking Lot',
           yearBuilt: 2001,
           description: 'Paved parking with 24 spaces',
-          area: 8000
-        }
-      ]
+          area: 8000,
+        },
+      ],
     };
-    
+
     return Promise.resolve(improvements[propertyId] || []);
   },
-  
-  getLandRecordsByPropertyId: (propertyId) => {
+
+  getLandRecordsByPropertyId: propertyId => {
     const landRecords = {
-      'BC001': [
+      BC001: [
         {
           id: 1,
           propertyId: 'BC001',
@@ -108,10 +108,10 @@ const mockStorage = {
           landUse: 'Single Family Residential',
           soilType: 'Loam',
           topography: 'Flat',
-          floodZone: 'X'
-        }
+          floodZone: 'X',
+        },
       ],
-      'BC002': [
+      BC002: [
         {
           id: 2,
           propertyId: 'BC002',
@@ -119,18 +119,18 @@ const mockStorage = {
           landUse: 'Commercial Retail',
           soilType: 'Clay',
           topography: 'Slight Grade',
-          floodZone: 'X'
-        }
-      ]
+          floodZone: 'X',
+        },
+      ],
     };
-    
+
     return Promise.resolve(landRecords[propertyId] || []);
   },
-  
-  getAppealsByPropertyId: (propertyId) => {
+
+  getAppealsByPropertyId: propertyId => {
     const appeals = {
-      'BC001': [],
-      'BC002': [
+      BC001: [],
+      BC002: [
         {
           id: 1,
           propertyId: 'BC002',
@@ -138,38 +138,40 @@ const mockStorage = {
           status: 'Resolved',
           reason: 'Value Disputed',
           resolution: 'Assessment adjusted down by 5%',
-          appealerId: 101
-        }
-      ]
+          appealerId: 101,
+        },
+      ],
     };
-    
+
     return Promise.resolve(appeals[propertyId] || []);
-  }
+  },
 };
 
 async function testPropertyStoryGenerator() {
   try {
     console.log('Testing Property Story Generator...');
-    
+
     // Check if OpenAI API key is valid
     const isApiKeyValid = isOpenAIApiKeyValid();
     console.log(`OpenAI API Key Valid: ${isApiKeyValid ? 'Yes ✓' : 'No ✗'}`);
-    
+
     if (!isApiKeyValid) {
-      console.error('OpenAI API key is missing or invalid. Story generation will use template fallback.');
+      console.error(
+        'OpenAI API key is missing or invalid. Story generation will use template fallback.'
+      );
     }
-    
+
     // Initialize the generator
     const generator = new PropertyStoryGenerator(mockStorage);
-    
+
     // Test Case 1: Generate a simple residential property story
     console.log('\nTest Case 1: Generate a simple residential property story');
     const residentialOptions = {
       format: 'simple',
       includeImprovements: true,
-      includeLandRecords: true
+      includeLandRecords: true,
     };
-    
+
     try {
       const residentialStory = await generator.generatePropertyStory('BC001', residentialOptions);
       console.log('\nResidential Property Story:');
@@ -178,7 +180,7 @@ async function testPropertyStoryGenerator() {
     } catch (error) {
       console.error('Simple residential story test FAILED ✗:', error.message);
     }
-    
+
     // Test Case 2: Generate a detailed commercial property story with appeals
     console.log('\nTest Case 2: Generate a detailed commercial property story with appeals');
     const commercialOptions = {
@@ -186,9 +188,9 @@ async function testPropertyStoryGenerator() {
       includeImprovements: true,
       includeLandRecords: true,
       includeAppeals: true,
-      focus: 'market'
+      focus: 'market',
     };
-    
+
     try {
       const commercialStory = await generator.generatePropertyStory('BC002', commercialOptions);
       console.log('\nCommercial Property Story:');
@@ -197,23 +199,26 @@ async function testPropertyStoryGenerator() {
     } catch (error) {
       console.error('Detailed commercial story test FAILED ✗:', error.message);
     }
-    
+
     // Test Case 3: Generate a property comparison
     console.log('\nTest Case 3: Generate a property comparison');
     const comparisonOptions = {
       format: 'detailed',
-      focus: 'market'
+      focus: 'market',
     };
-    
+
     try {
-      const comparisonStory = await generator.generatePropertyComparison(['BC001', 'BC002'], comparisonOptions);
+      const comparisonStory = await generator.generatePropertyComparison(
+        ['BC001', 'BC002'],
+        comparisonOptions
+      );
       console.log('\nProperty Comparison:');
       console.log(comparisonStory);
       console.log('\nProperty comparison test PASSED ✓');
     } catch (error) {
       console.error('Property comparison test FAILED ✗:', error.message);
     }
-    
+
     console.log('\nProperty Story Generator tests completed.');
   } catch (error) {
     console.error('Test execution error:', error);

@@ -1,6 +1,6 @@
 /**
  * Plandex AI Factory
- * 
+ *
  * This module provides factory functions for creating and accessing
  * the Plandex AI service instance.
  */
@@ -29,7 +29,7 @@ export function getPlandexAIService(): PlandexAIService | null {
       baseUrl: process.env.PLANDEX_API_BASE_URL || 'https://api.plandex.ai/v1',
       defaultModel: process.env.PLANDEX_DEFAULT_MODEL || 'plandex-code-v1',
       maxTokens: parseInt(process.env.PLANDEX_MAX_TOKENS || '1024', 10),
-      temperature: parseFloat(process.env.PLANDEX_TEMPERATURE || '0.2')
+      temperature: parseFloat(process.env.PLANDEX_TEMPERATURE || '0.2'),
     };
 
     plandexAIServiceInstance = new PlandexAIService(config);

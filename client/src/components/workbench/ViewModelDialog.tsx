@@ -14,31 +14,45 @@ import { Activity, Pencil } from 'lucide-react';
 interface ViewModelDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  model: any;  // AssessmentModel
+  model: any; // AssessmentModel
   onOpenDetails: () => void;
 }
 
 const getStatusBadgeVariant = (status: string) => {
   switch (status) {
-    case 'draft': return 'secondary';
-    case 'in_review': return 'warning';
-    case 'approved': return 'success';
-    case 'published': return 'success';
-    case 'archived': return 'outline';
-    case 'deprecated': return 'destructive';
-    default: return 'secondary';
+    case 'draft':
+      return 'secondary';
+    case 'in_review':
+      return 'warning';
+    case 'approved':
+      return 'success';
+    case 'published':
+      return 'success';
+    case 'archived':
+      return 'outline';
+    case 'deprecated':
+      return 'destructive';
+    default:
+      return 'secondary';
   }
 };
 
 const getTypeBadgeVariant = (type: string) => {
   switch (type) {
-    case 'cost_approach': return 'outline';
-    case 'sales_comparison': return 'default';
-    case 'income_approach': return 'secondary';
-    case 'hybrid': return 'warning';
-    case 'statistical': return 'destructive';
-    case 'specialized': return 'success';
-    default: return 'outline';
+    case 'cost_approach':
+      return 'outline';
+    case 'sales_comparison':
+      return 'default';
+    case 'income_approach':
+      return 'secondary';
+    case 'hybrid':
+      return 'warning';
+    case 'statistical':
+      return 'destructive';
+    case 'specialized':
+      return 'success';
+    default:
+      return 'outline';
   }
 };
 
@@ -60,16 +74,12 @@ const ViewModelDialog: React.FC<ViewModelDialogProps> = ({
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle>{model.name}</DialogTitle>
-          <DialogDescription>
-            Assessment model details
-          </DialogDescription>
+          <DialogDescription>Assessment model details</DialogDescription>
         </DialogHeader>
 
         <div className="py-4 space-y-4">
           <div className="flex flex-wrap gap-2 mb-2">
-            <Badge variant={getTypeBadgeVariant(model.type)}>
-              {model.type.replace('_', ' ')}
-            </Badge>
+            <Badge variant={getTypeBadgeVariant(model.type)}>{model.type.replace('_', ' ')}</Badge>
             <Badge variant={getStatusBadgeVariant(model.status)}>
               {model.status.replace('_', ' ')}
             </Badge>

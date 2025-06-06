@@ -1,6 +1,6 @@
 /**
  * Database Conversion Service Types
- * 
+ *
  * This file contains type definitions used throughout the database conversion service
  */
 
@@ -19,13 +19,13 @@ export enum DatabaseType {
   Neo4j = 'neo4j',
   Firestore = 'firestore',
   CosmosDB = 'cosmosdb',
-  Unknown = 'unknown'
+  Unknown = 'unknown',
 }
 
 export enum ConnectionStatus {
   Success = 'success',
   Failed = 'failed',
-  Pending = 'pending'
+  Pending = 'pending',
 }
 
 export enum ConversionStatus {
@@ -34,7 +34,7 @@ export enum ConversionStatus {
   Completed = 'completed',
   Failed = 'failed',
   Cancelled = 'cancelled',
-  Paused = 'paused'
+  Paused = 'paused',
 }
 
 export enum FieldType {
@@ -50,7 +50,7 @@ export enum FieldType {
   Array = 'array',
   Object = 'object',
   Enum = 'enum',
-  Unknown = 'unknown'
+  Unknown = 'unknown',
 }
 
 // Database connection test result

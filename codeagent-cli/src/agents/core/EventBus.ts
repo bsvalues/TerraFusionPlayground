@@ -1,6 +1,6 @@
 /**
  * EventBus.ts
- * 
+ *
  * Event bus for inter-agent communication
  */
 
@@ -46,7 +46,7 @@ export class EventBus extends EventEmitter {
   private eventHistory: AgentEvent[];
   private maxHistorySize: number;
   private logger: LogService;
-  
+
   /**
    * Private constructor (use getInstance)
    */
@@ -57,7 +57,7 @@ export class EventBus extends EventEmitter {
     this.maxHistorySize = 1000;
     this.logger = new LogService('EventBus');
   }
-  
+
   /**
    * Get singleton instance
    */
@@ -67,7 +67,7 @@ export class EventBus extends EventEmitter {
     }
     return EventBus.instance;
   }
-  
+
   /**
    * Publish an event to the bus
    * @param eventType Event type
@@ -76,9 +76,9 @@ export class EventBus extends EventEmitter {
    * @param metadata Optional event metadata
    */
   public publish(
-    eventType: string, 
-    source: string, 
-    payload: any, 
+    eventType: string,
+    source: string,
+    payload: any,
     metadata?: Record<string, any>
   ): string {
     // Create event object
@@ -88,28 +88,28 @@ export class EventBus extends EventEmitter {
       source,
       timestamp: new Date(),
       payload,
-      metadata
+      metadata,
     };
-    
+
     // Add to history
     this.eventHistory.push(event);
-    
+
     // Trim history if needed
     if (this.eventHistory.length > this.maxHistorySize) {
       this.eventHistory.shift();
     }
-    
+
     this.logger.debug(`Event published: ${eventType} from ${source}`);
-    
+
     // Emit to EventEmitter (more efficient than iterating subscriptions)
     this.emit(eventType, event);
-    
+
     // Also emit to wildcard listeners
     this.emit('*', event);
-    
+
     return event.id;
   }
-  
+
   /**
    * Subscribe to events
    * @param eventType Event type or '*' for all events
@@ -117,20 +117,20 @@ export class EventBus extends EventEmitter {
    * @param filter Optional filter function
    */
   public subscribe(
-    eventType: string | AgentEventType, 
+    eventType: string | AgentEventType,
     callback: EventCallback,
     filter?: (event: AgentEvent) => boolean
   ): string {
     const subscriptionId = uuidv4();
-    
+
     // Store subscription
     this.subscriptions.set(subscriptionId, {
       id: subscriptionId,
       eventType,
       callback,
-      filter
+      filter,
     });
-    
+
     // Add event listener
     if (eventType === '*') {
       // Wildcard listener
@@ -149,37 +149,37 @@ export class EventBus extends EventEmitter {
         }
       });
     }
-    
+
     this.logger.debug(`Subscription added: ${subscriptionId} for ${eventType}`);
-    
+
     return subscriptionId;
   }
-  
+
   /**
    * Unsubscribe from events
    * @param subscriptionId Subscription ID to remove
    */
   public unsubscribe(subscriptionId: string): boolean {
     const subscription = this.subscriptions.get(subscriptionId);
-    
+
     if (!subscription) {
       this.logger.warn(`Subscription not found: ${subscriptionId}`);
       return false;
     }
-    
+
     // Remove from subscriptions
     this.subscriptions.delete(subscriptionId);
-    
+
     // Remove specific listener
     // Note: This is a limitation of Node's EventEmitter
     // We can't easily remove a specific listener without a reference
     // A more complete implementation would maintain listeners separately
-    
+
     this.logger.debug(`Subscription removed: ${subscriptionId}`);
-    
+
     return true;
   }
-  
+
   /**
    * Handle callback execution
    * @param callback Callback to invoke
@@ -189,44 +189,44 @@ export class EventBus extends EventEmitter {
     try {
       // Execute callback
       const result = callback(event);
-      
+
       // Handle promise result
       if (result instanceof Promise) {
         result.catch(error => {
-          this.logger.error(`Error in event callback: ${error instanceof Error ? error.message : String(error)}`);
+          this.logger.error(
+            `Error in event callback: ${error instanceof Error ? error.message : String(error)}`
+          );
         });
       }
     } catch (error) {
-      this.logger.error(`Error in event callback: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `Error in event callback: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
-  
+
   /**
    * Get recent events
    * @param count Maximum number of events to return
    * @param eventType Optional event type filter
    * @param source Optional source filter
    */
-  public getRecentEvents(
-    count: number = 100, 
-    eventType?: string,
-    source?: string
-  ): AgentEvent[] {
+  public getRecentEvents(count: number = 100, eventType?: string, source?: string): AgentEvent[] {
     // Filter events
     let events = this.eventHistory;
-    
+
     if (eventType) {
       events = events.filter(event => event.type === eventType);
     }
-    
+
     if (source) {
       events = events.filter(event => event.source === source);
     }
-    
+
     // Get most recent events
     return events.slice(-Math.min(count, events.length));
   }
-  
+
   /**
    * Get event by ID
    * @param eventId Event ID
@@ -234,7 +234,7 @@ export class EventBus extends EventEmitter {
   public getEventById(eventId: string): AgentEvent | null {
     return this.eventHistory.find(event => event.id === eventId) || null;
   }
-  
+
   /**
    * Clear event history
    */
@@ -242,35 +242,35 @@ export class EventBus extends EventEmitter {
     this.eventHistory = [];
     this.logger.info('Event history cleared');
   }
-  
+
   /**
    * Set maximum history size
    * @param size Maximum number of events to keep
    */
   public setMaxHistorySize(size: number): void {
     this.maxHistorySize = size;
-    
+
     // Trim if needed
     if (this.eventHistory.length > size) {
       this.eventHistory = this.eventHistory.slice(-size);
     }
-    
+
     this.logger.info(`Max history size set to ${size}`);
   }
-  
+
   /**
    * Get all subscriptions
    */
-  public getSubscriptions(): Record<string, { eventType: string, hasFilter: boolean }> {
-    const result: Record<string, { eventType: string, hasFilter: boolean }> = {};
-    
+  public getSubscriptions(): Record<string, { eventType: string; hasFilter: boolean }> {
+    const result: Record<string, { eventType: string; hasFilter: boolean }> = {};
+
     for (const [id, subscription] of this.subscriptions.entries()) {
       result[id] = {
         eventType: subscription.eventType,
-        hasFilter: !!subscription.filter
+        hasFilter: !!subscription.filter,
       };
     }
-    
+
     return result;
   }
 }

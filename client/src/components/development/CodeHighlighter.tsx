@@ -1,6 +1,6 @@
 /**
  * Code Highlighter
- * 
+ *
  * This component renders code with syntax highlighting.
  */
 
@@ -11,15 +11,15 @@ import { cn } from '@/lib/utils';
 
 // Map of language codes to display names
 const languageDisplayNames: Record<string, string> = {
-  'typescript': 'TypeScript',
-  'javascript': 'JavaScript',
-  'python': 'Python',
-  'java': 'Java',
-  'csharp': 'C#',
-  'go': 'Go',
-  'sql': 'SQL',
-  'html': 'HTML',
-  'css': 'CSS'
+  typescript: 'TypeScript',
+  javascript: 'JavaScript',
+  python: 'Python',
+  java: 'Java',
+  csharp: 'C#',
+  go: 'Go',
+  sql: 'SQL',
+  html: 'HTML',
+  css: 'CSS',
 };
 
 interface CodeHighlighterProps {
@@ -37,21 +37,21 @@ export function CodeHighlighter({
   showLineNumbers = true,
   wrapLines = false,
   showCopyButton = true,
-  className = ''
+  className = '',
 }: CodeHighlighterProps) {
   const [copied, setCopied] = useState<boolean>(false);
-  
+
   // Reset the copied state after 2 seconds
   useEffect(() => {
     if (copied) {
       const timeout = setTimeout(() => {
         setCopied(false);
       }, 2000);
-      
+
       return () => clearTimeout(timeout);
     }
   }, [copied]);
-  
+
   // Copy code to clipboard
   const copyToClipboard = async () => {
     try {
@@ -61,32 +61,22 @@ export function CodeHighlighter({
       console.error('Failed to copy code:', error);
     }
   };
-  
+
   // Format display language name
   const getDisplayLanguage = (lang: string): string => {
     return languageDisplayNames[lang] || lang;
   };
-  
+
   // Split code into lines for line numbering
   const codeLines = code.split('\n');
 
   return (
-    <div className={cn(
-      'rounded-md border bg-muted/50',
-      className
-    )}>
+    <div className={cn('rounded-md border bg-muted/50', className)}>
       <div className="flex items-center justify-between px-4 py-2 border-b bg-muted">
-        <span className="text-sm font-medium">
-          {getDisplayLanguage(language)}
-        </span>
-        
+        <span className="text-sm font-medium">{getDisplayLanguage(language)}</span>
+
         {showCopyButton && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={copyToClipboard}
-            className="h-8 px-2"
-          >
+          <Button variant="ghost" size="sm" onClick={copyToClipboard} className="h-8 px-2">
             {copied ? (
               <>
                 <Check className="h-4 w-4 mr-1" />
@@ -101,11 +91,10 @@ export function CodeHighlighter({
           </Button>
         )}
       </div>
-      
-      <div className={cn(
-        'p-4 font-mono text-sm overflow-x-auto',
-        wrapLines && 'whitespace-pre-wrap'
-      )}>
+
+      <div
+        className={cn('p-4 font-mono text-sm overflow-x-auto', wrapLines && 'whitespace-pre-wrap')}
+      >
         {showLineNumbers ? (
           <table className="border-collapse w-full">
             <tbody>
@@ -114,7 +103,7 @@ export function CodeHighlighter({
                   <td className="text-right pr-4 select-none opacity-50 border-r w-[1%] whitespace-nowrap">
                     {i + 1}
                   </td>
-                  <td className={cn("pl-4", wrapLines ? "break-all" : "whitespace-pre")}>
+                  <td className={cn('pl-4', wrapLines ? 'break-all' : 'whitespace-pre')}>
                     {line || ' '}
                   </td>
                 </tr>
@@ -122,7 +111,7 @@ export function CodeHighlighter({
             </tbody>
           </table>
         ) : (
-          <pre className={cn("p-0 m-0", wrapLines ? "whitespace-pre-wrap" : "whitespace-pre")}>
+          <pre className={cn('p-0 m-0', wrapLines ? 'whitespace-pre-wrap' : 'whitespace-pre')}>
             {code}
           </pre>
         )}

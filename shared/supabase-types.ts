@@ -1,17 +1,11 @@
 /**
  * Supabase Types
- * 
+ *
  * This file contains TypeScript types for the Supabase database schema.
  * These types help provide type safety when interacting with the database.
  */
 
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export interface Database {
   public: {

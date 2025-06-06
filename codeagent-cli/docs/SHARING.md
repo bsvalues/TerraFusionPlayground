@@ -106,6 +106,7 @@ codeagent share snippet <id> --open
 Share an existing snippet from your library.
 
 Options:
+
 - `-e, --expiry <hours>`: Set an expiry time in hours
 - `-m, --max-access <count>`: Set maximum number of accesses
 - `-p, --password`: Protect with a password
@@ -119,6 +120,7 @@ Options:
 Share code directly from file or clipboard.
 
 Options:
+
 - `-f, --file <path>`: Read code from file
 - `-n, --name <name>`: Set a name for the shared code
 - `-d, --description <description>`: Set a description
@@ -142,6 +144,7 @@ Revoke a shared snippet.
 Clean up expired shared snippets.
 
 Options:
+
 - `-f, --force`: Skip confirmation
 
 ## Best Practices

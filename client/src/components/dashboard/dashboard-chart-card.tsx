@@ -24,7 +24,7 @@ export interface DashboardChartCardProps {
 
 /**
  * Dashboard Chart Card Component
- * 
+ *
  * A specialized card for displaying charts and visualizations
  */
 export const DashboardChartCard = ({
@@ -51,31 +51,16 @@ export const DashboardChartCard = ({
   };
 
   return (
-    <TFCard 
-      className={cn(
-        'overflow-hidden',
-        getCardBackground(),
-        className
-      )}
-      onClick={onClick}
-    >
+    <TFCard className={cn('overflow-hidden', getCardBackground(), className)} onClick={onClick}>
       <div className="flex flex-col">
         <div className="flex items-center justify-between gap-2 border-b border-slate-700/30 p-4">
           <div>
             <h3 className="font-medium text-card-foreground">{title}</h3>
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
+            {description && <p className="text-xs text-muted-foreground">{description}</p>}
           </div>
-          {headerActions && (
-            <div className="flex items-center gap-2">
-              {headerActions}
-            </div>
-          )}
+          {headerActions && <div className="flex items-center gap-2">{headerActions}</div>}
         </div>
-        <div className="p-1">
-          {children}
-        </div>
+        <div className="p-1">{children}</div>
       </div>
     </TFCard>
   );
@@ -83,7 +68,7 @@ export const DashboardChartCard = ({
 
 /**
  * AI Dashboard Chart Card Component
- * 
+ *
  * A specialized card for AI-related visualizations with a slightly different styling
  */
 export const AIDashboardChartCard = (props: DashboardChartCardProps) => {

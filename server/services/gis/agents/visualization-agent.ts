@@ -1,6 +1,6 @@
 /**
  * Visualization Agent
- * 
+ *
  * This agent is responsible for dynamically generating and rendering layers,
  * managing the visualization stack, and ensuring smooth stacking and rendering
  * of multiple layers, including the Venn diagram effect.
@@ -19,7 +19,7 @@ import { db } from '../../../db';
 export function createVisualizationAgent(storage: IStorage) {
   // Generate a unique ID for this agent instance
   const agentId = `visualization-agent-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`;
-  
+
   return new VisualizationAgent(storage, agentId);
 }
 
@@ -31,20 +31,20 @@ class VisualizationAgent extends BaseGISAgent {
       color: '#fff',
       weight: 1,
       opacity: 1,
-      fillOpacity: 0.8
+      fillOpacity: 0.8,
     },
     line: {
       color: '#3388ff',
       weight: 3,
-      opacity: 1
+      opacity: 1,
     },
     polygon: {
       fillColor: '#3388ff',
       color: '#3388ff',
       weight: 2,
       opacity: 1,
-      fillOpacity: 0.6
-    }
+      fillOpacity: 0.6,
+    },
   };
 
   constructor(storage: IStorage, agentId: string) {
@@ -54,11 +54,11 @@ class VisualizationAgent extends BaseGISAgent {
       name: 'Visualization Agent',
       description: 'Manages dynamic layer rendering and visualization effects',
       capabilities: [],
-      permissions: ['gis:read', 'gis:write', 'gis:visualize']
+      permissions: ['gis:read', 'gis:write', 'gis:visualize'],
     };
-    
+
     super(storage, config);
-    
+
     // Now add the capabilities after super() has been called
     this.config.capabilities = [
       {
@@ -66,18 +66,18 @@ class VisualizationAgent extends BaseGISAgent {
         description: 'Generate a complete map visualization with multiple layers',
         parameters: {
           projectId: { type: 'number', description: 'ID of the map project' },
-          options: { type: 'object', optional: true, description: 'Visualization options' }
+          options: { type: 'object', optional: true, description: 'Visualization options' },
         },
-        handler: this.generateMapVisualization.bind(this)
+        handler: this.generateMapVisualization.bind(this),
       },
       {
         name: 'applyLayerStyle',
         description: 'Apply a style to a GIS layer',
         parameters: {
           layerId: { type: 'number', description: 'ID of the layer to style' },
-          style: { type: 'object', description: 'Style properties to apply' }
+          style: { type: 'object', description: 'Style properties to apply' },
         },
-        handler: this.applyLayerStyle.bind(this)
+        handler: this.applyLayerStyle.bind(this),
       },
       {
         name: 'createThematicLayer',
@@ -85,29 +85,45 @@ class VisualizationAgent extends BaseGISAgent {
         parameters: {
           layerId: { type: 'number', description: 'ID of the base layer' },
           attribute: { type: 'string', description: 'Attribute to use for theming' },
-          method: { type: 'string', enum: ['categorized', 'graduated', 'heatmap', 'choropleth'], description: 'Thematic mapping method' },
-          options: { type: 'object', optional: true, description: 'Additional styling options' }
+          method: {
+            type: 'string',
+            enum: ['categorized', 'graduated', 'heatmap', 'choropleth'],
+            description: 'Thematic mapping method',
+          },
+          options: { type: 'object', optional: true, description: 'Additional styling options' },
         },
-        handler: this.createThematicLayer.bind(this)
+        handler: this.createThematicLayer.bind(this),
       },
       {
         name: 'createLayerGroup',
         description: 'Create a group of layers with synchronized visualization',
         parameters: {
-          layerIds: { type: 'array', items: { type: 'number' }, description: 'IDs of layers to group' },
-          groupOptions: { type: 'object', optional: true, description: 'Group configuration options' }
+          layerIds: {
+            type: 'array',
+            items: { type: 'number' },
+            description: 'IDs of layers to group',
+          },
+          groupOptions: {
+            type: 'object',
+            optional: true,
+            description: 'Group configuration options',
+          },
         },
-        handler: this.createLayerGroup.bind(this)
+        handler: this.createLayerGroup.bind(this),
       },
       {
         name: 'generateVennDiagramLayers',
         description: 'Generate layers for a spatial Venn diagram visualization',
         parameters: {
-          layerIds: { type: 'array', items: { type: 'number' }, description: 'IDs of layers to use in the Venn diagram' },
-          options: { type: 'object', optional: true, description: 'Venn diagram options' }
+          layerIds: {
+            type: 'array',
+            items: { type: 'number' },
+            description: 'IDs of layers to use in the Venn diagram',
+          },
+          options: { type: 'object', optional: true, description: 'Venn diagram options' },
         },
-        handler: this.generateVennDiagramLayers.bind(this)
-      }
+        handler: this.generateVennDiagramLayers.bind(this),
+      },
     ];
   }
 
@@ -117,14 +133,14 @@ class VisualizationAgent extends BaseGISAgent {
   public async initialize(): Promise<void> {
     try {
       await this.baseInitialize();
-      
+
       // Log the initialization
       await this.createAgentMessage({
         type: 'INFO',
         content: `Agent ${this.name} (${this.agentId}) initialized`,
-        agentId: this.agentId
+        agentId: this.agentId,
       });
-      
+
       console.log(`Visualization Agent (${this.agentId}) initialized successfully`);
     } catch (error) {
       console.error(`Error initializing Visualization Agent:`, error);
@@ -138,56 +154,58 @@ class VisualizationAgent extends BaseGISAgent {
   private async generateMapVisualization(params: any): Promise<any> {
     try {
       const { projectId, options = {} } = params;
-      
+
       // Validate parameters
       if (!projectId) {
         throw new Error('Project ID is required');
       }
-      
+
       // Get the map project
       const project = await this.storage.getGISMapProject(projectId);
-      
+
       if (!project) {
         throw new Error(`Map project with ID ${projectId} not found`);
       }
-      
+
       // Log the operation
       await this.createAgentMessage({
         type: 'INFO',
         content: `Generating map visualization for project ${project.name}`,
         agentId: this.agentId,
-        metadata: { projectId, options }
+        metadata: { projectId, options },
       });
-      
+
       // Get all layers in the project
       const layers = await this.storage.getGISLayersByProject(projectId);
-      
+
       if (!layers || layers.length === 0) {
         throw new Error(`No layers found for project ${projectId}`);
       }
-      
+
       // Process each layer to prepare visualization data
-      const visualizationLayers = await Promise.all(layers.map(async (layer) => {
-        // Get layer style or use default style based on geometry type
-        const style = layer.style || this.getDefaultStyle(layer.geometry_type);
-        
-        // Process layer based on its type
-        return {
-          id: layer.id,
-          name: layer.name,
-          type: layer.layer_type,
-          geometryType: layer.geometry_type,
-          tableName: layer.table_name,
-          visible: layer.visible,
-          style,
-          metadata: layer.metadata,
-          order: layer.display_order
-        };
-      }));
-      
+      const visualizationLayers = await Promise.all(
+        layers.map(async layer => {
+          // Get layer style or use default style based on geometry type
+          const style = layer.style || this.getDefaultStyle(layer.geometry_type);
+
+          // Process layer based on its type
+          return {
+            id: layer.id,
+            name: layer.name,
+            type: layer.layer_type,
+            geometryType: layer.geometry_type,
+            tableName: layer.table_name,
+            visible: layer.visible,
+            style,
+            metadata: layer.metadata,
+            order: layer.display_order,
+          };
+        })
+      );
+
       // Sort layers by display order
       visualizationLayers.sort((a, b) => (a.order || 0) - (b.order || 0));
-      
+
       // Generate visualization settings
       const visualizationSettings = {
         center: project.center_point ? JSON.parse(project.center_point) : [0, 0],
@@ -195,9 +213,9 @@ class VisualizationAgent extends BaseGISAgent {
         basemap: project.basemap || 'osm',
         projection: project.projection || 'EPSG:3857',
         maxBounds: project.bounds ? JSON.parse(project.bounds) : null,
-        backgroundColor: options.backgroundColor || project.background_color || '#ffffff'
+        backgroundColor: options.backgroundColor || project.background_color || '#ffffff',
       };
-      
+
       return {
         success: true,
         projectId,
@@ -208,20 +226,20 @@ class VisualizationAgent extends BaseGISAgent {
         metadata: {
           layerCount: visualizationLayers.length,
           operation: 'generate_map_visualization',
-          timestamp: new Date()
-        }
+          timestamp: new Date(),
+        },
       };
     } catch (error) {
       console.error(`Error in generateMapVisualization:`, error);
-      
+
       // Log the error
       await this.createAgentMessage({
         type: 'ERROR',
         content: `Error generating map visualization: ${error.message}`,
         agentId: this.agentId,
-        metadata: { error: error.message, params }
+        metadata: { error: error.message, params },
       });
-      
+
       throw error;
     }
   }
@@ -232,36 +250,36 @@ class VisualizationAgent extends BaseGISAgent {
   private async applyLayerStyle(params: any): Promise<any> {
     try {
       const { layerId, style } = params;
-      
+
       // Validate parameters
       if (!layerId || !style || typeof style !== 'object') {
         throw new Error('Layer ID and style object are required');
       }
-      
+
       // Get the layer
       const layer = await this.storage.getGISLayer(layerId);
-      
+
       if (!layer) {
         throw new Error(`Layer with ID ${layerId} not found`);
       }
-      
+
       // Log the operation
       await this.createAgentMessage({
         type: 'INFO',
         content: `Applying style to layer ${layer.name}`,
         agentId: this.agentId,
-        metadata: { layerId, style }
+        metadata: { layerId, style },
       });
-      
+
       // Validate style based on geometry type
       this.validateStyleForGeometryType(style, layer.geometry_type);
-      
+
       // Update the layer with the new style
       const updatedLayer = await this.storage.updateGISLayer(layerId, {
         style: JSON.stringify(style),
-        updated_at: new Date()
+        updated_at: new Date(),
       });
-      
+
       return {
         success: true,
         message: `Successfully applied style to layer ${layer.name}`,
@@ -270,20 +288,20 @@ class VisualizationAgent extends BaseGISAgent {
         style,
         metadata: {
           operation: 'apply_layer_style',
-          timestamp: new Date()
-        }
+          timestamp: new Date(),
+        },
       };
     } catch (error) {
       console.error(`Error in applyLayerStyle:`, error);
-      
+
       // Log the error
       await this.createAgentMessage({
         type: 'ERROR',
         content: `Error applying layer style: ${error.message}`,
         agentId: this.agentId,
-        metadata: { error: error.message, params }
+        metadata: { error: error.message, params },
       });
-      
+
       throw error;
     }
   }
@@ -294,34 +312,34 @@ class VisualizationAgent extends BaseGISAgent {
   private async createThematicLayer(params: any): Promise<any> {
     try {
       const { layerId, attribute, method, options = {} } = params;
-      
+
       // Validate parameters
       if (!layerId || !attribute || !method) {
         throw new Error('Layer ID, attribute, and method are required');
       }
-      
+
       // Get the layer
       const layer = await this.storage.getGISLayer(layerId);
-      
+
       if (!layer) {
         throw new Error(`Layer with ID ${layerId} not found`);
       }
-      
+
       // Log the operation
       await this.createAgentMessage({
         type: 'INFO',
         content: `Creating ${method} thematic layer based on ${layer.name} using attribute ${attribute}`,
         agentId: this.agentId,
-        metadata: { layerId, attribute, method, options }
+        metadata: { layerId, attribute, method, options },
       });
-      
+
       // Get attribute statistics for the layer
       const stats = await this.getAttributeStatistics(layer.table_name, attribute);
-      
+
       if (!stats) {
         throw new Error(`Failed to get statistics for attribute ${attribute}`);
       }
-      
+
       // Generate theme settings based on the method
       let themeSettings;
       switch (method) {
@@ -340,7 +358,7 @@ class VisualizationAgent extends BaseGISAgent {
         default:
           throw new Error(`Unsupported thematic method: ${method}`);
       }
-      
+
       // Create a new derived layer with the theme settings
       const newLayerData = {
         name: `${layer.name} - ${method} by ${attribute}`,
@@ -357,20 +375,20 @@ class VisualizationAgent extends BaseGISAgent {
           thematic: {
             method,
             attribute,
-            settings: themeSettings.settings
+            settings: themeSettings.settings,
           },
           parentLayer: {
             id: layerId,
-            name: layer.name
-          }
+            name: layer.name,
+          },
         }),
         created_at: new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
       };
-      
+
       // Create the new layer
       const newLayer = await this.storage.createGISLayer(newLayerData);
-      
+
       return {
         success: true,
         message: `Successfully created ${method} thematic layer based on ${layer.name}`,
@@ -382,20 +400,20 @@ class VisualizationAgent extends BaseGISAgent {
         themeSettings,
         metadata: {
           operation: 'create_thematic_layer',
-          timestamp: new Date()
-        }
+          timestamp: new Date(),
+        },
       };
     } catch (error) {
       console.error(`Error in createThematicLayer:`, error);
-      
+
       // Log the error
       await this.createAgentMessage({
         type: 'ERROR',
         content: `Error creating thematic layer: ${error.message}`,
         agentId: this.agentId,
-        metadata: { error: error.message, params }
+        metadata: { error: error.message, params },
       });
-      
+
       throw error;
     }
   }
@@ -406,44 +424,44 @@ class VisualizationAgent extends BaseGISAgent {
   private async createLayerGroup(params: any): Promise<any> {
     try {
       const { layerIds, groupOptions = {} } = params;
-      
+
       // Validate parameters
       if (!layerIds || !Array.isArray(layerIds) || layerIds.length === 0) {
         throw new Error('At least one layer ID is required');
       }
-      
+
       // Get the layers
       const layers = await Promise.all(layerIds.map(id => this.storage.getGISLayer(id)));
-      
+
       // Filter out any null values (layers that don't exist)
       const validLayers = layers.filter(layer => layer !== null && layer !== undefined);
-      
+
       if (validLayers.length === 0) {
         throw new Error('None of the specified layers exist');
       }
-      
+
       // Log the operation
       await this.createAgentMessage({
         type: 'INFO',
         content: `Creating layer group with ${validLayers.length} layers`,
         agentId: this.agentId,
-        metadata: { layerIds, groupOptions }
+        metadata: { layerIds, groupOptions },
       });
-      
+
       // Ensure all layers belong to the same project
       const projectIds = new Set(validLayers.map(layer => layer.project_id));
       if (projectIds.size > 1) {
         throw new Error('All layers in a group must belong to the same project');
       }
-      
+
       // Get the project
       const projectId = validLayers[0].project_id;
       const project = await this.storage.getGISMapProject(projectId);
-      
+
       if (!project) {
         throw new Error(`Project with ID ${projectId} not found`);
       }
-      
+
       // Create the layer group
       const layerGroup = {
         name: groupOptions.name || `Layer Group ${Date.now()}`,
@@ -455,12 +473,12 @@ class VisualizationAgent extends BaseGISAgent {
         group_type: groupOptions.groupType || 'standard',
         metadata: JSON.stringify(groupOptions.metadata || {}),
         created_at: new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
       };
-      
+
       // Create the group in storage
       const createdGroup = await this.storage.createGISLayerGroup(layerGroup);
-      
+
       return {
         success: true,
         message: `Successfully created layer group ${layerGroup.name}`,
@@ -472,20 +490,20 @@ class VisualizationAgent extends BaseGISAgent {
         layerNames: validLayers.map(layer => layer.name),
         metadata: {
           operation: 'create_layer_group',
-          timestamp: new Date()
-        }
+          timestamp: new Date(),
+        },
       };
     } catch (error) {
       console.error(`Error in createLayerGroup:`, error);
-      
+
       // Log the error
       await this.createAgentMessage({
         type: 'ERROR',
         content: `Error creating layer group: ${error.message}`,
         agentId: this.agentId,
-        metadata: { error: error.message, params }
+        metadata: { error: error.message, params },
       });
-      
+
       throw error;
     }
   }
@@ -496,105 +514,108 @@ class VisualizationAgent extends BaseGISAgent {
   private async generateVennDiagramLayers(params: any): Promise<any> {
     try {
       const { layerIds, options = {} } = params;
-      
+
       // Validate parameters
       if (!layerIds || !Array.isArray(layerIds) || layerIds.length < 2) {
         throw new Error('At least two layer IDs are required for a Venn diagram');
       }
-      
+
       if (layerIds.length > 3) {
         throw new Error('A maximum of three layers is supported for Venn diagrams');
       }
-      
+
       // Get the layers
       const layers = await Promise.all(layerIds.map(id => this.storage.getGISLayer(id)));
-      
+
       // Filter out any null values (layers that don't exist)
       const validLayers = layers.filter(layer => layer !== null && layer !== undefined);
-      
+
       if (validLayers.length < 2) {
         throw new Error('At least two valid layers are required for a Venn diagram');
       }
-      
+
       // Log the operation
       await this.createAgentMessage({
         type: 'INFO',
         content: `Generating spatial Venn diagram for ${validLayers.length} layers`,
         agentId: this.agentId,
-        metadata: { layerIds, options }
+        metadata: { layerIds, options },
       });
-      
+
       // Ensure all layers belong to the same project
       const projectIds = new Set(validLayers.map(layer => layer.project_id));
       if (projectIds.size > 1) {
         throw new Error('All layers in a Venn diagram must belong to the same project');
       }
-      
+
       // Ensure all layers have polygon geometry
       for (const layer of validLayers) {
         if (layer.geometry_type !== 'Polygon' && layer.geometry_type !== 'MultiPolygon') {
-          throw new Error(`Layer ${layer.name} has geometry type ${layer.geometry_type}, but Venn diagrams require Polygon or MultiPolygon geometry`);
+          throw new Error(
+            `Layer ${layer.name} has geometry type ${layer.geometry_type}, but Venn diagrams require Polygon or MultiPolygon geometry`
+          );
         }
       }
-      
+
       // Get the project
       const projectId = validLayers[0].project_id;
       const project = await this.storage.getGISMapProject(projectId);
-      
+
       if (!project) {
         throw new Error(`Project with ID ${projectId} not found`);
       }
-      
+
       // Generate Venn diagram layers
       const vennLayers = [];
-      const intersectionStyles = options.intersectionStyles || this.generateVennDiagramStyles(validLayers.length);
-      
+      const intersectionStyles =
+        options.intersectionStyles || this.generateVennDiagramStyles(validLayers.length);
+
       // Create intersection layers
       const layerA = validLayers[0];
       const layerB = validLayers[1];
-      
+
       // A ∩ B (intersection of layers A and B)
       const intersectionAB = await this.createIntersectionLayer(
-        layerA, 
-        layerB, 
-        `${layerA.name} ∩ ${layerB.name}`, 
+        layerA,
+        layerB,
+        `${layerA.name} ∩ ${layerB.name}`,
         intersectionStyles.ab
       );
       vennLayers.push(intersectionAB);
-      
+
       // If we have a third layer, create additional intersections
       if (validLayers.length === 3) {
         const layerC = validLayers[2];
-        
+
         // A ∩ C (intersection of layers A and C)
         const intersectionAC = await this.createIntersectionLayer(
-          layerA, 
-          layerC, 
-          `${layerA.name} ∩ ${layerC.name}`, 
+          layerA,
+          layerC,
+          `${layerA.name} ∩ ${layerC.name}`,
           intersectionStyles.ac
         );
         vennLayers.push(intersectionAC);
-        
+
         // B ∩ C (intersection of layers B and C)
         const intersectionBC = await this.createIntersectionLayer(
-          layerB, 
-          layerC, 
-          `${layerB.name} ∩ ${layerC.name}`, 
+          layerB,
+          layerC,
+          `${layerB.name} ∩ ${layerC.name}`,
           intersectionStyles.bc
         );
         vennLayers.push(intersectionBC);
-        
+
         // A ∩ B ∩ C (intersection of all three layers)
         const intersectionABC = await this.createTripleIntersectionLayer(
-          layerA, 
-          layerB, 
-          layerC, 
-          `${layerA.name} ∩ ${layerB.name} ∩ ${layerC.name}`, 
+          layerA,
+          layerB,
+          layerC,
+          `${layerA.name} ∩ ${layerB.name} ∩ ${layerC.name}`,
           intersectionStyles.abc
         );
         vennLayers.push(intersectionABC);
       }
-      
+
       // Create a layer group for the Venn diagram
       const vennGroupName = options.groupName || `Venn Diagram ${Date.now()}`;
       const layerGroup = {
@@ -608,17 +629,17 @@ class VisualizationAgent extends BaseGISAgent {
         metadata: JSON.stringify({
           vennDiagram: {
             sourceLayers: validLayers.map(l => ({ id: l.id, name: l.name })),
-            intersectionStyles
+            intersectionStyles,
           },
-          ...options.metadata || {}
+          ...(options.metadata || {}),
         }),
         created_at: new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
       };
-      
+
       // Create the group in storage
       const createdGroup = await this.storage.createGISLayerGroup(layerGroup);
-      
+
       return {
         success: true,
         message: `Successfully created Venn diagram layers and group "${vennGroupName}"`,
@@ -627,23 +648,27 @@ class VisualizationAgent extends BaseGISAgent {
         projectId,
         projectName: project.name,
         sourceLayers: validLayers.map(layer => ({ id: layer.id, name: layer.name })),
-        vennLayers: vennLayers.map(layer => ({ id: layer.id, name: layer.name, type: layer.layer_type })),
+        vennLayers: vennLayers.map(layer => ({
+          id: layer.id,
+          name: layer.name,
+          type: layer.layer_type,
+        })),
         metadata: {
           operation: 'generate_venn_diagram_layers',
-          timestamp: new Date()
-        }
+          timestamp: new Date(),
+        },
       };
     } catch (error) {
       console.error(`Error in generateVennDiagramLayers:`, error);
-      
+
       // Log the error
       await this.createAgentMessage({
         type: 'ERROR',
         content: `Error generating Venn diagram layers: ${error.message}`,
         agentId: this.agentId,
-        metadata: { error: error.message, params }
+        metadata: { error: error.message, params },
       });
-      
+
       throw error;
     }
   }
@@ -655,7 +680,7 @@ class VisualizationAgent extends BaseGISAgent {
     if (!geometryType) {
       return this.DEFAULT_STYLES.polygon;
     }
-    
+
     switch (geometryType.toLowerCase()) {
       case 'point':
       case 'multipoint':
@@ -677,11 +702,11 @@ class VisualizationAgent extends BaseGISAgent {
   private validateStyleForGeometryType(style: any, geometryType: string): void {
     // Basic validation to ensure style properties make sense for the geometry type
     // This could be expanded with more detailed checks
-    
+
     if (!geometryType) {
       return;
     }
-    
+
     switch (geometryType.toLowerCase()) {
       case 'point':
       case 'multipoint':
@@ -690,7 +715,7 @@ class VisualizationAgent extends BaseGISAgent {
           throw new Error('Point style "radius" must be a number');
         }
         break;
-        
+
       case 'linestring':
       case 'multilinestring':
         // Lines should have weight/width
@@ -698,7 +723,7 @@ class VisualizationAgent extends BaseGISAgent {
           throw new Error('Line style "weight" must be a number');
         }
         break;
-        
+
       case 'polygon':
       case 'multipolygon':
         // Polygons should have fillColor and fillOpacity
@@ -728,26 +753,27 @@ class VisualizationAgent extends BaseGISAgent {
         FROM ${sql.identifier(tableName)}
         WHERE ${sql.raw(attribute)} IS NOT NULL
       `);
-      
+
       if (!result.rows || result.rows.length === 0) {
         return null;
       }
-      
+
       const stats = result.rows[0];
-      
+
       // Get the unique values if needed
       let uniqueValues = [];
-      if (stats.unique_count < 20) {  // Only get unique values if there aren't too many
+      if (stats.unique_count < 20) {
+        // Only get unique values if there aren't too many
         const uniqueResult = await db.execute(sql`
           SELECT DISTINCT ${sql.raw(attribute)} AS value
           FROM ${sql.identifier(tableName)}
           WHERE ${sql.raw(attribute)} IS NOT NULL
           ORDER BY ${sql.raw(attribute)}
         `);
-        
+
         uniqueValues = uniqueResult.rows.map(row => row.value);
       }
-      
+
       // Determine data type
       let dataType = 'string';
       if (!isNaN(parseFloat(stats.min_val)) && !isNaN(parseFloat(stats.max_val))) {
@@ -755,7 +781,7 @@ class VisualizationAgent extends BaseGISAgent {
       } else if (stats.min_val instanceof Date && stats.max_val instanceof Date) {
         dataType = 'date';
       }
-      
+
       return {
         attribute,
         dataType,
@@ -764,7 +790,7 @@ class VisualizationAgent extends BaseGISAgent {
         average: stats.avg_val,
         count: stats.count_val,
         uniqueCount: stats.unique_count,
-        uniqueValues
+        uniqueValues,
       };
     } catch (error) {
       console.error(`Error getting attribute statistics:`, error);
@@ -777,37 +803,48 @@ class VisualizationAgent extends BaseGISAgent {
    */
   private generateCategorizedTheme(stats: any, options: any): any {
     const { attribute, uniqueValues, dataType } = stats;
-    
+
     // Generate a color for each unique value
     const categories = [];
-    const colorScheme = options.colorScheme || ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'];
-    
+    const colorScheme = options.colorScheme || [
+      '#1f77b4',
+      '#ff7f0e',
+      '#2ca02c',
+      '#d62728',
+      '#9467bd',
+      '#8c564b',
+      '#e377c2',
+      '#7f7f7f',
+      '#bcbd22',
+      '#17becf',
+    ];
+
     uniqueValues.forEach((value, index) => {
       categories.push({
         value,
         color: colorScheme[index % colorScheme.length],
-        label: options.labels ? options.labels[index] : String(value)
+        label: options.labels ? options.labels[index] : String(value),
       });
     });
-    
+
     // Create a style function based on categories
     const styleFunction = {
       type: 'categorized',
       attribute,
-      categories
+      categories,
     };
-    
+
     return {
       style: {
         type: 'function',
-        function: styleFunction
+        function: styleFunction,
       },
       settings: {
         attribute,
         dataType,
         categories,
-        defaultColor: options.defaultColor || '#cccccc'
-      }
+        defaultColor: options.defaultColor || '#cccccc',
+      },
     };
   }
 
@@ -816,32 +853,40 @@ class VisualizationAgent extends BaseGISAgent {
    */
   private generateGraduatedTheme(stats: any, options: any): any {
     const { attribute, min, max, dataType } = stats;
-    
+
     if (dataType !== 'number') {
       throw new Error('Graduated themes can only be applied to numeric attributes');
     }
-    
+
     // Determine classification method and classes
     const method = options.method || 'equal_interval';
     const classCount = options.classCount || 5;
-    
+
     // Generate classes based on method
     let classes = [];
-    const colorScheme = options.colorScheme || ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20', '#bd0026'];
-    
+    const colorScheme = options.colorScheme || [
+      '#ffffb2',
+      '#fecc5c',
+      '#fd8d3c',
+      '#f03b20',
+      '#bd0026',
+    ];
+
     // Different classification methods (simple implementation)
     if (method === 'equal_interval') {
       const interval = (max - min) / classCount;
-      
+
       for (let i = 0; i < classCount; i++) {
-        const lowerBound = min + (i * interval);
-        const upperBound = min + ((i + 1) * interval);
-        
+        const lowerBound = min + i * interval;
+        const upperBound = min + (i + 1) * interval;
+
         classes.push({
           lowerBound,
           upperBound: i === classCount - 1 ? max : upperBound,
           color: colorScheme[i % colorScheme.length],
-          label: options.labels ? options.labels[i] : `${lowerBound.toFixed(2)} - ${upperBound.toFixed(2)}`
+          label: options.labels
+            ? options.labels[i]
+            : `${lowerBound.toFixed(2)} - ${upperBound.toFixed(2)}`,
         });
       }
     } else if (method === 'quantile') {
@@ -849,32 +894,44 @@ class VisualizationAgent extends BaseGISAgent {
       // This is a placeholder for demonstration
       classes = [
         { lowerBound: min, upperBound: min + (max - min) * 0.2, color: colorScheme[0] },
-        { lowerBound: min + (max - min) * 0.2, upperBound: min + (max - min) * 0.4, color: colorScheme[1] },
-        { lowerBound: min + (max - min) * 0.4, upperBound: min + (max - min) * 0.6, color: colorScheme[2] },
-        { lowerBound: min + (max - min) * 0.6, upperBound: min + (max - min) * 0.8, color: colorScheme[3] },
-        { lowerBound: min + (max - min) * 0.8, upperBound: max, color: colorScheme[4] }
+        {
+          lowerBound: min + (max - min) * 0.2,
+          upperBound: min + (max - min) * 0.4,
+          color: colorScheme[1],
+        },
+        {
+          lowerBound: min + (max - min) * 0.4,
+          upperBound: min + (max - min) * 0.6,
+          color: colorScheme[2],
+        },
+        {
+          lowerBound: min + (max - min) * 0.6,
+          upperBound: min + (max - min) * 0.8,
+          color: colorScheme[3],
+        },
+        { lowerBound: min + (max - min) * 0.8, upperBound: max, color: colorScheme[4] },
       ];
     }
-    
+
     // Create a style function based on classes
     const styleFunction = {
       type: 'graduated',
       attribute,
-      classes
+      classes,
     };
-    
+
     return {
       style: {
         type: 'function',
-        function: styleFunction
+        function: styleFunction,
       },
       settings: {
         attribute,
         dataType,
         method,
         classes,
-        defaultColor: options.defaultColor || '#cccccc'
-      }
+        defaultColor: options.defaultColor || '#cccccc',
+      },
     };
   }
 
@@ -883,7 +940,7 @@ class VisualizationAgent extends BaseGISAgent {
    */
   private generateHeatmapTheme(stats: any, options: any): any {
     const { attribute } = stats;
-    
+
     // Heatmap settings
     const heatmapSettings = {
       radius: options.radius || 25,
@@ -893,28 +950,28 @@ class VisualizationAgent extends BaseGISAgent {
         0.6: 'cyan',
         0.7: 'lime',
         0.8: 'yellow',
-        1.0: 'red'
+        1.0: 'red',
       },
       minOpacity: options.minOpacity || 0.05,
-      maxZoom: options.maxZoom || 18
+      maxZoom: options.maxZoom || 18,
     };
-    
+
     // Create a style function for heatmap
     const styleFunction = {
       type: 'heatmap',
       attribute,
-      settings: heatmapSettings
+      settings: heatmapSettings,
     };
-    
+
     return {
       style: {
         type: 'function',
-        function: styleFunction
+        function: styleFunction,
       },
       settings: {
         attribute,
-        heatmap: heatmapSettings
-      }
+        heatmap: heatmapSettings,
+      },
     };
   }
 
@@ -923,42 +980,50 @@ class VisualizationAgent extends BaseGISAgent {
    */
   private generateChoroplethTheme(stats: any, options: any): any {
     const { attribute, min, max, dataType } = stats;
-    
+
     if (dataType !== 'number') {
       throw new Error('Choropleth themes can only be applied to numeric attributes');
     }
-    
+
     // Choropleth settings (similar to graduated, but specifically for polygons)
     const classCount = options.classCount || 5;
-    const colorScheme = options.colorScheme || ['#eff3ff', '#bdd7e7', '#6baed6', '#3182bd', '#08519c'];
-    
+    const colorScheme = options.colorScheme || [
+      '#eff3ff',
+      '#bdd7e7',
+      '#6baed6',
+      '#3182bd',
+      '#08519c',
+    ];
+
     // Generate classes
     const interval = (max - min) / classCount;
     const classes = [];
-    
+
     for (let i = 0; i < classCount; i++) {
-      const lowerBound = min + (i * interval);
-      const upperBound = min + ((i + 1) * interval);
-      
+      const lowerBound = min + i * interval;
+      const upperBound = min + (i + 1) * interval;
+
       classes.push({
         lowerBound,
         upperBound: i === classCount - 1 ? max : upperBound,
         color: colorScheme[i % colorScheme.length],
-        label: options.labels ? options.labels[i] : `${lowerBound.toFixed(2)} - ${upperBound.toFixed(2)}`
+        label: options.labels
+          ? options.labels[i]
+          : `${lowerBound.toFixed(2)} - ${upperBound.toFixed(2)}`,
       });
     }
-    
+
     // Create a style function for choropleth
     const styleFunction = {
       type: 'choropleth',
       attribute,
-      classes
+      classes,
     };
-    
+
     return {
       style: {
         type: 'function',
-        function: styleFunction
+        function: styleFunction,
       },
       settings: {
         attribute,
@@ -966,8 +1031,8 @@ class VisualizationAgent extends BaseGISAgent {
         classes,
         defaultColor: options.defaultColor || '#cccccc',
         outlineColor: options.outlineColor || '#333333',
-        outlineWidth: options.outlineWidth || 1
-      }
+        outlineWidth: options.outlineWidth || 1,
+      },
     };
   }
 
@@ -982,8 +1047,8 @@ class VisualizationAgent extends BaseGISAgent {
           fillColor: '#9467bd',
           color: '#333',
           weight: 1,
-          fillOpacity: 0.7
-        }
+          fillOpacity: 0.7,
+        },
       };
     } else if (layerCount === 3) {
       return {
@@ -991,36 +1056,41 @@ class VisualizationAgent extends BaseGISAgent {
           fillColor: '#9467bd',
           color: '#333',
           weight: 1,
-          fillOpacity: 0.7
+          fillOpacity: 0.7,
         },
         ac: {
           fillColor: '#8c564b',
           color: '#333',
           weight: 1,
-          fillOpacity: 0.7
+          fillOpacity: 0.7,
         },
         bc: {
           fillColor: '#e377c2',
           color: '#333',
           weight: 1,
-          fillOpacity: 0.7
+          fillOpacity: 0.7,
         },
         abc: {
           fillColor: '#7f7f7f',
           color: '#333',
           weight: 1,
-          fillOpacity: 0.9
-        }
+          fillOpacity: 0.9,
+        },
       };
     }
-    
+
     return {};
   }
 
   /**
    * Create an intersection layer between two layers
    */
-  private async createIntersectionLayer(layerA: any, layerB: any, name: string, style: any): Promise<any> {
+  private async createIntersectionLayer(
+    layerA: any,
+    layerB: any,
+    name: string,
+    style: any
+  ): Promise<any> {
     // Create a new layer representing the intersection
     const intersectionLayer = {
       name,
@@ -1037,16 +1107,16 @@ class VisualizationAgent extends BaseGISAgent {
         derivationType: 'intersection',
         sourceLayers: [
           { id: layerA.id, name: layerA.name },
-          { id: layerB.id, name: layerB.name }
-        ]
+          { id: layerB.id, name: layerB.name },
+        ],
       }),
       created_at: new Date(),
-      updated_at: new Date()
+      updated_at: new Date(),
     };
-    
+
     // Create the layer in storage
     const createdLayer = await this.storage.createGISLayer(intersectionLayer);
-    
+
     // Create the intersection table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS ${sql.identifier(intersectionLayer.table_name)} (
@@ -1056,7 +1126,7 @@ class VisualizationAgent extends BaseGISAgent {
         source_b_id INTEGER
       )
     `);
-    
+
     // Populate the intersection table
     await db.execute(sql`
       INSERT INTO ${sql.identifier(intersectionLayer.table_name)} (geometry, source_a_id, source_b_id)
@@ -1070,14 +1140,20 @@ class VisualizationAgent extends BaseGISAgent {
       WHERE 
         ST_Intersects(a.geometry, b.geometry)
     `);
-    
+
     return createdLayer;
   }
 
   /**
    * Create a triple intersection layer between three layers
    */
-  private async createTripleIntersectionLayer(layerA: any, layerB: any, layerC: any, name: string, style: any): Promise<any> {
+  private async createTripleIntersectionLayer(
+    layerA: any,
+    layerB: any,
+    layerC: any,
+    name: string,
+    style: any
+  ): Promise<any> {
     // Create a new layer representing the intersection of all three layers
     const intersectionLayer = {
       name,
@@ -1088,23 +1164,25 @@ class VisualizationAgent extends BaseGISAgent {
       source_layer_id: layerA.id,
       table_name: `intersection_${layerA.id}_${layerB.id}_${layerC.id}`,
       visible: true,
-      display_order: Math.max(layerA.display_order || 0, layerB.display_order || 0, layerC.display_order || 0) + 1,
+      display_order:
+        Math.max(layerA.display_order || 0, layerB.display_order || 0, layerC.display_order || 0) +
+        1,
       style: JSON.stringify(style),
       metadata: JSON.stringify({
         derivationType: 'intersection',
         sourceLayers: [
           { id: layerA.id, name: layerA.name },
           { id: layerB.id, name: layerB.name },
-          { id: layerC.id, name: layerC.name }
-        ]
+          { id: layerC.id, name: layerC.name },
+        ],
       }),
       created_at: new Date(),
-      updated_at: new Date()
+      updated_at: new Date(),
     };
-    
+
     // Create the layer in storage
     const createdLayer = await this.storage.createGISLayer(intersectionLayer);
-    
+
     // Create the intersection table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS ${sql.identifier(intersectionLayer.table_name)} (
@@ -1115,7 +1193,7 @@ class VisualizationAgent extends BaseGISAgent {
         source_c_id INTEGER
       )
     `);
-    
+
     // Populate the intersection table
     await db.execute(sql`
       INSERT INTO ${sql.identifier(intersectionLayer.table_name)} (geometry, source_a_id, source_b_id, source_c_id)
@@ -1133,7 +1211,7 @@ class VisualizationAgent extends BaseGISAgent {
         ST_Intersects(b.geometry, c.geometry) AND
         ST_Intersects(a.geometry, c.geometry)
     `);
-    
+
     return createdLayer;
   }
 }

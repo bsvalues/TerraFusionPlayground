@@ -24,7 +24,7 @@ const AIAssistantContext = createContext<AIAssistantContextType>({
   loading: false,
   selectedProvider: 'openai',
   setSelectedProvider: () => {},
-  availableProviders: []
+  availableProviders: [],
 });
 
 // Define provider props interface
@@ -43,14 +43,14 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
     const fetchProviders = async () => {
       try {
         const response = await fetch('/api/ai-assistant/providers');
-        
+
         if (!response.ok) {
           throw new Error(`Error fetching providers: ${response.status}`);
         }
-        
+
         const data = await response.json();
         setAvailableProviders(data.providers);
-        
+
         // Set default provider if available
         if (data.providers.length > 0 && !data.providers.includes(selectedProvider)) {
           setSelectedProvider(data.providers[0]);
@@ -59,14 +59,14 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
         console.error('Failed to fetch available AI providers:', error);
       }
     };
-    
+
     fetchProviders();
   }, []);
 
   // Send message to AI assistant API
   const sendMessage = async (content: string) => {
     if (!content.trim() || loading) return;
-    
+
     // Add user message to chat
     const userMessage: Message = {
       id: uuidv4(),
@@ -74,16 +74,16 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
       content,
       timestamp: Date.now(),
     };
-    
-    setMessages((prev) => [...prev, userMessage]);
+
+    setMessages(prev => [...prev, userMessage]);
     setLoading(true);
-    
+
     try {
       // Prepare context for API request
       const context = {
         recentMessages: messages.slice(-10), // Last 10 messages for context
       };
-      
+
       // Make API request
       const response = await fetch('/api/ai-assistant/query', {
         method: 'POST',
@@ -96,13 +96,13 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
           context,
         }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       // Add assistant message to chat
       const assistantMessage: Message = {
         id: uuidv4(),
@@ -110,11 +110,11 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
         content: data.message,
         timestamp: Date.now(),
       };
-      
-      setMessages((prev) => [...prev, assistantMessage]);
+
+      setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Failed to get AI assistant response:', error);
-      
+
       // Add error message
       const errorMessage: Message = {
         id: uuidv4(),
@@ -122,8 +122,8 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
         content: `Sorry, I encountered an error. Please try again later.`,
         timestamp: Date.now(),
       };
-      
-      setMessages((prev) => [...prev, errorMessage]);
+
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setLoading(false);
     }
@@ -136,14 +136,10 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
     loading,
     selectedProvider,
     setSelectedProvider,
-    availableProviders
+    availableProviders,
   };
 
-  return (
-    <AIAssistantContext.Provider value={contextValue}>
-      {children}
-    </AIAssistantContext.Provider>
-  );
+  return <AIAssistantContext.Provider value={contextValue}>{children}</AIAssistantContext.Provider>;
 };
 
 // Custom hook for using the AI assistant context

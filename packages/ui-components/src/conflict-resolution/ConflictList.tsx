@@ -1,6 +1,6 @@
 /**
  * ConflictList Component
- * 
+ *
  * A list of conflicts with filtering and sorting options.
  */
 
@@ -62,12 +62,12 @@ export const ConflictList: React.FC<ConflictListProps> = ({
   const [internalShowResolved, setInternalShowResolved] = useState(showResolved);
   const [internalFilterType, setInternalFilterType] = useState<ConflictType | null>(filterType);
   const [internalFilterDocId, setInternalFilterDocId] = useState<string | null>(filterDocId);
-  
+
   // Use controlled or uncontrolled values
   const effectiveShowResolved = onFilterChange ? showResolved : internalShowResolved;
   const effectiveFilterType = onFilterChange ? filterType : internalFilterType;
   const effectiveFilterDocId = onFilterChange ? filterDocId : internalFilterDocId;
-  
+
   // Filter handler
   const handleFilterChange = (
     newShowResolved: boolean = effectiveShowResolved,
@@ -82,12 +82,12 @@ export const ConflictList: React.FC<ConflictListProps> = ({
       setInternalFilterDocId(newFilterDocId);
     }
   };
-  
+
   // Get unique document IDs for filter dropdown
   const documentIds = useMemo(() => {
     return Array.from(new Set(conflicts.map(c => c.docId))).sort();
   }, [conflicts]);
-  
+
   // Get conflict type counts
   const typeCounts = useMemo(() => {
     const counts: Record<ConflictType, number> = {
@@ -100,15 +100,15 @@ export const ConflictList: React.FC<ConflictListProps> = ({
       [ConflictType.SCHEMA]: 0,
       [ConflictType.OTHER]: 0,
     };
-    
+
     conflicts.forEach(conflict => {
       if (!effectiveShowResolved && conflict.resolved) return;
       counts[conflict.type] = (counts[conflict.type] || 0) + 1;
     });
-    
+
     return counts;
   }, [conflicts, effectiveShowResolved]);
-  
+
   // Filter conflicts
   const filteredConflicts = useMemo(() => {
     return conflicts
@@ -117,35 +117,29 @@ export const ConflictList: React.FC<ConflictListProps> = ({
         if (!effectiveShowResolved && conflict.resolved) {
           return false;
         }
-        
+
         // Filter by type
         if (effectiveFilterType && conflict.type !== effectiveFilterType) {
           return false;
         }
-        
+
         // Filter by document ID
         if (effectiveFilterDocId && conflict.docId !== effectiveFilterDocId) {
           return false;
         }
-        
+
         return true;
       })
       .sort(sortFn);
-  }, [
-    conflicts,
-    effectiveShowResolved,
-    effectiveFilterType,
-    effectiveFilterDocId,
-    sortFn,
-  ]);
-  
+  }, [conflicts, effectiveShowResolved, effectiveFilterType, effectiveFilterDocId, sortFn]);
+
   // Handle conflict selection
   const handleConflictSelect = (id: string) => {
     if (onConflictSelect) {
       onConflictSelect(id);
     }
   };
-  
+
   return (
     <div className={clsx('conflict-list', className)}>
       {/* Filter controls */}
@@ -163,17 +157,19 @@ export const ConflictList: React.FC<ConflictListProps> = ({
               <span>Show resolved</span>
             </label>
           </div>
-          
+
           {/* Filter by type */}
           <div>
             <label className="block text-sm">
               <span className="text-gray-700">Type:</span>
               <select
                 value={effectiveFilterType || ''}
-                onChange={e => handleFilterChange(
-                  effectiveShowResolved,
-                  e.target.value ? e.target.value as ConflictType : null
-                )}
+                onChange={e =>
+                  handleFilterChange(
+                    effectiveShowResolved,
+                    e.target.value ? (e.target.value as ConflictType) : null
+                  )
+                }
                 className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
               >
                 <option value="">All types</option>
@@ -185,37 +181,41 @@ export const ConflictList: React.FC<ConflictListProps> = ({
               </select>
             </label>
           </div>
-          
+
           {/* Filter by document */}
           <div>
             <label className="block text-sm">
               <span className="text-gray-700">Document:</span>
               <select
                 value={effectiveFilterDocId || ''}
-                onChange={e => handleFilterChange(
-                  effectiveShowResolved,
-                  effectiveFilterType,
-                  e.target.value || null
-                )}
+                onChange={e =>
+                  handleFilterChange(
+                    effectiveShowResolved,
+                    effectiveFilterType,
+                    e.target.value || null
+                  )
+                }
                 className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
               >
                 <option value="">All documents</option>
                 {documentIds.map(docId => (
-                  <option key={docId} value={docId}>{docId}</option>
+                  <option key={docId} value={docId}>
+                    {docId}
+                  </option>
                 ))}
               </select>
             </label>
           </div>
         </div>
       </div>
-      
+
       {/* Conflict count */}
       <div className="mb-4">
         <span className="text-sm text-gray-500">
           Showing {filteredConflicts.length} of {conflicts.length} conflicts
         </span>
       </div>
-      
+
       {/* Conflict list */}
       {filteredConflicts.length > 0 ? (
         <div className="space-y-4">

@@ -1,6 +1,6 @@
 /**
  * Service Catalog
- * 
+ *
  * Provides a comprehensive catalog of all services, core models, and microservices in the system:
  * - Categorized services with discoverability
  * - Detailed service documentation
@@ -20,7 +20,7 @@ export enum ServiceType {
   PLUGIN = 'plugin',
   AGENT = 'agent',
   DATA_PROCESSOR = 'data_processor',
-  UTILITY = 'utility'
+  UTILITY = 'utility',
 }
 
 // Service Status
@@ -29,7 +29,7 @@ export enum ServiceStatus {
   DEPRECATED = 'deprecated',
   BETA = 'beta',
   ALPHA = 'alpha',
-  ARCHIVED = 'archived'
+  ARCHIVED = 'archived',
 }
 
 // Service Health Status
@@ -37,7 +37,7 @@ export enum ServiceHealthStatus {
   HEALTHY = 'healthy',
   DEGRADED = 'degraded',
   UNHEALTHY = 'unhealthy',
-  UNKNOWN = 'unknown'
+  UNKNOWN = 'unknown',
 }
 
 // Service Dependency
@@ -108,72 +108,85 @@ export class ServiceCatalogManager extends EventEmitter {
   /**
    * Register a new service
    */
-  public registerService(service: Omit<ServiceEntity, 'id' | 'createdAt' | 'updatedAt'>): ServiceEntity {
+  public registerService(
+    service: Omit<ServiceEntity, 'id' | 'createdAt' | 'updatedAt'>
+  ): ServiceEntity {
     const id = `service-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     const newService: ServiceEntity = {
       ...service,
       id,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.services.set(id, newService);
-    
+
     console.log(`Service registered: ${newService.name} (${newService.type})`);
     this.emit('service:registered', newService);
-    
+
     return newService;
   }
 
   /**
    * Update an existing service
    */
-  public updateService(id: string, updates: Partial<Omit<ServiceEntity, 'id' | 'createdAt' | 'updatedAt'>>): ServiceEntity | null {
+  public updateService(
+    id: string,
+    updates: Partial<Omit<ServiceEntity, 'id' | 'createdAt' | 'updatedAt'>>
+  ): ServiceEntity | null {
     const service = this.services.get(id);
-    
+
     if (!service) {
       console.error(`Service not found: ${id}`);
       return null;
     }
-    
+
     const updatedService: ServiceEntity = {
       ...service,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.services.set(id, updatedService);
-    
+
     console.log(`Service updated: ${updatedService.name} (${updatedService.id})`);
     this.emit('service:updated', updatedService);
-    
+
     return updatedService;
   }
 
   /**
    * Update service health status
    */
-  public updateServiceHealth(id: string, status: ServiceHealthStatus, metrics?: ServiceEntity['metrics']): ServiceEntity | null {
+  public updateServiceHealth(
+    id: string,
+    status: ServiceHealthStatus,
+    metrics?: ServiceEntity['metrics']
+  ): ServiceEntity | null {
     const service = this.services.get(id);
-    
+
     if (!service) {
       console.error(`Service not found: ${id}`);
       return null;
     }
-    
+
     const updatedService: ServiceEntity = {
       ...service,
       healthStatus: status,
       metrics: metrics ? { ...service.metrics, ...metrics } : service.metrics,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
-    
+
     this.services.set(id, updatedService);
-    
+
     console.log(`Service health updated: ${updatedService.name} - ${status}`);
-    this.emit('service:health-updated', { service: updatedService, oldStatus: service.healthStatus, newStatus: status });
-    
+    this.emit('service:health-updated', {
+      service: updatedService,
+      oldStatus: service.healthStatus,
+      newStatus: status,
+    });
+
     return updatedService;
   }
 
@@ -182,26 +195,26 @@ export class ServiceCatalogManager extends EventEmitter {
    */
   public addDependency(serviceId: string, dependency: ServiceDependency): ServiceEntity | null {
     const service = this.services.get(serviceId);
-    
+
     if (!service) {
       console.error(`Service not found: ${serviceId}`);
       return null;
     }
-    
+
     // Check if dependency exists (to avoid duplicates)
     const existingIndex = service.dependencies.findIndex(d => d.serviceId === dependency.serviceId);
-    
+
     if (existingIndex >= 0) {
       service.dependencies[existingIndex] = dependency;
     } else {
       service.dependencies.push(dependency);
     }
-    
+
     service.updatedAt = new Date();
-    
+
     console.log(`Dependency added to ${service.name}: ${dependency.name}`);
     this.emit('service:dependency-added', { service, dependency });
-    
+
     return service;
   }
 
@@ -210,18 +223,18 @@ export class ServiceCatalogManager extends EventEmitter {
    */
   public removeDependency(serviceId: string, dependencyServiceId: string): ServiceEntity | null {
     const service = this.services.get(serviceId);
-    
+
     if (!service) {
       console.error(`Service not found: ${serviceId}`);
       return null;
     }
-    
+
     service.dependencies = service.dependencies.filter(d => d.serviceId !== dependencyServiceId);
     service.updatedAt = new Date();
-    
+
     console.log(`Dependency removed from ${service.name}: ${dependencyServiceId}`);
     this.emit('service:dependency-removed', { service, dependencyServiceId });
-    
+
     return service;
   }
 
@@ -230,25 +243,25 @@ export class ServiceCatalogManager extends EventEmitter {
    */
   public addExample(serviceId: string, example: Omit<ServiceExample, 'id'>): ServiceExample | null {
     const service = this.services.get(serviceId);
-    
+
     if (!service) {
       console.error(`Service not found: ${serviceId}`);
       return null;
     }
-    
+
     const id = `example-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
+
     const newExample: ServiceExample = {
       ...example,
-      id
+      id,
     };
-    
+
     service.examples.push(newExample);
     service.updatedAt = new Date();
-    
+
     console.log(`Example added to ${service.name}: ${newExample.title}`);
     this.emit('service:example-added', { service, example: newExample });
-    
+
     return newExample;
   }
 
@@ -313,7 +326,7 @@ export class ServiceCatalogManager extends EventEmitter {
    */
   public searchServices(query: string): ServiceEntity[] {
     query = query.toLowerCase();
-    
+
     return this.getAllServices().filter(service => {
       return (
         service.name.toLowerCase().includes(query) ||
@@ -327,7 +340,7 @@ export class ServiceCatalogManager extends EventEmitter {
    * Get dependent services
    */
   public getDependentServices(serviceId: string): ServiceEntity[] {
-    return this.getAllServices().filter(service => 
+    return this.getAllServices().filter(service =>
       service.dependencies.some(d => d.serviceId === serviceId)
     );
   }
@@ -338,26 +351,26 @@ export class ServiceCatalogManager extends EventEmitter {
   public getDependencyGraph(): any {
     const nodes: any[] = [];
     const edges: any[] = [];
-    
+
     for (const service of this.getAllServices()) {
       nodes.push({
         id: service.id,
         label: service.name,
         type: service.type,
         status: service.status,
-        healthStatus: service.healthStatus
+        healthStatus: service.healthStatus,
       });
-      
+
       for (const dependency of service.dependencies) {
         edges.push({
           from: service.id,
           to: dependency.serviceId,
           label: dependency.name,
-          required: dependency.required
+          required: dependency.required,
         });
       }
     }
-    
+
     return { nodes, edges };
   }
 
@@ -366,12 +379,12 @@ export class ServiceCatalogManager extends EventEmitter {
    */
   public generateServiceDocumentation(serviceId: string): any {
     const service = this.services.get(serviceId);
-    
+
     if (!service) {
       console.error(`Service not found: ${serviceId}`);
       return null;
     }
-    
+
     // Generate documentation structure
     const documentation = {
       id: serviceId,
@@ -388,7 +401,7 @@ export class ServiceCatalogManager extends EventEmitter {
       sections: [
         {
           title: 'Overview',
-          content: service.description
+          content: service.description,
         },
         {
           title: 'Dependencies',
@@ -396,8 +409,8 @@ export class ServiceCatalogManager extends EventEmitter {
             name: dep.name,
             version: dep.version,
             required: dep.required,
-            description: dep.description
-          }))
+            description: dep.description,
+          })),
         },
         {
           title: 'Examples',
@@ -406,25 +419,29 @@ export class ServiceCatalogManager extends EventEmitter {
             description: example.description,
             code: example.code,
             language: example.language,
-            liveUrl: example.liveUrl
-          }))
-        }
-      ]
+            liveUrl: example.liveUrl,
+          })),
+        },
+      ],
     };
-    
+
     // Add metrics section if available
     if (service.metrics) {
       documentation.sections.push({
         title: 'Metrics',
         content: {
           uptime: service.metrics.uptime ? `${service.metrics.uptime.toFixed(2)}%` : 'N/A',
-          requestsPerMinute: service.metrics.requestsPerMinute ? service.metrics.requestsPerMinute.toFixed(2) : 'N/A',
-          averageResponseTime: service.metrics.averageResponseTime ? `${service.metrics.averageResponseTime.toFixed(2)}ms` : 'N/A',
-          errorRate: service.metrics.errorRate ? `${service.metrics.errorRate.toFixed(2)}%` : 'N/A'
-        }
+          requestsPerMinute: service.metrics.requestsPerMinute
+            ? service.metrics.requestsPerMinute.toFixed(2)
+            : 'N/A',
+          averageResponseTime: service.metrics.averageResponseTime
+            ? `${service.metrics.averageResponseTime.toFixed(2)}ms`
+            : 'N/A',
+          errorRate: service.metrics.errorRate ? `${service.metrics.errorRate.toFixed(2)}%` : 'N/A',
+        },
       });
     }
-    
+
     // Add dependent services section
     const dependentServices = this.getDependentServices(serviceId);
     if (dependentServices.length > 0) {
@@ -434,14 +451,14 @@ export class ServiceCatalogManager extends EventEmitter {
           id: svc.id,
           name: svc.name,
           type: svc.type,
-          status: svc.status
-        }))
+          status: svc.status,
+        })),
       });
     }
-    
+
     console.log(`Documentation generated for ${service.name}`);
     this.emit('documentation:generated', { service, documentation });
-    
+
     return documentation;
   }
 
@@ -450,7 +467,7 @@ export class ServiceCatalogManager extends EventEmitter {
    */
   public getHealthSummary(): any {
     const services = this.getAllServices();
-    
+
     const summary = {
       total: services.length,
       healthy: services.filter(s => s.healthStatus === ServiceHealthStatus.HEALTHY).length,
@@ -458,9 +475,9 @@ export class ServiceCatalogManager extends EventEmitter {
       unhealthy: services.filter(s => s.healthStatus === ServiceHealthStatus.UNHEALTHY).length,
       unknown: services.filter(s => s.healthStatus === ServiceHealthStatus.UNKNOWN).length,
       healthPercentage: 0,
-      byType: {} as Record<string, any>
+      byType: {} as Record<string, any>,
     };
-    
+
     // Calculate health percentage
     if (services.length > 0) {
       const healthScore = services.reduce((score, service) => {
@@ -468,25 +485,29 @@ export class ServiceCatalogManager extends EventEmitter {
         if (service.healthStatus === ServiceHealthStatus.DEGRADED) return score + 0.5;
         return score;
       }, 0);
-      
+
       summary.healthPercentage = (healthScore / services.length) * 100;
     }
-    
+
     // Group by type
     for (const type of Object.values(ServiceType)) {
       const servicesOfType = this.getServicesByType(type as ServiceType);
-      
+
       if (servicesOfType.length > 0) {
         summary.byType[type] = {
           total: servicesOfType.length,
-          healthy: servicesOfType.filter(s => s.healthStatus === ServiceHealthStatus.HEALTHY).length,
-          degraded: servicesOfType.filter(s => s.healthStatus === ServiceHealthStatus.DEGRADED).length,
-          unhealthy: servicesOfType.filter(s => s.healthStatus === ServiceHealthStatus.UNHEALTHY).length,
-          unknown: servicesOfType.filter(s => s.healthStatus === ServiceHealthStatus.UNKNOWN).length
+          healthy: servicesOfType.filter(s => s.healthStatus === ServiceHealthStatus.HEALTHY)
+            .length,
+          degraded: servicesOfType.filter(s => s.healthStatus === ServiceHealthStatus.DEGRADED)
+            .length,
+          unhealthy: servicesOfType.filter(s => s.healthStatus === ServiceHealthStatus.UNHEALTHY)
+            .length,
+          unknown: servicesOfType.filter(s => s.healthStatus === ServiceHealthStatus.UNKNOWN)
+            .length,
         };
       }
     }
-    
+
     return summary;
   }
 }

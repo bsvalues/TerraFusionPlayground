@@ -1,9 +1,9 @@
 /**
  * PACS Module Schema Upgrade Script
- * 
+ *
  * This script upgrades the pacs_modules table schema to add new columns
  * for enhanced PACS module integration.
- * 
+ *
  * Usage: node scripts/upgrade-pacs-module-schema.js
  */
 
@@ -13,15 +13,15 @@ const { Pool } = pg;
 
 async function upgradePacsModuleSchema() {
   console.log('Starting PACS Module schema upgrade...');
-  
+
   try {
     // Connect to database
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
     });
-    
+
     console.log('Connected to database successfully');
-    
+
     // Check if columns exist
     const client = await pool.connect();
     try {
@@ -30,8 +30,12 @@ async function upgradePacsModuleSchema() {
       const apiEndpointsExists = await checkColumnExists(client, 'pacs_modules', 'api_endpoints');
       const dataSchemaExists = await checkColumnExists(client, 'pacs_modules', 'data_schema');
       const syncStatusExists = await checkColumnExists(client, 'pacs_modules', 'sync_status');
-      const lastSyncTimestampExists = await checkColumnExists(client, 'pacs_modules', 'last_sync_timestamp');
-      
+      const lastSyncTimestampExists = await checkColumnExists(
+        client,
+        'pacs_modules',
+        'last_sync_timestamp'
+      );
+
       // Add category column if it doesn't exist
       if (!categoryExists) {
         console.log('Adding category column...');
@@ -43,7 +47,7 @@ async function upgradePacsModuleSchema() {
       } else {
         console.log('Category column already exists');
       }
-      
+
       // Add api_endpoints column if it doesn't exist
       if (!apiEndpointsExists) {
         console.log('Adding api_endpoints column...');
@@ -55,7 +59,7 @@ async function upgradePacsModuleSchema() {
       } else {
         console.log('api_endpoints column already exists');
       }
-      
+
       // Add data_schema column if it doesn't exist
       if (!dataSchemaExists) {
         console.log('Adding data_schema column...');
@@ -67,7 +71,7 @@ async function upgradePacsModuleSchema() {
       } else {
         console.log('data_schema column already exists');
       }
-      
+
       // Add sync_status column if it doesn't exist
       if (!syncStatusExists) {
         console.log('Adding sync_status column...');
@@ -79,7 +83,7 @@ async function upgradePacsModuleSchema() {
       } else {
         console.log('sync_status column already exists');
       }
-      
+
       // Add last_sync_timestamp column if it doesn't exist
       if (!lastSyncTimestampExists) {
         console.log('Adding last_sync_timestamp column...');
@@ -91,9 +95,9 @@ async function upgradePacsModuleSchema() {
       } else {
         console.log('last_sync_timestamp column already exists');
       }
-      
+
       console.log('Categorizing existing PACS modules...');
-      
+
       // Initialize categories for existing PACS modules
       await client.query(`
         UPDATE pacs_modules
@@ -117,27 +121,27 @@ async function upgradePacsModuleSchema() {
           END
         WHERE category IS NULL
       `);
-      
+
       console.log('PACS Module categories initialized successfully');
-      
+
       // Set default API endpoints structure
       await client.query(`
         UPDATE pacs_modules
         SET api_endpoints = '{"get": null, "post": null, "put": null, "delete": null}' :: JSONB
         WHERE api_endpoints IS NULL
       `);
-      
+
       console.log('PACS Module API endpoints initialized successfully');
-      
+
       // Set default data schema structure
       await client.query(`
         UPDATE pacs_modules
         SET data_schema = '{"fields": [], "relationships": []}' :: JSONB
         WHERE data_schema IS NULL
       `);
-      
+
       console.log('PACS Module data schemas initialized successfully');
-      
+
       console.log('PACS Module schema upgrade completed successfully');
     } finally {
       client.release();

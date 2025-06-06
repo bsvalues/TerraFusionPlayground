@@ -1,6 +1,6 @@
 /**
  * Data Import Testing Script
- * 
+ *
  * This script tests the data import functionality through the API.
  */
 
@@ -18,16 +18,16 @@ const TEST_CSV_PATH = path.join(__dirname, '../uploads/test-properties.csv');
 
 async function testValidation() {
   console.log('Testing CSV validation...');
-  
+
   const formData = new FormData();
   formData.append('file', fs.createReadStream(TEST_CSV_PATH));
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/upload-validate`, {
       method: 'POST',
-      body: formData
+      body: formData,
     });
-    
+
     const result = await response.json();
     console.log('Validation result:', JSON.stringify(result, null, 2));
     return result;
@@ -39,16 +39,16 @@ async function testValidation() {
 
 async function testImport(filePath) {
   console.log('Testing property import...');
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/import-properties`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ filePath })
+      body: JSON.stringify({ filePath }),
     });
-    
+
     const result = await response.json();
     console.log('Import result:', JSON.stringify(result, null, 2));
     return result;
@@ -60,16 +60,16 @@ async function testImport(filePath) {
 
 async function testStaging(filePath) {
   console.log('Testing property staging...');
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/stage-properties`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ filePath })
+      body: JSON.stringify({ filePath }),
     });
-    
+
     const result = await response.json();
     console.log('Staging result:', JSON.stringify(result, null, 2));
     return result;
@@ -81,7 +81,7 @@ async function testStaging(filePath) {
 
 async function testGetStagedProperties() {
   console.log('Testing get staged properties...');
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/staged-properties`);
     const result = await response.json();
@@ -95,16 +95,16 @@ async function testGetStagedProperties() {
 
 async function testCommitStagedProperties(stagingIds) {
   console.log('Testing commit staged properties...');
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/commit-staged-properties`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ stagingIds })
+      body: JSON.stringify({ stagingIds }),
     });
-    
+
     const result = await response.json();
     console.log('Commit result:', JSON.stringify(result, null, 2));
     return result;
@@ -118,23 +118,23 @@ async function run() {
   try {
     // Test validation
     const validationResult = await testValidation();
-    
+
     if (validationResult && validationResult.filePath) {
       // Test directly importing properties
       await testImport(validationResult.filePath);
-      
+
       // Test staging properties
       const stagingResult = await testStaging(validationResult.filePath);
-      
+
       // Test getting staged properties
       await testGetStagedProperties();
-      
+
       // Test committing staged properties
       if (stagingResult && stagingResult.stagingIds && stagingResult.stagingIds.length > 0) {
         await testCommitStagedProperties(stagingResult.stagingIds);
       }
     }
-    
+
     console.log('All tests completed successfully.');
   } catch (error) {
     console.error('Error running tests:', error);

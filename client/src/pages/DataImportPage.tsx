@@ -5,7 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, CheckCircle, AlertTriangle, X, Upload, FileText } from 'lucide-react';
@@ -59,7 +66,7 @@ export default function DataImportPage() {
     enabled: activeTab === 'staged',
     queryFn: async () => {
       return apiRequest('/api/data-import/staged-properties', { method: 'GET' });
-    }
+    },
   });
 
   // Upload and validate mutation
@@ -73,7 +80,7 @@ export default function DataImportPage() {
         // Let browser set content-type for FormData automatically
       });
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       setUploadedFilePath(data.filePath);
       toast({
         title: 'File Uploaded',
@@ -81,13 +88,13 @@ export default function DataImportPage() {
         variant: 'default',
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: 'Upload Failed',
         description: error.message || 'Failed to upload the file',
         variant: 'destructive',
       });
-    }
+    },
   });
 
   // Direct import mutation
@@ -98,20 +105,20 @@ export default function DataImportPage() {
         body: JSON.stringify({ filePath }),
       });
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast({
         title: 'Import Successful',
         description: `Imported ${data.successfulImports} properties with ${data.failedImports} failures.`,
         variant: 'default',
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: 'Import Failed',
         description: error.message || 'Failed to import properties',
         variant: 'destructive',
       });
-    }
+    },
   });
 
   // Stage properties mutation
@@ -122,7 +129,7 @@ export default function DataImportPage() {
         body: JSON.stringify({ filePath }),
       });
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       queryClient.invalidateQueries({ queryKey: ['/api/data-import/staged-properties'] });
       toast({
         title: 'Staging Successful',
@@ -131,13 +138,13 @@ export default function DataImportPage() {
       });
       setActiveTab('staged');
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: 'Staging Failed',
         description: error.message || 'Failed to stage properties',
         variant: 'destructive',
       });
-    }
+    },
   });
 
   // Commit properties mutation
@@ -148,7 +155,7 @@ export default function DataImportPage() {
         body: JSON.stringify({ stagingIds }),
       });
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       queryClient.invalidateQueries({ queryKey: ['/api/data-import/staged-properties'] });
       toast({
         title: 'Commit Successful',
@@ -156,13 +163,13 @@ export default function DataImportPage() {
         variant: 'default',
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: 'Commit Failed',
         description: error.message || 'Failed to commit properties',
         variant: 'destructive',
       });
-    }
+    },
   });
 
   // Delete staged property mutation
@@ -180,13 +187,13 @@ export default function DataImportPage() {
         variant: 'default',
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: 'Delete Failed',
         description: error.message || 'Failed to delete staged property',
         variant: 'destructive',
       });
-    }
+    },
   });
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -235,7 +242,11 @@ export default function DataImportPage() {
   };
 
   const handleCommitAll = () => {
-    if (!stagedPropertiesQuery.data || !stagedPropertiesQuery.data.properties || stagedPropertiesQuery.data.properties.length === 0) {
+    if (
+      !stagedPropertiesQuery.data ||
+      !stagedPropertiesQuery.data.properties ||
+      stagedPropertiesQuery.data.properties.length === 0
+    ) {
       toast({
         title: 'No Staged Properties',
         description: 'There are no properties to commit.',
@@ -271,11 +282,11 @@ export default function DataImportPage() {
       <CardContent>
         <div className="grid w-full max-w-sm items-center gap-1.5">
           <Label htmlFor="csv-upload">Select CSV File</Label>
-          <Input 
-            id="csv-upload" 
-            type="file" 
-            accept=".csv" 
-            onChange={handleFileChange} 
+          <Input
+            id="csv-upload"
+            type="file"
+            accept=".csv"
+            onChange={handleFileChange}
             disabled={uploadMutation.isPending}
           />
         </div>
@@ -291,13 +302,14 @@ export default function DataImportPage() {
                   <p>Valid Records: {uploadMutation.data.validation.validRecords}</p>
                   <p>Invalid Records: {uploadMutation.data.validation.invalidRecords}</p>
                   <div className="flex gap-2">
-                    <Badge 
-                      className={uploadMutation.data.validation.isValid ? 
-                        "bg-green-500 hover:bg-green-600 text-white" : 
-                        "bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                    <Badge
+                      className={
+                        uploadMutation.data.validation.isValid
+                          ? 'bg-green-500 hover:bg-green-600 text-white'
+                          : 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
                       }
                     >
-                      {uploadMutation.data.validation.isValid ? "Valid" : "Invalid"}
+                      {uploadMutation.data.validation.isValid ? 'Valid' : 'Invalid'}
                     </Badge>
                   </div>
                 </div>
@@ -320,35 +332,27 @@ export default function DataImportPage() {
             </>
           )}
         </Button>
-        
+
         {uploadedFilePath && (
           <div className="flex gap-2">
-            <Button 
-              variant="secondary" 
-              onClick={handleImport} 
-              disabled={importMutation.isPending}
-            >
+            <Button variant="secondary" onClick={handleImport} disabled={importMutation.isPending}>
               {importMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Importing...
                 </>
               ) : (
-                "Import Directly"
+                'Import Directly'
               )}
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleStage} 
-              disabled={stageMutation.isPending}
-            >
+            <Button variant="outline" onClick={handleStage} disabled={stageMutation.isPending}>
               {stageMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Staging...
                 </>
               ) : (
-                "Stage for Review"
+                'Stage for Review'
               )}
             </Button>
           </div>
@@ -361,9 +365,7 @@ export default function DataImportPage() {
     <Card>
       <CardHeader>
         <CardTitle>Staged Properties</CardTitle>
-        <CardDescription>
-          Review and manage properties staged for import.
-        </CardDescription>
+        <CardDescription>Review and manage properties staged for import.</CardDescription>
       </CardHeader>
       <CardContent>
         {stagedPropertiesQuery.isLoading ? (
@@ -374,9 +376,7 @@ export default function DataImportPage() {
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
-            <AlertDescription>
-              Failed to load staged properties. Please try again.
-            </AlertDescription>
+            <AlertDescription>Failed to load staged properties. Please try again.</AlertDescription>
           </Alert>
         ) : stagedPropertiesQuery.data?.properties?.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
@@ -391,20 +391,18 @@ export default function DataImportPage() {
               {stagedPropertiesQuery.data?.properties.map((property: StagedProperty) => (
                 <div key={property.stagingId} className="p-4 flex items-center justify-between">
                   <div className="space-y-1">
-                    <div className="font-medium">
-                      {property.property.address}
-                    </div>
+                    <div className="font-medium">{property.property.address}</div>
                     <div className="text-sm text-muted-foreground">
                       ID: {property.property.propertyId} • Parcel: {property.property.parcelNumber}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge 
+                      <Badge
                         className={
-                          property.validationStatus === 'valid' 
-                            ? "bg-green-500 hover:bg-green-600 text-white" 
-                            : property.validationStatus === 'pending' 
-                              ? "bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200" 
-                              : "bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                          property.validationStatus === 'valid'
+                            ? 'bg-green-500 hover:bg-green-600 text-white'
+                            : property.validationStatus === 'pending'
+                              ? 'bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200'
+                              : 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
                         }
                       >
                         {property.validationStatus}
@@ -416,8 +414,8 @@ export default function DataImportPage() {
                       )}
                     </div>
                   </div>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="icon"
                     onClick={() => deleteStagedMutation.mutate(property.stagingId)}
                     disabled={deleteStagedMutation.isPending}
@@ -434,9 +432,11 @@ export default function DataImportPage() {
         <Button
           onClick={handleCommitAll}
           disabled={
-            commitMutation.isPending || 
-            !stagedPropertiesQuery.data?.properties?.length || 
-            !stagedPropertiesQuery.data?.properties?.some((p: StagedProperty) => p.validationStatus === 'valid')
+            commitMutation.isPending ||
+            !stagedPropertiesQuery.data?.properties?.length ||
+            !stagedPropertiesQuery.data?.properties?.some(
+              (p: StagedProperty) => p.validationStatus === 'valid'
+            )
           }
         >
           {commitMutation.isPending ? (

@@ -4459,4 +4459,5 @@ const ExamplePropertyCalculator = () => {
     </div>
   );
 };
+
 export default CodeAssistantPanel;

@@ -1,6 +1,6 @@
 /**
  * Spatial Operations Service
- * 
+ *
  * Provides client-side spatial analysis capabilities and server delegation
  * for more complex operations. Uses Turf.js for lightweight operations
  * and API calls for heavier processing.
@@ -54,7 +54,7 @@ export function bufferGeometry(
 ): GeoJSON.Feature {
   return turf.buffer(geometry, distance, {
     units: options.units || 'kilometers',
-    steps: options.steps || 64
+    steps: options.steps || 64,
   });
 }
 
@@ -66,16 +66,14 @@ export function centroid(
   options: SpatialOperationOptions = {}
 ): GeoJSON.Feature {
   return turf.centroid(geometry, {
-    properties: options.properties
+    properties: options.properties,
   });
 }
 
 /**
  * Calculate the area of a polygon
  */
-export function area(
-  geometry: GeoJSON.Geometry | GeoJSON.Feature
-): number {
+export function area(geometry: GeoJSON.Geometry | GeoJSON.Feature): number {
   return turf.area(geometry);
 }
 
@@ -87,7 +85,7 @@ export function length(
   options: SpatialOperationOptions = {}
 ): number {
   return turf.length(geometry, {
-    units: options.units || 'kilometers'
+    units: options.units || 'kilometers',
   });
 }
 
@@ -102,7 +100,7 @@ export function simplify(
   return turf.simplify(geometry, {
     tolerance,
     highQuality: true,
-    mutate: options.mutate || false
+    mutate: options.mutate || false,
   });
 }
 
@@ -135,16 +133,14 @@ export function convexHull(
 ): GeoJSON.Feature {
   return turf.convex(geometry, {
     concavity: 1,
-    properties: options.properties
+    properties: options.properties,
   });
 }
 
 /**
  * Calculate the bounding box of a geometry
  */
-export function boundingBox(
-  geometry: GeoJSON.Geometry | GeoJSON.Feature
-): GeoJSON.BBox {
+export function boundingBox(geometry: GeoJSON.Geometry | GeoJSON.Feature): GeoJSON.BBox {
   return turf.bbox(geometry);
 }
 
@@ -188,15 +184,11 @@ export function useSpatialOperations() {
       options: ClusterOptions;
     }) => {
       const { points, options } = params;
-      const response = await apiRequest(
-        'POST',
-        '/api/spatial/cluster',
-        { points, options }
-      );
+      const response = await apiRequest('POST', '/api/spatial/cluster', { points, options });
       return await response.json();
-    }
+    },
   });
-  
+
   /**
    * Calculate a drive time isochrone from a point
    */
@@ -206,15 +198,11 @@ export function useSpatialOperations() {
       minutes: number;
       mode?: 'driving' | 'walking' | 'cycling';
     }) => {
-      const response = await apiRequest(
-        'POST',
-        '/api/spatial/isochrone',
-        params
-      );
+      const response = await apiRequest('POST', '/api/spatial/isochrone', params);
       return await response.json();
-    }
+    },
   });
-  
+
   /**
    * Perform a spatial query (within, contains, intersects, etc.)
    */
@@ -225,15 +213,11 @@ export function useSpatialOperations() {
       geometry?: GeoJSON.Geometry | GeoJSON.Feature;
       options: SpatialQueryOptions;
     }) => {
-      const response = await apiRequest(
-        'POST',
-        '/api/spatial/query',
-        params
-      );
+      const response = await apiRequest('POST', '/api/spatial/query', params);
       return await response.json();
-    }
+    },
   });
-  
+
   /**
    * Perform a topological validation and repair
    */
@@ -242,15 +226,11 @@ export function useSpatialOperations() {
       geometry: GeoJSON.Geometry | GeoJSON.Feature;
       autoFix?: boolean;
     }) => {
-      const response = await apiRequest(
-        'POST',
-        '/api/spatial/validate-topology',
-        params
-      );
+      const response = await apiRequest('POST', '/api/spatial/validate-topology', params);
       return await response.json();
-    }
+    },
   });
-  
+
   /**
    * Generate a heatmap from point data
    */
@@ -262,50 +242,31 @@ export function useSpatialOperations() {
       blur?: number;
       minOpacity?: number;
     }) => {
-      const response = await apiRequest(
-        'POST',
-        '/api/spatial/heatmap',
-        params
-      );
+      const response = await apiRequest('POST', '/api/spatial/heatmap', params);
       return await response.json();
-    }
+    },
   });
-  
+
   /**
    * Perform geocoding (address to coordinates)
    */
   const geocodeMutation = useMutation({
-    mutationFn: async (params: {
-      address: string;
-      country?: string;
-      limit?: number;
-    }) => {
-      const response = await apiRequest(
-        'POST',
-        '/api/spatial/geocode',
-        params
-      );
+    mutationFn: async (params: { address: string; country?: string; limit?: number }) => {
+      const response = await apiRequest('POST', '/api/spatial/geocode', params);
       return await response.json();
-    }
+    },
   });
-  
+
   /**
    * Perform reverse geocoding (coordinates to address)
    */
   const reverseGeocodeMutation = useMutation({
-    mutationFn: async (params: {
-      coordinates: [number, number];
-      types?: string[];
-    }) => {
-      const response = await apiRequest(
-        'POST',
-        '/api/spatial/reverse-geocode',
-        params
-      );
+    mutationFn: async (params: { coordinates: [number, number]; types?: string[] }) => {
+      const response = await apiRequest('POST', '/api/spatial/reverse-geocode', params);
       return await response.json();
-    }
+    },
   });
-  
+
   return {
     // Server-side mutations
     clusterAnalysis: clusterAnalysisMutation,
@@ -315,7 +276,7 @@ export function useSpatialOperations() {
     generateHeatmap: generateHeatmapMutation,
     geocode: geocodeMutation,
     reverseGeocode: reverseGeocodeMutation,
-    
+
     // Client-side functions (re-exported for convenience)
     bufferGeometry,
     centroid,
@@ -328,7 +289,7 @@ export function useSpatialOperations() {
     boundingBox,
     boundingBoxPolygon,
     pointInPolygon,
-    nearest
+    nearest,
   };
 }
 
@@ -338,7 +299,7 @@ export function useSpatialOperations() {
 export function useGISLayers(enabled = true) {
   return useQuery({
     queryKey: ['/api/gis/layers'],
-    enabled
+    enabled,
   });
 }
 
@@ -348,7 +309,7 @@ export function useGISLayers(enabled = true) {
 export function useLayerMetadata(layerId: string, enabled = true) {
   return useQuery({
     queryKey: ['/api/gis/layers', layerId],
-    enabled: enabled && !!layerId
+    enabled: enabled && !!layerId,
   });
 }
 
@@ -358,6 +319,6 @@ export function useLayerMetadata(layerId: string, enabled = true) {
 export function useLayerFeatures(layerId: string, bbox?: GeoJSON.BBox, enabled = true) {
   return useQuery({
     queryKey: ['/api/gis/layers', layerId, 'features', bbox ? JSON.stringify(bbox) : 'all'],
-    enabled: enabled && !!layerId
+    enabled: enabled && !!layerId,
   });
 }

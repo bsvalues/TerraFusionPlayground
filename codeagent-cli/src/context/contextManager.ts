@@ -29,17 +29,17 @@ export class ContextManager {
     '**/logs/**',
     '**/*.log',
     '**/*.min.js',
-    '**/*.min.css'
+    '**/*.min.css',
   ];
 
   constructor(projectPath: string = '') {
     this.projectPath = projectPath;
     this.embeddings = new OpenAIEmbeddings();
-    
+
     // Set up parsers for code analysis
     this.jsParser = new Parser();
     this.jsParser.setLanguage(JavaScript);
-    
+
     this.tsParser = new Parser();
     this.tsParser.setLanguage(TypeScript.default);
   }
@@ -49,21 +49,21 @@ export class ContextManager {
    */
   async setProjectPath(projectPath: string): Promise<void> {
     this.projectPath = projectPath;
-    
+
     // Reset context when changing projects
     this.vectorStore = null;
     this.codeStructureMap.clear();
-    
+
     console.log(`Setting project context to: ${projectPath}`);
-    
+
     // Check if path exists
     if (!fs.existsSync(projectPath)) {
       throw new Error(`Project path does not exist: ${projectPath}`);
     }
-    
+
     // Determine if this is a Git repository
     const isGitRepo = fs.existsSync(path.join(projectPath, '.git'));
-    
+
     // Add additional ignore patterns based on project type
     if (fs.existsSync(path.join(projectPath, '.gitignore'))) {
       const gitignore = fs.readFileSync(path.join(projectPath, '.gitignore'), 'utf8');
@@ -71,7 +71,7 @@ export class ContextManager {
         .split('\n')
         .filter(line => line.trim() && !line.startsWith('#'))
         .map(pattern => `**/${pattern}`);
-      
+
       this.ignorePatterns.push(...patterns);
     }
   }
@@ -79,42 +79,42 @@ export class ContextManager {
   /**
    * Load project context by analyzing files and building embeddings
    */
-  async loadProjectContext(options: { maxFiles?: number, verbose?: boolean } = {}): Promise<void> {
+  async loadProjectContext(options: { maxFiles?: number; verbose?: boolean } = {}): Promise<void> {
     if (!this.projectPath) {
       throw new Error('Project path not set. Call setProjectPath first.');
     }
-    
+
     const { maxFiles = 100, verbose = false } = options;
-    
+
     console.log(`Loading project context from: ${this.projectPath}`);
     console.log('This may take a few moments for larger projects...');
-    
+
     // Get all relevant files
     const files = await this.getProjectFiles(maxFiles);
-    
+
     if (verbose) {
       console.log(`Found ${files.length} files to analyze.`);
     }
-    
+
     // Initialize vector store
     this.vectorStore = await MemoryVectorStore.fromTexts(
-      ['Project initialized'], 
-      [{ source: 'initialization' }], 
+      ['Project initialized'],
+      [{ source: 'initialization' }],
       this.embeddings
     );
-    
+
     // Process files in batches to avoid memory issues
     const batchSize = 10;
     for (let i = 0; i < files.length; i += batchSize) {
       const batch = files.slice(i, i + batchSize);
-      
+
       if (verbose) {
         console.log(`Processing batch ${i / batchSize + 1}/${Math.ceil(files.length / batchSize)}`);
       }
-      
+
       await Promise.all(batch.map(file => this.processFile(file, verbose)));
     }
-    
+
     console.log(`Context loaded. Processed ${files.length} files.`);
   }
 
@@ -125,10 +125,10 @@ export class ContextManager {
     if (!this.vectorStore) {
       await this.loadProjectContext();
     }
-    
+
     // Retrieve relevant documents based on the query
     const results = await this.vectorStore!.similaritySearch(query, 10);
-    
+
     // Extract context from the results
     return results.map(doc => doc.pageContent);
   }
@@ -141,16 +141,30 @@ export class ContextManager {
       cwd: this.projectPath,
       absolute: true,
       ignore: this.ignorePatterns,
-      nodir: true
+      nodir: true,
     });
-    
+
     // Filter files to only include code files
-    const codeExtensions = ['.js', '.ts', '.jsx', '.tsx', '.py', '.java', '.c', '.cpp', '.h', '.go', '.rb', '.php', '.cs'];
-    
+    const codeExtensions = [
+      '.js',
+      '.ts',
+      '.jsx',
+      '.tsx',
+      '.py',
+      '.java',
+      '.c',
+      '.cpp',
+      '.h',
+      '.go',
+      '.rb',
+      '.php',
+      '.cs',
+    ];
+
     const codeFiles = allFiles
       .filter(file => codeExtensions.includes(path.extname(file)))
       .slice(0, maxFiles);
-      
+
     return codeFiles;
   }
 
@@ -161,22 +175,22 @@ export class ContextManager {
     try {
       const fileContent = fs.readFileSync(filePath, 'utf8');
       const relativePath = path.relative(this.projectPath, filePath);
-      
+
       if (verbose) {
         console.log(`Processing: ${relativePath}`);
       }
-      
+
       // Analyze code structure
       await this.analyzeCodeStructure(filePath, fileContent);
-      
+
       // Split content into chunks for embedding
       const textSplitter = new RecursiveCharacterTextSplitter({
         chunkSize: 1500,
-        chunkOverlap: 200
+        chunkOverlap: 200,
       });
-      
+
       const chunks = await textSplitter.splitText(fileContent);
-      
+
       // Create documents with metadata
       const documents = chunks.map((chunk, i) => {
         const metadata: ChunkMetadata = {
@@ -184,15 +198,15 @@ export class ContextManager {
           fileName: path.basename(filePath),
           chunkIndex: i,
           language: path.extname(filePath).substring(1),
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         };
-        
+
         return new Document({
           pageContent: chunk,
-          metadata
+          metadata,
         });
       });
-      
+
       // Add documents to the vector store
       if (this.vectorStore) {
         await this.vectorStore.addDocuments(documents);
@@ -208,7 +222,7 @@ export class ContextManager {
   private async analyzeCodeStructure(filePath: string, content: string): Promise<void> {
     const ext = path.extname(filePath);
     let parser: Parser;
-    
+
     // Select appropriate parser based on file extension
     if (['.ts', '.tsx'].includes(ext)) {
       parser = this.tsParser;
@@ -218,14 +232,14 @@ export class ContextManager {
       // Skip files we don't have parsers for
       return;
     }
-    
+
     try {
       // Parse the file
       const tree = parser.parse(content);
-      
+
       // Extract key structures (functions, classes, imports)
       const structure = this.extractCodeStructure(tree.rootNode, content);
-      
+
       // Store in structure map
       this.codeStructureMap.set(filePath, structure);
     } catch (error) {
@@ -243,52 +257,56 @@ export class ContextManager {
       classes: [] as any[],
       variables: [] as any[],
     };
-    
+
     // Helper to extract text for a node
     const getNodeText = (node: any): string => {
       return content.substring(node.startIndex, node.endIndex);
     };
-    
+
     // Walk the tree to find relevant nodes
-    this.traverseTree(rootNode, (node) => {
+    this.traverseTree(rootNode, node => {
       if (node.type === 'import_statement' || node.type === 'import_declaration') {
         structure.imports.push({
           type: 'import',
           text: getNodeText(node),
-          position: { start: node.startPosition, end: node.endPosition }
+          position: { start: node.startPosition, end: node.endPosition },
         });
-      } else if (node.type === 'function' || node.type === 'function_declaration' || node.type === 'method_definition') {
+      } else if (
+        node.type === 'function' ||
+        node.type === 'function_declaration' ||
+        node.type === 'method_definition'
+      ) {
         // Find the function name
         let nameNode = node.childForFieldName('name');
         const name = nameNode ? getNodeText(nameNode) : 'anonymous';
-        
+
         structure.functions.push({
           type: 'function',
           name,
           text: getNodeText(node),
           signature: this.extractFunctionSignature(node, content),
-          position: { start: node.startPosition, end: node.endPosition }
+          position: { start: node.startPosition, end: node.endPosition },
         });
       } else if (node.type === 'class' || node.type === 'class_declaration') {
         // Find the class name
         let nameNode = node.childForFieldName('name');
         const name = nameNode ? getNodeText(nameNode) : 'anonymous';
-        
+
         structure.classes.push({
           type: 'class',
           name,
           text: getNodeText(node),
-          position: { start: node.startPosition, end: node.endPosition }
+          position: { start: node.startPosition, end: node.endPosition },
         });
       } else if (node.type === 'lexical_declaration' || node.type === 'variable_declaration') {
         structure.variables.push({
           type: 'variable',
           text: getNodeText(node),
-          position: { start: node.startPosition, end: node.endPosition }
+          position: { start: node.startPosition, end: node.endPosition },
         });
       }
     });
-    
+
     return structure;
   }
 
@@ -299,7 +317,7 @@ export class ContextManager {
     // Find the function body
     const bodyNode = functionNode.childForFieldName('body');
     if (!bodyNode) return content.substring(functionNode.startIndex, functionNode.endIndex);
-    
+
     // Extract just the signature part before the body
     return content.substring(functionNode.startIndex, bodyNode.startIndex) + '{ ... }';
   }
@@ -309,7 +327,7 @@ export class ContextManager {
    */
   private traverseTree(node: any, callback: (node: any) => void): void {
     callback(node);
-    
+
     if (node.children && node.children.length > 0) {
       for (const child of node.children) {
         this.traverseTree(child, callback);
@@ -325,30 +343,30 @@ export class ContextManager {
       fileCount: this.codeStructureMap.size,
       classSummary: [] as any[],
       functionSummary: [] as any[],
-      importSummary: new Map<string, number>()
+      importSummary: new Map<string, number>(),
     };
-    
+
     // Collect structure information
     for (const [filePath, structure] of this.codeStructureMap.entries()) {
       const relativePath = path.relative(this.projectPath, filePath);
-      
+
       // Summarize classes
       for (const cls of structure.classes) {
         summary.classSummary.push({
           name: cls.name,
-          file: relativePath
+          file: relativePath,
         });
       }
-      
+
       // Summarize functions
       for (const func of structure.functions) {
         summary.functionSummary.push({
           name: func.name,
           file: relativePath,
-          signature: func.signature
+          signature: func.signature,
         });
       }
-      
+
       // Count imports
       for (const imp of structure.imports) {
         const importText = imp.text;
@@ -356,7 +374,7 @@ export class ContextManager {
         summary.importSummary.set(importText, count + 1);
       }
     }
-    
+
     return summary;
   }
 
@@ -365,21 +383,21 @@ export class ContextManager {
    */
   findDependencies(): Map<string, string[]> {
     const dependencies = new Map<string, string[]>();
-    
+
     // Process each file
     for (const [filePath, structure] of this.codeStructureMap.entries()) {
       const relativePath = path.relative(this.projectPath, filePath);
       const deps: string[] = [];
-      
+
       // Check imports to determine dependencies
       for (const imp of structure.imports) {
         const importText = imp.text;
-        
+
         // Extract the path from the import
         const match = importText.match(/from\s+['"](.+)['"]/);
         if (match && match[1]) {
           const importPath = match[1];
-          
+
           // Handle relative imports
           if (importPath.startsWith('.')) {
             const resolved = path.resolve(path.dirname(filePath), importPath);
@@ -390,13 +408,13 @@ export class ContextManager {
           }
         }
       }
-      
+
       dependencies.set(relativePath, deps);
     }
-    
+
     return dependencies;
   }
-  
+
   /**
    * Get project path
    */

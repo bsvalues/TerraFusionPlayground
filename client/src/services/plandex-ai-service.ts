@@ -1,6 +1,6 @@
 /**
  * Plandex AI Client Service
- * 
+ *
  * This service provides client-side access to the Plandex AI capabilities,
  * including code generation, completion, bug fixing, and explanation.
  */

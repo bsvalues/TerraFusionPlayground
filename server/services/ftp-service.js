@@ -1,6 +1,6 @@
 /**
  * FTP Service
- * 
+ *
  * This service handles data transfers to and from the SpatialEst FTP server.
  * It provides functionality for downloading from and uploading to the FTP site,
  * specifically targeting ftp.spatialest.com for property data imports and exports.
@@ -17,7 +17,7 @@ const DEFAULT_FTP_CONFIG = {
   user: process.env.FTP_USERNAME || '',
   password: process.env.FTP_PASSWORD || '',
   secure: true, // Use FTPS (FTP over TLS)
-  port: 21
+  port: 21,
 };
 
 /**
@@ -28,13 +28,13 @@ export class FtpService {
     // Merge provided config with defaults
     this.config = {
       ...DEFAULT_FTP_CONFIG,
-      ...config
+      ...config,
     };
-    
+
     // Note: importService is not included in this JS version since it's only
     // needed for the full implementation
   }
-  
+
   /**
    * Tests the FTP connection to ensure credentials are valid
    * and the server is accessible
@@ -42,7 +42,7 @@ export class FtpService {
   async testConnection() {
     const client = new ftp.Client();
     client.ftp.verbose = false;
-    
+
     try {
       // The basic-ftp library handles SSL/TLS connections
       // Use secureOptions to accept self-signed certificates
@@ -53,10 +53,10 @@ export class FtpService {
         secure: this.config.secure,
         port: this.config.port,
         secureOptions: {
-          rejectUnauthorized: false // Accept self-signed certificates
-        }
+          rejectUnauthorized: false, // Accept self-signed certificates
+        },
       });
-      
+
       console.log('FTP Connection successful');
       return true;
     } catch (error) {
@@ -66,7 +66,7 @@ export class FtpService {
       client.close();
     }
   }
-  
+
   /**
    * Lists files in a specific directory on the FTP server
    * @param remoteDir Directory path on the FTP server
@@ -75,7 +75,7 @@ export class FtpService {
   async listFiles(remoteDir = '/') {
     const client = new ftp.Client();
     client.ftp.verbose = false;
-    
+
     try {
       await client.access({
         host: this.config.host,
@@ -84,10 +84,10 @@ export class FtpService {
         secure: this.config.secure,
         port: this.config.port,
         secureOptions: {
-          rejectUnauthorized: false // Accept self-signed certificates
-        }
+          rejectUnauthorized: false, // Accept self-signed certificates
+        },
       });
-      
+
       return await client.list(remoteDir);
     } catch (error) {
       console.error(`Failed to list files in ${remoteDir}:`, error);
@@ -96,7 +96,7 @@ export class FtpService {
       client.close();
     }
   }
-  
+
   /**
    * Downloads a file from the FTP server
    * @param remoteFilePath Path to the file on the FTP server
@@ -106,7 +106,7 @@ export class FtpService {
   async downloadFile(remoteFilePath, localFilePath) {
     const client = new ftp.Client();
     client.ftp.verbose = false;
-    
+
     try {
       await client.access({
         host: this.config.host,
@@ -115,16 +115,16 @@ export class FtpService {
         secure: this.config.secure,
         port: this.config.port,
         secureOptions: {
-          rejectUnauthorized: false // Accept self-signed certificates
-        }
+          rejectUnauthorized: false, // Accept self-signed certificates
+        },
       });
-      
+
       // Ensure the local directory exists
       const localDir = path.dirname(localFilePath);
       if (!fs.existsSync(localDir)) {
         fs.mkdirSync(localDir, { recursive: true });
       }
-      
+
       await client.downloadTo(localFilePath, remoteFilePath);
       console.log(`Downloaded ${remoteFilePath} to ${localFilePath}`);
       return true;
@@ -135,22 +135,22 @@ export class FtpService {
       client.close();
     }
   }
-  
+
   /**
    * Initializes the FTP service
    */
   async initialize() {
-    console.log("FTP Service initialized");
+    console.log('FTP Service initialized');
     return true;
   }
-  
+
   /**
    * Connects to the FTP server
    */
   async connect() {
     const client = new ftp.Client();
     client.ftp.verbose = false;
-    
+
     try {
       await client.access({
         host: this.config.host,
@@ -159,10 +159,10 @@ export class FtpService {
         secure: this.config.secure,
         port: this.config.port,
         secureOptions: {
-          rejectUnauthorized: false
-        }
+          rejectUnauthorized: false,
+        },
       });
-      
+
       console.log('Connected to FTP server');
       this.client = client;
       return true;
@@ -171,7 +171,7 @@ export class FtpService {
       throw error;
     }
   }
-  
+
   /**
    * Disconnects from the FTP server
    */
@@ -181,7 +181,7 @@ export class FtpService {
       console.log('Disconnected from FTP server');
     }
   }
-  
+
   /**
    * Synchronizes a directory from the FTP server to local storage
    * @param remoteDir Remote directory path
@@ -190,13 +190,13 @@ export class FtpService {
    */
   async syncDirectory(remoteDir, options = {}) {
     console.log(`Syncing directory ${remoteDir} with options:`, options);
-    
+
     // Mock implementation for testing
     return {
       filesDownloaded: 5,
       totalSizeBytes: 1024 * 1024, // 1 MB
       skippedFiles: [],
-      failedFiles: []
+      failedFiles: [],
     };
   }
 }
