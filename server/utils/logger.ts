@@ -29,13 +29,15 @@ const DEFAULT_LOG_LEVEL = process.env.NODE_ENV === 'production' ? LogLevel.INFO 
 /**
  * Logger class with support for different log levels and structured output
  */
-class Logger {
+export class Logger {
   private level: LogLevel;
+  private context: string;
 
   /**
    * Create a new logger instance
    */
-  constructor() {
+  constructor(context: string) {
+    this.context = context;
     this.level = this.getLogLevelFromEnv();
   }
 
@@ -66,9 +68,9 @@ class Logger {
    * @param message Message to log
    * @param data Additional data to include
    */
-  public debug(message: string | object, data?: any): void {
+  public debug(message: string, metadata?: Record<string, unknown>): void {
     if (this.level <= LogLevel.DEBUG) {
-      this.log('debug', message, data);
+      console.debug(`[${this.context}] DEBUG: ${message}`, metadata || '');
     }
   }
 
@@ -77,9 +79,9 @@ class Logger {
    * @param message Message to log
    * @param data Additional data to include
    */
-  public info(message: string | object, data?: any): void {
+  public info(message: string, metadata?: Record<string, unknown>): void {
     if (this.level <= LogLevel.INFO) {
-      this.log('info', message, data);
+      console.log(`[${this.context}] INFO: ${message}`, metadata || '');
     }
   }
 
@@ -88,9 +90,9 @@ class Logger {
    * @param message Message to log
    * @param data Additional data to include
    */
-  public warn(message: string | object, data?: any): void {
+  public warn(message: string, metadata?: Record<string, unknown>): void {
     if (this.level <= LogLevel.WARN) {
-      this.log('warn', message, data);
+      console.warn(`[${this.context}] WARN: ${message}`, metadata || '');
     }
   }
 
@@ -99,67 +101,9 @@ class Logger {
    * @param message Message to log
    * @param error Error object or additional data
    */
-  public error(message: string | object, error?: any): void {
+  public error(message: string, metadata?: Record<string, unknown>): void {
     if (this.level <= LogLevel.ERROR) {
-      // Format error object if provided
-      let formattedError = error;
-
-      if (error instanceof Error) {
-        formattedError = {
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-        };
-      }
-
-      this.log('error', message, formattedError);
-    }
-  }
-
-  /**
-   * Internal method to log a message with consistent formatting
-   * @param level Log level
-   * @param message Message to log
-   * @param data Additional data
-   */
-  private log(level: string, message: string | object, data?: any): void {
-    const timestamp = new Date().toISOString();
-
-    // Structure the log entry
-    const logEntry: any = {
-      timestamp,
-      level,
-      component: 'app',
-    };
-
-    // Handle message formatting
-    if (typeof message === 'string') {
-      logEntry.message = message;
-      if (data !== undefined) {
-        logEntry.data = data;
-      }
-    } else {
-      logEntry.message = message;
-    }
-
-    // Format for console output
-    const consoleOutput = JSON.stringify(logEntry);
-
-    // Output to appropriate console method
-    switch (level) {
-      case 'debug':
-        console.debug(consoleOutput);
-        break;
-      case 'info':
-        console.info(consoleOutput);
-        break;
-      case 'warn':
-        console.warn(consoleOutput);
-        break;
-      case 'error':
-        console.error(consoleOutput);
-        break;
-      default:
+      console.error(`[${this.context}] ERROR: ${message}`, metadata || '');
     }
   }
 
@@ -178,4 +122,4 @@ class Logger {
 }
 
 // Export singleton instance
-export const logger = new Logger();
+export const logger = new Logger('app');
