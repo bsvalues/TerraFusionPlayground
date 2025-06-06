@@ -103,7 +103,7 @@ interface GISTemplate {
   dataRequirements: string[];
 }
 
-const CodeAssistantPanel: React.FC<{}> = () => {
+const CodeAssistantPanel: React.FC = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('assistant');
   const [activeDeveloperTab, setActiveDeveloperTab] = useState('ai-pair');
@@ -1635,7 +1635,7 @@ export const ${className}: React.FC = () => {
           prompt: inputValue,
           timestamp: new Date().toISOString()
         };
-        setGeneratedComponents(prev => [...prev, newComponent]);
+        setGeneratedComponents(prev => [...prev, newComponent.name]);
       }
       
       toast({
@@ -2468,7 +2468,7 @@ const ExamplePropertyCalculator = () => {
       'high': 1.5,
       'luxury': 2.0
     };
-    baseBuildingValue *= qualityMultipliers[residentialInputs.quality] || 1.0;
+    baseBuildingValue *= qualityMultipliers[residentialInputs.quality as keyof typeof qualityMultipliers] || 1.0;
     
     // Age adjustment
     const effectiveAge = new Date().getFullYear() - residentialInputs.yearBuilt;
@@ -2496,7 +2496,7 @@ const ExamplePropertyCalculator = () => {
       'above-average': 1.3,
       'high': 1.6
     };
-    const neighborhoodAdjustment = neighborhoodMultipliers[residentialInputs.neighborhood] || 1.0;
+    const neighborhoodAdjustment = neighborhoodMultipliers[residentialInputs.neighborhood as keyof typeof neighborhoodMultipliers] || 1.0;
     
     // Calculate total improvements value
     const improvementsValue = (baseBuildingValue + Math.max(0, featuresAdjustment)) * neighborhoodAdjustment;
@@ -4461,3 +4461,4 @@ const ExamplePropertyCalculator = () => {
 };
 
 export default CodeAssistantPanel;
+}

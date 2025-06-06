@@ -16,9 +16,13 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./client/src/*"],
+      "@shared/*": ["./shared/*"],
+      "@shared/schema": ["./shared/schema.ts"],
+      "@assets/*": ["./attached_assets/*"],
+      "@server/*": ["./server/*"]
     }
   },
-  "include": ["src", "tests", "packages"],
-  "exclude": ["node_modules", "build", "dist", "archive"]
+  "include": ["client/src", "server", "shared", "tests", "packages"],
+  "exclude": ["node_modules", "build", "dist", "archive", "temp_repo"]
 }

@@ -1,6 +1,6 @@
 // Test script for agent message functionality
-import { MemStorage } from './server/storage';
-import { MessageEventType, MessagePriority, EntityType } from './shared/schema';
+import { MemStorage } from '../../server/storage';
+import { MessageEventType, MessagePriority, EntityType } from '@shared/schema';
 
 async function testAgentMessages() {
   console.log('Testing agent message functionality...');

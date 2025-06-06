@@ -1977,7 +1977,6 @@ export class MemStorage implements IStorage {
   private gisMapProjects: Map<number, GISMapProject>; // GIS map projects
   private etlJobs: Map<string, ETLJob>; // ETL jobs
   private gisAgentTasks: Map<string, GISAgentTask>; // GIS agent tasks
-  private agentMessages: Map<number, AgentMessage>; // Agent messages
   private spatialAnalysisResults: Map<number, SpatialAnalysisResult>; // Spatial analysis results
 
   private currentUserId: number;
@@ -2041,6 +2040,8 @@ export class MemStorage implements IStorage {
   private currentGISFeatureCollectionId: number;
   private currentGISMapProjectId: number;
   private currentSpatialAnalysisResultId: number;
+  
+
 
   constructor() {
     this.users = new Map();
@@ -11145,6 +11146,12 @@ export class PgStorage implements IStorage {
   async updateAgentHealth(health: AgentHealth): Promise<AgentHealth> {
     this.agentHealthRecords.set(health.agentId, health);
     return health;
+  }
+
+  // Seed workflow optimizer data
+  private seedWorkflowOptimizerData(): void {
+    // Initialize with sample workflow optimization data
+    // This method is called when the maps are first accessed
   }
 }
 

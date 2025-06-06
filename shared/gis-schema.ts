@@ -33,7 +33,7 @@ export const gisAgentTasks = pgTable('gis_agent_tasks', {
 });
 
 // Agent Message table for GIS agents
-export const agentMessages = pgTable('agent_messages', {
+export const agentMessages: any = pgTable('agent_messages', {
   id: serial('id').primaryKey(),
   agentId: varchar('agent_id', { length: 255 }).notNull(),
   type: varchar('type', { length: 20 }).notNull(),

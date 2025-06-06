@@ -250,3 +250,5 @@ export function registerDatabaseConversionRoutes(
   // Register the router with the app
   app.use('/api/database-conversion', router);
 }
+
+export default registerDatabaseConversionRoutes;
