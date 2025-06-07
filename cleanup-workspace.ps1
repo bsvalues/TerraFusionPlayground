@@ -1,71 +1,98 @@
 $ErrorActionPreference = "Stop"
 
-function Create-ArchiveStructure {
-    $archiveDirs = @(
-        "archive\scripts",
-        "archive\configs",
-        "archive\docs",
-        "archive\logs",
-        "archive\assets",
-        "archive\temp"
-    )
-    
-    foreach ($dir in $archiveDirs) {
-        if (-not (Test-Path $dir)) {
-            New-Item -ItemType Directory -Path $dir -Force | Out-Null
-            Write-Host "Created directory: $dir"
-        }
+Write-Host "Starting workspace cleanup..."
+
+$archiveDir = "archive"
+$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$archiveTimestampDir = Join-Path $archiveDir $timestamp
+
+function Create-ArchiveDirectory {
+    if (-not (Test-Path $archiveDir)) {
+        New-Item -ItemType Directory -Path $archiveDir | Out-Null
+    }
+    if (-not (Test-Path $archiveTimestampDir)) {
+        New-Item -ItemType Directory -Path $archiveTimestampDir | Out-Null
     }
 }
 
 function Move-ToArchive {
     param (
-        [string]$Pattern,
-        [string]$Destination
+        [string]$sourcePath,
+        [string]$reason
     )
     
-    Get-ChildItem -Path $Pattern -ErrorAction SilentlyContinue | ForEach-Object {
-        $targetPath = Join-Path $Destination $_.Name
-        if (Test-Path $targetPath) {
-            $newName = "$($_.BaseName)_$(Get-Date -Format 'yyyyMMdd_HHmmss')$($_.Extension)"
-            $targetPath = Join-Path $Destination $newName
-        }
-        try {
-            Move-Item -Path $_.FullName -Destination $targetPath -Force
-            Write-Host "Moved $($_.Name) to $Destination"
-        }
-        catch {
-            Write-Host "Failed to move $($_.Name): $_"
+    if (Test-Path $sourcePath) {
+        $fileName = Split-Path $sourcePath -Leaf
+        $archivePath = Join-Path $archiveTimestampDir $fileName
+        
+        Write-Host "Moving $fileName to archive ($reason)"
+        Move-Item -Path $sourcePath -Destination $archivePath -Force
+    }
+}
+
+function Clean-TempFiles {
+    $tempFiles = @(
+        "*.log",
+        "*.tmp",
+        "*.temp",
+        "*.cache",
+        "*.tsbuildinfo"
+    )
+    
+    foreach ($pattern in $tempFiles) {
+        Get-ChildItem -Path . -Filter $pattern -Recurse | ForEach-Object {
+            Write-Host "Removing temporary file: $($_.FullName)"
+            Remove-Item $_.FullName -Force
         }
     }
 }
 
-function Cleanup-Workspace {
-    Write-Host "Starting workspace cleanup..."
-    
-    Create-ArchiveStructure
-    
-    # Move error logs
-    Move-ToArchive -Pattern "errors*.txt" -Destination "archive\logs"
-    
-    # Move cleanup scripts
-    Move-ToArchive -Pattern "cleanup*.ps1" -Destination "archive\scripts"
-    
-    # Move deployment scripts
-    Move-ToArchive -Pattern "*deploy*.ps1" -Destination "archive\scripts"
-    Move-ToArchive -Pattern "*deploy*.sh" -Destination "archive\scripts"
-    
-    # Move duplicate config files
-    Move-ToArchive -Pattern ".eslintrc.js" -Destination "archive\configs"
-    Move-ToArchive -Pattern "eslint.config.js" -Destination "archive\configs"
-    
-    # Move documentation files
-    Move-ToArchive -Pattern "*.md" -Destination "archive\docs"
-    
-    # Move zip files
-    Move-ToArchive -Pattern "*.zip" -Destination "archive\assets"
-    
-    Write-Host "Workspace cleanup completed!"
+function Clean-ErrorLogs {
+    Get-ChildItem -Path . -Filter "errors*.txt" | ForEach-Object {
+        Move-ToArchive $_.FullName "Error log file"
+    }
 }
 
-Cleanup-Workspace 
+function Clean-UnusedDirs {
+    $unusedDirs = @(
+        "cache",
+        "logs",
+        "tokens",
+        "uploads"
+    )
+    
+    foreach ($dir in $unusedDirs) {
+        if (Test-Path $dir) {
+            $archiveDirPath = Join-Path $archiveTimestampDir $dir
+            Write-Host "Moving directory $dir to archive"
+            Move-Item -Path $dir -Destination $archiveDirPath -Force
+        }
+    }
+}
+
+function Clean-DuplicateConfigs {
+    $configFiles = @(
+        ".cspell.json",
+        "cspell.json"
+    )
+    
+    foreach ($file in $configFiles) {
+        if (Test-Path $file) {
+            Move-ToArchive $file "Duplicate configuration file"
+        }
+    }
+}
+
+try {
+    Create-ArchiveDirectory
+    Clean-TempFiles
+    Clean-ErrorLogs
+    Clean-UnusedDirs
+    Clean-DuplicateConfigs
+    
+    Write-Host "Workspace cleanup completed successfully!"
+    Write-Host "Archived files can be found in: $archiveTimestampDir"
+} catch {
+    Write-Error "An error occurred during cleanup: $_"
+    exit 1
+} 
