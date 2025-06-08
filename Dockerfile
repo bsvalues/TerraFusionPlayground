@@ -82,4 +82,24 @@ USER terrafusion
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start application
-CMD ["node", "dist/index.js"] 
+CMD ["node", "dist/index.js"]
+
+# Use official Node.js LTS image
+FROM node:18-alpine AS base
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json ./
+RUN npm install --production
+
+# Copy source code
+COPY . .
+
+# Build Next.js app
+RUN npm run build
+
+# Expose port
+EXPOSE 3000
+
+# Start the app
+CMD ["npm", "start"] 

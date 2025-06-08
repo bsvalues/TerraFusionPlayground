@@ -1,3 +1,0 @@
-propertyId,address,parcelNumber,propertyType,acres,value,status,zoning,landUseCode,topography,floodZone,yearBuilt,squareFeet,bedrooms,bathrooms,improvementType,quality,condition,customField1,customField2,tenants,lastRenovation,parkingSpaces
-TEST001,123 Test Street,123-TEST-01,residential,1.5,250000,active,R1,101,Flat,X,1985,2100,3,2,Single Family,Average,Good,Custom value 1,Custom value 2,,,
-TEST002,456 Sample Avenue,456-TEST-02,commercial,2.3,750000,active,C2,201,Sloped,AE,1998,5000,,,Office Building,Good,Excellent,,,5,2015,20
