@@ -5,9 +5,9 @@ import Notifications from './components/Notifications';
 
 export const metadata: Metadata = {
   title: 'TerraFusion',
-  description: 'Next generation civil infrastructure management',
+  description: 'The next generation of civil infrastructure management',
   icons: {
-    icon: '/favicon.ico',
+    icon: '/assets/terrafusion-icon.png',
   },
 };
 
@@ -19,10 +19,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="bg-gray-900 text-white">
-        <Navigation />
-        <main className="min-h-screen">
-          {children}
-        </main>
+        <div className="flex">
+          <Navigation />
+          <div className="flex-1">
+            {children}
+          </div>
+        </div>
         <Notifications />
       </body>
     </html>

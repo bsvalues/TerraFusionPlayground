@@ -18,13 +18,6 @@ const nextConfig = {
       },
     ];
   },
-  experimental: {
-    optimizeCss: true,
-    serverActions: true,
-  },
-  // Exclude archive from page extensions
-  pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'mdx'],
-  // Custom webpack config to ignore archive
   webpack: (config, { isServer }) => {
     config.module.rules.push({
       test: /\.(png|jpe?g|gif|svg|webp)$/i,
