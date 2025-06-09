@@ -1,0 +1,7 @@
+Archiving Session: 2025-06-09 07:35:24.382689
+Reason: Archiving sample extensions as part of codebase cleanup.
+
+Archived Items:
+- Moved: server/extensions/samples/ -> 20250609_073524\server\extensions\samples
+
+Archiving session completed.
